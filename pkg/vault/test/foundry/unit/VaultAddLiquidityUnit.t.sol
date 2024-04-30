@@ -20,6 +20,7 @@ import {
 import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -31,7 +32,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
-contract VaultUnitLiquidityTest is BaseTest {
+contract VaultAddLiquidityUnitTest is BaseTest {
     using ArrayHelpers for *;
     using ScalingHelpers for *;
     using FixedPoint for *;
@@ -183,15 +184,16 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function testAddLiquidityCustom() public {
+        uint256 bptAmountOut = 1e18;
+
         (
             AddLiquidityParams memory params,
             PoolData memory poolData,
             uint256[] memory maxAmountsInScaled18
-        ) = _makeDefaultParams(AddLiquidityKind.CUSTOM, 1e18);
+        ) = _makeDefaultParams(AddLiquidityKind.CUSTOM, bptAmountOut);
 
         poolData.poolConfig.liquidityManagement.enableAddLiquidityCustom = true;
 
-        uint256 bptAmountOut = 1e18;
         uint256[] memory expectedAmountsInScaled18 = new uint256[](tokens.length);
         uint256[] memory expectSwapFeeAmountsScaled18 = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -222,6 +224,113 @@ contract VaultUnitLiquidityTest is BaseTest {
                 expectedBPTAmountOut: params.minBptAmountOut
             })
         );
+    }
+
+    function testRevertIfBptAmountOutBelowMin() public {
+        VaultState memory vaultState;
+        (
+            AddLiquidityParams memory params,
+            PoolData memory poolData,
+            uint256[] memory maxAmountsInScaled18
+        ) = _makeDefaultParams(AddLiquidityKind.CUSTOM, 1e18);
+
+        poolData.poolConfig.liquidityManagement.enableAddLiquidityCustom = true;
+
+        uint256 bptAmountOut = 0;
+        vm.mockCall(
+            address(params.pool),
+            abi.encodeWithSelector(
+                IPoolLiquidity.onAddLiquidityCustom.selector,
+                params.to,
+                maxAmountsInScaled18,
+                params.minBptAmountOut,
+                poolData.balancesLiveScaled18,
+                params.userData
+            ),
+            abi.encode(new uint256[](tokens.length), bptAmountOut, new uint256[](tokens.length), params.userData)
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.BptAmountOutBelowMin.selector, bptAmountOut, params.minBptAmountOut)
+        );
+        vault.manualAddLiquidity(poolData, params, maxAmountsInScaled18, vaultState);
+    }
+
+    function testRevertIfAmountInAboveMaxError() public {
+        VaultState memory vaultState;
+        (
+            AddLiquidityParams memory params,
+            PoolData memory poolData,
+            uint256[] memory maxAmountsInScaled18
+        ) = _makeDefaultParams(AddLiquidityKind.CUSTOM, 1e18);
+
+        poolData.poolConfig.liquidityManagement.enableAddLiquidityCustom = true;
+
+        uint256[] memory expectedAmountsInScaled18 = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            expectedAmountsInScaled18[i] = maxAmountsInScaled18[i] + 1;
+        }
+
+        vm.mockCall(
+            address(params.pool),
+            abi.encodeWithSelector(
+                IPoolLiquidity.onAddLiquidityCustom.selector,
+                params.to,
+                maxAmountsInScaled18,
+                params.minBptAmountOut,
+                poolData.balancesLiveScaled18,
+                params.userData
+            ),
+            abi.encode(expectedAmountsInScaled18, params.minBptAmountOut, new uint256[](tokens.length), params.userData)
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.AmountInAboveMax.selector,
+                tokens[0],
+                expectedAmountsInScaled18[0],
+                maxAmountsInScaled18[0]
+            )
+        );
+        vault.manualAddLiquidity(poolData, params, maxAmountsInScaled18, vaultState);
+    }
+
+    function testRevertAddLiquidityUnbalancedIfUnbalancedLiquidityIsDisabled() public {
+        VaultState memory vaultState;
+        (
+            AddLiquidityParams memory params,
+            PoolData memory poolData,
+            uint256[] memory maxAmountsInScaled18
+        ) = _makeDefaultParams(AddLiquidityKind.UNBALANCED, 1e18);
+        poolData.poolConfig.liquidityManagement.disableUnbalancedLiquidity = true;
+
+        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
+        vault.manualAddLiquidity(poolData, params, maxAmountsInScaled18, vaultState);
+    }
+
+    function testRevertAddLiquiditySingleTokenExactOutIfUnbalancedLiquidityIsDisabled() public {
+        VaultState memory vaultState;
+        (
+            AddLiquidityParams memory params,
+            PoolData memory poolData,
+            uint256[] memory maxAmountsInScaled18
+        ) = _makeDefaultParams(AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT, 1e18);
+        poolData.poolConfig.liquidityManagement.disableUnbalancedLiquidity = true;
+
+        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
+        vault.manualAddLiquidity(poolData, params, maxAmountsInScaled18, vaultState);
+    }
+
+    function testRevertAddLiquidityCustomExactOutIfCustomLiquidityIsDisabled() public {
+        VaultState memory vaultState;
+        (
+            AddLiquidityParams memory params,
+            PoolData memory poolData,
+            uint256[] memory maxAmountsInScaled18
+        ) = _makeDefaultParams(AddLiquidityKind.CUSTOM, 1e18);
+
+        vm.expectRevert(IVaultErrors.DoesNotSupportAddLiquidityCustom.selector);
+        vault.manualAddLiquidity(poolData, params, maxAmountsInScaled18, vaultState);
     }
 
     // #region Helpers

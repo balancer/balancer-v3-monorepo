@@ -622,8 +622,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     poolData.balancesLiveScaled18,
                     params.userData
                 );
-        } else {
-            revert InvalidAddLiquidityKind();
         }
 
         // At this point we have the calculated BPT amount.
@@ -666,9 +664,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // We need regular balances to complete the accounting, and the upscaled balances
             // to use in the `after` hook later on.
             poolData.balancesRaw[i] += (amountInRaw - vars.protocolSwapFeeAmountRaw);
-
-            poolData.balancesLiveScaled18[i] += (amountsInScaled18[i] -
-                swapFeeAmountsScaled18[i].mulUp(vaultState.protocolSwapFeePercentage));
 
             amountsInRaw[i] = amountInRaw;
         }
