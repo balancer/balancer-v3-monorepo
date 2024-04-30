@@ -32,7 +32,7 @@ contract YieldFeesTest is BaseVaultTest {
     RateProviderMock internal wstETHRateProvider;
     RateProviderMock internal daiRateProvider;
 
-    WeightedPool internal  weightedPoolWithRate;
+    WeightedPool internal weightedPoolWithRate;
     WeightedPoolFactory internal factory;
 
     // Track the indices for the local dai/wsteth pool.
@@ -185,8 +185,8 @@ contract YieldFeesTest is BaseVaultTest {
 
         // Warm-up storage slots (using a different pool)
         // Pump the original rates [pumpRate / 2] times
-        wstETHRateProvider.mockRate(wstethRate * pumpRate / 2);
-        daiRateProvider.mockRate(daiRate * pumpRate / 2);
+        wstETHRateProvider.mockRate((wstethRate * pumpRate) / 2);
+        daiRateProvider.mockRate((daiRate * pumpRate) / 2);
 
         vm.prank(alice);
         uint256 amountOut = router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, "");
