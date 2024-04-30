@@ -30,15 +30,20 @@ contract VaultUnitSwapTest is BaseTest {
     IVaultMock internal vault;
     address pool = address(0x1234);
 
-    uint256 amountGivenRaw = 1 ether;
+    uint256 amountGivenRaw = 1e18;
     uint256 mockedAmountCalculatedScaled18 = 5e17;
-    uint256[] initialBalances = [uint256(10 ether), 10 ether];
+
+    IERC20[] swapTokens;
+    uint256[] initialBalances = [uint256(10e18), 10e18];
     uint256[] decimalScalingFactors = [uint256(1e18), 1e18];
     uint256[] tokenRates = [uint256(1e18), 2e18];
 
     function setUp() public virtual override {
         BaseTest.setUp();
         vault = IVaultMock(address(VaultMockDeployer.deploy()));
+
+        swapTokens = [dai, usdc];
+        vault.manualSetPoolTokenBalances(pool, swapTokens, initialBalances);
     }
 
     function testSwapExactInWithZeroFee() public {
@@ -73,7 +78,7 @@ contract VaultUnitSwapTest is BaseTest {
 
     function testSwapExactInWithFee() public {
         // set zero pool creator fee
-        vault.manualSetPoolCreatorFees(pool, usdc, 0);
+        vault.manualSetPoolCreatorFees(pool, swapTokens[1], 0);
 
         (
             SwapParams memory params,
@@ -218,8 +223,8 @@ contract VaultUnitSwapTest is BaseTest {
         params = SwapParams({
             kind: kind,
             pool: pool,
-            tokenIn: dai,
-            tokenOut: usdc,
+            tokenIn: swapTokens[0],
+            tokenOut: swapTokens[1],
             amountGivenRaw: amountGivenRaw_,
             limitRaw: limitRaw,
             userData: new bytes(0)
@@ -359,11 +364,24 @@ contract VaultUnitSwapTest is BaseTest {
             "Unexpected balancesLiveScaled18[vars.indexOut]"
         );
 
+        uint256[] memory storageRawBalances = vault.getRawBalances(params.pool);
+        assertEq(storageRawBalances.length, poolData.balancesRaw.length, "Unexpected storageRawBalances length");
+        assertEq(
+            storageRawBalances[vars.indexIn],
+            poolData.balancesRaw[vars.indexIn],
+            "Unexpected storageRawBalances[vars.indexIn]"
+        );
+        assertEq(
+            storageRawBalances[vars.indexOut],
+            poolData.balancesRaw[vars.indexOut],
+            "Unexpected storageRawBalances[vars.indexIn]"
+        );
+
         // check _takeDebt called
-        assertEq(vault.getTokenDelta(dai), int256(amountIn), "Unexpected tokenIn delta");
+        assertEq(vault.getTokenDelta(swapTokens[0]), int256(amountIn), "Unexpected tokenIn delta");
 
         // check _supplyCredit called
-        assertEq(vault.getTokenDelta(usdc), -int256(amountOut), "Unexpected tokenOut delta");
+        assertEq(vault.getTokenDelta(swapTokens[1]), -int256(amountOut), "Unexpected tokenOut delta");
     }
 
     function _mockOnSwap(

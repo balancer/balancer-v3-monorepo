@@ -16,6 +16,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -172,11 +173,15 @@ contract VaultUnitTest is BaseTest {
         poolData.tokenRates = new uint256[](2);
         poolData.balancesLiveScaled18 = new uint256[](2);
 
+        address rateProvider = address(0xFF123);
+        uint256 secondTokenRate = 3e25;
+
         poolData.decimalScalingFactors = decimalScalingFactors;
 
         poolData.tokenConfig = new TokenConfig[](2);
         poolData.tokenConfig[0].tokenType = TokenType.STANDARD;
-        poolData.tokenConfig[1].tokenType = TokenType.STANDARD;
+        poolData.tokenConfig[1].tokenType = TokenType.WITH_RATE;
+        poolData.tokenConfig[1].rateProvider = IRateProvider(rateProvider);
 
         uint256[] memory tokenBalances = [uint256(1e18), 2e18].toMemoryArray();
 
@@ -186,11 +191,12 @@ contract VaultUnitTest is BaseTest {
 
         vault.manualSetPoolTokenBalances(pool, defaultTokens, tokenBalances);
 
+        vm.mockCall(rateProvider, abi.encodeWithSelector(IRateProvider.getRate.selector), abi.encode(secondTokenRate));
         poolData = vault.manualUpdatePoolDataLiveBalancesAndRates(pool, poolData, Rounding.ROUND_UP);
 
         // check _updateTokenRatesInPoolData is called
         assertEq(poolData.tokenRates[0], FixedPoint.ONE, "Unexpected tokenRates[0]");
-        assertEq(poolData.tokenRates[1], FixedPoint.ONE, "Unexpected tokenRates[1]");
+        assertEq(poolData.tokenRates[1], secondTokenRate, "Unexpected tokenRates[1]");
 
         // check balances
         assertEq(poolData.balancesRaw[0], tokenBalances[0], "Unexpected balancesRaw[0]");
