@@ -108,8 +108,6 @@ describe('BatchSwap', function () {
     for (const pool of pools) {
       await pool.connect(lp).approve(router, MAX_UINT256);
       await pool.connect(lp).approve(basicRouter, MAX_UINT256);
-      await pool.connect(sender).approve(router, MAX_UINT256);
-      await pool.connect(sender).approve(basicRouter, MAX_UINT256);
     }
     for (const token of [...tokens.tokens, poolA, poolB, poolC, poolAB, poolAC, poolBC]) {
       for (const from of [lp, sender]) {
@@ -1601,7 +1599,8 @@ describe('BatchSwap', function () {
         itTestsBatchSwap(false, true);
 
         it('burns amount in', async () => {
-          await expect(doSwap()).to.emit(tokensIn[0], 'Transfer').withArgs(sender.address, ZERO_ADDRESS, totalAmountIn);
+          // Router is the one that burns the tokens, not sender.
+          await expect(doSwap()).to.emit(tokensIn[0], 'Transfer').withArgs(router, ZERO_ADDRESS, totalAmountIn);
         });
       });
 

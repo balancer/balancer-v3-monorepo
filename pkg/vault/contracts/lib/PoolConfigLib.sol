@@ -236,31 +236,34 @@ library PoolConfigLib {
     }
 
     function toPoolConfig(PoolConfigBits config) internal pure returns (PoolConfig memory) {
+        bytes32 rawConfig = PoolConfigBits.unwrap(config);
+
         return
             PoolConfig({
-                isPoolRegistered: config.isPoolRegistered(),
-                isPoolInitialized: config.isPoolInitialized(),
-                isPoolPaused: config.isPoolPaused(),
-                isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
-                hasDynamicSwapFee: config.hasDynamicSwapFee(),
-                staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
-                poolCreatorFeePercentage: config.getPoolCreatorFeePercentage(),
-                tokenDecimalDiffs: config.getTokenDecimalDiffs(),
-                pauseWindowEndTime: config.getPauseWindowEndTime(),
+                isPoolRegistered: rawConfig.decodeBool(POOL_REGISTERED_OFFSET),
+                isPoolInitialized: rawConfig.decodeBool(POOL_INITIALIZED_OFFSET),
+                isPoolPaused: rawConfig.decodeBool(POOL_PAUSED_OFFSET),
+                isPoolInRecoveryMode: rawConfig.decodeBool(POOL_RECOVERY_MODE_OFFSET),
+                hasDynamicSwapFee: rawConfig.decodeBool(DYNAMIC_SWAP_FEE_OFFSET),
+                staticSwapFeePercentage: rawConfig.decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
+                    FEE_SCALING_FACTOR,
+                poolCreatorFeePercentage: rawConfig.decodeUint(POOL_DEV_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR,
+                tokenDecimalDiffs: rawConfig.decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH),
+                pauseWindowEndTime: rawConfig.decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH),
                 hooks: PoolHooks({
-                    shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
-                    shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
-                    shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
-                    shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
-                    shouldCallBeforeRemoveLiquidity: config.shouldCallBeforeRemoveLiquidity(),
-                    shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
-                    shouldCallBeforeSwap: config.shouldCallBeforeSwap(),
-                    shouldCallAfterSwap: config.shouldCallAfterSwap()
+                    shouldCallBeforeInitialize: rawConfig.decodeBool(BEFORE_INITIALIZE_OFFSET),
+                    shouldCallAfterInitialize: rawConfig.decodeBool(AFTER_INITIALIZE_OFFSET),
+                    shouldCallBeforeAddLiquidity: rawConfig.decodeBool(BEFORE_ADD_LIQUIDITY_OFFSET),
+                    shouldCallAfterAddLiquidity: rawConfig.decodeBool(AFTER_ADD_LIQUIDITY_OFFSET),
+                    shouldCallBeforeRemoveLiquidity: rawConfig.decodeBool(BEFORE_REMOVE_LIQUIDITY_OFFSET),
+                    shouldCallAfterRemoveLiquidity: rawConfig.decodeBool(AFTER_REMOVE_LIQUIDITY_OFFSET),
+                    shouldCallBeforeSwap: rawConfig.decodeBool(BEFORE_SWAP_OFFSET),
+                    shouldCallAfterSwap: rawConfig.decodeBool(AFTER_SWAP_OFFSET)
                 }),
                 liquidityManagement: LiquidityManagement({
-                    disableUnbalancedLiquidity: !config.supportsUnbalancedLiquidity(),
-                    enableAddLiquidityCustom: config.supportsAddLiquidityCustom(),
-                    enableRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom()
+                    disableUnbalancedLiquidity: rawConfig.decodeBool(UNBALANCED_LIQUIDITY_OFFSET),
+                    enableAddLiquidityCustom: rawConfig.decodeBool(ADD_LIQUIDITY_CUSTOM_OFFSET),
+                    enableRemoveLiquidityCustom: rawConfig.decodeBool(REMOVE_LIQUIDITY_CUSTOM_OFFSET)
                 })
             });
     }
