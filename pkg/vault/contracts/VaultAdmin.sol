@@ -20,7 +20,6 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import {
     ReentrancyGuardTransient
@@ -46,7 +45,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using PoolConfigLib for PoolConfig;
     using VaultExtensionsLib for IVault;
     using EnumerableSet for EnumerableSet.AddressSet;
-    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using SafeERC20 for IERC20;
     using VaultStateLib for VaultStateBits;
 
@@ -345,14 +343,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function collectPoolCreatorFees(address pool) external nonReentrant onlyVault {
-        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
-        uint256 numTokens = poolCreatorFees.length();
-        for (uint256 i = 0; i < numTokens; ++i) {
-            (IERC20 token, uint256 amount) = poolCreatorFees.unchecked_at(i);
+        IERC20[] memory tokens = _getPoolTokens(pool);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
 
+            uint256 amount = _poolCreatorFees[pool][address(token)];
             if (amount > 0) {
                 // set fees to zero for the token
-                poolCreatorFees.unchecked_setAt(i, 0);
+                _poolCreatorFees[pool][address(token)] = 0;
 
                 token.safeTransfer(_poolRoleAccounts[pool].poolCreator, amount);
                 emit PoolCreatorFeeCollected(pool, token, amount);
