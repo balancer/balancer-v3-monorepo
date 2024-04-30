@@ -332,16 +332,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Set vars.swapFeeAmountScaled18 based on the amountCalculated.
         if (vars.swapFeePercentage > 0) {
-            // Swap fee is a percentage of the amountCalculated for the EXACT_IN swap
+            // Swap fee is always a percentage of the amountCalculated. On ExactIn, subtract it from the calculated
+            // amountOut. On ExactOut, add it to the calculated amountIn.
             // Round up to avoid losses during precision loss.
             vars.swapFeeAmountScaled18 = vars.amountCalculatedScaled18.mulUp(vars.swapFeePercentage);
-            // Should subtract the fee from the amountCalculated for EXACT_IN swap
-            vars.amountCalculatedScaled18 -= vars.swapFeeAmountScaled18;
         }
 
         if (params.kind == SwapKind.EXACT_IN) {
             // For `ExactIn` the amount calculated is leaving the Vault, so we round down.
-            amountCalculated = vars.amountCalculatedScaled18.toRawUndoRateRoundDown(
+            amountCalculated = (vars.amountCalculatedScaled18 - vars.swapFeeAmountScaled18).toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[vars.indexOut],
                 poolData.tokenRates[vars.indexOut]
             );
@@ -352,7 +351,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
         } else {
             // Round up when entering the Vault on `ExactOut`.
-            amountCalculated = vars.amountCalculatedScaled18.toRawUndoRateRoundUp(
+            amountCalculated = (vars.amountCalculatedScaled18 + vars.swapFeeAmountScaled18).toRawUndoRateRoundUp(
                 poolData.decimalScalingFactors[vars.indexIn],
                 poolData.tokenRates[vars.indexIn]
             );
