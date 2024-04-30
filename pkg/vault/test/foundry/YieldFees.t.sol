@@ -231,12 +231,7 @@ contract YieldFeesTest is BaseVaultTest {
         PoolData memory poolData = _simplePoolData(balanceRaw, decimalScalingFactor, tokenRate);
         uint256 liveBalance = poolData.balancesLiveScaled18[0];
 
-        (uint256 protocolYieldFeesRaw, ) = vault.computeYieldFeesDue(
-            poolData,
-            lastLiveBalance,
-            0,
-            yieldFeePercentage
-        );
+        (uint256 protocolYieldFeesRaw, ) = vault.computeYieldFeesDue(poolData, lastLiveBalance, 0, yieldFeePercentage);
         if (liveBalance <= lastLiveBalance) {
             assertEq(protocolYieldFeesRaw, 0, "Yield fees are not 0 with decreasing live balance");
         } else {
