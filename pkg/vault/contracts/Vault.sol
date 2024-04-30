@@ -370,16 +370,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vaultState.protocolSwapFeePercentage,
             poolData.poolConfig.poolCreatorFeePercentage,
             params.pool,
-            params.tokenOut,
-            vars.indexOut
+            params.kind == SwapKind.EXACT_IN ? params.tokenOut : params.tokenIn,
+            params.kind == SwapKind.EXACT_IN ? vars.indexOut : vars.indexIn
         );
 
+        // Adjust for swap amounts
         poolData.balancesRaw[vars.indexIn] += amountIn;
-        poolData.balancesRaw[vars.indexOut] =
-            poolData.balancesRaw[vars.indexOut] -
-            amountOut -
-            vars.protocolSwapFeeAmountRaw -
-            vars.creatorSwapFeeAmountRaw;
+        poolData.balancesRaw[vars.indexOut] -= amountOut;
+
+        // Adjust for fees
+        uint256 totalFeeAdjustment = vars.protocolSwapFeeAmountRaw + vars.creatorSwapFeeAmountRaw;
+        if (params.kind == SwapKind.EXACT_IN) {
+            poolData.balancesRaw[vars.indexOut] -= totalFeeAdjustment;
+        } else {
+            poolData.balancesRaw[vars.indexIn] += totalFeeAdjustment;
+        }
 
         // Set both raw and last live balances.
         _setPoolBalances(params.pool, poolData);
