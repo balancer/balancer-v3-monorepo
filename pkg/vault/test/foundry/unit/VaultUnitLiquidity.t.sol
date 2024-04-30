@@ -1,0 +1,354 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+pragma solidity ^0.8.4;
+
+import "forge-std/Test.sol";
+
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {
+    SwapParams,
+    SwapLocals,
+    PoolData,
+    SwapKind,
+    TokenConfig,
+    TokenType,
+    Rounding,
+    AddLiquidityParams,
+    AddLiquidityKind,
+    VaultState
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
+import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
+import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
+import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
+
+contract VaultUnitLiquidityTest is BaseTest {
+    using ArrayHelpers for *;
+    using ScalingHelpers for *;
+    using FixedPoint for *;
+    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+
+    struct TestAddLiquidityParams {
+        AddLiquidityParams addLiquidityParams;
+        uint256[] expectedAmountsInScaled18;
+        uint256[] maxAmountsInScaled18;
+        uint256[] expectSwapFeeAmountsScaled18;
+        uint256 expectedBPTAmountOut;
+    }
+
+    address internal constant ZERO_ADDRESS = address(0x00);
+
+    IVaultMock internal vault;
+
+    address pool = address(0x1234);
+    uint256 initTotalSupply = 1000e18;
+
+    function setUp() public virtual override {
+        BaseTest.setUp();
+        vault = IVaultMock(address(VaultMockDeployer.deploy()));
+
+        _mockMintCallback(bob, initTotalSupply);
+        vault.mintERC20(pool, bob, initTotalSupply);
+
+        uint256[] memory initialBalances = new uint256[](tokens.length);
+        vault.manualSetPoolTokenBalances(pool, tokens, initialBalances);
+    }
+
+    function testAddLiquidityProportional() public {
+        (
+            AddLiquidityParams memory params,
+            PoolData memory poolData,
+            uint256[] memory maxAmountsInScaled18
+        ) = _makeDefaultParams(AddLiquidityKind.PROPORTIONAL, 1e18);
+
+        _testAddLiquidity(
+            poolData,
+            TestAddLiquidityParams({
+                addLiquidityParams: params,
+                expectedAmountsInScaled18: BasePoolMath.computeProportionalAmountsIn(
+                    poolData.balancesLiveScaled18,
+                    vault.totalSupply(params.pool),
+                    params.minBptAmountOut
+                ),
+                maxAmountsInScaled18: maxAmountsInScaled18,
+                expectSwapFeeAmountsScaled18: new uint256[](tokens.length),
+                expectedBPTAmountOut: params.minBptAmountOut
+            })
+        );
+    }
+
+    function testAddLiquidityUnbalanced() public {
+        (
+            AddLiquidityParams memory params,
+            PoolData memory poolData,
+            uint256[] memory maxAmountsInScaled18
+        ) = _makeDefaultParams(AddLiquidityKind.UNBALANCED, 1e18);
+
+        // mock invariants
+        (uint256 currentInvariant, uint newInvariantAndInvariantWithFeesApplied) = (1e16, 1e18);
+        vm.mockCall(
+            params.pool,
+            abi.encodeWithSelector(IBasePool.computeInvariant.selector, poolData.balancesLiveScaled18),
+            abi.encode(currentInvariant)
+        );
+
+        uint256[] memory newBalances = new uint256[](tokens.length);
+        for (uint256 i = 0; i < newBalances.length; i++) {
+            newBalances[i] = poolData.balancesLiveScaled18[i] + maxAmountsInScaled18[i];
+        }
+
+        vm.mockCall(
+            params.pool,
+            abi.encodeWithSelector(IBasePool.computeInvariant.selector, newBalances),
+            abi.encode(newInvariantAndInvariantWithFeesApplied)
+        );
+
+        (uint256 bptAmountOut, uint256[] memory swapFeeAmountsScaled18) = BasePoolMath.computeAddLiquidityUnbalanced(
+            poolData.balancesLiveScaled18,
+            maxAmountsInScaled18,
+            vault.totalSupply(params.pool),
+            vault.manualGetSwapFeePercentage(poolData.poolConfig),
+            IBasePool(params.pool).computeInvariant
+        );
+
+        _testAddLiquidity(
+            poolData,
+            TestAddLiquidityParams({
+                addLiquidityParams: params,
+                expectedAmountsInScaled18: maxAmountsInScaled18,
+                maxAmountsInScaled18: maxAmountsInScaled18,
+                expectSwapFeeAmountsScaled18: swapFeeAmountsScaled18,
+                expectedBPTAmountOut: bptAmountOut
+            })
+        );
+    }
+
+    function testAddLiquiditySingleTokenExactOut() public {
+        (AddLiquidityParams memory params, PoolData memory poolData, ) = _makeDefaultParams(
+            AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+            1e18
+        );
+
+        uint tokenInIndex = 0;
+        uint256[] memory expectedAmountsInScaled18 = new uint256[](tokens.length);
+        uint256[] memory maxAmountsInScaled18 = new uint256[](tokens.length);
+        maxAmountsInScaled18[tokenInIndex] = 1e18;
+        params.maxAmountsIn[tokenInIndex] = maxAmountsInScaled18[tokenInIndex].toRawUndoRateRoundUp(
+            poolData.decimalScalingFactors[tokenInIndex],
+            poolData.tokenRates[tokenInIndex]
+        );
+
+        uint totalSupply = vault.totalSupply(params.pool);
+        uint newSupply = totalSupply + params.minBptAmountOut;
+        vm.mockCall(
+            params.pool,
+            abi.encodeWithSelector(
+                IBasePool.computeBalance.selector,
+                poolData.balancesLiveScaled18,
+                tokenInIndex,
+                newSupply.divUp(totalSupply)
+            ),
+            abi.encode(poolData.balancesLiveScaled18[tokenInIndex] + params.minBptAmountOut)
+        );
+
+        uint256[] memory swapFeeAmountsScaled18;
+        (expectedAmountsInScaled18[0], swapFeeAmountsScaled18) = BasePoolMath.computeAddLiquiditySingleTokenExactOut(
+            poolData.balancesLiveScaled18,
+            0,
+            params.minBptAmountOut,
+            totalSupply,
+            vault.manualGetSwapFeePercentage(poolData.poolConfig),
+            IBasePool(params.pool).computeBalance
+        );
+
+        _testAddLiquidity(
+            poolData,
+            TestAddLiquidityParams({
+                addLiquidityParams: params,
+                expectedAmountsInScaled18: expectedAmountsInScaled18,
+                maxAmountsInScaled18: maxAmountsInScaled18,
+                expectSwapFeeAmountsScaled18: swapFeeAmountsScaled18,
+                expectedBPTAmountOut: params.minBptAmountOut
+            })
+        );
+    }
+
+    function testAddLiquidityCustom() public {
+        (
+            AddLiquidityParams memory params,
+            PoolData memory poolData,
+            uint256[] memory maxAmountsInScaled18
+        ) = _makeDefaultParams(AddLiquidityKind.CUSTOM, 1e18);
+
+        poolData.poolConfig.liquidityManagement.enableAddLiquidityCustom = true;
+
+        uint256 bptAmountOut = 1e18;
+        uint256[] memory expectedAmountsInScaled18 = new uint256[](tokens.length);
+        uint256[] memory expectSwapFeeAmountsScaled18 = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            expectedAmountsInScaled18[i] = 1e18;
+            expectSwapFeeAmountsScaled18[i] = 1e16;
+        }
+
+        vm.mockCall(
+            address(params.pool),
+            abi.encodeWithSelector(
+                IPoolLiquidity.onAddLiquidityCustom.selector,
+                params.to,
+                maxAmountsInScaled18,
+                params.minBptAmountOut,
+                poolData.balancesLiveScaled18,
+                params.userData
+            ),
+            abi.encode(expectedAmountsInScaled18, bptAmountOut, expectSwapFeeAmountsScaled18, params.userData)
+        );
+
+        _testAddLiquidity(
+            poolData,
+            TestAddLiquidityParams({
+                addLiquidityParams: params,
+                expectedAmountsInScaled18: expectedAmountsInScaled18,
+                maxAmountsInScaled18: maxAmountsInScaled18,
+                expectSwapFeeAmountsScaled18: expectSwapFeeAmountsScaled18,
+                expectedBPTAmountOut: params.minBptAmountOut
+            })
+        );
+    }
+
+    // #region Helpers
+    function _makeDefaultParams(
+        AddLiquidityKind kind,
+        uint minBptAmountOut
+    )
+        internal
+        returns (AddLiquidityParams memory params, PoolData memory poolData, uint256[] memory maxAmountsInScaled18)
+    {
+        params = AddLiquidityParams({
+            pool: pool,
+            to: address(this),
+            kind: kind,
+            maxAmountsIn: new uint256[](tokens.length),
+            minBptAmountOut: minBptAmountOut,
+            userData: new bytes(0)
+        });
+
+        poolData.balancesLiveScaled18 = new uint256[](tokens.length);
+        poolData.balancesRaw = new uint256[](tokens.length);
+
+        poolData.tokenConfig = new TokenConfig[](tokens.length);
+        poolData.decimalScalingFactors = new uint256[](tokens.length);
+        poolData.tokenRates = new uint256[](tokens.length);
+
+        for (uint256 i = 0; i < poolData.tokenConfig.length; i++) {
+            poolData.tokenConfig[i].token = tokens[i];
+            poolData.decimalScalingFactors[i] = 1e18;
+            poolData.tokenRates[i] = 1e18 * (i + 1);
+
+            poolData.balancesLiveScaled18[i] = 1000e18;
+            poolData.balancesRaw[i] = poolData.balancesLiveScaled18[i].toRawUndoRateRoundDown(
+                poolData.decimalScalingFactors[i],
+                poolData.tokenRates[i]
+            );
+        }
+
+        maxAmountsInScaled18 = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            maxAmountsInScaled18[i] = 1e18;
+            params.maxAmountsIn[i] = maxAmountsInScaled18[i].toRawUndoRateRoundUp(
+                poolData.decimalScalingFactors[i],
+                poolData.tokenRates[i]
+            );
+        }
+    }
+
+    function _mockMintCallback(address to, uint256 amount) internal {
+        vm.mockCall(
+            pool,
+            abi.encodeWithSelector(BalancerPoolToken.emitTransfer.selector, ZERO_ADDRESS, to, amount),
+            new bytes(0)
+        );
+    }
+
+    function _testAddLiquidity(PoolData memory poolData, TestAddLiquidityParams memory params) internal {
+        VaultState memory vaultState;
+        vaultState.protocolSwapFeePercentage = 1e16;
+
+        uint256[] memory expectedAmountsInRaw = new uint256[](params.expectedAmountsInScaled18.length);
+        for (uint256 i = 0; i < expectedAmountsInRaw.length; i++) {
+            expectedAmountsInRaw[i] = params.expectedAmountsInScaled18[i].toRawUndoRateRoundUp(
+                poolData.decimalScalingFactors[i],
+                poolData.tokenRates[i]
+            );
+        }
+
+        _mockMintCallback(address(this), params.expectedBPTAmountOut);
+
+        vm.expectEmit();
+        emit IVaultEvents.PoolBalanceChanged(
+            params.addLiquidityParams.pool,
+            params.addLiquidityParams.to,
+            tokens,
+            expectedAmountsInRaw.unsafeCastToInt256(true)
+        );
+
+        (
+            PoolData memory updatedPoolData,
+            uint256[] memory amountsInRaw,
+            uint256[] memory amountsInScaled18,
+            uint256 bptAmountOut,
+            bytes memory returnData
+        ) = vault.manualAddLiquidity(poolData, params.addLiquidityParams, params.maxAmountsInScaled18, vaultState);
+
+        assertEq(bptAmountOut, params.expectedBPTAmountOut, "Unexpected BPT amount out");
+        assertEq(
+            vault.balanceOf(address(params.addLiquidityParams.pool), address(this)),
+            bptAmountOut,
+            "Token minted with unexpected amount"
+        );
+
+        uint256[] memory poolBalances = vault.getRawBalances(params.addLiquidityParams.pool);
+
+        // NOTE: stack too deep fix
+        TestAddLiquidityParams memory params_ = params;
+
+        for (uint256 i = 0; i < poolData.tokenConfig.length; i++) {
+            assertEq(amountsInRaw[i], expectedAmountsInRaw[i], "Unexpected tokenIn amount");
+            assertEq(amountsInScaled18[i], params_.expectedAmountsInScaled18[i], "Unexpected tokenIn amount");
+
+            assertEq(vault.getTokenDelta(tokens[i]), int256(amountsInRaw[i]), "Unexpected tokenIn delta");
+
+            assertEq(
+                updatedPoolData.balancesRaw[i],
+                poolData.balancesRaw[i] +
+                    amountsInRaw[i] -
+                    params_
+                        .expectSwapFeeAmountsScaled18[i]
+                        .mulUp(vaultState.protocolSwapFeePercentage)
+                        .toRawUndoRateRoundDown(poolData.decimalScalingFactors[i], poolData.tokenRates[i]),
+                "Unexpected balancesRaw balance"
+            );
+
+            assertEq(
+                updatedPoolData.balancesLiveScaled18[i],
+                updatedPoolData.balancesRaw[i].toScaled18ApplyRateRoundDown(
+                    poolData.decimalScalingFactors[i],
+                    poolData.tokenRates[i]
+                ),
+                "Unexpected balancesLiveScaled18 balance"
+            );
+
+            // check _setPoolBalances
+            assertEq(poolBalances[i], updatedPoolData.balancesRaw[i], "Unexpected pool balance");
+        }
+    }
+    // #endregion
+}
