@@ -227,8 +227,15 @@ contract VaultUnitSwapTest is BaseTest {
             tokenOut: swapTokens[1],
             amountGivenRaw: amountGivenRaw_,
             limitRaw: limitRaw,
+            userData: new bytes(0)
+        });
+
+        vars.indexIn = 0;
         vars.indexOut = 1;
 
+        vars.indexOut = 1;
+
+        poolData.decimalScalingFactors = decimalScalingFactors;
         poolData.tokenRates = tokenRates;
         poolData.balancesRaw = initialBalances;
 
