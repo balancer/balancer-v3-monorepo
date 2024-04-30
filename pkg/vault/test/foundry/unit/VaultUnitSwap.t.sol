@@ -357,15 +357,19 @@ contract VaultUnitSwapTest is BaseTest {
         PoolData memory poolData,
         VaultState memory vaultState
     ) internal {
+        uint256 totalFees = vars.protocolSwapFeeAmountRaw + vars.creatorSwapFeeAmountRaw;
+        uint256 feesOnAmountOut = params.kind == SwapKind.EXACT_IN ? totalFees : 0;
+        uint256 feesOnAmountIn = params.kind == SwapKind.EXACT_IN ? 0 : totalFees;
+
         // check balances updated
         assertEq(
             poolData.balancesRaw[vars.indexIn],
-            initialBalances[vars.indexIn] + amountIn,
+            initialBalances[vars.indexIn] + amountIn + feesOnAmountIn,
             "Unexpected balanceRaw[vars.indexIn]"
         );
         assertEq(
             poolData.balancesRaw[vars.indexOut],
-            initialBalances[vars.indexOut] - amountOut - vars.protocolSwapFeeAmountRaw - vars.creatorSwapFeeAmountRaw,
+            initialBalances[vars.indexOut] - amountOut - feesOnAmountOut,
             "Unexpected balanceRaw[vars.indexOut]"
         );
 
