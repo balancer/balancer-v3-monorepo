@@ -233,8 +233,6 @@ contract VaultUnitSwapTest is BaseTest {
         vars.indexIn = 0;
         vars.indexOut = 1;
 
-        vars.indexOut = 1;
-
         poolData.decimalScalingFactors = decimalScalingFactors;
         poolData.tokenRates = tokenRates;
         poolData.balancesRaw = initialBalances;
