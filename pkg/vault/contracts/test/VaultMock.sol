@@ -443,7 +443,6 @@ contract VaultMock is IVaultMainMock, Vault {
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         uint256 protocolSwapFeePercentage,
-        uint256 creatorFeePercentage,
         address pool,
         IERC20 token,
         uint256 index
@@ -453,7 +452,6 @@ contract VaultMock is IVaultMainMock, Vault {
                 poolData,
                 swapFeeAmountScaled18,
                 protocolSwapFeePercentage,
-                creatorFeePercentage,
                 pool,
                 token,
                 index

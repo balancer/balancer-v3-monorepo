@@ -155,7 +155,6 @@ interface IVaultMainMock {
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         uint256 protocolSwapFeePercentage,
-        uint256 creatorFeePercentage,
         address pool,
         IERC20 token,
         uint256 index
