@@ -174,7 +174,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData in memory. Since the swap hooks are reentrant and could do anything, including change these
         // balances, we cannot defer settlement until `_swap`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolBalances`, `_protocolFees` in storage.
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees` in storage.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_DOWN,
@@ -313,7 +313,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * Preconditions: swapFeePercentage in vars. decimalScalingFactors, tokenRates, poolConfig in `poolData`.
      * Side effects: mutates swapFeeAmountScaled18, amountCalculatedScaled18, protocolSwapFeeAmountRaw in vars.
      * Mutates balancesRaw, balancesLiveScaled18 in `poolData`.
-     * Updates `_protocolFees`, `_poolBalances` in storage.
+     * Updates `_protocolFees`, `_poolTokenBalances` in storage.
      */
     function _swap(
         SwapParams memory params,
@@ -473,7 +473,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData in memory. Since the add liquidity hooks are reentrant and could do anything, including change
         // these balances, we cannot defer settlement until `_addLiquidity`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolBalances`, `_protocolFees` in storage.
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees` in storage.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_UP,
@@ -703,7 +703,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData in memory. Since the remove liquidity hooks are reentrant and could do anything, including change
         // these balances, we cannot defer settlement until `_removeLiquidity`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolBalances`, `_protocolFees` in storage.
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees` in storage.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_DOWN,
