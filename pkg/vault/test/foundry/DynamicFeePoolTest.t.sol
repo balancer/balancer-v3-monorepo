@@ -10,6 +10,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -99,6 +100,24 @@ contract DynamicFeePoolTest is BaseVaultTest {
             false,
             bytes("")
         );
+    }
+
+    function testExternalComputeFee() public {
+        vm.expectCall(
+            address(swapPool),
+            abi.encodeWithSelector(PoolMock.onComputeDynamicSwapFee.selector),
+            1 // callCount
+        );
+
+        IBasePool.PoolSwapParams memory swapParams;
+        uint256 dynamicSwapFeePercentage = 0.01e18;
+
+        PoolMock(swapPool).setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
+
+        (bool success, uint256 dynamicSwapFee) = vault.computeDynamicSwapFee(address(swapPool), swapParams);
+
+        assertTrue(success);
+        assertEq(dynamicSwapFee, dynamicSwapFeePercentage);
     }
 
     function testSwapChargesFees__Fuzz(uint256 dynamicSwapFeePercentage) public {

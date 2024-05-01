@@ -434,6 +434,18 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         (tokenConfig, balancesRaw, decimalScalingFactors, ) = _getPoolTokenInfo(pool);
     }
 
+    /// @inheritdoc IVaultExtension
+    function computeDynamicSwapFee(
+        address pool,
+        IBasePool.PoolSwapParams memory swapParams
+    ) external view withRegisteredPool(pool) returns (bool success, uint256 dynamicSwapFee) {
+        success = _poolConfig[pool].shouldCallComputeDynamicSwapFee();
+
+        if (success) {
+            (success, dynamicSwapFee) = IPoolHooks(pool).onComputeDynamicSwapFee(swapParams);
+        }
+    }
+
     /*******************************************************************************
                                     Pool Tokens
     *******************************************************************************/
