@@ -997,48 +997,38 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultMain
     function bufferWrapUnwrap(
-        SwapParams memory params
+        WrapUnwrapParams memory params
     )
         public
         onlyWhenUnlocked
         whenVaultBufferNotPaused
         returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw)
     {
-        IERC4626 wrappedToken = IERC4626(params.pool);
-        address baseToken = wrappedToken.asset();
+        IERC20 underlyingToken = IERC20(params.wrappedToken.asset());
 
-        address bufferAsset = _bufferAssets[IERC20(wrappedToken)];
+        address bufferAsset = _bufferAssets[IERC20(params.wrappedToken)];
 
-        if (bufferAsset != address(0) && bufferAsset != baseToken) {
+        if (bufferAsset != address(0) && bufferAsset != address(underlyingToken)) {
             // Asset was changed since the first addLiquidityBuffer call
-            revert WrongWrappedTokenAsset(address(wrappedToken));
+            revert WrongWrappedTokenAsset(address(params.wrappedToken));
         }
 
-        if (params.pool == address(params.tokenIn)) {
-            // tokenIn is wrappedToken, user wants to unwrap
-            if (baseToken != address(params.tokenOut)) {
-                revert WrongWrappedTokenAsset(params.pool);
-            }
+        if (params.wrapUnwrapKind == WrapUnwrapKind.UNWRAP) {
             (amountCalculatedRaw, amountInRaw, amountOutRaw) = _bufferUnwrap(
                 params.kind,
-                IERC20(baseToken),
-                wrappedToken,
+                underlyingToken,
+                params.wrappedToken,
                 params.amountGivenRaw
             );
-        } else if (params.pool == address(params.tokenOut)) {
-            // tokenOut is wrappedToken, user wants to wrap
-            if (baseToken != address(params.tokenIn)) {
-                revert WrongWrappedTokenAsset(params.pool);
-            }
+            emit Unwrap(params.wrappedToken, underlyingToken, amountInRaw, amountOutRaw);
+        } else {
             (amountCalculatedRaw, amountInRaw, amountOutRaw) = _bufferWrap(
                 params.kind,
-                IERC20(baseToken),
-                wrappedToken,
+                underlyingToken,
+                params.wrappedToken,
                 params.amountGivenRaw
             );
-        } else {
-            // Buffer Pool does not match tokenIn or tokenOut
-            revert WrongBufferPool();
+            emit Wrap(underlyingToken, params.wrappedToken, amountInRaw, amountOutRaw);
         }
 
         if (params.kind == SwapKind.EXACT_IN && amountOutRaw < params.limitRaw) {
@@ -1048,8 +1038,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (params.kind == SwapKind.EXACT_OUT && amountInRaw > params.limitRaw) {
             revert SwapLimit(amountInRaw, params.limitRaw);
         }
-
-        emit Swap(params.pool, params.tokenIn, params.tokenOut, amountInRaw, amountOutRaw, 0, 0);
     }
 
     /**

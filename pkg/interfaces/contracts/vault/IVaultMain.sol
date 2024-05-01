@@ -82,26 +82,6 @@ interface IVaultMain {
     ***************************************************************************/
 
     /**
-     * @notice A swap has occurred.
-     * @param pool The pool with the tokens being swapped
-     * @param tokenIn The token entering the Vault (balance increases)
-     * @param tokenOut The token leaving the Vault (balance decreases)
-     * @param amountIn Number of tokenIn tokens
-     * @param amountOut Number of tokenOut tokens
-     * @param swapFeePercentage Swap fee percentage applied (can differ if dynamic)
-     * @param swapFeeAmount Swap fee amount paid in token out
-     */
-    event Swap(
-        address indexed pool,
-        IERC20 indexed tokenIn,
-        IERC20 indexed tokenOut,
-        uint256 amountIn,
-        uint256 amountOut,
-        uint256 swapFeePercentage,
-        uint256 swapFeeAmount
-    );
-
-    /**
      * @notice Swaps tokens based on provided parameters.
      * @dev All parameters are given in raw token decimal encoding.
      * @param params Parameters for the swap (see above for struct definition)
@@ -140,7 +120,7 @@ interface IVaultMain {
      * @return amountOutRaw Amount of output tokens from the swap
      */
     function bufferWrapUnwrap(
-        SwapParams memory params
+        WrapUnwrapParams memory params
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     /*******************************************************************************

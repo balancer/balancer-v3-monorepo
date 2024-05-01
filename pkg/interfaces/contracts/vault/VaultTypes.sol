@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IRateProvider } from "./IRateProvider.sol";
 
 /// @dev Represents a pool's hooks.
@@ -227,6 +228,24 @@ struct RemoveLiquidityParams {
     uint256 maxBptAmountIn;
     uint256[] minAmountsOut;
     RemoveLiquidityKind kind;
+    bytes userData;
+}
+
+/*******************************************************************************
+                                Remove liquidity
+*******************************************************************************/
+
+enum WrapUnwrapKind {
+    WRAP,
+    UNWRAP
+}
+
+struct WrapUnwrapParams {
+    SwapKind kind;
+    WrapUnwrapKind wrapUnwrapKind;
+    IERC4626 wrappedToken;
+    uint256 amountGivenRaw;
+    uint256 limitRaw;
     bytes userData;
 }
 

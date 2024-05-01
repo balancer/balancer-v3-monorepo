@@ -288,11 +288,12 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     uint256 amountOut;
                     if (step.isBuffer) {
                         (, , amountOut) = _vault.bufferWrapUnwrap(
-                            SwapParams({
+                            WrapUnwrapParams({
                                 kind: SwapKind.EXACT_IN,
-                                pool: step.pool,
-                                tokenIn: stepTokenIn,
-                                tokenOut: step.tokenOut,
+                                wrapUnwrapKind: step.pool == address(stepTokenIn)
+                                    ? WrapUnwrapKind.UNWRAP
+                                    : WrapUnwrapKind.WRAP,
+                                wrappedToken: IERC4626(step.pool),
                                 amountGivenRaw: stepExactAmountIn,
                                 limitRaw: minAmountOut,
                                 userData: params.userData
@@ -531,11 +532,12 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         }
 
                         (, amountIn, ) = _vault.bufferWrapUnwrap(
-                            SwapParams({
+                            WrapUnwrapParams({
                                 kind: SwapKind.EXACT_OUT,
-                                pool: step.pool,
-                                tokenIn: stepTokenIn,
-                                tokenOut: step.tokenOut,
+                                wrapUnwrapKind: step.pool == address(stepTokenIn)
+                                    ? WrapUnwrapKind.UNWRAP
+                                    : WrapUnwrapKind.WRAP,
+                                wrappedToken: IERC4626(step.pool),
                                 amountGivenRaw: stepExactAmountOut,
                                 limitRaw: stepMaxAmountIn,
                                 userData: params.userData
