@@ -31,7 +31,6 @@ import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
 
 contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
-    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using ScalingHelpers for uint256;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
@@ -311,13 +310,13 @@ contract VaultMock is IVaultMainMock, Vault {
         return poolData;
     }
 
-    function computeYieldProtocolFeesDue(
+    function computeYieldFeesDue(
         PoolData memory poolData,
         uint256 lastLiveBalance,
         uint256 tokenIndex,
-        uint256 yieldFeePercentage
-    ) external pure returns (uint256) {
-        return _computeYieldProtocolFeesDue(poolData, lastLiveBalance, tokenIndex, yieldFeePercentage);
+        uint256 protocolYieldFeePercentage
+    ) external pure returns (uint256, uint256) {
+        return _computeYieldFeesDue(poolData, lastLiveBalance, tokenIndex, protocolYieldFeePercentage);
     }
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
@@ -423,7 +422,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external {
-        _poolCreatorFees[pool].set(token, value);
+        _poolCreatorFees[pool][address(token)] = value;
     }
 
     function manualBuildPoolSwapParams(
@@ -438,7 +437,6 @@ contract VaultMock is IVaultMainMock, Vault {
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         uint256 protocolSwapFeePercentage,
-        uint256 creatorFeePercentage,
         address pool,
         IERC20 token,
         uint256 index
@@ -448,7 +446,6 @@ contract VaultMock is IVaultMainMock, Vault {
                 poolData,
                 swapFeeAmountScaled18,
                 protocolSwapFeePercentage,
-                creatorFeePercentage,
                 pool,
                 token,
                 index
