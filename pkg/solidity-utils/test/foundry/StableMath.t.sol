@@ -9,6 +9,11 @@ import { FixedPoint } from "../../contracts/math/FixedPoint.sol";
 import { StableMathMock } from "../../contracts/test/StableMathMock.sol";
 import { RoundingMock } from "../../contracts/test/RoundingMock.sol";
 
+// In the `StableMath` functions, the protocol aims for computing a value either as small as possible or as large as possible
+// by means of rounding in its favor; in order to achieve this, it may use arbitrary rounding directions during the calculations.
+// The objective of `StableMathTest` is to verify that the implemented rounding combinations favor the protocol more than other
+// solutions (e.g., always rounding down or always rounding up, which are the combinations that `RoundingMock` offers).
+
 contract StableMathTest is Test {
     uint256 constant NUM_TOKENS = 2;
 

@@ -5,6 +5,9 @@ pragma solidity ^0.8.24;
 import { FixedPoint } from "../math/FixedPoint.sol";
 
 abstract contract RoundingMock {
+    // `Disabled` basically preserves the existing direction, while the other two either change or preserve the direction
+    // according to the operation. I.e. `RoundDown` changes the direction for operations that round up, and preserve the
+    // direction for operations that round down, and vice versa.
     enum MockRounding {
         Disabled,
         RoundDown,
