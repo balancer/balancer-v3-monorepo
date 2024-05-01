@@ -174,14 +174,12 @@ contract StableMathMock is RoundingMock {
                 ((((ampTimesTotal - StableMath.AMP_PRECISION) * invariant) / StableMath.AMP_PRECISION) +
                     ((numTokens + 1) * D_P));
 
-            unchecked {
-                if (invariant > prevInvariant) {
-                    if (invariant - prevInvariant <= 1) {
-                        return invariant;
-                    }
-                } else if (prevInvariant - invariant <= 1) {
+            if (invariant > prevInvariant) {
+                if (invariant - prevInvariant <= 1) {
                     return invariant;
                 }
+            } else if (prevInvariant - invariant <= 1) {
+                return invariant;
             }
         }
 
@@ -200,9 +198,7 @@ contract StableMathMock is RoundingMock {
 
         uint256 finalBalanceOut = mockComputeBalance(amplificationParameter, balances, invariant, tokenIndexOut);
 
-        unchecked {
-            balances[tokenIndexIn] -= tokenAmountIn;
-        }
+        balances[tokenIndexIn] -= tokenAmountIn;
 
         return balances[tokenIndexOut] - finalBalanceOut - 1;
     }
@@ -219,9 +215,7 @@ contract StableMathMock is RoundingMock {
 
         uint256 finalBalanceIn = mockComputeBalance(amplificationParameter, balances, invariant, tokenIndexIn);
 
-        unchecked {
-            balances[tokenIndexOut] += tokenAmountOut;
-        }
+        balances[tokenIndexOut] += tokenAmountOut;
 
         return finalBalanceIn - balances[tokenIndexIn] + 1;
     }
@@ -396,14 +390,12 @@ contract StableMathMock is RoundingMock {
 
             tokenBalance = divUpRaw((tokenBalance * tokenBalance) + c, (tokenBalance * 2) + b - invariant);
 
-            unchecked {
-                if (tokenBalance > prevTokenBalance) {
-                    if (tokenBalance - prevTokenBalance <= 1) {
-                        return tokenBalance;
-                    }
-                } else if (prevTokenBalance - tokenBalance <= 1) {
+            if (tokenBalance > prevTokenBalance) {
+                if (tokenBalance - prevTokenBalance <= 1) {
                     return tokenBalance;
                 }
+            } else if (prevTokenBalance - tokenBalance <= 1) {
+                return tokenBalance;
             }
         }
 
