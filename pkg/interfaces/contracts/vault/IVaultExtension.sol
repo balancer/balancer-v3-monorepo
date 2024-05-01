@@ -295,7 +295,10 @@ interface IVaultExtension {
      * @return success True if the pool has a dynamic swap fee and it can be successfully computed
      * @return dynamicSwapFee The dynamic swap fee percentage
      */
-    function computeDynamicSwapFee(address pool, IBasePool.PoolSwapParams memory swapParams) external view returns (bool, uint256);
+    function computeDynamicSwapFee(
+        address pool,
+        IBasePool.PoolSwapParams memory swapParams
+    ) external view returns (bool, uint256);
 
     /*******************************************************************************
                                     Recovery Mode
