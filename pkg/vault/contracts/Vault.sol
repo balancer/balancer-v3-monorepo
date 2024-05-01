@@ -376,7 +376,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData,
             vars.swapFeeAmountScaled18,
             vaultState.protocolSwapFeePercentage,
-            poolData.poolConfig.poolCreatorFeePercentage,
             params.pool,
             params.tokenOut,
             vars.indexOut
@@ -449,6 +448,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     struct LiquidityLocals {
         uint256 numTokens;
         uint256 protocolSwapFeeAmountRaw;
+        uint256 creatorSwapFeeAmountRaw;
         uint256 tokenIndex;
     }
 
@@ -638,7 +638,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             tokens[i] = token;
 
             // Compute and charge protocol fees.
-            vars.protocolSwapFeeAmountRaw = _computeAndChargeProtocolFees(
+            (vars.protocolSwapFeeAmountRaw, vars.creatorSwapFeeAmountRaw) = _computeAndChargeProtocolAndCreatorFees(
                 poolData,
                 swapFeeAmountsScaled18[i],
                 vaultState.protocolSwapFeePercentage,
@@ -664,7 +664,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // We need regular balances to complete the accounting, and the upscaled balances
             // to use in the `after` hook later on.
-            poolData.balancesRaw[i] += (amountInRaw - vars.protocolSwapFeeAmountRaw);
+            poolData.balancesRaw[i] += (amountInRaw - vars.protocolSwapFeeAmountRaw - vars.creatorSwapFeeAmountRaw);
 
             poolData.balancesLiveScaled18[i] += (amountsInScaled18[i] -
                 swapFeeAmountsScaled18[i].mulUp(vaultState.protocolSwapFeePercentage));
@@ -860,7 +860,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             tokens[i] = token;
 
             // Compute and charge protocol fees.
-            vars.protocolSwapFeeAmountRaw = _computeAndChargeProtocolFees(
+            (vars.protocolSwapFeeAmountRaw, vars.creatorSwapFeeAmountRaw) = _computeAndChargeProtocolAndCreatorFees(
                 poolData,
                 swapFeeAmountsScaled18[i],
                 vaultState.protocolSwapFeePercentage,
@@ -870,7 +870,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
 
             // Subtract protocol fees charged from the pool's balances
-            poolData.balancesRaw[i] -= vars.protocolSwapFeeAmountRaw;
+            poolData.balancesRaw[i] -= (vars.protocolSwapFeeAmountRaw + vars.creatorSwapFeeAmountRaw);
 
             poolData.balancesLiveScaled18[i] -= (amountsOutScaled18[i] +
                 swapFeeAmountsScaled18[i].mulUp(vaultState.protocolSwapFeePercentage));
@@ -917,31 +917,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /**
      * @dev Preconditions: poolConfig, decimalScalingFactors, tokenRates in `poolData`.
-     * Side effects: updates `_protocolFees` storage (and emits event).
-     * Should only be called in a non-reentrant context.
-     * Used to avoid stack too deep in add and remove liquidity
-     */
-    function _computeAndChargeProtocolFees(
-        PoolData memory poolData,
-        uint256 swapFeeAmountScaled18,
-        uint256 protocolSwapFeePercentage,
-        address pool,
-        IERC20 token,
-        uint256 index
-    ) internal returns (uint256 protocolSwapFeeAmountRaw) {
-        (protocolSwapFeeAmountRaw, ) = _computeAndChargeProtocolAndCreatorFees(
-            poolData,
-            swapFeeAmountScaled18,
-            protocolSwapFeePercentage,
-            0,
-            pool,
-            token,
-            index
-        );
-    }
-
-    /**
-     * @dev Preconditions: poolConfig, decimalScalingFactors, tokenRates in `poolData`.
      * Side effects: updates `_protocolFees` and `_poolCreatorFees` storage (and emits events).
      * Should only be called in a non-reentrant context.
      * IMPORTANT: creator fees are calculated based on creatorAndLpFees, and not in totalFees. See example below
@@ -957,7 +932,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         uint256 protocolSwapFeePercentage,
-        uint256 creatorFeePercentage,
         address pool,
         IERC20 token,
         uint256 index
@@ -975,11 +949,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 emit ProtocolSwapFeeCharged(pool, address(token), protocolSwapFeeAmountRaw);
             }
 
-            if (creatorFeePercentage > 0) {
+            if (poolData.poolConfig.poolCreatorFeePercentage > 0) {
                 // Always charge fees on token. Store amount in native decimals.
                 // Since the swapFeeAmountScaled18 also contains the rate, undo it when converting to raw.
                 creatorSwapFeeAmountRaw = (swapFeeAmountScaled18 - protocolSwapFeeAmountRaw)
-                    .mulUp(creatorFeePercentage)
+                    .mulUp(poolData.poolConfig.poolCreatorFeePercentage)
                     .toRawUndoRateRoundDown(poolData.decimalScalingFactors[index], poolData.tokenRates[index]);
 
                 _poolCreatorFees[pool][address(token)] += creatorSwapFeeAmountRaw;
