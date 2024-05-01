@@ -109,7 +109,7 @@ contract VaultStorage {
     // Pool -> (Token -> fee): protocol fees (swap and creator) accumulated in the Vault for harvest.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _protocolSwapFees;
 
-    // Token -> fee: Protocol yield fees accumulated in the Vault for harvest.
+    // Pool -> (Token -> fee): Protocol yield fees (protocol and creator) accumulated in the Vault for harvest.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _protocolYieldFees;
 
     /**
