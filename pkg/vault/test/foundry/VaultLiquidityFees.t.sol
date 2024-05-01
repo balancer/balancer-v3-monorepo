@@ -58,9 +58,11 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         amountsIn[daiIdx] = defaultAmount;
 
+        uint256 swapFeeAmount = defaultAmount / 200;
+
         // protocol swap fee = (defaultAmount * 1% / 2 ) * 50%
-        protocolSwapFees[daiIdx] = uint256((defaultAmount) / 400);
-        poolCreatorFees[daiIdx] = protocolSwapFees[daiIdx] / 2;
+        protocolSwapFees[daiIdx] = swapFeeAmount / 2;
+        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2;
 
         // expectedBptAmountOut = defaultAmount - defaultAmount * 1% / 2
         uint256 expectedBptAmountOut = (defaultAmount * 995) / 1000;
@@ -91,9 +93,11 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         protocolSwapFees = new uint256[](2);
         poolCreatorFees = new uint256[](2);
 
+        uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2);
+
         // protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
-        protocolSwapFees[daiIdx] = uint256((defaultAmount / 99) / 4 + 1);
-        poolCreatorFees[daiIdx] = protocolSwapFees[daiIdx] / 2;
+        protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1;
+        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2;
 
         vm.prank(alice);
         snapStart("routerAddLiquiditySingleTokenExactOutWithCreatorFee");
@@ -134,9 +138,11 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         protocolSwapFees = new uint256[](2);
         poolCreatorFees = new uint256[](2);
 
+        uint256 swapFeeAmount = defaultAmount / 100;
+
         // protocol swap fee = 2 * (defaultAmount * 1% / 2 ) * 50%
-        protocolSwapFees[daiIdx] = uint256((defaultAmount) / 200);
-        poolCreatorFees[daiIdx] = protocolSwapFees[daiIdx] / 2;
+        protocolSwapFees[daiIdx] = swapFeeAmount / 2;
+        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2;
 
         snapStart("routerRemoveLiquiditySingleTokenExactInWithCreatorFee");
         uint256 amountOut = router.removeLiquiditySingleTokenExactIn(
@@ -176,9 +182,11 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         amountsOut[daiIdx] = defaultAmount;
 
+        uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2);
+
         // protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
-        protocolSwapFees[daiIdx] = uint256((defaultAmount / 99) / 4 + 1);
-        poolCreatorFees[daiIdx] = protocolSwapFees[daiIdx] / 2;
+        protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1;
+        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2;
 
         snapStart("routerRemoveLiquiditySingleTokenExactOutWithCreatorFee");
         bptAmountIn = router.removeLiquiditySingleTokenExactOut(
