@@ -386,7 +386,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (params.kind == SwapKind.EXACT_IN) {
             poolData.balancesRaw[vars.indexOut] -= totalFeeAdjustment;
         } else {
-            poolData.balancesRaw[vars.indexIn] += totalFeeAdjustment;
+            poolData.balancesRaw[vars.indexIn] -= totalFeeAdjustment;
         }
 
         // Set both raw and last live balances.
