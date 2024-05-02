@@ -31,5 +31,12 @@
   "workspaces": [
     "pkg/*",
     "pvt/*"
+  ],
+  "files": [
+    "pkg/interfaces/contracts/**/*",
+    "pkg/solidity-utils/contracts/**/*.sol",
+    "pkg/solidity-utils/test/foundry/**/*.sol",
+    "pkg/vault/contracts/**/*.sol",
+    "pkg/vault/test/foundry/utils/*.sol"
   ]
 }
