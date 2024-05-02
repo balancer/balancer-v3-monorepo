@@ -365,7 +365,7 @@ contract VaultUnitSwapTest is BaseTest {
         // check balances updated
         assertEq(
             poolData.balancesRaw[vars.indexIn],
-            initialBalances[vars.indexIn] + amountIn + feesOnAmountIn,
+            initialBalances[vars.indexIn] + amountIn - feesOnAmountIn,
             "Unexpected balanceRaw[vars.indexIn]"
         );
         assertEq(
