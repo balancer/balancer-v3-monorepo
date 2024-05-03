@@ -7,6 +7,8 @@ import "./FixedPoint.sol";
 // Some variables have non mixed case names (e.g. P_D) that relate to the mathematical derivations.
 // solhint-disable private-vars-leading-underscore, var-name-mixedcase
 
+// Any new logic changes to this library need to be propagated to the `StableMathMock` for tests to pass.
+
 library StableMath {
     using FixedPoint for uint256;
 

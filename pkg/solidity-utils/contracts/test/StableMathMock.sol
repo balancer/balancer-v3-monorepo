@@ -8,7 +8,7 @@ import { FixedPoint } from "../math/FixedPoint.sol";
 import { RoundingMock } from "./RoundingMock.sol";
 
 // The `StableMathMock` contract mocks the `StableMath` library for testing purposes. Its mock functions are meant to be
-// logically equivalent to the base ones, but with the ability to control the rounding direction using the `RoundingMock`.
+// logically equivalent to the base ones, but with the ability to control the rounding permutation using the `RoundingMock`.
 
 contract StableMathMock is RoundingMock {
     using FixedPoint for uint256;
@@ -150,7 +150,301 @@ contract StableMathMock is RoundingMock {
     function mockComputeInvariant(
         uint256 amplificationParameter,
         uint256[] memory balances
-    ) public pure returns (uint256) {
+    ) external pure returns (uint256) {
+        return _mockComputeInvariant(amplificationParameter, balances);
+    }
+
+    function mockComputeOutGivenExactIn(
+        uint256 amplificationParameter,
+        uint256[] memory balances,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint256 tokenAmountIn,
+        uint256 invariant
+    ) external pure returns (uint256) {
+        bool[3] memory roundingPermutationBase = [true, true, true];
+
+        return
+            _mockComputeOutGivenExactIn(
+                amplificationParameter,
+                balances,
+                tokenIndexIn,
+                tokenIndexOut,
+                tokenAmountIn,
+                invariant,
+                roundingPermutationBase
+            );
+    }
+
+    function mockComputeOutGivenExactIn(
+        uint256 amplificationParameter,
+        uint256[] memory balances,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint256 tokenAmountIn,
+        uint256 invariant,
+        bool[3] memory roundingPermutation
+    ) external pure returns (uint256) {
+        return
+            _mockComputeOutGivenExactIn(
+                amplificationParameter,
+                balances,
+                tokenIndexIn,
+                tokenIndexOut,
+                tokenAmountIn,
+                invariant,
+                roundingPermutation
+            );
+    }
+
+    function mockComputeInGivenExactOut(
+        uint256 amplificationParameter,
+        uint256[] memory balances,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint256 tokenAmountOut,
+        uint256 invariant
+    ) external pure returns (uint256) {
+        bool[3] memory roundingPermutationBase = [true, true, true];
+
+        return
+            _mockComputeInGivenExactOut(
+                amplificationParameter,
+                balances,
+                tokenIndexIn,
+                tokenIndexOut,
+                tokenAmountOut,
+                invariant,
+                roundingPermutationBase
+            );
+    }
+
+    function mockComputeInGivenExactOut(
+        uint256 amplificationParameter,
+        uint256[] memory balances,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint256 tokenAmountOut,
+        uint256 invariant,
+        bool[3] memory roundingPermutation
+    ) external pure returns (uint256) {
+        return
+            _mockComputeInGivenExactOut(
+                amplificationParameter,
+                balances,
+                tokenIndexIn,
+                tokenIndexOut,
+                tokenAmountOut,
+                invariant,
+                roundingPermutation
+            );
+    }
+
+    function mockComputeBptOutGivenExactTokensIn(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256[] memory amountsIn,
+        uint256 bptTotalSupply,
+        uint256 currentInvariant,
+        uint256 swapFeePercentage
+    ) external pure returns (uint256) {
+        bool[7] memory roundingPermutationBase = [false, false, false, false, false, false, false];
+
+        return
+            _mockComputeBptOutGivenExactTokensIn(
+                amp,
+                balances,
+                amountsIn,
+                bptTotalSupply,
+                currentInvariant,
+                swapFeePercentage,
+                roundingPermutationBase
+            );
+    }
+
+    function mockComputeBptOutGivenExactTokensIn(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256[] memory amountsIn,
+        uint256 bptTotalSupply,
+        uint256 currentInvariant,
+        uint256 swapFeePercentage,
+        bool[7] memory roundingPermutation
+    ) external pure returns (uint256) {
+        return
+            _mockComputeBptOutGivenExactTokensIn(
+                amp,
+                balances,
+                amountsIn,
+                bptTotalSupply,
+                currentInvariant,
+                swapFeePercentage,
+                roundingPermutation
+            );
+    }
+
+    function mockComputeTokenInGivenExactBptOut(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256 tokenIndex,
+        uint256 bptAmountOut,
+        uint256 bptTotalSupply,
+        uint256 currentInvariant,
+        uint256 swapFeePercentage
+    ) external pure returns (uint256) {
+        bool[8] memory roundingPermutationBase = [true, true, true, true, true, true, false, true];
+
+        return
+            _mockComputeTokenInGivenExactBptOut(
+                amp,
+                balances,
+                tokenIndex,
+                bptAmountOut,
+                bptTotalSupply,
+                currentInvariant,
+                swapFeePercentage,
+                roundingPermutationBase
+            );
+    }
+
+    function mockComputeTokenInGivenExactBptOut(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256 tokenIndex,
+        uint256 bptAmountOut,
+        uint256 bptTotalSupply,
+        uint256 currentInvariant,
+        uint256 swapFeePercentage,
+        bool[8] memory roundingPermutation
+    ) external pure returns (uint256) {
+        return
+            _mockComputeTokenInGivenExactBptOut(
+                amp,
+                balances,
+                tokenIndex,
+                bptAmountOut,
+                bptTotalSupply,
+                currentInvariant,
+                swapFeePercentage,
+                roundingPermutation
+            );
+    }
+
+    function mockComputeBptInGivenExactTokensOut(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256[] memory amountsOut,
+        uint256 bptTotalSupply,
+        uint256 currentInvariant,
+        uint256 swapFeePercentage
+    ) external pure returns (uint256) {
+        bool[7] memory roundingPermutationBase = [false, false, false, true, true, false, true];
+
+        return
+            _mockComputeBptInGivenExactTokensOut(
+                amp,
+                balances,
+                amountsOut,
+                bptTotalSupply,
+                currentInvariant,
+                swapFeePercentage,
+                roundingPermutationBase
+            );
+    }
+
+    function mockComputeBptInGivenExactTokensOut(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256[] memory amountsOut,
+        uint256 bptTotalSupply,
+        uint256 currentInvariant,
+        uint256 swapFeePercentage,
+        bool[7] memory roundingPermutation
+    ) external pure returns (uint256) {
+        return
+            _mockComputeBptInGivenExactTokensOut(
+                amp,
+                balances,
+                amountsOut,
+                bptTotalSupply,
+                currentInvariant,
+                swapFeePercentage,
+                roundingPermutation
+            );
+    }
+
+    function mockComputeTokenOutGivenExactBptIn(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256 tokenIndex,
+        uint256 bptAmountIn,
+        uint256 bptTotalSupply,
+        uint256 currentInvariant,
+        uint256 swapFeePercentage
+    ) external pure returns (uint256) {
+        bool[8] memory roundingPermutationBase = [true, true, true, true, true, false, true, false];
+
+        return
+            _mockComputeTokenOutGivenExactBptIn(
+                amp,
+                balances,
+                tokenIndex,
+                bptAmountIn,
+                bptTotalSupply,
+                currentInvariant,
+                swapFeePercentage,
+                roundingPermutationBase
+            );
+    }
+
+    function mockComputeTokenOutGivenExactBptIn(
+        uint256 amp,
+        uint256[] memory balances,
+        uint256 tokenIndex,
+        uint256 bptAmountIn,
+        uint256 bptTotalSupply,
+        uint256 currentInvariant,
+        uint256 swapFeePercentage,
+        bool[8] memory roundingPermutation
+    ) external pure returns (uint256) {
+        return
+            _mockComputeTokenOutGivenExactBptIn(
+                amp,
+                balances,
+                tokenIndex,
+                bptAmountIn,
+                bptTotalSupply,
+                currentInvariant,
+                swapFeePercentage,
+                roundingPermutation
+            );
+    }
+
+    function mockComputeBalance(
+        uint256 amplificationParameter,
+        uint256[] memory balances,
+        uint256 invariant,
+        uint256 tokenIndex
+    ) external pure returns (uint256) {
+        bool[3] memory roundingPermutationBase = [true, true, true];
+
+        return _mockComputeBalance(amplificationParameter, balances, invariant, tokenIndex, roundingPermutationBase);
+    }
+
+    function mockComputeBalance(
+        uint256 amplificationParameter,
+        uint256[] memory balances,
+        uint256 invariant,
+        uint256 tokenIndex,
+        bool[3] memory roundingPermutation
+    ) external pure returns (uint256) {
+        return _mockComputeBalance(amplificationParameter, balances, invariant, tokenIndex, roundingPermutation);
+    }
+
+    function _mockComputeInvariant(
+        uint256 amplificationParameter,
+        uint256[] memory balances
+    ) internal pure returns (uint256) {
         uint256 sum = 0;
         uint256 numTokens = balances.length;
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -189,48 +483,63 @@ contract StableMathMock is RoundingMock {
         revert StableMath.StableInvariantDidntConverge();
     }
 
-    function mockComputeOutGivenExactIn(
+    function _mockComputeOutGivenExactIn(
         uint256 amplificationParameter,
         uint256[] memory balances,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint256 tokenAmountIn,
-        uint256 invariant
-    ) external view returns (uint256) {
+        uint256 invariant,
+        bool[3] memory roundingPermutation
+    ) internal pure returns (uint256) {
         balances[tokenIndexIn] += tokenAmountIn;
 
-        uint256 finalBalanceOut = mockComputeBalance(amplificationParameter, balances, invariant, tokenIndexOut);
+        uint256 finalBalanceOut = _mockComputeBalance(
+            amplificationParameter,
+            balances,
+            invariant,
+            tokenIndexOut,
+            roundingPermutation
+        );
 
         balances[tokenIndexIn] -= tokenAmountIn;
 
         return balances[tokenIndexOut] - finalBalanceOut - 1;
     }
 
-    function mockComputeInGivenExactOut(
+    function _mockComputeInGivenExactOut(
         uint256 amplificationParameter,
         uint256[] memory balances,
         uint256 tokenIndexIn,
         uint256 tokenIndexOut,
         uint256 tokenAmountOut,
-        uint256 invariant
-    ) external view returns (uint256) {
+        uint256 invariant,
+        bool[3] memory roundingPermutation
+    ) internal pure returns (uint256) {
         balances[tokenIndexOut] -= tokenAmountOut;
 
-        uint256 finalBalanceIn = mockComputeBalance(amplificationParameter, balances, invariant, tokenIndexIn);
+        uint256 finalBalanceIn = _mockComputeBalance(
+            amplificationParameter,
+            balances,
+            invariant,
+            tokenIndexIn,
+            roundingPermutation
+        );
 
         balances[tokenIndexOut] += tokenAmountOut;
 
         return finalBalanceIn - balances[tokenIndexIn] + 1;
     }
 
-    function mockComputeBptOutGivenExactTokensIn(
+    function _mockComputeBptOutGivenExactTokensIn(
         uint256 amp,
         uint256[] memory balances,
         uint256[] memory amountsIn,
         uint256 bptTotalSupply,
         uint256 currentInvariant,
-        uint256 swapFeePercentage
-    ) external view returns (uint256) {
+        uint256 swapFeePercentage,
+        bool[7] memory roundingPermutation
+    ) internal pure returns (uint256) {
         uint256 sumBalances = 0;
         uint256 numTokens = balances.length;
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -240,9 +549,9 @@ contract StableMathMock is RoundingMock {
         uint256[] memory balanceRatiosWithFee = new uint256[](numTokens);
         uint256 invariantRatioWithFees = 0;
         for (uint256 i = 0; i < numTokens; ++i) {
-            uint256 currentWeight = divDown(balances[i], sumBalances);
-            balanceRatiosWithFee[i] = divDown(balances[i] + amountsIn[i], balances[i]);
-            invariantRatioWithFees += mulDown(balanceRatiosWithFee[i], currentWeight);
+            uint256 currentWeight = mockDiv(balances[i], sumBalances, roundingPermutation[0]);
+            balanceRatiosWithFee[i] = mockDiv(balances[i] + amountsIn[i], balances[i], roundingPermutation[1]);
+            invariantRatioWithFees += mockMul(balanceRatiosWithFee[i], currentWeight, roundingPermutation[2]);
         }
 
         uint256[] memory newBalances = new uint256[](numTokens);
@@ -250,9 +559,15 @@ contract StableMathMock is RoundingMock {
             uint256 amountInWithoutFee;
 
             if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
-                uint256 nonTaxableAmount = mulDown(balances[i], invariantRatioWithFees - FixedPoint.ONE);
+                uint256 nonTaxableAmount = mockMul(
+                    balances[i],
+                    invariantRatioWithFees - FixedPoint.ONE,
+                    roundingPermutation[3]
+                );
                 uint256 taxableAmount = amountsIn[i] - nonTaxableAmount;
-                amountInWithoutFee = nonTaxableAmount + mulDown(taxableAmount, FixedPoint.ONE - swapFeePercentage);
+                amountInWithoutFee =
+                    nonTaxableAmount +
+                    mockMul(taxableAmount, FixedPoint.ONE - swapFeePercentage, roundingPermutation[4]);
             } else {
                 amountInWithoutFee = amountsIn[i];
             }
@@ -260,28 +575,44 @@ contract StableMathMock is RoundingMock {
             newBalances[i] = balances[i] + amountInWithoutFee;
         }
 
-        uint256 newInvariant = mockComputeInvariant(amp, newBalances);
-        uint256 invariantRatio = divDown(newInvariant, currentInvariant);
+        uint256 newInvariant = _mockComputeInvariant(amp, newBalances);
+        uint256 invariantRatio = mockDiv(newInvariant, currentInvariant, roundingPermutation[5]);
 
         if (invariantRatio > FixedPoint.ONE) {
-            return mulDown(bptTotalSupply, invariantRatio - FixedPoint.ONE);
+            return mockMul(bptTotalSupply, invariantRatio - FixedPoint.ONE, roundingPermutation[6]);
         } else {
             return 0;
         }
     }
 
-    function mockComputeTokenInGivenExactBptOut(
+    function _mockComputeTokenInGivenExactBptOut(
         uint256 amp,
         uint256[] memory balances,
         uint256 tokenIndex,
         uint256 bptAmountOut,
         uint256 bptTotalSupply,
         uint256 currentInvariant,
-        uint256 swapFeePercentage
-    ) external view returns (uint256) {
-        uint256 newInvariant = mulUp(divUp(bptTotalSupply + bptAmountOut, bptTotalSupply), currentInvariant);
+        uint256 swapFeePercentage,
+        bool[8] memory roundingPermutation
+    ) internal pure returns (uint256) {
+        uint256 newInvariant = mockMul(
+            mockDiv(bptTotalSupply + bptAmountOut, bptTotalSupply, roundingPermutation[0]),
+            currentInvariant,
+            roundingPermutation[1]
+        );
 
-        uint256 newBalanceTokenIndex = mockComputeBalance(amp, balances, newInvariant, tokenIndex);
+        bool[3] memory subRoundingPermutation = [
+            roundingPermutation[2],
+            roundingPermutation[3],
+            roundingPermutation[4]
+        ];
+        uint256 newBalanceTokenIndex = _mockComputeBalance(
+            amp,
+            balances,
+            newInvariant,
+            tokenIndex,
+            subRoundingPermutation
+        );
         uint256 amountInWithoutFee = newBalanceTokenIndex - balances[tokenIndex];
 
         uint256 sumBalances = 0;
@@ -289,22 +620,23 @@ contract StableMathMock is RoundingMock {
             sumBalances += balances[i];
         }
 
-        uint256 currentWeight = divUp(balances[tokenIndex], sumBalances);
+        uint256 currentWeight = mockDiv(balances[tokenIndex], sumBalances, roundingPermutation[5]);
         uint256 taxablePercentage = currentWeight.complement();
-        uint256 taxableAmount = mulDown(amountInWithoutFee, taxablePercentage);
+        uint256 taxableAmount = mockMul(amountInWithoutFee, taxablePercentage, roundingPermutation[6]);
         uint256 nonTaxableAmount = amountInWithoutFee - taxableAmount;
 
-        return nonTaxableAmount + divUp(taxableAmount, FixedPoint.ONE - swapFeePercentage);
+        return nonTaxableAmount + mockDiv(taxableAmount, FixedPoint.ONE - swapFeePercentage, roundingPermutation[7]);
     }
 
-    function mockComputeBptInGivenExactTokensOut(
+    function _mockComputeBptInGivenExactTokensOut(
         uint256 amp,
         uint256[] memory balances,
         uint256[] memory amountsOut,
         uint256 bptTotalSupply,
         uint256 currentInvariant,
-        uint256 swapFeePercentage
-    ) external view returns (uint256) {
+        uint256 swapFeePercentage,
+        bool[7] memory roundingPermutation
+    ) internal pure returns (uint256) {
         uint256 sumBalances = 0;
         uint256 numTokens = balances.length;
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -314,18 +646,24 @@ contract StableMathMock is RoundingMock {
         uint256[] memory balanceRatiosWithoutFee = new uint256[](numTokens);
         uint256 invariantRatioWithoutFees = 0;
         for (uint256 i = 0; i < numTokens; ++i) {
-            uint256 currentWeight = divDown(balances[i], sumBalances);
-            balanceRatiosWithoutFee[i] = divDown(balances[i] - amountsOut[i], balances[i]);
-            invariantRatioWithoutFees += mulDown(balanceRatiosWithoutFee[i], currentWeight);
+            uint256 currentWeight = mockDiv(balances[i], sumBalances, roundingPermutation[0]);
+            balanceRatiosWithoutFee[i] = mockDiv(balances[i] - amountsOut[i], balances[i], roundingPermutation[1]);
+            invariantRatioWithoutFees += mockMul(balanceRatiosWithoutFee[i], currentWeight, roundingPermutation[2]);
         }
 
         uint256[] memory newBalances = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
             uint256 amountOutWithFee;
             if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
-                uint256 nonTaxableAmount = mulUp(balances[i], invariantRatioWithoutFees.complement());
+                uint256 nonTaxableAmount = mockMul(
+                    balances[i],
+                    invariantRatioWithoutFees.complement(),
+                    roundingPermutation[3]
+                );
                 uint256 taxableAmount = amountsOut[i] - nonTaxableAmount;
-                amountOutWithFee = nonTaxableAmount + divUp(taxableAmount, FixedPoint.ONE - swapFeePercentage);
+                amountOutWithFee =
+                    nonTaxableAmount +
+                    mockDiv(taxableAmount, FixedPoint.ONE - swapFeePercentage, roundingPermutation[4]);
             } else {
                 amountOutWithFee = amountsOut[i];
             }
@@ -333,24 +671,40 @@ contract StableMathMock is RoundingMock {
             newBalances[i] = balances[i] - amountOutWithFee;
         }
 
-        uint256 newInvariant = mockComputeInvariant(amp, newBalances);
-        uint256 invariantRatio = divDown(newInvariant, currentInvariant);
+        uint256 newInvariant = _mockComputeInvariant(amp, newBalances);
+        uint256 invariantRatio = mockDiv(newInvariant, currentInvariant, roundingPermutation[5]);
 
-        return mulUp(bptTotalSupply, invariantRatio.complement());
+        return mockMul(bptTotalSupply, invariantRatio.complement(), roundingPermutation[6]);
     }
 
-    function mockComputeTokenOutGivenExactBptIn(
+    function _mockComputeTokenOutGivenExactBptIn(
         uint256 amp,
         uint256[] memory balances,
         uint256 tokenIndex,
         uint256 bptAmountIn,
         uint256 bptTotalSupply,
         uint256 currentInvariant,
-        uint256 swapFeePercentage
-    ) external view returns (uint256) {
-        uint256 newInvariant = mulUp(divUp(bptTotalSupply - bptAmountIn, bptTotalSupply), currentInvariant);
+        uint256 swapFeePercentage,
+        bool[8] memory roundingPermutation
+    ) internal pure returns (uint256) {
+        uint256 newInvariant = mockMul(
+            mockDiv(bptTotalSupply - bptAmountIn, bptTotalSupply, roundingPermutation[0]),
+            currentInvariant,
+            roundingPermutation[1]
+        );
 
-        uint256 newBalanceTokenIndex = mockComputeBalance(amp, balances, newInvariant, tokenIndex);
+        bool[3] memory subRoundingPermutation = [
+            roundingPermutation[2],
+            roundingPermutation[3],
+            roundingPermutation[4]
+        ];
+        uint256 newBalanceTokenIndex = _mockComputeBalance(
+            amp,
+            balances,
+            newInvariant,
+            tokenIndex,
+            subRoundingPermutation
+        );
         uint256 amountOutWithoutFee = balances[tokenIndex] - newBalanceTokenIndex;
 
         uint256 sumBalances = 0;
@@ -358,20 +712,21 @@ contract StableMathMock is RoundingMock {
             sumBalances += balances[i];
         }
 
-        uint256 currentWeight = divDown(balances[tokenIndex], sumBalances);
+        uint256 currentWeight = mockDiv(balances[tokenIndex], sumBalances, roundingPermutation[5]);
         uint256 taxablePercentage = currentWeight.complement();
-        uint256 taxableAmount = mulUp(amountOutWithoutFee, taxablePercentage);
+        uint256 taxableAmount = mockMul(amountOutWithoutFee, taxablePercentage, roundingPermutation[6]);
         uint256 nonTaxableAmount = amountOutWithoutFee - taxableAmount;
 
-        return nonTaxableAmount + mulDown(taxableAmount, FixedPoint.ONE - swapFeePercentage);
+        return nonTaxableAmount + mockMul(taxableAmount, FixedPoint.ONE - swapFeePercentage, roundingPermutation[7]);
     }
 
-    function mockComputeBalance(
+    function _mockComputeBalance(
         uint256 amplificationParameter,
         uint256[] memory balances,
         uint256 invariant,
-        uint256 tokenIndex
-    ) public view returns (uint256) {
+        uint256 tokenIndex,
+        bool[3] memory roundingPermutation
+    ) internal pure returns (uint256) {
         uint256 numTokens = balances.length;
         uint256 ampTimesTotal = amplificationParameter * numTokens;
         uint256 sum = balances[0];
@@ -383,15 +738,20 @@ contract StableMathMock is RoundingMock {
         sum = sum - balances[tokenIndex];
 
         uint256 inv2 = invariant * invariant;
-        uint256 c = (divUpRaw(inv2, ampTimesTotal * P_D) * StableMath.AMP_PRECISION) * balances[tokenIndex];
+        uint256 c = (mockDivRaw(inv2, ampTimesTotal * P_D, roundingPermutation[0]) * StableMath.AMP_PRECISION) *
+            balances[tokenIndex];
         uint256 b = sum + ((invariant / ampTimesTotal) * StableMath.AMP_PRECISION);
         uint256 prevTokenBalance = 0;
-        uint256 tokenBalance = divUpRaw(inv2 + c, invariant + b);
+        uint256 tokenBalance = mockDivRaw(inv2 + c, invariant + b, roundingPermutation[1]);
 
         for (uint256 i = 0; i < 255; ++i) {
             prevTokenBalance = tokenBalance;
 
-            tokenBalance = divUpRaw((tokenBalance * tokenBalance) + c, (tokenBalance * 2) + b - invariant);
+            tokenBalance = mockDivRaw(
+                (tokenBalance * tokenBalance) + c,
+                (tokenBalance * 2) + b - invariant,
+                roundingPermutation[2]
+            );
 
             if (tokenBalance > prevTokenBalance) {
                 if (tokenBalance - prevTokenBalance <= 1) {

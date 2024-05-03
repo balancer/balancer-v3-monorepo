@@ -7,12 +7,11 @@ import "forge-std/Test.sol";
 import { FixedPoint } from "../../contracts/math/FixedPoint.sol";
 
 import { StableMathMock } from "../../contracts/test/StableMathMock.sol";
-import { RoundingMock } from "../../contracts/test/RoundingMock.sol";
 
 // In the `StableMath` functions, the protocol aims for computing a value either as small as possible or as large as possible
 // by means of rounding in its favor; in order to achieve this, it may use arbitrary rounding directions during the calculations.
-// The objective of `StableMathTest` is to verify that the implemented rounding combinations favor the protocol more than other
-// solutions (e.g., always rounding down or always rounding up, which are the combinations that `RoundingMock` offers).
+// The objective of `StableMathTest` is to verify that the implemented rounding permutations favor the protocol more than other
+// solutions (e.g., always rounding down or always rounding up).
 
 contract StableMathTest is Test {
     uint256 constant NUM_TOKENS = 2;
@@ -118,28 +117,18 @@ contract StableMathTest is Test {
         swapFeePercentage = bound(rawSwapFeePercentage, MIN_SWAP_FEE, MAX_SWAP_FEE);
     }
 
-    function testComputeInvariantRounding__Fuzz(uint256 rawAmp, uint256[NUM_TOKENS] calldata rawBalances) external {
+    function testComputeInvariantRounding__Fuzz(
+        uint256 rawAmp,
+        uint256[NUM_TOKENS] calldata rawBalances
+    ) external view {
         uint256 amp = boundAmp(rawAmp);
         uint256[] memory balances = boundBalances(rawBalances);
 
         uint256 invariant = stableMathMock.computeInvariant(amp, balances);
 
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.Disabled);
-        uint256 invariantUnrounded = stableMathMock.mockComputeInvariant(amp, balances);
+        uint256 invariantUnpermuted = stableMathMock.mockComputeInvariant(amp, balances);
 
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundDown);
-        uint256 invariantRoundedDown = stableMathMock.mockComputeInvariant(amp, balances);
-
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundUp);
-        uint256 invariantRoundedUp = stableMathMock.mockComputeInvariant(amp, balances);
-
-        assertEq(invariant, invariantUnrounded, "Mock function and base one should be equivalent.");
-        assertLe(
-            invariant,
-            invariantRoundedDown,
-            "Output should be less than or equal to the rounded down mock value."
-        );
-        assertLe(invariant, invariantRoundedUp, "Output should be less than or equal to the rounded up mock value.");
+        assertEq(invariant, invariantUnpermuted, "Mock function and base one should be equivalent.");
     }
 
     function testComputeOutGivenExactInRounding__Fuzz(
@@ -148,8 +137,9 @@ contract StableMathTest is Test {
         uint256 rawTokenIndexIn,
         uint256 rawTokenIndexOut,
         uint256 rawTokenAmountIn,
-        uint256 rawInvariant
-    ) external {
+        uint256 rawInvariant,
+        bool[3] calldata roundingPermutation
+    ) external view {
         uint256 amp = boundAmp(rawAmp);
         uint256[] memory balances = boundBalances(rawBalances);
         (uint256 tokenIndexIn, uint256 tokenIndexOut) = boundTokenIndexes(rawTokenIndexIn, rawTokenIndexOut);
@@ -165,8 +155,7 @@ contract StableMathTest is Test {
             invariant
         );
 
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.Disabled);
-        uint256 outGivenExactInUnrounded = stableMathMock.mockComputeOutGivenExactIn(
+        uint256 outGivenExactInUnpermuted = stableMathMock.mockComputeOutGivenExactIn(
             amp,
             balances,
             tokenIndexIn,
@@ -174,37 +163,21 @@ contract StableMathTest is Test {
             tokenAmountIn,
             invariant
         );
-
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundDown);
-        uint256 outGivenExactInRoundedDown = stableMathMock.mockComputeOutGivenExactIn(
+        uint256 outGivenExactInPermuted = stableMathMock.mockComputeOutGivenExactIn(
             amp,
             balances,
             tokenIndexIn,
             tokenIndexOut,
             tokenAmountIn,
-            invariant
+            invariant,
+            roundingPermutation
         );
 
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundUp);
-        uint256 outGivenExactInRoundedUp = stableMathMock.mockComputeOutGivenExactIn(
-            amp,
-            balances,
-            tokenIndexIn,
-            tokenIndexOut,
-            tokenAmountIn,
-            invariant
-        );
-
-        assertEq(outGivenExactIn, outGivenExactInUnrounded, "Mock function and base one should be equivalent.");
+        assertEq(outGivenExactIn, outGivenExactInUnpermuted, "Mock function and base one should be equivalent.");
         assertLe(
             outGivenExactIn,
-            outGivenExactInRoundedDown,
-            "Output should be less than or equal to the rounded down mock value."
-        );
-        assertLe(
-            outGivenExactIn,
-            outGivenExactInRoundedUp,
-            "Output should be less than or equal to the rounded up mock value."
+            outGivenExactInPermuted,
+            "Output should be less than or equal to the permuted mock value."
         );
     }
 
@@ -214,8 +187,9 @@ contract StableMathTest is Test {
         uint256 rawTokenIndexIn,
         uint256 rawTokenIndexOut,
         uint256 rawTokenAmountOut,
-        uint256 rawInvariant
-    ) external {
+        uint256 rawInvariant,
+        bool[3] calldata roundingPermutation
+    ) external view {
         uint256 amp = boundAmp(rawAmp);
         uint256[] memory balances = boundBalances(rawBalances);
         (uint256 tokenIndexIn, uint256 tokenIndexOut) = boundTokenIndexes(rawTokenIndexIn, rawTokenIndexOut);
@@ -231,8 +205,7 @@ contract StableMathTest is Test {
             invariant
         );
 
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.Disabled);
-        uint256 inGivenExactOutUnrounded = stableMathMock.mockComputeInGivenExactOut(
+        uint256 inGivenExactOutUnpermuted = stableMathMock.mockComputeInGivenExactOut(
             amp,
             balances,
             tokenIndexIn,
@@ -240,37 +213,21 @@ contract StableMathTest is Test {
             tokenAmountOut,
             invariant
         );
-
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundDown);
-        uint256 inGivenExactOutRoundedDown = stableMathMock.mockComputeInGivenExactOut(
+        uint256 inGivenExactOutPermuted = stableMathMock.mockComputeInGivenExactOut(
             amp,
             balances,
             tokenIndexIn,
             tokenIndexOut,
             tokenAmountOut,
-            invariant
+            invariant,
+            roundingPermutation
         );
 
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundUp);
-        uint256 inGivenExactOutRoundedUp = stableMathMock.mockComputeInGivenExactOut(
-            amp,
-            balances,
-            tokenIndexIn,
-            tokenIndexOut,
-            tokenAmountOut,
-            invariant
-        );
-
-        assertEq(inGivenExactOut, inGivenExactOutUnrounded, "Mock function and base one should be equivalent.");
+        assertEq(inGivenExactOut, inGivenExactOutUnpermuted, "Mock function and base one should be equivalent.");
         assertGe(
             inGivenExactOut,
-            inGivenExactOutRoundedDown,
-            "Output should be greater than or equal to the rounded down mock value."
-        );
-        assertGe(
-            inGivenExactOut,
-            inGivenExactOutRoundedUp,
-            "Output should be greater than or equal to the rounded up mock value."
+            inGivenExactOutPermuted,
+            "Output should be greater than or equal to the permuted mock value."
         );
     }
 
@@ -280,8 +237,9 @@ contract StableMathTest is Test {
         uint256[NUM_TOKENS] calldata rawAmountsIn,
         uint256 rawBptTotalSupply,
         uint256 rawCurrentInvariant,
-        uint256 rawSwapFeePercentage
-    ) external {
+        uint256 rawSwapFeePercentage,
+        bool[7] calldata roundingPermutation
+    ) external view {
         uint256 amp = boundAmp(rawAmp);
         uint256[] memory balances = boundBalances(rawBalances);
         uint256[] memory amountsIn = boundAmountsIn(rawAmountsIn, balances);
@@ -298,8 +256,7 @@ contract StableMathTest is Test {
             swapFeePercentage
         );
 
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.Disabled);
-        uint256 bptOutGivenExactTokensInUnrounded = stableMathMock.mockComputeBptOutGivenExactTokensIn(
+        uint256 bptOutGivenExactTokensInUnpermuted = stableMathMock.mockComputeBptOutGivenExactTokensIn(
             amp,
             balances,
             amountsIn,
@@ -307,39 +264,27 @@ contract StableMathTest is Test {
             currentInvariant,
             swapFeePercentage
         );
-
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundDown);
-        uint256 bptOutGivenExactTokensInRoundedDown = stableMathMock.mockComputeBptOutGivenExactTokensIn(
+        uint256 bptOutGivenExactTokensInPermuted = stableMathMock.mockComputeBptOutGivenExactTokensIn(
             amp,
             balances,
             amountsIn,
             bptTotalSupply,
             currentInvariant,
-            swapFeePercentage
-        );
-
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundUp);
-        uint256 bptOutGivenExactTokensInRoundedUp = stableMathMock.mockComputeBptOutGivenExactTokensIn(
-            amp,
-            balances,
-            amountsIn,
-            bptTotalSupply,
-            currentInvariant,
-            swapFeePercentage
+            swapFeePercentage,
+            roundingPermutation
         );
 
         assertEq(
             bptOutGivenExactTokensIn,
-            bptOutGivenExactTokensInUnrounded,
+            bptOutGivenExactTokensInUnpermuted,
             "Mock function and base one should be equivalent."
         );
-        assertLe(
-            bptOutGivenExactTokensIn,
-            bptOutGivenExactTokensInRoundedDown,
-            "Output should be less than or equal to the rounded down mock value."
-        );
         // BUG: Revise rounding in `computeBptOutGivenExactTokensIn()`
-        // assertLe(bptOutGivenExactTokensIn, bptOutGivenExactTokensInRoundedUp, "Output should be less than or equal to the rounded up mock value.");
+        // assertLe(
+        //     bptOutGivenExactTokensIn,
+        //     bptOutGivenExactTokensInPermuted,
+        //     "Output should be less than or equal to the permuted mock value."
+        // );
     }
 
     function testComputeTokenInGivenExactBptOutRounding__Fuzz(
@@ -349,8 +294,9 @@ contract StableMathTest is Test {
         uint256 rawBptAmountOut,
         uint256 rawBptTotalSupply,
         uint256 rawCurrentInvariant,
-        uint256 rawSwapFeePercentage
-    ) external {
+        uint256 rawSwapFeePercentage,
+        bool[8] calldata roundingPermutation
+    ) external view {
         uint256 amp = boundAmp(rawAmp);
         uint256[] memory balances = boundBalances(rawBalances);
         uint256 tokenIndex = boundTokenIndex(rawTokenIndex);
@@ -369,8 +315,7 @@ contract StableMathTest is Test {
             swapFeePercentage
         );
 
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.Disabled);
-        uint256 tokenInGivenExactBptOutUnrounded = stableMathMock.mockComputeTokenInGivenExactBptOut(
+        uint256 tokenInGivenExactBptOutUnpermuted = stableMathMock.mockComputeTokenInGivenExactBptOut(
             amp,
             balances,
             tokenIndex,
@@ -379,37 +324,28 @@ contract StableMathTest is Test {
             currentInvariant,
             swapFeePercentage
         );
-
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundDown);
-        uint256 tokenInGivenExactBptOutRoundedDown = stableMathMock.mockComputeTokenInGivenExactBptOut(
+        uint256 tokenInGivenExactBptOutPermuted = stableMathMock.mockComputeTokenInGivenExactBptOut(
             amp,
             balances,
             tokenIndex,
             bptAmountOut,
             bptTotalSupply,
             currentInvariant,
-            swapFeePercentage
-        );
-
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundUp);
-        uint256 tokenInGivenExactBptOutRoundedUp = stableMathMock.mockComputeTokenInGivenExactBptOut(
-            amp,
-            balances,
-            tokenIndex,
-            bptAmountOut,
-            bptTotalSupply,
-            currentInvariant,
-            swapFeePercentage
+            swapFeePercentage,
+            roundingPermutation
         );
 
         assertEq(
             tokenInGivenExactBptOut,
-            tokenInGivenExactBptOutUnrounded,
+            tokenInGivenExactBptOutUnpermuted,
             "Mock function and base one should be equivalent."
         );
         // BUG: Revise rounding in `computeTokenInGivenExactBptOut()`
-        // assertGe(tokenInGivenExactBptOut, tokenInGivenExactBptOutRoundedDown, "Output should be greater than or equal to the rounded down mock value.");
-        // assertGe(tokenInGivenExactBptOut, tokenInGivenExactBptOutRoundedUp, "Output should be greater than or equal to the rounded up mock value.");
+        // assertGe(
+        //     tokenInGivenExactBptOut,
+        //     tokenInGivenExactBptOutPermuted,
+        //     "Output should be greater than or equal to the permuted mock value."
+        // );
     }
 
     function testComputeBptInGivenExactTokensOutRounding__Fuzz(
@@ -418,8 +354,9 @@ contract StableMathTest is Test {
         uint256[NUM_TOKENS] calldata rawAmountsOut,
         uint256 rawBptTotalSupply,
         uint256 rawCurrentInvariant,
-        uint256 rawSwapFeePercentage
-    ) external {
+        uint256 rawSwapFeePercentage,
+        bool[7] calldata roundingPermutation
+    ) external view {
         uint256 amp = boundAmp(rawAmp);
         uint256[] memory balances = boundBalances(rawBalances);
         uint256[] memory amountsOut = boundAmountsOut(rawAmountsOut, balances);
@@ -436,8 +373,7 @@ contract StableMathTest is Test {
             swapFeePercentage
         );
 
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.Disabled);
-        uint256 bptInGivenExactTokensOutUnrounded = stableMathMock.mockComputeBptInGivenExactTokensOut(
+        uint256 bptInGivenExactTokensOutUnpermuted = stableMathMock.mockComputeBptInGivenExactTokensOut(
             amp,
             balances,
             amountsOut,
@@ -445,35 +381,27 @@ contract StableMathTest is Test {
             currentInvariant,
             swapFeePercentage
         );
-
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundDown);
-        uint256 bptInGivenExactTokensOutRoundedDown = stableMathMock.mockComputeBptInGivenExactTokensOut(
+        uint256 bptInGivenExactTokensOutPermuted = stableMathMock.mockComputeBptInGivenExactTokensOut(
             amp,
             balances,
             amountsOut,
             bptTotalSupply,
             currentInvariant,
-            swapFeePercentage
-        );
-
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundUp);
-        uint256 bptInGivenExactTokensOutRoundedUp = stableMathMock.mockComputeBptInGivenExactTokensOut(
-            amp,
-            balances,
-            amountsOut,
-            bptTotalSupply,
-            currentInvariant,
-            swapFeePercentage
+            swapFeePercentage,
+            roundingPermutation
         );
 
         assertEq(
             bptInGivenExactTokensOut,
-            bptInGivenExactTokensOutUnrounded,
+            bptInGivenExactTokensOutUnpermuted,
             "Mock function and base one should be equivalent."
         );
         // BUG: Revise rounding in `computeBptInGivenExactTokensOut()`
-        // assertGe(bptInGivenExactTokensOut, bptInGivenExactTokensOutRoundedDown, "Output should be greater than or equal to the rounded down mock value.");
-        // assertGe(bptInGivenExactTokensOut, bptInGivenExactTokensOutRoundedUp, "Output should be greater than or equal to the rounded up mock value.");
+        // assertGe(
+        //     bptInGivenExactTokensOut,
+        //     bptInGivenExactTokensOutPermuted,
+        //     "Output should be greater than or equal to the permuted mock value."
+        // );
     }
 
     function testComputeTokenOutGivenExactBptInRounding__Fuzz(
@@ -483,8 +411,9 @@ contract StableMathTest is Test {
         uint256 rawBptAmountIn,
         uint256 rawBptTotalSupply,
         uint256 rawCurrentInvariant,
-        uint256 rawSwapFeePercentage
-    ) external {
+        uint256 rawSwapFeePercentage,
+        bool[8] calldata roundingPermutation
+    ) external view {
         uint256 amp = boundAmp(rawAmp);
         uint256[] memory balances = boundBalances(rawBalances);
         uint256 tokenIndex = boundTokenIndex(rawTokenIndex);
@@ -503,8 +432,7 @@ contract StableMathTest is Test {
             swapFeePercentage
         );
 
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.Disabled);
-        uint256 tokenOutGivenExactBptInUnrounded = stableMathMock.mockComputeTokenOutGivenExactBptIn(
+        uint256 tokenOutGivenExactBptInUnpermuted = stableMathMock.mockComputeTokenOutGivenExactBptIn(
             amp,
             balances,
             tokenIndex,
@@ -513,43 +441,26 @@ contract StableMathTest is Test {
             currentInvariant,
             swapFeePercentage
         );
-
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundDown);
-        uint256 tokenOutGivenExactBptInRoundedDown = stableMathMock.mockComputeTokenOutGivenExactBptIn(
+        uint256 tokenOutGivenExactBptInPermuted = stableMathMock.mockComputeTokenOutGivenExactBptIn(
             amp,
             balances,
             tokenIndex,
             bptAmountIn,
             bptTotalSupply,
             currentInvariant,
-            swapFeePercentage
-        );
-
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundUp);
-        uint256 tokenOutGivenExactBptInRoundedUp = stableMathMock.mockComputeTokenOutGivenExactBptIn(
-            amp,
-            balances,
-            tokenIndex,
-            bptAmountIn,
-            bptTotalSupply,
-            currentInvariant,
-            swapFeePercentage
+            swapFeePercentage,
+            roundingPermutation
         );
 
         assertEq(
             tokenOutGivenExactBptIn,
-            tokenOutGivenExactBptInUnrounded,
+            tokenOutGivenExactBptInUnpermuted,
             "Mock function and base one should be equivalent."
         );
         assertLe(
             tokenOutGivenExactBptIn,
-            tokenOutGivenExactBptInRoundedDown,
-            "Output should be less than or equal to the rounded down mock value."
-        );
-        assertLe(
-            tokenOutGivenExactBptIn,
-            tokenOutGivenExactBptInRoundedUp,
-            "Output should be less than or equal to the rounded up mock value."
+            tokenOutGivenExactBptInPermuted,
+            "Output should be less than or equal to the permuted mock value."
         );
     }
 
@@ -557,8 +468,9 @@ contract StableMathTest is Test {
         uint256 rawAmp,
         uint256[NUM_TOKENS] calldata rawBalances,
         uint256 rawInvariant,
-        uint256 rawTokenIndex
-    ) external {
+        uint256 rawTokenIndex,
+        bool[3] calldata roundingPermutation
+    ) external view {
         uint256 amp = boundAmp(rawAmp);
         uint256[] memory balances = boundBalances(rawBalances);
         uint256 invariant = boundInvariantOut(rawInvariant);
@@ -566,17 +478,16 @@ contract StableMathTest is Test {
 
         uint256 balance = stableMathMock.computeBalance(amp, balances, invariant, tokenIndex);
 
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.Disabled);
-        uint256 balanceUnrounded = stableMathMock.mockComputeBalance(amp, balances, invariant, tokenIndex);
+        uint256 balanceUnpermuted = stableMathMock.mockComputeBalance(amp, balances, invariant, tokenIndex);
+        uint256 balancePermuted = stableMathMock.mockComputeBalance(
+            amp,
+            balances,
+            invariant,
+            tokenIndex,
+            roundingPermutation
+        );
 
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundDown);
-        uint256 balanceRoundedDown = stableMathMock.mockComputeBalance(amp, balances, invariant, tokenIndex);
-
-        stableMathMock.setMockRounding(RoundingMock.MockRounding.RoundUp);
-        uint256 balanceRoundedUp = stableMathMock.mockComputeBalance(amp, balances, invariant, tokenIndex);
-
-        assertEq(balance, balanceUnrounded, "Mock function and base one should be equivalent.");
-        assertGe(balance, balanceRoundedDown, "Output should be greater than or equal to the rounded down mock value.");
-        assertGe(balance, balanceRoundedUp, "Output should be greater than or equal to the rounded up mock value.");
+        assertEq(balance, balanceUnpermuted, "Mock function and base one should be equivalent.");
+        assertGe(balance, balancePermuted, "Output should be greater than or equal to the permuted mock value.");
     }
 }
