@@ -368,6 +368,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         vm.expectRevert(IVaultErrors.DoesNotSupportAddLiquidityCustom.selector);
         vault.manualAddLiquidity(poolData, params, maxAmountsInScaled18, vaultState);
     }
+
     // #endregion
 
     // #region RemoveLiquidity tests
@@ -701,6 +702,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         vm.expectRevert(IVaultErrors.DoesNotSupportRemoveLiquidityCustom.selector);
         vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18, vaultState);
     }
+
     // #endregion
 
     // #region Helpers
