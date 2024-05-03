@@ -117,20 +117,6 @@ contract StableMathTest is Test {
         swapFeePercentage = bound(rawSwapFeePercentage, MIN_SWAP_FEE, MAX_SWAP_FEE);
     }
 
-    function testComputeInvariantRounding__Fuzz(
-        uint256 rawAmp,
-        uint256[NUM_TOKENS] calldata rawBalances
-    ) external view {
-        uint256 amp = boundAmp(rawAmp);
-        uint256[] memory balances = boundBalances(rawBalances);
-
-        uint256 invariant = stableMathMock.computeInvariant(amp, balances);
-
-        uint256 invariantUnpermuted = stableMathMock.mockComputeInvariant(amp, balances);
-
-        assertEq(invariant, invariantUnpermuted, "Mock function and base one should be equivalent.");
-    }
-
     function testComputeOutGivenExactInRounding__Fuzz(
         uint256 rawAmp,
         uint256[NUM_TOKENS] calldata rawBalances,

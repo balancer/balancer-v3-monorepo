@@ -149,13 +149,6 @@ contract StableMathMock {
         return StableMath.computeBalance(amplificationParameter, balances, invariant, tokenIndex);
     }
 
-    function mockComputeInvariant(
-        uint256 amplificationParameter,
-        uint256[] memory balances
-    ) external pure returns (uint256) {
-        return _mockComputeInvariant(amplificationParameter, balances);
-    }
-
     function mockComputeOutGivenExactIn(
         uint256 amplificationParameter,
         uint256[] memory balances,
@@ -443,48 +436,6 @@ contract StableMathMock {
         return _mockComputeBalance(amplificationParameter, balances, invariant, tokenIndex, roundingPermutation);
     }
 
-    function _mockComputeInvariant(
-        uint256 amplificationParameter,
-        uint256[] memory balances
-    ) internal pure returns (uint256) {
-        uint256 sum = 0;
-        uint256 numTokens = balances.length;
-        for (uint256 i = 0; i < numTokens; ++i) {
-            sum = sum + balances[i];
-        }
-        if (sum == 0) {
-            return 0;
-        }
-
-        uint256 prevInvariant;
-        uint256 invariant = sum;
-        uint256 ampTimesTotal = amplificationParameter * numTokens;
-
-        for (uint256 i = 0; i < 255; ++i) {
-            uint256 D_P = invariant;
-            for (uint256 j = 0; j < numTokens; ++j) {
-                D_P = (D_P * invariant) / (balances[j] * numTokens);
-            }
-
-            prevInvariant = invariant;
-
-            invariant =
-                ((((ampTimesTotal * sum) / StableMath.AMP_PRECISION) + (D_P * numTokens)) * invariant) /
-                ((((ampTimesTotal - StableMath.AMP_PRECISION) * invariant) / StableMath.AMP_PRECISION) +
-                    ((numTokens + 1) * D_P));
-
-            if (invariant > prevInvariant) {
-                if (invariant - prevInvariant <= 1) {
-                    return invariant;
-                }
-            } else if (prevInvariant - invariant <= 1) {
-                return invariant;
-            }
-        }
-
-        revert StableMath.StableInvariantDidntConverge();
-    }
-
     function _mockComputeOutGivenExactIn(
         uint256 amplificationParameter,
         uint256[] memory balances,
@@ -576,7 +527,7 @@ contract StableMathMock {
             newBalances[i] = balances[i] + amountInWithoutFee;
         }
 
-        uint256 newInvariant = _mockComputeInvariant(amp, newBalances);
+        uint256 newInvariant = StableMath.computeInvariant(amp, newBalances);
         uint256 invariantRatio = newInvariant.mockDiv(currentInvariant, roundingPermutation[5]);
 
         if (invariantRatio > FixedPoint.ONE) {
@@ -670,7 +621,7 @@ contract StableMathMock {
             newBalances[i] = balances[i] - amountOutWithFee;
         }
 
-        uint256 newInvariant = _mockComputeInvariant(amp, newBalances);
+        uint256 newInvariant = StableMath.computeInvariant(amp, newBalances);
         uint256 invariantRatio = newInvariant.mockDiv(currentInvariant, roundingPermutation[5]);
 
         return bptTotalSupply.mockMul(invariantRatio.complement(), roundingPermutation[6]);
