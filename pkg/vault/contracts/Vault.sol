@@ -839,8 +839,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     poolData.balancesLiveScaled18,
                     params.userData
                 );
-        } else {
-            revert InvalidRemoveLiquidityKind();
         }
 
         if (bptAmountIn > params.maxBptAmountIn) {
@@ -867,9 +865,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Subtract protocol fees charged from the pool's balances
             poolData.balancesRaw[i] -= vars.protocolSwapFeeAmountRaw;
-
-            poolData.balancesLiveScaled18[i] -= (amountsOutScaled18[i] +
-                swapFeeAmountsScaled18[i].mulUp(vaultState.protocolSwapFeePercentage));
 
             // amountsOut are amounts exiting the Pool, so we round down.
             amountsOutRaw[i] = amountsOutScaled18[i].toRawUndoRateRoundDown(

@@ -74,7 +74,7 @@ contract VaultUnitTest is BaseTest {
 
     function testComputeAndChargeProtocolFees() public {
         uint256 tokenIndex = 0;
-        vault.manualSetPoolCreatorFees(pool, dai, tokenIndex);
+        vault.manualSetPoolCreatorFees(pool, dai, 0);
 
         PoolData memory poolData;
         poolData.decimalScalingFactors = decimalScalingFactors;
