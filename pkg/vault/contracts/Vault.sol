@@ -248,13 +248,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
         }
 
-        // Swap fee is always deducted from tokenOut.
         // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
         // also contains the rate, undo it when converting to raw.
-        uint256 swapFeeAmountRaw = vars.swapFeeAmountScaled18.toRawUndoRateRoundDown(
-            poolData.decimalScalingFactors[vars.indexOut],
-            poolData.tokenRates[vars.indexOut]
+        vars.swapFeeIndex = params.kind == SwapKind.EXACT_IN ? vars.indexOut : vars.indexIn;
+        vars.swapFeeAmountRaw = vars.swapFeeAmountScaled18.toRawUndoRateRoundDown(
+            poolData.decimalScalingFactors[vars.swapFeeIndex],
+            poolData.tokenRates[vars.swapFeeIndex]
         );
+        vars.swapFeeToken = params.kind == SwapKind.EXACT_IN ? params.tokenOut : params.tokenIn;
 
         emit Swap(
             params.pool,
@@ -263,7 +264,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             amountIn,
             amountOut,
             vars.swapFeePercentage,
-            swapFeeAmountRaw
+            vars.swapFeeAmountRaw,
+            vars.swapFeeToken
         );
     }
 
