@@ -7,11 +7,13 @@ import { FixedPoint } from "../math/FixedPoint.sol";
 
 import { RoundingMock } from "./RoundingMock.sol";
 
-// The `StableMathMock` contract mocks the `StableMath` library for testing purposes. Its mock functions are meant to be
-// logically equivalent to the base ones, but with the ability to control the rounding permutation using the `RoundingMock`.
+// The `StableMathMock` contract mocks the `StableMath` library for testing purposes. Its mock functions are
+// meant to be logically equivalent to the base ones, but with the ability to control the rounding permutation
+// using the `RoundingMock` library.
 
-contract StableMathMock is RoundingMock {
+contract StableMathMock {
     using FixedPoint for uint256;
+    using RoundingMock for uint256;
 
     function computeInvariant(
         uint256 amplificationParameter,
@@ -549,9 +551,9 @@ contract StableMathMock is RoundingMock {
         uint256[] memory balanceRatiosWithFee = new uint256[](numTokens);
         uint256 invariantRatioWithFees = 0;
         for (uint256 i = 0; i < numTokens; ++i) {
-            uint256 currentWeight = mockDiv(balances[i], sumBalances, roundingPermutation[0]);
-            balanceRatiosWithFee[i] = mockDiv(balances[i] + amountsIn[i], balances[i], roundingPermutation[1]);
-            invariantRatioWithFees += mockMul(balanceRatiosWithFee[i], currentWeight, roundingPermutation[2]);
+            uint256 currentWeight = balances[i].mockDiv(sumBalances, roundingPermutation[0]);
+            balanceRatiosWithFee[i] = (balances[i] + amountsIn[i]).mockDiv(balances[i], roundingPermutation[1]);
+            invariantRatioWithFees += balanceRatiosWithFee[i].mockMul(currentWeight, roundingPermutation[2]);
         }
 
         uint256[] memory newBalances = new uint256[](numTokens);
@@ -559,15 +561,14 @@ contract StableMathMock is RoundingMock {
             uint256 amountInWithoutFee;
 
             if (balanceRatiosWithFee[i] > invariantRatioWithFees) {
-                uint256 nonTaxableAmount = mockMul(
-                    balances[i],
+                uint256 nonTaxableAmount = balances[i].mockMul(
                     invariantRatioWithFees - FixedPoint.ONE,
                     roundingPermutation[3]
                 );
                 uint256 taxableAmount = amountsIn[i] - nonTaxableAmount;
                 amountInWithoutFee =
                     nonTaxableAmount +
-                    mockMul(taxableAmount, FixedPoint.ONE - swapFeePercentage, roundingPermutation[4]);
+                    (taxableAmount.mockMul(FixedPoint.ONE - swapFeePercentage, roundingPermutation[4]));
             } else {
                 amountInWithoutFee = amountsIn[i];
             }
@@ -576,10 +577,10 @@ contract StableMathMock is RoundingMock {
         }
 
         uint256 newInvariant = _mockComputeInvariant(amp, newBalances);
-        uint256 invariantRatio = mockDiv(newInvariant, currentInvariant, roundingPermutation[5]);
+        uint256 invariantRatio = newInvariant.mockDiv(currentInvariant, roundingPermutation[5]);
 
         if (invariantRatio > FixedPoint.ONE) {
-            return mockMul(bptTotalSupply, invariantRatio - FixedPoint.ONE, roundingPermutation[6]);
+            return bptTotalSupply.mockMul(invariantRatio - FixedPoint.ONE, roundingPermutation[6]);
         } else {
             return 0;
         }
@@ -595,8 +596,7 @@ contract StableMathMock is RoundingMock {
         uint256 swapFeePercentage,
         bool[8] memory roundingPermutation
     ) internal pure returns (uint256) {
-        uint256 newInvariant = mockMul(
-            mockDiv(bptTotalSupply + bptAmountOut, bptTotalSupply, roundingPermutation[0]),
+        uint256 newInvariant = (bptTotalSupply + bptAmountOut).mockDiv(bptTotalSupply, roundingPermutation[0]).mockMul(
             currentInvariant,
             roundingPermutation[1]
         );
@@ -620,12 +620,12 @@ contract StableMathMock is RoundingMock {
             sumBalances += balances[i];
         }
 
-        uint256 currentWeight = mockDiv(balances[tokenIndex], sumBalances, roundingPermutation[5]);
+        uint256 currentWeight = balances[tokenIndex].mockDiv(sumBalances, roundingPermutation[5]);
         uint256 taxablePercentage = currentWeight.complement();
-        uint256 taxableAmount = mockMul(amountInWithoutFee, taxablePercentage, roundingPermutation[6]);
+        uint256 taxableAmount = amountInWithoutFee.mockMul(taxablePercentage, roundingPermutation[6]);
         uint256 nonTaxableAmount = amountInWithoutFee - taxableAmount;
 
-        return nonTaxableAmount + mockDiv(taxableAmount, FixedPoint.ONE - swapFeePercentage, roundingPermutation[7]);
+        return nonTaxableAmount + (taxableAmount.mockDiv(FixedPoint.ONE - swapFeePercentage, roundingPermutation[7]));
     }
 
     function _mockComputeBptInGivenExactTokensOut(
@@ -646,24 +646,23 @@ contract StableMathMock is RoundingMock {
         uint256[] memory balanceRatiosWithoutFee = new uint256[](numTokens);
         uint256 invariantRatioWithoutFees = 0;
         for (uint256 i = 0; i < numTokens; ++i) {
-            uint256 currentWeight = mockDiv(balances[i], sumBalances, roundingPermutation[0]);
-            balanceRatiosWithoutFee[i] = mockDiv(balances[i] - amountsOut[i], balances[i], roundingPermutation[1]);
-            invariantRatioWithoutFees += mockMul(balanceRatiosWithoutFee[i], currentWeight, roundingPermutation[2]);
+            uint256 currentWeight = balances[i].mockDiv(sumBalances, roundingPermutation[0]);
+            balanceRatiosWithoutFee[i] = (balances[i] - amountsOut[i]).mockDiv(balances[i], roundingPermutation[1]);
+            invariantRatioWithoutFees += balanceRatiosWithoutFee[i].mockMul(currentWeight, roundingPermutation[2]);
         }
 
         uint256[] memory newBalances = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
             uint256 amountOutWithFee;
             if (invariantRatioWithoutFees > balanceRatiosWithoutFee[i]) {
-                uint256 nonTaxableAmount = mockMul(
-                    balances[i],
+                uint256 nonTaxableAmount = balances[i].mockMul(
                     invariantRatioWithoutFees.complement(),
                     roundingPermutation[3]
                 );
                 uint256 taxableAmount = amountsOut[i] - nonTaxableAmount;
                 amountOutWithFee =
                     nonTaxableAmount +
-                    mockDiv(taxableAmount, FixedPoint.ONE - swapFeePercentage, roundingPermutation[4]);
+                    (taxableAmount.mockDiv(FixedPoint.ONE - swapFeePercentage, roundingPermutation[4]));
             } else {
                 amountOutWithFee = amountsOut[i];
             }
@@ -672,9 +671,9 @@ contract StableMathMock is RoundingMock {
         }
 
         uint256 newInvariant = _mockComputeInvariant(amp, newBalances);
-        uint256 invariantRatio = mockDiv(newInvariant, currentInvariant, roundingPermutation[5]);
+        uint256 invariantRatio = newInvariant.mockDiv(currentInvariant, roundingPermutation[5]);
 
-        return mockMul(bptTotalSupply, invariantRatio.complement(), roundingPermutation[6]);
+        return bptTotalSupply.mockMul(invariantRatio.complement(), roundingPermutation[6]);
     }
 
     function _mockComputeTokenOutGivenExactBptIn(
@@ -687,8 +686,7 @@ contract StableMathMock is RoundingMock {
         uint256 swapFeePercentage,
         bool[8] memory roundingPermutation
     ) internal pure returns (uint256) {
-        uint256 newInvariant = mockMul(
-            mockDiv(bptTotalSupply - bptAmountIn, bptTotalSupply, roundingPermutation[0]),
+        uint256 newInvariant = (bptTotalSupply - bptAmountIn).mockDiv(bptTotalSupply, roundingPermutation[0]).mockMul(
             currentInvariant,
             roundingPermutation[1]
         );
@@ -712,12 +710,12 @@ contract StableMathMock is RoundingMock {
             sumBalances += balances[i];
         }
 
-        uint256 currentWeight = mockDiv(balances[tokenIndex], sumBalances, roundingPermutation[5]);
+        uint256 currentWeight = balances[tokenIndex].mockDiv(sumBalances, roundingPermutation[5]);
         uint256 taxablePercentage = currentWeight.complement();
-        uint256 taxableAmount = mockMul(amountOutWithoutFee, taxablePercentage, roundingPermutation[6]);
+        uint256 taxableAmount = amountOutWithoutFee.mockMul(taxablePercentage, roundingPermutation[6]);
         uint256 nonTaxableAmount = amountOutWithoutFee - taxableAmount;
 
-        return nonTaxableAmount + mockMul(taxableAmount, FixedPoint.ONE - swapFeePercentage, roundingPermutation[7]);
+        return nonTaxableAmount + (taxableAmount.mockMul(FixedPoint.ONE - swapFeePercentage, roundingPermutation[7]));
     }
 
     function _mockComputeBalance(
@@ -738,17 +736,16 @@ contract StableMathMock is RoundingMock {
         sum = sum - balances[tokenIndex];
 
         uint256 inv2 = invariant * invariant;
-        uint256 c = (mockDivRaw(inv2, ampTimesTotal * P_D, roundingPermutation[0]) * StableMath.AMP_PRECISION) *
+        uint256 c = (inv2.mockDivRaw(ampTimesTotal * P_D, roundingPermutation[0]) * StableMath.AMP_PRECISION) *
             balances[tokenIndex];
         uint256 b = sum + ((invariant / ampTimesTotal) * StableMath.AMP_PRECISION);
         uint256 prevTokenBalance = 0;
-        uint256 tokenBalance = mockDivRaw(inv2 + c, invariant + b, roundingPermutation[1]);
+        uint256 tokenBalance = (inv2 + c).mockDivRaw(invariant + b, roundingPermutation[1]);
 
         for (uint256 i = 0; i < 255; ++i) {
             prevTokenBalance = tokenBalance;
 
-            tokenBalance = mockDivRaw(
-                (tokenBalance * tokenBalance) + c,
+            tokenBalance = ((tokenBalance * tokenBalance) + c).mockDivRaw(
                 (tokenBalance * 2) + b - invariant,
                 roundingPermutation[2]
             );
