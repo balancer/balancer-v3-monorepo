@@ -939,26 +939,38 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     ) internal returns (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) {
         // If swapFeeAmount equals zero no need to charge anything
         if (swapFeeAmountScaled18 > 0 && poolData.poolConfig.isPoolInRecoveryMode == false) {
+            // Always charge fees on token. Store amount in native decimals.
+            // Since the swapFeeAmountScaled18 also contains the rate, undo it when converting to raw.
+            uint256 protocolSwapFeeAmountScaled18;
+            uint256 creatorSwapFeeAmountScaled18;
+
             if (protocolSwapFeePercentage > 0) {
-                // Always charge fees on token. Store amount in native decimals.
-                // Since the swapFeeAmountScaled18 also contains the rate, undo it when converting to raw.
-                protocolSwapFeeAmountRaw = swapFeeAmountScaled18
-                    .mulUp(protocolSwapFeePercentage)
-                    .toRawUndoRateRoundDown(poolData.decimalScalingFactors[index], poolData.tokenRates[index]);
+                protocolSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(protocolSwapFeePercentage);
+                protocolSwapFeeAmountRaw = protocolSwapFeeAmountScaled18.toRawUndoRateRoundDown(
+                    poolData.decimalScalingFactors[index],
+                    poolData.tokenRates[index]
+                );
 
                 _protocolFees[token] += protocolSwapFeeAmountRaw;
                 emit ProtocolSwapFeeCharged(pool, address(token), protocolSwapFeeAmountRaw);
             }
 
             if (poolData.poolConfig.poolCreatorFeePercentage > 0) {
-                // Always charge fees on token. Store amount in native decimals.
-                // Since the swapFeeAmountScaled18 also contains the rate, undo it when converting to raw.
-                creatorSwapFeeAmountRaw = (swapFeeAmountScaled18 - protocolSwapFeeAmountRaw)
-                    .mulUp(poolData.poolConfig.poolCreatorFeePercentage)
-                    .toRawUndoRateRoundDown(poolData.decimalScalingFactors[index], poolData.tokenRates[index]);
+                creatorSwapFeeAmountScaled18 = (swapFeeAmountScaled18 - protocolSwapFeeAmountRaw).mulUp(
+                    poolData.poolConfig.poolCreatorFeePercentage
+                );
+                creatorSwapFeeAmountRaw = creatorSwapFeeAmountScaled18.toRawUndoRateRoundDown(
+                    poolData.decimalScalingFactors[index],
+                    poolData.tokenRates[index]
+                );
 
                 _poolCreatorFees[pool][address(token)] += creatorSwapFeeAmountRaw;
                 emit PoolCreatorSwapFeeCharged(pool, address(token), creatorSwapFeeAmountRaw);
+            }
+
+            // Ensure we can never charge more than the total swap fee.
+            if (protocolSwapFeeAmountScaled18 + creatorSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
+                revert ProtocolFeesExceedSwapFee();
             }
         }
     }
