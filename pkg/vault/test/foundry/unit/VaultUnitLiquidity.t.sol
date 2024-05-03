@@ -827,35 +827,56 @@ contract VaultUnitLiquidityTest is BaseTest {
 
         // NOTE: stack too deep fix
         TestAddLiquidityParams memory params_ = params;
+        PoolData memory poolData_ = poolData;
+        uint256 protocolSwapFeePercentage = vaultState.protocolSwapFeePercentage;
 
-        for (uint256 i = 0; i < poolData.tokenConfig.length; i++) {
+        uint256[] memory storagePoolBalances = vault.getRawBalances(params.addLiquidityParams.pool);
+        uint256[] memory storageLastLiveBalances = vault.getLastLiveBalances(params.addLiquidityParams.pool);
+
+        for (uint256 i = 0; i < poolData_.tokenConfig.length; i++) {
             assertEq(amountsInRaw[i], expectedAmountsInRaw[i], "Unexpected tokenIn amount");
             assertEq(amountsInScaled18[i], params_.expectedAmountsInScaled18[i], "Unexpected tokenIn amount");
 
-            assertEq(vault.getTokenDelta(tokens[i]), int256(amountsInRaw[i]), "Unexpected tokenIn delta");
-
+            // check _computeAndChargeProtocolFees
+            uint256 protocolSwapFeeAmountRaw = params_
+                .expectSwapFeeAmountsScaled18[i]
+                .mulUp(protocolSwapFeePercentage)
+                .toRawUndoRateRoundDown(poolData_.decimalScalingFactors[i], poolData_.tokenRates[i]);
             assertEq(
-                updatedPoolData.balancesRaw[i],
-                poolData.balancesRaw[i] +
-                    amountsInRaw[i] -
-                    params_
-                        .expectSwapFeeAmountsScaled18[i]
-                        .mulUp(vaultState.protocolSwapFeePercentage)
-                        .toRawUndoRateRoundDown(poolData.decimalScalingFactors[i], poolData.tokenRates[i]),
-                "Unexpected balancesRaw balance"
+                vault.getProtocolFees(address(poolData_.tokenConfig[i].token)),
+                protocolSwapFeeAmountRaw,
+                "Unexpected protocol fees"
+            );
+            assertEq(
+                vault.getPoolCreatorFees(params_.addLiquidityParams.pool, poolData_.tokenConfig[i].token),
+                0,
+                "Unexpected creator fees"
             );
 
+            // check _takeDebt
+            assertEq(vault.getTokenDelta(tokens[i]), int256(amountsInRaw[i]), "Unexpected tokenIn delta");
+
+            // check _setPoolBalances
+            assertEq(poolBalances[i], updatedPoolData.balancesRaw[i], "Unexpected pool balance");
+            assertEq(
+                poolBalances[i],
+                poolData_.balancesRaw[i] + amountsInRaw[i] - protocolSwapFeeAmountRaw,
+                "Unexpected balancesRaw balance"
+            );
             assertEq(
                 updatedPoolData.balancesLiveScaled18[i],
-                updatedPoolData.balancesRaw[i].toScaled18ApplyRateRoundDown(
-                    poolData.decimalScalingFactors[i],
-                    poolData.tokenRates[i]
+                poolBalances[i].toScaled18ApplyRateRoundDown(
+                    poolData_.decimalScalingFactors[i],
+                    poolData_.tokenRates[i]
                 ),
                 "Unexpected balancesLiveScaled18 balance"
             );
 
-            // check _setPoolBalances
-            assertEq(poolBalances[i], updatedPoolData.balancesRaw[i], "Unexpected pool balance");
+            assertEq(
+                storageLastLiveBalances[i],
+                updatedPoolData.balancesLiveScaled18[i],
+                "Unexpected last live balance"
+            );
         }
     }
 
