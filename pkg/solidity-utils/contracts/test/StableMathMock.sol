@@ -7,9 +7,9 @@ import { FixedPoint } from "../math/FixedPoint.sol";
 
 import { RoundingMock } from "./RoundingMock.sol";
 
-// The `StableMathMock` contract mocks the `StableMath` library for testing purposes. Its mock functions are
-// meant to be logically equivalent to the base ones, but with the ability to control the rounding permutation
-// using the `RoundingMock` library.
+// The `StableMathMock` contract mocks the `StableMath` library for testing purposes; hence its mock functions are meant
+// to be logically equivalent to the base ones (effectively copying them), but with the ability to control the rounding
+// permutation using the `RoundingMock` library.
 
 contract StableMathMock {
     using FixedPoint for uint256;
