@@ -21,6 +21,7 @@ import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConv
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import { PoolRoleAccountsStruct } from '../typechain-types/contracts/Vault';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
@@ -113,7 +114,9 @@ describe('Vault', function () {
       expect(await vault.isPoolRegistered(poolA)).to.be.true;
       expect(await vault.isPoolRegistered(poolB)).to.be.false;
 
-      const [tokens, balances] = await vault.getPoolTokenInfo(poolA);
+      const [tokenConfig, balances] = await vault.getPoolTokenInfo(poolA);
+      const tokens = tokenConfig.map((config) => config.token);
+
       expect(tokens).to.deep.equal(poolATokens);
       expect(balances).to.deep.equal(Array(tokens.length).fill(0));
 
@@ -146,20 +149,19 @@ describe('Vault', function () {
         factory: await vault.getPoolFactoryMock(),
         tokenConfig,
         pauseWindowEndTime: pauseWindowEndTime.toString(),
-        pauseManager: ANY_ADDRESS,
-        poolCreator: ANY_ADDRESS,
-        hooks: [false, false, false, false, false, false, false, false],
+        roleAccounts: [ANY_ADDRESS, ZERO_ADDRESS, ANY_ADDRESS],
+        poolHooks: [false, false, false, false, false, false, false, false],
         liquidityManagement: [false, true, true],
       };
 
+      const roleAccounts: PoolRoleAccountsStruct = {
+        pauseManager: ANY_ADDRESS,
+        swapFeeManager: ZERO_ADDRESS,
+        poolCreator: ANY_ADDRESS,
+      };
+
       // Use expectEvent here to prevent errors with structs of arrays with hardhat matchers.
-      const tx = await vault.manualRegisterPoolAtTimestamp(
-        poolB,
-        poolBTokens,
-        pauseWindowEndTime,
-        ANY_ADDRESS,
-        ANY_ADDRESS
-      );
+      const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, roleAccounts);
       expectEvent.inReceipt(await tx.wait(), 'PoolRegistered', expectedArgs);
     });
 
@@ -291,7 +293,8 @@ describe('Vault', function () {
       });
 
       it('has rate providers', async () => {
-        const [, , , , poolProviders] = await vault.getPoolTokenInfo(poolC);
+        const [tokenConfig] = await vault.getPoolTokenInfo(poolC);
+        const poolProviders = tokenConfig.map((config) => config.rateProvider);
         const tokenRates = await vault.getPoolTokenRates(poolC);
 
         expect(poolProviders).to.deep.equal(rateProviders);

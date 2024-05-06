@@ -73,22 +73,8 @@ interface IVaultErrors {
     /// @dev A transient accounting operation completed with outstanding token deltas.
     error BalanceNotSettled();
 
-    /**
-     * @dev In transient accounting, a locker is attempting to execute an operation out of order.
-     * The caller address should equal the locker.
-     * @param locker Address of the current locker being processed
-     * @param caller Address of the caller (msg.sender)
-     */
-    error WrongLocker(address locker, address caller);
-
     /// @dev A user called a Vault function (swap, add/remove liquidity) outside the lock context.
-    error NoLocker();
-
-    /**
-     * @dev The caller attempted to access a Locker at an invalid index.
-     * @param index The invalid index
-     */
-    error LockerOutOfBounds(uint256 index);
+    error VaultIsNotUnlocked();
 
     /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
     error BeforeSwapHookFailed();
@@ -261,12 +247,6 @@ interface IVaultErrors {
      */
     error PoolPauseWindowExpired(address pool);
 
-    /**
-     * @dev The caller is not the registered pause manager for the pool.
-     * @param pool The pool
-     */
-    error SenderIsNotPauseManager(address pool);
-
     /*******************************************************************************
                                     Miscellaneous
     *******************************************************************************/
@@ -291,10 +271,4 @@ interface IVaultErrors {
 
     /// @dev The vault admin was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();
-
-    /**
-     * @dev The caller is not the registered pool creator for the pool.
-     * @param pool The pool
-     */
-    error SenderIsNotPoolCreator(address pool);
 }

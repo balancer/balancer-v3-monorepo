@@ -38,6 +38,19 @@ struct PoolConfig {
     bool hasDynamicSwapFee;
 }
 
+/// @dev Represents temporary vars used in a swap operation.
+struct SwapVars {
+    // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
+    uint256 indexIn;
+    uint256 indexOut;
+    uint256 amountGivenScaled18;
+    uint256 amountCalculatedScaled18;
+    uint256 swapFeeAmountScaled18;
+    uint256 swapFeePercentage;
+    uint256 protocolSwapFeeAmountRaw;
+    uint256 creatorSwapFeeAmountRaw;
+}
+
 /**
  * @dev Represents the Vault's configuration.
  * @param protocolSwapFeePercentage Charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
@@ -52,6 +65,33 @@ struct VaultState {
     uint256 protocolYieldFeePercentage;
     bool isQueryDisabled;
     bool isVaultPaused;
+}
+
+/**
+ * @dev Represents the accounts holding certain roles for a given pool. This is passed in on pool registration.
+ * @param pauseManager Account empowered to pause/unpause the pool (or 0 to delegate to governance)
+ * @param swapFeeManager Account empowered to set static swap fees for a pool (or 0 to delegate to goverance)
+ * @param poolCreator Account empowered to set the pool creator fee (or 0 for no fee)
+ */
+struct PoolRoleAccounts {
+    address pauseManager;
+    address swapFeeManager;
+    address poolCreator;
+}
+
+/**
+ * @notice Record pool function permissions (as a sort of local authorizer).
+ * @dev For each permissioned function controlled by a role (e.g., pause/unpause), store the account empowered to call
+ * that function, and flag indicating whether, if the caller is not the designated account (which might be zero),
+ * it should then delegate to governance. If the `onlyOwner` flag is true, it can only be called by the designated
+ * account.
+ *
+ * @param account The account with permission to perform the role
+ * @param onlyOwner Flag indicating whether it is reserved to the account alone, or also governance
+ */
+struct PoolFunctionPermission {
+    address account;
+    bool onlyOwner;
 }
 
 /**

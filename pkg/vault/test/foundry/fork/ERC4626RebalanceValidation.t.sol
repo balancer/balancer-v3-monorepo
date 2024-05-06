@@ -150,7 +150,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         );
 
         // Tokens are deposited to the pool with more base
-        (, , uint256[] memory moreBaseBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolDai));
+        (, uint256[] memory moreBaseBalances, ) = vault.getPoolTokenInfo(address(bufferPoolDai));
         uint256 wrappedTokenIdx = bufferPoolDai.getWrappedTokenIndex();
         uint256 baseTokenIdx = bufferPoolDai.getBaseTokenIndex();
 
@@ -166,7 +166,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         );
 
         // Tokens are deposited to the pool with more wrapped
-        (, , uint256[] memory moreWrappedBalances, , ) = vault.getPoolTokenInfo(address(bufferPoolUsdc));
+        (, uint256[] memory moreWrappedBalances, ) = vault.getPoolTokenInfo(address(bufferPoolUsdc));
         wrappedTokenIdx = bufferPoolUsdc.getWrappedTokenIndex();
         baseTokenIdx = bufferPoolUsdc.getBaseTokenIndex();
 
@@ -447,7 +447,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         string memory wrappedTokenName = IERC20Metadata(address(wToken)).name();
 
         // Check if the pool is unbalanced before
-        (, , uint256[] memory originalBalances, , ) = vault.getPoolTokenInfo(bufferPool);
+        (, uint256[] memory originalBalances, ) = vault.getPoolTokenInfo(bufferPool);
         assertApproxEqAbs(
             originalBalances[wrappedTokenIdx],
             expectedWrappedBalance,

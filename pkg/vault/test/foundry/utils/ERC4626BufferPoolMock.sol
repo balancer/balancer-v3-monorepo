@@ -8,6 +8,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { SwapKind, SwapParams as VaultSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC4626BufferPool } from "vault/contracts/ERC4626BufferPool.sol";
 import { BasePoolHooks } from "vault/contracts/BasePoolHooks.sol";
@@ -24,7 +25,7 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
 
     // If EXACT_IN, assets will be unwrapped. Else, assets will be wrapped
     function unbalanceThePool(uint256 assetsToTransferRaw, SwapKind kind) external {
-        (IERC20[] memory tokens, , , , ) = getVault().getPoolTokenInfo(address(this));
+        (TokenConfig[] memory tokenConfig, , ) = getVault().getPoolTokenInfo(address(this));
 
         uint256 indexIn = kind == SwapKind.EXACT_IN ? _baseTokenIndex : _wrappedTokenIndex;
         uint256 indexOut = kind == SwapKind.EXACT_IN ? _wrappedTokenIndex : _baseTokenIndex;
@@ -39,14 +40,14 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
             limit += limit / 100;
         }
 
-        getVault().lock(
+        getVault().unlock(
             abi.encodeWithSelector(
                 ERC4626BufferPoolMock.unbalanceHook.selector,
                 VaultSwapParams({
                     kind: kind,
                     pool: address(this),
-                    tokenIn: tokens[indexIn],
-                    tokenOut: tokens[indexOut],
+                    tokenIn: tokenConfig[indexIn].token,
+                    tokenOut: tokenConfig[indexOut].token,
                     amountGivenRaw: assetsToTransferRaw,
                     limitRaw: limit,
                     userData: ""

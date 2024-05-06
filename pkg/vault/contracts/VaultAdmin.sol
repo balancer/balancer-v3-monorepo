@@ -6,7 +6,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
@@ -21,8 +20,10 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
@@ -44,7 +45,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using PoolConfigLib for PoolConfig;
     using VaultExtensionsLib for IVault;
     using EnumerableSet for EnumerableSet.AddressSet;
-    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using SafeERC20 for IERC20;
     using VaultStateLib for VaultStateBits;
 
@@ -184,32 +184,44 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                                      Pool Pausing
     *******************************************************************************/
 
-    modifier onlyAuthenticatedPauser(address pool) {
-        _ensureAuthenticatedPauser(pool);
+    modifier authenticateByRole(address pool) {
+        _ensureAuthenticatedByRole(pool);
         _;
     }
 
-    function _ensureAuthenticatedPauser(address pool) private view {
-        address pauseManager = _poolPauseManagers[pool];
+    function _ensureAuthenticatedByRole(address pool) private view {
+        bytes32 actionId = getActionId(msg.sig);
 
-        if (pauseManager == address(0)) {
-            // If there is no pause manager, default to the authorizer.
-            _authenticateCaller();
-        } else {
-            // Sender must be the pause manager.
-            if (msg.sender != pauseManager) {
-                revert SenderIsNotPauseManager(pool);
+        PoolFunctionPermission memory roleAssignment = _poolFunctionPermissions[pool][actionId];
+
+        // If there is no role assigment, fall through and delegate to governance.
+        if (roleAssignment.account != address(0)) {
+            // If the sender matches the permissioned account, all good; just return.
+            if (msg.sender == roleAssignment.account) {
+                return;
             }
+
+            // If it doesn't, check whether it's onlyOwner. onlyOwner means *only* the permissioned account
+            // may call the function, so revert if this is the case. Otherwise, fall through and check
+            // governance.
+            if (roleAssignment.onlyOwner) {
+                revert SenderNotAllowed();
+            }
+        }
+
+        // Delegate to governance.
+        if (_canPerform(actionId, msg.sender, pool) == false) {
+            revert SenderNotAllowed();
         }
     }
 
     /// @inheritdoc IVaultAdmin
-    function pausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) onlyVault {
+    function pausePool(address pool) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
         _setPoolPaused(pool, true);
     }
 
     /// @inheritdoc IVaultAdmin
-    function unpausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) onlyVault {
+    function unpausePool(address pool) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
         _setPoolPaused(pool, false);
     }
 
@@ -279,21 +291,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function setStaticSwapFeePercentage(
         address pool,
         uint256 swapFeePercentage
-    ) external authenticate withRegisteredPool(pool) onlyVault {
+    ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
         // Saving bits by not implementing a new modifier
         _ensureUnpausedAndGetVaultState(pool);
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
-    }
-
-    modifier withPoolCreator(address pool) {
-        _ensurePoolCreator(pool);
-        _;
-    }
-
-    function _ensurePoolCreator(address pool) private view {
-        if (msg.sender != _poolCreator[pool]) {
-            revert SenderIsNotPoolCreator(pool);
-        }
     }
 
     /**
@@ -306,7 +307,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function setPoolCreatorFeePercentage(
         address pool,
         uint256 poolCreatorFeePercentage
-    ) external withRegisteredPool(pool) withPoolCreator(pool) onlyVault {
+    ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
         // Saving bits by not implementing a new modifier
         _ensureUnpausedAndGetVaultState(pool);
         _setPoolCreatorFeePercentage(pool, poolCreatorFeePercentage);
@@ -342,16 +343,16 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function collectPoolCreatorFees(address pool) external nonReentrant onlyVault {
-        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
-        uint256 numTokens = poolCreatorFees.length();
-        for (uint256 i = 0; i < numTokens; ++i) {
-            (IERC20 token, uint256 amount) = poolCreatorFees.unchecked_at(i);
+        IERC20[] memory tokens = _getPoolTokens(pool);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
 
+            uint256 amount = _poolCreatorFees[pool][address(token)];
             if (amount > 0) {
                 // set fees to zero for the token
-                poolCreatorFees.unchecked_setAt(i, 0);
+                _poolCreatorFees[pool][address(token)] = 0;
 
-                token.safeTransfer(_poolCreator[pool], amount);
+                token.safeTransfer(_poolRoleAccounts[pool].poolCreator, amount);
                 emit PoolCreatorFeeCollected(pool, token, amount);
             }
         }
@@ -447,5 +448,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @dev Access control is delegated to the Authorizer
     function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
         return _authorizer.canPerform(actionId, user, address(this));
+    }
+
+    function _canPerform(bytes32 actionId, address user, address where) internal view returns (bool) {
+        return _authorizer.canPerform(actionId, user, where);
     }
 }
