@@ -1079,40 +1079,26 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 totalWrappedMintedRaw;
 
             if (kind == SwapKind.EXACT_IN) {
-                uint256 bufferWrappedBalanceAsBase = 0;
-                uint256 bufferBaseToWrapRaw = 0;
+                // TODO comment
+                uint256 bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalancesRaw, wrappedToken);
 
-                // If buffer is not empty, rebalance it
-                if (!bufferBalancesRaw.isEmpty()) {
-                    bufferWrappedBalanceAsBase = wrappedToken.convertToAssets(bufferWrappedBalanceRaw);
-                    bufferBaseToWrapRaw = bufferBaseBalanceRaw > bufferWrappedBalanceAsBase
-                        ? (bufferBaseBalanceRaw - bufferWrappedBalanceAsBase) / 2
-                        : 0;
-                }
-
+                // TODO refactor comment
                 // The amount of base tokens to deposit is the necessary amount to fulfill the trade (amountBaseToWrap),
-                // plus the amount needed to leave the buffer rebalanced 50/50 at the end (bufferBaseAmountToWrap)
-                totalBaseDepositedRaw = tradeBaseRaw + bufferBaseToWrapRaw;
+                // plus the amount needed to leave the buffer rebalanced 50/50 at the end (bufferUnderlyingSurplus)
+                totalBaseDepositedRaw = tradeBaseRaw + bufferUnderlyingSurplus;
 
                 baseToken.approve(address(wrappedToken), totalBaseDepositedRaw);
                 // EXACT_IN requires the exact amount of base tokens to be deposited, so deposit is called
                 wrappedToken.deposit(totalBaseDepositedRaw, address(this));
             } else {
-                uint256 bufferBaseBalanceAsWrapped = 0;
-                uint256 bufferWrappedToUnwrapRaw = 0;
+                // TODO comment
+                uint256 bufferWrappedSurplus = _getBufferWrappedSurplus(bufferBalancesRaw, wrappedToken);
 
-                // If buffer is not empty, rebalance it
-                if (!bufferBalancesRaw.isEmpty()) {
-                    bufferBaseBalanceAsWrapped = wrappedToken.convertToShares(bufferBaseBalanceRaw);
-                    bufferWrappedToUnwrapRaw = bufferWrappedBalanceRaw > bufferBaseBalanceAsWrapped
-                        ? (bufferWrappedBalanceRaw - bufferBaseBalanceAsWrapped) / 2
-                        : 0;
-                }
-
+                // TODO refactor comment
                 // The amount of wrapped tokens to mint is the necessary amount to fulfill the trade
                 // (tradeWrappedRaw), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferWrappedToUnwrapRaw)
-                totalWrappedMintedRaw = tradeWrappedRaw + bufferWrappedToUnwrapRaw;
+                totalWrappedMintedRaw = tradeWrappedRaw + bufferWrappedSurplus;
                 baseToken.approve(address(wrappedToken), wrappedToken.previewMint(totalWrappedMintedRaw));
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called
                 wrappedToken.mint(totalWrappedMintedRaw, address(this));
@@ -1192,39 +1178,25 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 bufferBaseBalanceRaw = bufferBalancesRaw.getBaseBalance();
 
             if (kind == SwapKind.EXACT_IN) {
-                uint256 bufferBaseBalanceAsWrapped = 0;
-                uint256 bufferSharesToUnwrap = 0;
+                // TODO comment
+                uint256 bufferWrappedSurplus = _getBufferWrappedSurplus(bufferBalancesRaw, wrappedToken);
 
-                // If buffer is not empty, rebalance it
-                if (!bufferBalancesRaw.isEmpty()) {
-                    bufferBaseBalanceAsWrapped = wrappedToken.convertToShares(bufferBaseBalanceRaw);
-                    bufferSharesToUnwrap = bufferWrappedBalanceRaw > bufferBaseBalanceAsWrapped
-                        ? (bufferWrappedBalanceRaw - bufferBaseBalanceAsWrapped) / 2
-                        : 0;
-                }
-
+                // TODO refactor comment
                 // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so redeem is called
                 // The amount of wrapped tokens to redeem is the necessary amount to fulfill the trade
                 // (amountWrappedToUnwrap), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferSharesToUnwrap)
-                wrappedToken.redeem(tradeWrappedRaw + bufferSharesToUnwrap, address(this), address(this));
+                wrappedToken.redeem(tradeWrappedRaw + bufferWrappedSurplus, address(this), address(this));
             } else {
-                uint256 bufferWrappedBalanceAsBase = 0;
-                uint256 bufferBaseAmountToUnwrap = 0;
+                // TODO comment
+                uint256 bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalancesRaw, wrappedToken);
 
-                // If buffer is not empty, rebalance it
-                if (!bufferBalancesRaw.isEmpty()) {
-                    bufferWrappedBalanceAsBase = wrappedToken.convertToAssets(bufferWrappedBalanceRaw);
-                    bufferBaseAmountToUnwrap = bufferBaseBalanceRaw > bufferWrappedBalanceAsBase
-                        ? (bufferBaseBalanceRaw - bufferWrappedBalanceAsBase) / 2
-                        : 0;
-                }
-
+                // TODO refactor comment
                 // EXACT_OUT requires the exact amount of base tokens to be returned, so withdraw is called.
                 // The amount of base tokens to withdraw is the necessary amount to fulfill the trade
                 // (tradeBaseRaw), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferBaseAmountToUnwrap).
-                wrappedToken.withdraw(tradeBaseRaw + bufferBaseAmountToUnwrap, address(this), address(this));
+                wrappedToken.withdraw(tradeBaseRaw + bufferUnderlyingSurplus, address(this), address(this));
             }
 
             (uint256 totalBaseWithdrawnRaw, uint256 totalWrappedRedeemedRaw) = _settleWrapUnwrap(
@@ -1259,6 +1231,30 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _takeDebt(wrappedToken, tradeWrappedRaw);
         _supplyCredit(baseToken, tradeBaseRaw);
+    }
+
+    // TODO comment
+    function _getBufferUnderlyingSurplus(bytes32 balance, IERC4626 wrappedToken) private view returns (uint256) {
+        if (balance.isEmpty()) {
+            return 0;
+        }
+
+        uint256 baseBalance = balance.getBaseBalance();
+        uint256 wrappedBalanceAsBase = wrappedToken.convertToAssets(balance.getWrappedBalance());
+
+        return baseBalance > wrappedBalanceAsBase ? (baseBalance - wrappedBalanceAsBase) / 2 : 0;
+    }
+
+    // TODO comment
+    function _getBufferWrappedSurplus(bytes32 balance, IERC4626 wrappedToken) private view returns (uint256) {
+        if (balance.isEmpty()) {
+            return 0;
+        }
+
+        uint256 wrappedBalance = balance.getWrappedBalance();
+        uint256 baseBalanceAsWrapped = wrappedToken.convertToShares(balance.getBaseBalance());
+
+        return wrappedBalance > baseBalanceAsWrapped ? (wrappedBalance - baseBalanceAsWrapped) / 2 : 0;
     }
 
     /**

@@ -32,9 +32,11 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
         vm.label(address(waUSDC), "waUSDC");
 
-        // Gives authorization to user "admin" to enable/disable vault's buffer
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.unpauseVaultBuffers.selector), admin);
+        // Authorizes user "admin" to pause/unpause vault's buffer
         authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.unpauseVaultBuffers.selector), admin);
+        // Authorizes router to call removeLiquidityBuffer (trusted router)
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityBuffer.selector), address(router));
 
         initializeLp();
     }
@@ -524,6 +526,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testDisableVaultBuffer() public {
+        vm.prank(lp);
+        router.addLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
+
         vm.prank(admin);
         IVaultAdmin(address(vault)).pauseVaultBuffers();
 
@@ -544,7 +549,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultBuffersArePaused.selector));
         router.addLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultBuffersArePaused.selector));
+        // remove liquidity is supposed to pass even with buffers paused, so revert is not expected
         router.removeLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount);
 
         vm.stopPrank();
