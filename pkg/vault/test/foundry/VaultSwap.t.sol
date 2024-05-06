@@ -211,7 +211,7 @@ contract VaultSwapTest is BaseVaultTest {
         setSwapFeePercentage(swapFeePercentage);
 
         vm.expectEmit();
-        emit IVaultMain.Swap(
+        emit IVaultEvents.Swap(
             address(pool),
             usdc,
             dai,
