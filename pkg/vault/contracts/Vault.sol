@@ -353,8 +353,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
         }
 
-        vars.swapFeeIndex = params.kind == SwapKind.EXACT_IN ? vars.indexOut : vars.indexIn;
-        vars.swapFeeToken = params.kind == SwapKind.EXACT_IN ? params.tokenOut : params.tokenIn;
+        (vars.swapFeeIndex, vars.swapFeeToken) = params.kind == SwapKind.EXACT_IN
+            ? (vars.indexOut, params.tokenOut)
+            : (vars.indexIn, params.tokenIn);
 
         // Compute and charge protocol and creator fees. Note that protocol fee storage is updated
         // before balance storage, as the final raw balances need to take the fees into account.
@@ -371,16 +372,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         poolData.balancesRaw[vars.indexIn] += amountIn;
         poolData.balancesRaw[vars.indexOut] -= amountOut;
 
-        // Adjust for fees. Subtract from the calculated amount: tokenOut if ExactIn, or tokenIn if ExactOut.
-        uint256 totalFeeAdjustment = vars.protocolSwapFeeAmountRaw + vars.creatorSwapFeeAmountRaw;
-        poolData.balancesRaw[vars.swapFeeIndex] -= totalFeeAdjustment;
+        // Subtract fees from the calculated amount.
+        poolData.balancesRaw[vars.swapFeeIndex] -= (vars.protocolSwapFeeAmountRaw + vars.creatorSwapFeeAmountRaw);
 
         // Set both raw and last live balances.
         _setPoolBalances(params.pool, poolData);
 
-        // Account amountIn of tokenIn
+        // Debit amountIn of tokenIn.
         _takeDebt(params.tokenIn, amountIn);
-        // Account amountOut of tokenOut
+        // Credit amountOut of tokenOut.
         _supplyCredit(params.tokenOut, amountOut);
 
         // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
