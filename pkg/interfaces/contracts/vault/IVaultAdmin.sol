@@ -182,13 +182,13 @@ interface IVaultAdmin {
     *******************************************************************************/
     /**
      * @notice Unpauses vault buffers, used to wrap/unwrap yield-bearing tokens.
-     * @dev The caller must be allowed by the current Authorizer to do this.
+     * @dev This is a permissioned call.
      */
     function unpauseVaultBuffers() external;
 
     /**
      * @notice Pauses vault buffers.
-     * @dev The caller must be allowed by the current Authorizer to do this.
+     * @dev This is a permissioned call.
      */
     function pauseVaultBuffers() external;
 
@@ -262,7 +262,7 @@ interface IVaultAdmin {
 
     /**
      * @notice Sets a new Authorizer for the Vault.
-     * @dev The caller must be allowed by the current Authorizer to do this.
+     * @dev This is a permissioned call.
      * Emits an `AuthorizerChanged` event.
      */
     function setAuthorizer(IAuthorizer newAuthorizer) external;
