@@ -48,9 +48,6 @@ struct SwapVars {
     uint256 swapFeeAmountScaled18;
     uint256 protocolSwapFeeAmountRaw;
     uint256 creatorSwapFeeAmountRaw;
-    uint256 swapFeeAmountRaw;
-    uint256 swapFeeIndex;
-    IERC20 swapFeeToken;
 }
 
 /**

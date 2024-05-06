@@ -293,8 +293,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * Preconditions: amountGivenScaled18, indexIn, indexOut in vars; decimalScalingFactors, tokenRates, poolConfig,
      *                balancesLiveScaled18 in `poolData`.
      * Side effects: mutates swapFeeAmountScaled18, amountCalculatedScaled18, protocolSwapFeeAmountRaw,
-     *               creatorSwapFeeAmountRaw, swapFeeIndex, swapFeeAmountRaw, swapFeeToken in vars;
-     *               balancesRaw, balancesLiveScaled18 in `poolData`.
+     *               creatorSwapFeeAmountRaw in vars; balancesRaw, balancesLiveScaled18 in `poolData`.
      * Updates `_protocolFees`, `_poolCreatorFees`, `_poolTokenBalances` in storage.
      * Emits Swap event. May emit ProtocolSwapFeeCharged, PoolCreatorSwapFeeCharged events.
      */
@@ -353,7 +352,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
         }
 
-        (vars.swapFeeIndex, vars.swapFeeToken) = params.kind == SwapKind.EXACT_IN
+        (uint256 swapFeeIndex, IERC20 swapFeeToken) = params.kind == SwapKind.EXACT_IN
             ? (vars.indexOut, params.tokenOut)
             : (vars.indexIn, params.tokenIn);
 
@@ -364,8 +363,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.swapFeeAmountScaled18,
             vaultState.protocolSwapFeePercentage,
             params.pool,
-            vars.swapFeeToken,
-            vars.swapFeeIndex
+            swapFeeToken,
+            swapFeeIndex
         );
 
         // Adjust for swap amounts.
@@ -373,7 +372,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         poolData.balancesRaw[vars.indexOut] -= amountOut;
 
         // Subtract fees from the calculated amount.
-        poolData.balancesRaw[vars.swapFeeIndex] -= (vars.protocolSwapFeeAmountRaw + vars.creatorSwapFeeAmountRaw);
+        poolData.balancesRaw[swapFeeIndex] -= (vars.protocolSwapFeeAmountRaw + vars.creatorSwapFeeAmountRaw);
 
         // Set both raw and last live balances.
         _setPoolBalances(params.pool, poolData);
@@ -385,9 +384,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
         // also contains the rate, undo it when converting to raw.
-        vars.swapFeeAmountRaw = vars.swapFeeAmountScaled18.toRawUndoRateRoundDown(
-            poolData.decimalScalingFactors[vars.swapFeeIndex],
-            poolData.tokenRates[vars.swapFeeIndex]
+        uint256 swapFeeAmountRaw = vars.swapFeeAmountScaled18.toRawUndoRateRoundDown(
+            poolData.decimalScalingFactors[swapFeeIndex],
+            poolData.tokenRates[swapFeeIndex]
         );
 
         emit Swap(
@@ -397,8 +396,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             amountIn,
             amountOut,
             swapFeePercentage,
-            vars.swapFeeAmountRaw,
-            vars.swapFeeToken
+            swapFeeAmountRaw,
+            swapFeeToken
         );
     }
 
