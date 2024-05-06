@@ -218,6 +218,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _updateAmountGivenInVars(vars, params, poolData);
         }
 
+        // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
+        // as those passed to the main operation.
         if (poolData.poolConfig.hooks.shouldCallComputeDynamicSwapFee) {
             bool success;
 
