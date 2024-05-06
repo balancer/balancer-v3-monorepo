@@ -964,7 +964,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
 
             if (poolData.poolConfig.poolCreatorFeePercentage > 0) {
-                creatorSwapFeeAmountScaled18 = (swapFeeAmountScaled18 - protocolSwapFeeAmountRaw).mulUp(
+                creatorSwapFeeAmountScaled18 = (swapFeeAmountScaled18 - protocolSwapFeeAmountScaled18).mulUp(
                     poolData.poolConfig.poolCreatorFeePercentage
                 );
                 creatorSwapFeeAmountRaw = creatorSwapFeeAmountScaled18.toRawUndoRateRoundDown(
