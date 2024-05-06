@@ -10,6 +10,9 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+
 import { PoolConfigLib, PoolConfigBits } from "../../../contracts/lib/PoolConfigLib.sol";
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
@@ -17,6 +20,7 @@ import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     using PoolConfigLib for PoolConfig;
     using SafeCast for *;
+    using ArrayHelpers for *;
 
     // The balance and live balance are stored in the same bytes32 word, each uses 128 bits
     uint256 private constant _MAX_RAW_BALANCE = 2 ** 128 - 1;
@@ -43,10 +47,9 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     }
 
     function testNonEmptyPoolTokenBalance() public {
-        IERC20[] memory tokens = new IERC20[](3);
-        tokens[0] = dai;
-        tokens[1] = wsteth;
-        tokens[2] = usdc;
+        IERC20[] memory tokens = InputHelpers.sortTokens(
+            [address(usdc), address(dai), address(wsteth)].toMemoryArray().asIERC20()
+        );
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
         vault.manualSetPoolTokenConfig(pool, tokens, tokenConfig);
         uint256[] memory originalBalancesRaw = new uint256[](3);
@@ -103,10 +106,9 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     }
 
     function testNonEmptyPoolConfig() public {
-        IERC20[] memory tokens = new IERC20[](3);
-        tokens[0] = usdc;
-        tokens[1] = dai;
-        tokens[2] = wsteth;
+        IERC20[] memory tokens = InputHelpers.sortTokens(
+            [address(usdc), address(dai), address(wsteth)].toMemoryArray().asIERC20()
+        );
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
         vault.manualSetPoolTokenConfig(pool, tokens, tokenConfig);
 
@@ -162,10 +164,9 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         decimalDiff2 = bound(decimalDiff2, 0, 18).toUint8();
         decimalDiff3 = bound(decimalDiff3, 0, 18).toUint8();
 
-        IERC20[] memory tokens = new IERC20[](3);
-        tokens[0] = dai;
-        tokens[1] = wsteth;
-        tokens[2] = usdc;
+        IERC20[] memory tokens = InputHelpers.sortTokens(
+            [address(usdc), address(dai), address(wsteth)].toMemoryArray().asIERC20()
+        );
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
         vault.manualSetPoolTokenConfig(pool, tokens, tokenConfig);
 
