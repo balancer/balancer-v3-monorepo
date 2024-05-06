@@ -502,12 +502,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         authenticate
         returns (uint256 removedBaseBalance, uint256 removedWrappedBalance)
     {
-        address baseToken = wrappedToken.asset();
-        if (_bufferAssets[IERC20(address(wrappedToken))] != baseToken) {
-            // Asset was changed since the first bufferAddLiquidity call
-            revert WrongWrappedTokenAsset(address(wrappedToken));
-        }
-
         bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
 
         uint256 ownerShares = _bufferLpShares[IERC20(wrappedToken)][sharesOwner];
@@ -532,7 +526,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
         _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
 
-        _supplyCredit(IERC20(baseToken), removedBaseBalance);
+        _supplyCredit(IERC20(_bufferAssets[IERC20(address(wrappedToken))]), removedBaseBalance);
         _supplyCredit(wrappedToken, removedWrappedBalance);
     }
 
