@@ -23,7 +23,7 @@ import { VaultMock } from "../../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { Router } from "../../../contracts/Router.sol";
 import { BatchRouter } from "../../../contracts/BatchRouter.sol";
-import { VaultConstants } from "../../../contracts/VaultConstants.sol";
+import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
@@ -32,7 +32,7 @@ import { VaultMockDeployer } from "./VaultMockDeployer.sol";
 
 import { Permit2Helpers } from "./Permit2Helpers.sol";
 
-abstract contract BaseVaultTest is VaultConstants, BaseTest, Permit2Helpers {
+abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     using ArrayHelpers for *;
 
     struct Balances {
