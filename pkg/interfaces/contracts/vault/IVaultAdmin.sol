@@ -244,10 +244,7 @@ interface IVaultAdmin {
      * @param liquidityOwner Address of the user that owns liquidity in the wrapped token's buffer
      * @return ownerShares Amount of shares that the liquidity owner has
      */
-    function getBufferSharesOfLiquidityOwner(
-        IERC20 wrappedToken,
-        address liquidityOwner
-    ) external view returns (uint256 ownerShares);
+    function getBufferShares(IERC20 wrappedToken, address liquidityOwner) external view returns (uint256 ownerShares);
 
     /**
      * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the vault.

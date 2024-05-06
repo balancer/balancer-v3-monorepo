@@ -533,7 +533,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferSharesOfLiquidityOwner(IERC20 token, address user) external view returns (uint256 shares) {
+    function getBufferShares(IERC20 token, address user) external view returns (uint256 shares) {
         return _bufferLpShares[token][user];
     }
 
