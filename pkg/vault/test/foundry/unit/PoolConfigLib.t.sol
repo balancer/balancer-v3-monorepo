@@ -27,7 +27,7 @@ contract PoolConfigLibTest is Test {
     mapping(uint256 => bool) usedBits;
 
     // 17 flags + 2 * 24 bit fee + 24 bit token diffs + 32 bit timestamp = 120 total bits used.
-    uint256 private constant CONFIG_MSB = 121;
+    uint256 private constant BITS_IN_USE = 121;
 
     // #region PoolConfigBits
     function testOffsets() public {
@@ -50,7 +50,7 @@ contract PoolConfigLibTest is Test {
         _checkBit(PoolConfigLib.REMOVE_LIQUIDITY_CUSTOM_OFFSET);
 
         _checkBits(PoolConfigLib.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH);
-        _checkBits(PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH);
+        _checkBits(PoolConfigLib.POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH);
         _checkBits(PoolConfigLib.DECIMAL_SCALING_FACTORS_OFFSET, TOKEN_DECIMAL_DIFFS_BITLENGTH);
         _checkBits(PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH);
     }
@@ -76,16 +76,20 @@ contract PoolConfigLibTest is Test {
         );
     }
 
-    function testHasDynamicSwapFee() public {
+    function testShouldCallComputeDynamicSwapFee() public {
         assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET)).hasDynamicSwapFee(),
-            "hasDynamicSwapFee is false"
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET))
+                .shouldCallComputeDynamicSwapFee(),
+            "shouldCallComputeDynamicSwapFee is false"
         );
     }
 
     function testIsExemptFromProtocolSwapFee() public {
         assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, PoolConfigLib.PROTOCOL_SWAP_FEE_EXEMPT_OFFSET)).isExemptFromProtocolSwapFee(),
+            PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.PROTOCOL_SWAP_FEE_EXEMPT_OFFSET))
+                .isExemptFromProtocolSwapFee(),
             "isExemptFromProtocolSwapFee is false"
         );
     }
@@ -208,7 +212,7 @@ contract PoolConfigLibTest is Test {
     function testGetPoolCreatorFeePercentage() public {
         assertEq(
             PoolConfigBits
-                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH))
+                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH))
                 .getPoolCreatorFeePercentage(),
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
             "staticSwapFeePercentage mismatch"
@@ -301,8 +305,8 @@ contract PoolConfigLibTest is Test {
         assertFalse(configBits.isPoolRegistered(), "isPoolRegistered is true");
         assertFalse(configBits.isPoolInitialized(), "isPoolInitialized is true");
         assertFalse(configBits.isPoolPaused(), "isPoolPaused is true");
-        assertFalse(configBits.hasDynamicSwapFee(), "hasDynamicSwapFee is true");
         assertFalse(configBits.isExemptFromProtocolSwapFee(), "isExemptFromProtocolSwapFee is true");
+        assertFalse(configBits.shouldCallComputeDynamicSwapFee(), "shouldCallComputeDynamicSwapFee is true");
         assertFalse(configBits.shouldCallBeforeSwap(), "shouldCallBeforeSwap is true");
         assertFalse(configBits.shouldCallAfterSwap(), "shouldCallAfterSwap is true");
         assertFalse(configBits.shouldCallBeforeAddLiquidity(), "shouldCallBeforeAddLiquidity is true");
@@ -362,14 +366,6 @@ contract PoolConfigLibTest is Test {
 
         assertTrue(
             PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET))
-                .toPoolConfig()
-                .hasDynamicSwapFee,
-            "hasDynamicSwapFee mismatch"
-        );
-
-        assertTrue(
-            PoolConfigBits
                 .wrap(bytes32(0).insertBool(true, PoolConfigLib.PROTOCOL_SWAP_FEE_EXEMPT_OFFSET))
                 .toPoolConfig()
                 .isExemptFromProtocolSwapFee,
@@ -387,7 +383,7 @@ contract PoolConfigLibTest is Test {
 
         assertEq(
             PoolConfigBits
-                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH))
+                .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH))
                 .toPoolConfig()
                 .poolCreatorFeePercentage,
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
@@ -481,6 +477,15 @@ contract PoolConfigLibTest is Test {
 
         assertTrue(
             PoolConfigBits
+                .wrap(bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET))
+                .toPoolConfig()
+                .hooks
+                .shouldCallComputeDynamicSwapFee,
+            "shouldCallComputeDynamicSwapFee mismatch"
+        );
+
+        assertTrue(
+            PoolConfigBits
                 .wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_SWAP_OFFSET))
                 .toPoolConfig()
                 .hooks
@@ -560,14 +565,6 @@ contract PoolConfigLibTest is Test {
         );
 
         config = _createEmptyConfig();
-        config.hasDynamicSwapFee = true;
-        assertEq(
-            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
-            bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET),
-            "hasDynamicSwapFee mismatch"
-        );
-
-        config = _createEmptyConfig();
         config.isExemptFromProtocolSwapFee = true;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
@@ -587,7 +584,7 @@ contract PoolConfigLibTest is Test {
         config.poolCreatorFeePercentage = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
-            bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_DEV_FEE_OFFSET, FEE_BITLENGTH),
+            bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH),
             "poolCreatorFeePercentage mismatch"
         );
 
@@ -658,6 +655,14 @@ contract PoolConfigLibTest is Test {
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.AFTER_REMOVE_LIQUIDITY_OFFSET),
             "shouldCallAfterRemoveLiquidity mismatch"
+        );
+
+        config = _createEmptyConfig();
+        config.hooks.shouldCallComputeDynamicSwapFee = true;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET),
+            "shouldCallComputeDynamicSwapFee mismatch"
         );
 
         config = _createEmptyConfig();
@@ -756,7 +761,7 @@ contract PoolConfigLibTest is Test {
     }
 
     function testToAndFromConfigBits__Fuzz(uint256 rawConfigInt) public {
-        rawConfigInt = bound(rawConfigInt, 0, uint256(1 << CONFIG_MSB) - 1);
+        rawConfigInt = bound(rawConfigInt, 0, uint256(1 << BITS_IN_USE) - 1);
         bytes32 rawConfig = bytes32(rawConfigInt);
         PoolConfig memory config = PoolConfigLib.toPoolConfig(PoolConfigBits.wrap(rawConfig));
         bytes32 configBytes32 = PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config));
@@ -765,7 +770,7 @@ contract PoolConfigLibTest is Test {
     }
 
     function testUnusedConfigBits() public {
-        bytes32 unusedBits = bytes32(uint256(type(uint256).max << (CONFIG_MSB + 1)));
+        bytes32 unusedBits = bytes32(uint256(type(uint256).max << (BITS_IN_USE)));
 
         PoolConfig memory config = PoolConfigLib.toPoolConfig(PoolConfigBits.wrap(unusedBits));
         bytes32 configBytes32 = PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config));

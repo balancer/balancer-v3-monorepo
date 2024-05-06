@@ -28,11 +28,49 @@ contract HooksTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.hooks.shouldCallComputeDynamicSwapFee = true;
         config.hooks.shouldCallBeforeSwap = true;
         config.hooks.shouldCallAfterSwap = true;
         vault.setConfig(address(pool), config);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+    }
+
+    function testOnComputeDynamicSwapFeeHook() public {
+        vm.prank(bob);
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IPoolHooks.onComputeDynamicSwapFee.selector,
+                IBasePool.PoolSwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    amountGivenScaled18: defaultAmount,
+                    balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
+                    indexIn: usdcIdx,
+                    indexOut: daiIdx,
+                    sender: address(router),
+                    userData: bytes("")
+                })
+            )
+        );
+        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
+    }
+
+    function testOnComputeDynamicSwapFeeHookRevert() public {
+        // should fail
+        PoolMock(pool).setFailComputeDynamicSwapFeeHook(true);
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.DynamicSwapFeeHookFailed.selector));
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
     }
 
     function testOnBeforeSwapHook() public {
@@ -75,6 +113,7 @@ contract HooksTest is BaseVaultTest {
     function testOnAfterSwapHook() public {
         setSwapFeePercentage(swapFeePercentage);
         setProtocolSwapFeePercentage(protocolSwapFeePercentage);
+        PoolMock(pool).setDynamicSwapFeePercentage(swapFeePercentage);
 
         uint256 expectedAmountOut = defaultAmount.mulDown(swapFeePercentage.complement());
         uint256 swapFee = defaultAmount.mulDown(swapFeePercentage);

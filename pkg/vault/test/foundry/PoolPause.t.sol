@@ -55,7 +55,14 @@ contract PoolPauseTest is BaseVaultTest {
         // Pass zero for the pause manager
         unmanagedPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
-        factoryMock.registerGeneralTestPool(address(unmanagedPool), tokenConfig, 0, 365 days, false, defaultRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(unmanagedPool),
+            tokenConfig,
+            0,
+            365 days,
+            false,
+            defaultRoleAccounts
+        );
 
         permissionlessPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
@@ -63,7 +70,14 @@ contract PoolPauseTest is BaseVaultTest {
 
         infinityPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
-        factoryMock.registerGeneralTestPool(address(infinityPool), tokenConfig, 0, 10000 days, false, defaultRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(infinityPool),
+            tokenConfig,
+            0,
+            10000 days,
+            false,
+            defaultRoleAccounts
+        );
 
         factory = new PoolFactoryMock(IVault(address(vault)), 365 days);
     }
