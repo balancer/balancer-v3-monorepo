@@ -43,12 +43,10 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     }
 
     function testNonEmptyPoolTokenBalance() public {
-        vm.skip(true); // TODO: why is it expecting tokens to be sorted?
-
         IERC20[] memory tokens = new IERC20[](3);
-        tokens[0] = usdc;
-        tokens[1] = dai;
-        tokens[2] = wsteth;
+        tokens[0] = dai;
+        tokens[1] = wsteth;
+        tokens[2] = usdc;
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
         vault.manualSetPoolTokenConfig(pool, tokens, tokenConfig);
         uint256[] memory originalBalancesRaw = new uint256[](3);
@@ -157,8 +155,6 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         uint8 decimalDiff2,
         uint8 decimalDiff3
     ) public {
-        vm.skip(true); // TODO: why is it expecting tokens to be sorted?
-
         balance1 = bound(balance1, 0, _MAX_RAW_BALANCE);
         balance2 = bound(balance2, 0, _MAX_RAW_BALANCE);
         balance3 = bound(balance3, 0, _MAX_RAW_BALANCE);
@@ -167,9 +163,9 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         decimalDiff3 = bound(decimalDiff3, 0, 18).toUint8();
 
         IERC20[] memory tokens = new IERC20[](3);
-        tokens[0] = usdc;
-        tokens[1] = dai;
-        tokens[2] = wsteth;
+        tokens[0] = dai;
+        tokens[1] = wsteth;
+        tokens[2] = usdc;
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
         vault.manualSetPoolTokenConfig(pool, tokens, tokenConfig);
 
