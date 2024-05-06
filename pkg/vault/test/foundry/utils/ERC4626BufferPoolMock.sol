@@ -11,7 +11,6 @@ import { SwapKind, SwapParams as VaultSwapParams } from "@balancer-labs/v3-inter
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC4626BufferPool } from "vault/contracts/ERC4626BufferPool.sol";
-import { BasePoolHooks } from "vault/contracts/BasePoolHooks.sol";
 
 contract ERC4626BufferPoolMock is ERC4626BufferPool {
     using SafeERC20 for IERC20;
