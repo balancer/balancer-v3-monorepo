@@ -296,7 +296,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      *               creatorSwapFeeAmountRaw, swapFeeIndex, swapFeeAmountRaw, swapFeeToken in vars;
      *               balancesRaw, balancesLiveScaled18 in `poolData`.
      * Updates `_protocolFees`, `_poolCreatorFees`, `_poolTokenBalances` in storage.
-     * Emits Swap event. Can emit ProtocolSwapFeeCharged, PoolCreatorSwapFeeCharged events.
+     * Emits Swap event. May emit ProtocolSwapFeeCharged, PoolCreatorSwapFeeCharged events.
      */
     function _swap(
         SwapParams memory params,
@@ -312,6 +312,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Intervening code cannot read balances from storage, as they are temporarily out-of-sync here. This function
         // is nonReentrant, to guard against read-only reentrancy issues.
 
+        // Note that this function is a non-reentrant context. If `_getSwapFeePercentages` needs to invoke a reentrant hook,
+        // it would have to be passed in from outside.
         uint256 swapFeePercentage = _getSwapFeePercentage(poolData.poolConfig);
 
         // Set vars.swapFeeAmountScaled18 based on the amountCalculated.
@@ -351,6 +353,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
         }
 
+        vars.swapFeeIndex = params.kind == SwapKind.EXACT_IN ? vars.indexOut : vars.indexIn;
+        vars.swapFeeToken = params.kind == SwapKind.EXACT_IN ? params.tokenOut : params.tokenIn;
+
         // Compute and charge protocol and creator fees. Note that protocol fee storage is updated
         // before balance storage, as the final raw balances need to take the fees into account.
         (vars.protocolSwapFeeAmountRaw, vars.creatorSwapFeeAmountRaw) = _computeAndChargeProtocolAndCreatorFees(
@@ -358,21 +363,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.swapFeeAmountScaled18,
             vaultState.protocolSwapFeePercentage,
             params.pool,
-            params.kind == SwapKind.EXACT_IN ? params.tokenOut : params.tokenIn,
-            params.kind == SwapKind.EXACT_IN ? vars.indexOut : vars.indexIn
+            vars.swapFeeToken,
+            vars.swapFeeIndex
         );
 
-        // Adjust for swap amounts
+        // Adjust for swap amounts.
         poolData.balancesRaw[vars.indexIn] += amountIn;
         poolData.balancesRaw[vars.indexOut] -= amountOut;
 
-        // Adjust for fees
+        // Adjust for fees. Subtract from the calculated amount: tokenOut if ExactIn, or tokenIn if ExactOut.
         uint256 totalFeeAdjustment = vars.protocolSwapFeeAmountRaw + vars.creatorSwapFeeAmountRaw;
-        if (params.kind == SwapKind.EXACT_IN) {
-            poolData.balancesRaw[vars.indexOut] -= totalFeeAdjustment;
-        } else {
-            poolData.balancesRaw[vars.indexIn] -= totalFeeAdjustment;
-        }
+        poolData.balancesRaw[vars.swapFeeIndex] -= totalFeeAdjustment;
 
         // Set both raw and last live balances.
         _setPoolBalances(params.pool, poolData);
@@ -384,12 +385,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
         // also contains the rate, undo it when converting to raw.
-        vars.swapFeeIndex = params.kind == SwapKind.EXACT_IN ? vars.indexOut : vars.indexIn;
         vars.swapFeeAmountRaw = vars.swapFeeAmountScaled18.toRawUndoRateRoundDown(
             poolData.decimalScalingFactors[vars.swapFeeIndex],
             poolData.tokenRates[vars.swapFeeIndex]
         );
-        vars.swapFeeToken = params.kind == SwapKind.EXACT_IN ? params.tokenOut : params.tokenIn;
 
         emit Swap(
             params.pool,
