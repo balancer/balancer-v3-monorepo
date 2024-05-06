@@ -184,7 +184,33 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
 
                 SwapPathStep memory step = path.steps[j];
 
-                if (!step.isBuffer && address(stepTokenIn) == step.pool) {
+                if (step.isBuffer) {
+                    (, , uint256 amountOut) = _vault.bufferWrapUnwrap(
+                        WrapUnwrapParams({
+                            kind: SwapKind.EXACT_IN,
+                            wrapUnwrapKind: step.pool == address(stepTokenIn)
+                                ? WrapUnwrapKind.UNWRAP
+                                : WrapUnwrapKind.WRAP,
+                            wrappedToken: IERC4626(step.pool),
+                            amountGivenRaw: stepExactAmountIn,
+                            limitRaw: minAmountOut,
+                            userData: params.userData
+                        })
+                    );
+
+                    if (stepLocals.isLastStep) {
+                        // The amount out for the last step of the path should be recorded for the return value, and the
+                        // amount for the token should be sent back to the sender later on.
+                        pathAmountsOut[i] = amountOut;
+                        _currentSwapTokensOut.add(address(step.tokenOut));
+                        _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), amountOut);
+                    } else {
+                        // Input for the next step is output of current step.
+                        stepExactAmountIn = amountOut;
+                        // The token in for the next step is the token out of the current step.
+                        stepTokenIn = step.tokenOut;
+                    }
+                } else if (address(stepTokenIn) == step.pool) {
                     // Token in is BPT: remove liquidity - Single token exact in
 
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
@@ -250,7 +276,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         // The token in for the next step is the token out of the current step.
                         stepTokenIn = step.tokenOut;
                     }
-                } else if (!step.isBuffer && address(step.tokenOut) == step.pool) {
+                } else if (address(step.tokenOut) == step.pool) {
                     // Token out is BPT: add liquidity - Single token exact in (unbalanced)
                     (uint256[] memory exactAmountsIn, ) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
@@ -285,34 +311,18 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         _vault.settle(IERC20(step.pool));
                     }
                 } else {
-                    uint256 amountOut;
-                    if (step.isBuffer) {
-                        (, , amountOut) = _vault.bufferWrapUnwrap(
-                            WrapUnwrapParams({
-                                kind: SwapKind.EXACT_IN,
-                                wrapUnwrapKind: step.pool == address(stepTokenIn)
-                                    ? WrapUnwrapKind.UNWRAP
-                                    : WrapUnwrapKind.WRAP,
-                                wrappedToken: IERC4626(step.pool),
-                                amountGivenRaw: stepExactAmountIn,
-                                limitRaw: minAmountOut,
-                                userData: params.userData
-                            })
-                        );
-                    } else {
-                        // No BPT involved in the operation: regular swap exact in
-                        (, , amountOut) = _vault.swap(
-                            SwapParams({
-                                kind: SwapKind.EXACT_IN,
-                                pool: step.pool,
-                                tokenIn: stepTokenIn,
-                                tokenOut: step.tokenOut,
-                                amountGivenRaw: stepExactAmountIn,
-                                limitRaw: minAmountOut,
-                                userData: params.userData
-                            })
-                        );
-                    }
+                    // No BPT involved in the operation: regular swap exact in
+                    (, , uint256 amountOut) = _vault.swap(
+                        SwapParams({
+                            kind: SwapKind.EXACT_IN,
+                            pool: step.pool,
+                            tokenIn: stepTokenIn,
+                            tokenOut: step.tokenOut,
+                            amountGivenRaw: stepExactAmountIn,
+                            limitRaw: minAmountOut,
+                            userData: params.userData
+                        })
+                    );
 
                     if (stepLocals.isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value, and the
@@ -422,7 +432,39 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     stepTokenIn = path.steps[uint256(j - 1)].tokenOut;
                 }
 
-                if (!step.isBuffer && address(stepTokenIn) == step.pool) {
+                if (step.isBuffer) {
+                    if (stepLocals.isLastStep) {
+                        // The buffer will need this token to wrap/unwrap, so take it from the user in advance
+                        _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
+                    }
+
+                    (, uint256 amountIn, ) = _vault.bufferWrapUnwrap(
+                        WrapUnwrapParams({
+                            kind: SwapKind.EXACT_OUT,
+                            wrapUnwrapKind: step.pool == address(stepTokenIn)
+                                ? WrapUnwrapKind.UNWRAP
+                                : WrapUnwrapKind.WRAP,
+                            wrappedToken: IERC4626(step.pool),
+                            amountGivenRaw: stepExactAmountOut,
+                            limitRaw: stepMaxAmountIn,
+                            userData: params.userData
+                        })
+                    );
+
+                    if (stepLocals.isLastStep) {
+                        pathAmountsIn[i] = amountIn;
+                        // since the token was taken in advance, returns to the user what is left from the
+                        // wrap/unwrap operation
+                        _currentSwapTokensOut.add(address(stepTokenIn));
+                        _currentSwapTokenOutAmounts().tAdd(address(stepTokenIn), path.maxAmountIn - amountIn);
+                        // settledTokenAmounts is used to return the amountsIn at the end of the operation, which
+                        // is only amountIn. The difference between maxAmountIn and amountIn will be paid during
+                        // settle
+                        _settledTokenAmounts().tAdd(address(path.tokenIn), amountIn);
+                    } else {
+                        stepExactAmountOut = amountIn;
+                    }
+                } else if (address(stepTokenIn) == step.pool) {
                     // Token in is BPT: remove liquidity - Single token exact out
 
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
@@ -485,7 +527,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                             _vault.settle(stepTokenIn);
                         }
                     }
-                } else if (!step.isBuffer && address(step.tokenOut) == step.pool) {
+                } else if (address(step.tokenOut) == step.pool) {
                     // Token out is BPT: add liquidity - Single token exact out
                     (uint256[] memory stepAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
                         step.pool,
@@ -524,53 +566,21 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact out
-                    uint256 amountIn;
-                    if (step.isBuffer) {
-                        if (stepLocals.isLastStep) {
-                            // The buffer will need this token to wrap/unwrap, so take it from the user in advance
-                            _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
-                        }
-
-                        (, amountIn, ) = _vault.bufferWrapUnwrap(
-                            WrapUnwrapParams({
-                                kind: SwapKind.EXACT_OUT,
-                                wrapUnwrapKind: step.pool == address(stepTokenIn)
-                                    ? WrapUnwrapKind.UNWRAP
-                                    : WrapUnwrapKind.WRAP,
-                                wrappedToken: IERC4626(step.pool),
-                                amountGivenRaw: stepExactAmountOut,
-                                limitRaw: stepMaxAmountIn,
-                                userData: params.userData
-                            })
-                        );
-                    } else {
-                        (, amountIn, ) = _vault.swap(
-                            SwapParams({
-                                kind: SwapKind.EXACT_OUT,
-                                pool: step.pool,
-                                tokenIn: stepTokenIn,
-                                tokenOut: step.tokenOut,
-                                amountGivenRaw: stepExactAmountOut,
-                                limitRaw: stepMaxAmountIn,
-                                userData: params.userData
-                            })
-                        );
-                    }
+                    (, uint256 amountIn, ) = _vault.swap(
+                        SwapParams({
+                            kind: SwapKind.EXACT_OUT,
+                            pool: step.pool,
+                            tokenIn: stepTokenIn,
+                            tokenOut: step.tokenOut,
+                            amountGivenRaw: stepExactAmountOut,
+                            limitRaw: stepMaxAmountIn,
+                            userData: params.userData
+                        })
+                    );
 
                     if (stepLocals.isLastStep) {
                         pathAmountsIn[i] = amountIn;
-                        if (step.isBuffer) {
-                            // since the token was taken in advance, returns to the user what is left from the
-                            // wrap/unwrap operation
-                            _currentSwapTokensOut.add(address(stepTokenIn));
-                            _currentSwapTokenOutAmounts().tAdd(address(stepTokenIn), path.maxAmountIn - amountIn);
-                            // settledTokenAmounts is used to return the amountsIn at the end of the operation, which
-                            // is only amountIn. The difference between maxAmountIn and amountIn will be paid during
-                            // settle
-                            _settledTokenAmounts().tAdd(address(path.tokenIn), amountIn);
-                        } else {
-                            _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
-                        }
+                        _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
                     } else {
                         stepExactAmountOut = amountIn;
                     }
