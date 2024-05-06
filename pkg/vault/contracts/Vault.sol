@@ -1234,7 +1234,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     // TODO comment
-    function _getBufferUnderlyingSurplus(bytes32 balance, IERC4626 wrappedToken) private view returns (uint256) {
+    function _getBufferUnderlyingSurplus(bytes32 balance, IERC4626 wrappedToken) internal view returns (uint256) {
         if (balance.isEmpty()) {
             return 0;
         }
@@ -1246,7 +1246,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     // TODO comment
-    function _getBufferWrappedSurplus(bytes32 balance, IERC4626 wrappedToken) private view returns (uint256) {
+    function _getBufferWrappedSurplus(bytes32 balance, IERC4626 wrappedToken) internal view returns (uint256) {
         if (balance.isEmpty()) {
             return 0;
         }
