@@ -196,16 +196,16 @@ interface IVaultAdmin {
      * @notice Adds liquidity to a buffer of yield-bearing tokens (linear pools embedded in the vault).
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
-     * @param amountBaseRaw Amount of base tokens that will be deposited into the buffer
+     * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
      * @param bufferSharesOwner Address of contract that will own the deposited liquidity. Only
      *        this contract will be able to remove liquidity from the buffer
-     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in base token amounts
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts
      *         (it is the BPT of vault's internal linear pools)
      */
     function addLiquidityBuffer(
         IERC4626 wrappedToken,
-        uint256 amountBaseRaw,
+        uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
         address bufferSharesOwner
     ) external returns (uint256 issuedShares);
@@ -223,14 +223,14 @@ interface IVaultAdmin {
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
      *        total shares
      * @param sharesOwner Address of contract that owns the deposited liquidity.
-     * @return removedBaseBalanceRaw Amount of base tokens returned to the user
+     * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
      * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
      */
     function removeLiquidityBuffer(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner
-    ) external returns (uint256 removedBaseBalanceRaw, uint256 removedWrappedBalanceRaw);
+    ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw);
 
     /**
      * @notice Returns the shares (an internal BPT of buffer) of an user that deposited his assets in the
@@ -246,15 +246,15 @@ interface IVaultAdmin {
     ) external view returns (uint256 ownerShares);
 
     /**
-     * @notice Returns the amount of base and wrapped tokens deposited in the internal buffer of the vault.
+     * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the vault.
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
-     * @return baseBalanceRaw Amount of base tokens deposited into the buffer
+     * @return underlyingBalanceRaw Amount of underlying tokens deposited into the buffer
      * @return wrappedBalanceRaw Amount of wrapped tokens deposited into the buffer
      */
     function getBufferBalance(
         IERC20 wrappedToken
-    ) external view returns (uint256 baseBalanceRaw, uint256 wrappedBalanceRaw);
+    ) external view returns (uint256 underlyingBalanceRaw, uint256 wrappedBalanceRaw);
 
     /*******************************************************************************
                                 Authentication

@@ -619,7 +619,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     /// @inheritdoc IRouter
     function addLiquidityBuffer(
         IERC4626 wrappedToken,
-        uint256 amountBaseRaw,
+        uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
         address sharesOwner
     ) external returns (uint256 issuedShares) {
@@ -629,7 +629,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                     abi.encodeWithSelector(
                         Router.addLiquidityBufferHook.selector,
                         wrappedToken,
-                        amountBaseRaw,
+                        amountUnderlyingRaw,
                         amountWrappedRaw,
                         sharesOwner
                     )
@@ -643,21 +643,21 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @dev Can only be called by the Vault.
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
-     * @param amountBaseRaw Amount of base tokens that will be deposited into the buffer
+     * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
      * @param sharesOwner Address of contract that will own the deposited liquidity. Only
      *        this contract will be able to remove liquidity from the buffer
-     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in base token amounts
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts
      *         (it is the BPT of vault's internal linear pools)
      */
     function addLiquidityBufferHook(
         IERC4626 wrappedToken,
-        uint256 amountBaseRaw,
+        uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
         address sharesOwner
     ) external nonReentrant onlyVault returns (uint256 issuedShares) {
-        issuedShares = _vault.addLiquidityBuffer(wrappedToken, amountBaseRaw, amountWrappedRaw, sharesOwner);
-        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountBaseRaw, false);
+        issuedShares = _vault.addLiquidityBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, sharesOwner);
+        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlyingRaw, false);
         _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrappedRaw, false);
     }
 
@@ -685,20 +685,20 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
      *        total shares
      * @param sharesOwner Address of contract that owns the deposited liquidity.
-     * @return removedBaseBalanceRaw Amount of base tokens returned to the user
+     * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
      * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
      */
     function removeLiquidityBufferHook(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner
-    ) external nonReentrant onlyVault returns (uint256 removedBaseBalanceRaw, uint256 removedWrappedBalanceRaw) {
-        (removedBaseBalanceRaw, removedWrappedBalanceRaw) = _vault.removeLiquidityBuffer(
+    ) external nonReentrant onlyVault returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw) {
+        (removedUnderlyingBalanceRaw, removedWrappedBalanceRaw) = _vault.removeLiquidityBuffer(
             wrappedToken,
             sharesToRemove,
             sharesOwner
         );
-        _sendTokenOut(sharesOwner, IERC20(wrappedToken.asset()), removedBaseBalanceRaw, false);
+        _sendTokenOut(sharesOwner, IERC20(wrappedToken.asset()), removedUnderlyingBalanceRaw, false);
         _sendTokenOut(sharesOwner, IERC20(address(wrappedToken)), removedWrappedBalanceRaw, false);
     }
 

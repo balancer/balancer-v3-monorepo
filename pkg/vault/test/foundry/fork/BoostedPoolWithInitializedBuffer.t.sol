@@ -146,7 +146,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         assertEq(balancesRaw[waDaiIdx], boostedAmountDai, "Wrong boosted pool balance [waDaiIdx]");
         assertEq(balancesRaw[waUsdcIdx], boostedAmountUSDC, "Wrong boosted pool balance [waUsdcIdx]");
 
-        // LP should have correct amount of shares from buffer (total invested amount in base)
+        // LP should have correct amount of shares from buffer (total invested amount in underlying)
         assertApproxEqAbs(
             vault.getBufferSharesOfLiquidityOwner(IERC20(waDAI), address(lp)),
             bufferAmount * 2,
@@ -160,16 +160,16 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
             "Wrong share of waUSDC buffer belonging to LP"
         );
 
-        uint256 baseBalance;
+        uint256 underlyingBalance;
         uint256 wrappedBalance;
 
         // The vault buffers should each have `bufferAmount` of their respective tokens.
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
-        assertEq(baseBalance, bufferAmount, "Wrong waDAI buffer balance for base token");
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
+        assertEq(underlyingBalance, bufferAmount, "Wrong waDAI buffer balance for underlying token");
         assertEq(wrappedBalance, waDAI.convertToShares(bufferAmount), "Wrong waDAI buffer balance for wrapped token");
 
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
-        assertEq(baseBalance, bufferAmount / USDC_FACTOR, "Wrong waUSDC buffer balance for base token");
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
+        assertEq(underlyingBalance, bufferAmount / USDC_FACTOR, "Wrong waUSDC buffer balance for underlying token");
         assertEq(
             wrappedBalance,
             waUSDC.convertToShares(bufferAmount / USDC_FACTOR),
@@ -364,13 +364,13 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         vars.aliceBalanceBeforeSwapDai = daiMainnet.balanceOf(address(alice));
         vars.aliceBalanceBeforeSwapUsdc = usdcMainnet.balanceOf(address(alice));
 
-        uint256 baseBalance;
+        uint256 underlyingBalance;
         uint256 wrappedBalance;
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
-        vars.bufferBalanceBeforeSwapDai = baseBalance;
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
+        vars.bufferBalanceBeforeSwapDai = underlyingBalance;
         vars.bufferBalanceBeforeSwapWaDai = wrappedBalance;
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
-        vars.bufferBalanceBeforeSwapUsdc = baseBalance;
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
+        vars.bufferBalanceBeforeSwapUsdc = underlyingBalance;
         vars.bufferBalanceBeforeSwapWaUsdc = wrappedBalance;
 
         uint256[] memory balancesRaw;
@@ -449,14 +449,14 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
             "Wrong boosted pool USDC balance"
         );
 
-        uint256 baseBalance;
+        uint256 underlyingBalance;
         uint256 wrappedBalance;
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
         assertApproxEqAbs(
-            baseBalance,
+            underlyingBalance,
             vars.bufferBalanceBeforeSwapDai + vars.expectedBufferDeltaDai,
             5,
-            "Wrong DAI buffer pool base balance"
+            "Wrong DAI buffer pool underlying balance"
         );
         assertApproxEqAbs(
             wrappedBalance,
@@ -465,12 +465,12 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
             "Wrong DAI buffer pool wrapped balance"
         );
 
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
         assertApproxEqAbs(
-            baseBalance,
+            underlyingBalance,
             vars.bufferBalanceBeforeSwapUsdc - vars.expectedBufferDeltaUsdc,
             1,
-            "Wrong USDC buffer pool base balance"
+            "Wrong USDC buffer pool underlying balance"
         );
         assertApproxEqAbs(
             wrappedBalance,

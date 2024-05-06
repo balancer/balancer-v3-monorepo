@@ -145,16 +145,16 @@ contract BoostedPoolWithEmptyBufferTest is BaseVaultTest {
         assertEq(balancesRaw[waDaiIdx], boostedAmountDai, "Wrong boosted pool balance [waDaiIdx]");
         assertEq(balancesRaw[waUsdcIdx], boostedAmountUSDC, "Wrong boosted pool balance [waUsdcIdx]");
 
-        uint256 baseBalance;
+        uint256 underlyingBalance;
         uint256 wrappedBalance;
 
         // The vault buffers should each have 0 tokens.
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
-        assertEq(baseBalance, 0, "Wrong waDAI buffer balance for base token");
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
+        assertEq(underlyingBalance, 0, "Wrong waDAI buffer balance for underlying token");
         assertEq(wrappedBalance, 0, "Wrong waDAI buffer balance for wrapped token");
 
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
-        assertEq(baseBalance, 0, "Wrong waUSDC buffer balance for base token");
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
+        assertEq(underlyingBalance, 0, "Wrong waUSDC buffer balance for underlying token");
         assertEq(wrappedBalance, 0, "Wrong waUSDC buffer balance for wrapped token");
     }
 
@@ -285,13 +285,13 @@ contract BoostedPoolWithEmptyBufferTest is BaseVaultTest {
         vars.aliceBalanceBeforeSwapDai = daiMainnet.balanceOf(address(alice));
         vars.aliceBalanceBeforeSwapUsdc = usdcMainnet.balanceOf(address(alice));
 
-        uint256 baseBalance;
+        uint256 underlyingBalance;
         uint256 wrappedBalance;
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
-        vars.bufferBalanceBeforeSwapDai = baseBalance;
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
+        vars.bufferBalanceBeforeSwapDai = underlyingBalance;
         vars.bufferBalanceBeforeSwapWaDai = wrappedBalance;
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
-        vars.bufferBalanceBeforeSwapUsdc = baseBalance;
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
+        vars.bufferBalanceBeforeSwapUsdc = underlyingBalance;
         vars.bufferBalanceBeforeSwapWaUsdc = wrappedBalance;
 
         uint256[] memory balancesRaw;
@@ -370,14 +370,14 @@ contract BoostedPoolWithEmptyBufferTest is BaseVaultTest {
             "Wrong boosted pool USDC balance"
         );
 
-        uint256 baseBalance;
+        uint256 underlyingBalance;
         uint256 wrappedBalance;
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
-        assertEq(baseBalance, 0, "Wrong DAI buffer pool base balance");
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
+        assertEq(underlyingBalance, 0, "Wrong DAI buffer pool underlying balance");
         assertEq(wrappedBalance, 0, "Wrong DAI buffer pool wrapped balance");
 
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
-        assertEq(baseBalance, 0, "Wrong USDC buffer pool base balance");
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
+        assertEq(underlyingBalance, 0, "Wrong USDC buffer pool underlying balance");
         assertEq(wrappedBalance, 0, "Wrong USDC buffer pool wrapped balance");
     }
 

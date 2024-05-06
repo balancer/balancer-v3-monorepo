@@ -156,16 +156,16 @@ interface IRouter {
     /**
      * @notice Adds liquidity to a buffer of yield-bearing tokens (linear pools embedded in the vault).
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
-     * @param amountBaseRaw Amount of base tokens that will be deposited into the buffer
+     * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
      * @param sharesOwner Address of the contract that will own the liquidity.
      *        Only this contract will be able to remove liquidity from the buffer
-     * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in base tokens
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in underlying tokens
      *         (This is the BPT of the vault's internal "Linear Pools")
      */
     function addLiquidityBuffer(
         IERC4626 wrappedToken,
-        uint256 amountBaseRaw,
+        uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
         address sharesOwner
     ) external returns (uint256 issuedShares);
@@ -291,13 +291,13 @@ interface IRouter {
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
      *        total shares
-     * @return removedBaseBalanceRaw Amount of base tokens returned to the user
+     * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
      * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
      */
     function removeLiquidityBuffer(
         IERC4626 wrappedToken,
         uint256 sharesToRemove
-    ) external returns (uint256 removedBaseBalanceRaw, uint256 removedWrappedBalanceRaw);
+    ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw);
 
     /***************************************************************************
                                        Swaps

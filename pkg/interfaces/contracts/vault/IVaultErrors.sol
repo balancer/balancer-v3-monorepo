@@ -278,11 +278,11 @@ interface IVaultErrors {
     /// @dev The user is trying to remove more shares than it has in the buffer
     error NotEnoughBufferShares();
 
-    /// @dev The wrapped token asset does not match the base token of the swap path.
+    /// @dev The wrapped token asset does not match the underlying token of the swap path.
     error WrongWrappedTokenAsset(address token);
 
-    /// @dev The wrappedToken wrap/unwrap function did not deposit/return the expected amount of base tokens.
-    error WrongWrapUnwrapBaseAmount(address wrappedToken);
+    /// @dev The wrappedToken wrap/unwrap function did not deposit/return the expected amount of underlying tokens.
+    error WrongWrapUnwrapUnderlyingAmount(address wrappedToken);
 
     /// @dev The wrappedToken wrap/unwrap function did not burn/mint the expected amount of wrapped tokens.
     error WrongWrapUnwrapWrappedAmount(address wrappedToken);

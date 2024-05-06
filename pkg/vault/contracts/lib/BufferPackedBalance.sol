@@ -11,8 +11,8 @@ library BufferPackedTokenBalance {
     /// @dev One of the balances is above the maximum value that can be stored.
     error BalanceOverflow();
 
-    /// @dev Returns the amount of base tokens allocated in the Vault, in native decimal encoding.
-    function getBaseBalance(bytes32 balance) internal pure returns (uint256) {
+    /// @dev Returns the amount of underlying tokens allocated in the Vault, in native decimal encoding.
+    function getUnderlyingBalance(bytes32 balance) internal pure returns (uint256) {
         return uint256(balance) & _MAX_BALANCE;
     }
 
@@ -21,32 +21,38 @@ library BufferPackedTokenBalance {
         return uint256(balance >> 128) & _MAX_BALANCE;
     }
 
-    /// @dev Updates base and wrapped balances and returns the new bytes32 balance
-    function setBalances(bytes32, uint256 newBaseBalance, uint256 newWrappedBalance) internal pure returns (bytes32) {
-        return toPackedBalance(newBaseBalance, newWrappedBalance);
+    /// @dev Updates underlying and wrapped balances and returns the new bytes32 balance
+    function setBalances(
+        bytes32,
+        uint256 newUnderlyingBalance,
+        uint256 newWrappedBalance
+    ) internal pure returns (bytes32) {
+        return toPackedBalance(newUnderlyingBalance, newWrappedBalance);
     }
 
-    /// @dev Packs together `base` and `wrapped` amounts to create a balance value.
-    function toPackedBalance(uint256 baseBalance, uint256 wrappedBalance) internal pure returns (bytes32) {
-        if (baseBalance > _MAX_BALANCE || wrappedBalance > _MAX_BALANCE) {
+    /// @dev Packs together `underlying` and `wrapped` amounts to create a balance value.
+    function toPackedBalance(uint256 underlyingBalance, uint256 wrappedBalance) internal pure returns (bytes32) {
+        if (underlyingBalance > _MAX_BALANCE || wrappedBalance > _MAX_BALANCE) {
             revert BalanceOverflow();
         }
 
-        return _pack(baseBalance, wrappedBalance);
+        return _pack(underlyingBalance, wrappedBalance);
     }
 
     /// @dev Decode and fetch both balances.
-    function fromPackedBalance(bytes32 balance) internal pure returns (uint256 baseBalance, uint256 wrappedBalance) {
-        return (getBaseBalance(balance), getWrappedBalance(balance));
+    function fromPackedBalance(
+        bytes32 balance
+    ) internal pure returns (uint256 underlyingBalance, uint256 wrappedBalance) {
+        return (getUnderlyingBalance(balance), getWrappedBalance(balance));
     }
 
     function hasLiquidity(bytes32 balance) internal pure returns (bool) {
-        return getBaseBalance(balance) > 0 || getWrappedBalance(balance) > 0;
+        return getUnderlyingBalance(balance) > 0 || getWrappedBalance(balance) > 0;
     }
 
     function isEmpty(bytes32 balance) internal pure returns (bool) {
         // TODO: could set some lower bounds here
-        return getBaseBalance(balance) == 0 && getWrappedBalance(balance) == 0;
+        return getUnderlyingBalance(balance) == 0 && getWrappedBalance(balance) == 0;
     }
 
     /// @dev Packs two uint128 values into a bytes32.

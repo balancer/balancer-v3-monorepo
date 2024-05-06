@@ -113,16 +113,20 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        uint256 lpBaseBalanceBefore = dai.balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceBefore = dai.balanceOf(address(lp));
         uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(address(lp));
 
         vm.prank(lp);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        uint256 lpBaseBalanceAfter = dai.balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceAfter = dai.balanceOf(address(lp));
         uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(address(lp));
 
-        assertEq(lpBaseBalanceAfter, lpBaseBalanceBefore - _wrapAmount, "LP balance of base token is wrong");
+        assertEq(
+            lpUnderlyingBalanceAfter,
+            lpUnderlyingBalanceBefore - _wrapAmount,
+            "LP balance of underlying token is wrong"
+        );
         assertEq(
             lpWrappedBalanceAfter,
             lpWrappedBalanceBefore + waDAI.previewDeposit(_wrapAmount),
@@ -174,7 +178,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToConsume(_wrapAmount - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapBaseAmount.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapUnderlyingAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -216,19 +220,19 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        uint256 lpBaseBalanceBefore = dai.balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceBefore = dai.balanceOf(address(lp));
         uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(address(lp));
 
         vm.prank(lp);
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        uint256 lpBaseBalanceAfter = dai.balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceAfter = dai.balanceOf(address(lp));
         uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(address(lp));
 
         assertEq(
-            lpBaseBalanceAfter,
-            lpBaseBalanceBefore - waDAI.previewMint(_wrapAmount),
-            "LP balance of base token is wrong"
+            lpUnderlyingBalanceAfter,
+            lpUnderlyingBalanceBefore - waDAI.previewMint(_wrapAmount),
+            "LP balance of underlying token is wrong"
         );
         assertEq(lpWrappedBalanceAfter, lpWrappedBalanceBefore + _wrapAmount, "LP balance of wrapped token is wrong");
     }
@@ -277,7 +281,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToConsume(_wrapAmount - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapBaseAmount.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapUnderlyingAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -319,16 +323,20 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        uint256 lpBaseBalanceBefore = dai.balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceBefore = dai.balanceOf(address(lp));
         uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(address(lp));
 
         vm.prank(lp);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        uint256 lpBaseBalanceAfter = dai.balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceAfter = dai.balanceOf(address(lp));
         uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(address(lp));
 
-        assertEq(lpBaseBalanceAfter, lpBaseBalanceBefore + _wrapAmount, "LP balance of base token is wrong");
+        assertEq(
+            lpUnderlyingBalanceAfter,
+            lpUnderlyingBalanceBefore + _wrapAmount,
+            "LP balance of underlying token is wrong"
+        );
         assertEq(
             lpWrappedBalanceAfter,
             lpWrappedBalanceBefore - waDAI.previewRedeem(_wrapAmount),
@@ -400,7 +408,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToReturn(waDAI.previewRedeem(_wrapAmount) - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapBaseAmount.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapUnderlyingAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -416,19 +424,19 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        uint256 lpBaseBalanceBefore = dai.balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceBefore = dai.balanceOf(address(lp));
         uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(address(lp));
 
         vm.prank(lp);
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        uint256 lpBaseBalanceAfter = dai.balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceAfter = dai.balanceOf(address(lp));
         uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(address(lp));
 
         assertEq(
-            lpBaseBalanceAfter,
-            lpBaseBalanceBefore + waDAI.previewWithdraw(_wrapAmount),
-            "LP balance of base token is wrong"
+            lpUnderlyingBalanceAfter,
+            lpUnderlyingBalanceBefore + waDAI.previewWithdraw(_wrapAmount),
+            "LP balance of underlying token is wrong"
         );
         assertEq(lpWrappedBalanceAfter, lpWrappedBalanceBefore - _wrapAmount, "LP balance of wrapped token is wrong");
     }
@@ -497,7 +505,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToReturn(_wrapAmount - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapBaseAmount.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapUnderlyingAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 
