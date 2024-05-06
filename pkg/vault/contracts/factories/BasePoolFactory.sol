@@ -52,7 +52,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
 
     /// @inheritdoc IBasePoolFactory
     function getDeploymentAddress(bytes32 salt) public view returns (address) {
-        return CREATE3.getDeployed(salt);
+        return CREATE3.getDeployed(_computeFinalSalt(salt));
     }
 
     /// @inheritdoc IBasePoolFactory

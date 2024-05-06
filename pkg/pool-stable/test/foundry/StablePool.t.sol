@@ -89,6 +89,11 @@ contract StablePoolTest is BaseVaultTest {
         );
     }
 
+    function testPoolAddress() public {
+        address calculatedPoolAddress = factory.getDeploymentAddress(ZERO_BYTES32);
+        assertEq(address(stablePool), calculatedPoolAddress);
+    }
+
     function testPoolPausedState() public {
         (bool paused, uint256 pauseWindow, uint256 bufferPeriod, address pauseManager) = vault.getPoolPausedState(
             address(pool)
