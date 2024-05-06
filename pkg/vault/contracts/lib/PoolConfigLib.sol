@@ -21,7 +21,8 @@ library PoolConfigLib {
     uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;
     uint8 public constant POOL_PAUSED_OFFSET = POOL_INITIALIZED_OFFSET + 1;
     uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = POOL_PAUSED_OFFSET + 1;
-    uint8 public constant BEFORE_SWAP_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
+    uint8 public constant PROTOCOL_SWAP_FEE_EXEMPT_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
+    uint8 public constant BEFORE_SWAP_OFFSET = PROTOCOL_SWAP_FEE_EXEMPT_OFFSET + 1;
     uint8 public constant AFTER_SWAP_OFFSET = BEFORE_SWAP_OFFSET + 1;
     uint8 public constant BEFORE_ADD_LIQUIDITY_OFFSET = AFTER_SWAP_OFFSET + 1;
     uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = BEFORE_ADD_LIQUIDITY_OFFSET + 1;
@@ -67,6 +68,10 @@ library PoolConfigLib {
 
     function hasDynamicSwapFee(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(DYNAMIC_SWAP_FEE_OFFSET);
+    }
+
+    function isExemptFromProtocolSwapFee(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(PROTOCOL_SWAP_FEE_EXEMPT_OFFSET);
     }
 
     function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
@@ -179,7 +184,8 @@ library PoolConfigLib {
         {
             configBits = configBits
                 .insertBool(config.hooks.shouldCallBeforeInitialize, BEFORE_INITIALIZE_OFFSET)
-                .insertBool(config.hooks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET);
+                .insertBool(config.hooks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET)
+                .insertBool(config.isExemptFromProtocolSwapFee, PROTOCOL_SWAP_FEE_EXEMPT_OFFSET);
         }
 
         {
@@ -245,6 +251,7 @@ library PoolConfigLib {
                 isPoolPaused: rawConfig.decodeBool(POOL_PAUSED_OFFSET),
                 isPoolInRecoveryMode: rawConfig.decodeBool(POOL_RECOVERY_MODE_OFFSET),
                 hasDynamicSwapFee: rawConfig.decodeBool(DYNAMIC_SWAP_FEE_OFFSET),
+                isExemptFromProtocolSwapFee: rawConfig.decodeBool(PROTOCOL_SWAP_FEE_EXEMPT_OFFSET),
                 staticSwapFeePercentage: rawConfig.decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
                     FEE_SCALING_FACTOR,
                 poolCreatorFeePercentage: rawConfig.decodeUint(POOL_DEV_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR,

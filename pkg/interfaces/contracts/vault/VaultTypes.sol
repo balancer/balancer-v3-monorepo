@@ -23,7 +23,7 @@ struct LiquidityManagement {
     bool enableRemoveLiquidityCustom;
 }
 
-/// @dev Represents a pool's configuration, including hooks.
+/// @dev Represents a pool's configuration, including hooks and liquidity management.
 struct PoolConfig {
     PoolHooks hooks;
     LiquidityManagement liquidityManagement;
@@ -36,6 +36,7 @@ struct PoolConfig {
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
     bool hasDynamicSwapFee;
+    bool isExemptFromProtocolSwapFee;
 }
 
 /// @dev Represents temporary vars used in a swap operation.
