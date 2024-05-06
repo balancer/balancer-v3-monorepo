@@ -497,7 +497,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     )
         public
         onlyWhenUnlocked
-        whenVaultBufferNotPaused
         nonReentrant
         authenticate
         returns (uint256 removedBaseBalance, uint256 removedWrappedBalance)
