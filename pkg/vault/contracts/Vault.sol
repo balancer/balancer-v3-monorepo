@@ -312,8 +312,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Intervening code cannot read balances from storage, as they are temporarily out-of-sync here. This function
         // is nonReentrant, to guard against read-only reentrancy issues.
 
-        // Note that this function is a non-reentrant context. If `_getSwapFeePercentages` needs to invoke a reentrant hook,
-        // it would have to be passed in from outside.
+        // Note that this function is a non-reentrant context. If `_getSwapFeePercentages` needs to invoke a reentrant
+        // hook, it would have to be passed in from outside.
         uint256 swapFeePercentage = _getSwapFeePercentage(poolData.poolConfig);
 
         // Set vars.swapFeeAmountScaled18 based on the amountCalculated.
