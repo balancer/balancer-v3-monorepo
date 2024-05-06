@@ -27,7 +27,7 @@ contract PoolConfigLibTest is Test {
     mapping(uint256 => bool) usedBits;
 
     // 16 flags + 2 * 24 bit fee + 24 bit token diffs + 32 bit timestamp = 120 total bits used.
-    uint256 private constant CONFIG_MSB = 120;
+    uint256 private constant BITS_IN_USE = 120;
 
     // #region PoolConfigBits
     function testOffsets() public {
@@ -734,7 +734,7 @@ contract PoolConfigLibTest is Test {
     }
 
     function testToAndFromConfigBits__Fuzz(uint256 rawConfigInt) public {
-        rawConfigInt = bound(rawConfigInt, 0, uint256(1 << CONFIG_MSB) - 1);
+        rawConfigInt = bound(rawConfigInt, 0, uint256(1 << BITS_IN_USE) - 1);
         bytes32 rawConfig = bytes32(rawConfigInt);
         PoolConfig memory config = PoolConfigLib.toPoolConfig(PoolConfigBits.wrap(rawConfig));
         bytes32 configBytes32 = PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config));
@@ -743,7 +743,7 @@ contract PoolConfigLibTest is Test {
     }
 
     function testUnusedConfigBits() public {
-        bytes32 unusedBits = bytes32(uint256(type(uint256).max << (CONFIG_MSB + 1)));
+        bytes32 unusedBits = bytes32(uint256(type(uint256).max << (BITS_IN_USE)));
 
         PoolConfig memory config = PoolConfigLib.toPoolConfig(PoolConfigBits.wrap(unusedBits));
         bytes32 configBytes32 = PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config));
