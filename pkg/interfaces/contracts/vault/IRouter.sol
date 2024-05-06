@@ -154,7 +154,7 @@ interface IRouter {
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /**
-     * @notice Adds liquidity to a buffer of yield-bearing tokens (linear pools embedded in the vault).
+     * @notice Adds liquidity to an yield-bearing token buffer (linear pools embedded in the vault).
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
