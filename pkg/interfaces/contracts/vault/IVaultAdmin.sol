@@ -181,14 +181,18 @@ interface IVaultAdmin {
                          Yield-bearing token buffers
     *******************************************************************************/
     /**
-     * @notice Unpauses vault buffers, used to wrap/unwrap yield-bearing tokens.
+     * @notice Unpauses vault buffers. When buffers are paused, it's not possible to add liquidity or
+     * wrap/unwrap tokens using Vault's `bufferWrapUnwrap` primitive. However, it's still possible to remove liquidity.
      * @dev This is a permissioned call.
+     *
      */
     function unpauseVaultBuffers() external;
 
     /**
-     * @notice Pauses vault buffers.
+     * @notice Pauses vault buffers globally. When buffers are paused, it's not possible to add liquidity or
+     * wrap/unwrap tokens using Vault's `bufferWrapUnwrap` primitive. However, it's still possible to remove liquidity.
      * @dev This is a permissioned call.
+     *
      */
     function pauseVaultBuffers() external;
 
