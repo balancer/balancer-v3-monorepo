@@ -26,6 +26,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
+            false, // not exempt from protocol swap fees
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: poolCreator }),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
@@ -41,6 +42,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         TokenConfig[] memory tokenConfig,
         uint256 swapFee,
         uint256 pauseWindowDuration,
+        bool isExemptFromProtocolSwapFee,
         PoolRoleAccounts memory roleAccounts
     ) external {
         _vault.registerPool(
@@ -48,6 +50,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             swapFee,
             block.timestamp + pauseWindowDuration,
+            isExemptFromProtocolSwapFee,
             roleAccounts,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
@@ -70,6 +73,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
+            false, // not exempt from protocol swap fees
             roleAccounts,
             poolHooks,
             liquidityManagement
@@ -88,6 +92,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
+            false, // not exempt from protocol swap fees
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             poolHooks,
             liquidityManagement
@@ -108,6 +113,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             DEFAULT_SWAP_FEE,
             timestamp,
+            false, // not exempt from protocol swap fees
             roleAccounts,
             poolHooks,
             liquidityManagement
