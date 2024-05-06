@@ -97,7 +97,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         // protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
         protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1;
-        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2;
+        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2 + 1;
 
         vm.prank(alice);
         snapStart("routerAddLiquiditySingleTokenExactOutWithCreatorFee");
@@ -185,8 +185,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2);
 
         // protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
-        protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1;
-        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2;
+        protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1; // mulUp
+        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2 + 1; // mulUp
 
         snapStart("routerRemoveLiquiditySingleTokenExactOutWithCreatorFee");
         bptAmountIn = router.removeLiquiditySingleTokenExactOut(
@@ -242,7 +242,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             "Add - Pool balance: token 0"
         );
 
-        assertLe(
+        assertEq(
             balancesAfter.poolTokens[1],
             balancesBefore.poolTokens[1] + amountsIn[1] - protocolSwapFees[1] - poolCreatorFees[1],
             "Add - Pool balance: token 1"
@@ -323,7 +323,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             balancesBefore.poolTokens[0] - amountsOut[0] - protocolSwapFees[0] - poolCreatorFees[0],
             "Remove - Pool balance: token 0"
         );
-        assertLe(
+        assertEq(
             balancesAfter.poolTokens[1],
             balancesBefore.poolTokens[1] - amountsOut[1] - protocolSwapFees[1] - poolCreatorFees[1],
             "Remove - Pool balance: token 1"
@@ -333,16 +333,14 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         assertEq(protocolSwapFees[daiIdx], vault.getProtocolFees(address(dai)), "Protocol's fee amount is wrong");
         assertEq(protocolSwapFees[usdcIdx], vault.getProtocolFees(address(usdc)), "Protocol's fee amount is wrong");
 
-        assertApproxEqAbs(
+        assertEq(
             poolCreatorFees[daiIdx],
             vault.getPoolCreatorFees(pool, dai),
-            1,
             "Pool creator's fee amount is wrong"
         );
-        assertApproxEqAbs(
+        assertEq(
             poolCreatorFees[usdcIdx],
             vault.getPoolCreatorFees(pool, usdc),
-            1,
             "Pool creator's fee amount is wrong"
         );
 
