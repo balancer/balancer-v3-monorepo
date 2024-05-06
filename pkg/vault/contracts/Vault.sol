@@ -984,7 +984,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
-                             Yield-bearing tokens buffers
+                             Yield-bearing token buffers
     *******************************************************************************/
 
     /// @inheritdoc IVaultMain

@@ -438,7 +438,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /*******************************************************************************
-                                Yield-bearing tokens buffers
+                                Yield-bearing token buffers
     *******************************************************************************/
     /// @inheritdoc IVaultAdmin
     function unpauseVaultBuffers() external authenticate onlyVault {
