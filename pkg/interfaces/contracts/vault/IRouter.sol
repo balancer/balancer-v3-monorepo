@@ -158,10 +158,10 @@ interface IRouter {
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
      * @param amountBaseRaw Amount of base tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
-     * @param sharesOwner Address of contract that will own the deposited liquidity. Only
-     *        this contract will be able to remove liquidity from the buffer
-     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in base token amounts
-     *         (it is the BPT of vault's internal linear pools)
+     * @param sharesOwner Address of the contract that will own the liquidity.
+     *        Only this contract will be able to remove liquidity from the buffer
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in base tokens
+     *         (This is the BPT of the vault's internal "Linear Pools")
      */
     function addLiquidityBuffer(
         IERC4626 wrappedToken,
