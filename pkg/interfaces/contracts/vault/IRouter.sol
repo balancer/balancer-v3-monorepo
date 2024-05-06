@@ -285,8 +285,8 @@ interface IRouter {
     ) external returns (uint256[] memory amountsOut);
 
     /**
-     * @notice Removes liquidity from a buffer of yield-bearing token (linear pools embedded in the vault).
-     *         Only proportional exits are supported. Only sharesOwner address can call it.
+     * @notice Removes liquidity from a yield-bearing token buffer (an embedded "Linear Pool").
+     * @dev Only proportional withdrawals are supported, and removing liquidity is permissioned.
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
