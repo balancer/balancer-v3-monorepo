@@ -174,7 +174,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData in memory. Since the swap hooks are reentrant and could do anything, including change these
         // balances, we cannot defer settlement until `_swap`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees` in storage.
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
+        // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_DOWN,
@@ -289,10 +290,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * @dev Main non-reentrant portion of the swap, which calls the pool hook and updates accounting. `vaultSwapParams`
      * are passed to the pool's `onSwap` hook.
      *
-     * Preconditions: swapFeePercentage in vars. decimalScalingFactors, tokenRates, poolConfig in `poolData`.
-     * Side effects: mutates swapFeeAmountScaled18, amountCalculatedScaled18, protocolSwapFeeAmountRaw in vars.
-     * Mutates balancesRaw, balancesLiveScaled18 in `poolData`.
-     * Updates `_protocolFees`, `_poolTokenBalances` in storage.
+     * Preconditions: amountGivenScaled18, indexIn, indexOut in vars; decimalScalingFactors, tokenRates, poolConfig,
+     *                balancesLiveScaled18 in `poolData`.
+     * Side effects: mutates swapFeeAmountScaled18, amountCalculatedScaled18, protocolSwapFeeAmountRaw,
+     *               creatorSwapFeeAmountRaw, swapFeeIndex, swapFeeAmountRaw, swapFeeToken in vars;
+     *               balancesRaw, balancesLiveScaled18 in `poolData`.
+     * Updates `_protocolFees`, `_poolCreatorFees`, `_poolTokenBalances` in storage.
+     * Emits Swap event. Can emit ProtocolSwapFeeCharged, PoolCreatorSwapFeeCharged events.
      */
     function _swap(
         SwapParams memory params,
@@ -308,7 +312,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Intervening code cannot read balances from storage, as they are temporarily out-of-sync here. This function
         // is nonReentrant, to guard against read-only reentrancy issues.
 
-        // Need for the event, or could do inside `_swap`.
         uint256 swapFeePercentage = _getSwapFeePercentage(poolData.poolConfig);
 
         // Set vars.swapFeeAmountScaled18 based on the amountCalculated.
@@ -475,7 +478,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData in memory. Since the add liquidity hooks are reentrant and could do anything, including change
         // these balances, we cannot defer settlement until `_addLiquidity`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees` in storage.
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
+        // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_UP,
@@ -705,7 +709,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData in memory. Since the remove liquidity hooks are reentrant and could do anything, including change
         // these balances, we cannot defer settlement until `_removeLiquidity`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees` in storage.
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
+        // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_DOWN,
