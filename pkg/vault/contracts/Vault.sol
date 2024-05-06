@@ -1001,7 +1001,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         address bufferAsset = _bufferAssets[IERC20(params.wrappedToken)];
 
         if (bufferAsset != address(0) && bufferAsset != address(underlyingToken)) {
-            // Asset was changed since the first addLiquidityBuffer call
+            // Asset was changed since the first addLiquidityToBuffer call
             revert WrongWrappedTokenAsset(address(params.wrappedToken));
         }
 
@@ -1083,8 +1083,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 uint256 bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalancesRaw, wrappedToken);
 
                 // TODO refactor comment
-                // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade (amountUnderlyingToWrap),
-                // plus the amount needed to leave the buffer rebalanced 50/50 at the end (bufferUnderlyingSurplus)
+                // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
+                // (amountUnderlyingToWrap), plus the amount needed to leave the buffer rebalanced 50/50 at the end
+                // (bufferUnderlyingSurplus)
                 totalUnderlyingDepositedRaw = tradeUnderlyingRaw + bufferUnderlyingSurplus;
 
                 underlyingToken.approve(address(wrappedToken), totalUnderlyingDepositedRaw);
@@ -1123,9 +1124,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Only updates buffer balances if buffer is not empty.
             if (!bufferBalancesRaw.isEmpty()) {
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
-                // increase. To decrease underlying balance, we get the total amount that was deposited (totalUnderlyingDeposited)
-                // and discounts the amount needed in the trade (amountUnderlyingToWrap). Same logic applies to wrapped
-                // balances.
+                // increase. To decrease underlying balance, we get the total amount that was deposited
+                // (totalUnderlyingDeposited) and discounts the amount needed in the trade (amountUnderlyingToWrap).
+                // Same logic applies to wrapped balances.
                 bufferBalancesRaw = bufferBalancesRaw.setBalances(
                     bufferUnderlyingBalanceRaw - (totalUnderlyingDepositedRaw - tradeUnderlyingRaw),
                     bufferWrappedBalanceRaw + (totalWrappedMintedRaw - tradeWrappedRaw)
@@ -1220,10 +1221,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Only updates buffer balances if buffer is not empty.
             if (!bufferBalancesRaw.isEmpty()) {
-                // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance will
-                // decrease. To increase underlying balance, we get the total amount that was withdrawn (totalUnderlyingWithdrawn)
-                // and discounts the amount needed in the trade (amountUnderlyingExpectedRaw). Same logic applies to wrapped
-                // balances.
+                // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance
+                // will decrease. To increase underlying balance, we get the total amount that was withdrawn
+                // (totalUnderlyingWithdrawn) and discounts the amount needed in the trade
+                // (amountUnderlyingExpectedRaw). Same logic applies to wrapped balances.
                 bufferBalancesRaw = bufferBalancesRaw.setBalances(
                     bufferUnderlyingBalanceRaw + (totalUnderlyingWithdrawnRaw - tradeUnderlyingRaw),
                     bufferWrappedBalanceRaw - (totalWrappedRedeemedRaw - tradeWrappedRaw)

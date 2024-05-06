@@ -85,8 +85,8 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
 
-        router.addLiquidityBuffer(waDAI, bufferAmount, bufferAmount, address(lp));
-        router.addLiquidityBuffer(waUSDC, bufferAmount, bufferAmount, address(lp));
+        router.addLiquidityToBuffer(waDAI, bufferAmount, bufferAmount, address(lp));
+        router.addLiquidityToBuffer(waUSDC, bufferAmount, bufferAmount, address(lp));
         vm.stopPrank();
     }
 

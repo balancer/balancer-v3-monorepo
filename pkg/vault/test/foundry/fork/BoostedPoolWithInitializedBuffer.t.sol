@@ -534,8 +534,8 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         uint256 wrappedBufferAmountUSDC = waUSDC.convertToShares(bufferAmount / USDC_FACTOR);
 
         vm.startPrank(lp);
-        router.addLiquidityBuffer(waDAI, bufferAmount, wrappedBufferAmountDai, address(lp));
-        router.addLiquidityBuffer(waUSDC, bufferAmount / USDC_FACTOR, wrappedBufferAmountUSDC, address(lp));
+        router.addLiquidityToBuffer(waDAI, bufferAmount, wrappedBufferAmountDai, address(lp));
+        router.addLiquidityToBuffer(waUSDC, bufferAmount / USDC_FACTOR, wrappedBufferAmountUSDC, address(lp));
         vm.stopPrank();
     }
 }

@@ -163,7 +163,7 @@ interface IRouter {
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in underlying tokens
      *         (This is the BPT of the vault's internal "Linear Pools")
      */
-    function addLiquidityBuffer(
+    function addLiquidityToBuffer(
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
@@ -294,7 +294,7 @@ interface IRouter {
      * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
      * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
      */
-    function removeLiquidityBuffer(
+    function removeLiquidityFromBuffer(
         IERC4626 wrappedToken,
         uint256 sharesToRemove
     ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw);

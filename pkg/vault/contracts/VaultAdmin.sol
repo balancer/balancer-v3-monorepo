@@ -455,7 +455,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function addLiquidityBuffer(
+    function addLiquidityToBuffer(
         IERC4626 wrappedToken,
         uint256 amountUnderlying,
         uint256 amountWrapped,
@@ -497,7 +497,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function removeLiquidityBuffer(
+    function removeLiquidityFromBuffer(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner

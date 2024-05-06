@@ -203,7 +203,7 @@ interface IVaultAdmin {
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts
      *         (it is the BPT of vault's internal linear pools)
      */
-    function addLiquidityBuffer(
+    function addLiquidityToBuffer(
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
@@ -226,7 +226,7 @@ interface IVaultAdmin {
      * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
      * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
      */
-    function removeLiquidityBuffer(
+    function removeLiquidityFromBuffer(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner

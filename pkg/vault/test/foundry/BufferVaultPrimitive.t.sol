@@ -35,8 +35,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Authorizes user "admin" to pause/unpause vault's buffer
         authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
         authorizer.grantRole(vault.getActionId(IVaultAdmin.unpauseVaultBuffers.selector), admin);
-        // Authorizes router to call removeLiquidityBuffer (trusted router)
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityBuffer.selector), address(router));
+        // Authorizes router to call removeLiquidityFromBuffer (trusted router)
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
 
         initializeLp();
     }
@@ -90,7 +90,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         // Add Liquidity with the right asset
         vm.prank(lp);
-        router.addLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
 
         // Change Asset to the wrong asset
         waDAI.setAsset(usdc);
@@ -373,7 +373,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         vm.startPrank(lp);
         // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount
-        router.addLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
         // Do not revert since more shares were consumed from a malicious token, but the right amount of assets
         // returned
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
@@ -470,7 +470,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         vm.startPrank(lp);
         // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount
-        router.addLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
         // Do not revert since more shares were consumed from a malicious token, but the right amount of assets
         // returned
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
@@ -535,7 +535,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
     function testDisableVaultBuffer() public {
         vm.prank(lp);
-        router.addLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
 
         vm.prank(admin);
         IVaultAdmin(address(vault)).pauseVaultBuffers();
@@ -555,10 +555,10 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultBuffersArePaused.selector));
-        router.addLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
 
         // remove liquidity is supposed to pass even with buffers paused, so revert is not expected
-        router.removeLiquidityBuffer(IERC4626(address(waDAI)), _wrapAmount);
+        router.removeLiquidityFromBuffer(IERC4626(address(waDAI)), _wrapAmount);
 
         vm.stopPrank();
 
