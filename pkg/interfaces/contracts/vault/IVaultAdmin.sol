@@ -178,7 +178,7 @@ interface IVaultAdmin {
     function disableQuery() external;
 
     /*******************************************************************************
-                         Yield-bearing tokens buffers
+                         Yield-bearing token buffers
     *******************************************************************************/
     /**
      * @notice Unpauses vault buffers, used to wrap/unwrap yield-bearing tokens.
