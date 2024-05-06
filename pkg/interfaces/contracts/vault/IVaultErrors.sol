@@ -63,9 +63,6 @@ interface IVaultErrors {
      */
     error TokensMismatch(address pool, address expectedToken, address actualToken);
 
-    /// @dev Error thrown on registration if the pool does not support interface queries.
-    error PoolMustSupportERC165();
-
     /*******************************************************************************
                                  Transient Accounting
     *******************************************************************************/
@@ -75,6 +72,9 @@ interface IVaultErrors {
 
     /// @dev A user called a Vault function (swap, add/remove liquidity) outside the lock context.
     error VaultIsNotUnlocked();
+
+    /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
+    error DynamicSwapFeeHookFailed();
 
     /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
     error BeforeSwapHookFailed();
