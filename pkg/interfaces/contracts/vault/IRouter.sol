@@ -288,7 +288,7 @@ interface IRouter {
      * @notice Removes liquidity from a yield-bearing token buffer (an embedded "Linear Pool").
      * @dev Only proportional withdrawals are supported, and removing liquidity is permissioned.
      *
-     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param wrappedToken Address of a wrapped token that implements the IERC4626 interface
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
      *        total shares
      * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
