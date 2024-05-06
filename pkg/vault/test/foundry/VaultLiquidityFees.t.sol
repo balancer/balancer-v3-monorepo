@@ -96,8 +96,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2);
 
         // protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
-        protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1;
-        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2 + 1;
+        protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1; // mulUp
+        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2 + 1; // mulUp
 
         vm.prank(alice);
         snapStart("routerAddLiquiditySingleTokenExactOutWithCreatorFee");
