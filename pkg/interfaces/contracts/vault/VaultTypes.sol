@@ -46,7 +46,6 @@ struct SwapVars {
     uint256 amountGivenScaled18;
     uint256 amountCalculatedScaled18;
     uint256 swapFeeAmountScaled18;
-    uint256 swapFeePercentage;
     uint256 protocolSwapFeeAmountRaw;
     uint256 creatorSwapFeeAmountRaw;
     uint256 swapFeeAmountRaw;

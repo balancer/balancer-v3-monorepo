@@ -217,9 +217,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _updateAmountGivenInVars(vars, params, poolData);
         }
 
-        // Need for the event, or could do inside `_swap`.
-        vars.swapFeePercentage = _getSwapFeePercentage(poolData.poolConfig);
-
         // Non-reentrant call that updates accounting.
         (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, vaultState);
 
@@ -247,26 +244,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert AfterSwapHookFailed();
             }
         }
-
-        // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
-        // also contains the rate, undo it when converting to raw.
-        vars.swapFeeIndex = params.kind == SwapKind.EXACT_IN ? vars.indexOut : vars.indexIn;
-        vars.swapFeeAmountRaw = vars.swapFeeAmountScaled18.toRawUndoRateRoundDown(
-            poolData.decimalScalingFactors[vars.swapFeeIndex],
-            poolData.tokenRates[vars.swapFeeIndex]
-        );
-        vars.swapFeeToken = params.kind == SwapKind.EXACT_IN ? params.tokenOut : params.tokenIn;
-
-        emit Swap(
-            params.pool,
-            params.tokenIn,
-            params.tokenOut,
-            amountIn,
-            amountOut,
-            vars.swapFeePercentage,
-            vars.swapFeeAmountRaw,
-            vars.swapFeeToken
-        );
     }
 
     function _buildPoolSwapParams(
@@ -331,12 +308,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Intervening code cannot read balances from storage, as they are temporarily out-of-sync here. This function
         // is nonReentrant, to guard against read-only reentrancy issues.
 
+        // Need for the event, or could do inside `_swap`.
+        uint256 swapFeePercentage = _getSwapFeePercentage(poolData.poolConfig);
+
         // Set vars.swapFeeAmountScaled18 based on the amountCalculated.
-        if (vars.swapFeePercentage > 0) {
+        if (swapFeePercentage > 0) {
             // Swap fee is always a percentage of the amountCalculated. On ExactIn, subtract it from the calculated
             // amountOut. On ExactOut, add it to the calculated amountIn.
             // Round up to avoid losses during precision loss.
-            vars.swapFeeAmountScaled18 = vars.amountCalculatedScaled18.mulUp(vars.swapFeePercentage);
+            vars.swapFeeAmountScaled18 = vars.amountCalculatedScaled18.mulUp(swapFeePercentage);
         }
 
         // Need to update `amountCalculatedScaled18` for the onAfterSwap hook.
@@ -398,6 +378,26 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _takeDebt(params.tokenIn, amountIn);
         // Account amountOut of tokenOut
         _supplyCredit(params.tokenOut, amountOut);
+
+        // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
+        // also contains the rate, undo it when converting to raw.
+        vars.swapFeeIndex = params.kind == SwapKind.EXACT_IN ? vars.indexOut : vars.indexIn;
+        vars.swapFeeAmountRaw = vars.swapFeeAmountScaled18.toRawUndoRateRoundDown(
+            poolData.decimalScalingFactors[vars.swapFeeIndex],
+            poolData.tokenRates[vars.swapFeeIndex]
+        );
+        vars.swapFeeToken = params.kind == SwapKind.EXACT_IN ? params.tokenOut : params.tokenIn;
+
+        emit Swap(
+            params.pool,
+            params.tokenIn,
+            params.tokenOut,
+            amountIn,
+            amountOut,
+            swapFeePercentage,
+            vars.swapFeeAmountRaw,
+            vars.swapFeeToken
+        );
     }
 
     /// @dev Returns swap fee for the pool.

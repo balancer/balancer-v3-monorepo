@@ -244,7 +244,7 @@ contract VaultUnitSwapTest is BaseTest {
         poolData.tokenRates = tokenRates;
         poolData.balancesRaw = initialBalances;
 
-        vars.swapFeePercentage = swapFeePercentage_;
+        poolData.poolConfig.staticSwapFeePercentage = swapFeePercentage_;
         vaultState.protocolSwapFeePercentage = swapFeePercentage_;
         poolData.poolConfig.poolCreatorFeePercentage = poolCreatorFeePercentage_;
     }
@@ -260,7 +260,7 @@ contract VaultUnitSwapTest is BaseTest {
         PoolData memory poolData,
         VaultState memory vaultState
     ) internal {
-        uint256 fee = mockedAmountCalculatedScaled18_.mulUp(vars.swapFeePercentage);
+        uint256 fee = mockedAmountCalculatedScaled18_.mulUp(poolData.poolConfig.staticSwapFeePercentage);
 
         uint256 expectedAmountCalculatedScaled18 = mockedAmountCalculatedScaled18_ - fee;
         uint256 expectedAmountOut = expectedAmountCalculatedScaled18.toRawUndoRateRoundDown(
@@ -312,7 +312,9 @@ contract VaultUnitSwapTest is BaseTest {
         PoolData memory poolData,
         VaultState memory vaultState
     ) internal {
-        uint256 expectedSwapFeeAmountScaled18 = mockedAmountCalculatedScaled18_.mulDown(vars.swapFeePercentage);
+        uint256 expectedSwapFeeAmountScaled18 = mockedAmountCalculatedScaled18_.mulDown(
+            poolData.poolConfig.staticSwapFeePercentage
+        );
 
         uint256 expectedAmountCalculatedScaled18 = mockedAmountCalculatedScaled18_ + expectedSwapFeeAmountScaled18;
         uint256 expectedAmountIn = expectedAmountCalculatedScaled18.toRawUndoRateRoundDown(
