@@ -439,9 +439,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool,
         IBasePool.PoolSwapParams memory swapParams
     ) external view withRegisteredPool(pool) returns (bool success, uint256 dynamicSwapFee) {
-        success = _poolConfig[pool].shouldCallComputeDynamicSwapFee();
+        bool shouldCallDynamicSwapFee = _poolConfig[pool].shouldCallComputeDynamicSwapFee();
 
-        if (success) {
+        if (shouldCallDynamicSwapFee) {
             (success, dynamicSwapFee) = IPoolHooks(pool).onComputeDynamicSwapFee(swapParams);
         }
     }
