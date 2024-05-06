@@ -61,7 +61,7 @@ interface IVaultEvents {
      * @notice A wrap operation has occurred.
      * @param underlyingToken The underlying token address
      * @param wrappedToken The wrapped token address
-     * @param depositedUnderlying Number of underlying assets deposited
+     * @param depositedUnderlying Number of underlying tokens deposited
      * @param mintedShares Number of shares (wrapped tokens) minted
      */
     event Wrap(
