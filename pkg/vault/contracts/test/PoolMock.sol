@@ -29,6 +29,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     bool public failOnAfterInitialize;
     bool public failOnBeforeInitialize;
+    bool public failComputeDynamicSwapFeeHook;
     bool public failOnBeforeSwapHook;
     bool public failOnAfterSwapHook;
     bool public failOnBeforeAddLiquidity;
@@ -47,6 +48,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     RateProviderMock _rateProvider;
     uint256 private _newTokenRate;
+    uint256 private _dynamicSwapFee;
 
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
     uint256 private _multiplier = FixedPoint.ONE;
@@ -104,6 +106,14 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         changeTokenRateOnBeforeInitialize = changeRate;
         _rateProvider = rateProvider;
         _newTokenRate = newTokenRate;
+    }
+
+    function setFailComputeDynamicSwapFeeHook(bool fail) external {
+        failComputeDynamicSwapFeeHook = fail;
+    }
+
+    function setDynamicSwapFeePercentage(uint256 dynamicSwapFee) external {
+        _dynamicSwapFee = dynamicSwapFee;
     }
 
     function setFailOnBeforeSwapHook(bool fail) external {
@@ -174,6 +184,10 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     function onAfterInitialize(uint256[] memory, uint256, bytes memory) external view returns (bool) {
         return !failOnAfterInitialize;
+    }
+
+    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata) external view returns (bool, uint256) {
+        return (!failComputeDynamicSwapFeeHook, _dynamicSwapFee);
     }
 
     function onBeforeSwap(IBasePool.PoolSwapParams calldata) external override returns (bool success) {

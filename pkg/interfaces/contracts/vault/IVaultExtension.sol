@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
+import { IBasePool } from "./IBasePool.sol";
 import "./VaultTypes.sol";
 
 interface IVaultExtension {
@@ -272,6 +273,18 @@ interface IVaultExtension {
      */
     function getPoolCreator(address pool) external returns (address poolCreator);
 
+    /**
+     * @notice Query the current dynamic swap fee of a pool, given a set of swap parameters.
+     * @param pool The pool
+     * @param swapParams The swap parameters used to compute the fee
+     * @return success True if the pool has a dynamic swap fee and it can be successfully computed
+     * @return dynamicSwapFee The dynamic swap fee percentage
+     */
+    function computeDynamicSwapFee(
+        address pool,
+        IBasePool.PoolSwapParams memory swapParams
+    ) external view returns (bool, uint256);
+
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/
@@ -324,6 +337,10 @@ interface IVaultExtension {
      * @return If true, then queries are disabled
      */
     function isQueryDisabled() external view returns (bool);
+
+    /*******************************************************************************
+                                     Miscellaneous
+    *******************************************************************************/
 
     /**
      * @notice Returns the Vault Admin contract address.

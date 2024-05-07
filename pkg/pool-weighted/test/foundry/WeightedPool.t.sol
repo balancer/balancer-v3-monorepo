@@ -84,6 +84,11 @@ contract WeightedPoolTest is BaseVaultTest {
         vm.stopPrank();
     }
 
+    function testPoolAddress() public {
+        address calculatedPoolAddress = factory.getDeploymentAddress(ZERO_BYTES32);
+        assertEq(address(weightedPool), calculatedPoolAddress);
+    }
+
     function testPoolPausedState() public {
         (bool paused, uint256 pauseWindow, uint256 bufferPeriod, address pauseManager) = vault.getPoolPausedState(
             address(pool)
