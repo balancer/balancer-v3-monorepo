@@ -1050,14 +1050,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN wrap, so AmountGivenRaw is underlying amount
-            // We can't use convertToShares to get amountCalculatedRaw, because withdraw operation rounds in favor of
-            // the yield-bearing protocol. Besides, fees may be included in deposit and not included in convertToShares
+            // Cannot use convertToShares because the actual deposit operation returns a different (usually smaller)
+            // amount of shares.
             amountCalculatedRaw = wrappedToken.previewDeposit(amountGivenRaw);
             (tradeUnderlyingRaw, tradeWrappedRaw) = (amountGivenRaw, amountCalculatedRaw);
         } else {
             // EXACT_OUT wrap, so AmountGivenRaw is wrapped amount
-            // We can't use convertToAssets to get amountCalculatedRaw, because withdraw operation rounds in favor of
-            // the yield-bearing protocol. Besides, fees may be included in mint and not included in convertToAssets
+            // Cannot use convertToAssets because the actual mint operation deposits a different (usually bigger)
+            // amount of assets.
             amountCalculatedRaw = wrappedToken.previewMint(amountGivenRaw);
             (tradeUnderlyingRaw, tradeWrappedRaw) = (amountCalculatedRaw, amountGivenRaw);
         }
@@ -1159,14 +1159,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGivenRaw is wrapped amount
-            // We can't use convertToAssets to get amountCalculatedRaw, because redeem operation rounds in favor of
-            // the yield-bearing protocol. Besides, fees may be included in redeem and not included in convertToAssets
+            // Cannot use convertToAssets because the actual withdraw operation returns a different (usually smaller)
+            // amount of assets.
             amountCalculatedRaw = wrappedToken.previewRedeem(amountGivenRaw);
             (tradeUnderlyingRaw, tradeWrappedRaw) = (amountCalculatedRaw, amountGivenRaw);
         } else {
             // EXACT_OUT unwrap, so AmountGivenRaw is underlying amount
-            // We can't use convertToShares to get amountCalculatedRaw, because withdraw operation rounds in favor of
-            // the yield-bearing protocol. Besides, fees may be included in withdraw and not included in convertToShares
+            // Cannot use convertToShares because the actual withdraw operation burns a different (usually bigger)
+            // amount of shares.
             amountCalculatedRaw = wrappedToken.previewWithdraw(amountGivenRaw);
             (tradeUnderlyingRaw, tradeWrappedRaw) = (amountGivenRaw, amountCalculatedRaw);
         }
