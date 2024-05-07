@@ -1137,13 +1137,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert WrongWrappedAmount(address(wrappedToken));
             }
 
-            // Only updates buffer balances if buffer is not empty and there was a surplus of underlying or wrapped
-            // tokens in the buffer
+            // Only updates buffer balances if buffer has a surplus of underlying or wrapped tokens
             if (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0) {
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
-                // increase. To decrease underlying balance, we get the total amount that was deposited
-                // (totalUnderlyingDeposited) and discounts the amount needed in the trade (amountUnderlyingToWrap).
-                // Same logic applies to wrapped balances.
+                // increase. To decrease underlying balance, we get the actual amount that was deposited
+                // (actualUnderlyingDeposited) and discounts the amount needed in the wrapping operation
+                // (amountInUnderlying). Same logic applies to wrapped balances.
                 bufferBalances = bufferBalances.setBalances(
                     bufferBalances.getUnderlyingBalance() - (actualUnderlyingDeposited - amountInUnderlying),
                     bufferBalances.getWrappedBalance() + (actualWrappedMinted - amountOutWrapped)
@@ -1237,13 +1236,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert WrongWrappedAmount(address(wrappedToken));
             }
 
-            // Only updates buffer balances if buffer is not empty and there was a surplus of underlying or wrapped
-            // tokens in the buffer
+            // Only updates buffer balances if buffer has a surplus of underlying or wrapped tokens
             if (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0) {
                 // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance
-                // will decrease. To increase underlying balance, we get the total amount that was withdrawn
-                // (actualUnderlyingWithdrawn) and discounts the amount needed in the trade
-                // (amountUnderlyingExpected). Same logic applies to wrapped balances.
+                // will decrease. To increase underlying balance, we get the actual amount that was withdrawn
+                // (actualUnderlyingWithdrawn) and discounts the amount expected in the unwrapping operation
+                // (amountOutUnderlying). Same logic applies to wrapped balances.
                 bufferBalances = bufferBalances.setBalances(
                     bufferBalances.getUnderlyingBalance() + (actualUnderlyingWithdrawn - amountOutUnderlying),
                     bufferBalances.getWrappedBalance() - (actualWrappedRedeemed - amountInWrapped)
