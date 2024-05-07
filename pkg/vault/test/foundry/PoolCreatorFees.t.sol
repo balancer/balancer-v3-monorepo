@@ -40,13 +40,9 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         exemptPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "Exempt Pool");
         vm.label(address(exemptPool), "Exempt Pool");
 
-        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
-            [address(dai), address(usdc)].toMemoryArray().asIERC20()
-        );
-
         factoryMock.registerGeneralTestPool(
             address(exemptPool),
-            tokenConfig,
+            vault.buildTokenConfig(tokens.asIERC20()),
             0, // default swap fee (will be changed later)
             0, // pause time - doesn't matter here
             true, // exempt from protocol swap fees
