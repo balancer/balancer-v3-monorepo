@@ -146,7 +146,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setSharesToReturn(waDAI.previewDeposit(_wrapAmount) - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapWrappedAmount.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -178,7 +178,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToConsume(_wrapAmount - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapUnderlyingAmount.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnderlyingAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -249,7 +249,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setSharesToReturn(_wrapAmount - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapWrappedAmount.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -281,7 +281,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToConsume(_wrapAmount - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapUnderlyingAmount.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnderlyingAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -356,7 +356,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setSharesToConsume(_wrapAmount - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapWrappedAmount.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -408,7 +408,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToReturn(waDAI.previewRedeem(_wrapAmount) - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapUnderlyingAmount.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnderlyingAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -453,7 +453,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setSharesToConsume(waDAI.previewWithdraw(_wrapAmount) - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapWrappedAmount.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -505,7 +505,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToReturn(_wrapAmount - 1);
 
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrapUnwrapUnderlyingAmount.selector, address(waDAI)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnderlyingAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 

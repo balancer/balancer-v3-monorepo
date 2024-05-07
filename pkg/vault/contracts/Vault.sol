@@ -1129,12 +1129,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (actualUnderlyingDeposited < amountInUnderlying) {
                 // If this error is thrown, it means the previewDeposit or previewMint had a different result from
                 // the actual operation.
-                revert WrongWrapUnwrapUnderlyingAmount(address(wrappedToken));
+                revert WrongUnderlyingAmount(address(wrappedToken));
             }
             if (actualWrappedMinted < amountOutWrapped) {
                 // If this error is thrown, it means the previewDeposit or previewMint had a different result from
                 // the actual operation.
-                revert WrongWrapUnwrapWrappedAmount(address(wrappedToken));
+                revert WrongWrappedAmount(address(wrappedToken));
             }
 
             // Only updates buffer balances if buffer is not empty and there was a surplus of underlying or wrapped
@@ -1229,12 +1229,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (actualUnderlyingWithdrawn < amountOutUnderlying) {
                 // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
                 // the actual operation.
-                revert WrongWrapUnwrapUnderlyingAmount(address(wrappedToken));
+                revert WrongUnderlyingAmount(address(wrappedToken));
             }
             if (actualWrappedRedeemed < amountInWrapped) {
                 // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
                 // the actual operation.
-                revert WrongWrapUnwrapWrappedAmount(address(wrappedToken));
+                revert WrongWrappedAmount(address(wrappedToken));
             }
 
             // Only updates buffer balances if buffer is not empty and there was a surplus of underlying or wrapped

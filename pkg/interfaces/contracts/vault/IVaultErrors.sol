@@ -282,10 +282,10 @@ interface IVaultErrors {
     error WrongWrappedTokenAsset(address token);
 
     /// @dev The wrappedToken wrap/unwrap function did not deposit/return the expected amount of underlying tokens.
-    error WrongWrapUnwrapUnderlyingAmount(address wrappedToken);
+    error WrongUnderlyingAmount(address wrappedToken);
 
     /// @dev The wrappedToken wrap/unwrap function did not burn/mint the expected amount of wrapped tokens.
-    error WrongWrapUnwrapWrappedAmount(address wrappedToken);
+    error WrongWrappedAmount(address wrappedToken);
 
     /// @dev The amount given to wrap/unwrap was too small, which can introduce rounding issues.
     error WrapAmountTooSmall(address wrappedToken);
