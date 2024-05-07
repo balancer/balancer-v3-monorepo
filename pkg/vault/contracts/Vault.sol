@@ -1320,15 +1320,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (vaultUnderlyingBefore > vaultUnderlyingAfter) {
             // Wrap
-            // Since deposit takes underlying from the vault, the total is assetsBefore - assetsAfter wrapping
+            // Since deposit takes underlying tokens from the vault, the actual underlying tokens deposited is
+            // underlyingBefore - underlyingAfter
             actualUnderlying = vaultUnderlyingBefore - vaultUnderlyingAfter;
-            // Since deposit puts wrapped assets into the vault, the total is wrappedAfter - wrappedBefore wrapping
+            // Since deposit puts wrapped tokens into the vault, the actual wrapped minted is
+            // wrappedAfter - wrappedBefore
             actualWrapped = vaultWrappedAfter - vaultWrappedBefore;
         } else {
             // Unwrap
-            // Since withdraw puts underlying into the vault, the total is assetsAfter - assetsBefore unwrapping
+            // Since withdraw puts underlying tokens into the vault, the actual underlying tokens withdrawn is
+            // assetsAfter - assetsBefore
             actualUnderlying = vaultUnderlyingAfter - vaultUnderlyingBefore;
-            // Since withdraw takes wrapped assets from the vault, the total is wrappedBefore - wrappedAfter unwrapping
+            // Since withdraw takes wrapped tokens from the vault, the actual burned wrapped tokens is
+            // wrappedBefore - wrappedAfter
             actualWrapped = vaultWrappedBefore - vaultWrappedAfter;
         }
     }
