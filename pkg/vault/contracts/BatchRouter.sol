@@ -185,12 +185,12 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                 SwapPathStep memory step = path.steps[j];
 
                 if (step.isBuffer) {
-                    (, , uint256 amountOut) = _vault.bufferWrapUnwrap(
-                        WrapUnwrapParams({
+                    (, , uint256 amountOut) = _vault.wrappingOperation(
+                        WrappingOperationParams({
                             kind: SwapKind.EXACT_IN,
-                            wrapUnwrapKind: step.pool == address(stepTokenIn)
-                                ? WrapUnwrapKind.UNWRAP
-                                : WrapUnwrapKind.WRAP,
+                            direction: step.pool == address(stepTokenIn)
+                                ? WrappingDirection.UNWRAP
+                                : WrappingDirection.WRAP,
                             wrappedToken: IERC4626(step.pool),
                             amountGivenRaw: stepExactAmountIn,
                             limitRaw: minAmountOut,
@@ -438,12 +438,12 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
                     }
 
-                    (, uint256 amountIn, ) = _vault.bufferWrapUnwrap(
-                        WrapUnwrapParams({
+                    (, uint256 amountIn, ) = _vault.wrappingOperation(
+                        WrappingOperationParams({
                             kind: SwapKind.EXACT_OUT,
-                            wrapUnwrapKind: step.pool == address(stepTokenIn)
-                                ? WrapUnwrapKind.UNWRAP
-                                : WrapUnwrapKind.WRAP,
+                            direction: step.pool == address(stepTokenIn)
+                                ? WrappingDirection.UNWRAP
+                                : WrappingDirection.WRAP,
                             wrappedToken: IERC4626(step.pool),
                             amountGivenRaw: stepExactAmountOut,
                             limitRaw: stepMaxAmountIn,

@@ -156,7 +156,7 @@ enum SwapKind {
 /**
  * @dev Data for a swap operation.
  * @param kind Type of swap (Exact In or Exact Out)
- * @param pool The pool with the tokens being swapped (when calling bufferWrapUnwrap, pool = wrapped token address)
+ * @param pool The pool with the tokens being swapped (when calling wrappingOperation, pool = wrapped token address)
  * @param tokenIn The token entering the Vault (balance increases)
  * @param tokenOut The token leaving the Vault (balance decreases)
  * @param amountGivenRaw Amount specified for tokenIn or tokenOut (depending on the type of swap)
@@ -234,14 +234,23 @@ struct RemoveLiquidityParams {
                                 Remove liquidity
 *******************************************************************************/
 
-enum WrapUnwrapKind {
+enum WrappingDirection {
     WRAP,
     UNWRAP
 }
 
-struct WrapUnwrapParams {
+/**
+ * @param kind Type of swap (Exact In or Exact Out)
+ * @param direction Direction of the wrapping operation (Wrap or Unwrap)
+ * @param wrappedToken Wrapped token, compatible with interface ERC4626
+ * @param amountGivenRaw Amount specified for tokenIn or tokenOut (depends on the type of swap and wrapping direction)
+ * @param limitRaw Minimum or maximum amount specified for the other token (depends on the type of swap and wrapping
+ * direction)
+ * @param userData Optional user data
+ */
+struct WrappingOperationParams {
     SwapKind kind;
-    WrapUnwrapKind wrapUnwrapKind;
+    WrappingDirection direction;
     IERC4626 wrappedToken;
     uint256 amountGivenRaw;
     uint256 limitRaw;

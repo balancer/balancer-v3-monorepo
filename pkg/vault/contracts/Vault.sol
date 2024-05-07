@@ -988,8 +988,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultMain
-    function bufferWrapUnwrap(
-        WrapUnwrapParams memory params
+    function wrappingOperation(
+        WrappingOperationParams memory params
     )
         public
         onlyWhenUnlocked
@@ -1005,8 +1005,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert WrongWrappedTokenAsset(address(params.wrappedToken));
         }
 
-        if (params.wrapUnwrapKind == WrapUnwrapKind.UNWRAP) {
-            (amountCalculatedRaw, amountInRaw, amountOutRaw) = _bufferUnwrap(
+        if (params.direction == WrappingDirection.UNWRAP) {
+            (amountCalculatedRaw, amountInRaw, amountOutRaw) = _unwrapWithBuffer(
                 params.kind,
                 underlyingToken,
                 params.wrappedToken,
@@ -1014,7 +1014,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             emit Unwrap(params.wrappedToken, underlyingToken, amountInRaw, amountOutRaw);
         } else {
-            (amountCalculatedRaw, amountInRaw, amountOutRaw) = _bufferWrap(
+            (amountCalculatedRaw, amountInRaw, amountOutRaw) = _wrapWithBuffer(
                 params.kind,
                 underlyingToken,
                 params.wrappedToken,
@@ -1033,12 +1033,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /**
-     * @dev Non-reentrant portion of the wrap operation, which calls the wrapped token deposit/mint and updates
-     * vault accounting.
+     * @dev Non-reentrant portion of the wrapping operation.
+     * It uses the buffer of the wrapped token to make the wrap operation without any external call, if the buffer has
+     * enough liquidity. If not, it wraps the assets needed to fulfill the trade + the surplus of assets in the buffer,
+     * so that the buffer is rebalanced in the end of the operation.
      *
      * Updates `_reservesOf` and token deltas in storage.
      */
-    function _bufferWrap(
+    function _wrapWithBuffer(
         SwapKind kind,
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
@@ -1140,12 +1142,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /**
-     * @dev Non-reentrant portion of the unwrap operation, which calls the wrapped token redeem/withdraw and updates
-     * vault accounting.
+     * @dev Non-reentrant portion of the unwrapping operation.
+     * It uses the buffer of the wrapped token to make the unwrapping operation without any external call, if the
+     * buffer has enough liquidity. If not, it unwraps the shares needed to fulfill the trade + the surplus of shares
+     * in the buffer, so that the buffer is rebalanced in the end of the operation.
      *
      * Updates `_reservesOf` and token deltas in storage.
      */
-    function _bufferUnwrap(
+    function _unwrapWithBuffer(
         SwapKind kind,
         IERC20 underlyingToken,
         IERC4626 wrappedToken,

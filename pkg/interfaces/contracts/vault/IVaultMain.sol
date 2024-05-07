@@ -112,15 +112,16 @@ interface IVaultMain {
     *******************************************************************************/
 
     /**
-     * @notice Wrap/unwrap tokens based on provided parameters.
+     * @notice Wraps/unwraps tokens based on provided parameters, using the buffer of the wrapped token when it has
+     * enough liquidity to avoid external calls.
      * @dev All parameters are given in raw token decimal encoding.
-     * @param params Parameters for the swap (see above for struct definition)
+     * @param params Parameters for the wrap/unwrap operation (see struct definition)
      * @return amountCalculatedRaw Calculated swap amount
      * @return amountInRaw Amount of input tokens for the swap
      * @return amountOutRaw Amount of output tokens from the swap
      */
-    function bufferWrapUnwrap(
-        WrapUnwrapParams memory params
+    function wrappingOperation(
+        WrappingOperationParams memory params
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     /*******************************************************************************
