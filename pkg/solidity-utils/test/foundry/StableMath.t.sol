@@ -64,25 +64,25 @@ contract StableMathTest is Test {
         amp = bound(rawAmp, MIN_AMP, MAX_AMP);
     }
 
-    function testComputeInvariant__Fuzz(uint256 rawAmp, uint256[NUM_TOKENS] calldata rawBalances) external view {
-        uint256 amp = boundAmp(rawAmp);
+    function testComputeInvariant__Fuzz(uint256 amp, uint256[NUM_TOKENS] calldata rawBalances) external view {
+        amp = boundAmp(amp);
         uint256[] memory balances = boundBalances(rawBalances);
 
         stableMathMock.computeInvariant(amp, balances);
     }
 
     function testComputeOutGivenExactInRounding__Fuzz(
-        uint256 rawAmp,
+        uint256 amp,
         uint256[NUM_TOKENS] calldata rawBalances,
-        uint256 rawTokenIndexIn,
-        uint256 rawTokenIndexOut,
-        uint256 rawTokenAmountIn,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint256 tokenAmountIn,
         bool[3] calldata roundingPermutation
     ) external view {
-        uint256 amp = boundAmp(rawAmp);
+        amp = boundAmp(amp);
         uint256[] memory balances = boundBalances(rawBalances);
-        (uint256 tokenIndexIn, uint256 tokenIndexOut) = boundTokenIndexes(rawTokenIndexIn, rawTokenIndexOut);
-        uint256 tokenAmountIn = boundAmount(rawTokenAmountIn, balances[tokenIndexIn]);
+        (tokenIndexIn, tokenIndexOut) = boundTokenIndexes(tokenIndexIn, tokenIndexOut);
+        tokenAmountIn = boundAmount(tokenAmountIn, balances[tokenIndexIn]);
         uint256 invariant = stableMathMock.computeInvariant(amp, balances);
 
         uint256 outGivenExactIn = stableMathMock.computeOutGivenExactIn(
@@ -121,17 +121,17 @@ contract StableMathTest is Test {
     }
 
     function testComputeInGivenExactOutRounding__Fuzz(
-        uint256 rawAmp,
+        uint256 amp,
         uint256[NUM_TOKENS] calldata rawBalances,
-        uint256 rawTokenIndexIn,
-        uint256 rawTokenIndexOut,
-        uint256 rawTokenAmountOut,
+        uint256 tokenIndexIn,
+        uint256 tokenIndexOut,
+        uint256 tokenAmountOut,
         bool[3] calldata roundingPermutation
     ) external view {
-        uint256 amp = boundAmp(rawAmp);
+        amp = boundAmp(amp);
         uint256[] memory balances = boundBalances(rawBalances);
-        (uint256 tokenIndexIn, uint256 tokenIndexOut) = boundTokenIndexes(rawTokenIndexIn, rawTokenIndexOut);
-        uint256 tokenAmountOut = boundAmount(rawTokenAmountOut, balances[tokenIndexOut]);
+        (tokenIndexIn, tokenIndexOut) = boundTokenIndexes(tokenIndexIn, tokenIndexOut);
+        tokenAmountOut = boundAmount(tokenAmountOut, balances[tokenIndexOut]);
         uint256 invariant = stableMathMock.computeInvariant(amp, balances);
 
         uint256 inGivenExactOut = stableMathMock.computeInGivenExactOut(
@@ -170,15 +170,15 @@ contract StableMathTest is Test {
     }
 
     function testComputeBalanceRounding__Fuzz(
-        uint256 rawAmp,
+        uint256 amp,
         uint256[NUM_TOKENS] calldata rawBalances,
-        uint256 rawTokenIndex,
+        uint256 tokenIndex,
         bool[3] calldata roundingPermutation
     ) external view {
-        uint256 amp = boundAmp(rawAmp);
+        amp = boundAmp(amp);
         uint256[] memory balances = boundBalances(rawBalances);
         uint256 invariant = stableMathMock.computeInvariant(amp, balances);
-        uint256 tokenIndex = boundTokenIndex(rawTokenIndex);
+        tokenIndex = boundTokenIndex(tokenIndex);
 
         uint256 balance = stableMathMock.computeBalance(amp, balances, invariant, tokenIndex);
 
