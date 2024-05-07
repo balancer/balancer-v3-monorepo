@@ -63,10 +63,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     ) Authentication(bytes32(uint256(uint160(address(mainVault))))) {
-        if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
+        if (pauseWindowDuration > _MAX_PAUSE_WINDOW_DURATION) {
             revert VaultPauseWindowDurationTooLarge();
         }
-        if (bufferPeriodDuration > MAX_BUFFER_PERIOD_DURATION) {
+        if (bufferPeriodDuration > _MAX_BUFFER_PERIOD_DURATION) {
             revert PauseBufferPeriodDurationTooLarge();
         }
 
