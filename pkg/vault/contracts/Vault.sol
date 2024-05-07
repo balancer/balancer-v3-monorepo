@@ -959,13 +959,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vaultState.protocolSwapFeePercentage > 0 &&
             poolData.poolConfig.isPoolInRecoveryMode == false
         ) {
-            if (_lastProtocolFeePercentages[pool] != vaultState.protocolSwapFeePercentage) {
-                IVault(address(this)).collectProtocolFees(pool);
-
-                // Update the last to the current value.
-                _lastProtocolFeePercentages[pool] = vaultState.protocolSwapFeePercentage;
-            }
-
             // Initialize aggregate percentage, if not already set
             if (_aggregateProtocolSwapFeePercentage().tload() == 0) {
                 // Pool creator fees are calculated based on creatorAndLpFees, and not in totalFees. See example below

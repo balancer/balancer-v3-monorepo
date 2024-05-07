@@ -85,19 +85,12 @@ contract VaultStorage {
     uint256 private __aggregateProtocolSwapFeePercentage;
 
     /**
-     * @dev Pool -> Packed bytes32 with current protocol swap and yield fees.
-     * Store the protocol swap and yield fee percentages the last time fees were charged. This is because separation
-     * of protocol and creator fees is deferred until collection, and the protocol fee percentages might have changed
-     * between these times. To avoid retroactive changes, we would ideally force collection of fees before updating
-     * the fee percentage.
-     *
-     * This is fine for pool creator fees, but we cannot force collection on all pools when the protocol swap fee
-     * changes. So we always collect fees based on the "last" value of the percentages. If we are about to charge
-     * protocol fees and notice the percentages have change, force collection of that pool first, then update the
-     * "last" values (i.e., lazy evaluation to ensure the rates on collection are the same as when the fees were
-     * incurred).
+     * @dev The aggregate fee percentage charged on swaps, composed of both the protocol yield fee and creator fee.
+     * It is given by: protocolYieldFeePct + (1 - protocolYieldFeePct) * poolCreatorFeePct (see derivation in TODO).
+     * This will not change during the operation, so cache it in transient storage. Note that the creator takes the
+     * same proportion of protocol fees, whether swap or yield.
      */
-    mapping(address => uint256) internal _lastProtocolFeePercentages;
+    uint256 private __aggregateProtocolYieldFeePercentage;
 
     // Pool -> (Token -> fee): protocol fees (swap and creator) accumulated in the Vault for harvest.
     mapping(address => EnumerableMap.IERC20ToUint256Map) internal _protocolSwapFees;
@@ -160,6 +153,12 @@ contract VaultStorage {
     function _aggregateProtocolSwapFeePercentage() internal pure returns (StorageSlot.Uint256SlotType slot) {
         assembly {
             slot := __aggregateProtocolSwapFeePercentage.slot
+        }
+    }
+
+    function _aggregateProtocolYieldFeePercentage() internal pure returns (StorageSlot.Uint256SlotType slot) {
+        assembly {
+            slot := __aggregateProtocolYieldFeePercentage.slot
         }
     }
 }
