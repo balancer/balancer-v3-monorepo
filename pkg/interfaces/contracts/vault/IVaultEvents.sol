@@ -70,7 +70,7 @@ interface IVaultEvents {
 
     /**
      * @notice Logs the collection of fees in a specific token and amount.
-     * @param pool A pool that has collected protocol fees
+     * @param pool The address of the pool for which protocol fees have been collected
      * @param token The token in which the fee has been collected
      * @param amount The amount of the token collected as fees
      */
