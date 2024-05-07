@@ -85,13 +85,6 @@ contract VaultStorage {
     uint256 private __aggregateProtocolSwapFeePercentage;
 
     /**
-     * @dev Transient storage of the current protocol swap and yield fee percentages (packed into one slot).
-     * This will not change during the operation, and is used to detect whether we need to force collection of
-     * protocol fees on a given pool before charging "new" fees.
-     */
-    bytes32 private __currentProtocolFeePercentages;
-
-    /**
      * @dev Pool -> Packed bytes32 with current protocol swap and yield fees.
      * Store the protocol swap and yield fee percentages the last time fees were charged. This is because separation
      * of protocol and creator fees is deferred until collection, and the protocol fee percentages might have changed
@@ -167,12 +160,6 @@ contract VaultStorage {
     function _aggregateProtocolSwapFeePercentage() internal pure returns (StorageSlot.Uint256SlotType slot) {
         assembly {
             slot := __aggregateProtocolSwapFeePercentage.slot
-        }
-    }
-
-    function _currentProtocolFeePercentages() internal pure returns (StorageSlot.Bytes32SlotType slot) {
-        assembly {
-            slot := __currentProtocolFeePercentages.slot
         }
     }
 }
