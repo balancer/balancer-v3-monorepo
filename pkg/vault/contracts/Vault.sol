@@ -1080,9 +1080,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 totalUnderlyingDepositedRaw;
             uint256 totalWrappedMintedRaw;
 
+            uint256 bufferUnderlyingSurplus;
+            uint256 bufferWrappedSurplus;
+
             if (kind == SwapKind.EXACT_IN) {
                 // TODO comment
-                uint256 bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalancesRaw, wrappedToken);
+                bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalancesRaw, wrappedToken);
 
                 // TODO refactor comment
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
@@ -1095,14 +1098,20 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedToken.deposit(totalUnderlyingDepositedRaw, address(this));
             } else {
                 // TODO comment
-                uint256 bufferWrappedSurplus = _getBufferWrappedSurplus(bufferBalancesRaw, wrappedToken);
+                bufferWrappedSurplus = _getBufferWrappedSurplus(bufferBalancesRaw, wrappedToken);
 
                 // TODO refactor comment
                 // The amount of wrapped tokens to mint is the necessary amount to fulfill the trade
                 // (tradeWrappedRaw), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferWrappedToUnwrapRaw)
-                totalWrappedMintedRaw = tradeWrappedRaw + bufferWrappedSurplus;
-                underlyingToken.approve(address(wrappedToken), wrappedToken.previewMint(totalWrappedMintedRaw));
+                if (bufferWrappedSurplus > 0) {
+                    totalWrappedMintedRaw = tradeWrappedRaw + bufferWrappedSurplus;
+                    underlyingToken.approve(address(wrappedToken), wrappedToken.previewMint(totalWrappedMintedRaw));
+                } else {
+                    totalWrappedMintedRaw = tradeWrappedRaw;
+                    underlyingToken.approve(address(wrappedToken), tradeUnderlyingRaw);
+                }
+
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called
                 wrappedToken.mint(totalWrappedMintedRaw, address(this));
             }
@@ -1123,8 +1132,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert WrongWrapUnwrapWrappedAmount(address(wrappedToken));
             }
 
-            // Only updates buffer balances if buffer is not empty.
-            if (!bufferBalancesRaw.isEmpty()) {
+            // Only updates buffer balances if buffer is not empty and there was a surplus of underlying or wrapped
+            // tokens in the buffer
+            if (!bufferBalancesRaw.isEmpty() && (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0)) {
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
                 // increase. To decrease underlying balance, we get the total amount that was deposited
                 // (totalUnderlyingDeposited) and discounts the amount needed in the trade (amountUnderlyingToWrap).
@@ -1185,9 +1195,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 bufferWrappedBalanceRaw = bufferBalancesRaw.getWrappedBalance();
             uint256 bufferUnderlyingBalanceRaw = bufferBalancesRaw.getUnderlyingBalance();
 
+            uint256 bufferUnderlyingSurplus;
+            uint256 bufferWrappedSurplus;
+
             if (kind == SwapKind.EXACT_IN) {
                 // TODO comment
-                uint256 bufferWrappedSurplus = _getBufferWrappedSurplus(bufferBalancesRaw, wrappedToken);
+                bufferWrappedSurplus = _getBufferWrappedSurplus(bufferBalancesRaw, wrappedToken);
 
                 // TODO refactor comment
                 // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so redeem is called
@@ -1197,7 +1210,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedToken.redeem(tradeWrappedRaw + bufferWrappedSurplus, address(this), address(this));
             } else {
                 // TODO comment
-                uint256 bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalancesRaw, wrappedToken);
+                bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalancesRaw, wrappedToken);
 
                 // TODO refactor comment
                 // EXACT_OUT requires the exact amount of underlying tokens to be returned, so withdraw is called.
@@ -1223,8 +1236,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert WrongWrapUnwrapWrappedAmount(address(wrappedToken));
             }
 
-            // Only updates buffer balances if buffer is not empty.
-            if (!bufferBalancesRaw.isEmpty()) {
+            // Only updates buffer balances if buffer is not empty and there was a surplus of underlying or wrapped
+            // tokens in the buffer
+            if (!bufferBalancesRaw.isEmpty() && (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0)) {
                 // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance
                 // will decrease. To increase underlying balance, we get the total amount that was withdrawn
                 // (totalUnderlyingWithdrawn) and discounts the amount needed in the trade
