@@ -333,16 +333,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         assertEq(protocolSwapFees[daiIdx], vault.getProtocolFees(address(dai)), "Protocol's fee amount is wrong");
         assertEq(protocolSwapFees[usdcIdx], vault.getProtocolFees(address(usdc)), "Protocol's fee amount is wrong");
 
-        assertEq(
-            poolCreatorFees[daiIdx],
-            vault.getPoolCreatorFees(pool, dai),
-            "Pool creator's fee amount is wrong"
-        );
-        assertEq(
-            poolCreatorFees[usdcIdx],
-            vault.getPoolCreatorFees(pool, usdc),
-            "Pool creator's fee amount is wrong"
-        );
+        assertEq(poolCreatorFees[daiIdx], vault.getPoolCreatorFees(pool, dai), "Pool creator's fee amount is wrong");
+        assertEq(poolCreatorFees[usdcIdx], vault.getPoolCreatorFees(pool, usdc), "Pool creator's fee amount is wrong");
 
         // Pool creator fees are charged if protocol fees are charged.
         if (protocolSwapFees[0] > 0) {
