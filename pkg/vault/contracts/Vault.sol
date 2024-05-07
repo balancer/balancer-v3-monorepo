@@ -1084,12 +1084,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 bufferWrappedSurplus;
 
             if (kind == SwapKind.EXACT_IN) {
-                // TODO comment
+                // Gets the amount of underlying to wrap in order to rebalance the buffer
                 bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalances, wrappedToken);
 
-                // TODO refactor comment
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
-                // (amountUnderlyingToWrap), plus the amount needed to leave the buffer rebalanced 50/50 at the end
+                // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingSurplus)
                 actualUnderlyingDeposited = amountInUnderlying + bufferUnderlyingSurplus;
 
@@ -1097,13 +1096,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called
                 wrappedToken.deposit(actualUnderlyingDeposited, address(this));
             } else {
-                // TODO comment
+                // Gets the amount of wrapped tokens to unwrap in order to rebalance the buffer
                 bufferWrappedSurplus = _getBufferWrappedSurplus(bufferBalances, wrappedToken);
 
-                // TODO refactor comment
                 // The amount of wrapped tokens to mint is the necessary amount to fulfill the trade
                 // (amountOutWrapped), plus the amount needed to leave the buffer rebalanced 50/50 at the end
-                // (bufferWrappedToUnwrap)
+                // (bufferWrappedSurplus)
                 if (bufferWrappedSurplus > 0) {
                     actualWrappedMinted = amountOutWrapped + bufferWrappedSurplus;
                     underlyingToken.approve(address(wrappedToken), wrappedToken.previewMint(actualWrappedMinted));
@@ -1196,24 +1194,22 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 bufferWrappedSurplus;
 
             if (kind == SwapKind.EXACT_IN) {
-                // TODO comment
+                // Gets the amount of wrapped tokens to unwrap in order to rebalance the buffer
                 bufferWrappedSurplus = _getBufferWrappedSurplus(bufferBalances, wrappedToken);
 
-                // TODO refactor comment
                 // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so redeem is called
                 // The amount of wrapped tokens to redeem is the necessary amount to fulfill the trade
-                // (amountWrappedToUnwrap), plus the amount needed to leave the buffer rebalanced 50/50 at the end
-                // (bufferSharesToUnwrap)
+                // (amountInWrapped), plus the amount needed to leave the buffer rebalanced 50/50 at the end
+                // (bufferWrappedSurplus)
                 wrappedToken.redeem(amountInWrapped + bufferWrappedSurplus, address(this), address(this));
             } else {
-                // TODO comment
+                // Gets the amount of underlying to wrap in order to rebalance the buffer
                 bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalances, wrappedToken);
 
-                // TODO refactor comment
                 // EXACT_OUT requires the exact amount of underlying tokens to be returned, so withdraw is called.
                 // The amount of underlying tokens to withdraw is the necessary amount to fulfill the trade
                 // (amountOutUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
-                // (bufferUnderlyingAmountToUnwrap).
+                // (bufferUnderlyingSurplus).
                 wrappedToken.withdraw(amountOutUnderlying + bufferUnderlyingSurplus, address(this), address(this));
             }
 
@@ -1252,7 +1248,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _supplyCredit(underlyingToken, amountOutUnderlying);
     }
 
-    // TODO comment
+    /**
+     * @dev Underlying surplus is the amount of underlying that needs to be wrapped for the buffer to be rebalanced.
+     * For instance, consider the following scenario:
+     * - buffer balances: 2 wrapped and 10 underlying
+     * - wrapped rate: 2
+     * - normalized buffer balances: 4 wrapped as underlying (2 wrapped * rate) and 10 underlying
+     * - surplus of underlying = (10 - 4) / 2 = 3 underlying
+     * We need to wrap 3 underlying tokens to consider the buffer rebalanced.
+     * - 3 underlying = 1.5 wrapped
+     * - final balances: 3.5 wrapped (2 existing + 1.5 new) and 7 underlying (10 existing - 3)
+     */
     function _getBufferUnderlyingSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (uint256) {
         if (bufferBalance.isEmpty()) {
             return 0;
@@ -1265,7 +1271,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             underlyingBalance > wrappedBalanceAsUnderlying ? (underlyingBalance - wrappedBalanceAsUnderlying) / 2 : 0;
     }
 
-    // TODO comment
+    /**
+     * @dev Wrapped surplus is the amount of wrapped tokens that needs to be unwrapped for the buffer to be rebalanced.
+     * For instance, consider the following scenario:
+     * - buffer balances: 10 wrapped and 4 underlying
+     * - wrapped rate: 2
+     * - normalized buffer balances: 10 wrapped and 2 underlying as wrapped (2 underlying / rate)
+     * - surplus of wrapped = (10 - 2) / 2 = 4 wrapped
+     * We need to unwrap 4 wrapped tokens to consider the buffer rebalanced.
+     * - 4 wrapped = 8 underlying
+     * - final balances: 6 wrapped (10 existing - 4) and 12 underlying (4 existing + 8 new)
+     */
     function _getBufferWrappedSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (uint256) {
         if (bufferBalance.isEmpty()) {
             return 0;
