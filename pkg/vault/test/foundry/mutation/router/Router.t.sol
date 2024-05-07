@@ -31,7 +31,11 @@ import { VaultMockDeployer } from "../../utils/VaultMockDeployer.sol";
 
 import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    AddLiquidityKind,
+    RemoveLiquidityKind,
+    SwapKind
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 contract RouterMutationTest is BaseVaultTest {
     using ArrayHelpers for *;
@@ -136,7 +140,7 @@ contract RouterMutationTest is BaseVaultTest {
         createPool();
 
         IRouter.InitializeHookParams memory hookParams = IRouter.InitializeHookParams(
-            msg.sender, 
+            msg.sender,
             address(wethPool),
             wethDaiTokens,
             wethDaiAmountsIn,
@@ -158,7 +162,7 @@ contract RouterMutationTest is BaseVaultTest {
         createPool();
 
         IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
-            msg.sender, 
+            msg.sender,
             address(wethPool),
             wethDaiAmountsIn,
             0,
@@ -181,11 +185,7 @@ contract RouterMutationTest is BaseVaultTest {
         createPool();
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        router.removeLiquidityRecoveryHook(
-            address(wethPool),
-            msg.sender,
-            wethDaiAmountsIn[0]
-        );
+        router.removeLiquidityRecoveryHook(address(wethPool), msg.sender, wethDaiAmountsIn[0]);
     }
 
     /*
@@ -247,7 +247,7 @@ contract RouterMutationTest is BaseVaultTest {
         createPool();
 
         IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
-            msg.sender, 
+            msg.sender,
             address(wethPool),
             wethDaiAmountsIn,
             0,
