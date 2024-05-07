@@ -154,7 +154,6 @@ contract YieldFeesTest is BaseVaultTest {
             assertTrue(liveBalanceDeltas[i] >= 0, "Live balance delta is 0");
         }
 
-<<<<<<< HEAD:pkg/vault/test/foundry/ProtocolYieldFees.t.sol
         uint256[] memory scalingFactors;
         uint256 actualProtocolFee;
 
@@ -172,18 +171,6 @@ contract YieldFeesTest is BaseVaultTest {
             actualProtocolFee = feeAmounts[1];
             assertTrue(actualProtocolFee > 0, "wstETH did not collect any protocol fees");
         }
-=======
-        // Should be no protocol fees on dai, since it is yield fee exempt
-        assertEq(vault.getProtocolFees(address(dai)), 0, "Protocol fees on exempt dai are not 0");
-        // Should be no creator fees on dai, since it is yield fee exempt
-        assertEq(vault.getPoolCreatorFees(address(pool), dai), 0, "Creator fees on exempt dai are not 0");
-
-        uint256[] memory scalingFactors = PoolMock(pool).getDecimalScalingFactors();
-
-        // There should be protocol fees on non-exempt wsteth
-        uint256 actualProtocolFee = vault.getProtocolFees(address(wsteth));
-        assertTrue(actualProtocolFee > 0, "wstETH did not collect any protocol fees");
->>>>>>> main:pkg/vault/test/foundry/YieldFees.t.sol
 
         // There should be creator fees on non-exempt wsteth
         uint256 actualCreatorFee = vault.getPoolCreatorFees(address(pool), wsteth);
@@ -347,7 +334,6 @@ contract YieldFeesTest is BaseVaultTest {
         }
 
         // No matter what the rates are, the value of wsteth grows from 1x to 10x.
-<<<<<<< HEAD:pkg/vault/test/foundry/ProtocolYieldFees.t.sol
         // Then, the protocol takes its cut out of the 9x difference.
         feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
 
@@ -355,24 +341,6 @@ contract YieldFeesTest is BaseVaultTest {
             feeAmounts[1],
             ((poolInitAmount * 9) / 10).mulDown(protocolYieldFeePercentage),
             "Yield fees for wstETH is not the expected one"
-=======
-        // Then, the protocol takes its cut out of the 9x difference (live balance diff).
-        uint256 liveBalanceDiffRaw = (poolInitAmount * 9) / 10;
-
-        uint256 expectedProtocolFees = liveBalanceDiffRaw.mulDown(protocolYieldFeePercentage);
-        assertApproxEqAbs(
-            vault.getProtocolFees(address(wsteth)),
-            expectedProtocolFees,
-            10, // rounding issues
-            "Wrong protocol yield fees for wstETH"
-        );
-        uint256 expectedYieldFees = (liveBalanceDiffRaw - expectedProtocolFees).mulDown(creatorYieldFeePercentage);
-        assertApproxEqAbs(
-            vault.getPoolCreatorFees(address(pool), wsteth),
-            expectedYieldFees,
-            10, // rounding issues
-            "Wrong creator yield fees for wstETH"
->>>>>>> main:pkg/vault/test/foundry/YieldFees.t.sol
         );
         assertEq(feeAmounts[0], 0, "Yield fees for exempt dai are not 0");
     }
