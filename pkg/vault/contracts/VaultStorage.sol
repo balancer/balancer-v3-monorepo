@@ -93,10 +93,10 @@ contract VaultStorage {
     uint256 private __aggregateProtocolYieldFeePercentage;
 
     // Pool -> (Token -> fee): protocol fees (swap and creator) accumulated in the Vault for harvest.
-    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _protocolSwapFees;
+    mapping(address => mapping(IERC20 => uint256)) internal _protocolSwapFees;
 
     // Pool -> (Token -> fee): Protocol yield fees (protocol and creator) accumulated in the Vault for harvest.
-    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _protocolYieldFees;
+    mapping(address => mapping(IERC20 => uint256)) internal _protocolYieldFees;
 
     /**
      * @dev Represents the total reserve of each ERC20 token. It should be always equal to `token.balanceOf(vault)`,

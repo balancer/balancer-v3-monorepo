@@ -52,7 +52,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using Address for *;
     using ArrayHelpers for uint256[];
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
-    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
@@ -181,10 +180,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Retrieve or create the pool's token balances mapping.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        // Retrieve or create the pool's protocol swap fee mapping.
-        EnumerableMap.IERC20ToUint256Map storage protocolSwapFees = _protocolSwapFees[pool];
-        // Retrieve or create the pool's protocol yield fee mapping.
-        EnumerableMap.IERC20ToUint256Map storage protocolYieldFees = _protocolYieldFees[pool];
 
         uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
         IERC20 previousToken;
@@ -210,12 +205,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             if (poolTokenBalances.set(token, bytes32(0)) == false) {
                 revert TokenAlreadyRegistered(token);
             }
-
-            // Register the token dev fee with an initial balance of zero.
-            // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
-            protocolSwapFees.set(token, 0);
-            // Not every token will have a yield fee, but simpler to just initialize all the time.
-            protocolYieldFees.set(token, 0);
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
             _poolTokenConfig[pool][token] = tokenData;

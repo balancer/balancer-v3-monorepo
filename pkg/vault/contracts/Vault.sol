@@ -993,8 +993,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             aggregateSwapFeeAmountRaw = aggregateSwapFeeAmountScaled18
                 .toRawUndoRateRoundDown(poolData.decimalScalingFactors[index], poolData.tokenRates[index]);
 
-            EnumerableMap.IERC20ToUint256Map storage protocolSwapFees = _protocolSwapFees[pool];
-            protocolSwapFees.set(token, protocolSwapFees.get(token) + aggregateSwapFeeAmountRaw);
+            _protocolSwapFees[pool][token] += aggregateSwapFeeAmountRaw;
         }
     }
 
