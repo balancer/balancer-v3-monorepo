@@ -203,7 +203,7 @@ interface IVaultAdmin {
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
-     * @param bufferSharesOwner Address of contract that will own the deposited liquidity. Only
+     * @param sharesOwner Address of contract that will own the deposited liquidity. Only
      *        this contract will be able to remove liquidity from the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts
      *         (it is the BPT of vault's internal linear pools)
@@ -212,7 +212,7 @@ interface IVaultAdmin {
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
-        address bufferSharesOwner
+        address sharesOwner
     ) external returns (uint256 issuedShares);
 
     /**
