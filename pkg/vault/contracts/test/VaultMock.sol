@@ -127,14 +127,14 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolFactoryMock.registerPoolAtTimestamp(
             pool,
             buildTokenConfig(tokens),
+            timestamp,
             roleAccounts,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
                 enableRemoveLiquidityCustom: true
-            }),
-            timestamp
+            })
         );
     }
 
@@ -425,10 +425,6 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external {
         _poolCreatorFees[pool][address(token)] = value;
-    }
-
-    function manualGetSwapFeePercentage(PoolConfig memory config) external pure returns (uint256) {
-        return _getSwapFeePercentage(config);
     }
 
     function manualBuildPoolSwapParams(

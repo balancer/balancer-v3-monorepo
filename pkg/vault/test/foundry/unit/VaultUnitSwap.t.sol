@@ -239,6 +239,7 @@ contract VaultUnitSwapTest is BaseTest {
 
         vars.indexIn = 0;
         vars.indexOut = 1;
+        vars.swapFeePercentage = swapFeePercentage_;
 
         poolData.decimalScalingFactors = decimalScalingFactors;
         poolData.tokenRates = tokenRates;
@@ -279,9 +280,10 @@ contract VaultUnitSwapTest is BaseTest {
 
         // check fees
         assertEq(vars.swapFeeAmountScaled18, fee, "Unexpected swapFeeAmountScaled18");
+        uint256 protocolSwapFeeAmountScaled18 = vars.swapFeeAmountScaled18.mulUp(vaultState.protocolSwapFeePercentage);
         assertEq(
             vars.protocolSwapFeeAmountRaw,
-            vars.swapFeeAmountScaled18.mulUp(vaultState.protocolSwapFeePercentage).toRawUndoRateRoundDown(
+            protocolSwapFeeAmountScaled18.toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[vars.indexOut],
                 poolData.tokenRates[vars.indexOut]
             ),
@@ -289,7 +291,7 @@ contract VaultUnitSwapTest is BaseTest {
         );
         assertEq(
             vars.creatorSwapFeeAmountRaw,
-            (vars.swapFeeAmountScaled18 - vars.protocolSwapFeeAmountRaw)
+            (vars.swapFeeAmountScaled18 - protocolSwapFeeAmountScaled18)
                 .mulUp(poolData.poolConfig.poolCreatorFeePercentage)
                 .toRawUndoRateRoundDown(
                     poolData.decimalScalingFactors[vars.indexOut],

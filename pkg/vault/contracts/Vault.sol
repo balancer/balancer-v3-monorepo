@@ -221,6 +221,22 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _updateAmountGivenInVars(vars, params, poolData);
         }
 
+        // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
+        // as those passed to the main operation.
+        if (poolData.poolConfig.hooks.shouldCallComputeDynamicSwapFee) {
+            bool success;
+
+            (success, vars.swapFeePercentage) = IPoolHooks(params.pool).onComputeDynamicSwapFee(
+                _buildPoolSwapParams(params, vars, poolData)
+            );
+
+            if (success == false) {
+                revert DynamicSwapFeeHookFailed();
+            }
+        } else {
+            vars.swapFeePercentage = poolData.poolConfig.staticSwapFeePercentage;
+        }
+
         // Non-reentrant call that updates accounting.
         (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, vaultState);
 
@@ -314,16 +330,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Intervening code cannot read balances from storage, as they are temporarily out-of-sync here. This function
         // is nonReentrant, to guard against read-only reentrancy issues.
 
-        // Note that this function is a non-reentrant context. If `_getSwapFeePercentages` needs to invoke a reentrant
-        // hook, it would have to be passed in from outside.
-        uint256 swapFeePercentage = _getSwapFeePercentage(poolData.poolConfig);
-
         // Set vars.swapFeeAmountScaled18 based on the amountCalculated.
-        if (swapFeePercentage > 0) {
+        if (vars.swapFeePercentage > 0) {
             // Swap fee is always a percentage of the amountCalculated. On ExactIn, subtract it from the calculated
             // amountOut. On ExactOut, add it to the calculated amountIn.
             // Round up to avoid losses during precision loss.
-            vars.swapFeeAmountScaled18 = vars.amountCalculatedScaled18.mulUp(swapFeePercentage);
+            vars.swapFeeAmountScaled18 = vars.amountCalculatedScaled18.mulUp(vars.swapFeePercentage);
         }
 
         // Need to update `amountCalculatedScaled18` for the onAfterSwap hook.
@@ -398,20 +410,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             params.tokenOut,
             amountIn,
             amountOut,
-            swapFeePercentage,
+            vars.swapFeePercentage,
             swapFeeAmountRaw,
             swapFeeToken
         );
-    }
-
-    /// @dev Returns swap fee for the pool.
-    function _getSwapFeePercentage(PoolConfig memory config) internal pure returns (uint256) {
-        if (config.hasDynamicSwapFee) {
-            // TODO: Fetch dynamic swap fee from the pool using hook
-            return 0;
-        } else {
-            return config.staticSwapFeePercentage;
-        }
     }
 
     /*******************************************************************************
@@ -599,7 +601,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolData.balancesLiveScaled18,
                 maxAmountsInScaled18,
                 _totalSupply(params.pool),
-                _getSwapFeePercentage(poolData.poolConfig),
+                poolData.poolConfig.staticSwapFeePercentage,
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
@@ -615,7 +617,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     vars.tokenIndex,
                     bptAmountOut,
                     _totalSupply(params.pool),
-                    _getSwapFeePercentage(poolData.poolConfig),
+                    poolData.poolConfig.staticSwapFeePercentage,
                     IBasePool(params.pool).computeBalance
                 );
         } else if (params.kind == AddLiquidityKind.CUSTOM) {
@@ -820,13 +822,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             bptAmountIn = params.maxBptAmountIn;
             amountsOutScaled18 = minAmountsOutScaled18;
             vars.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
+
             (amountsOutScaled18[vars.tokenIndex], swapFeeAmountsScaled18) = BasePoolMath
                 .computeRemoveLiquiditySingleTokenExactIn(
                     poolData.balancesLiveScaled18,
                     vars.tokenIndex,
                     bptAmountIn,
                     _totalSupply(params.pool),
-                    _getSwapFeePercentage(poolData.poolConfig),
+                    poolData.poolConfig.staticSwapFeePercentage,
                     IBasePool(params.pool).computeBalance
                 );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
@@ -839,7 +842,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 vars.tokenIndex,
                 amountsOutScaled18[vars.tokenIndex],
                 _totalSupply(params.pool),
-                _getSwapFeePercentage(poolData.poolConfig),
+                poolData.poolConfig.staticSwapFeePercentage,
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
@@ -964,7 +967,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
 
             if (poolData.poolConfig.poolCreatorFeePercentage > 0) {
-                creatorSwapFeeAmountScaled18 = (swapFeeAmountScaled18 - protocolSwapFeeAmountRaw).mulUp(
+                creatorSwapFeeAmountScaled18 = (swapFeeAmountScaled18 - protocolSwapFeeAmountScaled18).mulUp(
                     poolData.poolConfig.poolCreatorFeePercentage
                 );
                 creatorSwapFeeAmountRaw = creatorSwapFeeAmountScaled18.toRawUndoRateRoundDown(

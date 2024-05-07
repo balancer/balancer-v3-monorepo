@@ -10,6 +10,7 @@ import { IRateProvider } from "./IRateProvider.sol";
 struct PoolHooks {
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
+    bool shouldCallComputeDynamicSwapFee;
     bool shouldCallBeforeSwap;
     bool shouldCallAfterSwap;
     bool shouldCallBeforeAddLiquidity;
@@ -36,7 +37,6 @@ struct PoolConfig {
     bool isPoolInitialized;
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
-    bool hasDynamicSwapFee;
 }
 
 /// @dev Represents temporary vars used in a swap operation.
@@ -46,6 +46,7 @@ struct SwapVars {
     uint256 indexOut;
     uint256 amountGivenScaled18;
     uint256 amountCalculatedScaled18;
+    uint256 swapFeePercentage;
     uint256 swapFeeAmountScaled18;
     uint256 protocolSwapFeeAmountRaw;
     uint256 creatorSwapFeeAmountRaw;

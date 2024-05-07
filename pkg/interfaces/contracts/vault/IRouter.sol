@@ -562,10 +562,10 @@ interface IRouter {
     /**
      * @notice Permits multiple allowances and executes a batch of function calls on this contract.
      * @param permitBatch An array of `PermitApproval` structs, each representing an ERC20 permit request
-     * @param permitSignatures An array of bytes, each corresponding to the signature for the permit request in `permitBatch`
+     * @param permitSignatures An array of bytes, corresponding to the permit request signature in `permitBatch`
      * @param permit2Batch A batch of permit2 approvals
      * @param permit2Signature A permit2 signature for the batch approval
-     * @param multicallData An array of bytes arrays, each representing an encoded function call to be executed on this contract
+     * @param multicallData An array of bytes arrays, each representing an encoded function call on this contract
      * @return results Array of bytes arrays, each representing the return data from each function call executed
      */
     function permitBatchAndCall(
