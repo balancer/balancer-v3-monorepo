@@ -1077,9 +1077,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // the buffer does not have enough liquidity to facilitate the wrap without making an external call.
             // We wrap the user's tokens via an external call and additionally rebalance the buffer if it has a
             // surplus of underlying tokens.
-            uint256 bufferWrappedBalance = bufferBalances.getWrappedBalance();
-            uint256 bufferUnderlyingBalance = bufferBalances.getUnderlyingBalance();
-
             uint256 actualUnderlyingDeposited;
             uint256 actualWrappedMinted;
 
@@ -1143,8 +1140,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (totalUnderlyingDeposited) and discounts the amount needed in the trade (amountUnderlyingToWrap).
                 // Same logic applies to wrapped balances.
                 bufferBalances = bufferBalances.setBalances(
-                    bufferUnderlyingBalance - (actualUnderlyingDeposited - amountInUnderlying),
-                    bufferWrappedBalance + (actualWrappedMinted - amountOutWrapped)
+                    bufferBalances.getUnderlyingBalance() - (actualUnderlyingDeposited - amountInUnderlying),
+                    bufferBalances.getWrappedBalance() + (actualWrappedMinted - amountOutWrapped)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
             }
@@ -1195,9 +1192,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // the buffer does not have enough liquidity to facilitate the wrap without making an external call.
             // We unwrap the user's tokens via an external call and additionally rebalance the buffer if it has a
             // surplus of underlying tokens.
-            uint256 bufferWrappedBalance = bufferBalances.getWrappedBalance();
-            uint256 bufferUnderlyingBalance = bufferBalances.getUnderlyingBalance();
-
             uint256 bufferUnderlyingSurplus;
             uint256 bufferWrappedSurplus;
 
@@ -1247,8 +1241,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (actualUnderlyingWithdrawn) and discounts the amount needed in the trade
                 // (amountUnderlyingExpected). Same logic applies to wrapped balances.
                 bufferBalances = bufferBalances.setBalances(
-                    bufferUnderlyingBalance + (actualUnderlyingWithdrawn - amountOutUnderlying),
-                    bufferWrappedBalance - (actualWrappedRedeemed - amountInWrapped)
+                    bufferBalances.getUnderlyingBalance() + (actualUnderlyingWithdrawn - amountOutUnderlying),
+                    bufferBalances.getWrappedBalance() - (actualWrappedRedeemed - amountInWrapped)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
             }
