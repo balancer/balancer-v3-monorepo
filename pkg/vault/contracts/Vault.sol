@@ -191,8 +191,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
-            Rounding.ROUND_DOWN,
-            vaultState.protocolYieldFeePercentage
+            vaultState,
+            Rounding.ROUND_DOWN
         );
 
         // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
@@ -495,11 +495,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
         // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
-            params.pool,
-            Rounding.ROUND_UP,
-            vaultState.protocolYieldFeePercentage
-        );
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, vaultState, Rounding.ROUND_UP);
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.maxAmountsIn.length);
 
         // Amounts are entering pool math, so round down.
@@ -727,8 +723,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
-            Rounding.ROUND_DOWN,
-            vaultState.protocolYieldFeePercentage
+            vaultState,
+            Rounding.ROUND_DOWN
         );
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.minAmountsOut.length);
 
@@ -970,7 +966,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // creatorFees = creatorAndLpFees * creatorFeePct = 600 * 60% = 360
                 // lpFees (will stay in the pool) = creatorAndLpFees - creatorFees = 600 - 360 = 240
                 //
-                // So, the aggregate percentage is: totalFees * protocolFeePct + (totalFees - totalFees * protocolFeePct) * creatorFeePct
+                // So, the aggregate percentage is: totalFees * protocolFeePct +
+                //     (totalFees - totalFees * protocolFeePct) * creatorFeePct
                 // = totalFees * protocolFeePct + totalFees * (1 - protocolFeePct) * creatorFeePct
                 // = protocolFeePct + (1 - protocolFeePct) * creatorFeePct
                 // In the example, that would be: 0.4 + (1 - 0.4) * 0.6 = 0.4 + 0.6 * 0.6 = 0.4 + 0.36 = 0.76 (76%)
@@ -982,16 +979,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 );
             }
 
-            uint256 aggregateSwapFeeAmountScaled18 = swapFeeAmountScaled18
-                .mulUp(_aggregateProtocolSwapFeePercentage().tload());
+            uint256 aggregateSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(
+                _aggregateProtocolSwapFeePercentage().tload()
+            );
 
             // Ensure we can never charge more than the total swap fee.
             if (aggregateSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
                 revert ProtocolFeesExceedSwapFee();
             }
 
-            aggregateSwapFeeAmountRaw = aggregateSwapFeeAmountScaled18
-                .toRawUndoRateRoundDown(poolData.decimalScalingFactors[index], poolData.tokenRates[index]);
+            aggregateSwapFeeAmountRaw = aggregateSwapFeeAmountScaled18.toRawUndoRateRoundDown(
+                poolData.decimalScalingFactors[index],
+                poolData.tokenRates[index]
+            );
 
             _protocolSwapFees[pool][token] += aggregateSwapFeeAmountRaw;
         }

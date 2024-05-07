@@ -83,8 +83,8 @@ interface IVaultMainMock {
         PoolData memory poolData,
         uint256 lastLiveBalance,
         uint256 tokenIndex,
-        uint256 protocolYieldFeePercentage
-    ) external pure returns (uint256, uint256);
+        uint256 aggregateYieldFeePercentage
+    ) external pure returns (uint256);
 
     function guardedCheckEntered() external;
 

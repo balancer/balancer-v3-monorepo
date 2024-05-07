@@ -349,12 +349,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     function _getPoolDataAndYieldFees(
         address pool,
         Rounding roundingDirection,
-        uint256 yieldFeePercentage
-    )
-        internal
-        view
-        returns (PoolData memory poolData, uint256[] memory dueProtocolYieldFees, uint256[] memory dueCreatorYieldFees)
-    {
+        uint256 aggregateYieldFeePercentage
+    ) internal view returns (PoolData memory poolData, uint256[] memory aggregateYieldFeeAmountsRaw) {
         // Initialize poolData with base information for subsequent calculations.
         (
             poolData.tokenConfig,
@@ -366,8 +362,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
         uint256 numTokens = poolBalances.length();
 
-        dueProtocolYieldFees = new uint256[](numTokens);
-        dueCreatorYieldFees = new uint256[](numTokens);
+        aggregateYieldFeeAmountsRaw = new uint256[](numTokens);
 
         // Initialize arrays to store balances and rates based on the number of tokens in the pool.
         // Will be read raw, then upscaled and rounded as directed.
@@ -377,7 +372,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         _updateTokenRatesInPoolData(poolData);
 
         bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
-            yieldFeePercentage > 0 &&
+            aggregateYieldFeePercentage > 0 &&
             poolData.poolConfig.isPoolInRecoveryMode == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -395,19 +390,18 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
             // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
             if (poolSubjectToYieldFees && tokenSubjectToYieldFees) {
-                (uint256 protocolYieldFeeAmountRaw, uint256 creatorYieldFeeAmountRaw) = _computeYieldFeesDue(
+                uint256 aggregateYieldFeeAmountRaw = _computeYieldFeesDue(
                     poolData,
                     poolBalances.unchecked_valueAt(i).getLastLiveBalanceScaled18(),
                     i,
-                    yieldFeePercentage
+                    aggregateYieldFeePercentage
                 );
 
-                if (protocolYieldFeeAmountRaw > 0 || creatorYieldFeeAmountRaw > 0) {
-                    dueProtocolYieldFees[i] = protocolYieldFeeAmountRaw;
-                    dueCreatorYieldFees[i] = creatorYieldFeeAmountRaw;
+                if (aggregateYieldFeeAmountRaw > 0) {
+                    aggregateYieldFeeAmountsRaw[i] = aggregateYieldFeeAmountRaw;
 
                     // Adjust raw and live balances.
-                    poolData.balancesRaw[i] -= (protocolYieldFeeAmountRaw + creatorYieldFeeAmountRaw);
+                    poolData.balancesRaw[i] -= aggregateYieldFeeAmountRaw;
                     _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, i);
                 }
             }
@@ -421,28 +415,46 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _computePoolDataUpdatingBalancesAndFees(
         address pool,
-        Rounding roundingDirection,
-        uint256 yieldFeePercentage
+        VaultState memory vaultState,
+        Rounding roundingDirection
     ) internal nonReentrant returns (PoolData memory poolData) {
-        uint256[] memory dueProtocolYieldFees;
-        uint256[] memory dueCreatorYieldFees;
+        uint256[] memory aggregateYieldFeeAmountsRaw;
 
-        (poolData, dueProtocolYieldFees, dueCreatorYieldFees) = _getPoolDataAndYieldFees(
+        // Initialize aggregate percentage, if not already set
+        if (_aggregateProtocolYieldFeePercentage().tload() == 0) {
+            // Pool creator fees are calculated based on creatorAndLpFees, and not in totalFees. See example below
+            // Example:
+            // tokenOutAmount = 10000; poolSwapFeePct = 10%; protocolFeePct = 40%; creatorFeePct = 60%
+            // totalFees = tokenOutAmount * poolSwapFeePct = 10000 * 10% = 1000
+            // protocolFees = totalFees * protocolFeePct = 1000 * 40% = 400
+            // creatorAndLpFees = totalFees - protocolFees = 1000 - 400 = 600
+            // creatorFees = creatorAndLpFees * creatorFeePct = 600 * 60% = 360
+            // lpFees (will stay in the pool) = creatorAndLpFees - creatorFees = 600 - 360 = 240
+            //
+            // So, the aggregate percentage is: totalFees * protocolFeePct +
+            //     (totalFees - totalFees * protocolFeePct) * creatorFeePct
+            // = totalFees * protocolFeePct + totalFees * (1 - protocolFeePct) * creatorFeePct
+            // = protocolFeePct + (1 - protocolFeePct) * creatorFeePct
+            // In the example, that would be: 0.4 + (1 - 0.4) * 0.6 = 0.4 + 0.6 * 0.6 = 0.4 + 0.36 = 0.76 (76%)
+            _aggregateProtocolYieldFeePercentage().tstore(
+                vaultState.protocolYieldFeePercentage +
+                    vaultState.protocolYieldFeePercentage.complement().mulDown(
+                        poolData.poolConfig.poolCreatorFeePercentage
+                    )
+            );
+        }
+
+        (poolData, aggregateYieldFeeAmountsRaw) = _getPoolDataAndYieldFees(
             pool,
             roundingDirection,
-            yieldFeePercentage
+            _aggregateProtocolYieldFeePercentage().tload()
         );
-        uint256 numTokens = dueProtocolYieldFees.length;
+        uint256 numTokens = aggregateYieldFeeAmountsRaw.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             IERC20 token = poolData.tokenConfig[i].token;
-            uint256 totalYieldFeeAmountRaw = dueProtocolYieldFees[i] + dueCreatorYieldFees[i];
 
-            if (totalYieldFeeAmountRaw > 0) {
-                // Charge protocol and creator yield fees.
-                // TODO - can I do this aggregate, like the others?
-                _protocolYieldFees[pool][token] += totalYieldFeeAmountRaw;
-            }
+            _protocolYieldFees[pool][token] += aggregateYieldFeeAmountsRaw[i];
         }
 
         // Update raw and last live pool balances, as computed by `_getPoolDataAndYieldFees`
@@ -453,8 +465,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         PoolData memory poolData,
         uint256 lastLiveBalance,
         uint256 tokenIndex,
-        uint256 protocolYieldFeePercentage
-    ) internal pure returns (uint256 protocolFeeAmountRaw, uint256 creatorFeeAmountRaw) {
+        uint256 aggregateYieldFeePercentage
+    ) internal pure returns (uint256 aggregateYieldFeeAmountRaw) {
         uint256 currentLiveBalance = poolData.balancesLiveScaled18[tokenIndex];
 
         // Do not charge fees if rates go down. If the rate were to go up, down, and back up again, protocol fees
@@ -473,13 +485,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
                 // A pool is subject to yield fees if poolSubjectToYieldFees is true, meaning that
                 // `protocolYieldFeePercentage > 0`. So, we don't need to check this again in here, saving some gas.
-                protocolFeeAmountRaw = liveBalanceDiffRaw.mulUp(protocolYieldFeePercentage);
-
-                if (poolData.poolConfig.poolCreatorFeePercentage > 0) {
-                    creatorFeeAmountRaw = (liveBalanceDiffRaw - protocolFeeAmountRaw).mulUp(
-                        poolData.poolConfig.poolCreatorFeePercentage
-                    );
-                }
+                aggregateYieldFeeAmountRaw = liveBalanceDiffRaw.mulUp(aggregateYieldFeePercentage);
             }
         }
     }
