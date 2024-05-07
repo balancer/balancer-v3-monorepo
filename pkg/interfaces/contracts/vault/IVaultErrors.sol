@@ -287,6 +287,9 @@ interface IVaultErrors {
     /// @dev The wrappedToken wrap/unwrap function did not burn/mint the expected amount of wrapped tokens.
     error WrongWrapUnwrapWrappedAmount(address wrappedToken);
 
+    /// @dev The amount given to wrap/unwrap was too small, which can introduce rounding issues.
+    error WrapAmountTooSmall(address wrappedToken);
+
     /// @dev Vault buffers are paused.
     error VaultBuffersArePaused();
 }
