@@ -952,7 +952,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 protocolSwapFeeAmountScaled18;
             uint256 creatorSwapFeeAmountScaled18;
 
-            if (protocolSwapFeePercentage > 0) {
+            // Check whether this pool is exempt from protocol swap fees. Note that it can still charge creator fees,
+            // in which case they will be applied to the entire swap amount.
+            if (protocolSwapFeePercentage > 0 && poolData.poolConfig.isExemptFromProtocolSwapFee == false) {
                 protocolSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(protocolSwapFeePercentage);
                 protocolSwapFeeAmountRaw = protocolSwapFeeAmountScaled18.toRawUndoRateRoundDown(
                     poolData.decimalScalingFactors[index],
