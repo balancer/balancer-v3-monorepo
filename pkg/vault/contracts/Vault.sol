@@ -1132,7 +1132,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Only updates buffer balances if buffer is not empty and there was a surplus of underlying or wrapped
             // tokens in the buffer
-            if (!bufferBalances.isEmpty() && (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0)) {
+            if (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0) {
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
                 // increase. To decrease underlying balance, we get the total amount that was deposited
                 // (totalUnderlyingDeposited) and discounts the amount needed in the trade (amountUnderlyingToWrap).
@@ -1169,6 +1169,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // EXACT_IN unwrap, so AmountGiven is wrapped amount
             // Cannot use convertToAssets because the actual withdraw operation returns a different (usually smaller)
             // amount of assets.
+            amountCalculated = wrappedToken.previewRedeem(amountGiven);
             amountCalculated = wrappedToken.previewRedeem(amountGiven);
             (amountOutUnderlying, amountInWrapped) = (amountCalculated, amountGiven);
         } else {
@@ -1231,7 +1232,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Only updates buffer balances if buffer is not empty and there was a surplus of underlying or wrapped
             // tokens in the buffer
-            if (!bufferBalances.isEmpty() && (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0)) {
+            if (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0) {
                 // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance
                 // will decrease. To increase underlying balance, we get the total amount that was withdrawn
                 // (actualUnderlyingWithdrawn) and discounts the amount needed in the trade
@@ -1260,10 +1261,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * - final balances: 3.5 wrapped (2 existing + 1.5 new) and 7 underlying (10 existing - 3)
      */
     function _getBufferUnderlyingSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (uint256) {
-        if (bufferBalance.isEmpty()) {
-            return 0;
-        }
-
         uint256 underlyingBalance = bufferBalance.getUnderlyingBalance();
         uint256 wrappedBalanceAsUnderlying = wrappedToken.convertToAssets(bufferBalance.getWrappedBalance());
 
@@ -1283,10 +1280,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * - final balances: 6 wrapped (10 existing - 4) and 12 underlying (4 existing + 8 new)
      */
     function _getBufferWrappedSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (uint256) {
-        if (bufferBalance.isEmpty()) {
-            return 0;
-        }
-
         uint256 wrappedBalance = bufferBalance.getWrappedBalance();
         uint256 underlyingBalanceAsWrapped = wrappedToken.convertToShares(bufferBalance.getUnderlyingBalance());
 
