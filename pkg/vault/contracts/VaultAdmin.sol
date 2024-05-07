@@ -338,7 +338,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                 _protocolFees[pool][token] = 0;
 
                 token.safeTransfer(msg.sender, amount);
-                emit ProtocolFeeCollected(token, amount);
+                emit ProtocolFeeCollected(pool, token, amount);
             }
         }
     }
