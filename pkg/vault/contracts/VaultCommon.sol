@@ -440,14 +440,14 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
             if (yieldFeeAmountRaw > 0) {
                 // Charge protocol fee.
-                _protocolFees[token] += yieldFeeAmountRaw;
+                _protocolFees[pool][token] += yieldFeeAmountRaw;
                 emit ProtocolYieldFeeCharged(pool, address(token), yieldFeeAmountRaw);
             }
 
             uint256 creatorYieldFeeAmountRaw = dueCreatorYieldFees[i];
             if (creatorYieldFeeAmountRaw > 0) {
                 // Charge pool creator fee
-                _poolCreatorFees[pool][address(token)] += creatorYieldFeeAmountRaw;
+                _poolCreatorFees[pool][token] += creatorYieldFeeAmountRaw;
                 emit PoolCreatorYieldFeeCharged(pool, address(token), creatorYieldFeeAmountRaw);
             }
         }

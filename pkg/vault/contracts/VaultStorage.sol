@@ -82,11 +82,11 @@ contract VaultStorage {
      */
     mapping(IERC20 => uint256) internal _reservesOf;
 
-    // Token -> fee: Protocol fees (from both swap and yield) accumulated in the Vault for harvest.
-    mapping(IERC20 => uint256) internal _protocolFees;
+    // Pool -> (Token -> fee): Protocol fees (from both swap and yield) accumulated in the Vault for harvest.
+    mapping(address => mapping(IERC20 => uint256)) internal _protocolFees;
 
     // Pool -> (Token -> fee): pool creator fees (from swap) accumulated in the Vault for harvest.
-    mapping(address => mapping(address => uint256)) internal _poolCreatorFees;
+    mapping(address => mapping(IERC20 => uint256)) internal _poolCreatorFees;
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer internal _authorizer;

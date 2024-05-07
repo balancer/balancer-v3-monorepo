@@ -139,14 +139,14 @@ interface IVaultAdmin {
 
     /**
      * @notice Collects accumulated protocol fees for the specified array of tokens.
-     * @dev Fees are sent to msg.sender.
-     * @param tokens An array of token addresses for which the fees should be collected
+     * @dev All pool tokens will be collected. Fees are sent to msg.sender.
+     * @param pool The address of the pool on which we are collecting protocol fees
      */
-    function collectProtocolFees(IERC20[] calldata tokens) external;
+    function collectProtocolFees(address pool) external;
 
     /**
      * @notice Collects accumulated pool creator fees for the specified pool.
-     * @dev Fees are sent to the pool creator address.
+     * @dev All pool tokens will be collected. Fees are sent to the pool creator address.
      * @param pool The address of the pool on which we are collecting pool creator fees
      */
     function collectPoolCreatorFees(address pool) external;
