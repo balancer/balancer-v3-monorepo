@@ -334,7 +334,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectProtocolFees(address /* pool */) public nonReentrant {
+    function collectProtocolSwapFees(address /* pool */) public nonReentrant {
+        // need protocol fees collector address. Deploy contract and move collection to there?
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function collectProtocolYieldFees(address /* pool */) public nonReentrant {
         // need protocol fees collector address. Deploy contract and move collection to there?
     }
 

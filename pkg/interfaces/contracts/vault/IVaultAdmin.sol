@@ -142,11 +142,18 @@ interface IVaultAdmin {
     function setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) external;
 
     /**
-     * @notice Collects accumulated protocol fees for the specified array of tokens.
+     * @notice Collects accumulated protocol swap fees for the specified pool.
      * @dev Fees are sent to the ProtocolFeeCollector address.
      * @param pool The pool on which all protocol fees should be collected
      */
-    function collectProtocolFees(address pool) external;
+    function collectProtocolSwapFees(address pool) external;
+
+    /**
+     * @notice Collects accumulated protocol yield fees for the specified pool.
+     * @dev Fees are sent to the ProtocolFeeCollector address.
+     * @param pool The pool on which all protocol fees should be collected
+     */
+    function collectProtocolYieldFees(address pool) external;
 
     /*******************************************************************************
                                     Recovery Mode
