@@ -150,6 +150,28 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     /*
+        addLiquidityHook
+            [x] onlyVault
+            [] nonReentrant
+    */
+    function testAddLiquidityHookWhenNotVault() public {
+        createPool();
+
+        IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
+            msg.sender, 
+            address(wethPool),
+            wethDaiAmountsIn,
+            0,
+            AddLiquidityKind.PROPORTIONAL,
+            false,
+            bytes("")
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        router.addLiquidityHook(hookParams);
+    }
+
+    /*
         removeLiquidityRecoveryHook
             [x] onlyVault
             [] nonReentrant
@@ -192,6 +214,53 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     /*
+        querySwapHook
+            [x] onlyVault
+            [] nonReentrant   
+    */
+    function testQuerySwapHookWhenNotVault() public {
+        address poolAddy = createPool();
+
+        IRouter.SwapSingleTokenHookParams memory params = IRouter.SwapSingleTokenHookParams(
+            msg.sender,
+            SwapKind.EXACT_IN,
+            poolAddy,
+            IERC20(dai),
+            IERC20(usdc),
+            daiAmountIn,
+            0,
+            block.timestamp + 10,
+            false,
+            bytes("")
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        router.querySwapHook(params);
+    }
+
+    /*
+        queryAddLiquidityHook
+            [x] onlyVault
+            [] nonReentrant        
+    */
+    function testQueryAddLiquidityHookWhenNotVault() public {
+        createPool();
+
+        IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
+            msg.sender, 
+            address(wethPool),
+            wethDaiAmountsIn,
+            0,
+            AddLiquidityKind.PROPORTIONAL,
+            false,
+            bytes("")
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        router.queryAddLiquidityHook(hookParams);
+    }
+
+    /*
         queryRemoveLiquidityHook
             [x] onlyVault
             [] nonReentrant        
@@ -210,7 +279,7 @@ contract RouterMutationTest is BaseVaultTest {
         );
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        router.queryRemoveLiquidityHook(params);(params);
+        router.queryRemoveLiquidityHook(params);
     }
 
     /*
