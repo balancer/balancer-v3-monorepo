@@ -1262,7 +1262,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      */
     function _getBufferUnderlyingSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (uint256) {
         uint256 underlyingBalance = bufferBalance.getUnderlyingBalance();
-        uint256 wrappedBalanceAsUnderlying = wrappedToken.convertToAssets(bufferBalance.getWrappedBalance());
+
+        uint256 wrappedBalanceAsUnderlying = 0;
+        if (bufferBalance.getWrappedBalance() > 0) {
+            wrappedBalanceAsUnderlying = wrappedToken.convertToAssets(bufferBalance.getWrappedBalance());
+        }
 
         return
             underlyingBalance > wrappedBalanceAsUnderlying ? (underlyingBalance - wrappedBalanceAsUnderlying) / 2 : 0;
@@ -1281,7 +1285,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      */
     function _getBufferWrappedSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (uint256) {
         uint256 wrappedBalance = bufferBalance.getWrappedBalance();
-        uint256 underlyingBalanceAsWrapped = wrappedToken.convertToShares(bufferBalance.getUnderlyingBalance());
+
+        uint256 underlyingBalanceAsWrapped = 0;
+        if (bufferBalance.getUnderlyingBalance() > 0) {
+            underlyingBalanceAsWrapped = wrappedToken.convertToShares(bufferBalance.getUnderlyingBalance());
+        }
 
         return wrappedBalance > underlyingBalanceAsWrapped ? (wrappedBalance - underlyingBalanceAsWrapped) / 2 : 0;
     }
