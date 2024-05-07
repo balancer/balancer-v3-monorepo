@@ -96,8 +96,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2);
 
         // protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
-        protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1;
-        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2;
+        protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1; // mulUp
+        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2 + 1; // mulUp
 
         vm.prank(alice);
         snapStart("routerAddLiquiditySingleTokenExactOutWithCreatorFee");
@@ -185,8 +185,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2);
 
         // protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
-        protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1;
-        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2;
+        protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1; // mulUp
+        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2 + 1; // mulUp
 
         snapStart("routerRemoveLiquiditySingleTokenExactOutWithCreatorFee");
         bptAmountIn = router.removeLiquiditySingleTokenExactOut(
@@ -242,7 +242,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             "Add - Pool balance: token 0"
         );
 
-        assertLe(
+        assertEq(
             balancesAfter.poolTokens[1],
             balancesBefore.poolTokens[1] + amountsIn[1] - protocolSwapFees[1] - poolCreatorFees[1],
             "Add - Pool balance: token 1"
@@ -323,7 +323,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             balancesBefore.poolTokens[0] - amountsOut[0] - protocolSwapFees[0] - poolCreatorFees[0],
             "Remove - Pool balance: token 0"
         );
-        assertLe(
+        assertEq(
             balancesAfter.poolTokens[1],
             balancesBefore.poolTokens[1] - amountsOut[1] - protocolSwapFees[1] - poolCreatorFees[1],
             "Remove - Pool balance: token 1"
@@ -333,18 +333,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         assertEq(protocolSwapFees[daiIdx], vault.getProtocolFees(pool, dai), "Protocol's DAI fee amount is wrong");
         assertEq(protocolSwapFees[usdcIdx], vault.getProtocolFees(pool, usdc), "Protocol's USDC fee amount is wrong");
 
-        assertApproxEqAbs(
-            poolCreatorFees[daiIdx],
-            vault.getPoolCreatorFees(pool, dai),
-            1,
-            "Pool creator's fee amount is wrong"
-        );
-        assertApproxEqAbs(
-            poolCreatorFees[usdcIdx],
-            vault.getPoolCreatorFees(pool, usdc),
-            1,
-            "Pool creator's fee amount is wrong"
-        );
+        assertEq(poolCreatorFees[daiIdx], vault.getPoolCreatorFees(pool, dai), "Pool creator's fee amount is wrong");
+        assertEq(poolCreatorFees[usdcIdx], vault.getPoolCreatorFees(pool, usdc), "Pool creator's fee amount is wrong");
 
         // Pool creator fees are charged if protocol fees are charged.
         if (protocolSwapFees[0] > 0) {
