@@ -7,29 +7,78 @@ import "forge-std/Test.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
+
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract PoolCreatorFeesTest is BaseVaultTest {
     using FixedPoint for uint256;
+    using ArrayHelpers for *;
     using SafeCast for *;
 
     uint256 private _defaultAmountToSwap;
 
+    PoolMock exemptPool;
+
     function setUp() public override {
         BaseVaultTest.setUp();
+
         _defaultAmountToSwap = defaultAmount / 10;
+    }
+
+    function createPool() internal virtual override returns (address) {
+        address[] memory tokens = [address(dai), address(usdc)].toMemoryArray();
+
+        // Create a pool that is exempt from Protocol Swap Fees
+        exemptPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "Exempt Pool");
+        vm.label(address(exemptPool), "Exempt Pool");
+
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20()
+        );
+
+        factoryMock.registerGeneralTestPool(
+            address(exemptPool),
+            tokenConfig,
+            0, // default swap fee (will be changed later)
+            0, // pause time - doesn't matter here
+            true, // exempt from protocol swap fees
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: lp })
+        );
+
+        return _createPool(tokens, "swapPool");
+    }
+
+    function initPool() internal override {
+        vm.startPrank(lp);
+        _initPool(pool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        _initPool(address(exemptPool), [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        vm.stopPrank();
     }
 
     function testPoolCreatorWasSet() public {
         assertEq(vault.getPoolCreator(pool), address(lp));
+        assertEq(vault.getPoolCreator(address(exemptPool)), address(lp));
+    }
+
+    function testExemptFlagsWereSet() public {
+        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
+
+        assertFalse(poolConfig.isExemptFromProtocolSwapFee);
+
+        poolConfig = vault.getPoolConfig(address(exemptPool));
+        assertTrue(poolConfig.isExemptFromProtocolSwapFee);
     }
 
     function testSwapWithoutFees() public {
-        _swapExactInWithFees(usdc, dai, _defaultAmountToSwap, 0, 0, 0, false);
+        _swapExactInWithFees(address(pool), usdc, dai, _defaultAmountToSwap, 0, 0, 0, false);
     }
 
     function testSwapWithCreatorFee() public {
@@ -39,6 +88,25 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         uint64 poolCreatorFeePercentage = 5e17; // 50%
 
         _swapExactInWithFees(
+            address(pool),
+            usdc,
+            dai,
+            amountToSwap,
+            swapFeePercentage,
+            protocolFeePercentage,
+            poolCreatorFeePercentage,
+            true
+        );
+    }
+
+    function testProtocolFeeExemptSwapWithCreatorFee() public {
+        uint256 amountToSwap = _defaultAmountToSwap;
+        uint64 swapFeePercentage = 1e17; // 10%
+        uint64 protocolFeePercentage = 3e17; // 30%
+        uint64 poolCreatorFeePercentage = 5e17; // 50%
+
+        _swapExactInWithFees(
+            address(exemptPool),
             usdc,
             dai,
             amountToSwap,
@@ -55,17 +123,15 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         uint64 protocolFeePercentage,
         uint64 poolCreatorFeePercentage
     ) public {
-        amountToSwap = bound(amountToSwap, _defaultAmountToSwap, defaultAmount / 2);
-        // 0 to 10%
-        swapFeePercentage = (bound(swapFeePercentage, 0, 1e17 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR).toUint64();
-        // 0 to 50%
-        protocolFeePercentage = (bound(protocolFeePercentage, 0, 5e17 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR)
-            .toUint64();
-        // 0 to 100%
-        poolCreatorFeePercentage = (bound(poolCreatorFeePercentage, 0, 1e18 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR)
-            .toUint64();
+        (amountToSwap, swapFeePercentage, protocolFeePercentage, poolCreatorFeePercentage) = _bindFuzzTestAmounts(
+            amountToSwap,
+            swapFeePercentage,
+            protocolFeePercentage,
+            poolCreatorFeePercentage
+        );
 
         _swapExactInWithFees(
+            address(pool),
             usdc,
             dai,
             amountToSwap,
@@ -73,6 +139,48 @@ contract PoolCreatorFeesTest is BaseVaultTest {
             protocolFeePercentage,
             poolCreatorFeePercentage,
             false
+        );
+    }
+
+    function testProtocolFeeExemptSwapWithCreatorFee_Fuzz(
+        uint256 amountToSwap,
+        uint64 swapFeePercentage,
+        uint64 protocolFeePercentage,
+        uint64 poolCreatorFeePercentage
+    ) public {
+        (amountToSwap, swapFeePercentage, protocolFeePercentage, poolCreatorFeePercentage) = _bindFuzzTestAmounts(
+            amountToSwap,
+            swapFeePercentage,
+            protocolFeePercentage,
+            poolCreatorFeePercentage
+        );
+
+        _swapExactInWithFees(
+            address(exemptPool),
+            usdc,
+            dai,
+            amountToSwap,
+            swapFeePercentage,
+            protocolFeePercentage,
+            poolCreatorFeePercentage,
+            false
+        );
+    }
+
+    function _bindFuzzTestAmounts(
+        uint256 amountToSwap,
+        uint64 swapFeePercentage,
+        uint64 protocolFeePercentage,
+        uint64 poolCreatorFeePercentage
+    ) private view returns (uint256, uint64, uint64, uint64) {
+        return (
+            bound(amountToSwap, _defaultAmountToSwap, defaultAmount / 2),
+            // 0 to 10%
+            (bound(swapFeePercentage, 0, 1e17 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR).toUint64(),
+            // 0 to 50%
+            (bound(protocolFeePercentage, 0, 5e17 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR).toUint64(),
+            // 0 to 100%
+            (bound(poolCreatorFeePercentage, 0, 1e18 / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR).toUint64()
         );
     }
 
@@ -95,6 +203,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         uint256 lpBalanceDaiBefore = dai.balanceOf(address(lp));
 
         uint256 chargedCreatorFees = _swapExactInWithFees(
+            address(pool),
             usdc,
             dai,
             amountToSwap,
@@ -133,6 +242,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
     }
 
     function _swapExactInWithFees(
+        address targetPool,
         IERC20 tokenIn,
         IERC20 tokenOut,
         uint256 amountIn,
@@ -144,15 +254,18 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         SwapTestLocals memory vars;
 
         setProtocolSwapFeePercentage(protocolFeePercentage);
-        setSwapFeePercentage(swapFeePercentage);
+        // Must set on the specific pool
+        _setSwapFeePercentage(targetPool, swapFeePercentage);
         vm.prank(lp);
-        vault.setPoolCreatorFeePercentage(address(pool), creatorFeePercentage);
+        vault.setPoolCreatorFeePercentage(targetPool, creatorFeePercentage);
 
         // totalFees = amountIn * swapFee%
         vars.totalFees = amountIn.mulUp(swapFeePercentage);
 
-        // protocolFees = totalFees * protocolFee%
-        vars.protocolFees = vars.totalFees.mulUp(protocolFeePercentage);
+        bool isExemptFromProtocolFee = targetPool == address(exemptPool);
+
+        // protocolFees = totalFees * protocolFee% (or 0, if exempt)
+        vars.protocolFees = isExemptFromProtocolFee ? 0 : vars.totalFees.mulUp(protocolFeePercentage);
 
         // creatorAndLPFees = totalFees - protocolFees
         // creatorFees = creatorAndLPFees * creatorFee%
@@ -169,16 +282,20 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         vars.protocolTokenOutFeesBefore = vault.getProtocolFees(address(tokenOut));
 
         // Get creator fees before transfer
-        vars.creatorTokenInFeesBefore = vault.getPoolCreatorFees(address(pool), tokenIn);
-        vars.creatorTokenOutFeesBefore = vault.getPoolCreatorFees(address(pool), tokenOut);
+        vars.creatorTokenInFeesBefore = vault.getPoolCreatorFees(targetPool, tokenIn);
+        vars.creatorTokenOutFeesBefore = vault.getPoolCreatorFees(targetPool, tokenOut);
 
-        uint256[] memory liveBalancesBefore = vault.getLastLiveBalances(address(pool));
+        uint256[] memory liveBalancesBefore = vault.getLastLiveBalances(targetPool);
 
         vm.prank(alice);
         if (shouldSnapSwap) {
-            snapStart("swapWithCreatorFee");
+            if (isExemptFromProtocolFee) {
+                snapStart("swapWithOnlyCreatorFee");
+            } else {
+                snapStart("swapWithCreatorFee");
+            }
         }
-        router.swapSingleTokenExactIn(address(pool), tokenIn, tokenOut, amountIn, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(targetPool, tokenIn, tokenOut, amountIn, 0, MAX_UINT256, false, bytes(""));
         if (shouldSnapSwap) {
             snapEnd();
         }
@@ -210,12 +327,12 @@ contract PoolCreatorFeesTest is BaseVaultTest {
 
         // Check creator fees after transfer
         assertEq(
-            vault.getPoolCreatorFees(address(pool), tokenIn),
+            vault.getPoolCreatorFees(targetPool, tokenIn),
             vars.creatorTokenInFeesBefore,
             "tokenIn creator fees should not change"
         );
         assertEq(
-            vault.getPoolCreatorFees(address(pool), tokenOut),
+            vault.getPoolCreatorFees(targetPool, tokenOut),
             vars.creatorTokenOutFeesBefore + chargedCreatorFee,
             "tokenOut creator fees should increase by chargedCreatorFee after swap"
         );
@@ -228,8 +345,8 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         );
 
         // Check live balances after transfer
-        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(address(pool));
-        uint256[] memory liveBalancesAfter = vault.getLastLiveBalances(address(pool));
+        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(targetPool);
+        uint256[] memory liveBalancesAfter = vault.getLastLiveBalances(targetPool);
         for (uint256 i = 0; i < liveBalancesAfter.length; ++i) {
             if (tokenConfig[i].token == tokenIn) {
                 assertEq(
