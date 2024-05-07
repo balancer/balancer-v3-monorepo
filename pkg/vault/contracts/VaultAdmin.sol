@@ -462,24 +462,26 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         address sharesOwner
     ) public onlyWhenUnlocked whenVaultBufferNotPaused nonReentrant returns (uint256 issuedShares) {
         address underlyingToken = wrappedToken.asset();
+
+        // amount of shares to issue is the total underlying token that the user is depositing
+        issuedShares = wrappedToken.convertToAssets(amountWrapped) + amountUnderlying;
+
         if (_bufferAssets[IERC20(address(wrappedToken))] == address(0)) {
-            // Buffer was not initialized, so we initialize it
+            // Buffer is not initialized yet, so we initialize it
 
             // Register asset of wrapper, so it cannot change
             _bufferAssets[IERC20(address(wrappedToken))] = underlyingToken;
 
-            // Burn 1e6 shares, so the buffer can never go back to liquidity 0
+            // Burn MINIMUM_TOTAL_SUPPLY shares, so the buffer can never go back to liquidity 0
             // (avoids rounding issues with low liquidity)
-            _bufferTotalShares[IERC20(wrappedToken)] += 1e6;
+            _bufferTotalShares[IERC20(wrappedToken)] += _MINIMUM_TOTAL_SUPPLY;
+            issuedShares -= _MINIMUM_TOTAL_SUPPLY;
         } else if (_bufferAssets[IERC20(address(wrappedToken))] != underlyingToken) {
             // Asset was changed since the first bufferAddLiquidity call
             revert WrongWrappedTokenAsset(address(wrappedToken));
         }
 
         bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
-
-        // amount of shares to issue is the total underlying token that the user is depositing
-        issuedShares = wrappedToken.convertToAssets(amountWrapped) + amountUnderlying;
 
         // Adds the issued shares to the total shares of the liquidity pool
         _bufferLpShares[IERC20(wrappedToken)][sharesOwner] += issuedShares;
