@@ -137,15 +137,15 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         assertEq(balancesRaw[0], boostedPoolAmount, "Wrong boosted pool balance [0]");
         assertEq(balancesRaw[1], boostedPoolAmount, "Wrong boosted pool balance [1]");
 
-        // LP should have correct amount of shares from buffer (total invested amount in base)
+        // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
         assertEq(
             vault.getBufferShares(IERC20(waDAI), address(lp)),
-            bufferAmount * 2,
+            bufferAmount * 2 - MIN_BPT,
             "Wrong share of waDAI buffer belonging to LP"
         );
         assertEq(
             vault.getBufferShares(IERC20(waUSDC), address(lp)),
-            bufferAmount * 2,
+            bufferAmount * 2 - MIN_BPT,
             "Wrong share of waUSDC buffer belonging to LP"
         );
 

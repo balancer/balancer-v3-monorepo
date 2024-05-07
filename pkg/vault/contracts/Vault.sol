@@ -1045,7 +1045,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGivenRaw
-    ) private nonReentrant returns (uint256 amountCalculatedRaw, uint256 tradeUnderlyingRaw, uint256 tradeWrappedRaw) {
+    )
+        private
+        nonReentrant
+        returns (uint256 amountCalculatedRaw, uint256 amountInUnderlyingRaw, uint256 amountOutWrappedRaw)
+    {
         bytes32 bufferBalancesRaw = _bufferTokenBalances[IERC20(wrappedToken)];
 
         if (kind == SwapKind.EXACT_IN) {
@@ -1053,21 +1057,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Cannot use convertToShares because the actual deposit operation returns a different (usually smaller)
             // amount of shares.
             amountCalculatedRaw = wrappedToken.previewDeposit(amountGivenRaw);
-            (tradeUnderlyingRaw, tradeWrappedRaw) = (amountGivenRaw, amountCalculatedRaw);
+            (amountInUnderlyingRaw, amountOutWrappedRaw) = (amountGivenRaw, amountCalculatedRaw);
         } else {
             // EXACT_OUT wrap, so AmountGivenRaw is wrapped amount
             // Cannot use convertToAssets because the actual mint operation deposits a different (usually bigger)
             // amount of assets.
             amountCalculatedRaw = wrappedToken.previewMint(amountGivenRaw);
-            (tradeUnderlyingRaw, tradeWrappedRaw) = (amountCalculatedRaw, amountGivenRaw);
+            (amountInUnderlyingRaw, amountOutWrappedRaw) = (amountCalculatedRaw, amountGivenRaw);
         }
 
-        if (bufferBalancesRaw.getWrappedBalance() > tradeWrappedRaw) {
+        if (bufferBalancesRaw.getWrappedBalance() > amountOutWrappedRaw) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
 
             bufferBalancesRaw = bufferBalancesRaw.setBalances(
-                bufferBalancesRaw.getUnderlyingBalance() + tradeUnderlyingRaw,
-                bufferBalancesRaw.getWrappedBalance() - tradeWrappedRaw
+                bufferBalancesRaw.getUnderlyingBalance() + amountInUnderlyingRaw,
+                bufferBalancesRaw.getWrappedBalance() - amountOutWrappedRaw
             );
             _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalancesRaw;
         } else {
@@ -1091,7 +1095,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                 // (amountUnderlyingToWrap), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingSurplus)
-                totalUnderlyingDepositedRaw = tradeUnderlyingRaw + bufferUnderlyingSurplus;
+                totalUnderlyingDepositedRaw = amountInUnderlyingRaw + bufferUnderlyingSurplus;
 
                 underlyingToken.approve(address(wrappedToken), totalUnderlyingDepositedRaw);
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called
@@ -1102,14 +1106,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
                 // TODO refactor comment
                 // The amount of wrapped tokens to mint is the necessary amount to fulfill the trade
-                // (tradeWrappedRaw), plus the amount needed to leave the buffer rebalanced 50/50 at the end
+                // (amountOutWrappedRaw), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferWrappedToUnwrapRaw)
                 if (bufferWrappedSurplus > 0) {
-                    totalWrappedMintedRaw = tradeWrappedRaw + bufferWrappedSurplus;
+                    totalWrappedMintedRaw = amountOutWrappedRaw + bufferWrappedSurplus;
                     underlyingToken.approve(address(wrappedToken), wrappedToken.previewMint(totalWrappedMintedRaw));
                 } else {
-                    totalWrappedMintedRaw = tradeWrappedRaw;
-                    underlyingToken.approve(address(wrappedToken), tradeUnderlyingRaw);
+                    totalWrappedMintedRaw = amountOutWrappedRaw;
+                    underlyingToken.approve(address(wrappedToken), amountInUnderlyingRaw);
                 }
 
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called
@@ -1121,12 +1125,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IERC20(wrappedToken)
             );
 
-            if (totalUnderlyingDepositedRaw < tradeUnderlyingRaw) {
+            if (totalUnderlyingDepositedRaw < amountInUnderlyingRaw) {
                 // If this error is thrown, it means the previewDeposit or previewMint had a different result from
                 // the actual operation.
                 revert WrongWrapUnwrapUnderlyingAmount(address(wrappedToken));
             }
-            if (totalWrappedMintedRaw < tradeWrappedRaw) {
+            if (totalWrappedMintedRaw < amountOutWrappedRaw) {
                 // If this error is thrown, it means the previewDeposit or previewMint had a different result from
                 // the actual operation.
                 revert WrongWrapUnwrapWrappedAmount(address(wrappedToken));
@@ -1140,15 +1144,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (totalUnderlyingDeposited) and discounts the amount needed in the trade (amountUnderlyingToWrap).
                 // Same logic applies to wrapped balances.
                 bufferBalancesRaw = bufferBalancesRaw.setBalances(
-                    bufferUnderlyingBalanceRaw - (totalUnderlyingDepositedRaw - tradeUnderlyingRaw),
-                    bufferWrappedBalanceRaw + (totalWrappedMintedRaw - tradeWrappedRaw)
+                    bufferUnderlyingBalanceRaw - (totalUnderlyingDepositedRaw - amountInUnderlyingRaw),
+                    bufferWrappedBalanceRaw + (totalWrappedMintedRaw - amountOutWrappedRaw)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalancesRaw;
             }
         }
 
-        _takeDebt(underlyingToken, tradeUnderlyingRaw);
-        _supplyCredit(wrappedToken, tradeWrappedRaw);
+        _takeDebt(underlyingToken, amountInUnderlyingRaw);
+        _supplyCredit(wrappedToken, amountOutWrappedRaw);
     }
 
     /**
@@ -1164,7 +1168,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGivenRaw
-    ) private nonReentrant returns (uint256 amountCalculatedRaw, uint256 tradeWrappedRaw, uint256 tradeUnderlyingRaw) {
+    )
+        private
+        nonReentrant
+        returns (uint256 amountCalculatedRaw, uint256 amountInWrappedRaw, uint256 amountOutUnderlyingRaw)
+    {
         bytes32 bufferBalancesRaw = _bufferTokenBalances[IERC20(wrappedToken)];
 
         if (kind == SwapKind.EXACT_IN) {
@@ -1172,20 +1180,20 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Cannot use convertToAssets because the actual withdraw operation returns a different (usually smaller)
             // amount of assets.
             amountCalculatedRaw = wrappedToken.previewRedeem(amountGivenRaw);
-            (tradeUnderlyingRaw, tradeWrappedRaw) = (amountCalculatedRaw, amountGivenRaw);
+            (amountOutUnderlyingRaw, amountInWrappedRaw) = (amountCalculatedRaw, amountGivenRaw);
         } else {
             // EXACT_OUT unwrap, so AmountGivenRaw is underlying amount
             // Cannot use convertToShares because the actual withdraw operation burns a different (usually bigger)
             // amount of shares.
             amountCalculatedRaw = wrappedToken.previewWithdraw(amountGivenRaw);
-            (tradeUnderlyingRaw, tradeWrappedRaw) = (amountGivenRaw, amountCalculatedRaw);
+            (amountOutUnderlyingRaw, amountInWrappedRaw) = (amountGivenRaw, amountCalculatedRaw);
         }
 
-        if (bufferBalancesRaw.getUnderlyingBalance() > tradeUnderlyingRaw) {
+        if (bufferBalancesRaw.getUnderlyingBalance() > amountOutUnderlyingRaw) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
             bufferBalancesRaw = bufferBalancesRaw.setBalances(
-                bufferBalancesRaw.getUnderlyingBalance() - tradeUnderlyingRaw,
-                bufferBalancesRaw.getWrappedBalance() + tradeWrappedRaw
+                bufferBalancesRaw.getUnderlyingBalance() - amountOutUnderlyingRaw,
+                bufferBalancesRaw.getWrappedBalance() + amountInWrappedRaw
             );
             _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalancesRaw;
         } else {
@@ -1207,7 +1215,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // The amount of wrapped tokens to redeem is the necessary amount to fulfill the trade
                 // (amountWrappedToUnwrap), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferSharesToUnwrap)
-                wrappedToken.redeem(tradeWrappedRaw + bufferWrappedSurplus, address(this), address(this));
+                wrappedToken.redeem(amountInWrappedRaw + bufferWrappedSurplus, address(this), address(this));
             } else {
                 // TODO comment
                 bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalancesRaw, wrappedToken);
@@ -1215,9 +1223,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // TODO refactor comment
                 // EXACT_OUT requires the exact amount of underlying tokens to be returned, so withdraw is called.
                 // The amount of underlying tokens to withdraw is the necessary amount to fulfill the trade
-                // (tradeUnderlyingRaw), plus the amount needed to leave the buffer rebalanced 50/50 at the end
+                // (amountOutUnderlyingRaw), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingAmountToUnwrap).
-                wrappedToken.withdraw(tradeUnderlyingRaw + bufferUnderlyingSurplus, address(this), address(this));
+                wrappedToken.withdraw(amountOutUnderlyingRaw + bufferUnderlyingSurplus, address(this), address(this));
             }
 
             (uint256 totalUnderlyingWithdrawnRaw, uint256 totalWrappedRedeemedRaw) = _settleWrapUnwrap(
@@ -1225,12 +1233,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IERC20(wrappedToken)
             );
 
-            if (totalUnderlyingWithdrawnRaw < tradeUnderlyingRaw) {
+            if (totalUnderlyingWithdrawnRaw < amountOutUnderlyingRaw) {
                 // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
                 // the actual operation.
                 revert WrongWrapUnwrapUnderlyingAmount(address(wrappedToken));
             }
-            if (totalWrappedRedeemedRaw < tradeWrappedRaw) {
+            if (totalWrappedRedeemedRaw < amountInWrappedRaw) {
                 // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
                 // the actual operation.
                 revert WrongWrapUnwrapWrappedAmount(address(wrappedToken));
@@ -1244,15 +1252,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (totalUnderlyingWithdrawn) and discounts the amount needed in the trade
                 // (amountUnderlyingExpectedRaw). Same logic applies to wrapped balances.
                 bufferBalancesRaw = bufferBalancesRaw.setBalances(
-                    bufferUnderlyingBalanceRaw + (totalUnderlyingWithdrawnRaw - tradeUnderlyingRaw),
-                    bufferWrappedBalanceRaw - (totalWrappedRedeemedRaw - tradeWrappedRaw)
+                    bufferUnderlyingBalanceRaw + (totalUnderlyingWithdrawnRaw - amountOutUnderlyingRaw),
+                    bufferWrappedBalanceRaw - (totalWrappedRedeemedRaw - amountInWrappedRaw)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalancesRaw;
             }
         }
 
-        _takeDebt(wrappedToken, tradeWrappedRaw);
-        _supplyCredit(underlyingToken, tradeUnderlyingRaw);
+        _takeDebt(wrappedToken, amountInWrappedRaw);
+        _supplyCredit(underlyingToken, amountOutUnderlyingRaw);
     }
 
     // TODO comment
