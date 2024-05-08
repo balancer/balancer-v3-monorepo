@@ -102,7 +102,7 @@ contract VaultUnitTest is BaseTest {
 
         assertEq(creatorSwapFeeAmountRaw, 0, "Unexpected creatorSwapFeeAmountRaw");
         assertEq(protocolSwapFeeAmountRaw, expectedSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
-        assertEq(vault.getProtocolFees(address(dai)), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
+        assertEq(vault.getProtocolFees(pool, dai), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
         assertEq(vault.getPoolCreatorFees(pool, dai), 0, "Unexpected creator fees in storage");
     }
 
@@ -154,7 +154,7 @@ contract VaultUnitTest is BaseTest {
             initVault + creatorSwapFeeAmountRaw,
             "Unexpected creator fees in storage"
         );
-        assertEq(vault.getProtocolFees(address(dai)), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
+        assertEq(vault.getProtocolFees(pool, dai), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
     }
 
     function testComputeAndChargeProtocolAndCreatorFeesIfPoolIsInRecoveryMode() public {
@@ -166,7 +166,7 @@ contract VaultUnitTest is BaseTest {
 
         assertEq(protocolSwapFeeAmountRaw, 0, "Unexpected protocolSwapFeeAmountRaw");
         assertEq(creatorSwapFeeAmountRaw, 0, "Unexpected creatorSwapFeeAmountRaw");
-        assertEq(vault.getProtocolFees(address(dai)), 0, "Unexpected protocol fees in storage");
+        assertEq(vault.getProtocolFees(pool, dai), 0, "Unexpected protocol fees in storage");
     }
 
     function testManualUpdatePoolDataLiveBalancesAndRates() public {

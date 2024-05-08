@@ -209,9 +209,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 revert TokenAlreadyRegistered(token);
             }
 
-            // Register the token dev fee with an initial balance of zero.
-            _poolCreatorFees[pool][address(token)] = 0;
-
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
             _poolTokenConfig[pool][token] = tokenData;
 
@@ -526,8 +523,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function getProtocolFees(address token) external view onlyVault returns (uint256) {
-        return _protocolFees[IERC20(token)];
+    function getProtocolFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
+        return _protocolFees[pool][token];
     }
 
     /// @inheritdoc IVaultExtension
@@ -544,7 +541,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getPoolCreatorFees(address pool, IERC20 token) external view returns (uint256) {
-        return _poolCreatorFees[pool][address(token)];
+        return _poolCreatorFees[pool][token];
     }
 
     /// @inheritdoc IVaultExtension

@@ -209,12 +209,8 @@ contract PoolCreatorFeesTest is BaseVaultTest {
             false
         );
 
-        vault.collectPoolCreatorFees(address(pool));
-        assertEq(
-            vault.getPoolCreatorFees(address(pool), dai),
-            0,
-            "creatorFees in the vault should be 0 after fee collected"
-        );
+        vault.collectPoolCreatorFees(pool);
+        assertEq(vault.getPoolCreatorFees(pool, dai), 0, "creatorFees in the vault should be 0 after fee collected");
 
         uint256 lpBalanceDaiAfter = dai.balanceOf(address(lp));
         assertEq(
@@ -274,8 +270,8 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         vars.aliceTokenOutBalanceBefore = tokenOut.balanceOf(address(alice));
 
         // Get protocol fees before transfer
-        vars.protocolTokenInFeesBefore = vault.getProtocolFees(address(tokenIn));
-        vars.protocolTokenOutFeesBefore = vault.getProtocolFees(address(tokenOut));
+        vars.protocolTokenInFeesBefore = vault.getProtocolFees(pool, tokenIn);
+        vars.protocolTokenOutFeesBefore = vault.getProtocolFees(pool, tokenOut);
 
         // Get creator fees before transfer
         vars.creatorTokenInFeesBefore = vault.getPoolCreatorFees(targetPool, tokenIn);
@@ -311,12 +307,12 @@ contract PoolCreatorFeesTest is BaseVaultTest {
 
         // Check protocol fees after transfer
         assertEq(
-            vault.getProtocolFees(address(tokenIn)),
+            vault.getProtocolFees(pool, tokenIn),
             vars.protocolTokenInFeesBefore,
             "tokenIn protocol fees should not change"
         );
         assertEq(
-            vault.getProtocolFees(address(tokenOut)),
+            vault.getProtocolFees(pool, tokenOut),
             vars.protocolTokenOutFeesBefore + vars.protocolFees,
             "tokenOut protocol fees should increase by vars.protocolFees after swap"
         );
