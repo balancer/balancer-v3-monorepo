@@ -43,7 +43,11 @@ library PackedTokenBalance {
     }
 
     /// @dev TODO comment
-    function setBalances(bytes32 balance, uint256 newBalanceRaw, uint256 newBalanceDerived) internal pure returns (bytes32) {
+    function setBalances(
+        bytes32 balance,
+        uint256 newBalanceRaw,
+        uint256 newBalanceDerived
+    ) internal pure returns (bytes32) {
         return toPackedBalance(newBalanceRaw, newBalanceDerived);
     }
 
@@ -61,9 +65,7 @@ library PackedTokenBalance {
     }
 
     /// @dev Decode and fetch both balances.
-    function fromPackedBalance(
-        bytes32 balance
-    ) internal pure returns (uint256 balanceRaw, uint256 balanceDerived) {
+    function fromPackedBalance(bytes32 balance) internal pure returns (uint256 balanceRaw, uint256 balanceDerived) {
         return (getBalanceRaw(balance), getBalanceDerived(balance));
     }
 
