@@ -17,8 +17,9 @@ import { StableMathMock } from "../../contracts/test/StableMathMock.sol";
 contract StableMathTest is Test {
     uint256 constant NUM_TOKENS = 4;
 
-    uint256 constant MIN_BALANCE = 1e18;
-    uint256 constant MAX_BALANCE = 10e18;
+    uint256 constant MIN_BALANCE_BASE = 1e18;
+    uint256 constant MAX_BALANCE_BASE = 1000e18;
+    uint256 constant MAX_BALANCE_RATIO = 1000e16; // 1000 %
 
     uint256 constant MIN_AMOUNT_RATIO = 0.01e16; // 0.01 %
     uint256 constant MAX_AMOUNT_RATIO = 99.99e16; // 99.99 %
@@ -46,9 +47,10 @@ contract StableMathTest is Test {
     }
 
     function boundBalances(uint256[NUM_TOKENS] calldata rawBalances) internal pure returns (uint256[] memory balances) {
+        uint256 balanceBase = bound(rawBalances[0], MIN_BALANCE_BASE, MAX_BALANCE_BASE);
         balances = new uint256[](NUM_TOKENS);
         for (uint256 i = 0; i < NUM_TOKENS; ++i) {
-            balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_BALANCE);
+            balances[i] = bound(rawBalances[i], balanceBase, FixedPoint.mulDown(balanceBase, MAX_BALANCE_RATIO));
         }
     }
 
