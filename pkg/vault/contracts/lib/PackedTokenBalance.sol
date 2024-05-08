@@ -45,8 +45,7 @@ library PackedTokenBalance {
         return toPackedBalance(newBalanceRaw, getBalanceDerived(balance));
     }
 
-    /// @dev Receives balanceRaw and balanceDerived, checks if it's smaller than 128 bits, and creates a bytes32
-    /// balance
+    /// @dev Validates the size of `balanceRaw` and `balanceDerived`, then returns a packed balance bytes32.
     function toPackedBalance(uint256 balanceRaw, uint256 balanceDerived) internal pure returns (bytes32) {
         if (balanceRaw > _MAX_BALANCE || balanceDerived > _MAX_BALANCE) {
             revert BalanceOverflow();
