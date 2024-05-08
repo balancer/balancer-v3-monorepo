@@ -40,13 +40,6 @@ import {
 contract RouterMutationTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    // Track the indices for the standard dai/usdc pool.
-    uint256 internal daiIdx;
-    uint256 internal usdcIdx;
-
-    uint256[] internal wethDaiAmountsIn;
-    IERC20[] internal wethDaiTokens;
-
     uint256[] internal amountsIn = [poolInitAmount, poolInitAmount].toMemoryArray();
 
     function setUp() public virtual override {
