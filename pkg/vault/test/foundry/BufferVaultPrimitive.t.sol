@@ -19,8 +19,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     ERC4626TestToken internal waDAI;
     ERC4626TestToken internal waUSDC;
 
-    uint256 private _userAmount = 10e6 * 1e18;
-    uint256 private _wrapAmount = _userAmount / 100;
+    uint256 private constant _userAmount = 10e6 * 1e18;
+    uint256 private constant _wrapAmount = _userAmount / 100;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();

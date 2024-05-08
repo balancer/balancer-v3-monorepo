@@ -1307,7 +1307,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _updateReservesAfterWrapping(
         IERC20 underlyingToken,
         IERC20 wrappedToken
-    ) private returns (uint256 actualUnderlying, uint256 actualWrapped) {
+    ) internal returns (uint256 actualUnderlying, uint256 actualWrapped) {
         uint256 vaultUnderlyingBefore = _reservesOf[underlyingToken];
         uint256 vaultUnderlyingAfter = underlyingToken.balanceOf(address(this));
         _reservesOf[underlyingToken] = vaultUnderlyingAfter;

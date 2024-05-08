@@ -480,4 +480,25 @@ contract VaultMock is IVaultMainMock, Vault {
     {
         return _addLiquidity(poolData, params, maxAmountsInScaled18, vaultState);
     }
+
+    function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256) {
+        bytes32 bufferBalance = _bufferTokenBalances[IERC20(address(wrappedToken))];
+        return _getBufferUnderlyingSurplus(bufferBalance, wrappedToken);
+    }
+
+    function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256) {
+        bytes32 bufferBalance = _bufferTokenBalances[IERC20(address(wrappedToken))];
+        return _getBufferWrappedSurplus(bufferBalance, wrappedToken);
+    }
+
+    function manualUpdateReservesAfterWrapping(
+        IERC20 underlyingToken,
+        IERC20 wrappedToken
+    ) external returns (uint256, uint256) {
+        return _updateReservesAfterWrapping(underlyingToken, wrappedToken);
+    }
+
+    function manualTransfer(IERC20 token, address to, uint256 amount) external {
+        token.transfer(to, amount);
+    }
 }
