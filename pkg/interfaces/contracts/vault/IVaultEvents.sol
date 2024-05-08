@@ -111,26 +111,27 @@ interface IVaultEvents {
      * @notice Emitted when the protocol swap fee percentage is updated.
      * @param swapFeePercentage The updated protocol swap fee percentage
      */
-    event ProtocolSwapFeePercentageChanged(uint256 indexed swapFeePercentage);
+    event ProtocolSwapFeePercentageChanged(uint256 swapFeePercentage);
 
     /**
      * @notice Emitted when the protocol yield fee percentage is updated.
      * @param yieldFeePercentage The updated protocol yield fee percentage
      */
-    event ProtocolYieldFeePercentageChanged(uint256 indexed yieldFeePercentage);
+    event ProtocolYieldFeePercentageChanged(uint256 yieldFeePercentage);
 
     /**
      * @notice Logs the collection of fees in a specific token and amount.
+     * @param pool The address of the pool for which protocol fees have been collected
      * @param token The token in which the fee has been collected
      * @param amount The amount of the token collected as fees
      */
-    event ProtocolFeeCollected(IERC20 indexed token, uint256 indexed amount);
+    event ProtocolFeeCollected(address indexed pool, IERC20 indexed token, uint256 amount);
 
     /**
      * @notice Emitted when a protocol swap fee is incurred.
-     * @dev This is included for traceability of fees to pools. Pending protocol fees on both swap and yield are
-     * combined. It is an invariant of the system that the total amounts for each token reported here and by
-     * `ProtocolYieldFeeCharged`, summed over all pools, should equal the total collected for the token reported by
+     * @dev This is included for offchain traceability of fees to pools. Pending protocol fees on both swap and yield
+     * are combined. It is an invariant of the system that the total amounts for each token reported here and by
+     * `ProtocolYieldFeeCharged` should equal the total collected for the token and pool reported by
      * `ProtocolFeeCollected` when `collectProtocolFees` is called.
      *
      * @param pool The pool associated with this charge
@@ -140,10 +141,10 @@ interface IVaultEvents {
     event ProtocolSwapFeeCharged(address indexed pool, address indexed token, uint256 amount);
 
     /**
-     * @notice Emitted when a protocol swap fee is incurred.
-     * @dev This is included for traceability of fees to pools. Pending protocol fees on both swap and yield are
-     * combined. It is an invariant of the system that the total amounts for each token reported here and by
-     * `ProtocolSwapFeeCharged`, summed over all pools, should equal the total collected for the token reported by
+     * @notice Emitted when a protocol yield fee is incurred.
+     * @dev This is included for offchain traceability of fees to pools. Pending protocol fees on both swap and yield
+     * are combined. It is an invariant of the system that the total amounts for each token reported here and by
+     * `ProtocolSwapFeeCharged` should equal the total collected for the token and pool reported by
      * `ProtocolFeeCollected` when `collectProtocolFees` is called.
      *
      * @param pool The pool associated with this charge
@@ -156,19 +157,19 @@ interface IVaultEvents {
      * @notice Emitted when the swap fee percentage of a pool is updated.
      * @param swapFeePercentage The new swap fee percentage for the pool
      */
-    event SwapFeePercentageChanged(address indexed pool, uint256 indexed swapFeePercentage);
+    event SwapFeePercentageChanged(address indexed pool, uint256 swapFeePercentage);
 
     /**
      * @notice Emitted when the pool creator fee percentage of a pool is updated.
      * @param poolCreatorFeePercentage The new pool creator fee percentage for the pool
      */
-    event PoolCreatorFeePercentageChanged(address indexed pool, uint256 indexed poolCreatorFeePercentage);
+    event PoolCreatorFeePercentageChanged(address indexed pool, uint256 poolCreatorFeePercentage);
 
     /**
      * @notice Emitted when a creator swap fee is incurred.
      * @dev This is included for traceability of fees to pools. Pending creator fees on both swap and yield are
      * combined. It is an invariant of the system that the total amounts for each token reported here and by
-     * `PoolCreatorYieldFeeCharged`, summed over all pools, should equal the total collected for the token reported by
+     * `PoolCreatorYieldFeeCharged` should equal the total collected for the token and pool reported by
      * `PoolCreatorFeeCollected` when `collectPoolCreatorFees` is called.
      *
      * @param pool The pool associated with this charge
@@ -181,7 +182,7 @@ interface IVaultEvents {
      * @notice Emitted when a creator yield fee is incurred.
      * @dev This is included for traceability of fees to pools. Pending creator fees on both swap and yield are
      * combined. It is an invariant of the system that the total amounts for each token reported here and by
-     * `PoolCreatorSwapFeeCharged`, summed over all pools, should equal the total collected for the token reported by
+     * `PoolCreatorSwapFeeCharged` should equal the total collected for the token and pool reported by
      * `PoolCreatorFeeCollected` when `collectPoolCreatorFees` is called.
      *
      * @param pool The pool associated with this charge
@@ -196,7 +197,7 @@ interface IVaultEvents {
      * @param token The token in which the fee has been collected
      * @param amount The amount of the token collected in fees
      */
-    event PoolCreatorFeeCollected(address pool, IERC20 indexed token, uint256 indexed amount);
+    event PoolCreatorFeeCollected(address indexed pool, IERC20 indexed token, uint256 amount);
 
     /**
      * @dev Recovery mode has been enabled or disabled for a pool.

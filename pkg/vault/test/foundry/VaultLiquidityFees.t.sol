@@ -249,8 +249,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         );
 
         // Protocols fees are charged
-        assertEq(protocolSwapFees[daiIdx], vault.getProtocolFees(address(dai)), "Protocol's fee amount is wrong");
-        assertEq(protocolSwapFees[usdcIdx], vault.getProtocolFees(address(usdc)), "Protocol's fee amount is wrong");
+        assertEq(protocolSwapFees[daiIdx], vault.getProtocolFees(pool, dai), "Protocol's fee amount is wrong");
+        assertEq(protocolSwapFees[usdcIdx], vault.getProtocolFees(pool, usdc), "Protocol's fee amount is wrong");
 
         assertApproxEqAbs(
             poolCreatorFees[daiIdx],
@@ -330,8 +330,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         );
 
         // Protocols fees are charged
-        assertEq(protocolSwapFees[daiIdx], vault.getProtocolFees(address(dai)), "Protocol's fee amount is wrong");
-        assertEq(protocolSwapFees[usdcIdx], vault.getProtocolFees(address(usdc)), "Protocol's fee amount is wrong");
+        assertEq(protocolSwapFees[daiIdx], vault.getProtocolFees(pool, dai), "Protocol's DAI fee amount is wrong");
+        assertEq(protocolSwapFees[usdcIdx], vault.getProtocolFees(pool, usdc), "Protocol's USDC fee amount is wrong");
 
         assertEq(poolCreatorFees[daiIdx], vault.getPoolCreatorFees(pool, dai), "Pool creator's fee amount is wrong");
         assertEq(poolCreatorFees[usdcIdx], vault.getPoolCreatorFees(pool, usdc), "Pool creator's fee amount is wrong");

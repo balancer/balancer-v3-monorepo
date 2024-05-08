@@ -962,7 +962,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     poolData.tokenRates[index]
                 );
 
-                _protocolFees[token] += protocolSwapFeeAmountRaw;
+                _protocolFees[pool][token] += protocolSwapFeeAmountRaw;
                 emit ProtocolSwapFeeCharged(pool, address(token), protocolSwapFeeAmountRaw);
             }
 
@@ -975,7 +975,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     poolData.tokenRates[index]
                 );
 
-                _poolCreatorFees[pool][address(token)] += creatorSwapFeeAmountRaw;
+                _poolCreatorFees[pool][token] += creatorSwapFeeAmountRaw;
                 emit PoolCreatorSwapFeeCharged(pool, address(token), creatorSwapFeeAmountRaw);
             }
 

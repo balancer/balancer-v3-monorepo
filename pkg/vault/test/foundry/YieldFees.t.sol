@@ -153,18 +153,18 @@ contract YieldFeesTest is BaseVaultTest {
         }
 
         // Should be no protocol fees on dai, since it is yield fee exempt
-        assertEq(vault.getProtocolFees(address(dai)), 0, "Protocol fees on exempt dai are not 0");
+        assertEq(vault.getProtocolFees(pool, dai), 0, "Protocol fees on exempt dai are not 0");
         // Should be no creator fees on dai, since it is yield fee exempt
-        assertEq(vault.getPoolCreatorFees(address(pool), dai), 0, "Creator fees on exempt dai are not 0");
+        assertEq(vault.getPoolCreatorFees(pool, dai), 0, "Creator fees on exempt dai are not 0");
 
         uint256[] memory scalingFactors = PoolMock(pool).getDecimalScalingFactors();
 
         // There should be protocol fees on non-exempt wsteth
-        uint256 actualProtocolFee = vault.getProtocolFees(address(wsteth));
+        uint256 actualProtocolFee = vault.getProtocolFees(pool, wsteth);
         assertTrue(actualProtocolFee > 0, "wstETH did not collect any protocol fees");
 
         // There should be creator fees on non-exempt wsteth
-        uint256 actualCreatorFee = vault.getPoolCreatorFees(address(pool), wsteth);
+        uint256 actualCreatorFee = vault.getPoolCreatorFees(pool, wsteth);
         assertTrue(actualCreatorFee > 0, "wstETH did not collect any creator fees");
 
         // How much should the fee be?
@@ -295,8 +295,8 @@ contract YieldFeesTest is BaseVaultTest {
 
         initPool();
 
-        require(vault.getProtocolFees(address(dai)) == 0, "Initial protocol fees for DAI not 0");
-        require(vault.getProtocolFees(address(wsteth)) == 0, "Initial protocol fees for wstETH not 0");
+        require(vault.getProtocolFees(pool, dai) == 0, "Initial protocol fees for DAI not 0");
+        require(vault.getProtocolFees(pool, wsteth) == 0, "Initial protocol fees for wstETH not 0");
 
         setProtocolYieldFeePercentage(protocolYieldFeePercentage);
         // lp is the pool creator, the only user who can change the pool creator fee percentage
@@ -325,19 +325,19 @@ contract YieldFeesTest is BaseVaultTest {
 
         uint256 expectedProtocolFees = liveBalanceDiffRaw.mulDown(protocolYieldFeePercentage);
         assertApproxEqAbs(
-            vault.getProtocolFees(address(wsteth)),
+            vault.getProtocolFees(pool, wsteth),
             expectedProtocolFees,
             10, // rounding issues
             "Wrong protocol yield fees for wstETH"
         );
         uint256 expectedYieldFees = (liveBalanceDiffRaw - expectedProtocolFees).mulDown(creatorYieldFeePercentage);
         assertApproxEqAbs(
-            vault.getPoolCreatorFees(address(pool), wsteth),
+            vault.getPoolCreatorFees(pool, wsteth),
             expectedYieldFees,
             10, // rounding issues
             "Wrong creator yield fees for wstETH"
         );
-        assertEq(vault.getProtocolFees(address(dai)), 0, "Yield fees for exempt dai are not 0");
+        assertEq(vault.getProtocolFees(pool, dai), 0, "Yield fees for exempt dai are not 0");
     }
 
     function verifyLiveBalances(

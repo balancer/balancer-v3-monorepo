@@ -424,7 +424,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external {
-        _poolCreatorFees[pool][address(token)] = value;
+        _poolCreatorFees[pool][token] = value;
     }
 
     function manualBuildPoolSwapParams(
