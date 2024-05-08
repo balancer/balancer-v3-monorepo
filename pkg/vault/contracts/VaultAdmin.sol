@@ -424,6 +424,13 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         ) = _getPoolTokenInfo(pool);
 
         _updateTokenRatesInPoolData(poolData);
+        _updateLiveTokenBalancesInPoolData(poolData);
+    }
+
+    function _updateLiveTokenBalancesInPoolData(PoolData memory poolData) internal pure {
+        for (uint256 i = 0; i < poolData.balancesRaw.length; ++i) {
+            _updateLiveTokenBalanceInPoolData(poolData, Rounding.ROUND_DOWN, i);
+        }
     }
 
     /*******************************************************************************

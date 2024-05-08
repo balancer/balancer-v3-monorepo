@@ -344,8 +344,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolData.decimalScalingFactors[vars.indexOut],
                 poolData.tokenRates[vars.indexOut]
             );
+
+            // 1) Calculate raw amounts (in and out)
             (amountIn, amountOut) = (params.amountGivenRaw, amountCalculated);
 
+            // 2) Apply limits
             if (amountOut < params.limitRaw) {
                 revert SwapLimit(amountOut, params.limitRaw);
             }
@@ -357,19 +360,27 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolData.decimalScalingFactors[vars.indexIn],
                 poolData.tokenRates[vars.indexIn]
             );
+
+            // 1) Calculate raw amounts (in and out)
             (amountIn, amountOut) = (amountCalculated, params.amountGivenRaw);
 
+            // 2) Apply limits
             if (amountIn > params.limitRaw) {
                 revert SwapLimit(amountIn, params.limitRaw);
             }
         }
 
+        // 3) Deltas: debit for token in, credit for token out
+        _takeDebt(params.tokenIn, amountIn);
+        _supplyCredit(params.tokenOut, amountOut);
+
+        // 4) Compute and charge protocol and creator fees.
         (uint256 swapFeeIndex, IERC20 swapFeeToken) = params.kind == SwapKind.EXACT_IN
             ? (vars.indexOut, params.tokenOut)
             : (vars.indexIn, params.tokenIn);
 
-        // Compute and charge protocol and creator fees. Note that protocol fee storage is updated
-        // before balance storage, as the final raw balances need to take the fees into account.
+        // Note that protocol fee storage is updated before balance storage, as the final raw balances need to take
+        // the fees into account.
         (vars.protocolSwapFeeAmountRaw, vars.creatorSwapFeeAmountRaw) = _computeAndChargeProtocolAndCreatorFees(
             poolData,
             vars.swapFeeAmountScaled18,
@@ -379,21 +390,20 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             swapFeeIndex
         );
 
-        // Adjust for swap amounts.
+        // 5) Pool balances: raw and live
+        // Adjust for raw swap amounts.
         poolData.balancesRaw[vars.indexIn] += amountIn;
         poolData.balancesRaw[vars.indexOut] -= amountOut;
-
         // Subtract fees from the calculated amount.
         poolData.balancesRaw[swapFeeIndex] -= (vars.protocolSwapFeeAmountRaw + vars.creatorSwapFeeAmountRaw);
 
-        // Set both raw and last live balances.
+        _updateLiveTokenBalanceInPoolData(poolData, Rounding.ROUND_DOWN, vars.indexIn);
+        _updateLiveTokenBalanceInPoolData(poolData, Rounding.ROUND_DOWN, vars.indexOut);
+
+        // 6) Store pool balances, raw and live
         _setPoolBalances(params.pool, poolData);
 
-        // Debit amountIn of tokenIn.
-        _takeDebt(params.tokenIn, amountIn);
-        // Credit amountOut of tokenOut.
-        _supplyCredit(params.tokenOut, amountOut);
-
+        // 7) Off-chain events
         // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
         // also contains the rate, undo it when converting to raw.
         uint256 swapFeeAmountRaw = vars.swapFeeAmountScaled18.toRawUndoRateRoundDown(
@@ -578,8 +588,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     {
         LiquidityLocals memory vars;
         vars.numTokens = poolData.tokenConfig.length;
-
         uint256[] memory swapFeeAmountsScaled18;
+
         if (params.kind == AddLiquidityKind.PROPORTIONAL) {
             bptAmountOut = params.minBptAmountOut;
             // Initializes the swapFeeAmountsScaled18 empty array (no swap fees on proportional add liquidity)
@@ -644,7 +654,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             IERC20 token = poolData.tokenConfig[i].token;
             tokens[i] = token;
 
-            // Compute and charge protocol fees.
+            // 1) Calculate raw amount in.
+            // amountsInRaw are amounts actually entering the Pool, so we round up.
+            // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` hook
+            amountsInRaw[i] = amountsInScaled18[i].toRawUndoRateRoundUp(
+                poolData.decimalScalingFactors[i],
+                poolData.tokenRates[i]
+            );
+
+            // 2) Apply limits for raw amounts
+            if (amountsInRaw[i] > params.maxAmountsIn[i]) {
+                revert AmountInAboveMax(token, amountsInRaw[i], params.maxAmountsIn[i]);
+            }
+
+            // 3) Deltas: Debit of token[i] for amountsInRaw[i]
+            _takeDebt(token, amountsInRaw[i]);
+
+            // 4) Compute and charge protocol and creator fees.
             (vars.protocolSwapFeeAmountRaw, vars.creatorSwapFeeAmountRaw) = _computeAndChargeProtocolAndCreatorFees(
                 poolData,
                 swapFeeAmountsScaled18[i],
@@ -654,38 +680,24 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 i
             );
 
-            // amountsInRaw are amounts actually entering the Pool, so we round up.
-            // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` hook
-            uint256 amountInRaw = amountsInScaled18[i].toRawUndoRateRoundUp(
-                poolData.decimalScalingFactors[i],
-                poolData.tokenRates[i]
-            );
-
-            // The limits must be checked for raw amounts
-            if (amountInRaw > params.maxAmountsIn[i]) {
-                revert AmountInAboveMax(token, amountInRaw, params.maxAmountsIn[i]);
-            }
-
-            // Debit of token[i] for amountInRaw
-            _takeDebt(token, amountInRaw);
-
+            // 5) Pool balances: raw and live
             // We need regular balances to complete the accounting, and the upscaled balances
             // to use in the `after` hook later on.
-            poolData.balancesRaw[i] += (amountInRaw - vars.protocolSwapFeeAmountRaw - vars.creatorSwapFeeAmountRaw);
 
-            poolData.balancesLiveScaled18[i] += (amountsInScaled18[i] -
-                swapFeeAmountsScaled18[i].mulUp(vaultState.protocolSwapFeePercentage));
-
-            amountsInRaw[i] = amountInRaw;
+            // A pool's token balance increases by amounts in after adding liquidity, minus fees.
+            poolData.balancesRaw[i] += (amountsInRaw[i] - vars.protocolSwapFeeAmountRaw - vars.creatorSwapFeeAmountRaw);
+            _updateLiveTokenBalanceInPoolData(poolData, Rounding.ROUND_UP, i);
         }
 
-        // Store the new raw and last live pool balances.
+        // 6) Store pool balances, raw and live
         _setPoolBalances(params.pool, poolData);
 
+        // 7) BPT supply adjustment
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
         _mint(address(params.pool), params.to, bptAmountOut);
 
+        // 8) Off-chain events
         emit PoolBalanceChanged(params.pool, params.to, tokens, amountsInRaw.unsafeCastToInt256(true));
     }
 
@@ -804,11 +816,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         )
     {
         LiquidityLocals memory vars;
+        vars.numTokens = poolData.tokenConfig.length;
         uint256[] memory swapFeeAmountsScaled18;
 
         if (params.kind == RemoveLiquidityKind.PROPORTIONAL) {
             bptAmountIn = params.maxBptAmountIn;
-            swapFeeAmountsScaled18 = new uint256[](poolData.balancesLiveScaled18.length);
+            swapFeeAmountsScaled18 = new uint256[](vars.numTokens);
             amountsOutScaled18 = BasePoolMath.computeProportionalAmountsOut(
                 poolData.balancesLiveScaled18,
                 _totalSupply(params.pool),
@@ -860,7 +873,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert BptAmountInAboveMax(bptAmountIn, params.maxBptAmountIn);
         }
 
-        vars.numTokens = poolData.tokenConfig.length;
         IERC20[] memory tokens = new IERC20[](vars.numTokens);
         amountsOutRaw = new uint256[](vars.numTokens);
 
@@ -868,7 +880,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             IERC20 token = poolData.tokenConfig[i].token;
             tokens[i] = token;
 
-            // Compute and charge protocol fees.
+            // 1) Calculate raw amount out.
+            // amountsOut are amounts exiting the Pool, so we round down.
+            // Do not mutate in place yet, as we need them scaled for the `onAfterRemoveLiquidity` hook
+            amountsOutRaw[i] = amountsOutScaled18[i].toRawUndoRateRoundDown(
+                poolData.decimalScalingFactors[i],
+                poolData.tokenRates[i]
+            );
+
+            // 2) Apply limits for raw amounts
+            if (amountsOutRaw[i] < params.minAmountsOut[i]) {
+                revert AmountOutBelowMin(token, amountsOutRaw[i], params.minAmountsOut[i]);
+            }
+
+            // 3) Deltas: Credit token[i] for amountOutRaw
+            _supplyCredit(token, amountsOutRaw[i]);
+
+            // 4) Compute and charge protocol and creator fees.
             (vars.protocolSwapFeeAmountRaw, vars.creatorSwapFeeAmountRaw) = _computeAndChargeProtocolAndCreatorFees(
                 poolData,
                 swapFeeAmountsScaled18[i],
@@ -878,32 +906,22 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 i
             );
 
-            // Subtract protocol fees charged from the pool's balances
-            poolData.balancesRaw[i] -= (vars.protocolSwapFeeAmountRaw + vars.creatorSwapFeeAmountRaw);
+            // 5) Pool balances: raw and live
+            // We need regular balances to complete the accounting, and the upscaled balances
+            // to use in the `after` hook later on.
 
-            poolData.balancesLiveScaled18[i] -= (amountsOutScaled18[i] +
-                swapFeeAmountsScaled18[i].mulUp(vaultState.protocolSwapFeePercentage));
-
-            // amountsOut are amounts exiting the Pool, so we round down.
-            amountsOutRaw[i] = amountsOutScaled18[i].toRawUndoRateRoundDown(
-                poolData.decimalScalingFactors[i],
-                poolData.tokenRates[i]
-            );
-
-            if (amountsOutRaw[i] < params.minAmountsOut[i]) {
-                revert AmountOutBelowMin(token, amountsOutRaw[i], params.minAmountsOut[i]);
-            }
-
-            // Credit token[i] for amountOut
-            _supplyCredit(token, amountsOutRaw[i]);
-
-            // Compute the new Pool balances. A Pool's token balance always decreases after an exit
-            // (potentially by 0).
-            poolData.balancesRaw[i] -= amountsOutRaw[i];
+            // A Pool's token balance always decreases after an exit
+            // (potentially by 0). Also adjust by protocol and pool creator fees.
+            poolData.balancesRaw[i] -= (amountsOutRaw[i] +
+                vars.protocolSwapFeeAmountRaw +
+                vars.creatorSwapFeeAmountRaw);
+            _updateLiveTokenBalanceInPoolData(poolData, Rounding.ROUND_DOWN, i);
         }
 
+        // 6) Store pool balances, raw and live
         _setPoolBalances(params.pool, poolData);
 
+        // 7) BPT supply adjustment
         _spendAllowance(address(params.pool), params.from, msg.sender, bptAmountIn);
 
         if (!vaultState.isQueryDisabled && EVMCallModeHelpers.isStaticCall()) {
@@ -915,6 +933,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Burning will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
         _burn(address(params.pool), params.from, bptAmountIn);
 
+        // 8) Off-chain events
         emit PoolBalanceChanged(
             params.pool,
             params.from,

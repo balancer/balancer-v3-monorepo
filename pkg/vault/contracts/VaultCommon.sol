@@ -242,19 +242,11 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     *******************************************************************************/
 
     /**
-     * @dev Sets the raw balances of a Pool's tokens to the current values in poolData.balancesRaw, then also
-     * computes and stores the last live balances in the same slot.
-     *
-     * Side effects: mutates `poolData` so that the live balances match the stored values.
+     * @dev Packs and sets the raw and live balances of a Pool's tokens to the current values in poolData.balancesRaw
+     * and poolData.liveBalances in the same storage slot.
      */
     function _setPoolBalances(address pool, PoolData memory poolData) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
-
-        // TODO: consider moving scaling into the loop below. (Tried it: saves gas, but costs bytecode.)
-        poolData.balancesLiveScaled18 = poolData.balancesRaw.copyToScaled18ApplyRateRoundDownArray(
-            poolData.decimalScalingFactors,
-            poolData.tokenRates
-        );
 
         for (uint256 i = 0; i < poolData.balancesRaw.length; ++i) {
             // Since we assume all newBalances are properly ordered, we can simply use `unchecked_setAt`
