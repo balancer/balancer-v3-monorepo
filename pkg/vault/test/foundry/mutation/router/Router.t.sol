@@ -40,20 +40,6 @@ import {
 contract RouterMutationTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    uint256 internal usdcAmountIn = 1e3 * 1e6;
-    uint256 internal daiAmountIn = 1e3 * 1e18;
-    uint256 internal daiAmountOut = 1e2 * 1e18;
-    uint256 internal ethAmountIn = 1e3 ether;
-    uint256 internal initBpt = 10e18;
-    uint256 internal bptAmountOut = 1e18;
-
-    PoolMock internal wethPool;
-    PoolMock internal wethPoolNoInit;
-
-    // Track the indices for the local dai/weth pool.
-    uint256 internal daiIdxWethPool;
-    uint256 internal wethIdx;
-
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
@@ -61,73 +47,10 @@ contract RouterMutationTest is BaseVaultTest {
     uint256[] internal wethDaiAmountsIn;
     IERC20[] internal wethDaiTokens;
 
+    uint256[] internal amountsIn = [poolInitAmount, poolInitAmount].toMemoryArray();
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-
-        approveForPool(IERC20(wethPool));
-    }
-
-    function createPool() internal override returns (address) {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
-        vm.label(address(newPool), "pool");
-
-        factoryMock.registerTestPool(
-            address(newPool),
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            address(lp)
-        );
-        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
-
-        wethPool = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
-        vm.label(address(wethPool), "wethPool");
-
-        factoryMock.registerTestPool(
-            address(wethPool),
-            vault.buildTokenConfig([address(dai), address(weth)].toMemoryArray().asIERC20()),
-            address(lp)
-        );
-
-        (daiIdxWethPool, wethIdx) = getSortedIndexes(address(dai), address(weth));
-
-        wethDaiTokens = InputHelpers.sortTokens([address(weth), address(dai)].toMemoryArray().asIERC20());
-
-        wethDaiAmountsIn = new uint256[](2);
-        wethDaiAmountsIn[wethIdx] = ethAmountIn;
-        wethDaiAmountsIn[daiIdxWethPool] = daiAmountIn;
-
-        wethPoolNoInit = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
-        vm.label(address(wethPoolNoInit), "wethPoolNoInit");
-
-        factoryMock.registerTestPool(
-            address(wethPoolNoInit),
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            address(lp)
-        );
-
-        return address(newPool);
-    }
-
-    function initPool() internal override {
-        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(address(pool));
-        vm.prank(lp);
-        IERC20[] memory tokens = new IERC20[](tokenConfig.length);
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            tokens[i] = tokenConfig[i].token;
-        }
-
-        router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
-
-        vm.prank(lp);
-        bool wethIsEth = true;
-        router.initialize{ value: ethAmountIn }(
-            address(wethPool),
-            wethDaiTokens,
-            wethDaiAmountsIn,
-            initBpt,
-            wethIsEth,
-            bytes("")
-        );
     }
 
     /*
@@ -137,13 +60,11 @@ contract RouterMutationTest is BaseVaultTest {
         TODO: Missing reentrancy
     */
     function testInitializeHookWhenNotVault() public {
-        createPool();
-
         IRouter.InitializeHookParams memory hookParams = IRouter.InitializeHookParams(
             msg.sender,
-            address(wethPool),
-            wethDaiTokens,
-            wethDaiAmountsIn,
+            address(pool),
+            tokens,
+            amountsIn,
             0,
             false,
             bytes("")
@@ -159,12 +80,10 @@ contract RouterMutationTest is BaseVaultTest {
             [] nonReentrant
     */
     function testAddLiquidityHookWhenNotVault() public {
-        createPool();
-
         IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
             msg.sender,
-            address(wethPool),
-            wethDaiAmountsIn,
+            address(pool),
+            amountsIn,
             0,
             AddLiquidityKind.PROPORTIONAL,
             false,
@@ -182,10 +101,8 @@ contract RouterMutationTest is BaseVaultTest {
         TODO: Missing reentrancy
     */
     function testRemoveLiquidityRecoveryHookWhenNotVault() public {
-        createPool();
-
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        router.removeLiquidityRecoveryHook(address(wethPool), msg.sender, wethDaiAmountsIn[0]);
+        router.removeLiquidityRecoveryHook(address(pool), msg.sender, amountsIn[0]);
     }
 
     /*
@@ -194,16 +111,14 @@ contract RouterMutationTest is BaseVaultTest {
             [] nonReentrant
     */
     function testSwapSingleTokenHookWhenNotVault() public {
-        address poolAddy = createPool();
-
         IRouter.SwapSingleTokenHookParams memory params = IRouter.SwapSingleTokenHookParams(
             msg.sender,
             SwapKind.EXACT_IN,
-            poolAddy,
+            address(pool),
             IERC20(dai),
             IERC20(usdc),
-            daiAmountIn,
-            daiAmountIn,
+            amountsIn[0],
+            amountsIn[0],
             block.timestamp + 10,
             false,
             bytes("")
@@ -219,15 +134,13 @@ contract RouterMutationTest is BaseVaultTest {
             [] nonReentrant   
     */
     function testQuerySwapHookWhenNotVault() public {
-        address poolAddy = createPool();
-
         IRouter.SwapSingleTokenHookParams memory params = IRouter.SwapSingleTokenHookParams(
             msg.sender,
             SwapKind.EXACT_IN,
-            poolAddy,
+            address(pool),
             IERC20(dai),
             IERC20(usdc),
-            daiAmountIn,
+            amountsIn[0],
             0,
             block.timestamp + 10,
             false,
@@ -244,12 +157,10 @@ contract RouterMutationTest is BaseVaultTest {
             [] nonReentrant        
     */
     function testQueryAddLiquidityHookWhenNotVault() public {
-        createPool();
-
         IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
             msg.sender,
-            address(wethPool),
-            wethDaiAmountsIn,
+            address(pool),
+            amountsIn,
             0,
             AddLiquidityKind.PROPORTIONAL,
             false,
@@ -266,12 +177,10 @@ contract RouterMutationTest is BaseVaultTest {
             [] nonReentrant        
     */
     function testQueryRemoveLiquidityHookWhenNotVault() public {
-        address poolAddy = createPool();
-
         IRouter.RemoveLiquidityHookParams memory params = IRouter.RemoveLiquidityHookParams(
             msg.sender,
-            poolAddy,
-            wethDaiAmountsIn,
+            address(pool),
+            amountsIn,
             0,
             RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
             false,
@@ -288,9 +197,7 @@ contract RouterMutationTest is BaseVaultTest {
             [] nonReentrant    
     */
     function testQueryRemoveLiquidityRecoveryHookWhenNoVault() public {
-        address poolAddy = createPool();
-
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        router.queryRemoveLiquidityRecoveryHook(poolAddy, msg.sender, 10);
+        router.queryRemoveLiquidityRecoveryHook(address(pool), msg.sender, 10);
     }
 }
