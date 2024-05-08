@@ -59,7 +59,7 @@ library PackedTokenBalance {
         return (getBalanceRaw(balance), getBalanceDerived(balance));
     }
 
-    /// @dev Packs two uint128 values into a bytes32.
+    /// @dev Packs two uint128 values into a packed balance bytes32. It does not check balance sizes.
     function _pack(uint256 leastSignificant, uint256 mostSignificant) private pure returns (bytes32) {
         return bytes32((mostSignificant << 128) + leastSignificant);
     }
