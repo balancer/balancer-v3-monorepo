@@ -31,7 +31,7 @@ library PackedTokenBalance {
         return uint256(balance >> 128) & _MAX_BALANCE;
     }
 
-    /// @dev Set both raw and derived balances and returns the new bytes32 balance
+    /// @dev Set both raw and derived balances, and return the new packed balance as a bytes32
     function setBalances(
         bytes32 balance,
         uint256 newBalanceRaw,
