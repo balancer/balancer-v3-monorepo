@@ -48,6 +48,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using VaultExtensionsLib for IVault;
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
+    using FixedPoint for uint256;
     using VaultStateLib for VaultStateBits;
 
     IVault private immutable _vault;
@@ -334,13 +335,64 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectProtocolSwapFees(address /* pool */) public nonReentrant {
-        // need protocol fees collector address. Deploy contract and move collection to there?
+    function collectProtocolSwapFees(address pool) public nonReentrant {
+        (PoolConfig memory poolConfig, VaultState memory vaultState, IERC20[] memory tokens) = _getFeeCollectionData(pool);
+        bool needToSplitWithPoolCreator = _poolRoleAccounts[pool].poolCreator != address(0) && poolConfig.poolCreatorFeePercentage > 0;
+        uint256 aggregateFeePercentage;
+
+        if (needToSplitWithPoolCreator) {
+            // Only need this if there is a pool creator and fees must be split
+            aggregateFeePercentage = _getAggregateFeePercentage(vaultState.protocolSwapFeePercentage, poolConfig.poolCreatorFeePercentage);
+        }
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            // Disaggregate the protocol swap and creator fees
+            uint256 totalFees = _protocolSwapFees[pool][token];
+
+            uint256 poolCreatorPortion;
+            uint256 protocolPortion;
+
+            if (totalFees > 0) {
+                if (needToSplitWithPoolCreator) {
+                    uint256 totalVolume = totalFees.divUp(aggregateFeePercentage);
+                    protocolPortion = totalVolume.mulUp(vaultState.protocolSwapFeePercentage);
+                    poolCreatorPortion = totalFees - protocolPortion;
+                } else {
+                    protocolPortion = totalFees;
+                }
+
+                _protocolSwapFees[pool][token] = 0;
+
+                token.safeTransfer(address(_protocolFeeCollector), protocolPortion);
+                emit ProtocolSwapFeeCollected(pool, token, protocolPortion);
+
+                token.safeTransfer()
+            }
+
+
+        }
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectProtocolYieldFees(address /* pool */) public nonReentrant {
-        // need protocol fees collector address. Deploy contract and move collection to there?
+    function collectProtocolYieldFees(address pool) public nonReentrant {
+        (PoolConfig memory poolConfig, VaultState memory vaultState, IERC20[] memory tokens) = _getFeeCollectionData(pool);
+
+        uint256 aggregateFeePercentage = _getAggregateFeePercentage(vaultState.protocolYieldFeePercentage, poolConfig.poolCreatorFeePercentage);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            // Disaggregate the protocol yield and creator fees
+        }
+    }
+
+    function _getAggregateFeePercentage(uint256 protocolPercentage, uint256 creatorPercentage) internal pure returns (uint256) {
+        return protocolPercentage + protocolPercentage.complement().mulDown(creatorPercentage);
+    }
+
+    function _getFeeCollectionData(address pool) private view returns (PoolConfig memory poolConfig, VaultState memory vaultState, IERC20[] memory poolTokens) {
+        poolConfig = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        vaultState = _vaultState.toVaultState();
+        poolTokens = _vault.getPoolTokens(pool);
     }
 
     /*function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant onlyVault {
