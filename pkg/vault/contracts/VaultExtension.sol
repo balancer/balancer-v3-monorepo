@@ -572,15 +572,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 numTokens = poolTokenBalances.length();
 
         // Initialize arrays to store tokens and balances based on the number of tokens in the pool.
+        IERC20[] memory tokens = new IERC20[](numTokens);
         uint256[] memory balancesRaw = new uint256[](numTokens);
         bytes32 packedBalances;
-        IERC20 token;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
-            (token, packedBalances) = poolTokenBalances.unchecked_at(i);
+            (tokens[i], packedBalances) = poolTokenBalances.unchecked_at(i);
             balancesRaw[i] = packedBalances.getRawBalance();
         }
 
@@ -588,7 +588,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         for (uint256 i = 0; i < numTokens; ++i) {
             // Credit token[i] for amountOut
-            _supplyCredit(token, amountsOutRaw[i]);
+            _supplyCredit(tokens[i], amountsOutRaw[i]);
 
             // Compute the new Pool balances. A Pool's token balance always decreases after an exit
             // (potentially by 0).

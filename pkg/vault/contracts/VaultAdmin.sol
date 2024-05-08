@@ -428,7 +428,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     function _updateLiveTokenBalancesInPoolData(PoolData memory poolData) internal pure {
-        for (uint256 i = 0; i < poolData.balancesRaw.length; ++i) {
+        uint256 numTokens = poolData.balancesRaw.length;
+        poolData.balancesLiveScaled18 = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; ++i) {
             _updateLiveTokenBalanceInPoolData(poolData, Rounding.ROUND_DOWN, i);
         }
     }
