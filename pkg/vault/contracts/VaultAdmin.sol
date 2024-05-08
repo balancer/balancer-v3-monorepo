@@ -490,7 +490,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _bufferLpShares[IERC20(wrappedToken)][sharesOwner] += issuedShares;
         _bufferTotalShares[IERC20(wrappedToken)] += issuedShares;
 
-        bufferBalances = bufferBalances.setBalances(
+        bufferBalances = PackedTokenBalance.toPackedBalance(
             bufferBalances.getBalanceRaw() + amountUnderlying,
             bufferBalances.getBalanceDerived() + amountWrapped
         );
@@ -526,7 +526,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _bufferLpShares[IERC20(wrappedToken)][sharesOwner] -= sharesToRemove;
         _bufferTotalShares[IERC20(wrappedToken)] -= sharesToRemove;
 
-        bufferBalances = bufferBalances.setBalances(
+        bufferBalances = PackedTokenBalance.toPackedBalance(
             bufferBalances.getBalanceRaw() - removedUnderlyingBalance,
             bufferBalances.getBalanceDerived() - removedWrappedBalance
         );

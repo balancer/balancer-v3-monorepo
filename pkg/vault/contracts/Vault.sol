@@ -1073,7 +1073,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
 
-            bufferBalances = bufferBalances.setBalances(
+            bufferBalances = PackedTokenBalance.toPackedBalance(
                 bufferBalances.getBalanceRaw() + amountInUnderlying,
                 bufferBalances.getBalanceDerived() - amountOutWrapped
             );
@@ -1141,7 +1141,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // increase. To decrease underlying balance, we get the actual amount that was deposited
                 // (actualUnderlyingDeposited) and discounts the amount needed in the wrapping operation
                 // (amountInUnderlying). Same logic applies to wrapped balances.
-                bufferBalances = bufferBalances.setBalances(
+                bufferBalances = PackedTokenBalance.toPackedBalance(
                     bufferBalances.getBalanceRaw() - (actualUnderlyingDeposited - amountInUnderlying),
                     bufferBalances.getBalanceDerived() + (actualWrappedMinted - amountOutWrapped)
                 );
@@ -1186,7 +1186,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (bufferBalances.getBalanceRaw() > amountOutUnderlying) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
-            bufferBalances = bufferBalances.setBalances(
+            bufferBalances = PackedTokenBalance.toPackedBalance(
                 bufferBalances.getBalanceRaw() - amountOutUnderlying,
                 bufferBalances.getBalanceDerived() + amountInWrapped
             );
@@ -1240,7 +1240,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // will decrease. To increase underlying balance, we get the actual amount that was withdrawn
                 // (actualUnderlyingWithdrawn) and discounts the amount expected in the unwrapping operation
                 // (amountOutUnderlying). Same logic applies to wrapped balances.
-                bufferBalances = bufferBalances.setBalances(
+                bufferBalances = PackedTokenBalance.toPackedBalance(
                     bufferBalances.getBalanceRaw() + (actualUnderlyingWithdrawn - amountOutUnderlying),
                     bufferBalances.getBalanceDerived() - (actualWrappedRedeemed - amountInWrapped)
                 );
