@@ -17,7 +17,7 @@ pragma solidity ^0.8.24;
  */
 library PackedTokenBalance {
     // The 'rawBalance' portion of the balance is stored in the least significant 128 bits of a 256 bit word, while the
-    // 'derivedBalance' part uses the remaining 128 bits.
+    // The 'derivedBalance' part uses the remaining 128 bits.
     uint256 private constant _MAX_BALANCE = 2 ** (128) - 1;
 
     /// @dev One of the balances is above the maximum value that can be stored.
