@@ -28,7 +28,6 @@ import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
 import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
-import { BufferPackedTokenBalance } from "../lib/BufferPackedBalance.sol";
 
 contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -38,7 +37,6 @@ contract VaultMock is IVaultMainMock, Vault {
     using VaultStateLib for VaultState;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
-    using BufferPackedTokenBalance for bytes32;
 
     PoolFactoryMock private immutable _poolFactoryMock;
     InputHelpersMock private immutable _inputHelpersMock;
@@ -330,7 +328,7 @@ contract VaultMock is IVaultMainMock, Vault {
 
         for (uint256 i = 0; i < numTokens; ++i) {
             (, packedBalances) = poolTokenBalances.unchecked_at(i);
-            balancesRaw[i] = packedBalances.getRawBalance();
+            balancesRaw[i] = packedBalances.getBalanceRaw();
         }
     }
 
@@ -353,7 +351,7 @@ contract VaultMock is IVaultMainMock, Vault {
 
         for (uint256 i = 0; i < numTokens; ++i) {
             (, packedBalances) = poolTokenBalances.unchecked_at(i);
-            currentLiveBalances[i] = packedBalances.getRawBalance().toScaled18ApplyRateRoundDown(
+            currentLiveBalances[i] = packedBalances.getBalanceRaw().toScaled18ApplyRateRoundDown(
                 poolData.decimalScalingFactors[i],
                 poolData.tokenRates[i]
             );
@@ -369,7 +367,7 @@ contract VaultMock is IVaultMainMock, Vault {
 
         for (uint256 i = 0; i < numTokens; ++i) {
             (, packedBalances) = poolTokenBalances.unchecked_at(i);
-            lastLiveBalances[i] = packedBalances.getLastLiveBalanceScaled18();
+            lastLiveBalances[i] = packedBalances.getBalanceDerived();
         }
     }
 

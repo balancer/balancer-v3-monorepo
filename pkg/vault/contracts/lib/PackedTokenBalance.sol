@@ -2,8 +2,11 @@
 
 pragma solidity ^0.8.24;
 
-/**
- * @notice This library represents a data structure for packing a token's current raw and "last" live Pool balances.
+/** TODO refactor
+ * @notice This library represents a data structure for packing a token's current raw and derived balances. A derived
+ * balance can be the "last" live balance scaled18 of the raw token, or the balance of the wrapped version of the
+ * token in a vault buffer, among others.
+ *
  * @dev `rawBalance` represents the actual number of tokens in the Vault allocated to the pool, in native decimal
  * encoding. `lastLiveBalanceScaled18` represents the "last live" balance, which is stored as an 18-decimal floating
  * point value so that it can be conveniently compared to other scaled values.
@@ -22,42 +25,46 @@ pragma solidity ^0.8.24;
  */
 library PackedTokenBalance {
     // The 'rawBalance' portion of the balance is stored in the least significant 128 bits of a 256 bit word, while the
-    // 'lastLiveBalanceScaled18' part uses the remaining 128 bits.
+    // 'derivedBalance' part uses the remaining 128 bits.
 
     uint256 private constant _MAX_BALANCE = 2 ** (128) - 1;
 
     /// @dev One of the balances is above the maximum value that can be stored.
     error BalanceOverflow();
 
-    /// @dev Returns the amount of Pool tokens allocated in the Vault, in native decimal encoding.
-    function getRawBalance(bytes32 balance) internal pure returns (uint256) {
+    /// @dev TODO comment
+    function getBalanceRaw(bytes32 balance) internal pure returns (uint256) {
         return uint256(balance) & _MAX_BALANCE;
     }
 
-    /// @dev Returns the last live Pool balance, as an 18-decimal floating point number.
-    function getLastLiveBalanceScaled18(bytes32 balance) internal pure returns (uint256) {
+    /// @dev TODO comment
+    function getBalanceDerived(bytes32 balance) internal pure returns (uint256) {
         return uint256(balance >> 128) & _MAX_BALANCE;
     }
 
-    /// @dev Replace a raw balance value, without modifying the live balance.
-    function setRawBalance(bytes32 balance, uint256 newRawBalance) internal pure returns (bytes32) {
-        return toPackedBalance(newRawBalance, getLastLiveBalanceScaled18(balance));
+    /// @dev TODO comment
+    function setBalances(bytes32 balance, uint256 newBalanceRaw, uint256 newBalanceDerived) internal pure returns (bytes32) {
+        return toPackedBalance(newBalanceRaw, newBalanceDerived);
     }
 
-    /// @dev Packs together `rawBalance` and `lastLiveBalanceScaled18` amounts to create a balance value.
-    function toPackedBalance(uint256 balanceRaw, uint256 balanceLastLiveScaled18) internal pure returns (bytes32) {
-        if (balanceRaw > _MAX_BALANCE || balanceLastLiveScaled18 > _MAX_BALANCE) {
+    function setBalanceRaw(bytes32 balance, uint256 newBalanceRaw) internal pure returns (bytes32) {
+        return toPackedBalance(newBalanceRaw, getBalanceDerived(balance));
+    }
+
+    /// @dev TODO comment
+    function toPackedBalance(uint256 balanceRaw, uint256 balanceDerived) internal pure returns (bytes32) {
+        if (balanceRaw > _MAX_BALANCE || balanceDerived > _MAX_BALANCE) {
             revert BalanceOverflow();
         }
 
-        return _pack(balanceRaw, balanceLastLiveScaled18);
+        return _pack(balanceRaw, balanceDerived);
     }
 
     /// @dev Decode and fetch both balances.
     function fromPackedBalance(
         bytes32 balance
-    ) internal pure returns (uint256 balanceRaw, uint256 balanceLastLiveScaled18) {
-        return (getRawBalance(balance), getLastLiveBalanceScaled18(balance));
+    ) internal pure returns (uint256 balanceRaw, uint256 balanceDerived) {
+        return (getBalanceRaw(balance), getBalanceDerived(balance));
     }
 
     /// @dev Packs two uint128 values into a bytes32.

@@ -31,7 +31,7 @@ import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
-import { BufferPackedTokenBalance } from "./lib/BufferPackedBalance.sol";
+import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 
 /**
  * @dev Bytecode extension for the Vault containing permissioned functions. Complementary to the `VaultExtension`.
@@ -44,12 +44,12 @@ import { BufferPackedTokenBalance } from "./lib/BufferPackedBalance.sol";
  * The storage of this contract is in practice unused.
  */
 contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
+    using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
     using VaultExtensionsLib for IVault;
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
     using VaultStateLib for VaultStateBits;
-    using BufferPackedTokenBalance for bytes32;
 
     IVault private immutable _vault;
 
@@ -491,8 +491,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _bufferTotalShares[IERC20(wrappedToken)] += issuedShares;
 
         bufferBalances = bufferBalances.setBalances(
-            bufferBalances.getUnderlyingBalance() + amountUnderlying,
-            bufferBalances.getWrappedBalance() + amountWrapped
+            bufferBalances.getBalanceRaw() + amountUnderlying,
+            bufferBalances.getBalanceDerived() + amountWrapped
         );
 
         _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
@@ -520,15 +520,15 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         }
         uint256 totalShares = _bufferTotalShares[IERC20(wrappedToken)];
 
-        removedUnderlyingBalance = (bufferBalances.getUnderlyingBalance() * sharesToRemove) / totalShares;
-        removedWrappedBalance = (bufferBalances.getWrappedBalance() * sharesToRemove) / totalShares;
+        removedUnderlyingBalance = (bufferBalances.getBalanceRaw() * sharesToRemove) / totalShares;
+        removedWrappedBalance = (bufferBalances.getBalanceDerived() * sharesToRemove) / totalShares;
 
         _bufferLpShares[IERC20(wrappedToken)][sharesOwner] -= sharesToRemove;
         _bufferTotalShares[IERC20(wrappedToken)] -= sharesToRemove;
 
         bufferBalances = bufferBalances.setBalances(
-            bufferBalances.getUnderlyingBalance() - removedUnderlyingBalance,
-            bufferBalances.getWrappedBalance() - removedWrappedBalance
+            bufferBalances.getBalanceRaw() - removedUnderlyingBalance,
+            bufferBalances.getBalanceDerived() - removedWrappedBalance
         );
 
         _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
@@ -544,7 +544,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function getBufferBalance(IERC20 token) external view returns (uint256, uint256) {
-        return (_bufferTokenBalances[token].getUnderlyingBalance(), _bufferTokenBalances[token].getWrappedBalance());
+        return (_bufferTokenBalances[token].getBalanceRaw(), _bufferTokenBalances[token].getBalanceDerived());
     }
 
     /*******************************************************************************

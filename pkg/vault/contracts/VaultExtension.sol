@@ -581,7 +581,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
             (tokens[i], packedBalances) = poolTokenBalances.unchecked_at(i);
-            balancesRaw[i] = packedBalances.getRawBalance();
+            balancesRaw[i] = packedBalances.getBalanceRaw();
         }
 
         amountsOutRaw = BasePoolMath.computeProportionalAmountsOut(balancesRaw, _totalSupply(pool), exactBptAmountIn);
@@ -602,7 +602,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         for (uint256 i = 0; i < numTokens; ++i) {
             packedBalances = poolBalances.unchecked_valueAt(i);
-            poolBalances.unchecked_setAt(i, packedBalances.setRawBalance(balancesRaw[i]));
+            poolBalances.unchecked_setAt(i, packedBalances.setBalanceRaw(balancesRaw[i]));
         }
 
         _spendAllowance(address(pool), from, msg.sender, exactBptAmountIn);

@@ -35,7 +35,6 @@ import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzepp
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
-import { BufferPackedTokenBalance } from "./lib/BufferPackedBalance.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
@@ -49,7 +48,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using PoolConfigLib for PoolConfig;
     using ScalingHelpers for *;
     using VaultStateLib for VaultStateBits;
-    using BufferPackedTokenBalance for bytes32;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
 
@@ -441,7 +439,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         for (uint256 i = 0; i < poolData.tokenConfig.length; ++i) {
             (, packedBalance) = poolTokenBalances.unchecked_at(i);
-            poolData.balancesRaw[i] = packedBalance.getRawBalance();
+            poolData.balancesRaw[i] = packedBalance.getBalanceRaw();
 
             // Note the order dependency. This requires up-to-date tokenRates in `poolData`,
             // so `_updateTokenRatesInPoolData` must be called first.
@@ -1072,12 +1070,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountInUnderlying, amountOutWrapped) = (amountCalculated, amountGiven);
         }
 
-        if (bufferBalances.getWrappedBalance() > amountOutWrapped) {
+        if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
 
             bufferBalances = bufferBalances.setBalances(
-                bufferBalances.getUnderlyingBalance() + amountInUnderlying,
-                bufferBalances.getWrappedBalance() - amountOutWrapped
+                bufferBalances.getBalanceRaw() + amountInUnderlying,
+                bufferBalances.getBalanceDerived() - amountOutWrapped
             );
             _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
         } else {
@@ -1144,8 +1142,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (actualUnderlyingDeposited) and discounts the amount needed in the wrapping operation
                 // (amountInUnderlying). Same logic applies to wrapped balances.
                 bufferBalances = bufferBalances.setBalances(
-                    bufferBalances.getUnderlyingBalance() - (actualUnderlyingDeposited - amountInUnderlying),
-                    bufferBalances.getWrappedBalance() + (actualWrappedMinted - amountOutWrapped)
+                    bufferBalances.getBalanceRaw() - (actualUnderlyingDeposited - amountInUnderlying),
+                    bufferBalances.getBalanceDerived() + (actualWrappedMinted - amountOutWrapped)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
             }
@@ -1186,11 +1184,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountOutUnderlying, amountInWrapped) = (amountGiven, amountCalculated);
         }
 
-        if (bufferBalances.getUnderlyingBalance() > amountOutUnderlying) {
+        if (bufferBalances.getBalanceRaw() > amountOutUnderlying) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
             bufferBalances = bufferBalances.setBalances(
-                bufferBalances.getUnderlyingBalance() - amountOutUnderlying,
-                bufferBalances.getWrappedBalance() + amountInWrapped
+                bufferBalances.getBalanceRaw() - amountOutUnderlying,
+                bufferBalances.getBalanceDerived() + amountInWrapped
             );
             _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
         } else {
@@ -1243,8 +1241,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (actualUnderlyingWithdrawn) and discounts the amount expected in the unwrapping operation
                 // (amountOutUnderlying). Same logic applies to wrapped balances.
                 bufferBalances = bufferBalances.setBalances(
-                    bufferBalances.getUnderlyingBalance() + (actualUnderlyingWithdrawn - amountOutUnderlying),
-                    bufferBalances.getWrappedBalance() - (actualWrappedRedeemed - amountInWrapped)
+                    bufferBalances.getBalanceRaw() + (actualUnderlyingWithdrawn - amountOutUnderlying),
+                    bufferBalances.getBalanceDerived() - (actualWrappedRedeemed - amountInWrapped)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
             }
@@ -1266,11 +1264,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * - final balances: 3.5 wrapped (2 existing + 1.5 new) and 7 underlying (10 existing - 3)
      */
     function _getBufferUnderlyingSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (uint256) {
-        uint256 underlyingBalance = bufferBalance.getUnderlyingBalance();
+        uint256 underlyingBalance = bufferBalance.getBalanceRaw();
 
         uint256 wrappedBalanceAsUnderlying = 0;
-        if (bufferBalance.getWrappedBalance() > 0) {
-            wrappedBalanceAsUnderlying = wrappedToken.convertToAssets(bufferBalance.getWrappedBalance());
+        if (bufferBalance.getBalanceDerived() > 0) {
+            wrappedBalanceAsUnderlying = wrappedToken.convertToAssets(bufferBalance.getBalanceDerived());
         }
 
         return
@@ -1289,11 +1287,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * - final balances: 6 wrapped (10 existing - 4) and 12 underlying (4 existing + 8 new)
      */
     function _getBufferWrappedSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (uint256) {
-        uint256 wrappedBalance = bufferBalance.getWrappedBalance();
+        uint256 wrappedBalance = bufferBalance.getBalanceDerived();
 
         uint256 underlyingBalanceAsWrapped = 0;
-        if (bufferBalance.getUnderlyingBalance() > 0) {
-            underlyingBalanceAsWrapped = wrappedToken.convertToShares(bufferBalance.getUnderlyingBalance());
+        if (bufferBalance.getBalanceRaw() > 0) {
+            underlyingBalanceAsWrapped = wrappedToken.convertToShares(bufferBalance.getBalanceRaw());
         }
 
         return wrappedBalance > underlyingBalanceAsWrapped ? (wrappedBalance - underlyingBalanceAsWrapped) / 2 : 0;

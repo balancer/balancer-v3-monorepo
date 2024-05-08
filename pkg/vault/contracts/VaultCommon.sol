@@ -331,7 +331,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
         for (uint256 i = 0; i < numTokens; ++i) {
             (token, packedBalance) = poolTokenBalances.unchecked_at(i);
-            balancesRaw[i] = packedBalance.getRawBalance();
+            balancesRaw[i] = packedBalance.getBalanceRaw();
             tokenConfig[i] = poolTokenConfig[token];
         }
     }
@@ -413,7 +413,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             if (poolSubjectToYieldFees && tokenSubjectToYieldFees) {
                 (uint256 protocolYieldFeeAmountRaw, uint256 creatorYieldFeeAmountRaw) = _computeYieldFeesDue(
                     poolData,
-                    poolBalances.unchecked_valueAt(i).getLastLiveBalanceScaled18(),
+                    poolBalances.unchecked_valueAt(i).getBalanceDerived(),
                     i,
                     yieldFeePercentage
                 );
