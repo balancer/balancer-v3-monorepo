@@ -136,8 +136,8 @@ contract VaultStorage {
         }
     }
 
-    // We key buffers on the wrapped token address. Buffers are a vault internal concept,
-    // there will only ever be one buffer per wrapped token. This also means they are permissionless and
+    // Buffers are a vault internal concept, keyed on the wrapped token address.
+    // There will only ever be one buffer per wrapped token. This also means they are permissionless and
     // have no registration function. You can always add liquidity to a buffer.
 
     // A buffer will only ever have two tokens: wrapped and underlying
