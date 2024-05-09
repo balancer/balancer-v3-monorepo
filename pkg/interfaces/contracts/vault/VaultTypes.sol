@@ -249,7 +249,7 @@ enum WrappingDirection {
  * direction)
  * @param userData Optional user data
  */
-struct WrappingOperationParams {
+struct BufferWrapOrUnwrapParams {
     SwapKind kind;
     WrappingDirection direction;
     IERC4626 wrappedToken;
