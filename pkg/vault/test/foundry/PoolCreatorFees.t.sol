@@ -103,7 +103,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         setProtocolSwapFeePercentage(protocolFeePercentage);
         setSwapFeePercentage(swapFeePercentage);
         vm.prank(lp);
-        vault.setPoolCreatorFeePercentage(address(pool), creatorFeePercentage);
+        vault.setPoolCreatorFeePercentage(pool, creatorFeePercentage);
 
         // totalFees = amountIn * swapFee%
         vars.totalFees = amountIn.mulUp(swapFeePercentage);
@@ -134,13 +134,13 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         //vars.creatorTokenInFeesBefore = vault.getPoolCreatorFees(address(pool), tokenIn);
         //vars.creatorTokenOutFeesBefore = vault.getPoolCreatorFees(address(pool), tokenOut);
 
-        uint256[] memory liveBalancesBefore = vault.getLastLiveBalances(address(pool));
+        uint256[] memory liveBalancesBefore = vault.getLastLiveBalances(pool);
 
         vm.prank(alice);
         if (shouldSnapSwap) {
             snapStart("swapWithCreatorFee");
         }
-        router.swapSingleTokenExactIn(address(pool), tokenIn, tokenOut, amountIn, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(pool, tokenIn, tokenOut, amountIn, 0, MAX_UINT256, false, bytes(""));
         if (shouldSnapSwap) {
             snapEnd();
         }
@@ -175,7 +175,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
             "tokenIn creator fees should not change"
         );
         assertEq(
-            vault.getPoolCreatorFees(address(pool), tokenOut),
+            vault.getPoolCreatorFees(pool, tokenOut),
             vars.creatorTokenOutFeesBefore + chargedCreatorFee,
             "tokenOut creator fees should increase by chargedCreatorFee after swap"
         );*/
@@ -188,8 +188,8 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         );
 
         // Check live balances after transfer
-        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(address(pool));
-        uint256[] memory liveBalancesAfter = vault.getLastLiveBalances(address(pool));
+        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(pool);
+        uint256[] memory liveBalancesAfter = vault.getLastLiveBalances(pool);
         for (uint256 i = 0; i < liveBalancesAfter.length; ++i) {
             if (tokenConfig[i].token == tokenIn) {
                 assertEq(

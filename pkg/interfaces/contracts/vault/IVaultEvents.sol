@@ -60,13 +60,13 @@ interface IVaultEvents {
      * @notice Emitted when the protocol swap fee percentage is updated.
      * @param swapFeePercentage The updated protocol swap fee percentage
      */
-    event ProtocolSwapFeePercentageChanged(uint256 indexed swapFeePercentage);
+    event ProtocolSwapFeePercentageChanged(uint256 swapFeePercentage);
 
     /**
      * @notice Emitted when the protocol yield fee percentage is updated.
      * @param yieldFeePercentage The updated protocol yield fee percentage
      */
-    event ProtocolYieldFeePercentageChanged(uint256 indexed yieldFeePercentage);
+    event ProtocolYieldFeePercentageChanged(uint256 yieldFeePercentage);
 
     /**
      * @notice Logs the collection of protocol swap fees in a specific token and amount.
@@ -88,16 +88,16 @@ interface IVaultEvents {
      * @notice Emitted when the swap fee percentage of a pool is updated.
      * @param swapFeePercentage The new swap fee percentage for the pool
      */
-    event SwapFeePercentageChanged(address indexed pool, uint256 indexed swapFeePercentage);
+    event SwapFeePercentageChanged(address indexed pool, uint256 swapFeePercentage);
 
     /**
      * @notice Emitted when the pool creator fee percentage of a pool is updated.
      * @param poolCreatorFeePercentage The new pool creator fee percentage for the pool
      */
-    event PoolCreatorFeePercentageChanged(address indexed pool, uint256 indexed poolCreatorFeePercentage);
+    event PoolCreatorFeePercentageChanged(address indexed pool, uint256 poolCreatorFeePercentage);
 
     /**
-     * @notice Logs the collection of pool creator fees in a specific pool, by token and amount.
+     * @notice Logs the collection of pool creator swap fees in a specific pool, by token and amount.
      * @param pool The address of the pool on which the swap fee was collected
      * @param token The token in which the swap fee was collected
      * @param amount The amount of the token collected in fees
@@ -105,7 +105,7 @@ interface IVaultEvents {
     event PoolCreatorSwapFeeCollected(address pool, IERC20 indexed token, uint256 indexed amount);
 
     /**
-     * @notice Logs the collection of pool creator fees in a specific pool, by token and amount.
+     * @notice Logs the collection of pool creator yield fees in a specific pool, by token and amount.
      * @param pool The address of the pool on which the yield fee was collected
      * @param token The token in which the yield fee was collected
      * @param amount The amount of the token collected in fees

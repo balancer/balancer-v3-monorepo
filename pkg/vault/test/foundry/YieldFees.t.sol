@@ -173,7 +173,7 @@ contract YieldFeesTest is BaseVaultTest {
         }
 
         // There should be creator fees on non-exempt wsteth
-        uint256 actualCreatorFee = vault.getPoolCreatorFees(address(pool), wsteth);
+        uint256 actualCreatorFee = vault.getPoolCreatorFees(pool, wsteth);
         assertTrue(actualCreatorFee > 0, "wstETH did not collect any creator fees");
 
         // How much should the fee be?
