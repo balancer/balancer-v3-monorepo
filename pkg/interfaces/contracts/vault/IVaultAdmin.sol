@@ -236,8 +236,8 @@ interface IVaultAdmin {
     ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw);
 
     /**
-     * @notice Returns the shares (an internal BPT of buffer) of an user that deposited his assets in the
-     * buffer (liquidity owner).
+     * @notice Returns the shares (internal buffer BPT) of a liquidity owner: a user that deposited assets
+     * in the buffer.
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
      * @param liquidityOwner Address of the user that owns liquidity in the wrapped token's buffer
