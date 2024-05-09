@@ -185,8 +185,8 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                 SwapPathStep memory step = path.steps[j];
 
                 if (step.isBuffer) {
-                    (, , uint256 amountOut) = _vault.wrappingOperation(
-                        WrappingOperationParams({
+                    (, , uint256 amountOut) = _vault.erc4626BufferWrapOrUnwrap(
+                        BufferWrapOrUnwrapParams({
                             kind: SwapKind.EXACT_IN,
                             direction: step.pool == address(stepTokenIn)
                                 ? WrappingDirection.UNWRAP
@@ -438,8 +438,8 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
                     }
 
-                    (, uint256 amountIn, ) = _vault.wrappingOperation(
-                        WrappingOperationParams({
+                    (, uint256 amountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
+                        BufferWrapOrUnwrapParams({
                             kind: SwapKind.EXACT_OUT,
                             direction: step.pool == address(stepTokenIn)
                                 ? WrappingDirection.UNWRAP

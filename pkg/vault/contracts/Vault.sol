@@ -991,8 +991,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultMain
-    function wrappingOperation(
-        WrappingOperationParams memory params
+    function erc4626BufferWrapOrUnwrap(
+        BufferWrapOrUnwrapParams memory params
     )
         public
         onlyWhenUnlocked

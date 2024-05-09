@@ -182,7 +182,7 @@ interface IVaultAdmin {
     *******************************************************************************/
     /**
      * @notice Unpauses native vault buffers globally. When buffers are paused, it's not possible to add liquidity or
-     * wrap/unwrap tokens using Vault's `wrappingOperation` primitive. However, it's still possible to remove liquidity.
+     * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity.
      * @dev This is a permissioned call.
      *
      */
@@ -190,7 +190,7 @@ interface IVaultAdmin {
 
     /**
      * @notice Pauses native vault buffers globally. When buffers are paused, it's not possible to add liquidity or
-     * wrap/unwrap tokens using Vault's `wrappingOperation` primitive. However, it's still possible to remove liquidity.
+     * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity.
      * Currently it's not possible to pause vault buffers individually.
      * @dev This is a permissioned call.
      *
