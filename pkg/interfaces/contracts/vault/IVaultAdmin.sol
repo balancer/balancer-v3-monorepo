@@ -241,7 +241,7 @@ interface IVaultAdmin {
      *
      * @param wrappedToken Address of the wrapped token that implements the IERC4626 interface
      * @param liquidityOwner Address of the user that owns liquidity in the wrapped token's buffer
-     * @return ownerShares Amount of shares that the liquidity owner has
+     * @return ownerShares Amount of shares allocated to the liquidity owner
      */
     function getBufferShares(IERC20 wrappedToken, address liquidityOwner) external view returns (uint256 ownerShares);
 
