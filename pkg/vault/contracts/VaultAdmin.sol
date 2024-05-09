@@ -119,7 +119,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function getPoolTokenRates(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256[] memory) {
-        return _getPoolData(pool).tokenRates;
+        return _getPoolData(pool, Rounding.ROUND_DOWN).tokenRates;
     }
 
     /*******************************************************************************
@@ -408,32 +408,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _poolConfig[pool] = config.fromPoolConfig();
 
         if (recoveryMode == false) {
-            _setPoolBalances(pool, _getPoolData(pool));
+            _setPoolBalances(pool, _getPoolData(pool, Rounding.ROUND_DOWN));
         }
 
         emit PoolRecoveryModeStateChanged(pool, recoveryMode);
-    }
-
-    /// @dev Factored out as it is reused.
-    function _getPoolData(address pool) internal view returns (PoolData memory poolData) {
-        (
-            poolData.tokenConfig,
-            poolData.balancesRaw,
-            poolData.decimalScalingFactors,
-            poolData.poolConfig
-        ) = _getPoolTokenInfo(pool);
-
-        _updateTokenRatesInPoolData(poolData);
-        _updateLiveTokenBalancesInPoolData(poolData);
-    }
-
-    function _updateLiveTokenBalancesInPoolData(PoolData memory poolData) internal pure {
-        uint256 numTokens = poolData.balancesRaw.length;
-        poolData.balancesLiveScaled18 = new uint256[](numTokens);
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            _updateLiveTokenBalanceInPoolData(poolData, Rounding.ROUND_DOWN, i);
-        }
     }
 
     /*******************************************************************************

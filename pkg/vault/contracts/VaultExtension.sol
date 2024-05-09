@@ -428,7 +428,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         withRegisteredPool(pool)
         returns (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors)
     {
-        (tokenConfig, balancesRaw, decimalScalingFactors, ) = _getPoolTokenInfo(pool);
+        PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
+        return (poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors);
     }
 
     /// @inheritdoc IVaultExtension
