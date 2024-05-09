@@ -153,6 +153,6 @@ contract VaultStorage {
     // total LP shares
     mapping(IERC20 => uint256) internal _bufferTotalShares;
 
-    // Prevents a malicious ERC4626 to change the asset after the buffer was initialized
+    // Prevents a malicious ERC4626 from changing the asset after the buffer was initialized.
     mapping(IERC20 => address) internal _bufferAssets;
 }
