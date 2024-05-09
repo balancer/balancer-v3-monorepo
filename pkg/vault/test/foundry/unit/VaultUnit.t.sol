@@ -23,7 +23,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import {BaseVaultTest} from "../utils/BaseVaultTest.sol";
+import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 contract VaultUnitTest is BaseVaultTest {
     using ArrayHelpers for *;

@@ -8,7 +8,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { ERC4626BufferPoolFactory } from "vault/contracts/factories/ERC4626BufferPoolFactory.sol";
 
-import {BaseVaultTest} from "./utils/BaseVaultTest.sol";
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract ERC4626BufferPoolFactoryTest is BaseVaultTest {
     ERC4626BufferPoolFactory internal factory;
