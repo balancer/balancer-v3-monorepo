@@ -1073,7 +1073,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (bufferBalances.getWrappedBalance() > amountOutWrapped) {
-            // the buffer has enough liquidity to facilitate the wrap without making an external call.
+            // The buffer has enough liquidity to facilitate the wrap without making an external call.
 
             bufferBalances = bufferBalances.setBalances(
                 bufferBalances.getUnderlyingBalance() + amountInUnderlying,
