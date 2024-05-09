@@ -45,6 +45,7 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
                 VaultSwapParams({
                     kind: kind,
                     pool: address(this),
+                    user: address(this),
                     tokenIn: tokenConfig[indexIn].token,
                     tokenOut: tokenConfig[indexOut].token,
                     amountGivenRaw: assetsToTransferRaw,

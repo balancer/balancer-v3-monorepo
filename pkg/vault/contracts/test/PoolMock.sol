@@ -259,6 +259,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     function onBeforeAddLiquidity(
         address,
+        address,
         AddLiquidityKind,
         uint256[] memory,
         uint256,
@@ -273,6 +274,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     }
 
     function onBeforeRemoveLiquidity(
+        address,
         address,
         RemoveLiquidityKind,
         uint256,
@@ -289,6 +291,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     function onAfterAddLiquidity(
         address,
+        address,
         uint256[] memory,
         uint256,
         uint256[] memory,
@@ -298,6 +301,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     }
 
     function onAfterRemoveLiquidity(
+        address,
         address,
         uint256,
         uint256[] memory,
@@ -309,6 +313,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     function onAddLiquidityCustom(
         address,
+        address,
         uint256[] memory maxAmountsInScaled18,
         uint256 minBptAmountOut,
         uint256[] memory,
@@ -318,6 +323,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     }
 
     function onRemoveLiquidityCustom(
+        address,
         address,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOut,

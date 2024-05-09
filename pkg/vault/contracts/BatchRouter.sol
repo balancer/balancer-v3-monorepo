@@ -287,6 +287,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                             tokenOut: step.tokenOut,
                             amountGivenRaw: stepExactAmountIn,
                             limitRaw: minAmountOut,
+                            user: params.sender,
                             userData: params.userData
                         })
                     );
@@ -509,6 +510,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                             tokenOut: step.tokenOut,
                             amountGivenRaw: stepExactAmountOut,
                             limitRaw: stepMaxAmountIn,
+                            user: params.sender,
                             userData: params.userData
                         })
                     );

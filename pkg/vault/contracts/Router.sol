@@ -603,6 +603,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 tokenOut: params.tokenOut,
                 amountGivenRaw: params.amountGiven,
                 limitRaw: params.limit,
+                // SwapSingleTokenHookParams.sender is the user, not the router
+                user: params.sender,
                 userData: params.userData
             })
         );

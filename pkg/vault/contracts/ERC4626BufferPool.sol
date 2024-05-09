@@ -318,6 +318,7 @@ contract ERC4626BufferPool is
                     tokenOut: tokenConfig[_wrappedTokenIndex].token,
                     amountGivenRaw: exchangeAmountRaw,
                     limitRaw: limitRaw,
+                    user: msg.sender,
                     userData: ""
                 })
             );
@@ -338,6 +339,7 @@ contract ERC4626BufferPool is
                     tokenOut: tokenConfig[_baseTokenIndex].token,
                     amountGivenRaw: exchangeAmountRaw,
                     limitRaw: limitRaw,
+                    user: msg.sender,
                     userData: ""
                 })
             );

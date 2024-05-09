@@ -41,7 +41,8 @@ interface IPoolHooks {
 
     /**
      * @notice Optional hook to be executed before adding liquidity.
-     * @param sender Address of the sender
+     * @param to Address for which the pool tokens are minted
+     * @param router Address which sends call to the vault
      * @param kind The type of add liquidity operation (e.g., proportional, custom)
      * @param maxAmountsInScaled18 Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
@@ -50,7 +51,8 @@ interface IPoolHooks {
      * @return success True if the pool wishes to proceed with settlement
      */
     function onBeforeAddLiquidity(
-        address sender,
+        address to,
+        address router,
         AddLiquidityKind kind,
         uint256[] memory maxAmountsInScaled18,
         uint256 minBptAmountOut,
@@ -60,7 +62,8 @@ interface IPoolHooks {
 
     /**
      * @notice Optional hook to be executed after adding liquidity.
-     * @param sender Address of the sender
+     * @param to Address for which the pool tokens are minted
+     * @param router Address which sends call to the vault
      * @param amountsInScaled18 Actual amounts of tokens added, in the same order as the tokens registered in the pool
      * @param bptAmountOut Amount of pool tokens minted
      * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
@@ -68,7 +71,8 @@ interface IPoolHooks {
      * @return success True if the pool wishes to proceed with settlement
      */
     function onAfterAddLiquidity(
-        address sender,
+        address to,
+        address router,
         uint256[] memory amountsInScaled18,
         uint256 bptAmountOut,
         uint256[] memory balancesScaled18,
@@ -81,7 +85,8 @@ interface IPoolHooks {
 
     /**
      * @notice Optional hook to be executed before removing liquidity.
-     * @param sender Address of the sender
+     * @param from Address for which the pool tokens are burned
+     * @param router Address which sends call to the vault
      * @param kind The type of remove liquidity operation (e.g., proportional, custom)
      * @param maxBptAmountIn Maximum amount of input pool tokens
      * @param minAmountsOutScaled18 Minimum output amounts, in the same order as the tokens registered in the pool
@@ -90,7 +95,8 @@ interface IPoolHooks {
      * @return success True if the pool wishes to proceed with settlement
      */
     function onBeforeRemoveLiquidity(
-        address sender,
+        address from,
+        address router,
         RemoveLiquidityKind kind,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOutScaled18,
@@ -100,7 +106,8 @@ interface IPoolHooks {
 
     /**
      * @notice Optional hook to be executed after removing liquidity.
-     * @param sender Address of the sender
+     * @param from Address for which the pool tokens are burned
+     * @param router Address which sends call to the vault
      * @param bptAmountIn Amount of pool tokens to burn
      * @param amountsOutScaled18 Amount of tokens to receive, in the same order as the tokens registered in the pool
      * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
@@ -108,7 +115,8 @@ interface IPoolHooks {
      * @return success True if the pool wishes to proceed with settlement
      */
     function onAfterRemoveLiquidity(
-        address sender,
+        address from,
+        address router,
         uint256 bptAmountIn,
         uint256[] memory amountsOutScaled18,
         uint256[] memory balancesScaled18,
@@ -128,7 +136,8 @@ interface IPoolHooks {
      * @param amountOutScaled18 Amount of tokenOut (leaving the Vault)
      * @param tokenInBalanceScaled18 Updated (after swap) balance of tokenIn
      * @param tokenOutBalanceScaled18 Updated (after swap) balance of tokenOut
-     * @param sender Account originating the swap operation
+     * @param user Account originating the swap operation
+     * @param router Address which sends call to the vault
      * @param userData Additional (optional) data required for the swap
      */
     struct AfterSwapParams {
@@ -139,7 +148,8 @@ interface IPoolHooks {
         uint256 amountOutScaled18;
         uint256 tokenInBalanceScaled18;
         uint256 tokenOutBalanceScaled18;
-        address sender;
+        address user;
+        address router;
         bytes userData;
     }
 
