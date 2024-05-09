@@ -275,7 +275,7 @@ interface IVaultErrors {
     /// @dev The vault admin was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();
 
-    /// @dev The user is trying to remove more shares than it has in the buffer
+    /// @dev The user is trying to remove more than their allocated shares from the buffer.
     error NotEnoughBufferShares();
 
     /// @dev The wrapped token asset does not match the underlying token of the swap path.
