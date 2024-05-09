@@ -1,4 +1,4 @@
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 

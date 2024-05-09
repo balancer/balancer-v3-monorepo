@@ -622,6 +622,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     poolData.balancesLiveScaled18,
                     params.userData
                 );
+        } else {
+            revert InvalidAddLiquidityKind();
         }
 
         // At this point we have the calculated BPT amount.
@@ -839,6 +841,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     poolData.balancesLiveScaled18,
                     params.userData
                 );
+        } else {
+            revert InvalidRemoveLiquidityKind();
         }
 
         if (bptAmountIn > params.maxBptAmountIn) {
