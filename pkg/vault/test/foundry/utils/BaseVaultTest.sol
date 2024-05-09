@@ -8,27 +8,28 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+
+import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+import { IVaultExtensionMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultExtensionMock.sol";
+import { IVaultAdminMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultAdminMock.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
+import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
-import { VaultMock } from "../../../contracts/test/VaultMock.sol";
-import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { Router } from "../../../contracts/Router.sol";
 import { BatchRouter } from "../../../contracts/BatchRouter.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
-
-import { VaultMockDeployer } from "./VaultMockDeployer.sol";
 
 import { Permit2Helpers } from "./Permit2Helpers.sol";
 
@@ -48,8 +49,6 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     // Vault mock.
     IVaultMock internal vault;
-    // Vault extension mock.
-    VaultExtensionMock internal vaultExtension;
     // Router mock.
     RouterMock internal router;
     // Batch router
@@ -88,9 +87,10 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     function setUp() public virtual override {
         BaseTest.setUp();
 
-        vault = IVaultMock(address(VaultMockDeployer.deploy()));
+        authorizer = new BasicAuthorizerMock();
+        deployVault();
+        vault = IVaultMock(address(vault));
         vm.label(address(vault), "vault");
-        authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
         vm.label(address(authorizer), "authorizer");
         factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
         vm.label(address(factoryMock), "factory");
@@ -205,5 +205,36 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     function getSalt(address addr) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
+    }
+
+    function deployVault() internal {
+        bytes32 salt = bytes32(0);
+
+        vault = IVaultMock(CREATE3.getDeployed(salt));
+
+        IVaultAdminMock vaultAdmin = IVaultAdminMock(
+            deployCode(
+                "artifacts/contracts/test/VaultAdminMock.sol/VaultAdminMock.json",
+                abi.encode(IVault(address(vault)), 90 days, 30 days)
+            )
+        );
+
+        IVaultExtensionMock vaultExtension = IVaultExtensionMock(
+            deployCode(
+                "artifacts/contracts/test/VaultExtensionMock.sol/VaultExtensionMock.json",
+                abi.encode(IVault(address(vault)), vaultAdmin)
+            )
+        );
+
+        _create(abi.encode(vaultExtension, authorizer), salt);
+    }
+
+    function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address) {
+        return
+            CREATE3.deploy(
+                salt,
+                abi.encodePacked(vm.getCode("artifacts/contracts/test/VaultMock.sol/VaultMock.json"), constructorArgs),
+                0
+            );
     }
 }

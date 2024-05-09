@@ -6,16 +6,15 @@ import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { VaultMockDeployer } from "vault/test/foundry/utils/VaultMockDeployer.sol";
-import { VaultMock } from "vault/contracts/test/VaultMock.sol";
 import { ERC4626BufferPoolFactory } from "vault/contracts/factories/ERC4626BufferPoolFactory.sol";
 
-contract ERC4626BufferPoolFactoryTest is Test {
-    VaultMock vault;
-    ERC4626BufferPoolFactory factory;
+import {BaseVaultTest} from "./utils/BaseVaultTest.sol";
 
-    function setUp() public {
-        vault = VaultMockDeployer.deploy();
+contract ERC4626BufferPoolFactoryTest is BaseVaultTest {
+    ERC4626BufferPoolFactory internal factory;
+
+    function setUp() public override {
+        BaseVaultTest.setUp();
         factory = new ERC4626BufferPoolFactory(IVault(address(vault)), 365 days);
     }
 

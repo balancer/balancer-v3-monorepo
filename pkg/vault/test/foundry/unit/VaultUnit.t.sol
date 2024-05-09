@@ -14,8 +14,6 @@ import {
     TokenType,
     Rounding
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
-import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
@@ -25,21 +23,20 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-contract VaultUnitTest is BaseTest {
+import {BaseVaultTest} from "../utils/BaseVaultTest.sol";
+
+contract VaultUnitTest is BaseVaultTest {
     using ArrayHelpers for *;
     using ScalingHelpers for *;
     using FixedPoint for *;
 
-    IVaultMock internal vault;
-
-    address pool = address(0x1234);
     uint256 amountGivenRaw = 1 ether;
     uint256[] decimalScalingFactors = [uint256(1e18), 1e18];
     uint256[] tokenRates = [uint256(1e18), 2e18];
 
     function setUp() public virtual override {
-        BaseTest.setUp();
-        vault = IVaultMock(address(VaultMockDeployer.deploy()));
+        BaseVaultTest.setUp();
+        pool = address(0x1234);
     }
 
     function testBuildPoolSwapParams() public {
