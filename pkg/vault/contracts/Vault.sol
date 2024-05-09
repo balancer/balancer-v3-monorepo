@@ -1238,9 +1238,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Only updates buffer balances if buffer has a surplus of underlying or wrapped tokens
             if (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0) {
                 // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance
-                // will decrease. To increase underlying balance, we get the actual amount that was withdrawn
-                // (actualUnderlyingWithdrawn) and discounts the amount expected in the unwrapping operation
-                // (amountOutUnderlying). Same logic applies to wrapped balances.
+                // will decrease. To increase the underlying balance, we get the actual amount that was withdrawn
+                // (actualUnderlyingWithdrawn) and discount the amount expected in the unwrapping operation
+                // (amountOutUnderlying). The same logic applies to wrapped balances.
                 bufferBalances = bufferBalances.setBalances(
                     bufferBalances.getUnderlyingBalance() + (actualUnderlyingWithdrawn - amountOutUnderlying),
                     bufferBalances.getWrappedBalance() - (actualWrappedRedeemed - amountInWrapped)
