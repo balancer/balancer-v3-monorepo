@@ -214,7 +214,7 @@ interface IVaultAdmin {
     ) external returns (uint256 issuedShares);
 
     /**
-     * @notice Removes liquidity from a buffer of yield-bearing token (linear pools embedded in the vault).
+     * @notice Removes liquidity from a yield-bearing token buffer (linear pool embedded in the vault).
      * Only proportional exits are supported.
      *
      * Pre-conditions:
