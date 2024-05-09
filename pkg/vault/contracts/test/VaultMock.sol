@@ -308,7 +308,7 @@ contract VaultMock is IVaultMainMock, Vault {
         Rounding roundingDirection,
         uint256 tokenIndex
     ) external pure returns (PoolData memory) {
-        _updateRawAndLiveTokenBalanceInPoolData(poolData, newRawBalance, roundingDirection, tokenIndex);
+        _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalance, roundingDirection, tokenIndex);
         return poolData;
     }
 

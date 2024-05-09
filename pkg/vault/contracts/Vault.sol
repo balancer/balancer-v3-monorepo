@@ -335,8 +335,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.swapFeeAmountScaled18 = vars.amountCalculatedScaled18.mulUp(vars.swapFeePercentage);
         }
 
-        // Need to update `amountCalculatedScaled18` for the onAfterSwap hook.
+        // (1) and (2): get raw amounts and check limits
         if (params.kind == SwapKind.EXACT_IN) {
+            // Need to update `amountCalculatedScaled18` for the onAfterSwap hook.
             vars.amountCalculatedScaled18 -= vars.swapFeeAmountScaled18;
 
             // For `ExactIn` the amount calculated is leaving the Vault, so we round down.
@@ -345,10 +346,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolData.tokenRates[vars.indexOut]
             );
 
-            // 1) Get raw amounts (in and out)
             (amountIn, amountOut) = (params.amountGivenRaw, amountCalculated);
 
-            // 2) Check limits
             if (amountOut < params.limitRaw) {
                 revert SwapLimit(amountOut, params.limitRaw);
             }
@@ -361,10 +360,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolData.tokenRates[vars.indexIn]
             );
 
-            // 1) Get raw amounts (in and out)
             (amountIn, amountOut) = (amountCalculated, params.amountGivenRaw);
 
-            // 2) Check limits
             if (amountIn > params.limitRaw) {
                 revert SwapLimit(amountIn, params.limitRaw);
             }
@@ -406,8 +403,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     poolData.balancesRaw[vars.indexOut] - amountOut
                 );
 
-            _updateRawAndLiveTokenBalanceInPoolData(poolData, newRawBalanceIn, Rounding.ROUND_DOWN, vars.indexIn);
-            _updateRawAndLiveTokenBalanceInPoolData(poolData, newRawBalanceOut, Rounding.ROUND_DOWN, vars.indexOut);
+            _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalanceIn, Rounding.ROUND_DOWN, vars.indexIn);
+            _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalanceOut, Rounding.ROUND_DOWN, vars.indexOut);
         }
 
         // 6) Store pool balances, raw and live
@@ -461,7 +458,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Note the order dependency. This requires up-to-date tokenRates in `poolData`,
             // so `_updateTokenRatesInPoolData` must be called first.
-            _updateRawAndLiveTokenBalanceInPoolData(poolData, packedBalance.getRawBalance(), roundingDirection, i);
+            _updateRawAndLiveTokenBalancesInPoolData(poolData, packedBalance.getRawBalance(), roundingDirection, i);
         }
     }
 
@@ -700,7 +697,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 amountInRaw -
                 vars.protocolSwapFeeAmountRaw -
                 vars.creatorSwapFeeAmountRaw;
-            _updateRawAndLiveTokenBalanceInPoolData(poolData, newRawBalance, Rounding.ROUND_UP, i);
+            _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalance, Rounding.ROUND_UP, i);
         }
 
         // 6) Store pool balances, raw and live
@@ -930,7 +927,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 amountOutRaw -
                 vars.protocolSwapFeeAmountRaw -
                 vars.creatorSwapFeeAmountRaw;
-            _updateRawAndLiveTokenBalanceInPoolData(poolData, newRawBalance, Rounding.ROUND_DOWN, i);
+            _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalance, Rounding.ROUND_DOWN, i);
         }
 
         // 6) Store pool balances, raw and live

@@ -300,7 +300,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             (token, packedBalance) = poolTokenBalances.unchecked_at(i);
             poolData.tokenConfig[i] = poolTokenConfig[token];
             _updateTokenRate(poolData, i);
-            _updateRawAndLiveTokenBalanceInPoolData(poolData, packedBalance.getRawBalance(), roundingDirection, i);
+            _updateRawAndLiveTokenBalancesInPoolData(poolData, packedBalance.getRawBalance(), roundingDirection, i);
         }
     }
 
@@ -382,7 +382,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                     dueCreatorYieldFees[i] = creatorYieldFeeAmountRaw;
 
                     // Adjust raw and live balances.
-                    _updateRawAndLiveTokenBalanceInPoolData(
+                    _updateRawAndLiveTokenBalancesInPoolData(
                         poolData,
                         poolData.balancesRaw[i] - protocolYieldFeeAmountRaw - creatorYieldFeeAmountRaw,
                         roundingDirection,
@@ -475,7 +475,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * and token rates, and rounding the result in the given direction. Assumes scaling factors and rates are current
      * in PoolData.
      */
-    function _updateRawAndLiveTokenBalanceInPoolData(
+    function _updateRawAndLiveTokenBalancesInPoolData(
         PoolData memory poolData,
         uint256 newRawBalance,
         Rounding roundingDirection,
