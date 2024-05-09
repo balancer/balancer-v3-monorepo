@@ -222,7 +222,7 @@ interface IVaultAdmin {
      *   this call is authenticated; only routers approved by the DAO can remove the liquidity of a buffer.
      * - The buffer needs to have some liquidity and have its asset registered in `_bufferAssets` storage.
      *
-     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param wrappedToken Address of the wrapped token that implements the IERC4626 interface
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
      *        total shares
      * @param sharesOwner Address of contract that owns the deposited liquidity.
