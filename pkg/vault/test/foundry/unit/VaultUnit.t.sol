@@ -204,7 +204,7 @@ contract VaultUnitTest is BaseTest {
         assertEq(poolData.balancesRaw[0], tokenBalances[0], "Unexpected balancesRaw[0]");
         assertEq(poolData.balancesRaw[1], tokenBalances[1], "Unexpected balancesRaw[1]");
 
-        // check _updateLiveTokenBalanceInPoolData is called
+        // check _updateRawAndLiveTokenBalancesInPoolData is called
         assertEq(
             poolData.balancesLiveScaled18[0],
             poolData.balancesRaw[0].mulUp(poolData.decimalScalingFactors[0]).mulUp(poolData.tokenRates[0]),

@@ -376,7 +376,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             );
         }
 
-        emit PoolBalanceChanged(pool, to, tokens, exactAmountsIn.unsafeCastToInt256(true));
+        emit PoolBalanceChanged(pool, to, exactAmountsIn.unsafeCastToInt256(true));
 
         // Store config and mark the pool as initialized
         poolData.poolConfig.isPoolInitialized = true;
@@ -432,7 +432,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         withRegisteredPool(pool)
         returns (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors)
     {
-        (tokenConfig, balancesRaw, decimalScalingFactors, ) = _getPoolTokenInfo(pool);
+        PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
+        return (poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors);
     }
 
     /// @inheritdoc IVaultExtension
@@ -619,7 +620,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         emit PoolBalanceChanged(
             pool,
             from,
-            tokens,
             // We can unsafely cast to int256 because balances are stored as uint128 (see PackedTokenBalance).
             amountsOutRaw.unsafeCastToInt256(false)
         );
