@@ -198,7 +198,7 @@ interface IVaultAdmin {
     /**
      * @notice Adds liquidity to an yield-bearing token buffer (linear pools embedded in the vault).
      *
-     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param wrappedToken Address of the wrapped token that implements the IERC4626 interface
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
      * @param sharesOwner Address of contract that will own the deposited liquidity. Only
