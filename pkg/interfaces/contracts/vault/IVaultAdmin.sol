@@ -219,7 +219,7 @@ interface IVaultAdmin {
      *
      * Pre-conditions:
      * - sharesOwner is the original msg.sender, it needs to be checked in the router. That's why
-     *   this call is authenticated, only routers approved by the DAO can remove the liquidity of a buffer;
+     *   this call is authenticated; only routers approved by the DAO can remove the liquidity of a buffer.
      * - The buffer needs to have some liquidity and have its asset registered in the _bufferAssets variable.
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
