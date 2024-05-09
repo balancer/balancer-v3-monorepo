@@ -204,7 +204,7 @@ interface IVaultAdmin {
      * @param sharesOwner Address of contract that will own the deposited liquidity. Only
      *        this contract will be able to remove liquidity from the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts
-     *         (it is the BPT of vault's internal linear pools)
+     *         (it is the BPT of the vault's internal linear pools)
      */
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
