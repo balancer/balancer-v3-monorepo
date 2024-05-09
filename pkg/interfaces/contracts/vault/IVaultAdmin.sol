@@ -184,7 +184,6 @@ interface IVaultAdmin {
      * @notice Unpauses native vault buffers globally. When buffers are paused, it's not possible to add liquidity or
      * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity.
      * @dev This is a permissioned call.
-     *
      */
     function unpauseVaultBuffers() external;
 
