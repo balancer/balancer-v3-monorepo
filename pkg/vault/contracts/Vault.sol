@@ -1044,9 +1044,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /**
      * @dev Non-reentrant portion of the wrapping operation.
-     * It uses the buffer of the wrapped token to make the wrap operation without any external call, if the buffer has
-     * enough liquidity. If not, it wraps the assets needed to fulfill the trade + the surplus of assets in the buffer,
-     * so that the buffer is rebalanced in the end of the operation.
+     * If the buffer has enough liquidity, it uses the wrapped token buffer to perform the wrap operation without any external calls.
+     * If not, it wraps the assets needed to fulfill the trade + the surplus of assets in the buffer, so that the buffer is rebalanced
+     * at the end of the operation.
      *
      * Updates `_reservesOf` and token deltas in storage.
      */
