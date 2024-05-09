@@ -247,7 +247,6 @@ interface IVaultAdmin {
 
     /**
      * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the vault.
-     *
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
      * @return underlyingBalanceRaw Amount of underlying tokens deposited into the buffer
      * @return wrappedBalanceRaw Amount of wrapped tokens deposited into the buffer
