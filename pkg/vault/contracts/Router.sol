@@ -682,7 +682,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     /**
      * @notice Hook for removing liquidity from vault buffers.
      * @dev Can only be called by the Vault.
-     *
      * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
      *        total shares
