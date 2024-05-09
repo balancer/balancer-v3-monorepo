@@ -192,7 +192,6 @@ interface IVaultAdmin {
      * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity.
      * Currently it's not possible to pause vault buffers individually.
      * @dev This is a permissioned call.
-     *
      */
     function pauseVaultBuffers() external;
 
