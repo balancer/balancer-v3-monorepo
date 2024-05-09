@@ -1193,7 +1193,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
         } else {
-            // the buffer does not have enough liquidity to facilitate the wrap without making an external call.
+            // the buffer does not have enough liquidity to facilitate the unwrap without making an external call.
             // We unwrap the user's tokens via an external call and additionally rebalance the buffer if it has a
             // surplus of underlying tokens.
             uint256 bufferUnderlyingSurplus;
