@@ -1176,7 +1176,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Cannot use convertToAssets because the actual withdraw operation returns a different (usually smaller)
             // amount of assets.
             amountCalculated = wrappedToken.previewRedeem(amountGiven);
-            amountCalculated = wrappedToken.previewRedeem(amountGiven);
             (amountOutUnderlying, amountInWrapped) = (amountCalculated, amountGiven);
         } else {
             // EXACT_OUT unwrap, so AmountGiven is underlying amount
