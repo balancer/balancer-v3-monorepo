@@ -221,7 +221,8 @@ contract VaultMock is IVaultMainMock, Vault {
             PoolConfig memory poolConfig
         )
     {
-        (tokenConfig, balancesRaw, decimalScalingFactors, poolConfig) = _getPoolTokenInfo(pool);
+        PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
+        return (poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors, poolData.poolConfig);
     }
 
     function buildTokenConfig(IERC20[] memory tokens) public view returns (TokenConfig[] memory tokenConfig) {
@@ -305,10 +306,11 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,
+        uint256 newRawBalance,
         Rounding roundingDirection,
         uint256 tokenIndex
     ) external pure returns (PoolData memory) {
-        _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, tokenIndex);
+        _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalance, roundingDirection, tokenIndex);
         return poolData;
     }
 
@@ -335,29 +337,9 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function getCurrentLiveBalances(address pool) external view returns (uint256[] memory currentLiveBalances) {
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        PoolData memory poolData;
+        PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
 
-        (
-            poolData.tokenConfig,
-            poolData.balancesRaw,
-            poolData.decimalScalingFactors,
-            poolData.poolConfig
-        ) = _getPoolTokenInfo(pool);
-
-        _updateTokenRatesInPoolData(poolData);
-
-        uint256 numTokens = poolTokenBalances.length();
-        currentLiveBalances = new uint256[](numTokens);
-        bytes32 packedBalances;
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            (, packedBalances) = poolTokenBalances.unchecked_at(i);
-            currentLiveBalances[i] = packedBalances.getRawBalance().toScaled18ApplyRateRoundDown(
-                poolData.decimalScalingFactors[i],
-                poolData.tokenRates[i]
-            );
-        }
+        return poolData.balancesLiveScaled18;
     }
 
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances) {
