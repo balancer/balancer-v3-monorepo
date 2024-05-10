@@ -301,7 +301,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
      * @inheritdoc IVaultAdmin
      * @dev This can only be executed by the pool creator and is disabled if the pool is paused.
      * The creator fee must be <= 100%. It's the percentage of creatorAndLpFees that will be accrued by the creator
-     * of the pool. For more details, check comment of vault's _computeAndChargeProtocolAndCreatorFees function
+     * of the pool. For more details, check comment of vault's _computeAndChargeProtocolAndCreatorSwapFees function
      * Emits the poolCreatorFeePercentageChanged event.
      */
     function setPoolCreatorFeePercentage(

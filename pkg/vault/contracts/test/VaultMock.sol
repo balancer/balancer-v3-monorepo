@@ -299,7 +299,7 @@ contract VaultMock is IVaultMainMock, Vault {
         Rounding roundingDirection
     ) external returns (PoolData memory) {
         VaultState memory vaultState = VaultStateLib.toVaultState(_vaultState);
-        return _computePoolDataUpdatingBalancesAndFees(pool, roundingDirection, vaultState.protocolYieldFeePercentage);
+        return _chargePendingYieldFeesUpdatePoolBalancesAndReturnPoolData(pool, roundingDirection, vaultState.protocolYieldFeePercentage);
     }
 
     function updateLiveTokenBalanceInPoolData(
@@ -424,7 +424,7 @@ contract VaultMock is IVaultMainMock, Vault {
         uint256 index
     ) external returns (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) {
         return
-            _computeAndChargeProtocolAndCreatorFees(
+            _computeAndChargeProtocolAndCreatorSwapFees(
                 poolData,
                 swapFeeAmountScaled18,
                 protocolSwapFeePercentage,

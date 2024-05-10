@@ -297,13 +297,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external onlyWhenUnlocked withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
-        VaultState memory vaultState = _ensureUnpausedAndGetVaultState(pool);
+        _ensureUnpausedAndGetVaultState(pool);
 
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
-            pool,
-            Rounding.ROUND_DOWN,
-            vaultState.protocolYieldFeePercentage
-        );
+        // Balances are zero until after initialize is callled, so there is no need to charge pending yield fee here.
+        PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
 
         if (poolData.poolConfig.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);
@@ -325,7 +322,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
 
             // The before hook is reentrant, and could have changed token rates.
-            _updateTokenRatesInPoolData(poolData);
+            // Updating balances here is unnecessary since they're 0, but we do not special case before init
+            // for the sake of bytecode size.
+            _updatePoolDataLiveBalancesAndRates(pool, poolData, Rounding.ROUND_DOWN);
 
             // Also update exactAmountsInScaled18, in case the underlying rates changed.
             exactAmountsInScaled18 = exactAmountsIn.copyToScaled18ApplyRateRoundDownArray(

@@ -305,16 +305,34 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
-     * @dev Preconditions: tokenConfig must be current in `poolData`. Side effects: mutates tokenRates in `poolData`.
+     * @dev This is typically called after a reentrant callback (e.g., a "before" liquidity operation callback),
+     * to refresh the poolData struct with any balances (or rates) that might have changed.
+     *
+     * Preconditions: tokenConfig, balancesRaw, and decimalScalingFactors must be current in `poolData`.
+     * Side effects: mutates tokenRates, balancesLiveScaled18 in `poolData`.
      */
-    function _updateTokenRatesInPoolData(PoolData memory poolData) internal view {
+    function _updatePoolDataLiveBalancesAndRates(
+        address pool,
+        PoolData memory poolData,
+        Rounding roundingDirection
+    ) internal view {
         uint256 numTokens = poolData.tokenConfig.length;
 
         // Initialize arrays to store tokens based on the number of tokens in the pool.
         poolData.tokenRates = new uint256[](numTokens);
 
+        // It's possible a reentrant hook changed the raw balances in Vault storage.
+        // Update them before computing the live balances.
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        bytes32 packedBalance;
+
         for (uint256 i = 0; i < numTokens; ++i) {
             _updateTokenRate(poolData, i);
+
+            (, packedBalance) = poolTokenBalances.unchecked_at(i);
+
+            // Note the order dependency. This requires up-to-date tokenRate for the token at index `i` in `poolData`
+            _updateRawAndLiveTokenBalancesInPoolData(poolData, packedBalance.getRawBalance(), roundingDirection, i);
         }
     }
 
@@ -331,21 +349,18 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
-     * @dev Get poolData and compute protocol yield fees due, without changing any state.
-     * Returns poolData with both raw and live balances updated to reflect the fees.
+     * @dev Computes the pending yield fees for both the protocol and creator, without changing any state.
+     * No side-effects
      */
-    function _getPoolDataAndYieldFees(
+    function _computePendingYieldFees(
         address pool,
-        Rounding roundingDirection,
+        PoolData memory poolData,
         uint256 yieldFeePercentage
     )
         internal
         view
-        returns (PoolData memory poolData, uint256[] memory dueProtocolYieldFees, uint256[] memory dueCreatorYieldFees)
+        returns (uint256[] memory dueProtocolYieldFees, uint256[] memory dueCreatorYieldFees)
     {
-        // Initialize poolData with base information for subsequent calculations.
-        poolData = _getPoolData(pool, roundingDirection);
-
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
         uint256 numTokens = poolBalances.length();
 
@@ -377,18 +392,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                     yieldFeePercentage
                 );
 
-                if (protocolYieldFeeAmountRaw > 0 || creatorYieldFeeAmountRaw > 0) {
-                    dueProtocolYieldFees[i] = protocolYieldFeeAmountRaw;
-                    dueCreatorYieldFees[i] = creatorYieldFeeAmountRaw;
-
-                    // Adjust raw and live balances.
-                    _updateRawAndLiveTokenBalancesInPoolData(
-                        poolData,
-                        poolData.balancesRaw[i] - protocolYieldFeeAmountRaw - creatorYieldFeeAmountRaw,
-                        roundingDirection,
-                        i
-                    );
-                }
+                dueProtocolYieldFees[i] = protocolYieldFeeAmountRaw;
+                dueCreatorYieldFees[i] = creatorYieldFeeAmountRaw;
             }
         }
     }
@@ -397,33 +402,45 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
      * This function modifies protocol fees and balance storage. Since it modifies storage and makes external
      * calls, it must be nonReentrant.
+     * Side effects: updates `_protocolFees`, `_poolCreatorFees` and _poolTokenBalances storage (and emits events).
      */
-    function _computePoolDataUpdatingBalancesAndFees(
+    function _chargePendingYieldFeesUpdatePoolBalancesAndReturnPoolData(
         address pool,
         Rounding roundingDirection,
         uint256 yieldFeePercentage
     ) internal nonReentrant returns (PoolData memory poolData) {
-        uint256[] memory dueProtocolYieldFees;
-        uint256[] memory dueCreatorYieldFees;
+        // Initialize poolData with base information for subsequent calculations.
+        poolData = _getPoolData(pool, roundingDirection);
 
-        (poolData, dueProtocolYieldFees, dueCreatorYieldFees) = _getPoolDataAndYieldFees(
+        (uint256[] memory dueProtocolYieldFees, uint256[] memory dueCreatorYieldFees) = _computePendingYieldFees(
             pool,
-            roundingDirection,
+            poolData,
             yieldFeePercentage
         );
+
         uint256 numTokens = dueProtocolYieldFees.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             IERC20 token = poolData.tokenConfig[i].token;
-            uint256 yieldFeeAmountRaw = dueProtocolYieldFees[i];
+            uint256 protocolYieldFeeAmountRaw = dueProtocolYieldFees[i];
+            uint256 creatorYieldFeeAmountRaw = dueCreatorYieldFees[i];
 
-            if (yieldFeeAmountRaw > 0) {
-                // Charge protocol fee.
-                _protocolFees[pool][token] += yieldFeeAmountRaw;
-                emit ProtocolYieldFeeCharged(pool, address(token), yieldFeeAmountRaw);
+            if (protocolYieldFeeAmountRaw > 0 || creatorYieldFeeAmountRaw > 0) {
+                // Adjust raw and live balances.
+                _updateRawAndLiveTokenBalancesInPoolData(
+                    poolData,
+                    poolData.balancesRaw[i] - protocolYieldFeeAmountRaw - creatorYieldFeeAmountRaw,
+                    roundingDirection,
+                    i
+                );
             }
 
-            uint256 creatorYieldFeeAmountRaw = dueCreatorYieldFees[i];
+            if (protocolYieldFeeAmountRaw > 0) {
+                // Charge protocol fee.
+                _protocolFees[pool][token] += protocolYieldFeeAmountRaw;
+                emit ProtocolYieldFeeCharged(pool, address(token), protocolYieldFeeAmountRaw);
+            }
+
             if (creatorYieldFeeAmountRaw > 0) {
                 // Charge pool creator fee
                 _poolCreatorFees[pool][token] += creatorYieldFeeAmountRaw;
