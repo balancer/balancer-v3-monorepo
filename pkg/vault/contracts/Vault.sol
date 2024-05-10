@@ -402,7 +402,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             swapFeeToken,
             swapFeeIndex
         );
-        
+
         {
             // stack-too-deep (forge)
             // 5) Pool balances: raw and live
@@ -674,7 +674,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             amountsInRaw[i] = amountInRaw;
 
-            {//TODO
+            {
+                //TODO
                 // stack-too-deep
                 IERC20 token = poolData.tokenConfig[i].token;
 
@@ -702,9 +703,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // to use in the `after` hook later on.
 
             // A pool's token balance increases by amounts in after adding liquidity, minus fees.
-            uint256 newRawBalance = poolData.balancesRaw[i] +
-                amountInRaw -
-                vars.aggregateSwapFeeAmountRaw;
+            uint256 newRawBalance = poolData.balancesRaw[i] + amountInRaw - vars.aggregateSwapFeeAmountRaw;
             _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalance, Rounding.ROUND_UP, i);
         }
 
@@ -929,9 +928,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // A Pool's token balance always decreases after an exit
             // (potentially by 0). Also adjust by protocol and pool creator fees.
-            uint256 newRawBalance = poolData.balancesRaw[i] -
-                amountOutRaw -
-                vars.aggregateSwapFeeAmountRaw;
+            uint256 newRawBalance = poolData.balancesRaw[i] - amountOutRaw - vars.aggregateSwapFeeAmountRaw;
             _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalance, Rounding.ROUND_DOWN, i);
         }
 

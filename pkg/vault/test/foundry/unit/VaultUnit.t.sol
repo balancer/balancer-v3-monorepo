@@ -71,7 +71,8 @@ contract VaultUnitTest is BaseTest {
         assertEq(poolSwapParams.sender, address(this), "Unexpected sender");
         assertEq(poolSwapParams.userData, params.userData, "Unexpected userData");
     }
-/*TODO
+
+    /*TODO
     function testComputeAndChargeProtocolFees() public {
         uint256 tokenIndex = 0;
         vault.manualSetPoolCreatorFees(pool, dai, tokenIndex);

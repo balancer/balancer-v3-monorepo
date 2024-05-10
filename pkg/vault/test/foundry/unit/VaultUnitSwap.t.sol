@@ -75,7 +75,8 @@ contract VaultUnitSwapTest is BaseTest {
             vaultState
         );
     }
-/*TODO
+
+    /*TODO
     function testSwapExactInWithFee() public {
         // set zero pool creator fee
         vault.manualSetPoolCreatorFees(pool, swapTokens[1], 0);
@@ -178,7 +179,8 @@ contract VaultUnitSwapTest is BaseTest {
             vaultState
         );
     }
-/*TODO
+
+    /*TODO
     function testSwapExactOutWithFee() public {
         uint256 swapFeePct = 5e16;
         uint256 creatorFeePct = 10e16;

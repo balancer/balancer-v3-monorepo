@@ -259,7 +259,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         assertEq(protocolSwapFees[daiIdx], feeAmounts[0], "Protocol's fee amount is wrong");
         assertEq(protocolSwapFees[usdcIdx], feeAmounts[1], "Protocol's fee amount is wrong");
 
-/*TODO replace        assertApproxEqAbs(
+        /*TODO replace        assertApproxEqAbs(
             poolCreatorFees[daiIdx],
             vault.getPoolCreatorFees(pool, dai),
             1,
