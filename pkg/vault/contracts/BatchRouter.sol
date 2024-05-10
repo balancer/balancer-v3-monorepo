@@ -158,7 +158,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
             IERC20 stepTokenIn = path.tokenIn;
 
             if (path.steps[0].isBuffer) {
-                // If first step is a buffer, take the token in advance. We need this to wrap/unwrap
+                // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
                 _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, false);
                 _settledTokenAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
             } else {

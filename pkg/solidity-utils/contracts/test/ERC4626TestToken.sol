@@ -24,13 +24,13 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
     uint256 private _sharesToReturn;
 
     constructor(
-        IERC20 baseToken,
+        IERC20 underlyingToken,
         string memory tokenName,
         string memory tokenSymbol,
         uint8 tokenDecimals
-    ) ERC4626(baseToken) ERC20(tokenName, tokenSymbol) {
+    ) ERC4626(underlyingToken) ERC20(tokenName, tokenSymbol) {
         _wrappedTokenDecimals = tokenDecimals;
-        _overrideAsset = baseToken;
+        _overrideAsset = underlyingToken;
     }
 
     function decimals() public view override returns (uint8) {

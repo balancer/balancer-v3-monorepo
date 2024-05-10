@@ -641,8 +641,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     /**
      * @notice Hook for adding liquidity to vault buffers.
      * @dev Can only be called by the Vault.
-     *
-     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
      * @param sharesOwner Address of contract that will own the deposited liquidity. Only
@@ -683,8 +682,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     /**
      * @notice Hook for removing liquidity from vault buffers.
      * @dev Can only be called by the Vault.
-     *
-     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
      *        total shares
      * @param sharesOwner Address of contract that owns the deposited liquidity.

@@ -139,15 +139,19 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
         assertEq(
-            vault.getBufferShares(IERC20(waDAI), address(lp)),
+            vault.getBufferOwnerShares(IERC20(waDAI), address(lp)),
             bufferAmount * 2 - MIN_BPT,
             "Wrong share of waDAI buffer belonging to LP"
         );
         assertEq(
-            vault.getBufferShares(IERC20(waUSDC), address(lp)),
+            vault.getBufferOwnerShares(IERC20(waUSDC), address(lp)),
             bufferAmount * 2 - MIN_BPT,
             "Wrong share of waUSDC buffer belonging to LP"
         );
+
+        // Buffer should have the correct amount of issued shares
+        assertEq(vault.getBufferTotalShares(IERC20(waDAI)), bufferAmount * 2, "Wrong issued shares of waDAI buffer");
+        assertEq(vault.getBufferTotalShares(IERC20(waUSDC)), bufferAmount * 2, "Wrong issued shares of waUSDC buffer");
 
         uint256 baseBalance;
         uint256 wrappedBalance;
@@ -171,6 +175,8 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
+        // When the buffer has enough liquidity to wrap/unwrap, bufferExpectedDelta is swapAmount because the
+        // `erc4626BufferWrapOrUnwrap` just transfer swapAmount from underlying to wrapped balance (and vice-versa)
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, swapAmount);
     }
 
@@ -183,6 +189,8 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
+        // When the buffer has enough liquidity to wrap/unwrap, bufferExpectedDelta is swapAmount because the
+        // `erc4626BufferWrapOrUnwrap` just transfer swapAmount from underlying to wrapped balance (and vice-versa)
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, swapAmount);
     }
 
@@ -195,6 +203,8 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
+        // When the buffer has not enough liquidity to wrap/unwrap, bufferExpectedDelta is 0 because the
+        // `erc4626BufferWrapOrUnwrap` function leaves the buffer perfectly balanced at the end.
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, tooLargeSwapAmount, SwapKind.EXACT_IN, 0);
     }
 
@@ -207,6 +217,8 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
+        // When the buffer has not enough liquidity to wrap/unwrap, bufferExpectedDelta is 0 because the
+        // `erc4626BufferWrapOrUnwrap` function leaves the buffer perfectly balanced at the end.
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, tooLargeSwapAmount, SwapKind.EXACT_OUT, 0);
     }
 
@@ -216,7 +228,6 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
 
-        // TODO check comment "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
         // Since this is exact in, swaps will be executed in the order given.
         // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the boosted pool,
         // and finally post-swap the waUSDC through the USDC buffer to calculate the USDC amount out.

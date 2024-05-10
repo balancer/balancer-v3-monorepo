@@ -184,7 +184,6 @@ interface IVaultAdmin {
      * @notice Unpauses native vault buffers globally. When buffers are paused, it's not possible to add liquidity or
      * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity.
      * @dev This is a permissioned call.
-     *
      */
     function unpauseVaultBuffers() external;
 
@@ -193,20 +192,19 @@ interface IVaultAdmin {
      * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity.
      * Currently it's not possible to pause vault buffers individually.
      * @dev This is a permissioned call.
-     *
      */
     function pauseVaultBuffers() external;
 
     /**
-     * @notice Adds liquidity to an yield-bearing token buffer (linear pools embedded in the vault).
+     * @notice Adds liquidity to an yield-bearing token buffer (linear pool embedded in the vault).
      *
-     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
      * @param sharesOwner Address of contract that will own the deposited liquidity. Only
      *        this contract will be able to remove liquidity from the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts
-     *         (it is the BPT of vault's internal linear pools)
+     *         (it is the BPT of the vault's internal linear pools)
      */
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
@@ -216,15 +214,15 @@ interface IVaultAdmin {
     ) external returns (uint256 issuedShares);
 
     /**
-     * @notice Removes liquidity from a buffer of yield-bearing token (linear pools embedded in the vault).
+     * @notice Removes liquidity from a yield-bearing token buffer (linear pool embedded in the vault).
      * Only proportional exits are supported.
      *
      * Pre-conditions:
      * - sharesOwner is the original msg.sender, it needs to be checked in the router. That's why
-     *   this call is authenticated, only routers approved by the DAO can remove the liquidity of a buffer;
-     * - The buffer needs to have some liquidity and have its asset registered in the _bufferAssets variable.
+     *   this call is authenticated; only routers approved by the DAO can remove the liquidity of a buffer.
+     * - The buffer needs to have some liquidity and have its asset registered in `_bufferAssets` storage.
      *
-     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
      *        total shares
      * @param sharesOwner Address of contract that owns the deposited liquidity.
@@ -238,19 +236,29 @@ interface IVaultAdmin {
     ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw);
 
     /**
-     * @notice Returns the shares (an internal BPT of buffer) of an user that deposited his assets in the
-     * buffer (liquidity owner).
+     * @notice Returns the shares (internal buffer BPT) of a liquidity owner: a user that deposited assets
+     * in the buffer.
      *
-     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param liquidityOwner Address of the user that owns liquidity in the wrapped token's buffer
-     * @return ownerShares Amount of shares that the liquidity owner has
+     * @return ownerShares Amount of shares allocated to the liquidity owner
      */
-    function getBufferShares(IERC20 wrappedToken, address liquidityOwner) external view returns (uint256 ownerShares);
+    function getBufferOwnerShares(
+        IERC20 wrappedToken,
+        address liquidityOwner
+    ) external view returns (uint256 ownerShares);
+
+    /**
+     * @notice Returns the supply shares (internal buffer BPT) of the ERC4626 buffer.
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @return bufferShares Amount of supply shares of the buffer
+     */
+    function getBufferTotalShares(IERC20 wrappedToken) external view returns (uint256 bufferShares);
 
     /**
      * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the vault.
-     *
-     * @param wrappedToken Address of the wrapped token that implements IERC4626 interface
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @return underlyingBalanceRaw Amount of underlying tokens deposited into the buffer
      * @return wrappedBalanceRaw Amount of wrapped tokens deposited into the buffer
      */

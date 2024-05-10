@@ -136,8 +136,8 @@ contract VaultStorage {
         }
     }
 
-    // We key buffers on the wrapped token address. Buffers are a vault internal concept,
-    // there will only ever be one buffer per wrapped token. This also means they are permissionless and
+    // Buffers are a vault internal concept, keyed on the wrapped token address.
+    // There will only ever be one buffer per wrapped token. This also means they are permissionless and
     // have no registration function. You can always add liquidity to a buffer.
 
     // A buffer will only ever have two tokens: wrapped and underlying
@@ -153,6 +153,6 @@ contract VaultStorage {
     // total LP shares
     mapping(IERC20 => uint256) internal _bufferTotalShares;
 
-    // Prevents a malicious ERC4626 to change the asset after the buffer was initialized
+    // Prevents a malicious ERC4626 from changing the asset after the buffer was initialized.
     mapping(IERC20 => address) internal _bufferAssets;
 }

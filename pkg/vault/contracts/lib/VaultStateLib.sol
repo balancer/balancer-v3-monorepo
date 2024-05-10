@@ -36,7 +36,7 @@ library VaultStateLib {
         return VaultStateBits.unwrap(config).decodeBool(VAULT_PAUSED_OFFSET);
     }
 
-    function isBufferPaused(VaultStateBits config) internal pure returns (bool) {
+    function areBuffersPaused(VaultStateBits config) internal pure returns (bool) {
         return VaultStateBits.unwrap(config).decodeBool(BUFFER_PAUSED_OFFSET);
     }
 
@@ -55,7 +55,7 @@ library VaultStateLib {
             configBits = configBits
                 .insertBool(config.isQueryDisabled, QUERY_DISABLED_OFFSET)
                 .insertBool(config.isVaultPaused, VAULT_PAUSED_OFFSET)
-                .insertBool(config.isBufferPaused, BUFFER_PAUSED_OFFSET);
+                .insertBool(config.areBuffersPaused, BUFFER_PAUSED_OFFSET);
         }
         {
             configBits = configBits
@@ -79,7 +79,7 @@ library VaultStateLib {
             VaultState({
                 isQueryDisabled: config.isQueryDisabled(),
                 isVaultPaused: config.isVaultPaused(),
-                isBufferPaused: config.isBufferPaused(),
+                areBuffersPaused: config.areBuffersPaused(),
                 protocolSwapFeePercentage: config.getProtocolSwapFeePercentage(),
                 protocolYieldFeePercentage: config.getProtocolYieldFeePercentage()
             });

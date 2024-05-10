@@ -72,14 +72,14 @@ contract ERC4626BufferPool is
         IERC4626 wrappedToken,
         IVault vault
     ) BalancerPoolToken(vault, name, symbol) BasePoolAuthentication(vault, msg.sender) {
-        address baseToken = wrappedToken.asset();
+        address underlyingToken = wrappedToken.asset();
 
         _wrappedToken = wrappedToken;
         _wrappedTokenScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(address(wrappedToken)));
-        _baseTokenScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(baseToken));
+        _baseTokenScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(underlyingToken));
 
-        _wrappedTokenIndex = address(wrappedToken) > baseToken ? 1 : 0;
-        _baseTokenIndex = address(wrappedToken) > baseToken ? 0 : 1;
+        _wrappedTokenIndex = address(wrappedToken) > underlyingToken ? 1 : 0;
+        _baseTokenIndex = address(wrappedToken) > underlyingToken ? 0 : 1;
     }
 
     /// @inheritdoc IBasePool
@@ -349,11 +349,11 @@ contract ERC4626BufferPool is
 
         (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
-        IERC20 baseToken;
+        IERC20 underlyingToken;
         IERC20 wrappedToken;
 
         if (params.kind == SwapKind.EXACT_IN) {
-            baseToken = params.tokenIn;
+            underlyingToken = params.tokenIn;
             wrappedToken = params.tokenOut;
 
             vault.sendTo(wrappedToken, address(this), amountOut);
@@ -364,18 +364,18 @@ contract ERC4626BufferPool is
             IERC4626(address(wrappedToken)).redeem(amountOut, address(this), address(this));
             // The explicit transfer is needed, because onSwap considers a slightly larger rate for the wrapped token,
             // so the redeem function returns a bit less assets than amountIn
-            baseToken.safeTransfer(address(vault), amountIn);
-            vault.settle(baseToken);
+            underlyingToken.safeTransfer(address(vault), amountIn);
+            vault.settle(underlyingToken);
         } else {
-            baseToken = params.tokenOut;
+            underlyingToken = params.tokenOut;
             wrappedToken = params.tokenIn;
             // Since the rate used by onSwap is a bit larger than the real rate, the mint operation
             // will take more assets than amountOut. So, we need to recalculate the amount of assets
             // taken to approve the exact amount that will be minted
             uint256 preciseAmountOut = IERC4626(address(wrappedToken)).previewMint(amountIn);
 
-            vault.sendTo(baseToken, address(this), amountOut);
-            baseToken.approve(address(wrappedToken), preciseAmountOut);
+            vault.sendTo(underlyingToken, address(this), amountOut);
+            underlyingToken.forceApprove(address(wrappedToken), preciseAmountOut);
             // Using mint, instead of deposit, to pass the amount of shares (amountIn) instead of the
             // amount of assets. That's because amount of shares is an output of onSwap, so we make sure
             // the buffer contract will never have a different balance of wrapped tokens after the rebalance

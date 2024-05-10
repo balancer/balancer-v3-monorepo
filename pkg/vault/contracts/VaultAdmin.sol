@@ -122,7 +122,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function getPoolTokenRates(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256[] memory) {
-        return _getPoolData(pool).tokenRates;
+        return _getPoolData(pool, Rounding.ROUND_DOWN).tokenRates;
     }
 
     /*******************************************************************************
@@ -411,22 +411,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _poolConfig[pool] = config.fromPoolConfig();
 
         if (recoveryMode == false) {
-            _setPoolBalances(pool, _getPoolData(pool));
+            _setPoolBalances(pool, _getPoolData(pool, Rounding.ROUND_DOWN));
         }
 
         emit PoolRecoveryModeStateChanged(pool, recoveryMode);
-    }
-
-    /// @dev Factored out as it is reused.
-    function _getPoolData(address pool) internal view returns (PoolData memory poolData) {
-        (
-            poolData.tokenConfig,
-            poolData.balancesRaw,
-            poolData.decimalScalingFactors,
-            poolData.poolConfig
-        ) = _getPoolTokenInfo(pool);
-
-        _updateTokenRatesInPoolData(poolData);
     }
 
     /*******************************************************************************
@@ -446,14 +434,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @inheritdoc IVaultAdmin
     function unpauseVaultBuffers() external authenticate onlyVault {
         VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.isBufferPaused = false;
+        vaultState.areBuffersPaused = false;
         _vaultState = VaultStateLib.fromVaultState(vaultState);
     }
 
     /// @inheritdoc IVaultAdmin
     function pauseVaultBuffers() external authenticate onlyVault {
         VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.isBufferPaused = true;
+        vaultState.areBuffersPaused = true;
         _vaultState = VaultStateLib.fromVaultState(vaultState);
     }
 
@@ -463,7 +451,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         uint256 amountUnderlying,
         uint256 amountWrapped,
         address sharesOwner
-    ) public onlyWhenUnlocked whenVaultBufferNotPaused nonReentrant returns (uint256 issuedShares) {
+    ) public onlyWhenUnlocked whenVaultBuffersAreNotPaused nonReentrant returns (uint256 issuedShares) {
         address underlyingToken = wrappedToken.asset();
 
         // amount of shares to issue is the total underlying token that the user is depositing
@@ -477,7 +465,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
             // Burn MINIMUM_TOTAL_SUPPLY shares, so the buffer can never go back to liquidity 0
             // (avoids rounding issues with low liquidity)
-            _bufferTotalShares[IERC20(wrappedToken)] += _MINIMUM_TOTAL_SUPPLY;
+            _bufferTotalShares[IERC20(wrappedToken)] = _MINIMUM_TOTAL_SUPPLY;
             issuedShares -= _MINIMUM_TOTAL_SUPPLY;
         } else if (_bufferAssets[IERC20(address(wrappedToken))] != underlyingToken) {
             // Asset was changed since the first bufferAddLiquidity call
@@ -538,8 +526,13 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferShares(IERC20 token, address user) external view returns (uint256 shares) {
+    function getBufferOwnerShares(IERC20 token, address user) external view returns (uint256 shares) {
         return _bufferLpShares[token][user];
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getBufferTotalShares(IERC20 token) external view returns (uint256 shares) {
+        return _bufferTotalShares[token];
     }
 
     /// @inheritdoc IVaultAdmin

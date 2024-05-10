@@ -148,16 +148,30 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned ""BPTs)
         assertApproxEqAbs(
-            vault.getBufferShares(IERC20(waDAI), address(lp)),
+            vault.getBufferOwnerShares(IERC20(waDAI), address(lp)),
             bufferAmount * 2 - MIN_BPT,
             1,
             "Wrong share of waDAI buffer belonging to LP"
         );
         assertApproxEqAbs(
-            vault.getBufferShares(IERC20(waUSDC), address(lp)),
+            vault.getBufferOwnerShares(IERC20(waUSDC), address(lp)),
             (bufferAmount * 2) / USDC_FACTOR - MIN_BPT,
             1,
             "Wrong share of waUSDC buffer belonging to LP"
+        );
+
+        // Buffer should have the correct amount of issued shares
+        assertApproxEqAbs(
+            vault.getBufferTotalShares(IERC20(waDAI)),
+            bufferAmount * 2,
+            1,
+            "Wrong issued shares of waDAI buffer"
+        );
+        assertApproxEqAbs(
+            vault.getBufferTotalShares(IERC20(waUSDC)),
+            (bufferAmount * 2) / USDC_FACTOR,
+            1,
+            "Wrong issued shares of waUSDC buffer"
         );
 
         uint256 underlyingBalance;
