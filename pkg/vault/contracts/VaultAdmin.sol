@@ -96,17 +96,17 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function getPauseWindowEndTime() external view onlyVault returns (uint256) {
+    function getPauseWindowEndTime() external view returns (uint256) {
         return _vaultPauseWindowEndTime;
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferPeriodDuration() external view onlyVault returns (uint256) {
+    function getBufferPeriodDuration() external view returns (uint256) {
         return _vaultBufferPeriodDuration;
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferPeriodEndTime() external view onlyVault returns (uint256) {
+    function getBufferPeriodEndTime() external view returns (uint256) {
         return _vaultBufferPeriodEndTime;
     }
 
