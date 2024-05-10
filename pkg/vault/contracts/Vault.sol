@@ -459,7 +459,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Note the order dependency. This requires up-to-date tokenRates in `poolData`,
             // so `_updateTokenRatesInPoolData` must be called first.
-            _updateRawAndLiveTokenBalancesInPoolData(poolData, packedBalance.getRawBalance(), roundingDirection, i);
+            _updateRawAndLiveTokenBalancesInPoolData(poolData, packedBalance.getBalanceRaw(), roundingDirection, i);
         }
     }
 
