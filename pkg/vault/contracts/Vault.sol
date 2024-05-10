@@ -39,7 +39,6 @@ import { VaultCommon } from "./VaultCommon.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
-    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using PackedTokenBalance for bytes32;
     using InputHelpers for uint256;
     using FixedPoint for *;
