@@ -375,7 +375,7 @@ contract ERC4626BufferPool is
             uint256 preciseAmountOut = IERC4626(address(wrappedToken)).previewMint(amountIn);
 
             vault.sendTo(underlyingToken, address(this), amountOut);
-            underlyingToken.approve(address(wrappedToken), preciseAmountOut);
+            underlyingToken.forceApprove(address(wrappedToken), preciseAmountOut);
             // Using mint, instead of deposit, to pass the amount of shares (amountIn) instead of the
             // amount of assets. That's because amount of shares is an output of onSwap, so we make sure
             // the buffer contract will never have a different balance of wrapped tokens after the rebalance

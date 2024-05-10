@@ -1129,7 +1129,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (bufferUnderlyingSurplus)
                 actualUnderlyingDeposited = amountInUnderlying + bufferUnderlyingSurplus;
 
-                underlyingToken.approve(address(wrappedToken), actualUnderlyingDeposited);
+                underlyingToken.forceApprove(address(wrappedToken), actualUnderlyingDeposited);
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called
                 wrappedToken.deposit(actualUnderlyingDeposited, address(this));
             } else {
@@ -1141,10 +1141,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (bufferWrappedSurplus)
                 if (bufferWrappedSurplus > 0) {
                     actualWrappedMinted = amountOutWrapped + bufferWrappedSurplus;
-                    underlyingToken.approve(address(wrappedToken), wrappedToken.previewMint(actualWrappedMinted));
+                    underlyingToken.forceApprove(address(wrappedToken), wrappedToken.previewMint(actualWrappedMinted));
                 } else {
                     actualWrappedMinted = amountOutWrapped;
-                    underlyingToken.approve(address(wrappedToken), amountInUnderlying);
+                    underlyingToken.forceApprove(address(wrappedToken), amountInUnderlying);
                 }
 
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called
