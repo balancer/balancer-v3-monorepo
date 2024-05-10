@@ -153,17 +153,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                                           Swaps
     *******************************************************************************/
 
-    struct SwapLocals {
-        // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
-        uint256 indexIn;
-        uint256 indexOut;
-        uint256 amountGivenScaled18;
-        uint256 amountCalculatedScaled18;
-        uint256 swapFeeAmountScaled18;
-        uint256 swapFeePercentage;
-        uint256 aggregateSwapFeeAmountRaw;
-    }
-
     /// @inheritdoc IVaultMain
     function swap(
         SwapParams memory params
