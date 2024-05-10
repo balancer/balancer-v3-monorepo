@@ -975,7 +975,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 );
             }
 
-            uint256 aggregateSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(_aggregateProtocolSwapFeePercentage().tload());
+            uint256 aggregateSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(
+                _aggregateProtocolSwapFeePercentage().tload()
+            );
 
             // Ensure we can never charge more than the total swap fee.
             if (aggregateSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
