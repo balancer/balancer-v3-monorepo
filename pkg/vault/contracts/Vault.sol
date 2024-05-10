@@ -516,7 +516,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (
                 IPoolHooks(params.pool).onBeforeAddLiquidity(
                     params.to,
-                    msg.sender,
                     params.kind,
                     maxAmountsInScaled18,
                     params.minBptAmountOut,
@@ -557,7 +556,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (
                 IPoolHooks(params.pool).onAfterAddLiquidity(
                     params.to,
-                    msg.sender,
                     amountsInScaled18,
                     bptAmountOut,
                     poolData.balancesLiveScaled18,
@@ -641,7 +639,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountsInScaled18, bptAmountOut, swapFeeAmountsScaled18, returnData) = IPoolLiquidity(params.pool)
                 .onAddLiquidityCustom(
                     params.to,
-                    msg.sender,
                     maxAmountsInScaled18,
                     params.minBptAmountOut,
                     poolData.balancesLiveScaled18,
@@ -756,7 +753,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (
                 IPoolHooks(params.pool).onBeforeRemoveLiquidity(
                     params.from,
-                    msg.sender,
                     params.kind,
                     params.maxBptAmountIn,
                     minAmountsOutScaled18,
@@ -794,7 +790,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (
                 IPoolHooks(params.pool).onAfterRemoveLiquidity(
                     params.from,
-                    msg.sender,
                     bptAmountIn,
                     amountsOutScaled18,
                     poolData.balancesLiveScaled18,
@@ -876,7 +871,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (bptAmountIn, amountsOutScaled18, swapFeeAmountsScaled18, returnData) = IPoolLiquidity(params.pool)
                 .onRemoveLiquidityCustom(
                     params.from,
-                    msg.sender,
                     params.maxBptAmountIn,
                     minAmountsOutScaled18,
                     poolData.balancesLiveScaled18,
