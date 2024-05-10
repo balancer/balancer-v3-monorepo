@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -104,7 +104,7 @@ contract VaultUnitTest is BaseTest {
 
         assertEq(creatorSwapFeeAmountRaw, 0, "Unexpected creatorSwapFeeAmountRaw");
         assertEq(protocolSwapFeeAmountRaw, expectedSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
-        assertEq(vault.getProtocolFees(address(dai)), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
+        assertEq(vault.getProtocolFees(pool, dai), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
         assertEq(vault.getPoolCreatorFees(pool, dai), 0, "Unexpected creator fees in storage");
     }
 
@@ -157,7 +157,7 @@ contract VaultUnitTest is BaseTest {
             initVault + creatorSwapFeeAmountRaw,
             "Unexpected creator fees in storage"
         );
-        assertEq(vault.getProtocolFees(address(dai)), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
+        assertEq(vault.getProtocolFees(pool, dai), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
     }
 
     function testComputeAndChargeProtocolAndCreatorFeesIfPoolIsInRecoveryMode() public {
@@ -169,7 +169,7 @@ contract VaultUnitTest is BaseTest {
 
         assertEq(protocolSwapFeeAmountRaw, 0, "Unexpected protocolSwapFeeAmountRaw");
         assertEq(creatorSwapFeeAmountRaw, 0, "Unexpected creatorSwapFeeAmountRaw");
-        assertEq(vault.getProtocolFees(address(dai)), 0, "Unexpected protocol fees in storage");
+        assertEq(vault.getProtocolFees(pool, dai), 0, "Unexpected protocol fees in storage");
     }
 
     function testManualUpdatePoolDataLiveBalancesAndRates() public {
@@ -207,7 +207,7 @@ contract VaultUnitTest is BaseTest {
         assertEq(poolData.balancesRaw[0], tokenBalances[0], "Unexpected balancesRaw[0]");
         assertEq(poolData.balancesRaw[1], tokenBalances[1], "Unexpected balancesRaw[1]");
 
-        // check _updateLiveTokenBalanceInPoolData is called
+        // check _updateRawAndLiveTokenBalancesInPoolData is called
         assertEq(
             poolData.balancesLiveScaled18[0],
             poolData.balancesRaw[0].mulUp(poolData.decimalScalingFactors[0]).mulUp(poolData.tokenRates[0]),

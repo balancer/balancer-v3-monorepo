@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { VaultState } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { VaultStateBits, VaultStateLib } from "../../contracts/lib/VaultStateLib.sol";
+import { VaultStateBits, VaultStateLib } from "../../../contracts/lib/VaultStateLib.sol";
 
 contract VaultStateLibTest is Test {
     // Two 24-bit fees + 2 flags = 50 total bits used.

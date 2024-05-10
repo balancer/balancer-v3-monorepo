@@ -75,6 +75,7 @@ interface IVaultMainMock {
 
     function updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,
+        uint256 newRawBalance,
         Rounding roundingDirection,
         uint256 tokenIndex
     ) external pure returns (PoolData memory);

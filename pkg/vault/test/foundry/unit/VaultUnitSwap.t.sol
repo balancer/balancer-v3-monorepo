@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -249,6 +249,9 @@ contract VaultUnitSwapTest is BaseTest {
         poolData.poolConfig.staticSwapFeePercentage = swapFeePercentage_;
         vaultState.protocolSwapFeePercentage = swapFeePercentage_;
         poolData.poolConfig.poolCreatorFeePercentage = poolCreatorFeePercentage_;
+
+        // TODO: check these after the operations.
+        poolData.balancesLiveScaled18 = new uint256[](initialBalances.length);
     }
 
     function _checkSwapExactInResult(
