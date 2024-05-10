@@ -516,6 +516,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
+    function getProtocolSwapFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
+        return _protocolSwapFees[pool][token];
+    }
+
+    /// @inheritdoc IVaultExtension
     function getStaticSwapFeePercentage(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
@@ -525,6 +530,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function getStaticSwapFeeManager(address pool) external view withRegisteredPool(pool) onlyVault returns (address) {
         return _poolRoleAccounts[pool].swapFeeManager;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getProtocolYieldFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
+        return _protocolYieldFees[pool][token];
     }
 
     /// @inheritdoc IVaultExtension
