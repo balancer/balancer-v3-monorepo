@@ -162,7 +162,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setSharesToReturn(waDAI.previewDeposit(_wrapAmount) + 1);
 
         vm.prank(lp);
-        // Do not revert since more shares were deposited into the vault
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -265,7 +265,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setSharesToReturn(_wrapAmount + 1);
 
         vm.prank(lp);
-        // Do not revert since more shares were deposited into the vault
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -374,8 +374,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.startPrank(lp);
         // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount
         router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
-        // Do not revert since more shares were consumed from a malicious token, but the right amount of assets
-        // returned
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
@@ -392,7 +391,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToReturn(waDAI.previewRedeem(_wrapAmount) + 1);
 
         vm.prank(lp);
-        // Do not revert since more assets were deposited into the vault
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnderlyingAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -471,8 +470,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.startPrank(lp);
         // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount
         router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
-        // Do not revert since more shares were consumed from a malicious token, but the right amount of assets
-        // returned
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
     }
@@ -489,7 +487,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setAssetsToReturn(_wrapAmount + 1);
 
         vm.prank(lp);
-        // Do not revert since more assets were deposited into the vault
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnderlyingAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 

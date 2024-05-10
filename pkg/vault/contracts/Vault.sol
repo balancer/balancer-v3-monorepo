@@ -1157,12 +1157,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IERC20(wrappedToken)
             );
 
-            if (deltaUnderlyingDeposited < amountInUnderlying) {
+            if (deltaUnderlyingDeposited != amountInUnderlying + bufferUnderlyingSurplus) {
                 // If this error is thrown, it means the previewDeposit or previewMint had a different result from
                 // the delta operation.
                 revert WrongUnderlyingAmount(address(wrappedToken));
             }
-            if (deltaWrappedMinted < amountOutWrapped) {
+            if (deltaWrappedMinted != amountOutWrapped + bufferWrappedSurplus) {
                 // If this error is thrown, it means the previewDeposit or previewMint had a different result from
                 // the delta operation.
                 revert WrongWrappedAmount(address(wrappedToken));
@@ -1255,12 +1255,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IERC20(wrappedToken)
             );
 
-            if (deltaUnderlyingWithdrawn < amountOutUnderlying) {
+            if (deltaUnderlyingWithdrawn != amountOutUnderlying + bufferUnderlyingSurplus) {
                 // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
                 // the actual operation.
                 revert WrongUnderlyingAmount(address(wrappedToken));
             }
-            if (deltaWrappedRedeemed < amountInWrapped) {
+            if (deltaWrappedRedeemed != amountInWrapped + bufferWrappedSurplus) {
                 // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
                 // the actual operation.
                 revert WrongWrappedAmount(address(wrappedToken));
