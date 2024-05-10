@@ -50,6 +50,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
     using VaultStateLib for VaultStateBits;
+    using BufferPackedTokenBalance for bytes32;
 
     IVault private immutable _vault;
 

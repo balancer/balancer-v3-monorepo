@@ -28,6 +28,7 @@ import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
 import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
+import { BufferPackedTokenBalance } from "../lib/BufferPackedBalance.sol";
 
 contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -37,6 +38,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using VaultStateLib for VaultState;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
+    using BufferPackedTokenBalance for bytes32;
 
     PoolFactoryMock private immutable _poolFactoryMock;
     InputHelpersMock private immutable _inputHelpersMock;
