@@ -166,11 +166,11 @@ enum SwapKind {
  */
 struct SwapParams {
     SwapKind kind;
+    address pool;
     IERC20 tokenIn;
     IERC20 tokenOut;
     uint256 amountGivenRaw;
     uint256 limitRaw;
-    address pool;
     bytes userData;
 }
 
