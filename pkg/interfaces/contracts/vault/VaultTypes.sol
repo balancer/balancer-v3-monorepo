@@ -241,6 +241,7 @@ enum WrappingDirection {
 }
 
 /**
+ * @dev Data for a wrap/unwrap operation.
  * @param kind Type of swap (Exact In or Exact Out)
  * @param direction Direction of the wrapping operation (Wrap or Unwrap)
  * @param wrappedToken Wrapped token, compatible with interface ERC4626
