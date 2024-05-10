@@ -27,8 +27,6 @@ import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
 
-import { VaultMockDeployer } from "./utils/VaultMockDeployer.sol";
-
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RouterTest is BaseVaultTest {

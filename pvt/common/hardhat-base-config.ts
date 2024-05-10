@@ -4,7 +4,7 @@ import './skipFoundryTests.ts';
 type SolcConfig = {
   version: string;
   settings: {
-    viaIR: boolean;
+    viaIR?: boolean;
     evmVersion: string;
     optimizer: {
       enabled: boolean;
@@ -30,7 +30,7 @@ export const compilers: [SolcConfig] = [
 type ContractSettings = Record<
   string,
   {
-    viaIR: boolean;
+    viaIR?: boolean;
     version: string;
     runs: number | undefined;
   }

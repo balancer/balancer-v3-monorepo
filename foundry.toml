@@ -1,4 +1,7 @@
 [profile.default]
+solc_version = '0.8.24'
+auto_detect_solc = false
+evm_version = 'cancun'
 src = 'contracts'
 out = 'forge-artifacts'
 libs = ['node_modules']
@@ -6,7 +9,10 @@ test = 'test/foundry'
 cache_path  = 'forge-cache'
 allow_paths = ['../', '../../node_modules/']
 ffi = true
-fs_permissions = [{ access = "read-write", path = ".forge-snapshots/"}]
+fs_permissions = [
+    { access = "read", path = "./artifacts/" },
+    { access = "read-write", path = "./.forge-snapshots/"},
+]
 remappings = [
     'vault/=../vault/',
     'pool-weighted/=../pool-weighted/',
@@ -20,14 +26,15 @@ remappings = [
 ]
 optimizer = true
 optimizer_runs = 999
-solc_version = '0.8.24'
-auto_detect_solc = false
-evm_version = 'cancun'
 ignored_error_codes = [2394] # Transient storage
 
 [fuzz]
 runs = 10000
 max_test_rejects = 60000
+
+[profile.test]
+# Overwrite src, so that contracts that are not referenced by test files are not compiled
+src = 'test/foundry'
 
 [profile.coverage.fuzz]
 runs = 100
