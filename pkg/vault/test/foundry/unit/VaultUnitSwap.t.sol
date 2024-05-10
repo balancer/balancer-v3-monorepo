@@ -297,7 +297,7 @@ contract VaultUnitSwapTest is BaseTest {
             "Unexpected swapFeeAmountScaled18"
         );
         assertEq(
-            vault.getProtocolFees(address(swapTokens[vars.indexOut])),
+            vault.getProtocolFees(pool, swapTokens[vars.indexOut]),
             vars.protocolSwapFeeAmountRaw,
             "Unexpected protocol fees in storage"
         );
@@ -369,7 +369,7 @@ contract VaultUnitSwapTest is BaseTest {
         assertEq(vars.protocolSwapFeeAmountRaw, expectedProtocolFeeAmountRaw, "Unexpected protocolFeeAmountRaw");
         assertEq(vars.creatorSwapFeeAmountRaw, expectedCreatorFeeAmountRaw, "Unexpected creatorSwapFeeAmountRaw");
 
-        assertEq(vault.getProtocolFees(address(swapTokens[vars.indexOut])), 0, "Unexpected protocol fees in storage");
+        assertEq(vault.getProtocolFees(pool, swapTokens[vars.indexOut]), 0, "Unexpected protocol fees in storage");
         assertEq(vault.getPoolCreatorFees(pool, swapTokens[vars.indexOut]), 0, "Unexpected creator fees in storage");
 
         _checkCommonSwapResult(amountIn, amountOut, params, vars, poolData, vaultState);

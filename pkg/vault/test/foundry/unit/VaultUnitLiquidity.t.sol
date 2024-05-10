@@ -804,7 +804,6 @@ contract VaultUnitLiquidityTest is BaseTest {
         emit IVaultEvents.PoolBalanceChanged(
             params.addLiquidityParams.pool,
             params.addLiquidityParams.to,
-            tokens,
             expectedAmountsInRaw.unsafeCastToInt256(true)
         );
 
@@ -876,7 +875,6 @@ contract VaultUnitLiquidityTest is BaseTest {
         emit IVaultEvents.PoolBalanceChanged(
             params.removeLiquidityParams.pool,
             params.removeLiquidityParams.from,
-            tokens,
             expectedAmountsOutRaw.unsafeCastToInt256(false)
         );
 
@@ -959,7 +957,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             poolData.tokenRates[tokenIndex]
         );
         assertEq(
-            vault.getProtocolFees(address(poolData.tokenConfig[tokenIndex].token)),
+            vault.getProtocolFees(pool, poolData.tokenConfig[tokenIndex].token),
             protocolSwapFeeAmountRaw,
             "Unexpected protocol fees"
         );
