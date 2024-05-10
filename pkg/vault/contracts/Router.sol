@@ -1176,7 +1176,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         return results;
     }
 
-    function callAndSaveSender(bytes calldata data) public returns (bytes memory result) {
+    function callAndSaveSender(bytes calldata data) external returns (bytes memory result) {
         StorageSlot.AddressSlotType senderSlot = _getSenderSlot();
         address sender = senderSlot.tload();
         if (sender == address(0)) {
@@ -1190,7 +1190,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         return _getSenderSlot().tload();
     }
 
-    function _getSenderSlot() internal view returns (StorageSlot.AddressSlotType) {
+    function _getSenderSlot() internal pure returns (StorageSlot.AddressSlotType) {
         StorageSlot.AddressSlotType slot;
 
         assembly {
