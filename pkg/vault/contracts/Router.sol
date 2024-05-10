@@ -1186,7 +1186,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         result = Address.functionDelegateCall(address(this), data);
     }
 
-    function sender() external view returns (address) {
+    function getSender() external view returns (address) {
         return _getSenderSlot().tload();
     }
 
