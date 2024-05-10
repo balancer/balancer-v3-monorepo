@@ -73,7 +73,7 @@ interface IVaultEvents {
      * @param token The token in which the swap fee was charged
      * @param amount The amount of the token collected in fees
      */
-    event ProtocolSwapFeeCollected(address indexed pool, IERC20 indexed token, uint256 indexed amount);
+    event ProtocolSwapFeeCollected(address indexed pool, IERC20 indexed token, uint256 amount);
 
     /**
      * @notice Logs the collection of protocol yield fees in a specific token and amount.
@@ -81,7 +81,7 @@ interface IVaultEvents {
      * @param token The token in which the yield fee was charged
      * @param amount The amount of the token collected in fees
      */
-    event ProtocolYieldFeeCollected(address indexed pool, IERC20 indexed token, uint256 indexed amount);
+    event ProtocolYieldFeeCollected(address indexed pool, IERC20 indexed token, uint256 amount);
 
     /**
      * @notice Emitted when the swap fee percentage of a pool is updated.
@@ -101,7 +101,7 @@ interface IVaultEvents {
      * @param token The token in which the swap fee was collected
      * @param amount The amount of the token collected in fees
      */
-    event PoolCreatorSwapFeeCollected(address pool, IERC20 indexed token, uint256 indexed amount);
+    event PoolCreatorSwapFeeCollected(address pool, IERC20 indexed token, uint256 amount);
 
     /**
      * @notice Logs the collection of pool creator yield fees in a specific pool, by token and amount.
@@ -109,7 +109,7 @@ interface IVaultEvents {
      * @param token The token in which the yield fee was collected
      * @param amount The amount of the token collected in fees
      */
-    event PoolCreatorYieldFeeCollected(address pool, IERC20 indexed token, uint256 indexed amount);
+    event PoolCreatorYieldFeeCollected(address pool, IERC20 indexed token, uint256 amount);
 
     /**
      * @dev Recovery mode has been enabled or disabled for a pool.
