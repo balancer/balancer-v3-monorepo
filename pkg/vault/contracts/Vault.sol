@@ -196,6 +196,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert BeforeSwapHookFailed();
             }
 
+            // The call to `onBeforeSwap` could potentially update token rates and balances.
+            // We update `poolData.tokenRates`, `poolData.rawBalances` and `poolData.balancesLiveScaled18`
+            // to ensure the `onSwap` and `onComputeDynamicSwapFee` are called with the current values.
             _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
 
             // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
