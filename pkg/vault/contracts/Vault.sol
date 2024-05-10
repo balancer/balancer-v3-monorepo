@@ -1027,6 +1027,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         public
         onlyWhenUnlocked
         whenVaultBuffersAreNotPaused
+        nonReentrant
         returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw)
     {
         IERC20 underlyingToken = IERC20(params.wrappedToken.asset());
@@ -1085,7 +1086,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGiven
-    ) private nonReentrant returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped) {
+    ) private returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped) {
         bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
 
         if (kind == SwapKind.EXACT_IN) {
@@ -1198,7 +1199,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGiven
-    ) private nonReentrant returns (uint256 amountCalculated, uint256 amountInWrapped, uint256 amountOutUnderlying) {
+    ) private returns (uint256 amountCalculated, uint256 amountInWrapped, uint256 amountOutUnderlying) {
         bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
 
         if (kind == SwapKind.EXACT_IN) {
