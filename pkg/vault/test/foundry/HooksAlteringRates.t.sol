@@ -76,7 +76,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
                     router: address(router),
-                    user: address(this),
+                    user: bob,
                     userData: bytes("")
                 })
             )
@@ -161,6 +161,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IPoolHooks.onAfterAddLiquidity.selector,
                 bob,
+                router,
                 expectedAmountsIn,
                 defaultAmount * 2,
                 expectedBalances,
@@ -211,6 +212,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IPoolLiquidity.onRemoveLiquidityCustom.selector,
                 alice,
+                router,
                 bptAmount,
                 expectedAmountsOut,
                 expectedBalances,

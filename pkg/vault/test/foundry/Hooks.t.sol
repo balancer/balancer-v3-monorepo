@@ -49,7 +49,7 @@ contract HooksTest is BaseVaultTest {
                     indexIn: usdcIdx,
                     indexOut: daiIdx,
                     router: address(router),
-                    user: address(this),
+                    user: bob,
                     userData: bytes("")
                 })
             )
@@ -87,7 +87,7 @@ contract HooksTest is BaseVaultTest {
                     indexIn: usdcIdx,
                     indexOut: daiIdx,
                     router: address(router),
-                    user: address(this),
+                    user: bob,
                     userData: bytes("")
                 })
             )
@@ -135,7 +135,7 @@ contract HooksTest is BaseVaultTest {
                     tokenInBalanceScaled18: defaultAmount * 2,
                     tokenOutBalanceScaled18: defaultAmount - expectedAmountOut - protocolFee,
                     router: address(router),
-                    user: address(this),
+                    user: bob,
                     userData: ""
                 }),
                 expectedAmountOut
@@ -189,6 +189,7 @@ contract HooksTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeAddLiquidity.selector,
                 bob,
+                router,
                 AddLiquidityKind.UNBALANCED,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bptAmountRoundDown,
@@ -248,6 +249,7 @@ contract HooksTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeRemoveLiquidity.selector,
                 alice,
+                router,
                 RemoveLiquidityKind.PROPORTIONAL,
                 bptAmount,
                 [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
@@ -292,6 +294,7 @@ contract HooksTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IPoolHooks.onAfterAddLiquidity.selector,
                 bob,
+                router,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bptAmount,
                 [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),
@@ -350,6 +353,7 @@ contract HooksTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IPoolHooks.onAfterRemoveLiquidity.selector,
                 alice,
+                router,
                 bptAmount,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 [defaultAmount, defaultAmount].toMemoryArray(),
