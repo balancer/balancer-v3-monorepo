@@ -365,12 +365,24 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
             // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
             if (poolSubjectToYieldFees && tokenSubjectToYieldFees) {
-                aggregateYieldFeeAmountsRaw[i] = _computeYieldFeesDue(
+                uint256 aggregateYieldFeeAmountRaw = _computeYieldFeesDue(
                     poolData,
                     poolBalances.unchecked_valueAt(i).getLastLiveBalanceScaled18(),
                     i,
                     aggregateYieldFeePercentage
                 );
+
+                if (aggregateYieldFeeAmountRaw > 0) {
+                    aggregateYieldFeeAmountsRaw[i] = aggregateYieldFeeAmountRaw;
+
+                    // Adjust raw and live balances.
+                    _updateRawAndLiveTokenBalancesInPoolData(
+                        poolData,
+                        poolData.balancesRaw[i] - aggregateYieldFeeAmountsRaw[i],
+                        roundingDirection,
+                        i
+                    );
+                }
             }
         }
     }
@@ -408,7 +420,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             IERC20 token = poolData.tokenConfig[i].token;
 
             _protocolYieldFees[pool][token] += aggregateYieldFeeAmountsRaw[i];
-            poolData.balancesRaw[i] -= aggregateYieldFeeAmountsRaw[i];
         }
 
         // Update raw and last live pool balances, as computed by `_getPoolDataAndYieldFees`
