@@ -1182,7 +1182,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         if (sender == address(0)) {
             senderSlot.tstore(msg.sender);
         }
-        
+
         result = Address.functionDelegateCall(address(this), data);
     }
 

@@ -233,7 +233,6 @@ describe('ERC4626BufferPool', function () {
           balancesScaled18: [FP_ONE, FP_ONE],
           indexIn: 0,
           indexOut: 1,
-          user: alice,
           router: await router.getAddress(),
           userData: '0x',
         })
