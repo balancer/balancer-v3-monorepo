@@ -428,14 +428,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         vars.poolCreator = _poolRoleAccounts[pool].poolCreator;
     }
 
-    /// @inheritdoc IVaultAdmin
-    function getAggregateFeePercentage(
-        uint256 protocolPercentage,
-        uint256 creatorPercentage
-    ) public pure returns (uint256) {
-        return protocolPercentage + protocolPercentage.complement().mulDown(creatorPercentage);
-    }
-
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/

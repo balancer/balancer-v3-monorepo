@@ -966,18 +966,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.poolConfig.isPoolInRecoveryMode == false
         ) {
             // Initialize aggregate percentage, if not already set
-            uint256 aggregatePercentage = _aggregateProtocolSwapFeePercentage().tload();
-
-            if (aggregatePercentage == 0) {
+            if (_aggregateProtocolSwapFeePercentage().tload() == 0) {
                 _aggregateProtocolSwapFeePercentage().tstore(
-                    IVaultAdmin(address(this)).getAggregateFeePercentage(
+                    getAggregateFeePercentage(
                         vaultState.protocolSwapFeePercentage,
                         poolData.poolConfig.poolCreatorFeePercentage
                     )
                 );
             }
 
-            uint256 aggregateSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(aggregatePercentage);
+            uint256 aggregateSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(_aggregateProtocolSwapFeePercentage().tload());
 
             // Ensure we can never charge more than the total swap fee.
             if (aggregateSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
