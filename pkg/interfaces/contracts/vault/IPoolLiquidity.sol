@@ -11,7 +11,6 @@ interface IPoolLiquidity {
     /**
      * @notice Add liquidity to the pool with a custom hook.
      * @param to Address for which the pool tokens are minted
-     * @param router Address which sends call to the vault
      * @param maxAmountsInScaled18 Maximum input amounts, in the same order as the tokens registered in the pool
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
@@ -23,7 +22,6 @@ interface IPoolLiquidity {
      */
     function onAddLiquidityCustom(
         address to,
-        address router,
         uint256[] memory maxAmountsInScaled18,
         uint256 minBptAmountOut,
         uint256[] memory balancesScaled18,
@@ -40,7 +38,6 @@ interface IPoolLiquidity {
     /**
      * @notice Remove liquidity from the pool with a custom hook.
      * @param from Address for which the pool tokens are burned
-     * @param router Address which sends call to the vault
      * @param maxBptAmountIn Maximum amount of input pool tokens
      * @param minAmountsOutScaled18 Minimum output amounts, in the same order as the tokens registered in the pool
      * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
@@ -52,7 +49,6 @@ interface IPoolLiquidity {
      */
     function onRemoveLiquidityCustom(
         address from,
-        address router,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOutScaled18,
         uint256[] memory balancesScaled18,

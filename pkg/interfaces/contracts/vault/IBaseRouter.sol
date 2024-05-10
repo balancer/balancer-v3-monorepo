@@ -3,5 +3,5 @@
 pragma solidity ^0.8.24;
 
 interface IBaseRouter {
-    function user() external view returns (address);
+    function sender() external view returns (address);
 }
