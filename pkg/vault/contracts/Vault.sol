@@ -1254,7 +1254,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /**
-     * @dev Underlying surplus is the amount of underlying that needs to be wrapped for the buffer to be rebalanced.
+     * @dev Underlying surplus is the amount of underlying that need to be wrapped for the buffer to be rebalanced.
      * For instance, consider the following scenario:
      * - buffer balances: 2 wrapped and 10 underlying
      * - wrapped rate: 2
@@ -1277,7 +1277,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /**
-     * @dev Wrapped surplus is the amount of wrapped tokens that needs to be unwrapped for the buffer to be rebalanced.
+     * @dev Wrapped surplus is the amount of wrapped tokens that need to be unwrapped for the buffer to be rebalanced.
      * For instance, consider the following scenario:
      * - buffer balances: 10 wrapped and 4 underlying
      * - wrapped rate: 2
@@ -1325,10 +1325,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             actualWrapped = vaultWrappedAfter - vaultWrappedBefore;
         } else {
             // Unwrap
-            // Since withdraw puts underlying tokens into the vault, the actual underlying tokens withdrawn is
+            // Since withdraw puts underlying tokens into the vault, the actual underlying token amount withdrawn is
             // assetsAfter - assetsBefore
             actualUnderlying = vaultUnderlyingAfter - vaultUnderlyingBefore;
-            // Since withdraw takes wrapped tokens from the vault, the actual burned wrapped tokens is
+            // Since withdraw takes wrapped tokens from the vault, the actual wrapped token amount burned is
             // wrappedBefore - wrappedAfter
             actualWrapped = vaultWrappedBefore - vaultWrappedAfter;
         }
