@@ -1104,7 +1104,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
-            // the buffer has enough liquidity to facilitate the wrap without making an external call.
+            // The buffer has enough liquidity to facilitate the wrap without making an external call.
 
             bufferBalances = PackedTokenBalance.toPackedBalance(
                 bufferBalances.getBalanceRaw() + amountInUnderlying,
@@ -1269,9 +1269,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Only updates buffer balances if buffer has a surplus of underlying or wrapped tokens
             if (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0) {
                 // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance
-                // will decrease. To increase underlying balance, we get the delta amount that was withdrawn
-                // (deltaUnderlyingWithdrawn) and discounts the amount expected in the unwrapping operation
-                // (amountOutUnderlying). Same logic applies to wrapped balances.
+                // will decrease. To increase the underlying balance, we get the delta amount that was withdrawn
+                // (deltaUnderlyingWithdrawn) and discount the amount expected in the unwrapping operation
+                // (amountOutUnderlying). The same logic applies to wrapped balances.
                 bufferBalances = PackedTokenBalance.toPackedBalance(
                     bufferBalances.getBalanceRaw() + (deltaUnderlyingWithdrawn - amountOutUnderlying),
                     bufferBalances.getBalanceDerived() - (deltaWrappedRedeemed - amountInWrapped)
