@@ -55,8 +55,9 @@ interface IPoolHooks {
         uint256[] memory maxAmountsInScaled18,
         uint256 minBptAmountOut,
         uint256[] memory balancesScaled18,
+        uint256[] memory lastLiveBalancesScaled18,
         bytes memory userData
-    ) external returns (bool success);
+    ) external returns (bool success, int128[] memory balancesDeltaScaled18);
 
     /**
      * @notice Optional hook to be executed after adding liquidity.
@@ -73,7 +74,7 @@ interface IPoolHooks {
         uint256 bptAmountOut,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) external returns (bool success);
+    ) external returns (bool success, int128[] memory balancesDeltaScaled18);
 
     /***************************************************************************
                                  Remove Liquidity
@@ -95,8 +96,9 @@ interface IPoolHooks {
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOutScaled18,
         uint256[] memory balancesScaled18,
+        uint256[] memory lastLiveBalancesScaled18,
         bytes memory userData
-    ) external returns (bool success);
+    ) external returns (bool success, int128[] memory balancesDeltaScaled18);
 
     /**
      * @notice Optional hook to be executed after removing liquidity.
@@ -113,7 +115,7 @@ interface IPoolHooks {
         uint256[] memory amountsOutScaled18,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) external returns (bool success);
+    ) external returns (bool success, int128[] memory balancesDeltaScaled18);
 
     /***************************************************************************
                                     Swap
@@ -149,7 +151,10 @@ interface IPoolHooks {
      * @param params Swap parameters (see IBasePool.PoolSwapParams for struct definition)
      * @return success True if the pool wishes to proceed with settlement
      */
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external returns (bool success);
+    function onBeforeSwap(
+        IBasePool.PoolSwapParams calldata params, 
+        uint256[] memory lastLiveBalancesScaled18
+    ) external returns (bool success, int128[] memory balancesDeltaScaled18, int128 amountGivenDeltaScaled18);
 
     /**
      * @notice Called after a swap to give the Pool an opportunity to perform actions.
@@ -162,7 +167,7 @@ interface IPoolHooks {
     function onAfterSwap(
         AfterSwapParams calldata params,
         uint256 amountCalculatedScaled18
-    ) external returns (bool success);
+    ) external returns (bool success, int128 amountCalculatedDeltaScaled18);
 
     /**
      * @notice Called before `onBeforeSwap` if the pool has dynamic fees.
