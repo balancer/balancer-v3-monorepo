@@ -245,6 +245,9 @@ contract VaultUnitSwapTest is BaseVaultTest {
         poolData.poolConfig.staticSwapFeePercentage = swapFeePercentage_;
         vaultState.protocolSwapFeePercentage = swapFeePercentage_;
         poolData.poolConfig.poolCreatorFeePercentage = poolCreatorFeePercentage_;
+
+        // TODO: check these after the operations.
+        poolData.balancesLiveScaled18 = new uint256[](initialBalances.length);
     }
 
     function _checkSwapExactInResult(

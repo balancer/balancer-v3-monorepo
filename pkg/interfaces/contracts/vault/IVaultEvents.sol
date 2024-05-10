@@ -38,10 +38,9 @@ interface IVaultEvents {
      * @notice Pool balances have changed (e.g., after initialization, add/remove liquidity).
      * @param pool The pool being registered
      * @param liquidityProvider The user performing the operation
-     * @param tokens The pool's tokens
-     * @param deltas The amount each token changed
+     * @param deltas The amount each token changed, sorted in the pool tokens' order
      */
-    event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, IERC20[] tokens, int256[] deltas);
+    event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, int256[] deltas);
 
     /**
      * @dev The Vault's pause status has changed.
