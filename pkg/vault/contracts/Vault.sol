@@ -461,7 +461,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Note the order dependency. This requires up-to-date tokenRates in `poolData`,
             // so `_updateTokenRatesInPoolData` must be called first.
-            _updateRawAndLiveTokenBalancesInPoolData(poolData, packedBalance.getRawBalance(), roundingDirection, i);
+            _updateRawAndLiveTokenBalancesInPoolData(poolData, packedBalance.getBalanceRaw(), roundingDirection, i);
         }
     }
 
@@ -1105,12 +1105,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountInUnderlying, amountOutWrapped) = (amountCalculated, amountGiven);
         }
 
-        if (bufferBalances.getWrappedBalance() > amountOutWrapped) {
+        if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
 
-            bufferBalances = bufferBalances.setBalances(
-                bufferBalances.getUnderlyingBalance() + amountInUnderlying,
-                bufferBalances.getWrappedBalance() - amountOutWrapped
+            bufferBalances = PackedTokenBalance.toPackedBalance(
+                bufferBalances.getBalanceRaw() + amountInUnderlying,
+                bufferBalances.getBalanceDerived() - amountOutWrapped
             );
             _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
         } else {
@@ -1176,9 +1176,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // increase. To decrease underlying balance, we get the delta amount that was deposited
                 // (deltaUnderlyingDeposited) and discounts the amount needed in the wrapping operation
                 // (amountInUnderlying). Same logic applies to wrapped balances.
-                bufferBalances = bufferBalances.setBalances(
-                    bufferBalances.getUnderlyingBalance() - (deltaUnderlyingDeposited - amountInUnderlying),
-                    bufferBalances.getWrappedBalance() + (deltaWrappedMinted - amountOutWrapped)
+                bufferBalances = PackedTokenBalance.toPackedBalance(
+                    bufferBalances.getBalanceRaw() - (deltaUnderlyingDeposited - amountInUnderlying),
+                    bufferBalances.getBalanceDerived() + (deltaWrappedMinted - amountOutWrapped)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
             }
@@ -1218,11 +1218,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountOutUnderlying, amountInWrapped) = (amountGiven, amountCalculated);
         }
 
-        if (bufferBalances.getUnderlyingBalance() > amountOutUnderlying) {
+        if (bufferBalances.getBalanceRaw() > amountOutUnderlying) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
-            bufferBalances = bufferBalances.setBalances(
-                bufferBalances.getUnderlyingBalance() - amountOutUnderlying,
-                bufferBalances.getWrappedBalance() + amountInWrapped
+            bufferBalances = PackedTokenBalance.toPackedBalance(
+                bufferBalances.getBalanceRaw() - amountOutUnderlying,
+                bufferBalances.getBalanceDerived() + amountInWrapped
             );
             _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
         } else {
@@ -1274,9 +1274,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // will decrease. To increase the underlying balance, we get the delta amount that was withdrawn
                 // (deltaUnderlyingWithdrawn) and discount the amount expected in the unwrapping operation
                 // (amountOutUnderlying). The same logic applies to wrapped balances.
-                bufferBalances = bufferBalances.setBalances(
-                    bufferBalances.getUnderlyingBalance() + (deltaUnderlyingWithdrawn - amountOutUnderlying),
-                    bufferBalances.getWrappedBalance() - (deltaWrappedRedeemed - amountInWrapped)
+                bufferBalances = PackedTokenBalance.toPackedBalance(
+                    bufferBalances.getBalanceRaw() + (deltaUnderlyingWithdrawn - amountOutUnderlying),
+                    bufferBalances.getBalanceDerived() - (deltaWrappedRedeemed - amountInWrapped)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
             }
@@ -1298,11 +1298,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * - final balances: 3.5 wrapped (2 existing + 1.5 new) and 7 underlying (10 existing - 3)
      */
     function _getBufferUnderlyingSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (uint256) {
-        uint256 underlyingBalance = bufferBalance.getUnderlyingBalance();
+        uint256 underlyingBalance = bufferBalance.getBalanceRaw();
 
         uint256 wrappedBalanceAsUnderlying = 0;
-        if (bufferBalance.getWrappedBalance() > 0) {
-            wrappedBalanceAsUnderlying = wrappedToken.convertToAssets(bufferBalance.getWrappedBalance());
+        if (bufferBalance.getBalanceDerived() > 0) {
+            wrappedBalanceAsUnderlying = wrappedToken.convertToAssets(bufferBalance.getBalanceDerived());
         }
 
         return
@@ -1321,11 +1321,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * - final balances: 6 wrapped (10 existing - 4) and 12 underlying (4 existing + 8 new)
      */
     function _getBufferWrappedSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (uint256) {
-        uint256 wrappedBalance = bufferBalance.getWrappedBalance();
+        uint256 wrappedBalance = bufferBalance.getBalanceDerived();
 
         uint256 underlyingBalanceAsWrapped = 0;
-        if (bufferBalance.getUnderlyingBalance() > 0) {
-            underlyingBalanceAsWrapped = wrappedToken.convertToShares(bufferBalance.getUnderlyingBalance());
+        if (bufferBalance.getBalanceRaw() > 0) {
+            underlyingBalanceAsWrapped = wrappedToken.convertToShares(bufferBalance.getBalanceRaw());
         }
 
         return wrappedBalance > underlyingBalanceAsWrapped ? (wrappedBalance - underlyingBalanceAsWrapped) / 2 : 0;
