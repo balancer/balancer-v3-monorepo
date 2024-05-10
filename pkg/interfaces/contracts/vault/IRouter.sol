@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
@@ -153,6 +154,23 @@ interface IRouter is IBaseRouter {
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
+    /**
+     * @notice Adds liquidity to a yield-bearing token buffer (linear pools embedded in the vault).
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
+     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param sharesOwner Address of the contract that will own the liquidity.
+     *        Only this contract will be able to remove liquidity from the buffer
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in underlying tokens
+     *         (This is the BPT of the vault's internal "Linear Pools")
+     */
+    function addLiquidityToBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlyingRaw,
+        uint256 amountWrappedRaw,
+        address sharesOwner
+    ) external returns (uint256 issuedShares);
+
     /***************************************************************************
                                  Remove Liquidity
     ***************************************************************************/
@@ -266,6 +284,20 @@ interface IRouter is IBaseRouter {
         address pool,
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut);
+
+    /**
+     * @notice Removes liquidity from a yield-bearing token buffer (an embedded "Linear Pool").
+     * @dev Only proportional withdrawals are supported, and removing liquidity is permissioned.
+     * @param wrappedToken Address of a wrapped token that implements IERC4626
+     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
+     *        total shares
+     * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
+     * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
+     */
+    function removeLiquidityFromBuffer(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove
+    ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw);
 
     /***************************************************************************
                                        Swaps

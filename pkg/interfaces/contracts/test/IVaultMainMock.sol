@@ -58,6 +58,10 @@ interface IVaultMainMock {
         address
     ) external view returns (TokenConfig[] memory, uint256[] memory, uint256[] memory, PoolConfig memory);
 
+    function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256);
+
+    function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256);
+
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory);
 
     function recoveryModeExit(address pool) external view;
@@ -178,4 +182,11 @@ interface IVaultMainMock {
             uint256 bptAmountOut,
             bytes memory returnData
         );
+
+    function manualUpdateReservesAfterWrapping(
+        IERC20 underlyingToken,
+        IERC20 wrappedToken
+    ) external returns (uint256, uint256);
+
+    function manualTransfer(IERC20 token, address to, uint256 amount) external;
 }
