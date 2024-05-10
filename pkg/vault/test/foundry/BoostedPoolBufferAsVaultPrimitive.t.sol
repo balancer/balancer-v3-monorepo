@@ -175,6 +175,8 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
+        // When the buffer has enough liquidity to wrap/unwrap, bufferExpectedDelta is swapAmount because the
+        // `erc4626BufferWrapOrUnwrap` just transfer swapAmount from underlying to wrapped balance (and vice-versa)
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, swapAmount);
     }
 
@@ -187,6 +189,8 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
+        // When the buffer has enough liquidity to wrap/unwrap, bufferExpectedDelta is swapAmount because the
+        // `erc4626BufferWrapOrUnwrap` just transfer swapAmount from underlying to wrapped balance (and vice-versa)
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, swapAmount);
     }
 
@@ -199,6 +203,8 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
+        // When the buffer has not enough liquidity to wrap/unwrap, bufferExpectedDelta is 0 because the
+        // `erc4626BufferWrapOrUnwrap` function leaves the buffer perfectly balanced at the end.
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, tooLargeSwapAmount, SwapKind.EXACT_IN, 0);
     }
 
@@ -211,6 +217,8 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
+        // When the buffer has not enough liquidity to wrap/unwrap, bufferExpectedDelta is 0 because the
+        // `erc4626BufferWrapOrUnwrap` function leaves the buffer perfectly balanced at the end.
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, tooLargeSwapAmount, SwapKind.EXACT_OUT, 0);
     }
 
