@@ -8,6 +8,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -183,7 +184,7 @@ contract VaultSwapTest is BaseVaultTest {
         setSwapFeePercentage(swapFeePercentage);
 
         vm.expectEmit();
-        emit IVaultMain.Swap(
+        emit IVaultEvents.Swap(
             address(pool),
             usdc,
             dai,
@@ -211,7 +212,7 @@ contract VaultSwapTest is BaseVaultTest {
         setSwapFeePercentage(swapFeePercentage);
 
         vm.expectEmit();
-        emit IVaultMain.Swap(
+        emit IVaultEvents.Swap(
             address(pool),
             usdc,
             dai,

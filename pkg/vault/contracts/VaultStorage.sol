@@ -31,6 +31,9 @@ contract VaultStorage {
     // Minimum BPT amount minted upon initialization.
     uint256 internal constant _MINIMUM_BPT = 1e6;
 
+    // Minimum given amount to wrap/unwrap, to avoid rounding issues
+    uint256 internal constant _MINIMUM_WRAP_AMOUNT = 1e6;
+
     // Pools can have two, three, or four tokens.
     uint256 internal constant _MIN_TOKENS = 2;
     // This maximum token count is also hard-coded in `PoolConfigLib`.
@@ -130,6 +133,26 @@ contract VaultStorage {
 
     // Contract that receives protocol swap and yield fees
     ProtocolFeeCollector internal immutable _protocolFeeCollector;
+
+    // Buffers are a vault internal concept, keyed on the wrapped token address.
+    // There will only ever be one buffer per wrapped token. This also means they are permissionless and
+    // have no registration function. You can always add liquidity to a buffer.
+
+    // A buffer will only ever have two tokens: wrapped and underlying
+    // we pack the wrapped and underlying balance into a single bytes32
+    // wrapped token address -> PackedTokenBalance
+    mapping(IERC20 => bytes32) internal _bufferTokenBalances;
+
+    // The LP balances for buffers. To start, LP balances will not be represented as ERC20 shares.
+    // If we end up with a need to incentivize buffers, we can wrap this in an ERC20 wrapper without
+    // introducing more complexity to the vault.
+    // wrapped token address -> user address -> LP balance
+    mapping(IERC20 => mapping(address => uint256)) internal _bufferLpShares;
+    // total LP shares
+    mapping(IERC20 => uint256) internal _bufferTotalShares;
+
+    // Prevents a malicious ERC4626 from changing the asset after the buffer was initialized.
+    mapping(IERC20 => address) internal _bufferAssets;
 
     // solhint-disable no-inline-assembly
 

@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { LiquidityManagement, PoolHooks, PoolRoleAccounts, TokenConfig } from "./VaultTypes.sol";
@@ -33,6 +34,56 @@ interface IVaultEvents {
      * @param pool The pool being initialized
      */
     event PoolInitialized(address indexed pool);
+
+    /**
+     * @notice A swap has occurred.
+     * @param pool The pool with the tokens being swapped
+     * @param tokenIn The token entering the Vault (balance increases)
+     * @param tokenOut The token leaving the Vault (balance decreases)
+     * @param amountIn Number of tokenIn tokens
+     * @param amountOut Number of tokenOut tokens
+     * @param swapFeePercentage Swap fee percentage applied (can differ if dynamic)
+     * @param swapFeeAmount Swap fee amount paid
+     * @param swapFeeToken Token the swap fee was paid in
+     */
+    event Swap(
+        address indexed pool,
+        IERC20 indexed tokenIn,
+        IERC20 indexed tokenOut,
+        uint256 amountIn,
+        uint256 amountOut,
+        uint256 swapFeePercentage,
+        uint256 swapFeeAmount,
+        IERC20 swapFeeToken
+    );
+
+    /**
+     * @notice A wrap operation has occurred.
+     * @param underlyingToken The underlying token address
+     * @param wrappedToken The wrapped token address
+     * @param depositedUnderlying Number of underlying tokens deposited
+     * @param mintedShares Number of shares (wrapped tokens) minted
+     */
+    event Wrap(
+        IERC20 indexed underlyingToken,
+        IERC4626 indexed wrappedToken,
+        uint256 depositedUnderlying,
+        uint256 mintedShares
+    );
+
+    /**
+     * @notice An unwrap operation has occurred.
+     * @param wrappedToken The wrapped token address
+     * @param underlyingToken The underlying token address
+     * @param burnedShares Number of shares (wrapped tokens) burned
+     * @param withdrawnUnderlying Number of underlying tokens withdrawn
+     */
+    event Unwrap(
+        IERC4626 indexed wrappedToken,
+        IERC20 indexed underlyingToken,
+        uint256 burnedShares,
+        uint256 withdrawnUnderlying
+    );
 
     /**
      * @notice Pool balances have changed (e.g., after initialization, add/remove liquidity).

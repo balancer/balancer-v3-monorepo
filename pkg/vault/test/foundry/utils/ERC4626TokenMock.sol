@@ -24,11 +24,11 @@ contract ERC4626TokenMock is IERC4626, ERC20, IRateProvider {
         string memory tokenSymbol,
         uint256 initialAssets,
         uint256 initialShares,
-        IERC20 baseToken
+        IERC20 underlyingToken
     ) ERC20(tokenName, tokenSymbol) {
         _assets = initialAssets;
         _shares = initialShares;
-        _baseToken = baseToken;
+        _baseToken = underlyingToken;
     }
 
     error NotImplemented();
