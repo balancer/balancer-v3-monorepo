@@ -465,7 +465,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
             // Burn MINIMUM_TOTAL_SUPPLY shares, so the buffer can never go back to liquidity 0
             // (avoids rounding issues with low liquidity)
-            _bufferTotalShares[IERC20(wrappedToken)] += _MINIMUM_TOTAL_SUPPLY;
+            _bufferTotalShares[IERC20(wrappedToken)] = _MINIMUM_TOTAL_SUPPLY;
             issuedShares -= _MINIMUM_TOTAL_SUPPLY;
         } else if (_bufferAssets[IERC20(address(wrappedToken))] != underlyingToken) {
             // Asset was changed since the first bufferAddLiquidity call
