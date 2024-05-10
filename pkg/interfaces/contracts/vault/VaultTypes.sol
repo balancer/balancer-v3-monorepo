@@ -168,7 +168,6 @@ struct SwapParams {
     IERC20 tokenOut;
     uint256 amountGivenRaw;
     uint256 limitRaw;
-    address user;
     address pool;
     bytes userData;
 }

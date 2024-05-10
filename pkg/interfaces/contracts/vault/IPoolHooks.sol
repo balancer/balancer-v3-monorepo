@@ -148,7 +148,6 @@ interface IPoolHooks {
         uint256 amountOutScaled18;
         uint256 tokenInBalanceScaled18;
         uint256 tokenOutBalanceScaled18;
-        address user;
         address router;
         bytes userData;
     }

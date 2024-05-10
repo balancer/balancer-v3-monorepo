@@ -63,7 +63,6 @@ interface IBasePool {
         uint256[] balancesScaled18;
         uint256 indexIn;
         uint256 indexOut;
-        address user;
         address router;
         bytes userData;
     }
