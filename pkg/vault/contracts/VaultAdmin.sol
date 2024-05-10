@@ -353,30 +353,35 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _collectProtocolFeesInternal(pool, ProtocolFeeType.YIELD);
     }
 
+    // stack-too-deep
+    struct ProtocolFeeLocals {
+        PoolConfig poolConfig;
+        VaultState vaultState;
+        IERC20[] poolTokens;
+        address poolCreator;
+    }
+
     // Code is nearly identical, so factor out into this routine, parameterized by fee type.
     function _collectProtocolFeesInternal(address pool, ProtocolFeeType feeType) private {
-        PoolConfig memory poolConfig = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        VaultState memory vaultState = _vaultState.toVaultState();
-        IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
-        address poolCreator = _poolRoleAccounts[pool].poolCreator;
+        ProtocolFeeLocals memory vars = _initProtocolFeeLocals(pool);
 
         bool isSwapFee = feeType == ProtocolFeeType.SWAP;
         uint256 protocolFeePercentage = isSwapFee
-            ? vaultState.protocolSwapFeePercentage
-            : vaultState.protocolYieldFeePercentage;
-        bool needToSplitWithPoolCreator = poolCreator != address(0) && poolConfig.poolCreatorFeePercentage > 0;
+            ? vars.vaultState.protocolSwapFeePercentage
+            : vars.vaultState.protocolYieldFeePercentage;
+        bool needToSplitWithPoolCreator = vars.poolCreator != address(0) && vars.poolConfig.poolCreatorFeePercentage > 0;
         uint256 aggregateFeePercentage;
 
         if (needToSplitWithPoolCreator) {
             // Only need this if there is a pool creator and fees must be split
             aggregateFeePercentage = getAggregateFeePercentage(
                 protocolFeePercentage,
-                poolConfig.poolCreatorFeePercentage
+                vars.poolConfig.poolCreatorFeePercentage
             );
         }
 
-        for (uint256 i = 0; i < poolTokens.length; ++i) {
-            IERC20 token = poolTokens[i];
+        for (uint256 i = 0; i < vars.poolTokens.length; ++i) {
+            IERC20 token = vars.poolTokens[i];
             // Disaggregate the protocol and creator fees
             uint256 totalFees = isSwapFee ? _protocolSwapFees[pool][token] : _protocolYieldFees[pool][token];
 
@@ -395,7 +400,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                     protocolPortion = totalVolume.mulUp(protocolFeePercentage);
                     uint256 poolCreatorPortion = totalFees - protocolPortion;
 
-                    token.safeTransfer(poolCreator, poolCreatorPortion);
+                    token.safeTransfer(vars.poolCreator, poolCreatorPortion);
                     if (isSwapFee) {
                         emit PoolCreatorSwapFeeCollected(pool, token, poolCreatorPortion);
                     } else {
@@ -413,6 +418,13 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                 }
             }
         }
+    }
+
+    function _initProtocolFeeLocals(address pool) private view returns (ProtocolFeeLocals memory vars) {
+        vars.poolConfig = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        vars.vaultState = _vaultState.toVaultState();
+        vars.poolTokens = _vault.getPoolTokens(pool);
+        vars.poolCreator = _poolRoleAccounts[pool].poolCreator;
     }
 
     /// @inheritdoc IVaultAdmin

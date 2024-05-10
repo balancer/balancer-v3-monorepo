@@ -402,24 +402,27 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             swapFeeToken,
             swapFeeIndex
         );
+        
+        {
+            // stack-too-deep (forge)
+            // 5) Pool balances: raw and live
+            // Adjust for raw swap amounts and total fees on the calculated end.
+            (uint256 newRawBalanceIn, uint256 newRawBalanceOut) = params.kind == SwapKind.EXACT_IN
+                ? (
+                    poolData.balancesRaw[vars.indexIn] + amountIn,
+                    poolData.balancesRaw[vars.indexOut] - amountOut - vars.aggregateSwapFeeAmountRaw
+                )
+                : (
+                    poolData.balancesRaw[vars.indexIn] + amountIn - vars.aggregateSwapFeeAmountRaw,
+                    poolData.balancesRaw[vars.indexOut] - amountOut
+                );
 
-        // 5) Pool balances: raw and live
-        // Adjust for raw swap amounts and total fees on the calculated end.
-        (uint256 newRawBalanceIn, uint256 newRawBalanceOut) = params.kind == SwapKind.EXACT_IN
-            ? (
-                poolData.balancesRaw[vars.indexIn] + amountIn,
-                poolData.balancesRaw[vars.indexOut] - amountOut - vars.aggregateSwapFeeAmountRaw
-            )
-            : (
-                poolData.balancesRaw[vars.indexIn] + amountIn - vars.aggregateSwapFeeAmountRaw,
-                poolData.balancesRaw[vars.indexOut] - amountOut
-            );
+            _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalanceIn, Rounding.ROUND_DOWN, vars.indexIn);
+            _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalanceOut, Rounding.ROUND_DOWN, vars.indexOut);
 
-        _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalanceIn, Rounding.ROUND_DOWN, vars.indexIn);
-        _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalanceOut, Rounding.ROUND_DOWN, vars.indexOut);
-
-        // 6) Store pool balances, raw and live
-        _setPoolBalances(params.pool, poolData);
+            // 6) Store pool balances, raw and live
+            _setPoolBalances(params.pool, poolData);
+        }
 
         // 7) Off-chain events
         // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
