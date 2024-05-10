@@ -531,6 +531,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
+    function getTotalShares(IERC20 token) external view returns (uint256 shares) {
+        return _bufferTotalShares[token];
+    }
+
+    /// @inheritdoc IVaultAdmin
     function getBufferBalance(IERC20 token) external view returns (uint256, uint256) {
         return (_bufferTokenBalances[token].getUnderlyingBalance(), _bufferTokenBalances[token].getWrappedBalance());
     }

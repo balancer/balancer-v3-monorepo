@@ -246,6 +246,14 @@ interface IVaultAdmin {
     function getBufferShares(IERC20 wrappedToken, address liquidityOwner) external view returns (uint256 ownerShares);
 
     /**
+     * @notice Returns the supply shares (internal buffer BPT) of the ERC4626 buffer.
+     *
+     * @param wrappedToken Address of the wrapped token that implements the IERC4626 interface
+     * @return bufferShares Amount of supply shares of the buffer
+     */
+    function getTotalShares(IERC20 wrappedToken) external view returns (uint256 bufferShares);
+
+    /**
      * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the vault.
      * @param wrappedToken Address of the wrapped token that implements the IERC4626 interface
      * @return underlyingBalanceRaw Amount of underlying tokens deposited into the buffer
