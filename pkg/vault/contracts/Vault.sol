@@ -1115,8 +1115,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The buffer does not have enough liquidity to facilitate the wrap without making an external call.
             // We wrap the user's tokens via an external call and additionally rebalance the buffer if it has a
             // surplus of underlying tokens.
-            uint256 actualUnderlyingDeposited;
-            uint256 actualWrappedMinted;
+            uint256 deltaUnderlyingDeposited;
+            uint256 deltaWrappedMinted;
 
             uint256 bufferUnderlyingSurplus;
             uint256 bufferWrappedSurplus;
@@ -1128,11 +1128,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                 // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingSurplus)
-                actualUnderlyingDeposited = amountInUnderlying + bufferUnderlyingSurplus;
+                deltaUnderlyingDeposited = amountInUnderlying + bufferUnderlyingSurplus;
 
-                underlyingToken.forceApprove(address(wrappedToken), actualUnderlyingDeposited);
+                underlyingToken.forceApprove(address(wrappedToken), deltaUnderlyingDeposited);
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called
-                wrappedToken.deposit(actualUnderlyingDeposited, address(this));
+                wrappedToken.deposit(deltaUnderlyingDeposited, address(this));
             } else {
                 // Gets the amount of wrapped tokens to unwrap in order to rebalance the buffer
                 bufferWrappedSurplus = _getBufferWrappedSurplus(bufferBalances, wrappedToken);
@@ -1141,42 +1141,42 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (amountOutWrapped), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferWrappedSurplus)
                 if (bufferWrappedSurplus > 0) {
-                    actualWrappedMinted = amountOutWrapped + bufferWrappedSurplus;
-                    underlyingToken.forceApprove(address(wrappedToken), wrappedToken.previewMint(actualWrappedMinted));
+                    deltaWrappedMinted = amountOutWrapped + bufferWrappedSurplus;
+                    underlyingToken.forceApprove(address(wrappedToken), wrappedToken.previewMint(deltaWrappedMinted));
                 } else {
-                    actualWrappedMinted = amountOutWrapped;
+                    deltaWrappedMinted = amountOutWrapped;
                     underlyingToken.forceApprove(address(wrappedToken), amountInUnderlying);
                 }
 
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called
-                wrappedToken.mint(actualWrappedMinted, address(this));
+                wrappedToken.mint(deltaWrappedMinted, address(this));
             }
 
-            (actualUnderlyingDeposited, actualWrappedMinted) = _updateReservesAfterWrapping(
+            (deltaUnderlyingDeposited, deltaWrappedMinted) = _updateReservesAfterWrapping(
                 underlyingToken,
                 IERC20(wrappedToken)
             );
 
-            if (actualUnderlyingDeposited < amountInUnderlying) {
+            if (deltaUnderlyingDeposited < amountInUnderlying) {
                 // If this error is thrown, it means the previewDeposit or previewMint had a different result from
-                // the actual operation.
+                // the delta operation.
                 revert WrongUnderlyingAmount(address(wrappedToken));
             }
-            if (actualWrappedMinted < amountOutWrapped) {
+            if (deltaWrappedMinted < amountOutWrapped) {
                 // If this error is thrown, it means the previewDeposit or previewMint had a different result from
-                // the actual operation.
+                // the delta operation.
                 revert WrongWrappedAmount(address(wrappedToken));
             }
 
             // Only updates buffer balances if buffer has a surplus of underlying or wrapped tokens
             if (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0) {
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
-                // increase. To decrease underlying balance, we get the actual amount that was deposited
-                // (actualUnderlyingDeposited) and discounts the amount needed in the wrapping operation
+                // increase. To decrease underlying balance, we get the delta amount that was deposited
+                // (deltaUnderlyingDeposited) and discounts the amount needed in the wrapping operation
                 // (amountInUnderlying). Same logic applies to wrapped balances.
                 bufferBalances = bufferBalances.setBalances(
-                    bufferBalances.getUnderlyingBalance() - (actualUnderlyingDeposited - amountInUnderlying),
-                    bufferBalances.getWrappedBalance() + (actualWrappedMinted - amountOutWrapped)
+                    bufferBalances.getUnderlyingBalance() - (deltaUnderlyingDeposited - amountInUnderlying),
+                    bufferBalances.getWrappedBalance() + (deltaWrappedMinted - amountOutWrapped)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
             }
@@ -1250,17 +1250,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedToken.withdraw(amountOutUnderlying + bufferUnderlyingSurplus, address(this), address(this));
             }
 
-            (uint256 actualUnderlyingWithdrawn, uint256 actualWrappedRedeemed) = _updateReservesAfterWrapping(
+            (uint256 deltaUnderlyingWithdrawn, uint256 deltaWrappedRedeemed) = _updateReservesAfterWrapping(
                 underlyingToken,
                 IERC20(wrappedToken)
             );
 
-            if (actualUnderlyingWithdrawn < amountOutUnderlying) {
+            if (deltaUnderlyingWithdrawn < amountOutUnderlying) {
                 // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
                 // the actual operation.
                 revert WrongUnderlyingAmount(address(wrappedToken));
             }
-            if (actualWrappedRedeemed < amountInWrapped) {
+            if (deltaWrappedRedeemed < amountInWrapped) {
                 // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
                 // the actual operation.
                 revert WrongWrappedAmount(address(wrappedToken));
@@ -1269,12 +1269,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Only updates buffer balances if buffer has a surplus of underlying or wrapped tokens
             if (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0) {
                 // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance
-                // will decrease. To increase the underlying balance, we get the actual amount that was withdrawn
-                // (actualUnderlyingWithdrawn) and discount the amount expected in the unwrapping operation
+                // will decrease. To increase the underlying balance, we get the delta amount that was withdrawn
+                // (deltaUnderlyingWithdrawn) and discount the amount expected in the unwrapping operation
                 // (amountOutUnderlying). The same logic applies to wrapped balances.
                 bufferBalances = bufferBalances.setBalances(
-                    bufferBalances.getUnderlyingBalance() + (actualUnderlyingWithdrawn - amountOutUnderlying),
-                    bufferBalances.getWrappedBalance() - (actualWrappedRedeemed - amountInWrapped)
+                    bufferBalances.getUnderlyingBalance() + (deltaUnderlyingWithdrawn - amountOutUnderlying),
+                    bufferBalances.getWrappedBalance() - (deltaWrappedRedeemed - amountInWrapped)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
             }
@@ -1332,12 +1332,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     /**
      * @dev Updates reserves for underlying and wrapped tokens after wrap/unwrap operation:
      * - updates `_reservesOf`
-     * - returns the actual underlying and wrapped tokens that were deposited/withdrawn from vault reserves
+     * - returns the delta underlying and wrapped tokens that were deposited/withdrawn from vault reserves
      */
     function _updateReservesAfterWrapping(
         IERC20 underlyingToken,
         IERC20 wrappedToken
-    ) internal returns (uint256 actualUnderlying, uint256 actualWrapped) {
+    ) internal returns (uint256 deltaUnderlying, uint256 deltaWrapped) {
         uint256 vaultUnderlyingBefore = _reservesOf[underlyingToken];
         uint256 vaultUnderlyingAfter = underlyingToken.balanceOf(address(this));
         _reservesOf[underlyingToken] = vaultUnderlyingAfter;
@@ -1350,18 +1350,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Wrap
             // Since deposit takes underlying tokens from the vault, the actual underlying tokens deposited is
             // underlyingBefore - underlyingAfter
-            actualUnderlying = vaultUnderlyingBefore - vaultUnderlyingAfter;
+            deltaUnderlying = vaultUnderlyingBefore - vaultUnderlyingAfter;
             // Since deposit puts wrapped tokens into the vault, the actual wrapped minted is
             // wrappedAfter - wrappedBefore
-            actualWrapped = vaultWrappedAfter - vaultWrappedBefore;
+            deltaWrapped = vaultWrappedAfter - vaultWrappedBefore;
         } else {
             // Unwrap
             // Since withdraw puts underlying tokens into the vault, the actual underlying token amount withdrawn is
             // assetsAfter - assetsBefore
-            actualUnderlying = vaultUnderlyingAfter - vaultUnderlyingBefore;
+            deltaUnderlying = vaultUnderlyingAfter - vaultUnderlyingBefore;
             // Since withdraw takes wrapped tokens from the vault, the actual wrapped token amount burned is
             // wrappedBefore - wrappedAfter
-            actualWrapped = vaultWrappedBefore - vaultWrappedAfter;
+            deltaWrapped = vaultWrappedBefore - vaultWrappedAfter;
         }
     }
 
