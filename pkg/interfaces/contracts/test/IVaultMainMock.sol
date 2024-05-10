@@ -142,7 +142,9 @@ interface IVaultMainMock {
             VaultState memory
         );
 
-    //TODO: replace function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external;
+    function manualSetProtocolSwapFees(address pool, IERC20 token, uint256 value) external;
+
+    function manualSetProtocolYieldFees(address pool, IERC20 token, uint256 value) external;
 
     function manualBuildPoolSwapParams(
         SwapParams memory params,

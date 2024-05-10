@@ -403,10 +403,13 @@ contract VaultMock is IVaultMainMock, Vault {
         return (amountCalculated, amountIn, amountOut, params, vars, poolData, vaultState);
     }
 
-    /* TODO: replace
-    function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external {
-        _poolCreatorFees[pool][address(token)] = value;
-    }*/
+    function manualSetProtocolSwapFees(address pool, IERC20 token, uint256 value) external {
+        _protocolSwapFees[pool][token] = value;
+    }
+
+    function manualSetProtocolYieldFees(address pool, IERC20 token, uint256 value) external {
+        _protocolYieldFees[pool][token] = value;
+    }
 
     function manualBuildPoolSwapParams(
         SwapParams memory params,
