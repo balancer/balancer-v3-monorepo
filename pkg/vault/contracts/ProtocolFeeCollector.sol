@@ -9,28 +9,20 @@ import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/va
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
+import {
+    SingletonAuthentication
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
-contract ProtocolFeeCollector is IProtocolFeeCollector, Authentication, ReentrancyGuardTransient {
+contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
     IVault private immutable _vault;
 
-    constructor(IVault vault_) Authentication(bytes32(uint256(uint160(address(vault_))))) {
+    constructor(IVault vault_) SingletonAuthentication(vault_) {
         _vault = vault_;
-    }
-
-    /// @inheritdoc IProtocolFeeCollector
-    function vault() external view returns (IVault) {
-        return _vault;
-    }
-
-    /// @inheritdoc IProtocolFeeCollector
-    function getAuthorizer() external view returns (IAuthorizer) {
-        return _vault.getAuthorizer();
     }
 
     /// @inheritdoc IProtocolFeeCollector
@@ -52,10 +44,5 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, Authentication, Reentran
 
             emit ProtocolFeeWithdrawn(token, amount, recipient);
         }
-    }
-
-    /// @inheritdoc Authentication
-    function _canPerform(bytes32 actionId, address user) internal view virtual override returns (bool) {
-        return _vault.getAuthorizer().canPerform(actionId, user, address(this));
     }
 }

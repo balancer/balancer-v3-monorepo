@@ -17,18 +17,6 @@ interface IProtocolFeeCollector {
     event ProtocolFeeWithdrawn(IERC20 indexed token, uint256 indexed amount, address indexed recipient);
 
     /**
-     * @notice Get the associated Vault address.
-     * @return vault The Vault address
-     */
-    function vault() external view returns (IVault);
-
-    /**
-     * @notice Get the authorizer used for authentication on permissioned calls.
-     * @return authorizer The authorizer
-     */
-    function getAuthorizer() external view returns (IAuthorizer);
-
-    /**
      * @notice Returns the collected fee amount of each token on the list (i.e., held by this contract).
      * @param tokens The list of tokens fees have been collected on
      * @param feeAmounts The amount that can be withdrawn ()
