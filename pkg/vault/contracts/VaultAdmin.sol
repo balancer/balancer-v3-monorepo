@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -30,6 +31,7 @@ import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
+import { BufferPackedTokenBalance } from "./lib/BufferPackedBalance.sol";
 
 /**
  * @dev Bytecode extension for the Vault containing permissioned functions. Complementary to the `VaultExtension`.
@@ -47,6 +49,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
     using VaultStateLib for VaultStateBits;
+    using BufferPackedTokenBalance for bytes32;
 
     IVault private immutable _vault;
 
@@ -423,6 +426,118 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         VaultState memory vaultState = _vaultState.toVaultState();
         vaultState.isQueryDisabled = true;
         _vaultState = VaultStateLib.fromVaultState(vaultState);
+    }
+
+    /*******************************************************************************
+                                Yield-bearing token buffers
+    *******************************************************************************/
+    /// @inheritdoc IVaultAdmin
+    function unpauseVaultBuffers() external authenticate onlyVault {
+        VaultState memory vaultState = _vaultState.toVaultState();
+        vaultState.areBuffersPaused = false;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function pauseVaultBuffers() external authenticate onlyVault {
+        VaultState memory vaultState = _vaultState.toVaultState();
+        vaultState.areBuffersPaused = true;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function addLiquidityToBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped,
+        address sharesOwner
+    ) public onlyWhenUnlocked whenVaultBuffersAreNotPaused nonReentrant returns (uint256 issuedShares) {
+        address underlyingToken = wrappedToken.asset();
+
+        // amount of shares to issue is the total underlying token that the user is depositing
+        issuedShares = wrappedToken.convertToAssets(amountWrapped) + amountUnderlying;
+
+        if (_bufferAssets[IERC20(address(wrappedToken))] == address(0)) {
+            // Buffer is not initialized yet, so we initialize it
+
+            // Register asset of wrapper, so it cannot change
+            _bufferAssets[IERC20(address(wrappedToken))] = underlyingToken;
+
+            // Burn MINIMUM_TOTAL_SUPPLY shares, so the buffer can never go back to liquidity 0
+            // (avoids rounding issues with low liquidity)
+            _bufferTotalShares[IERC20(wrappedToken)] = _MINIMUM_TOTAL_SUPPLY;
+            issuedShares -= _MINIMUM_TOTAL_SUPPLY;
+        } else if (_bufferAssets[IERC20(address(wrappedToken))] != underlyingToken) {
+            // Asset was changed since the first bufferAddLiquidity call
+            revert WrongWrappedTokenAsset(address(wrappedToken));
+        }
+
+        bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
+
+        // Adds the issued shares to the total shares of the liquidity pool
+        _bufferLpShares[IERC20(wrappedToken)][sharesOwner] += issuedShares;
+        _bufferTotalShares[IERC20(wrappedToken)] += issuedShares;
+
+        bufferBalances = bufferBalances.setBalances(
+            bufferBalances.getUnderlyingBalance() + amountUnderlying,
+            bufferBalances.getWrappedBalance() + amountWrapped
+        );
+
+        _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
+
+        _takeDebt(IERC20(underlyingToken), amountUnderlying);
+        _takeDebt(wrappedToken, amountWrapped);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function removeLiquidityFromBuffer(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove,
+        address sharesOwner
+    )
+        public
+        onlyWhenUnlocked
+        nonReentrant
+        authenticate
+        returns (uint256 removedUnderlyingBalance, uint256 removedWrappedBalance)
+    {
+        bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
+
+        if (sharesToRemove > _bufferLpShares[IERC20(wrappedToken)][sharesOwner]) {
+            revert NotEnoughBufferShares();
+        }
+        uint256 totalShares = _bufferTotalShares[IERC20(wrappedToken)];
+
+        removedUnderlyingBalance = (bufferBalances.getUnderlyingBalance() * sharesToRemove) / totalShares;
+        removedWrappedBalance = (bufferBalances.getWrappedBalance() * sharesToRemove) / totalShares;
+
+        _bufferLpShares[IERC20(wrappedToken)][sharesOwner] -= sharesToRemove;
+        _bufferTotalShares[IERC20(wrappedToken)] -= sharesToRemove;
+
+        bufferBalances = bufferBalances.setBalances(
+            bufferBalances.getUnderlyingBalance() - removedUnderlyingBalance,
+            bufferBalances.getWrappedBalance() - removedWrappedBalance
+        );
+
+        _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
+
+        _supplyCredit(IERC20(_bufferAssets[IERC20(address(wrappedToken))]), removedUnderlyingBalance);
+        _supplyCredit(wrappedToken, removedWrappedBalance);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getBufferOwnerShares(IERC20 token, address user) external view returns (uint256 shares) {
+        return _bufferLpShares[token][user];
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getBufferTotalShares(IERC20 token) external view returns (uint256 shares) {
+        return _bufferTotalShares[token];
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getBufferBalance(IERC20 token) external view returns (uint256, uint256) {
+        return (_bufferTokenBalances[token].getUnderlyingBalance(), _bufferTokenBalances[token].getWrappedBalance());
     }
 
     /*******************************************************************************

@@ -274,8 +274,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
@@ -318,11 +318,11 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
-                { pool: poolC, tokenOut: token0 },
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
+                { pool: poolC, tokenOut: token0, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
@@ -365,15 +365,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
             {
               tokenIn: token0,
-              steps: [{ pool: poolC, tokenOut: token2 }],
+              steps: [{ pool: poolC, tokenOut: token2, isBuffer: false }],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
@@ -418,15 +418,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
             {
               tokenIn: token1,
-              steps: [{ pool: poolB, tokenOut: token2 }],
+              steps: [{ pool: poolB, tokenOut: token2, isBuffer: false }],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
@@ -470,15 +470,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
             {
               tokenIn: token0,
-              steps: [{ pool: poolA, tokenOut: token1 }],
+              steps: [{ pool: poolA, tokenOut: token1, isBuffer: false }],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
@@ -525,8 +525,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
@@ -534,8 +534,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: poolA,
               steps: [
-                { pool: poolAB, tokenOut: poolB },
-                { pool: poolBC, tokenOut: poolC },
+                { pool: poolAB, tokenOut: poolB, isBuffer: false },
+                { pool: poolBC, tokenOut: poolC, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
@@ -578,15 +578,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
             {
               tokenIn: token2,
-              steps: [{ pool: poolC, tokenOut: token0 }],
+              steps: [{ pool: poolC, tokenOut: token0, isBuffer: false }],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
             },
@@ -631,8 +631,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolAB, tokenOut: poolB },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolAB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
@@ -676,9 +676,9 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: poolB },
-                { pool: poolBC, tokenOut: poolC },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: poolB, isBuffer: false },
+                { pool: poolBC, tokenOut: poolC, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
@@ -722,8 +722,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolAB, tokenOut: poolB },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolAB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
@@ -731,8 +731,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: poolB },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
@@ -780,8 +780,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: poolA,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
@@ -825,9 +825,9 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
@@ -871,8 +871,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolA, tokenOut: token1 },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
@@ -919,8 +919,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolA, tokenOut: token1 },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pct(pathMinAmountOut, 0.999), // Rounding tolerance
@@ -928,9 +928,9 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolC, tokenOut: poolC },
-                { pool: poolBC, tokenOut: poolB },
-                { pool: poolB, tokenOut: token1 },
+                { pool: poolC, tokenOut: poolC, isBuffer: false },
+                { pool: poolBC, tokenOut: poolB, isBuffer: false },
+                { pool: poolB, tokenOut: token1, isBuffer: false },
               ],
               exactAmountIn: pathExactAmountIn,
               minAmountOut: pathMinAmountOut,
@@ -1075,8 +1075,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1119,11 +1119,11 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
-                { pool: poolC, tokenOut: token0 },
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
+                { pool: poolC, tokenOut: token0, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1166,15 +1166,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
             {
               tokenIn: token0,
-              steps: [{ pool: poolC, tokenOut: token2 }],
+              steps: [{ pool: poolC, tokenOut: token2, isBuffer: false }],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
@@ -1218,15 +1218,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
             {
               tokenIn: token1,
-              steps: [{ pool: poolB, tokenOut: token2 }],
+              steps: [{ pool: poolB, tokenOut: token2, isBuffer: false }],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
@@ -1271,15 +1271,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
             {
               tokenIn: token0,
-              steps: [{ pool: poolA, tokenOut: token1 }],
+              steps: [{ pool: poolA, tokenOut: token1, isBuffer: false }],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
@@ -1326,8 +1326,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1335,8 +1335,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: poolA,
               steps: [
-                { pool: poolAB, tokenOut: poolB },
-                { pool: poolBC, tokenOut: poolC },
+                { pool: poolAB, tokenOut: poolB, isBuffer: false },
+                { pool: poolBC, tokenOut: poolC, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1380,15 +1380,15 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
             {
               tokenIn: token2,
-              steps: [{ pool: poolC, tokenOut: token0 }],
+              steps: [{ pool: poolC, tokenOut: token0, isBuffer: false }],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
             },
@@ -1433,8 +1433,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolAB, tokenOut: poolB },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolAB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1478,8 +1478,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolAB, tokenOut: poolB },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolAB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1487,8 +1487,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: poolB },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1534,8 +1534,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: poolB },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: poolB, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1585,8 +1585,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: poolA,
               steps: [
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1635,9 +1635,9 @@ describe('BatchSwap', function () {
             {
               tokenIn: poolC,
               steps: [
-                { pool: poolAC, tokenOut: poolA },
-                { pool: poolA, tokenOut: token1 },
-                { pool: poolB, tokenOut: token2 },
+                { pool: poolAC, tokenOut: poolA, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
+                { pool: poolB, tokenOut: token2, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1681,8 +1681,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: poolA,
               steps: [
-                { pool: poolAB, tokenOut: poolB },
-                { pool: poolB, tokenOut: token1 },
+                { pool: poolAB, tokenOut: poolB, isBuffer: false },
+                { pool: poolB, tokenOut: token1, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
@@ -1727,8 +1727,8 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolA, tokenOut: poolA },
-                { pool: poolA, tokenOut: token1 },
+                { pool: poolA, tokenOut: poolA, isBuffer: false },
+                { pool: poolA, tokenOut: token1, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pct(pathMaxAmountIn, 1.001), // Rounding tolerance
@@ -1736,9 +1736,9 @@ describe('BatchSwap', function () {
             {
               tokenIn: token0,
               steps: [
-                { pool: poolC, tokenOut: poolC },
-                { pool: poolBC, tokenOut: poolB },
-                { pool: poolB, tokenOut: token1 },
+                { pool: poolC, tokenOut: poolC, isBuffer: false },
+                { pool: poolBC, tokenOut: poolB, isBuffer: false },
+                { pool: poolB, tokenOut: token1, isBuffer: false },
               ],
               exactAmountOut: pathExactAmountOut,
               maxAmountIn: pathMaxAmountIn,
