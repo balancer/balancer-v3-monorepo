@@ -216,7 +216,6 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
 
-        // TODO check comment "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
         // Since this is exact in, swaps will be executed in the order given.
         // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the boosted pool,
         // and finally post-swap the waUSDC through the USDC buffer to calculate the USDC amount out.
