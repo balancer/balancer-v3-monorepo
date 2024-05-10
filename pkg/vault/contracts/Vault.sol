@@ -1026,7 +1026,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     )
         public
         onlyWhenUnlocked
-        whenVaultBufferNotPaused
+        whenVaultBuffersAreNotPaused
         returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw)
     {
         IERC20 underlyingToken = IERC20(params.wrappedToken.asset());

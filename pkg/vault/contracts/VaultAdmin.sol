@@ -451,7 +451,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         uint256 amountUnderlying,
         uint256 amountWrapped,
         address sharesOwner
-    ) public onlyWhenUnlocked whenVaultBufferNotPaused nonReentrant returns (uint256 issuedShares) {
+    ) public onlyWhenUnlocked whenVaultBuffersAreNotPaused nonReentrant returns (uint256 issuedShares) {
         address underlyingToken = wrappedToken.asset();
 
         // amount of shares to issue is the total underlying token that the user is depositing
