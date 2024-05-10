@@ -20,7 +20,6 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import {
     ReentrancyGuardTransient
@@ -46,7 +45,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using PoolConfigLib for PoolConfig;
     using VaultExtensionsLib for IVault;
     using EnumerableSet for EnumerableSet.AddressSet;
-    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using SafeERC20 for IERC20;
     using VaultStateLib for VaultStateBits;
 
@@ -63,10 +61,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     ) Authentication(bytes32(uint256(uint160(address(mainVault))))) {
-        if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
+        if (pauseWindowDuration > _MAX_PAUSE_WINDOW_DURATION) {
             revert VaultPauseWindowDurationTooLarge();
         }
-        if (bufferPeriodDuration > MAX_BUFFER_PERIOD_DURATION) {
+        if (bufferPeriodDuration > _MAX_BUFFER_PERIOD_DURATION) {
             revert PauseBufferPeriodDurationTooLarge();
         }
 
@@ -121,7 +119,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function getPoolTokenRates(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256[] memory) {
-        return _getPoolData(pool).tokenRates;
+        return _getPoolData(pool, Rounding.ROUND_DOWN).tokenRates;
     }
 
     /*******************************************************************************
@@ -328,31 +326,34 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant onlyVault {
+    function collectProtocolFees(address pool) external authenticate nonReentrant onlyVault {
+        IERC20[] memory tokens = _getPoolTokens(pool);
+
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
-            uint256 amount = _protocolFees[token];
+            uint256 amount = _protocolFees[pool][token];
 
             if (amount > 0) {
                 // set fees to zero for the token
-                _protocolFees[token] = 0;
+                _protocolFees[pool][token] = 0;
 
                 token.safeTransfer(msg.sender, amount);
-                emit ProtocolFeeCollected(token, amount);
+                emit ProtocolFeeCollected(pool, token, amount);
             }
         }
     }
 
     /// @inheritdoc IVaultAdmin
     function collectPoolCreatorFees(address pool) external nonReentrant onlyVault {
-        EnumerableMap.IERC20ToUint256Map storage poolCreatorFees = _poolCreatorFees[pool];
-        uint256 numTokens = poolCreatorFees.length();
-        for (uint256 i = 0; i < numTokens; ++i) {
-            (IERC20 token, uint256 amount) = poolCreatorFees.unchecked_at(i);
+        IERC20[] memory tokens = _getPoolTokens(pool);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            uint256 amount = _poolCreatorFees[pool][token];
 
             if (amount > 0) {
                 // set fees to zero for the token
-                poolCreatorFees.unchecked_setAt(i, 0);
+                _poolCreatorFees[pool][token] = 0;
 
                 token.safeTransfer(_poolRoleAccounts[pool].poolCreator, amount);
                 emit PoolCreatorFeeCollected(pool, token, amount);
@@ -407,22 +408,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _poolConfig[pool] = config.fromPoolConfig();
 
         if (recoveryMode == false) {
-            _setPoolBalances(pool, _getPoolData(pool));
+            _setPoolBalances(pool, _getPoolData(pool, Rounding.ROUND_DOWN));
         }
 
         emit PoolRecoveryModeStateChanged(pool, recoveryMode);
-    }
-
-    /// @dev Factored out as it is reused.
-    function _getPoolData(address pool) internal view returns (PoolData memory poolData) {
-        (
-            poolData.tokenConfig,
-            poolData.balancesRaw,
-            poolData.decimalScalingFactors,
-            poolData.poolConfig
-        ) = _getPoolTokenInfo(pool);
-
-        _updateTokenRatesInPoolData(poolData);
     }
 
     /*******************************************************************************

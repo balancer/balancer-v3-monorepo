@@ -83,27 +83,26 @@ contract VaultUnitTest is BaseTest {
         uint256 swapFeeAmountScaled18 = 1e18;
         uint256 protocolSwapFeePercentage = 10e16;
 
-        uint256 expectSwapFeeAmountScaled18 = swapFeeAmountScaled18
+        uint256 expectedSwapFeeAmountScaled18 = swapFeeAmountScaled18
             .mulUp(protocolSwapFeePercentage)
             .toRawUndoRateRoundDown(poolData.decimalScalingFactors[tokenIndex], poolData.tokenRates[tokenIndex]);
 
         vm.expectEmit();
-        emit IVaultEvents.ProtocolSwapFeeCharged(pool, address(dai), expectSwapFeeAmountScaled18);
+        emit IVaultEvents.ProtocolSwapFeeCharged(pool, address(dai), expectedSwapFeeAmountScaled18);
 
         (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
             .manualComputeAndChargeProtocolAndCreatorFees(
                 poolData,
                 swapFeeAmountScaled18,
                 protocolSwapFeePercentage,
-                tokenIndex,
                 pool,
                 dai,
                 tokenIndex
             );
 
         assertEq(creatorSwapFeeAmountRaw, 0, "Unexpected creatorSwapFeeAmountRaw");
-        assertEq(protocolSwapFeeAmountRaw, expectSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
-        assertEq(vault.getProtocolFees(address(dai)), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
+        assertEq(protocolSwapFeeAmountRaw, expectedSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
+        assertEq(vault.getProtocolFees(pool, dai), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
         assertEq(vault.getPoolCreatorFees(pool, dai), 0, "Unexpected creator fees in storage");
     }
 
@@ -112,47 +111,51 @@ contract VaultUnitTest is BaseTest {
         uint256 initVault = 10e18;
         vault.manualSetPoolCreatorFees(pool, dai, initVault);
 
-        PoolData memory poolData;
-        poolData.decimalScalingFactors = decimalScalingFactors;
-        poolData.tokenRates = tokenRates;
-
         uint256 swapFeeAmountScaled18 = 1e18;
+        uint256 swapFeeAmountRaw = 1e18;
         uint256 protocolSwapFeePercentage = 5e16;
         uint256 creatorFeePercentage = 5e16;
 
-        uint256 expectSwapFeeAmountScaled18 = swapFeeAmountScaled18
-            .mulUp(protocolSwapFeePercentage)
-            .toRawUndoRateRoundDown(poolData.decimalScalingFactors[tokenIndex], poolData.tokenRates[tokenIndex]);
+        PoolData memory poolData;
+        poolData.decimalScalingFactors = decimalScalingFactors;
+        poolData.poolConfig.poolCreatorFeePercentage = creatorFeePercentage;
+        poolData.tokenRates = tokenRates;
 
-        uint256 expectCreatorFeeAmountRaw = (swapFeeAmountScaled18 - expectSwapFeeAmountScaled18)
+        uint256 expectedSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(protocolSwapFeePercentage);
+
+        uint256 expectSwapFeeAmountRaw = expectedSwapFeeAmountScaled18.toRawUndoRateRoundDown(
+            poolData.decimalScalingFactors[tokenIndex],
+            poolData.tokenRates[tokenIndex]
+        );
+
+        uint256 expectCreatorFeeAmountRaw = (swapFeeAmountScaled18 - expectedSwapFeeAmountScaled18)
             .mulUp(creatorFeePercentage)
             .toRawUndoRateRoundDown(poolData.decimalScalingFactors[tokenIndex], poolData.tokenRates[tokenIndex]);
 
         vm.expectEmit();
-        emit IVaultEvents.ProtocolSwapFeeCharged(pool, address(dai), expectSwapFeeAmountScaled18);
+        emit IVaultEvents.ProtocolSwapFeeCharged(pool, address(dai), expectSwapFeeAmountRaw);
 
         vm.expectEmit();
-        emit IVaultEvents.PoolCreatorFeeCharged(pool, address(dai), expectCreatorFeeAmountRaw);
+        emit IVaultEvents.PoolCreatorSwapFeeCharged(pool, address(dai), expectCreatorFeeAmountRaw);
 
         (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
             .manualComputeAndChargeProtocolAndCreatorFees(
                 poolData,
                 swapFeeAmountScaled18,
                 protocolSwapFeePercentage,
-                creatorFeePercentage,
                 pool,
                 dai,
                 0
             );
 
-        assertEq(protocolSwapFeeAmountRaw, expectSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
+        assertEq(protocolSwapFeeAmountRaw, expectedSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
         assertEq(creatorSwapFeeAmountRaw, expectCreatorFeeAmountRaw, "Unexpected creatorSwapFeeAmountRaw");
         assertEq(
             vault.getPoolCreatorFees(pool, dai),
             initVault + creatorSwapFeeAmountRaw,
             "Unexpected creator fees in storage"
         );
-        assertEq(vault.getProtocolFees(address(dai)), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
+        assertEq(vault.getProtocolFees(pool, dai), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
     }
 
     function testComputeAndChargeProtocolAndCreatorFeesIfPoolIsInRecoveryMode() public {
@@ -160,11 +163,11 @@ contract VaultUnitTest is BaseTest {
         poolData.poolConfig.isPoolInRecoveryMode = true;
 
         (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolAndCreatorFees(poolData, 1e18, 10e16, 0, pool, dai, 0);
+            .manualComputeAndChargeProtocolAndCreatorFees(poolData, 1e18, 10e16, pool, dai, 0);
 
         assertEq(protocolSwapFeeAmountRaw, 0, "Unexpected protocolSwapFeeAmountRaw");
         assertEq(creatorSwapFeeAmountRaw, 0, "Unexpected creatorSwapFeeAmountRaw");
-        assertEq(vault.getProtocolFees(address(dai)), 0, "Unexpected protocol fees in storage");
+        assertEq(vault.getProtocolFees(pool, dai), 0, "Unexpected protocol fees in storage");
     }
 
     function testManualUpdatePoolDataLiveBalancesAndRates() public {
@@ -202,7 +205,7 @@ contract VaultUnitTest is BaseTest {
         assertEq(poolData.balancesRaw[0], tokenBalances[0], "Unexpected balancesRaw[0]");
         assertEq(poolData.balancesRaw[1], tokenBalances[1], "Unexpected balancesRaw[1]");
 
-        // check _updateLiveTokenBalanceInPoolData is called
+        // check _updateRawAndLiveTokenBalancesInPoolData is called
         assertEq(
             poolData.balancesLiveScaled18[0],
             poolData.balancesRaw[0].mulUp(poolData.decimalScalingFactors[0]).mulUp(poolData.tokenRates[0]),

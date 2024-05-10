@@ -125,6 +125,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
                 shouldCallAfterAddLiquidity: false,
                 shouldCallBeforeRemoveLiquidity: false,
                 shouldCallAfterRemoveLiquidity: false,
+                shouldCallComputeDynamicSwapFee: false,
                 shouldCallBeforeSwap: true, // rebalancing
                 shouldCallAfterSwap: false
             });

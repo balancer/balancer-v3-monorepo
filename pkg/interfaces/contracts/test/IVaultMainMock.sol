@@ -75,16 +75,17 @@ interface IVaultMainMock {
 
     function updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,
+        uint256 newRawBalance,
         Rounding roundingDirection,
         uint256 tokenIndex
     ) external pure returns (PoolData memory);
 
-    function computeYieldProtocolFeesDue(
+    function computeYieldFeesDue(
         PoolData memory poolData,
         uint256 lastLiveBalance,
         uint256 tokenIndex,
-        uint256 yieldFeePercentage
-    ) external pure returns (uint256);
+        uint256 protocolYieldFeePercentage
+    ) external pure returns (uint256, uint256);
 
     function guardedCheckEntered() external;
 
@@ -143,8 +144,6 @@ interface IVaultMainMock {
 
     function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external;
 
-    function manualGetSwapFeePercentage(PoolConfig memory config) external pure returns (uint256);
-
     function manualBuildPoolSwapParams(
         SwapParams memory params,
         SwapVars memory vars,
@@ -155,7 +154,6 @@ interface IVaultMainMock {
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         uint256 protocolSwapFeePercentage,
-        uint256 creatorFeePercentage,
         address pool,
         IERC20 token,
         uint256 index

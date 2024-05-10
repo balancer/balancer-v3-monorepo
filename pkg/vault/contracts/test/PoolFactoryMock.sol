@@ -98,10 +98,10 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
     function registerPoolAtTimestamp(
         address pool,
         TokenConfig[] memory tokenConfig,
+        uint256 timestamp,
         PoolRoleAccounts memory roleAccounts,
         PoolHooks calldata poolHooks,
-        LiquidityManagement calldata liquidityManagement,
-        uint256 timestamp
+        LiquidityManagement calldata liquidityManagement
     ) external {
         _vault.registerPool(
             pool,
