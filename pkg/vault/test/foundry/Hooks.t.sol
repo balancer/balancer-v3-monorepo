@@ -48,7 +48,8 @@ contract HooksTest is BaseVaultTest {
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
                     indexIn: usdcIdx,
                     indexOut: daiIdx,
-                    sender: address(router),
+                    router: address(router),
+                    user: address(this),
                     userData: bytes("")
                 })
             )
@@ -85,7 +86,8 @@ contract HooksTest is BaseVaultTest {
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
                     indexIn: usdcIdx,
                     indexOut: daiIdx,
-                    sender: address(router),
+                    router: address(router),
+                    user: address(this),
                     userData: bytes("")
                 })
             )
@@ -132,7 +134,8 @@ contract HooksTest is BaseVaultTest {
                     amountOutScaled18: expectedAmountOut,
                     tokenInBalanceScaled18: defaultAmount * 2,
                     tokenOutBalanceScaled18: defaultAmount - expectedAmountOut - protocolFee,
-                    sender: address(router),
+                    router: address(router),
+                    user: address(this),
                     userData: ""
                 }),
                 expectedAmountOut

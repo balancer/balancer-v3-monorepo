@@ -75,7 +75,8 @@ contract HooksAlteringRatesTest is BaseVaultTest {
                     balancesScaled18: expectedBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
-                    sender: address(router),
+                    router: address(router),
+                    user: address(this),
                     userData: bytes("")
                 })
             )

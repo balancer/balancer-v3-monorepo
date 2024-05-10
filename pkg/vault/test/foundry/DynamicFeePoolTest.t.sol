@@ -86,7 +86,8 @@ contract DynamicFeePoolTest is BaseVaultTest {
             balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
             indexIn: daiIdx,
             indexOut: usdcIdx,
-            sender: address(router),
+            router: address(router),
+            user: address(this),
             userData: bytes("")
         });
 
