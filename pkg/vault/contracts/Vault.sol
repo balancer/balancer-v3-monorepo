@@ -407,10 +407,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalanceIn, Rounding.ROUND_DOWN, vars.indexIn);
             _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalanceOut, Rounding.ROUND_DOWN, vars.indexOut);
-
-            // 6) Store pool balances, raw and live
-            _setPoolBalances(params.pool, poolData);
         }
+
+        // 6) Store pool balances, raw and live
+        _setPoolBalances(params.pool, poolData);
 
         // 7) Off-chain events
         // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
@@ -663,7 +663,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             amountsInRaw[i] = amountInRaw;
 
             {
-                //TODO
                 // stack-too-deep
                 IERC20 token = poolData.tokenConfig[i].token;
 
@@ -967,7 +966,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.poolConfig.isPoolInRecoveryMode == false
         ) {
             // Initialize aggregate percentage, if not already set
-            if (_aggregateProtocolSwapFeePercentage().tload() == 0) {
+            uint256 aggregatePercentage = _aggregateProtocolSwapFeePercentage().tload();
+
+            if (aggregatePercentage == 0) {
                 _aggregateProtocolSwapFeePercentage().tstore(
                     IVaultAdmin(address(this)).getAggregateFeePercentage(
                         vaultState.protocolSwapFeePercentage,
@@ -976,9 +977,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 );
             }
 
-            uint256 aggregateSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(
-                _aggregateProtocolSwapFeePercentage().tload()
-            );
+            uint256 aggregateSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(aggregatePercentage);
 
             // Ensure we can never charge more than the total swap fee.
             if (aggregateSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
