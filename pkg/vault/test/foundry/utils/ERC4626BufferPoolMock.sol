@@ -73,7 +73,7 @@ contract ERC4626BufferPoolMock is ERC4626BufferPool {
             wrappedToken = params.tokenIn;
 
             getVault().sendTo(underlyingToken, address(this), amountOut);
-            underlyingToken.approve(address(wrappedToken), amountOut);
+            underlyingToken.forceApprove(address(wrappedToken), amountOut);
             IERC4626(address(wrappedToken)).deposit(amountOut, address(this));
             wrappedToken.safeTransfer(address(getVault()), amountIn);
             getVault().settle(wrappedToken);

@@ -437,13 +437,13 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
         uint256 expectedWrappedBalance
     ) private returns (uint256 contractBaseBalance, uint256 contractWrappedBalance) {
         IERC4626 wToken = IERC4626(wrappedToken);
-        IERC20 baseToken = IERC20(wToken.asset());
+        IERC20 underlyingToken = IERC20(wToken.asset());
         uint8 decimals = wToken.decimals();
 
         uint256 wrappedTokenIdx = IBufferPool(bufferPool).getWrappedTokenIndex();
         uint256 baseTokenIdx = IBufferPool(bufferPool).getBaseTokenIndex();
 
-        string memory baseTokenName = IERC20Metadata(address(baseToken)).name();
+        string memory baseTokenName = IERC20Metadata(address(underlyingToken)).name();
         string memory wrappedTokenName = IERC20Metadata(address(wToken)).name();
 
         // Check if the pool is unbalanced before
@@ -471,7 +471,7 @@ contract ERC4626RebalanceValidation is BaseVaultTest {
             )
         );
 
-        contractBaseBalance = baseToken.balanceOf(bufferPool);
+        contractBaseBalance = underlyingToken.balanceOf(bufferPool);
         contractWrappedBalance = wToken.balanceOf(bufferPool);
     }
 
