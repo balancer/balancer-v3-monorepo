@@ -208,7 +208,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev Reverts if the Vault Buffer is paused.
     function _ensureVaultBufferNotPaused() internal view {
-        if (_vaultState.isBufferPaused()) {
+        if (_vaultState.areBuffersPaused()) {
             revert VaultBuffersArePaused();
         }
     }

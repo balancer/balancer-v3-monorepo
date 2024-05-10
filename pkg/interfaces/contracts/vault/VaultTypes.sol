@@ -66,7 +66,7 @@ struct VaultState {
     uint256 protocolYieldFeePercentage;
     bool isQueryDisabled;
     bool isVaultPaused;
-    bool isBufferPaused;
+    bool areBuffersPaused;
 }
 
 /**

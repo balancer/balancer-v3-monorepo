@@ -434,14 +434,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @inheritdoc IVaultAdmin
     function unpauseVaultBuffers() external authenticate onlyVault {
         VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.isBufferPaused = false;
+        vaultState.areBuffersPaused = false;
         _vaultState = VaultStateLib.fromVaultState(vaultState);
     }
 
     /// @inheritdoc IVaultAdmin
     function pauseVaultBuffers() external authenticate onlyVault {
         VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.isBufferPaused = true;
+        vaultState.areBuffersPaused = true;
         _vaultState = VaultStateLib.fromVaultState(vaultState);
     }
 
