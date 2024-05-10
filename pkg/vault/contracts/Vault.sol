@@ -253,7 +253,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                         tokenInBalanceScaled18: poolData.balancesLiveScaled18[vars.indexIn],
                         tokenOutBalanceScaled18: poolData.balancesLiveScaled18[vars.indexOut],
                         router: msg.sender,
-                        user: params.user,
                         userData: params.userData
                     }),
                     vars.amountCalculatedScaled18
@@ -277,7 +276,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 indexIn: vars.indexIn,
                 indexOut: vars.indexOut,
                 router: msg.sender,
-                user: params.user,
                 userData: params.userData
             });
     }

@@ -76,7 +76,6 @@ contract HooksAlteringRatesTest is BaseVaultTest {
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
                     router: address(router),
-                    user: bob,
                     userData: bytes("")
                 })
             )

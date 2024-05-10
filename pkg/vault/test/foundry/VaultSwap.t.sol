@@ -425,7 +425,6 @@ contract VaultSwapTest is BaseVaultTest {
             tokenOut: usdc,
             amountGivenRaw: defaultAmount,
             limitRaw: 0,
-            user: address(this),
             userData: bytes("")
         });
         vault.swap(params);
@@ -439,7 +438,6 @@ contract VaultSwapTest is BaseVaultTest {
             tokenOut: dai,
             amountGivenRaw: defaultAmount,
             limitRaw: 0,
-            user: user,
             userData: bytes("")
         });
         vault.swap(params);

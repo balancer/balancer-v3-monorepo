@@ -87,7 +87,6 @@ contract DynamicFeePoolTest is BaseVaultTest {
             indexIn: daiIdx,
             indexOut: usdcIdx,
             router: address(router),
-            user: alice,
             userData: bytes("")
         });
 

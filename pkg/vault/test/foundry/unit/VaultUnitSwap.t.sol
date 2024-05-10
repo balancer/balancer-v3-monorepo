@@ -234,7 +234,6 @@ contract VaultUnitSwapTest is BaseTest {
             tokenOut: swapTokens[1],
             amountGivenRaw: amountGivenRaw_,
             limitRaw: limitRaw,
-            user: address(this),
             userData: new bytes(0)
         });
 
@@ -434,7 +433,6 @@ contract VaultUnitSwapTest is BaseTest {
                     balancesScaled18: poolData.balancesLiveScaled18,
                     indexIn: vars.indexIn,
                     indexOut: vars.indexOut,
-                    user: address(this),
                     router: address(this),
                     userData: params.userData
                 })

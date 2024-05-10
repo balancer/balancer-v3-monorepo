@@ -49,7 +49,6 @@ contract HooksTest is BaseVaultTest {
                     indexIn: usdcIdx,
                     indexOut: daiIdx,
                     router: address(router),
-                    user: bob,
                     userData: bytes("")
                 })
             )
@@ -87,7 +86,6 @@ contract HooksTest is BaseVaultTest {
                     indexIn: usdcIdx,
                     indexOut: daiIdx,
                     router: address(router),
-                    user: bob,
                     userData: bytes("")
                 })
             )
@@ -135,7 +133,6 @@ contract HooksTest is BaseVaultTest {
                     tokenInBalanceScaled18: defaultAmount * 2,
                     tokenOutBalanceScaled18: defaultAmount - expectedAmountOut - protocolFee,
                     router: address(router),
-                    user: bob,
                     userData: ""
                 }),
                 expectedAmountOut

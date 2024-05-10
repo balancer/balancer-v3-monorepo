@@ -48,7 +48,6 @@ contract VaultUnitTest is BaseTest {
         params.userData = new bytes(20);
         params.userData[0] = 0x01;
         params.userData[19] = 0x05;
-        params.user = alice;
 
         SwapVars memory vars;
         vars.amountGivenScaled18 = 2e18;
@@ -69,7 +68,6 @@ contract VaultUnitTest is BaseTest {
         );
         assertEq(poolSwapParams.indexIn, vars.indexIn, "Unexpected indexIn");
         assertEq(poolSwapParams.indexOut, vars.indexOut, "Unexpected indexOut");
-        assertEq(poolSwapParams.user, alice, "Unexpected user");
         assertEq(poolSwapParams.router, address(this), "Unexpected router");
         assertEq(poolSwapParams.userData, params.userData, "Unexpected userData");
     }
