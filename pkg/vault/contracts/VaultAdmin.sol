@@ -369,7 +369,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         uint256 protocolFeePercentage = isSwapFee
             ? vars.vaultState.protocolSwapFeePercentage
             : vars.vaultState.protocolYieldFeePercentage;
-        bool needToSplitWithPoolCreator = vars.poolCreator != address(0) && vars.poolConfig.poolCreatorFeePercentage > 0;
+        bool needToSplitWithPoolCreator = vars.poolCreator != address(0) &&
+            vars.poolConfig.poolCreatorFeePercentage > 0;
         uint256 aggregateFeePercentage;
 
         if (needToSplitWithPoolCreator) {
@@ -431,7 +432,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function getAggregateFeePercentage(
         uint256 protocolPercentage,
         uint256 creatorPercentage
-    ) public view onlyVault returns (uint256) {
+    ) public pure returns (uint256) {
         return protocolPercentage + protocolPercentage.complement().mulDown(creatorPercentage);
     }
 

@@ -176,7 +176,7 @@ interface IVaultAdmin {
      * @param protocolFeePercentage The protocol fee percentage
      * @param creatorFeePercentage The creator fee percentage
      */
-    function getAggregateFeePercentage(uint256 protocolFeePercentage, uint256 creatorFeePercentage) external returns (uint256);
+    function getAggregateFeePercentage(uint256 protocolFeePercentage, uint256 creatorFeePercentage) external pure returns (uint256);
 
     /*******************************************************************************
                                     Recovery Mode
