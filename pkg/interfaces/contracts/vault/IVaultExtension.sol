@@ -63,7 +63,7 @@ interface IVaultExtension {
      *
      * If the zero address is provided for the `pauseManager`, permissions for pausing the pool will default to the
      * authorizer.
-     * 
+     *
      * A pool can override the global protocol swap fee by providing a different value here. It is still subject to the
      * maximum protocol fee.
      *
