@@ -3,14 +3,11 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import { PoolConfig, PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
-import {
-    FEE_SCALING_FACTOR,
-    FEE_BITLENGTH,
-    PoolHooks,
-    LiquidityManagement
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { PoolConfig, PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
 contract PoolConfigLibTest is Test {
@@ -26,8 +23,8 @@ contract PoolConfigLibTest is Test {
 
     mapping(uint256 => bool) usedBits;
 
-    // 16 flags + 2 * 24 bit fee + 24 bit token diffs + 32 bit timestamp = 120 total bits used.
-    uint256 private constant BITS_IN_USE = 120;
+    // 16 flags + 3 * 24 bit fee + 24 bit token diffs + 32 bit timestamp = 144 total bits used.
+    uint256 private constant BITS_IN_USE = 144;
 
     // #region PoolConfigBits
     function testOffsets() public {
@@ -52,6 +49,7 @@ contract PoolConfigLibTest is Test {
         _checkBits(PoolConfigLib.POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH);
         _checkBits(PoolConfigLib.DECIMAL_SCALING_FACTORS_OFFSET, TOKEN_DECIMAL_DIFFS_BITLENGTH);
         _checkBits(PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH);
+        _checkBits(PoolConfigLib.PROTOCOL_SWAP_FEE_OVERRIDE_OFFSET, FEE_BITLENGTH);
     }
 
     function testIsPoolRegistered() public {
@@ -195,7 +193,7 @@ contract PoolConfigLibTest is Test {
                 .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH))
                 .getStaticSwapFeePercentage(),
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
-            "staticSwapFeePercentage mismatch"
+            "staticSwapFeePercentage mismatch (testGetStaticSwapFeePercentage)"
         );
     }
 
@@ -205,7 +203,7 @@ contract PoolConfigLibTest is Test {
                 .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH))
                 .getPoolCreatorFeePercentage(),
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
-            "staticSwapFeePercentage mismatch"
+            "staticSwapFeePercentage mismatch (testGetPoolCreatorFeePercentage)"
         );
     }
 
@@ -221,7 +219,7 @@ contract PoolConfigLibTest is Test {
                 )
                 .getTokenDecimalDiffs(),
             MAX_UINT24_VALUE,
-            "tokenDecimalDiffs mismatch"
+            "tokenDecimalDiffs mismatch (testGetTokenDecimalDiffs)"
         );
     }
 
@@ -237,7 +235,7 @@ contract PoolConfigLibTest is Test {
                 )
                 .getPauseWindowEndTime(),
             MAX_UINT32_VALUE,
-            "pauseWindowEndTime mismatch"
+            "pauseWindowEndTime mismatch (testGetPauseWindowEndTime)"
         );
     }
 
@@ -315,6 +313,7 @@ contract PoolConfigLibTest is Test {
         assertEq(configBits.getPoolCreatorFeePercentage(), 0, "staticSwapFeePercentage isn't zero");
         assertEq(configBits.getTokenDecimalDiffs(), 0, "tokenDecimalDiffs isn't zero");
         assertEq(configBits.getPauseWindowEndTime(), 0, "pauseWindowEndTime isn't zero");
+        assertEq(configBits.getProtocolSwapFeeOverridePercentage(), 0, "protocolSwapFeeOverridePercentage isn't zero");
     }
 
     // #endregion
@@ -326,7 +325,7 @@ contract PoolConfigLibTest is Test {
                 .wrap(bytes32(0).insertBool(true, PoolConfigLib.POOL_REGISTERED_OFFSET))
                 .toPoolConfig()
                 .isPoolRegistered,
-            "isPoolRegistered mismatch"
+            "isPoolRegistered mismatch (testToPoolConfig)"
         );
 
         assertTrue(
@@ -334,7 +333,7 @@ contract PoolConfigLibTest is Test {
                 .wrap(bytes32(0).insertBool(true, PoolConfigLib.POOL_INITIALIZED_OFFSET))
                 .toPoolConfig()
                 .isPoolInitialized,
-            "isPoolInitialized mismatch"
+            "isPoolInitialized mismatch (testToPoolConfig)"
         );
 
         assertTrue(
@@ -342,7 +341,7 @@ contract PoolConfigLibTest is Test {
                 .wrap(bytes32(0).insertBool(true, PoolConfigLib.POOL_PAUSED_OFFSET))
                 .toPoolConfig()
                 .isPoolPaused,
-            "isPoolPaused mismatch"
+            "isPoolPaused mismatch (testToPoolConfig)"
         );
 
         assertTrue(
@@ -350,7 +349,7 @@ contract PoolConfigLibTest is Test {
                 .wrap(bytes32(0).insertBool(true, PoolConfigLib.POOL_RECOVERY_MODE_OFFSET))
                 .toPoolConfig()
                 .isPoolInRecoveryMode,
-            "isPoolInRecoveryMode mismatch"
+            "isPoolInRecoveryMode mismatch (testToPoolConfig)"
         );
 
         assertEq(
@@ -359,7 +358,7 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .staticSwapFeePercentage,
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
-            "staticSwapFeePercentage mismatch"
+            "staticSwapFeePercentage mismatch (testToPoolConfig)"
         );
 
         assertEq(
@@ -368,7 +367,22 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .poolCreatorFeePercentage,
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
-            "poolCreatorFeePercentage mismatch"
+            "poolCreatorFeePercentage mismatch (testToPoolConfig)"
+        );
+
+        assertEq(
+            PoolConfigBits
+                .wrap(
+                    bytes32(0).insertUint(
+                        MAX_UINT24_VALUE,
+                        PoolConfigLib.PROTOCOL_SWAP_FEE_OVERRIDE_OFFSET,
+                        FEE_BITLENGTH
+                    )
+                )
+                .toPoolConfig()
+                .protocolSwapFeeOverridePercentage,
+            MAX_UINT24_VALUE,
+            "protocolSwapFeeOverridePercentage mismatch (testToPoolConfig)"
         );
 
         assertEq(
@@ -383,7 +397,7 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .tokenDecimalDiffs,
             MAX_UINT24_VALUE,
-            "tokenDecimalDiffs mismatch"
+            "tokenDecimalDiffs mismatch (testToPoolConfig)"
         );
 
         assertEq(
@@ -398,7 +412,7 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .pauseWindowEndTime,
             MAX_UINT32_VALUE,
-            "pauseWindowEndTime mismatch"
+            "pauseWindowEndTime mismatch (testToPoolConfig)"
         );
 
         // check .hooks
@@ -408,7 +422,7 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .hooks
                 .shouldCallBeforeInitialize,
-            "shouldCallBeforeInitialize mismatch"
+            "shouldCallBeforeInitialize mismatch (testToPoolConfig)"
         );
 
         assertTrue(
@@ -417,7 +431,7 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .hooks
                 .shouldCallAfterInitialize,
-            "shouldCallAfterInitialize mismatch"
+            "shouldCallAfterInitialize mismatch (testToPoolConfig)"
         );
 
         assertTrue(
@@ -426,7 +440,7 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .hooks
                 .shouldCallBeforeAddLiquidity,
-            "shouldCallBeforeAddLiquidity mismatch"
+            "shouldCallBeforeAddLiquidity mismatch (testToPoolConfig)"
         );
 
         assertTrue(
@@ -435,7 +449,7 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .hooks
                 .shouldCallAfterAddLiquidity,
-            "shouldCallAfterAddLiquidity mismatch"
+            "shouldCallAfterAddLiquidity mismatch (testToPoolConfig)"
         );
 
         assertTrue(
@@ -444,7 +458,7 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .hooks
                 .shouldCallBeforeRemoveLiquidity,
-            "shouldCallBeforeRemoveLiquidity mismatch"
+            "shouldCallBeforeRemoveLiquidity mismatch (testToPoolConfig)"
         );
 
         assertTrue(
@@ -453,7 +467,7 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .hooks
                 .shouldCallAfterRemoveLiquidity,
-            "shouldCallAfterRemoveLiquidity mismatch"
+            "shouldCallAfterRemoveLiquidity mismatch (testToPoolConfig)"
         );
 
         assertTrue(
@@ -462,7 +476,7 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .hooks
                 .shouldCallComputeDynamicSwapFee,
-            "shouldCallComputeDynamicSwapFee mismatch"
+            "shouldCallComputeDynamicSwapFee mismatch (testToPoolConfig)"
         );
 
         assertTrue(
@@ -471,7 +485,7 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .hooks
                 .shouldCallBeforeSwap,
-            "shouldCallBeforeSwap mismatch"
+            "shouldCallBeforeSwap mismatch (testToPoolConfig)"
         );
 
         assertTrue(
@@ -480,7 +494,7 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .hooks
                 .shouldCallAfterSwap,
-            "shouldCallAfterSwap mismatch"
+            "shouldCallAfterSwap mismatch (testToPoolConfig)"
         );
 
         // check .liquidityManagement
@@ -490,7 +504,7 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .liquidityManagement
                 .disableUnbalancedLiquidity,
-            "disableUnbalancedLiquidity mismatch"
+            "disableUnbalancedLiquidity mismatch (testToPoolConfig)"
         );
 
         assertTrue(
@@ -499,7 +513,7 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .liquidityManagement
                 .enableAddLiquidityCustom,
-            "enableAddLiquidityCustom mismatch"
+            "enableAddLiquidityCustom mismatch (testToPoolConfig)"
         );
 
         assertTrue(
@@ -508,7 +522,7 @@ contract PoolConfigLibTest is Test {
                 .toPoolConfig()
                 .liquidityManagement
                 .enableRemoveLiquidityCustom,
-            "enableRemoveLiquidityCustom mismatch"
+            "enableRemoveLiquidityCustom mismatch (testToPoolConfig)"
         );
     }
 
@@ -518,7 +532,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.POOL_REGISTERED_OFFSET),
-            "isPoolRegistered mismatch"
+            "isPoolRegistered mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -526,7 +540,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.POOL_INITIALIZED_OFFSET),
-            "isPoolInitialized mismatch"
+            "isPoolInitialized mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -534,7 +548,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.POOL_PAUSED_OFFSET),
-            "isPoolPaused mismatch"
+            "isPoolPaused mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -542,7 +556,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.POOL_RECOVERY_MODE_OFFSET),
-            "isPoolInRecoveryMode mismatch"
+            "isPoolInRecoveryMode mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -550,7 +564,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH),
-            "staticSwapFeePercentage mismatch"
+            "staticSwapFeePercentage mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -558,7 +572,15 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH),
-            "poolCreatorFeePercentage mismatch"
+            "poolCreatorFeePercentage mismatch (testFromPoolConfig)"
+        );
+
+        config = _createEmptyConfig();
+        config.protocolSwapFeeOverridePercentage = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
+        assertEq(
+            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
+            bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.PROTOCOL_SWAP_FEE_OVERRIDE_OFFSET, FEE_BITLENGTH),
+            "protocolSwapFeeOverridePercentage mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -570,7 +592,7 @@ contract PoolConfigLibTest is Test {
                 PoolConfigLib.DECIMAL_SCALING_FACTORS_OFFSET,
                 TOKEN_DECIMAL_DIFFS_BITLENGTH
             ),
-            "tokenDecimalDiffs mismatch"
+            "tokenDecimalDiffs mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -578,7 +600,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertUint(MAX_UINT32_VALUE, PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH),
-            "pauseWindowEndTime mismatch"
+            "pauseWindowEndTime mismatch (testFromPoolConfig)"
         );
 
         // check .hooks
@@ -587,7 +609,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.BEFORE_INITIALIZE_OFFSET),
-            "shouldCallBeforeInitialize mismatch"
+            "shouldCallBeforeInitialize mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -595,7 +617,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.AFTER_INITIALIZE_OFFSET),
-            "shouldCallAfterInitialize mismatch"
+            "shouldCallAfterInitialize mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -603,7 +625,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET),
-            "shouldCallBeforeAddLiquidity mismatch"
+            "shouldCallBeforeAddLiquidity mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -611,7 +633,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.AFTER_ADD_LIQUIDITY_OFFSET),
-            "shouldCallAfterAddLiquidity mismatch"
+            "shouldCallAfterAddLiquidity mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -619,7 +641,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.BEFORE_REMOVE_LIQUIDITY_OFFSET),
-            "shouldCallBeforeRemoveLiquidity mismatch"
+            "shouldCallBeforeRemoveLiquidity mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -627,7 +649,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.AFTER_REMOVE_LIQUIDITY_OFFSET),
-            "shouldCallAfterRemoveLiquidity mismatch"
+            "shouldCallAfterRemoveLiquidity mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -635,7 +657,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET),
-            "shouldCallComputeDynamicSwapFee mismatch"
+            "shouldCallComputeDynamicSwapFee mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -643,7 +665,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.BEFORE_SWAP_OFFSET),
-            "shouldCallBeforeSwap mismatch"
+            "shouldCallBeforeSwap mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -651,7 +673,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.AFTER_SWAP_OFFSET),
-            "shouldCallAfterSwap mismatch"
+            "shouldCallAfterSwap mismatch (testFromPoolConfig)"
         );
 
         // check .liquidityManagement
@@ -660,7 +682,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.UNBALANCED_LIQUIDITY_OFFSET),
-            "disableUnbalancedLiquidity mismatch"
+            "disableUnbalancedLiquidity mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -668,7 +690,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.ADD_LIQUIDITY_CUSTOM_OFFSET),
-            "enableAddLiquidityCustom mismatch"
+            "enableAddLiquidityCustom mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
@@ -676,7 +698,7 @@ contract PoolConfigLibTest is Test {
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertBool(true, PoolConfigLib.REMOVE_LIQUIDITY_CUSTOM_OFFSET),
-            "enableRemoveLiquidityCustom mismatch"
+            "enableRemoveLiquidityCustom mismatch (testFromPoolConfig)"
         );
     }
 

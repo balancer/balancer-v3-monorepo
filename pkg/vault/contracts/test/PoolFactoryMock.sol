@@ -26,6 +26,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
+            GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: poolCreator }),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
@@ -41,6 +42,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         TokenConfig[] memory tokenConfig,
         uint256 swapFee,
         uint256 pauseWindowDuration,
+        uint256 protocolSwapFeeOverridePercentage,
         PoolRoleAccounts memory roleAccounts
     ) external {
         _vault.registerPool(
@@ -48,6 +50,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             swapFee,
             block.timestamp + pauseWindowDuration,
+            protocolSwapFeeOverridePercentage,
             roleAccounts,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
@@ -70,6 +73,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
+            GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
             roleAccounts,
             poolHooks,
             liquidityManagement
@@ -88,6 +92,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
+            GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             poolHooks,
             liquidityManagement
@@ -108,6 +113,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             DEFAULT_SWAP_FEE,
             timestamp,
+            GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
             roleAccounts,
             poolHooks,
             liquidityManagement

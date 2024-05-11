@@ -9,7 +9,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -50,20 +50,48 @@ contract PoolPauseTest is BaseVaultTest {
 
         pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
-        factoryMock.registerGeneralTestPool(address(pool), tokenConfig, 0, 365 days, adminRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(pool),
+            tokenConfig,
+            0,
+            365 days,
+            GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
+            adminRoleAccounts
+        );
 
         // Pass zero for the pause manager
         unmanagedPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
-        factoryMock.registerGeneralTestPool(address(unmanagedPool), tokenConfig, 0, 365 days, defaultRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(unmanagedPool),
+            tokenConfig,
+            0,
+            365 days,
+            GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
+            defaultRoleAccounts
+        );
 
         permissionlessPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
-        factoryMock.registerGeneralTestPool(address(permissionlessPool), tokenConfig, 0, 0, defaultRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(permissionlessPool),
+            tokenConfig,
+            0,
+            0,
+            GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
+            defaultRoleAccounts
+        );
 
         infinityPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
-        factoryMock.registerGeneralTestPool(address(infinityPool), tokenConfig, 0, 10000 days, defaultRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(infinityPool),
+            tokenConfig,
+            0,
+            10000 days,
+            GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
+            defaultRoleAccounts
+        );
 
         factory = new PoolFactoryMock(IVault(address(vault)), 365 days);
     }

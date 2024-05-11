@@ -5,19 +5,15 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    SwapParams,
-    SwapVars,
-    PoolData,
-    SwapKind,
-    VaultState
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
-import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
+
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
+import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -246,6 +242,7 @@ contract VaultUnitSwapTest is BaseTest {
         poolData.balancesRaw = initialBalances;
 
         poolData.poolConfig.staticSwapFeePercentage = swapFeePercentage_;
+        poolData.poolConfig.protocolSwapFeeOverridePercentage = GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL;
         vaultState.protocolSwapFeePercentage = swapFeePercentage_;
         poolData.poolConfig.poolCreatorFeePercentage = poolCreatorFeePercentage_;
 

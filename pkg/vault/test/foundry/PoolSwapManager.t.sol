@@ -7,8 +7,7 @@ import "forge-std/Test.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -49,18 +48,39 @@ contract PoolSwapManagerTest is BaseVaultTest {
         pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
         // Make admin the swap fee manager.
-        factoryMock.registerGeneralTestPool(address(pool), tokenConfig, 0, 365 days, adminRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(pool),
+            tokenConfig,
+            0,
+            365 days,
+            GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
+            adminRoleAccounts
+        );
 
         unmanagedPool = new PoolMock(IVault(address(vault)), "Unmanaged Pool", "UNMANAGED");
 
         // Pass zero for the swap fee manager.
-        factoryMock.registerGeneralTestPool(address(unmanagedPool), tokenConfig, 0, 365 days, defaultRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(unmanagedPool),
+            tokenConfig,
+            0,
+            365 days,
+            GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
+            defaultRoleAccounts
+        );
 
         // Pass zero for the swap fee manager.
         otherPool = new PoolMock(IVault(address(vault)), "Other Pool", "OTHER");
 
         // Pass zero for the swap fee manager.
-        factoryMock.registerGeneralTestPool(address(otherPool), tokenConfig, 0, 365 days, defaultRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(otherPool),
+            tokenConfig,
+            0,
+            365 days,
+            GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
+            defaultRoleAccounts
+        );
 
         factory = new PoolFactoryMock(IVault(address(vault)), 365 days);
     }
