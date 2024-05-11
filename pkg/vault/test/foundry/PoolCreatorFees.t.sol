@@ -74,7 +74,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
     }
 
     function testSwapWithoutFees() public {
-        _swapExactInWithFees(address(pool), usdc, dai, _defaultAmountToSwap, 0, 0, 0, false);
+        _swapExactInWithFees(pool, usdc, dai, _defaultAmountToSwap, 0, 0, 0, false);
     }
 
     function testSwapWithCreatorFee() public {
@@ -84,7 +84,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         uint64 poolCreatorFeePercentage = 5e17; // 50%
 
         _swapExactInWithFees(
-            address(pool),
+            pool,
             usdc,
             dai,
             amountToSwap,
@@ -127,7 +127,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         );
 
         _swapExactInWithFees(
-            address(pool),
+            pool,
             usdc,
             dai,
             amountToSwap,
@@ -199,7 +199,7 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         uint256 lpBalanceDaiBefore = dai.balanceOf(address(lp));
 
         uint256 chargedCreatorFees = _swapExactInWithFees(
-            address(pool),
+            pool,
             usdc,
             dai,
             amountToSwap,
@@ -307,12 +307,12 @@ contract PoolCreatorFeesTest is BaseVaultTest {
 
         // Check protocol fees after transfer
         assertEq(
-            vault.getProtocolFees(pool, tokenIn),
+            vault.getProtocolFees(targetPool, tokenIn),
             vars.protocolTokenInFeesBefore,
             "tokenIn protocol fees should not change"
         );
         assertEq(
-            vault.getProtocolFees(pool, tokenOut),
+            vault.getProtocolFees(targetPool, tokenOut),
             vars.protocolTokenOutFeesBefore + vars.protocolFees,
             "tokenOut protocol fees should increase by vars.protocolFees after swap"
         );
