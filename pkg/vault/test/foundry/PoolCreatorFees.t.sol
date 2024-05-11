@@ -74,6 +74,22 @@ contract PoolCreatorFeesTest is BaseVaultTest {
         assertEq(poolConfig.protocolSwapFeeOverridePercentage, _protocolSwapFeeOverridePercentage);
     }
 
+    function testCannotOverrideOverMaxProtocolPercentage() public {
+        PoolMock badPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "Large protocol fee Pool");
+        address[] memory tokens = [address(dai), address(usdc)].toMemoryArray();
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens.asIERC20());
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.ProtocolSwapFeePercentageTooHigh.selector));
+        factoryMock.registerGeneralTestPool(
+            address(badPool),
+            tokenConfig,
+            0,
+            0,
+            _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE + 1,
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: lp })
+        );
+    }
+
     function testSwapWithoutFees() public {
         _swapExactInWithFees(pool, usdc, dai, _defaultAmountToSwap, 0, 0, 0, false);
     }

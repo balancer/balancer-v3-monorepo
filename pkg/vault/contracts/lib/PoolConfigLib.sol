@@ -196,6 +196,7 @@ library PoolConfigLib {
                 .insertBool(config.liquidityManagement.enableRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
         }
         {
+            // Need to check for the sentinel value here, which shouldn't be modified.
             uint256 protocolSwapFeeOverridePct = config.protocolSwapFeeOverridePercentage;
             if (protocolSwapFeeOverridePct != GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL) {
                 protocolSwapFeeOverridePct /= FEE_SCALING_FACTOR;
@@ -255,6 +256,7 @@ library PoolConfigLib {
     function toPoolConfig(PoolConfigBits config) internal pure returns (PoolConfig memory) {
         bytes32 rawConfig = PoolConfigBits.unwrap(config);
 
+        // Need to check for the sentinel value here, which shouldn't be modified.
         uint256 protocolSwapFeeOverridePct = rawConfig.decodeUint(PROTOCOL_SWAP_FEE_OVERRIDE_OFFSET, FEE_BITLENGTH);
         if (protocolSwapFeeOverridePct != GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL) {
             protocolSwapFeeOverridePct *= FEE_SCALING_FACTOR;
