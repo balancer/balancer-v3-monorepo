@@ -54,8 +54,8 @@ contract PoolPauseTest is BaseVaultTest {
             address(pool),
             tokenConfig,
             0,
-            365 days,
             GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
+            365 days,
             adminRoleAccounts
         );
 
@@ -66,8 +66,8 @@ contract PoolPauseTest is BaseVaultTest {
             address(unmanagedPool),
             tokenConfig,
             0,
-            365 days,
             GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
+            365 days,
             defaultRoleAccounts
         );
 
@@ -77,8 +77,8 @@ contract PoolPauseTest is BaseVaultTest {
             address(permissionlessPool),
             tokenConfig,
             0,
-            0,
             GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
+            0,
             defaultRoleAccounts
         );
 
@@ -88,8 +88,8 @@ contract PoolPauseTest is BaseVaultTest {
             address(infinityPool),
             tokenConfig,
             0,
-            10000 days,
             GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
+            10000 days,
             defaultRoleAccounts
         );
 

@@ -45,8 +45,8 @@ contract PoolCreatorFeesTest is BaseVaultTest {
             address(overridePool),
             vault.buildTokenConfig(tokens.asIERC20()),
             0, // default swap fee (will be changed later)
-            0, // pause time - doesn't matter here
             _protocolSwapFeeOverridePercentage,
+            0, // pause time - doesn't matter here
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: lp })
         );
 
@@ -84,8 +84,8 @@ contract PoolCreatorFeesTest is BaseVaultTest {
             address(badPool),
             tokenConfig,
             0,
-            0,
             _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE + 1,
+            0,
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: lp })
         );
     }

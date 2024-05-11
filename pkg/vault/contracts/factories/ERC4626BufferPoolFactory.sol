@@ -109,8 +109,8 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             pool,
             tokenConfig,
             0, // zero swap fee
-            pauseWindowEndTime,
             GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
+            pauseWindowEndTime,
             roleAccounts,
             poolHooks,
             liquidityManagement

@@ -52,8 +52,8 @@ contract PoolSwapManagerTest is BaseVaultTest {
             address(pool),
             tokenConfig,
             0,
-            365 days,
             GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
+            365 days,
             adminRoleAccounts
         );
 
@@ -64,8 +64,8 @@ contract PoolSwapManagerTest is BaseVaultTest {
             address(unmanagedPool),
             tokenConfig,
             0,
-            365 days,
             GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
+            365 days,
             defaultRoleAccounts
         );
 
@@ -77,8 +77,8 @@ contract PoolSwapManagerTest is BaseVaultTest {
             address(otherPool),
             tokenConfig,
             0,
-            365 days,
             GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
+            365 days,
             defaultRoleAccounts
         );
 

@@ -123,8 +123,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
         uint256 swapFeePercentage;
-        uint256 pauseWindowEndTime;
         uint256 protocolSwapFeeOverridePercentage;
+        uint256 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
         PoolHooks poolHooks;
         LiquidityManagement liquidityManagement;
@@ -135,8 +135,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool,
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
-        uint256 pauseWindowEndTime,
         uint256 protocolSwapFeeOverridePercentage,
+        uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
@@ -146,8 +146,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             PoolRegistrationParams({
                 tokenConfig: tokenConfig,
                 swapFeePercentage: swapFeePercentage,
-                pauseWindowEndTime: pauseWindowEndTime,
                 protocolSwapFeeOverridePercentage: protocolSwapFeeOverridePercentage,
+                pauseWindowEndTime: pauseWindowEndTime,
                 roleAccounts: roleAccounts,
                 poolHooks: poolHooks,
                 liquidityManagement: liquidityManagement
