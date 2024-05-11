@@ -15,6 +15,7 @@ interface IVaultEvents {
      * @param factory The factory creating the pool
      * @param tokenConfig The pool's tokens
      * @param pauseWindowEndTime The pool's pause window end time
+     * @param protocolSwapFeeOverridePercentage Value of any protocol fee override (or the sentinel value)
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHooks Flags indicating which hooks the pool supports
      * @param liquidityManagement Supported liquidity management hook flags
@@ -24,6 +25,7 @@ interface IVaultEvents {
         address indexed factory,
         TokenConfig[] tokenConfig,
         uint256 pauseWindowEndTime,
+        uint256 protocolSwapFeeOverridePercentage,
         PoolRoleAccounts roleAccounts,
         PoolHooks poolHooks,
         LiquidityManagement liquidityManagement
