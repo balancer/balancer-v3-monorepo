@@ -252,6 +252,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             msg.sender,
             params.tokenConfig,
             params.pauseWindowEndTime,
+            params.isExemptFromProtocolSwapFee,
             params.roleAccounts,
             params.poolHooks,
             params.liquidityManagement
