@@ -786,7 +786,11 @@ contract PoolConfigLibTest is Test {
             )
         );
 
-        assertEq(PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs), value, "tokenDecimalDiffs mismatch");
+        assertEq(
+            PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs),
+            value,
+            "tokenDecimalDiffs mismatch (testToTokenDecimalDiffs)"
+        );
     }
 
     function testGetDecimalScalingFactors() public {
