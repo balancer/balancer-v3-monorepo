@@ -383,8 +383,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // the fees into account.
         (vars.protocolSwapFeeAmountRaw, vars.creatorSwapFeeAmountRaw) = _computeAndChargeProtocolAndCreatorFees(
             poolData,
+            vaultState,
             vars.swapFeeAmountScaled18,
-            vaultState.protocolSwapFeePercentage,
             params.pool,
             swapFeeToken,
             swapFeeIndex
@@ -431,6 +431,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             swapFeeAmountRaw,
             swapFeeToken
         );
+    }
+
+    function _getProtocolSwapFeePercentage(
+        PoolData memory poolData,
+        VaultState memory vaultState
+    ) private pure returns (uint256) {
+        return
+            poolData.poolConfig.protocolSwapFeeOverridePercentage == GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL
+                ? vaultState.protocolSwapFeePercentage
+                : poolData.poolConfig.protocolSwapFeeOverridePercentage;
     }
 
     /*******************************************************************************
@@ -683,8 +693,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // 4) Compute and charge protocol and creator fees.
                 (vars.protocolSwapFeeAmountRaw, vars.creatorSwapFeeAmountRaw) = _computeAndChargeProtocolAndCreatorFees(
                     poolData,
+                    vaultState,
                     swapFeeAmountsScaled18[i],
-                    vaultState.protocolSwapFeePercentage,
                     params.pool,
                     token,
                     i
@@ -913,8 +923,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // 4) Compute and charge protocol and creator fees.
                 (vars.protocolSwapFeeAmountRaw, vars.creatorSwapFeeAmountRaw) = _computeAndChargeProtocolAndCreatorFees(
                     poolData,
+                    vaultState,
                     swapFeeAmountsScaled18[i],
-                    vaultState.protocolSwapFeePercentage,
                     params.pool,
                     token,
                     i
@@ -972,8 +982,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      */
     function _computeAndChargeProtocolAndCreatorFees(
         PoolData memory poolData,
+        VaultState memory vaultState,
         uint256 swapFeeAmountScaled18,
-        uint256 protocolSwapFeePercentage,
         address pool,
         IERC20 token,
         uint256 index
@@ -984,6 +994,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Since the swapFeeAmountScaled18 also contains the rate, undo it when converting to raw.
             uint256 protocolSwapFeeAmountScaled18;
             uint256 creatorSwapFeeAmountScaled18;
+            uint256 protocolSwapFeePercentage = _getProtocolSwapFeePercentage(poolData, vaultState);
 
             if (protocolSwapFeePercentage > 0) {
                 protocolSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(protocolSwapFeePercentage);

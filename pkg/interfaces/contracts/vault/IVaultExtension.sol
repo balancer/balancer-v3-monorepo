@@ -63,11 +63,15 @@ interface IVaultExtension {
      *
      * If the zero address is provided for the `pauseManager`, permissions for pausing the pool will default to the
      * authorizer.
+     * 
+     * A pool can override the global protocol swap fee by providing a different value here. It is still subject to the
+     * maximum protocol fee.
      *
      * @param pool The address of the pool being registered
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param swapFeePercentage Initial value of the swap fee
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
+     * @param protocolSwapFeeOverridePercentage Pool-specific override of the protocol swap fee (or -1 to use global)
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHooks Flags indicating which hooks the pool supports
      * @param liquidityManagement Liquidity management flags with implemented methods
@@ -77,6 +81,7 @@ interface IVaultExtension {
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
+        uint256 protocolSwapFeeOverridePercentage,
         PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement

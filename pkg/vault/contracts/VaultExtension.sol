@@ -124,6 +124,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         TokenConfig[] tokenConfig;
         uint256 swapFeePercentage;
         uint256 pauseWindowEndTime;
+        uint256 protocolSwapFeeOverridePercentage;
         PoolRoleAccounts roleAccounts;
         PoolHooks poolHooks;
         LiquidityManagement liquidityManagement;
@@ -135,6 +136,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
+        uint256 protocolSwapFeeOverridePercentage,
         PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
@@ -145,6 +147,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 tokenConfig: tokenConfig,
                 swapFeePercentage: swapFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
+                protocolSwapFeeOverridePercentage: protocolSwapFeeOverridePercentage,
                 roleAccounts: roleAccounts,
                 poolHooks: poolHooks,
                 liquidityManagement: liquidityManagement
@@ -176,6 +179,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
         if (numTokens > _MAX_TOKENS) {
             revert MaxTokens();
+        }
+
+        if (
+            params.protocolSwapFeeOverridePercentage != GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL &&
+            params.protocolSwapFeeOverridePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE
+        ) {
+            revert ProtocolSwapFeePercentageTooHigh();
         }
 
         // Retrieve or create the pool's token balances mapping.
@@ -232,12 +242,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-
         config.isPoolRegistered = true;
         config.hooks = params.poolHooks;
         config.liquidityManagement = params.liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime;
+        config.protocolSwapFeeOverridePercentage = params.protocolSwapFeeOverridePercentage;
         _poolConfig[pool] = config.fromPoolConfig();
 
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);

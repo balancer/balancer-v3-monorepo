@@ -41,6 +41,7 @@ library PoolConfigLib {
     uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = POOL_CREATOR_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
+    uint256 public constant PROTOCOL_SWAP_FEE_OVERRIDE_OFFSET = PAUSE_WINDOW_END_TIME_OFFSET + _TIMESTAMP_BITLENGTH;
 
     // Uses a uint24 (3 bytes): least significant 20 bits to store the values, and a 4-bit pad.
     // This maximum token count is also hard-coded in the Vault.
@@ -79,6 +80,12 @@ library PoolConfigLib {
 
     function getPauseWindowEndTime(PoolConfigBits config) internal pure returns (uint256) {
         return PoolConfigBits.unwrap(config).decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH);
+    }
+
+    function getProtocolSwapFeeOverridePercentage(PoolConfigBits config) internal pure returns (uint256) {
+        return
+            PoolConfigBits.unwrap(config).decodeUint(PROTOCOL_SWAP_FEE_OVERRIDE_OFFSET, FEE_BITLENGTH) *
+            FEE_SCALING_FACTOR;
     }
 
     function shouldCallComputeDynamicSwapFee(PoolConfigBits config) internal pure returns (bool) {
@@ -189,13 +196,19 @@ library PoolConfigLib {
                 .insertBool(config.liquidityManagement.enableRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
         }
         {
+            uint256 protocolSwapFeeOverridePct = config.protocolSwapFeeOverridePercentage;
+            if (protocolSwapFeeOverridePct != GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL) {
+                protocolSwapFeeOverridePct /= FEE_SCALING_FACTOR;
+            }
+
             configBits = configBits
                 .insertUint(config.staticSwapFeePercentage / FEE_SCALING_FACTOR, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH)
                 .insertUint(
                     config.poolCreatorFeePercentage / FEE_SCALING_FACTOR,
                     POOL_CREATOR_FEE_OFFSET,
                     FEE_BITLENGTH
-                );
+                )
+                .insertUint(protocolSwapFeeOverridePct, PROTOCOL_SWAP_FEE_OVERRIDE_OFFSET, FEE_BITLENGTH);
         }
 
         return
@@ -242,6 +255,11 @@ library PoolConfigLib {
     function toPoolConfig(PoolConfigBits config) internal pure returns (PoolConfig memory) {
         bytes32 rawConfig = PoolConfigBits.unwrap(config);
 
+        uint256 protocolSwapFeeOverridePct = rawConfig.decodeUint(PROTOCOL_SWAP_FEE_OVERRIDE_OFFSET, FEE_BITLENGTH);
+        if (protocolSwapFeeOverridePct != GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL) {
+            protocolSwapFeeOverridePct *= FEE_SCALING_FACTOR;
+        }
+
         // Calling the functions (in addition to costing more gas), causes an obscure form of stack error (Yul errors).
         return
             PoolConfig({
@@ -255,6 +273,7 @@ library PoolConfigLib {
                     FEE_SCALING_FACTOR,
                 tokenDecimalDiffs: rawConfig.decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH),
                 pauseWindowEndTime: rawConfig.decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH),
+                protocolSwapFeeOverridePercentage: protocolSwapFeeOverridePct,
                 hooks: PoolHooks({
                     shouldCallBeforeInitialize: rawConfig.decodeBool(BEFORE_INITIALIZE_OFFSET),
                     shouldCallAfterInitialize: rawConfig.decodeBool(AFTER_INITIALIZE_OFFSET),
