@@ -74,6 +74,7 @@ contract WeightedPool8020Factory is BasePoolFactory {
             pool,
             tokenConfig,
             swapFeePercentage,
+            GLOBAL_PROTOCOL_SWAP_FEE_SENTINEL,
             roleAccounts,
             getDefaultPoolHooks(),
             getDefaultLiquidityManagement()
