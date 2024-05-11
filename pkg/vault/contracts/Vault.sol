@@ -34,6 +34,7 @@ import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzepp
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
+import { PoolDataLib } from "./lib/PoolDataLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
@@ -49,6 +50,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
+    using PoolDataLib for PoolData;
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) {
         if (address(vaultExtension.vault()) != address(this)) {
@@ -199,7 +201,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The call to `onBeforeSwap` could potentially update token rates and balances.
             // We update `poolData.tokenRates`, `poolData.rawBalances` and `poolData.balancesLiveScaled18`
             // to ensure the `onSwap` and `onComputeDynamicSwapFee` are called with the current values.
-            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
+            poolData.reloadPossiblyStaleBalancesAndTokenRates(_poolTokenBalances[params.pool], Rounding.ROUND_DOWN);
 
             // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
             //_updateAmountGivenInVars(vars, params, poolData);
@@ -415,12 +417,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     poolData.balancesRaw[vars.indexOut] - amountOut
                 );
 
-            _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalanceIn, Rounding.ROUND_DOWN, vars.indexIn);
-            _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalanceOut, Rounding.ROUND_DOWN, vars.indexOut);
+            poolData.updateRawAndLiveBalance(vars.indexIn, newRawBalanceIn, Rounding.ROUND_DOWN);
+            poolData.updateRawAndLiveBalance(vars.indexOut, newRawBalanceOut, Rounding.ROUND_DOWN);
         }
 
         // 6) Store pool balances, raw and live
-        _setPoolBalances(params.pool, poolData);
+        _writePoolBalancesToStorage(params.pool, poolData);
 
         // 7) Off-chain events
         // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
@@ -509,7 +511,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
-            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_UP);
+            poolData.reloadPossiblyStaleBalancesAndTokenRates(_poolTokenBalances[params.pool], Rounding.ROUND_UP);
 
             // Also update maxAmountsInScaled18, as the rates might have changed.
             maxAmountsInScaled18 = params.maxAmountsIn.copyToScaled18ApplyRateRoundDownArray(
@@ -677,11 +679,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 amountInRaw -
                 vars.protocolSwapFeeAmountRaw -
                 vars.creatorSwapFeeAmountRaw;
-            _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalance, Rounding.ROUND_UP, i);
+
+            poolData.updateRawAndLiveBalance(i, newRawBalance, Rounding.ROUND_UP);
         }
 
         // 6) Store pool balances, raw and live
-        _setPoolBalances(params.pool, poolData);
+        _writePoolBalancesToStorage(params.pool, poolData);
 
         // 7) BPT supply adjustment
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
@@ -745,7 +748,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
-            _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
+            poolData.reloadPossiblyStaleBalancesAndTokenRates(_poolTokenBalances[params.pool], Rounding.ROUND_DOWN);
 
             // Also update minAmountsOutScaled18, as the rates might have changed.
             minAmountsOutScaled18 = params.minAmountsOut.copyToScaled18ApplyRateRoundUpArray(
@@ -907,11 +910,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 amountOutRaw -
                 vars.protocolSwapFeeAmountRaw -
                 vars.creatorSwapFeeAmountRaw;
-            _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalance, Rounding.ROUND_DOWN, i);
+
+            poolData.updateRawAndLiveBalance(i, newRawBalance, Rounding.ROUND_DOWN);
         }
 
         // 6) Store pool balances, raw and live
-        _setPoolBalances(params.pool, poolData);
+        _writePoolBalancesToStorage(params.pool, poolData);
 
         // 7) BPT supply adjustment
         _spendAllowance(address(params.pool), params.from, msg.sender, bptAmountIn);

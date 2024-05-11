@@ -28,6 +28,7 @@ import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
 import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
+import { PoolDataLib } from "../lib/PoolDataLib.sol";
 
 contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -37,6 +38,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using VaultStateLib for VaultState;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
+    using PoolDataLib for PoolData;
 
     PoolFactoryMock private immutable _poolFactoryMock;
     InputHelpersMock private immutable _inputHelpersMock;
@@ -219,7 +221,7 @@ contract VaultMock is IVaultMainMock, Vault {
             PoolConfig memory poolConfig
         )
     {
-        PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
         return (poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors, poolData.poolConfig);
     }
 
@@ -335,7 +337,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function getCurrentLiveBalances(address pool) external view returns (uint256[] memory currentLiveBalances) {
-        PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
 
         return poolData.balancesLiveScaled18;
     }
@@ -439,7 +441,7 @@ contract VaultMock is IVaultMainMock, Vault {
         PoolData memory poolData,
         Rounding roundingDirection
     ) external view returns (PoolData memory) {
-        _updatePoolDataLiveBalancesAndRates(pool, poolData, roundingDirection);
+        poolData.reloadPossiblyStaleBalancesAndTokenRates(_poolTokenBalances[pool], roundingDirection);
 
         return poolData;
     }

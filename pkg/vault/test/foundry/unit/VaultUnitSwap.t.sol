@@ -381,7 +381,7 @@ contract VaultUnitSwapTest is BaseTest {
             "Unexpected balanceRaw[vars.indexOut]"
         );
 
-        // check _setPoolBalances called
+        // check _writePoolBalancesToStorage called
         uint256[] memory expectedBalancesLiveScaled18 = poolData.balancesRaw.copyToScaled18ApplyRateRoundDownArray(
             poolData.decimalScalingFactors,
             poolData.tokenRates

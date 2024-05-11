@@ -119,7 +119,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function getPoolTokenRates(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256[] memory) {
-        return _getPoolData(pool, Rounding.ROUND_DOWN).tokenRates;
+        return _loadPoolData(pool, Rounding.ROUND_DOWN).tokenRates;
     }
 
     /*******************************************************************************
@@ -408,7 +408,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _poolConfig[pool] = config.fromPoolConfig();
 
         if (recoveryMode == false) {
-            _setPoolBalances(pool, _getPoolData(pool, Rounding.ROUND_DOWN));
+            _writePoolBalancesToStorage(pool, _loadPoolData(pool, Rounding.ROUND_DOWN));
         }
 
         emit PoolRecoveryModeStateChanged(pool, recoveryMode);
