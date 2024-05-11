@@ -9,10 +9,9 @@ import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.so
 
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
-import { IBaseRouter } from "./IBaseRouter.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface IRouter is IBaseRouter {
+interface IRouter {
     /***************************************************************************
                                Pool Initialization
     ***************************************************************************/

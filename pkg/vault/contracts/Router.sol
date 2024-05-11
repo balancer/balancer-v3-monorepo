@@ -7,7 +7,6 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
@@ -29,9 +28,6 @@ import { RouterCommon } from "./RouterCommon.sol";
 contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
     using Address for address payable;
-    using StorageSlot for *;
-
-    address private _sender;
 
     constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
         // solhint-disable-previous-line no-empty-blocks
@@ -1174,29 +1170,5 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             results[i] = Address.functionDelegateCall(address(this), data[i]);
         }
         return results;
-    }
-
-    function callAndSaveSender(bytes calldata data) external returns (bytes memory result) {
-        StorageSlot.AddressSlotType senderSlot = _getSenderSlot();
-        address sender = senderSlot.tload();
-        if (sender == address(0)) {
-            senderSlot.tstore(msg.sender);
-        }
-
-        result = Address.functionDelegateCall(address(this), data);
-    }
-
-    function getSender() external view returns (address) {
-        return _getSenderSlot().tload();
-    }
-
-    function _getSenderSlot() internal pure returns (StorageSlot.AddressSlotType) {
-        StorageSlot.AddressSlotType slot;
-
-        assembly {
-            slot := _sender.slot
-        }
-
-        return slot;
     }
 }

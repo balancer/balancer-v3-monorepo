@@ -2,6 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-interface IBaseRouter {
+interface IRouterSender {
     function getSender() external view returns (address);
 }

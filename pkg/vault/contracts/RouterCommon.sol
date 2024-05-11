@@ -11,11 +11,17 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import { IRouterSender } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterSender.sol";
+
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-contract RouterCommon {
+contract RouterCommon is IRouterSender {
     using Address for address payable;
     using SafeERC20 for IWETH;
+    using StorageSlot for *;
+
+    address private _sender;
 
     /// @dev Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
@@ -142,5 +148,29 @@ contract RouterCommon {
         if (msg.sender != address(_weth)) {
             revert EthTransfer();
         }
+    }
+
+    function getSender() external view returns (address) {
+        return _getSenderSlot().tload();
+    }
+
+    function callAndSaveSender(bytes calldata data) external returns (bytes memory result) {
+        StorageSlot.AddressSlotType senderSlot = _getSenderSlot();
+        address sender = senderSlot.tload();
+        if (sender == address(0)) {
+            senderSlot.tstore(msg.sender);
+        }
+
+        result = Address.functionDelegateCall(address(this), data);
+    }
+
+    function _getSenderSlot() internal pure returns (StorageSlot.AddressSlotType) {
+        StorageSlot.AddressSlotType slot;
+
+        assembly {
+            slot := _sender.slot
+        }
+
+        return slot;
     }
 }
