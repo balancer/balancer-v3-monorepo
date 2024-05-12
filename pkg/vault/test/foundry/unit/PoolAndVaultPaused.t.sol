@@ -124,7 +124,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         // sets the time after the pause buffer period
         vm.warp(_getTimeAfterPoolPauseBufferPeriod());
 
-        vault.manualSetVaultState(false, true, 3e16, 5e17);
+        vault.manualSetVaultState(false, true);
         vault.manualSetPoolPaused(address(pool), false);
 
         VaultState memory vaultState = vault.ensureUnpausedAndGetVaultState(address(pool));

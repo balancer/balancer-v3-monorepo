@@ -47,20 +47,20 @@ contract VaultUnitSwapTest is BaseTest {
     }
 
     function testSwapExactInWithZeroFee() public {
-        (
-            SwapParams memory params,
-            SwapVars memory vars,
-            PoolData memory poolData,
-            VaultState memory vaultState
-        ) = _makeParams(SwapKind.EXACT_IN, amountGivenRaw, 0, 0, 0);
+        (SwapParams memory params, SwapVars memory vars, PoolData memory poolData, ) = _makeParams(
+            SwapKind.EXACT_IN,
+            amountGivenRaw,
+            0,
+            0,
+            0
+        );
         _mockOnSwap(mockedAmountCalculatedScaled18, params, vars, poolData);
 
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = (0, 0, 0);
-        (amountCalculated, amountIn, amountOut, params, vars, poolData, vaultState) = vault.manualInternalSwap(
+        (amountCalculated, amountIn, amountOut, params, vars, poolData) = vault.manualInternalSwap(
             params,
             vars,
-            poolData,
-            vaultState
+            poolData
         );
 
         _checkSwapExactInResult(
@@ -71,8 +71,7 @@ contract VaultUnitSwapTest is BaseTest {
             amountOut,
             params,
             vars,
-            poolData,
-            vaultState
+            poolData
         );
     }
 
@@ -80,20 +79,20 @@ contract VaultUnitSwapTest is BaseTest {
         // set zero pool creator fee
         vault.manualSetPoolCreatorFees(pool, swapTokens[1], 0);
 
-        (
-            SwapParams memory params,
-            SwapVars memory vars,
-            PoolData memory poolData,
-            VaultState memory vaultState
-        ) = _makeParams(SwapKind.EXACT_IN, amountGivenRaw, 0, 5e16, 10e16);
+        (SwapParams memory params, SwapVars memory vars, PoolData memory poolData, ) = _makeParams(
+            SwapKind.EXACT_IN,
+            amountGivenRaw,
+            0,
+            5e16,
+            10e16
+        );
         _mockOnSwap(mockedAmountCalculatedScaled18, params, vars, poolData);
 
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = (0, 0, 0);
-        (amountCalculated, amountIn, amountOut, params, vars, poolData, vaultState) = vault.manualInternalSwap(
+        (amountCalculated, amountIn, amountOut, params, vars, poolData) = vault.manualInternalSwap(
             params,
             vars,
-            poolData,
-            vaultState
+            poolData
         );
 
         _checkSwapExactInResult(
@@ -104,20 +103,20 @@ contract VaultUnitSwapTest is BaseTest {
             amountOut,
             params,
             vars,
-            poolData,
-            vaultState
+            poolData
         );
     }
 
     function testSwapExactInSwapLimitRevert() public {
         uint256 swapLimit = mockedAmountCalculatedScaled18 - 1;
 
-        (
-            SwapParams memory params,
-            SwapVars memory vars,
-            PoolData memory poolData,
-            VaultState memory vaultState
-        ) = _makeParams(SwapKind.EXACT_IN, amountGivenRaw, swapLimit, 0, 0);
+        (SwapParams memory params, SwapVars memory vars, PoolData memory poolData) = _makeParams(
+            SwapKind.EXACT_IN,
+            amountGivenRaw,
+            swapLimit,
+            0,
+            0
+        );
 
         uint256 amount = mockedAmountCalculatedScaled18.toRawUndoRateRoundDown(
             poolData.decimalScalingFactors[vars.indexOut],
@@ -127,16 +126,17 @@ contract VaultUnitSwapTest is BaseTest {
         _mockOnSwap(mockedAmountCalculatedScaled18, params, vars, poolData);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, amount, swapLimit));
-        vault.manualInternalSwap(params, vars, poolData, vaultState);
+        vault.manualInternalSwap(params, vars, poolData);
     }
 
     function testSwapExactOutSwapLimitRevert() public {
-        (
-            SwapParams memory params,
-            SwapVars memory vars,
-            PoolData memory poolData,
-            VaultState memory vaultState
-        ) = _makeParams(SwapKind.EXACT_OUT, amountGivenRaw, 0, 0, 0);
+        (SwapParams memory params, SwapVars memory vars, PoolData memory poolData) = _makeParams(
+            SwapKind.EXACT_OUT,
+            amountGivenRaw,
+            0,
+            0,
+            0
+        );
 
         uint256 amount = mockedAmountCalculatedScaled18.toRawUndoRateRoundDown(
             poolData.decimalScalingFactors[vars.indexIn],
@@ -146,24 +146,24 @@ contract VaultUnitSwapTest is BaseTest {
         _mockOnSwap(mockedAmountCalculatedScaled18, params, vars, poolData);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, amount, 0));
-        vault.manualInternalSwap(params, vars, poolData, vaultState);
+        vault.manualInternalSwap(params, vars, poolData);
     }
 
     function testSwapExactOutWithZeroFee() public {
-        (
-            SwapParams memory params,
-            SwapVars memory vars,
-            PoolData memory poolData,
-            VaultState memory vaultState
-        ) = _makeParams(SwapKind.EXACT_OUT, amountGivenRaw, mockedAmountCalculatedScaled18, 0, 0);
+        (SwapParams memory params, SwapVars memory vars, PoolData memory poolData) = _makeParams(
+            SwapKind.EXACT_OUT,
+            amountGivenRaw,
+            mockedAmountCalculatedScaled18,
+            0,
+            0
+        );
         _mockOnSwap(mockedAmountCalculatedScaled18, params, vars, poolData);
 
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = (0, 0, 0);
-        (amountCalculated, amountIn, amountOut, params, vars, poolData, vaultState) = vault.manualInternalSwap(
+        (amountCalculated, amountIn, amountOut, params, vars, poolData) = vault.manualInternalSwap(
             params,
             vars,
-            poolData,
-            vaultState
+            poolData
         );
 
         _checkSwapExactOutResult(
@@ -174,8 +174,7 @@ contract VaultUnitSwapTest is BaseTest {
             amountOut,
             params,
             vars,
-            poolData,
-            vaultState
+            poolData
         );
     }
 
@@ -186,21 +185,21 @@ contract VaultUnitSwapTest is BaseTest {
 
         uint256 amountCalculatedWithFee = mockedAmountCalculatedScaled18 + swapFeeAmount;
         // This sets the protocol swap fee percentage to the same as the swap fee percentage
-        (
-            SwapParams memory params,
-            SwapVars memory vars,
-            PoolData memory poolData,
-            VaultState memory vaultState
-        ) = _makeParams(SwapKind.EXACT_OUT, amountGivenRaw, amountCalculatedWithFee, swapFeePct, creatorFeePct);
+        (SwapParams memory params, SwapVars memory vars, PoolData memory poolData) = _makeParams(
+            SwapKind.EXACT_OUT,
+            amountGivenRaw,
+            amountCalculatedWithFee,
+            swapFeePct,
+            creatorFeePct
+        );
         _mockOnSwap(mockedAmountCalculatedScaled18, params, vars, poolData);
         vault.manualSetPoolCreatorFees(pool, swapTokens[0], 0);
 
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = (0, 0, 0);
-        (amountCalculated, amountIn, amountOut, params, vars, poolData, vaultState) = vault.manualInternalSwap(
+        (amountCalculated, amountIn, amountOut, params, vars, poolData) = vault.manualInternalSwap(
             params,
             vars,
-            poolData,
-            vaultState
+            poolData
         );
 
         _checkSwapExactOutResult(
@@ -211,8 +210,7 @@ contract VaultUnitSwapTest is BaseTest {
             amountOut,
             params,
             vars,
-            poolData,
-            vaultState
+            poolData
         );
     }
 
@@ -223,10 +221,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 limitRaw,
         uint256 swapFeePercentage_,
         uint256 poolCreatorFeePercentage_
-    )
-        internal
-        returns (SwapParams memory params, SwapVars memory vars, PoolData memory poolData, VaultState memory vaultState)
-    {
+    ) internal returns (SwapParams memory params, SwapVars memory vars, PoolData memory poolData) {
         params = SwapParams({
             kind: kind,
             pool: pool,
@@ -246,7 +241,7 @@ contract VaultUnitSwapTest is BaseTest {
         poolData.balancesRaw = initialBalances;
 
         poolData.poolConfig.staticSwapFeePercentage = swapFeePercentage_;
-        vaultState.protocolSwapFeePercentage = swapFeePercentage_;
+        poolData.poolConfig.protocolSwapFeePercentage = swapFeePercentage_;
         poolData.poolConfig.poolCreatorFeePercentage = poolCreatorFeePercentage_;
 
         // TODO: check these after the operations.
@@ -261,8 +256,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 amountOut,
         SwapParams memory params,
         SwapVars memory vars,
-        PoolData memory poolData,
-        VaultState memory vaultState
+        PoolData memory poolData
     ) internal {
         uint256 fee = mockedAmountCalculatedScaled18_.mulUp(poolData.poolConfig.staticSwapFeePercentage);
 
@@ -283,7 +277,9 @@ contract VaultUnitSwapTest is BaseTest {
 
         // check fees
         assertEq(vars.swapFeeAmountScaled18, fee, "Unexpected swapFeeAmountScaled18");
-        uint256 protocolSwapFeeAmountScaled18 = vars.swapFeeAmountScaled18.mulUp(vaultState.protocolSwapFeePercentage);
+        uint256 protocolSwapFeeAmountScaled18 = vars.swapFeeAmountScaled18.mulUp(
+            poolData.poolConfig.protocolSwapFeePercentage
+        );
         assertEq(
             vars.protocolSwapFeeAmountRaw,
             protocolSwapFeeAmountScaled18.toRawUndoRateRoundDown(
@@ -303,7 +299,7 @@ contract VaultUnitSwapTest is BaseTest {
             "Unexpected creatorSwapFeeAmountRaw"
         );
 
-        _checkSwapResult(amountIn, amountOut, params, vars, poolData, vaultState);
+        _checkSwapResult(amountIn, amountOut, params, vars, poolData);
     }
 
     function _checkSwapExactOutResult(
@@ -314,8 +310,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 amountOut,
         SwapParams memory params,
         SwapVars memory vars,
-        PoolData memory poolData,
-        VaultState memory vaultState
+        PoolData memory poolData
     ) internal {
         uint256 expectedSwapFeeAmountScaled18 = mockedAmountCalculatedScaled18_.mulDown(
             poolData.poolConfig.staticSwapFeePercentage
@@ -328,7 +323,7 @@ contract VaultUnitSwapTest is BaseTest {
         );
 
         uint256 expectedProtocolFeeAmountScaled18 = expectedSwapFeeAmountScaled18.mulUp(
-            vaultState.protocolSwapFeePercentage
+            poolData.poolConfig.protocolSwapFeePercentage
         );
 
         uint256 expectedProtocolFeeAmountRaw = expectedProtocolFeeAmountScaled18.toRawUndoRateRoundDown(
@@ -354,7 +349,7 @@ contract VaultUnitSwapTest is BaseTest {
         assertEq(vars.protocolSwapFeeAmountRaw, expectedProtocolFeeAmountRaw, "Unexpected protocolFeeAmountRaw");
         assertEq(vars.creatorSwapFeeAmountRaw, expectedCreatorFeeAmountRaw, "Unexpected creatorSwapFeeAmountRaw");
 
-        _checkSwapResult(amountIn, amountOut, params, vars, poolData, vaultState);
+        _checkSwapResult(amountIn, amountOut, params, vars, poolData);
     }
 
     function _checkSwapResult(
@@ -362,8 +357,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 amountOut,
         SwapParams memory params,
         SwapVars memory vars,
-        PoolData memory poolData,
-        VaultState memory vaultState
+        PoolData memory poolData
     ) internal {
         uint256 totalFees = vars.protocolSwapFeeAmountRaw + vars.creatorSwapFeeAmountRaw;
         uint256 feesOnAmountOut = params.kind == SwapKind.EXACT_IN ? totalFees : 0;

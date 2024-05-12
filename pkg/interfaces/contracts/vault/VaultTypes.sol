@@ -30,6 +30,8 @@ struct PoolConfig {
     PoolHooks hooks;
     LiquidityManagement liquidityManagement;
     uint256 staticSwapFeePercentage;
+    uint256 protocolSwapFeePercentage;
+    uint256 protocolYieldFeePercentage;
     uint256 poolCreatorFeePercentage;
     uint256 tokenDecimalDiffs;
     uint256 pauseWindowEndTime;
@@ -54,16 +56,12 @@ struct SwapVars {
 
 /**
  * @dev Represents the Vault's configuration.
- * @param protocolSwapFeePercentage Charged whenever a swap occurs, as a percentage of the fee charged by the Pool.
- * We allow 0% swap fee.
- * @param protocolYieldFeePercentage Charged on all pool operations for yield-bearing tokens.
  * @param isQueryDisabled If set to true, disables query functionality of the Vault. Can be modified only by
  * governance.
  * @param isVaultPaused If set to true, Swaps and Add/Remove Liquidity operations are halted
+ * @param areBuffersPaused If set to true, operations with the Vault wrap/unwrap primitives are disabled
  */
 struct VaultState {
-    uint256 protocolSwapFeePercentage;
-    uint256 protocolYieldFeePercentage;
     bool isQueryDisabled;
     bool isVaultPaused;
     bool areBuffersPaused;
@@ -263,8 +261,3 @@ struct BufferWrapOrUnwrapParams {
 // they can be set to any value between 0% and 100% (step 0.00001%).
 uint256 constant FEE_BITLENGTH = 24;
 uint256 constant FEE_SCALING_FACTOR = 1e11;
-
-enum ProtocolFeeType {
-    SWAP,
-    YIELD
-}

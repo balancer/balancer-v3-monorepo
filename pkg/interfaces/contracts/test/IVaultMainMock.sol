@@ -38,7 +38,7 @@ interface IVaultMainMock {
 
     function manualSetVaultPaused(bool) external;
 
-    function manualSetVaultState(bool, bool, uint256, uint256) external;
+    function manualSetVaultState(bool, bool) external;
 
     function manualSetPoolTokenConfig(address, IERC20[] memory, TokenConfig[] memory) external;
 
@@ -132,8 +132,7 @@ interface IVaultMainMock {
     function manualInternalSwap(
         SwapParams memory params,
         SwapVars memory vars,
-        PoolData memory poolData,
-        VaultState memory vaultState
+        PoolData memory poolData
     )
         external
         returns (
@@ -142,8 +141,7 @@ interface IVaultMainMock {
             uint256 amountOut,
             SwapParams memory,
             SwapVars memory,
-            PoolData memory,
-            VaultState memory
+            PoolData memory
         );
 
     function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external;
@@ -172,8 +170,7 @@ interface IVaultMainMock {
     function manualAddLiquidity(
         PoolData memory poolData,
         AddLiquidityParams memory params,
-        uint256[] memory maxAmountsInScaled18,
-        VaultState memory vaultState
+        uint256[] memory maxAmountsInScaled18
     )
         external
         returns (
