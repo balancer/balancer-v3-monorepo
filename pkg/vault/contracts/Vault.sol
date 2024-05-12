@@ -177,7 +177,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData in memory. Since the swap hooks are reentrant and could do anything, including change these
         // balances, we cannot defer settlement until `_swap`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`,
         // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
@@ -313,8 +313,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      *                balancesLiveScaled18 in `poolData`.
      * Side effects: mutates swapFeeAmountScaled18, amountCalculatedScaled18, protocolSwapFeeAmountRaw,
      *               creatorSwapFeeAmountRaw in vars; balancesRaw, balancesLiveScaled18 in `poolData`.
-     * Updates `_protocolFees`, `_poolCreatorFees`, `_poolTokenBalances` in storage.
-     * Emits Swap event. May emit ProtocolSwapFeeCharged, PoolCreatorSwapFeeCharged events.
+     * Updates `_poolCreatorFees`, `_poolTokenBalances` in storage.
+     * Emits Swap event. May emit ProtocolSwapFeeCharged, PoolCreatorSwapFeeCharged events, and send tokens to the
+     * ProtocolFeeCollector.
      */
     function _swap(
         SwapParams memory params,
@@ -497,8 +498,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData in memory. Since the add liquidity hooks are reentrant and could do anything, including change
         // these balances, we cannot defer settlement until `_addLiquidity`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
-        // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_poolCreatorFees` in storage.
+        // May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events, and send tokens to the
+        // Protocol Fee Collector.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_UP,
@@ -735,8 +737,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData in memory. Since the remove liquidity hooks are reentrant and could do anything, including change
         // these balances, we cannot defer settlement until `_removeLiquidity`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
-        // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_poolCreatorFees` in storage.
+        // May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events, and send tokens to the
+        // Protocol Fee Collector.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_DOWN,
@@ -959,7 +962,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /**
      * @dev Preconditions: poolConfig, decimalScalingFactors, tokenRates in `poolData`.
-     * Side effects: updates `_protocolFees` and `_poolCreatorFees` storage (and emits events).
+     * Side effects: updates `_poolCreatorFees` storage, emits events, and sends tokens to the ProtocolFeeCollector.
      * Should only be called in a non-reentrant context.
      * IMPORTANT: creator fees are calculated based on creatorAndLpFees, and not in totalFees. See example below
      * Example:
@@ -992,7 +995,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     poolData.tokenRates[index]
                 );
 
-                _protocolFees[pool][token] += protocolSwapFeeAmountRaw;
+                token.safeTransfer(address(_protocolFeeCollector), protocolSwapFeeAmountRaw);
                 emit ProtocolSwapFeeCharged(pool, address(token), protocolSwapFeeAmountRaw);
             }
 

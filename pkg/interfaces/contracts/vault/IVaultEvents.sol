@@ -119,19 +119,10 @@ interface IVaultEvents {
     event ProtocolYieldFeePercentageChanged(uint256 yieldFeePercentage);
 
     /**
-     * @notice Logs the collection of fees in a specific token and amount.
-     * @param pool The address of the pool for which protocol fees have been collected
-     * @param token The token in which the fee has been collected
-     * @param amount The amount of the token collected as fees
-     */
-    event ProtocolFeeCollected(address indexed pool, IERC20 indexed token, uint256 amount);
-
-    /**
      * @notice Emitted when a protocol swap fee is incurred.
      * @dev This is included for offchain traceability of fees to pools. Pending protocol fees on both swap and yield
      * are combined. It is an invariant of the system that the total amounts for each token reported here and by
-     * `ProtocolYieldFeeCharged` should equal the total collected for the token and pool reported by
-     * `ProtocolFeeCollected` when `collectProtocolFees` is called.
+     * `ProtocolYieldFeeCharged` should equal the total sent to the Protocol Fee Collector.
      *
      * @param pool The pool associated with this charge
      * @param token The token whose protocol fee balance increased
@@ -143,8 +134,7 @@ interface IVaultEvents {
      * @notice Emitted when a protocol yield fee is incurred.
      * @dev This is included for offchain traceability of fees to pools. Pending protocol fees on both swap and yield
      * are combined. It is an invariant of the system that the total amounts for each token reported here and by
-     * `ProtocolSwapFeeCharged` should equal the total collected for the token and pool reported by
-     * `ProtocolFeeCollected` when `collectProtocolFees` is called.
+     * `ProtocolSwapFeeCharged` should equal the total sent to the Protocol Fee Collector.
      *
      * @param pool The pool associated with this charge
      * @param token The token whose protocol fee balance increased

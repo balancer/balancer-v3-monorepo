@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
@@ -42,6 +43,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
+    using SafeERC20 for IERC20;
 
     /*******************************************************************************
                               Transient Accounting
@@ -435,13 +437,13 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
             if (yieldFeeAmountRaw > 0) {
                 // Charge protocol fee.
-                _protocolFees[pool][token] += yieldFeeAmountRaw;
+                token.safeTransfer(address(_protocolFeeCollector), yieldFeeAmountRaw);
                 emit ProtocolYieldFeeCharged(pool, address(token), yieldFeeAmountRaw);
             }
 
             uint256 creatorYieldFeeAmountRaw = dueCreatorYieldFees[i];
             if (creatorYieldFeeAmountRaw > 0) {
-                // Charge pool creator fee
+                // Charge pool creator fee.
                 _poolCreatorFees[pool][token] += creatorYieldFeeAmountRaw;
                 emit PoolCreatorYieldFeeCharged(pool, address(token), creatorYieldFeeAmountRaw);
             }

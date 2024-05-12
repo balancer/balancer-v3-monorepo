@@ -337,24 +337,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectProtocolFees(address pool) external authenticate nonReentrant onlyVault {
-        IERC20[] memory tokens = _getPoolTokens(pool);
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-            uint256 amount = _protocolFees[pool][token];
-
-            if (amount > 0) {
-                // set fees to zero for the token
-                _protocolFees[pool][token] = 0;
-
-                token.safeTransfer(msg.sender, amount);
-                emit ProtocolFeeCollected(pool, token, amount);
-            }
-        }
-    }
-
-    /// @inheritdoc IVaultAdmin
     function collectPoolCreatorFees(address pool) external nonReentrant onlyVault {
         IERC20[] memory tokens = _getPoolTokens(pool);
 

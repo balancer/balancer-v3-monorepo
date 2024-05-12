@@ -388,35 +388,6 @@ contract VaultSwapTest is BaseVaultTest {
         return (swapFee, protocolSwapFee);
     }
 
-    function testCollectProtocolFees() public {
-        usdc.mint(bob, defaultAmount);
-
-        setSwapFeePercentage(swapFeePercentage);
-        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
-
-        vm.prank(bob);
-        router.swapSingleTokenExactIn(
-            address(pool),
-            usdc,
-            dai,
-            defaultAmount,
-            defaultAmount - swapFee,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
-
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.collectProtocolFees.selector), admin);
-        vm.prank(admin);
-        vault.collectProtocolFees(pool);
-
-        // protocol fees are zero
-        assertEq(0, vault.getProtocolFees(pool, dai), "Protocol fees are not zero");
-
-        // alice received protocol fees
-        assertEq(dai.balanceOf(admin) - defaultBalance, (protocolSwapFee), "Protocol fees not collected");
-    }
-
     function reentrancyHook() public {
         // do second swap
         SwapParams memory params = SwapParams({

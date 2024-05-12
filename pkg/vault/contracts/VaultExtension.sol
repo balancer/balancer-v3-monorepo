@@ -520,11 +520,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function getProtocolFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
-        return _protocolFees[pool][token];
-    }
-
-    /// @inheritdoc IVaultExtension
     function getStaticSwapFeePercentage(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
