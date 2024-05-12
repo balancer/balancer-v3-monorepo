@@ -172,13 +172,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert CannotSwapSameToken();
         }
 
-        // `_chargePendingYieldFeesUpdatePoolBalancesAndReturnPoolData` is non-reentrant, as it updates storage as well as filling in
+        // `_chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData` is non-reentrant, as it updates storage as well as filling in
         // poolData in memory. Since the swap hooks are reentrant and could do anything, including change these
         // balances, we cannot defer settlement until `_swap`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
         // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
-        PoolData memory poolData = _chargePendingYieldFeesUpdatePoolBalancesAndReturnPoolData(
+        PoolData memory poolData = _chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData(
             params.pool,
             Rounding.ROUND_DOWN,
             vaultState.protocolYieldFeePercentage
@@ -472,13 +472,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
 
-        // `_chargePendingYieldFeesUpdatePoolBalancesAndReturnPoolData` is non-reentrant, as it updates storage as well
+        // `_chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the add liquidity hooks are reentrant and could do anything,
         // including change these balances, we cannot defer settlement until `_addLiquidity`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
         // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
-        PoolData memory poolData = _chargePendingYieldFeesUpdatePoolBalancesAndReturnPoolData(
+        PoolData memory poolData = _chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData(
             params.pool,
             Rounding.ROUND_UP,
             vaultState.protocolYieldFeePercentage
@@ -670,17 +670,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 );
             }
 
-            // 5) Pool balances: raw and live
+             // 5) Pool balances: raw and live
             // We need regular balances to complete the accounting, and the upscaled balances
             // to use in the `after` hook later on.
 
             // A pool's token balance increases by amounts in after adding liquidity, minus fees.
-            uint256 newRawBalance = poolData.balancesRaw[i] +
-                amountInRaw -
+            uint256 amountToIncreaseRaw = amountInRaw -
                 vars.protocolSwapFeeAmountRaw -
                 vars.creatorSwapFeeAmountRaw;
 
-            poolData.updateRawAndLiveBalance(i, newRawBalance, Rounding.ROUND_UP);
+            poolData.increaseTokenBalance(i, amountToIncreaseRaw);
         }
 
         // 6) Store pool balances, raw and live
@@ -711,13 +710,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
 
-        // `_chargePendingYieldFeesUpdatePoolBalancesAndReturnPoolData` is non-reentrant, as it updates storage as well as filling in
+        // `_chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData` is non-reentrant, as it updates storage as well as filling in
         // poolData in memory. Since the remove liquidity hooks are reentrant and could do anything, including change
         // these balances, we cannot defer settlement until `_removeLiquidity`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
         // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
-        PoolData memory poolData = _chargePendingYieldFeesUpdatePoolBalancesAndReturnPoolData(
+        PoolData memory poolData = _chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData(
             params.pool,
             Rounding.ROUND_DOWN,
             vaultState.protocolYieldFeePercentage
@@ -900,18 +899,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     i
                 );
             }
+            
             // 5) Pool balances: raw and live
             // We need regular balances to complete the accounting, and the upscaled balances
             // to use in the `after` hook later on.
 
             // A Pool's token balance always decreases after an exit
             // (potentially by 0). Also adjust by protocol and pool creator fees.
-            uint256 newRawBalance = poolData.balancesRaw[i] -
-                amountOutRaw -
+            uint256 amountToDecreaseRaw = amountOutRaw -
                 vars.protocolSwapFeeAmountRaw -
                 vars.creatorSwapFeeAmountRaw;
 
-            poolData.updateRawAndLiveBalance(i, newRawBalance, Rounding.ROUND_DOWN);
+            poolData.decreaseTokenBalance(i, amountToDecreaseRaw);
         }
 
         // 6) Store pool balances, raw and live
