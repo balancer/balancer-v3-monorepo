@@ -263,3 +263,8 @@ struct BufferWrapOrUnwrapParams {
 // they can be set to any value between 0% and 100% (step 0.00001%).
 uint256 constant FEE_BITLENGTH = 24;
 uint256 constant FEE_SCALING_FACTOR = 1e11;
+
+enum ProtocolFeeType {
+    SWAP,
+    YIELD
+}
