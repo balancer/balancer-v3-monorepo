@@ -18,10 +18,50 @@ import {
 contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
+    // Maximum protocol swap fee percentage. 1e18 corresponds to a 100% fee.
+    uint256 internal constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
+
+    // Maximum protocol yield fee percentage.
+    uint256 internal constant _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 20e16; // 20%
+
     IVault private immutable _vault;
+
+    uint256 private _protocolSwapFeePercentage;
+
+    uint256 private _protocolYieldFeePercentage;
 
     constructor(IVault vault_) SingletonAuthentication(vault_) {
         _vault = vault_;
+    }
+
+    /// @inheritdoc IProtocolFeeCollector
+    function getProtocolSwapFeePercentage() external view returns (uint256) {
+        return _protocolSwapFeePercentage;
+    }
+
+    /// @inheritdoc IProtocolFeeCollector
+    function getProtocolYieldFeePercentage() external view returns (uint256) {
+        return _protocolYieldFeePercentage;
+    }
+
+    /// @inheritdoc IProtocolFeeCollector
+    function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate {
+        if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
+            revert ProtocolSwapFeePercentageTooHigh();
+        }
+
+        _protocolSwapFeePercentage = newProtocolSwapFeePercentage;
+        emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
+    }
+
+    /// @inheritdoc IProtocolFeeCollector
+    function setProtocolYieldFeePercentage(uint256 newProtocolYieldFeePercentage) external authenticate {
+        if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
+            revert ProtocolYieldFeePercentageTooHigh();
+        }
+
+        _protocolYieldFeePercentage = newProtocolYieldFeePercentage;
+        emit ProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
     }
 
     /// @inheritdoc IProtocolFeeCollector

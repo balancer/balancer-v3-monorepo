@@ -113,18 +113,6 @@ interface IVaultAdmin {
     *******************************************************************************/
 
     /**
-     * @notice Sets a new swap fee percentage for the protocol.
-     * @param newSwapFeePercentage The new swap fee percentage to be set
-     */
-    function setProtocolSwapFeePercentage(uint256 newSwapFeePercentage) external;
-
-    /**
-     * @notice Sets a new yield fee percentage for the protocol.
-     * @param newYieldFeePercentage The new swap fee percentage to be set
-     */
-    function setProtocolYieldFeePercentage(uint256 newYieldFeePercentage) external;
-
-    /**
      * @notice Assigns a new static swap fee percentage to the specified pool.
      * @param pool The address of the pool for which the static swap fee will be changed
      * @param swapFeePercentage The new swap fee percentage to apply to the pool

@@ -241,18 +241,6 @@ interface IVaultExtension {
     *******************************************************************************/
 
     /**
-     * @notice Retrieves the current protocol swap fee percentage.
-     * @return The current protocol swap fee percentage
-     */
-    function getProtocolSwapFeePercentage() external view returns (uint256);
-
-    /**
-     * @notice Retrieves the current protocol yield fee percentage.
-     * @return The current protocol yield fee percentage
-     */
-    function getProtocolYieldFeePercentage() external view returns (uint256);
-
-    /**
      * @notice Fetches the static swap fee percentage for a given pool.
      * @param pool The address of the pool whose static swap fee percentage is being queried
      * @return The current static swap fee percentage for the specified pool

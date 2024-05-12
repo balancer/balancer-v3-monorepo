@@ -107,18 +107,6 @@ interface IVaultEvents {
     event PoolPausedStateChanged(address indexed pool, bool paused);
 
     /**
-     * @notice Emitted when the protocol swap fee percentage is updated.
-     * @param swapFeePercentage The updated protocol swap fee percentage
-     */
-    event ProtocolSwapFeePercentageChanged(uint256 swapFeePercentage);
-
-    /**
-     * @notice Emitted when the protocol yield fee percentage is updated.
-     * @param yieldFeePercentage The updated protocol yield fee percentage
-     */
-    event ProtocolYieldFeePercentageChanged(uint256 yieldFeePercentage);
-
-    /**
      * @notice Emitted when a protocol swap fee is incurred.
      * @dev This is included for offchain traceability of fees to pools. Pending protocol fees on both swap and yield
      * are combined. It is an invariant of the system that the total amounts for each token reported here and by

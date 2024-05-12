@@ -354,8 +354,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _getPoolDataAndYieldFees(
         address pool,
-        Rounding roundingDirection,
-        uint256 yieldFeePercentage
+        Rounding roundingDirection
     )
         internal
         view
@@ -371,7 +370,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         dueCreatorYieldFees = new uint256[](numTokens);
 
         bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
-            yieldFeePercentage > 0 &&
+            poolData.poolConfig.protocolYieldFeePercentage > 0 &&
             poolData.poolConfig.isPoolInRecoveryMode == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -392,7 +391,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                     poolData,
                     poolBalances.unchecked_valueAt(i).getBalanceDerived(),
                     i,
-                    yieldFeePercentage
+                    poolData.poolConfig.protocolYieldFeePercentage
                 );
 
                 if (protocolYieldFeeAmountRaw > 0 || creatorYieldFeeAmountRaw > 0) {
@@ -418,17 +417,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _computePoolDataUpdatingBalancesAndFees(
         address pool,
-        Rounding roundingDirection,
-        uint256 yieldFeePercentage
+        Rounding roundingDirection
     ) internal nonReentrant returns (PoolData memory poolData) {
         uint256[] memory dueProtocolYieldFees;
         uint256[] memory dueCreatorYieldFees;
 
-        (poolData, dueProtocolYieldFees, dueCreatorYieldFees) = _getPoolDataAndYieldFees(
-            pool,
-            roundingDirection,
-            yieldFeePercentage
-        );
+        (poolData, dueProtocolYieldFees, dueCreatorYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection);
         uint256 numTokens = dueProtocolYieldFees.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {

@@ -41,6 +41,8 @@ library PoolConfigLib {
     uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = POOL_CREATOR_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
+    uint256 public constant PROTOCOL_SWAP_FEE_OFFSET = PAUSE_WINDOW_END_TIME_OFFSET + _TIMESTAMP_BITLENGTH;
+    uint256 public constant PROTOCOL_YIELD_FEE_OFFSET = PROTOCOL_SWAP_FEE_OFFSET + FEE_BITLENGTH;
 
     // Uses a uint24 (3 bytes): least significant 20 bits to store the values, and a 4-bit pad.
     // This maximum token count is also hard-coded in the Vault.
@@ -71,6 +73,14 @@ library PoolConfigLib {
 
     function getPoolCreatorFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
         return PoolConfigBits.unwrap(config).decodeUint(POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
+    }
+
+    function getProtocolSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
+        return PoolConfigBits.unwrap(config).decodeUint(PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
+    }
+
+    function getProtocolYieldFeeOverridePercentage(PoolConfigBits config) internal pure returns (uint256) {
+        return PoolConfigBits.unwrap(config).decodeUint(PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint256) {
@@ -195,6 +205,16 @@ library PoolConfigLib {
                     config.poolCreatorFeePercentage / FEE_SCALING_FACTOR,
                     POOL_CREATOR_FEE_OFFSET,
                     FEE_BITLENGTH
+                )
+                .insertUint(
+                    config.protocolSwapFeePercentage / FEE_SCALING_FACTOR,
+                    PROTOCOL_SWAP_FEE_OFFSET,
+                    FEE_BITLENGTH
+                )
+                .insertUint(
+                    config.protocolYieldFeePercentage / FEE_SCALING_FACTOR,
+                    PROTOCOL_YIELD_FEE_OFFSET,
+                    FEE_BITLENGTH
                 );
         }
 
@@ -252,6 +272,10 @@ library PoolConfigLib {
                 staticSwapFeePercentage: rawConfig.decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
                     FEE_SCALING_FACTOR,
                 poolCreatorFeePercentage: rawConfig.decodeUint(POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH) *
+                    FEE_SCALING_FACTOR,
+                protocolSwapFeePercentage: rawConfig.decodeUint(PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
+                    FEE_SCALING_FACTOR,
+                protocolYieldFeePercentage: rawConfig.decodeUint(PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH) *
                     FEE_SCALING_FACTOR,
                 tokenDecimalDiffs: rawConfig.decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH),
                 pauseWindowEndTime: rawConfig.decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH),
