@@ -20,6 +20,7 @@ import {
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
+import { ProtocolFeeCollector } from "./ProtocolFeeCollector.sol";
 
 // solhint-disable max-states-count
 
@@ -111,6 +112,9 @@ contract VaultStorage {
 
     // pool -> roleId (corresponding to a particular function) -> PoolFunctionPermission.
     mapping(address => mapping(bytes32 => PoolFunctionPermission)) internal _poolFunctionPermissions;
+
+    // Contract that receives protocol swap and yield fees
+    ProtocolFeeCollector internal immutable _protocolFeeCollector;
 
     // pool -> PoolRoleAccounts (accounts assigned to specific roles; e.g., pauseManager).
     mapping(address => PoolRoleAccounts) internal _poolRoleAccounts;

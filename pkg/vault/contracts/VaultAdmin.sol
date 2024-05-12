@@ -8,13 +8,14 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -32,6 +33,7 @@ import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
+import { ProtocolFeeCollector } from "./ProtocolFeeCollector.sol";
 
 /**
  * @dev Bytecode extension for the Vault containing permissioned functions. Complementary to the `VaultExtension`.
@@ -79,6 +81,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
 
         _vault = mainVault;
+
+        _protocolFeeCollector = new ProtocolFeeCollector(mainVault);
     }
 
     /*******************************************************************************
@@ -87,6 +91,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     function vault() external view returns (IVault) {
         return _vault;
+    }
+
+    function getProtocolFeeCollector() external view returns (IProtocolFeeCollector) {
+        return _protocolFeeCollector;
     }
 
     /// @inheritdoc IVaultAdmin
