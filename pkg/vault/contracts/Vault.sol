@@ -334,7 +334,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapVars memory vars,
         PoolData memory poolData,
         VaultState memory vaultState
-    ) internal nonReentrant returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
+    ) internal nonReentrant returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw) {
         // Perform the swap request hook and compute the new balances for 'token in' and 'token out' after the swap
 
         vars.amountCalculatedScaled18 = IBasePool(params.pool).onSwap(_buildPoolSwapParams(params, vars, poolData));
@@ -357,35 +357,35 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vars.amountCalculatedScaled18 -= vars.swapFeeAmountScaled18;
 
             // For `ExactIn` the amount calculated is leaving the Vault, so we round down.
-            amountCalculated = vars.amountCalculatedScaled18.toRawUndoRateRoundDown(
+            amountCalculatedRaw = vars.amountCalculatedScaled18.toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[vars.indexOut],
                 poolData.tokenRates[vars.indexOut]
             );
 
-            (amountIn, amountOut) = (params.amountGivenRaw, amountCalculated);
+            (amountInRaw, amountOutRaw) = (params.amountGivenRaw, amountCalculatedRaw);
 
-            if (amountOut < params.limitRaw) {
-                revert SwapLimit(amountOut, params.limitRaw);
+            if (amountOutRaw < params.limitRaw) {
+                revert SwapLimit(amountOutRaw, params.limitRaw);
             }
         } else {
             vars.amountCalculatedScaled18 += vars.swapFeeAmountScaled18;
 
             // For `ExactOut` the amount calculated is entering the Vault, so we round up.
-            amountCalculated = vars.amountCalculatedScaled18.toRawUndoRateRoundUp(
+            amountCalculatedRaw = vars.amountCalculatedScaled18.toRawUndoRateRoundUp(
                 poolData.decimalScalingFactors[vars.indexIn],
                 poolData.tokenRates[vars.indexIn]
             );
 
-            (amountIn, amountOut) = (amountCalculated, params.amountGivenRaw);
+            (amountInRaw, amountOutRaw) = (amountCalculatedRaw, params.amountGivenRaw);
 
-            if (amountIn > params.limitRaw) {
-                revert SwapLimit(amountIn, params.limitRaw);
+            if (amountInRaw > params.limitRaw) {
+                revert SwapLimit(amountInRaw, params.limitRaw);
             }
         }
 
         // 3) Deltas: debit for token in, credit for token out
-        _takeDebt(params.tokenIn, amountIn);
-        _supplyCredit(params.tokenOut, amountOut);
+        _takeDebt(params.tokenIn, amountInRaw);
+        _supplyCredit(params.tokenOut, amountOutRaw);
 
         // 4) Compute and charge protocol and creator fees.
         (uint256 swapFeeIndex, IERC20 swapFeeToken) = params.kind == SwapKind.EXACT_IN
@@ -409,18 +409,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // 5) Pool balances: raw and live
             // Adjust for raw swap amounts and total fees on the calculated end.
-            (uint256 newRawBalanceIn, uint256 newRawBalanceOut) = params.kind == SwapKind.EXACT_IN
+            (uint256 newBalanceInRaw, uint256 newBalanceOutRaw) = params.kind == SwapKind.EXACT_IN
                 ? (
-                    poolData.balancesRaw[vars.indexIn] + amountIn,
-                    poolData.balancesRaw[vars.indexOut] - amountOut - totalFees
+                    poolData.balancesRaw[vars.indexIn] + amountInRaw,
+                    poolData.balancesRaw[vars.indexOut] - amountOutRaw - totalFees
                 )
                 : (
-                    poolData.balancesRaw[vars.indexIn] + amountIn - totalFees,
-                    poolData.balancesRaw[vars.indexOut] - amountOut
+                    poolData.balancesRaw[vars.indexIn] + amountInRaw - totalFees,
+                    poolData.balancesRaw[vars.indexOut] - amountOutRaw
                 );
 
-            poolData.updateRawAndLiveBalance(vars.indexIn, newRawBalanceIn, Rounding.ROUND_DOWN);
-            poolData.updateRawAndLiveBalance(vars.indexOut, newRawBalanceOut, Rounding.ROUND_DOWN);
+            poolData.updateRawAndLiveBalance(vars.indexIn, newBalanceInRaw, Rounding.ROUND_DOWN);
+            poolData.updateRawAndLiveBalance(vars.indexOut, newBalanceOutRaw, Rounding.ROUND_DOWN);
         }
 
         // 6) Store pool balances, raw and live
@@ -438,8 +438,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             params.pool,
             params.tokenIn,
             params.tokenOut,
-            amountIn,
-            amountOut,
+            amountInRaw,
+            amountOutRaw,
             vars.swapFeePercentage,
             swapFeeAmountRaw,
             swapFeeToken
