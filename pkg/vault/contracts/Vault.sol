@@ -225,8 +225,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         // Non-reentrant call that updates accounting.
-        // vars.amountCalculatedScaled18 is set inside of _swap. This is an unintuitive side-effect, but is done
-        // to avoid stack too deep issues.
+        // The following side-effects are important to note:
+        // vars.amountCalculatedScaled18 is set inside of _swap. 
+        // poolData.balancesLiveScaled18 are adjusted for swap amounts and fees inside of _swap.
+        // These side-effects are unintuitive, but are done to avoid stack too deep issues.
         (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, vaultState);
 
         if (poolData.poolConfig.hooks.shouldCallAfterSwap) {
