@@ -274,4 +274,22 @@ interface IVaultErrors {
 
     /// @dev The vault admin was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();
+
+    /// @dev The user is trying to remove more than their allocated shares from the buffer.
+    error NotEnoughBufferShares();
+
+    /// @dev The wrapped token asset does not match the underlying token of the swap path.
+    error WrongWrappedTokenAsset(address token);
+
+    /// @dev The wrappedToken wrap/unwrap function did not deposit/return the expected amount of underlying tokens.
+    error WrongUnderlyingAmount(address wrappedToken);
+
+    /// @dev The wrappedToken wrap/unwrap function did not burn/mint the expected amount of wrapped tokens.
+    error WrongWrappedAmount(address wrappedToken);
+
+    /// @dev The amount given to wrap/unwrap was too small, which can introduce rounding issues.
+    error WrapAmountTooSmall(address wrappedToken);
+
+    /// @dev Vault buffers are paused.
+    error VaultBuffersArePaused();
 }
