@@ -24,7 +24,6 @@ abstract contract BasePoolHooks is IPoolHooks {
     /// @inheritdoc IPoolHooks
     function onBeforeAddLiquidity(
         address,
-        address,
         AddLiquidityKind,
         uint256[] memory,
         uint256,
@@ -37,7 +36,6 @@ abstract contract BasePoolHooks is IPoolHooks {
     /// @inheritdoc IPoolHooks
     function onAfterAddLiquidity(
         address,
-        address,
         uint256[] memory,
         uint256,
         uint256[] memory,
@@ -48,7 +46,6 @@ abstract contract BasePoolHooks is IPoolHooks {
 
     /// @inheritdoc IPoolHooks
     function onBeforeRemoveLiquidity(
-        address,
         address,
         RemoveLiquidityKind,
         uint256,
@@ -61,7 +58,6 @@ abstract contract BasePoolHooks is IPoolHooks {
 
     /// @inheritdoc IPoolHooks
     function onAfterRemoveLiquidity(
-        address,
         address,
         uint256,
         uint256[] memory,

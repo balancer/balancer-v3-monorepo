@@ -518,7 +518,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (poolData.poolConfig.hooks.shouldCallBeforeAddLiquidity) {
             if (
                 IPoolHooks(params.pool).onBeforeAddLiquidity(
-                    params.to,
                     msg.sender,
                     params.kind,
                     maxAmountsInScaled18,
@@ -559,7 +558,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (poolData.poolConfig.hooks.shouldCallAfterAddLiquidity) {
             if (
                 IPoolHooks(params.pool).onAfterAddLiquidity(
-                    params.to,
                     msg.sender,
                     amountsInScaled18,
                     bptAmountOut,
@@ -643,7 +641,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             (amountsInScaled18, bptAmountOut, swapFeeAmountsScaled18, returnData) = IPoolLiquidity(params.pool)
                 .onAddLiquidityCustom(
-                    params.to,
                     msg.sender,
                     maxAmountsInScaled18,
                     params.minBptAmountOut,
@@ -758,7 +755,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (poolData.poolConfig.hooks.shouldCallBeforeRemoveLiquidity) {
             if (
                 IPoolHooks(params.pool).onBeforeRemoveLiquidity(
-                    params.from,
                     msg.sender,
                     params.kind,
                     params.maxBptAmountIn,
@@ -796,7 +792,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (poolData.poolConfig.hooks.shouldCallAfterRemoveLiquidity) {
             if (
                 IPoolHooks(params.pool).onAfterRemoveLiquidity(
-                    params.from,
                     msg.sender,
                     bptAmountIn,
                     amountsOutScaled18,
@@ -878,7 +873,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.poolConfig.requireRemoveCustomLiquidityEnabled();
             (bptAmountIn, amountsOutScaled18, swapFeeAmountsScaled18, returnData) = IPoolLiquidity(params.pool)
                 .onRemoveLiquidityCustom(
-                    params.from,
                     msg.sender,
                     params.maxBptAmountIn,
                     minAmountsOutScaled18,

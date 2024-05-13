@@ -99,7 +99,6 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolLiquidity.onAddLiquidityCustom.selector,
-                alice,
                 router,
                 expectedAmountsInRaw, // maxAmountsIn
                 defaultAmount, // minBptOut
@@ -188,7 +187,6 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolLiquidity.onRemoveLiquidityCustom.selector,
-                alice,
                 router,
                 defaultAmount, // maxBptAmountIn
                 expectedAmountsOutRaw, // minAmountsOut

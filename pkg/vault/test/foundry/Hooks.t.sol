@@ -185,7 +185,6 @@ contract HooksTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeAddLiquidity.selector,
-                bob,
                 router,
                 AddLiquidityKind.UNBALANCED,
                 [defaultAmount, defaultAmount].toMemoryArray(),
@@ -245,7 +244,6 @@ contract HooksTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeRemoveLiquidity.selector,
-                alice,
                 router,
                 RemoveLiquidityKind.PROPORTIONAL,
                 bptAmount,
@@ -290,7 +288,6 @@ contract HooksTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolHooks.onAfterAddLiquidity.selector,
-                bob,
                 router,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bptAmount,
@@ -349,7 +346,6 @@ contract HooksTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolHooks.onAfterRemoveLiquidity.selector,
-                alice,
                 router,
                 bptAmount,
                 [defaultAmount, defaultAmount].toMemoryArray(),

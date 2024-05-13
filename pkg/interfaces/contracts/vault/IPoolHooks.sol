@@ -41,7 +41,6 @@ interface IPoolHooks {
 
     /**
      * @notice Optional hook to be executed before adding liquidity.
-     * @param to Address for which the pool tokens are minted
      * @param router Address which sends call to the vault
      * @param kind The type of add liquidity operation (e.g., proportional, custom)
      * @param maxAmountsInScaled18 Maximum amounts of input tokens
@@ -51,7 +50,6 @@ interface IPoolHooks {
      * @return success True if the pool wishes to proceed with settlement
      */
     function onBeforeAddLiquidity(
-        address to,
         address router,
         AddLiquidityKind kind,
         uint256[] memory maxAmountsInScaled18,
@@ -62,7 +60,6 @@ interface IPoolHooks {
 
     /**
      * @notice Optional hook to be executed after adding liquidity.
-     * @param to Address for which the pool tokens are minted
      * @param router Address which sends call to the vault
      * @param amountsInScaled18 Actual amounts of tokens added, in the same order as the tokens registered in the pool
      * @param bptAmountOut Amount of pool tokens minted
@@ -71,7 +68,6 @@ interface IPoolHooks {
      * @return success True if the pool wishes to proceed with settlement
      */
     function onAfterAddLiquidity(
-        address to,
         address router,
         uint256[] memory amountsInScaled18,
         uint256 bptAmountOut,
@@ -85,7 +81,6 @@ interface IPoolHooks {
 
     /**
      * @notice Optional hook to be executed before removing liquidity.
-     * @param from Address for which the pool tokens are burned
      * @param router Address which sends call to the vault
      * @param kind The type of remove liquidity operation (e.g., proportional, custom)
      * @param maxBptAmountIn Maximum amount of input pool tokens
@@ -95,7 +90,6 @@ interface IPoolHooks {
      * @return success True if the pool wishes to proceed with settlement
      */
     function onBeforeRemoveLiquidity(
-        address from,
         address router,
         RemoveLiquidityKind kind,
         uint256 maxBptAmountIn,
@@ -106,7 +100,6 @@ interface IPoolHooks {
 
     /**
      * @notice Optional hook to be executed after removing liquidity.
-     * @param from Address for which the pool tokens are burned
      * @param router Address which sends call to the vault
      * @param bptAmountIn Amount of pool tokens to burn
      * @param amountsOutScaled18 Amount of tokens to receive, in the same order as the tokens registered in the pool
@@ -115,7 +108,6 @@ interface IPoolHooks {
      * @return success True if the pool wishes to proceed with settlement
      */
     function onAfterRemoveLiquidity(
-        address from,
         address router,
         uint256 bptAmountIn,
         uint256[] memory amountsOutScaled18,
