@@ -42,6 +42,7 @@ interface IPoolHooks {
     /**
      * @notice Optional hook to be executed before adding liquidity.
      * @param to Address for which the pool tokens are minted
+     * @param router Address which sends call to the vault
      * @param kind The type of add liquidity operation (e.g., proportional, custom)
      * @param maxAmountsInScaled18 Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
@@ -51,6 +52,7 @@ interface IPoolHooks {
      */
     function onBeforeAddLiquidity(
         address to,
+        address router,
         AddLiquidityKind kind,
         uint256[] memory maxAmountsInScaled18,
         uint256 minBptAmountOut,
@@ -61,6 +63,7 @@ interface IPoolHooks {
     /**
      * @notice Optional hook to be executed after adding liquidity.
      * @param to Address for which the pool tokens are minted
+     * @param router Address which sends call to the vault
      * @param amountsInScaled18 Actual amounts of tokens added, in the same order as the tokens registered in the pool
      * @param bptAmountOut Amount of pool tokens minted
      * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
@@ -69,6 +72,7 @@ interface IPoolHooks {
      */
     function onAfterAddLiquidity(
         address to,
+        address router,
         uint256[] memory amountsInScaled18,
         uint256 bptAmountOut,
         uint256[] memory balancesScaled18,
@@ -82,6 +86,7 @@ interface IPoolHooks {
     /**
      * @notice Optional hook to be executed before removing liquidity.
      * @param from Address for which the pool tokens are burned
+     * @param router Address which sends call to the vault
      * @param kind The type of remove liquidity operation (e.g., proportional, custom)
      * @param maxBptAmountIn Maximum amount of input pool tokens
      * @param minAmountsOutScaled18 Minimum output amounts, in the same order as the tokens registered in the pool
@@ -91,6 +96,7 @@ interface IPoolHooks {
      */
     function onBeforeRemoveLiquidity(
         address from,
+        address router,
         RemoveLiquidityKind kind,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOutScaled18,
@@ -101,6 +107,7 @@ interface IPoolHooks {
     /**
      * @notice Optional hook to be executed after removing liquidity.
      * @param from Address for which the pool tokens are burned
+     * @param router Address which sends call to the vault
      * @param bptAmountIn Amount of pool tokens to burn
      * @param amountsOutScaled18 Amount of tokens to receive, in the same order as the tokens registered in the pool
      * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
@@ -109,6 +116,7 @@ interface IPoolHooks {
      */
     function onAfterRemoveLiquidity(
         address from,
+        address router,
         uint256 bptAmountIn,
         uint256[] memory amountsOutScaled18,
         uint256[] memory balancesScaled18,
