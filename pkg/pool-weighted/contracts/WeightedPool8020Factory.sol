@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
+import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -70,10 +71,14 @@ contract WeightedPool8020Factory is BasePoolFactory {
             _calculateSalt(highWeightToken, lowWeightToken)
         );
 
+        IProtocolFeeCollector feeCollector = getVault().getProtocolFeeCollector();
+
         _registerPoolWithVault(
             pool,
             tokenConfig,
             swapFeePercentage,
+            feeCollector.getProtocolSwapFeePercentage(),
+            feeCollector.getProtocolYieldFeePercentage(),
             roleAccounts,
             getDefaultPoolHooks(),
             getDefaultLiquidityManagement()
