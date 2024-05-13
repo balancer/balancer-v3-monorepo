@@ -153,6 +153,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                                           Swaps
     *******************************************************************************/
 
+    /// @dev Represents temporary state used in a swap operation.
+    struct SwapState {
+        uint256 indexIn;
+        uint256 indexOut;
+        uint256 amountGivenScaled18;
+        uint256 swapFeePercentage;
+    }
+
     /// @inheritdoc IVaultMain
     function swap(
         SwapParams memory params
@@ -184,17 +192,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vaultState.protocolYieldFeePercentage
         );
 
-        SwapVars memory vars;
+        SwapState memory state;
 
-        (vars.indexIn, vars.indexOut) = _getSwapTokenIndexes(params);
+        (state.indexIn, state.indexOut) = _getSwapTokenIndexes(params);
 
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
-        //_updateAmountGivenInVars(vars, params, poolData);
-        vars.amountGivenScaled18 = _computeAmountGivenScaled18(vars, params, poolData);
+        state.amountGivenScaled18 = _computeAmountGivenScaled18(state, params, poolData);
 
         if (poolData.poolConfig.hooks.shouldCallBeforeSwap) {
-            if (IPoolHooks(params.pool).onBeforeSwap(_buildPoolSwapParams(params, vars, poolData)) == false) {
+            if (IPoolHooks(params.pool).onBeforeSwap(_buildPoolSwapParams(params, state, poolData)) == false) {
                 revert BeforeSwapHookFailed();
             }
 
@@ -204,8 +211,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.reloadPossiblyStaleBalancesAndTokenRates(_poolTokenBalances[params.pool], Rounding.ROUND_DOWN);
 
             // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
-            //_updateAmountGivenInVars(vars, params, poolData);
-            vars.amountGivenScaled18 = _computeAmountGivenScaled18(vars, params, poolData);
+            state.amountGivenScaled18 = _computeAmountGivenScaled18(state, params, poolData);
         }
 
         // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
@@ -213,29 +219,30 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (poolData.poolConfig.hooks.shouldCallComputeDynamicSwapFee) {
             bool success;
 
-            (success, vars.swapFeePercentage) = IPoolHooks(params.pool).onComputeDynamicSwapFee(
-                _buildPoolSwapParams(params, vars, poolData)
+            (success, state.swapFeePercentage) = IPoolHooks(params.pool).onComputeDynamicSwapFee(
+                _buildPoolSwapParams(params, state, poolData)
             );
 
             if (success == false) {
                 revert DynamicSwapFeeHookFailed();
             }
         } else {
-            vars.swapFeePercentage = poolData.poolConfig.staticSwapFeePercentage;
+            state.swapFeePercentage = poolData.poolConfig.staticSwapFeePercentage;
         }
 
         // Non-reentrant call that updates accounting.
         // The following side-effects are important to note:
-        // vars.amountCalculatedScaled18 is set inside of _swap. 
+        // state.amountCalculatedScaled18 is set inside of _swap. 
         // poolData.balancesLiveScaled18 are adjusted for swap amounts and fees inside of _swap.
         // These side-effects are unintuitive, but are done to avoid stack too deep issues.
-        (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, vaultState);
+        uint256 amountCalculatedScaled18;
+        (amountCalculated, amountIn, amountOut, amountCalculatedScaled18) = _swap(params, state, poolData, vaultState);
 
         if (poolData.poolConfig.hooks.shouldCallAfterSwap) {
             // Adjust balances for the AfterSwap hook.
             (uint256 amountInScaled18, uint256 amountOutScaled18) = params.kind == SwapKind.EXACT_IN
-                ? (vars.amountGivenScaled18, vars.amountCalculatedScaled18)
-                : (vars.amountCalculatedScaled18, vars.amountGivenScaled18);
+                ? (state.amountGivenScaled18, amountCalculatedScaled18)
+                : (amountCalculatedScaled18, state.amountGivenScaled18);
             if (
                 IPoolHooks(params.pool).onAfterSwap(
                     IPoolHooks.AfterSwapParams({
@@ -244,12 +251,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                         tokenOut: params.tokenOut,
                         amountInScaled18: amountInScaled18,
                         amountOutScaled18: amountOutScaled18,
-                        tokenInBalanceScaled18: poolData.balancesLiveScaled18[vars.indexIn],
-                        tokenOutBalanceScaled18: poolData.balancesLiveScaled18[vars.indexOut],
+                        tokenInBalanceScaled18: poolData.balancesLiveScaled18[state.indexIn],
+                        tokenOutBalanceScaled18: poolData.balancesLiveScaled18[state.indexOut],
                         sender: msg.sender,
                         userData: params.userData
                     }),
-                    vars.amountCalculatedScaled18
+                    amountCalculatedScaled18
                 ) == false
             ) {
                 revert AfterSwapHookFailed();
@@ -283,16 +290,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     function _buildPoolSwapParams(
         SwapParams memory params,
-        SwapVars memory vars,
+        SwapState memory state,
         PoolData memory poolData
     ) internal view returns (IBasePool.PoolSwapParams memory) {
         return
             IBasePool.PoolSwapParams({
                 kind: params.kind,
-                amountGivenScaled18: vars.amountGivenScaled18,
+                amountGivenScaled18: state.amountGivenScaled18,
                 balancesScaled18: poolData.balancesLiveScaled18,
-                indexIn: vars.indexIn,
-                indexOut: vars.indexOut,
+                indexIn: state.indexIn,
+                indexOut: state.indexOut,
                 sender: msg.sender,
                 userData: params.userData
             });
@@ -303,7 +310,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * Uses amountGivenRaw and kind from `params`.
      */
     function _computeAmountGivenScaled18(
-        SwapVars memory vars,
+        SwapState memory state,
         SwapParams memory params,
         PoolData memory poolData
     ) private pure returns (uint256) {
@@ -311,13 +318,25 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // to a lower calculated amountOut, favoring the pool.
         return params.kind == SwapKind.EXACT_IN
             ? params.amountGivenRaw.toScaled18ApplyRateRoundDown(
-                poolData.decimalScalingFactors[vars.indexIn],
-                poolData.tokenRates[vars.indexIn]
+                poolData.decimalScalingFactors[state.indexIn],
+                poolData.tokenRates[state.indexIn]
             )
             : params.amountGivenRaw.toScaled18ApplyRateRoundUp(
-                poolData.decimalScalingFactors[vars.indexOut],
-                poolData.tokenRates[vars.indexOut]
+                poolData.decimalScalingFactors[state.indexOut],
+                poolData.tokenRates[state.indexOut]
             );
+    }
+
+    struct SwapInternalLocals {
+        uint256 swapFeeAmountScaled18;
+        uint256 swapFeeIndex;
+        IERC20 swapFeeToken;
+        uint256 totalFees;
+        uint256 newBalanceInRaw;
+        uint256 newBalanceOutRaw;
+        uint256 swapFeeAmountRaw;
+        uint256 protocolSwapFeeAmountRaw;
+        uint256 creatorSwapFeeAmountRaw;
     }
 
     /**
@@ -333,35 +352,41 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      */
     function _swap(
         SwapParams memory params,
-        SwapVars memory vars,
+        SwapState memory state,
         PoolData memory poolData,
         VaultState memory vaultState
-    ) internal nonReentrant returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw) {
+    ) internal nonReentrant returns (
+        uint256 amountCalculatedRaw,
+        uint256 amountInRaw,
+        uint256 amountOutRaw,
+        uint256 amountCalculatedScaled18
+    ) {
+        SwapInternalLocals memory locals;
+        
         // Perform the swap request hook and compute the new balances for 'token in' and 'token out' after the swap
-
-        vars.amountCalculatedScaled18 = IBasePool(params.pool).onSwap(_buildPoolSwapParams(params, vars, poolData));
+        amountCalculatedScaled18 = IBasePool(params.pool).onSwap(_buildPoolSwapParams(params, state, poolData));
 
         // Note that balances are kept in memory, and are not fully computed until the `setPoolBalances` below.
         // Intervening code cannot read balances from storage, as they are temporarily out-of-sync here. This function
         // is nonReentrant, to guard against read-only reentrancy issues.
 
-        // Set vars.swapFeeAmountScaled18 based on the amountCalculated.
-        if (vars.swapFeePercentage > 0) {
+        // Set locals.swapFeeAmountScaled18 based on the amountCalculated.
+        if (state.swapFeePercentage > 0) {
             // Swap fee is always a percentage of the amountCalculated. On ExactIn, subtract it from the calculated
             // amountOut. On ExactOut, add it to the calculated amountIn.
             // Round up to avoid losses during precision loss.
-            vars.swapFeeAmountScaled18 = vars.amountCalculatedScaled18.mulUp(vars.swapFeePercentage);
+            locals.swapFeeAmountScaled18 = amountCalculatedScaled18.mulUp(state.swapFeePercentage);
         }
 
         // (1) and (2): get raw amounts and check limits
         if (params.kind == SwapKind.EXACT_IN) {
             // Need to update `amountCalculatedScaled18` for the onAfterSwap hook.
-            vars.amountCalculatedScaled18 -= vars.swapFeeAmountScaled18;
+            amountCalculatedScaled18 -= locals.swapFeeAmountScaled18;
 
             // For `ExactIn` the amount calculated is leaving the Vault, so we round down.
-            amountCalculatedRaw = vars.amountCalculatedScaled18.toRawUndoRateRoundDown(
-                poolData.decimalScalingFactors[vars.indexOut],
-                poolData.tokenRates[vars.indexOut]
+            amountCalculatedRaw = amountCalculatedScaled18.toRawUndoRateRoundDown(
+                poolData.decimalScalingFactors[state.indexOut],
+                poolData.tokenRates[state.indexOut]
             );
 
             (amountInRaw, amountOutRaw) = (params.amountGivenRaw, amountCalculatedRaw);
@@ -370,12 +395,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert SwapLimit(amountOutRaw, params.limitRaw);
             }
         } else {
-            vars.amountCalculatedScaled18 += vars.swapFeeAmountScaled18;
+            amountCalculatedScaled18 += locals.swapFeeAmountScaled18;
 
             // For `ExactOut` the amount calculated is entering the Vault, so we round up.
-            amountCalculatedRaw = vars.amountCalculatedScaled18.toRawUndoRateRoundUp(
-                poolData.decimalScalingFactors[vars.indexIn],
-                poolData.tokenRates[vars.indexIn]
+            amountCalculatedRaw = amountCalculatedScaled18.toRawUndoRateRoundUp(
+                poolData.decimalScalingFactors[state.indexIn],
+                poolData.tokenRates[state.indexIn]
             );
 
             (amountInRaw, amountOutRaw) = (amountCalculatedRaw, params.amountGivenRaw);
@@ -390,40 +415,37 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _supplyCredit(params.tokenOut, amountOutRaw);
 
         // 4) Compute and charge protocol and creator fees.
-        (uint256 swapFeeIndex, IERC20 swapFeeToken) = params.kind == SwapKind.EXACT_IN
-            ? (vars.indexOut, params.tokenOut)
-            : (vars.indexIn, params.tokenIn);
+        (locals.swapFeeIndex, locals.swapFeeToken) = params.kind == SwapKind.EXACT_IN
+            ? (state.indexOut, params.tokenOut)
+            : (state.indexIn, params.tokenIn);
 
         // Note that protocol fee storage is updated before balance storage, as the final raw balances need to take
         // the fees into account.
-        (vars.protocolSwapFeeAmountRaw, vars.creatorSwapFeeAmountRaw) = _computeAndChargeProtocolAndCreatorSwapFees(
+        (locals.protocolSwapFeeAmountRaw, locals.creatorSwapFeeAmountRaw) = _computeAndChargeProtocolAndCreatorSwapFees(
             poolData,
-            vars.swapFeeAmountScaled18,
+            locals.swapFeeAmountScaled18,
             vaultState.protocolSwapFeePercentage,
             params.pool,
-            swapFeeToken,
-            swapFeeIndex
+            locals.swapFeeToken,
+            locals.swapFeeIndex
         );
 
-        {
-            // stack-too-deep
-            uint256 totalFees = (vars.protocolSwapFeeAmountRaw + vars.creatorSwapFeeAmountRaw);
+        locals.totalFees = (locals.protocolSwapFeeAmountRaw + locals.creatorSwapFeeAmountRaw);
 
-            // 5) Pool balances: raw and live
-            // Adjust for raw swap amounts and total fees on the calculated end.
-            (uint256 newBalanceInRaw, uint256 newBalanceOutRaw) = params.kind == SwapKind.EXACT_IN
-                ? (
-                    poolData.balancesRaw[vars.indexIn] + amountInRaw,
-                    poolData.balancesRaw[vars.indexOut] - amountOutRaw - totalFees
-                )
-                : (
-                    poolData.balancesRaw[vars.indexIn] + amountInRaw - totalFees,
-                    poolData.balancesRaw[vars.indexOut] - amountOutRaw
-                );
+        // 5) Pool balances: raw and live
+        // Adjust for raw swap amounts and total fees on the calculated end.
+        (locals.newBalanceInRaw, locals.newBalanceOutRaw) = params.kind == SwapKind.EXACT_IN
+            ? (
+                poolData.balancesRaw[state.indexIn] + amountInRaw,
+                poolData.balancesRaw[state.indexOut] - amountOutRaw - locals.totalFees
+            )
+            : (
+                poolData.balancesRaw[state.indexIn] + amountInRaw - locals.totalFees,
+                poolData.balancesRaw[state.indexOut] - amountOutRaw
+            );
 
-            poolData.updateRawAndLiveBalance(vars.indexIn, newBalanceInRaw, Rounding.ROUND_DOWN);
-            poolData.updateRawAndLiveBalance(vars.indexOut, newBalanceOutRaw, Rounding.ROUND_DOWN);
-        }
+        poolData.updateRawAndLiveBalance(state.indexIn, locals.newBalanceInRaw, Rounding.ROUND_DOWN);
+        poolData.updateRawAndLiveBalance(state.indexOut, locals.newBalanceOutRaw, Rounding.ROUND_DOWN);
 
         // 6) Store pool balances, raw and live
         _writePoolBalancesToStorage(params.pool, poolData);
@@ -431,9 +453,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // 7) Off-chain events
         // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
         // also contains the rate, undo it when converting to raw.
-        uint256 swapFeeAmountRaw = vars.swapFeeAmountScaled18.toRawUndoRateRoundDown(
-            poolData.decimalScalingFactors[swapFeeIndex],
-            poolData.tokenRates[swapFeeIndex]
+        locals.swapFeeAmountRaw = locals.swapFeeAmountScaled18.toRawUndoRateRoundDown(
+            poolData.decimalScalingFactors[locals.swapFeeIndex],
+            poolData.tokenRates[locals.swapFeeIndex]
         );
 
         emit Swap(
@@ -442,9 +464,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             params.tokenOut,
             amountInRaw,
             amountOutRaw,
-            vars.swapFeePercentage,
-            swapFeeAmountRaw,
-            swapFeeToken
+            state.swapFeePercentage,
+            locals.swapFeeAmountRaw,
+            locals.swapFeeToken
         );
     }
 
