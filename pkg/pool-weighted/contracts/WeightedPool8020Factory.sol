@@ -47,29 +47,31 @@ contract WeightedPool8020Factory is BasePoolFactory {
         (uint256 highWeightTokenIdx, uint256 lowWeightTokenIdx) = highWeightToken > lowWeightToken ? (1, 0) : (0, 1);
 
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
-        uint256[] memory weights = new uint256[](2);
+        {
+            uint256[] memory weights = new uint256[](2);
 
-        weights[highWeightTokenIdx] = _EIGHTY;
-        weights[lowWeightTokenIdx] = _TWENTY;
+            weights[highWeightTokenIdx] = _EIGHTY;
+            weights[lowWeightTokenIdx] = _TWENTY;
 
-        tokenConfig[highWeightTokenIdx] = highWeightTokenConfig;
-        tokenConfig[lowWeightTokenIdx] = lowWeightTokenConfig;
+            tokenConfig[highWeightTokenIdx] = highWeightTokenConfig;
+            tokenConfig[lowWeightTokenIdx] = lowWeightTokenConfig;
 
-        string memory highWeightTokenSymbol = IERC20Metadata(address(highWeightToken)).symbol();
-        string memory lowWeightTokenSymbol = IERC20Metadata(address(lowWeightToken)).symbol();
+            string memory highWeightTokenSymbol = IERC20Metadata(address(highWeightToken)).symbol();
+            string memory lowWeightTokenSymbol = IERC20Metadata(address(lowWeightToken)).symbol();
 
-        pool = _create(
-            abi.encode(
-                WeightedPool.NewPoolParams({
-                    name: string.concat("Balancer 80 ", highWeightTokenSymbol, " 20 ", lowWeightTokenSymbol),
-                    symbol: string.concat("B-80", highWeightTokenSymbol, "-20", lowWeightTokenSymbol),
-                    numTokens: tokenConfig.length,
-                    normalizedWeights: weights
-                }),
-                getVault()
-            ),
-            _calculateSalt(highWeightToken, lowWeightToken)
-        );
+            pool = _create(
+                abi.encode(
+                    WeightedPool.NewPoolParams({
+                        name: string.concat("Balancer 80 ", highWeightTokenSymbol, " 20 ", lowWeightTokenSymbol),
+                        symbol: string.concat("B-80", highWeightTokenSymbol, "-20", lowWeightTokenSymbol),
+                        numTokens: tokenConfig.length,
+                        normalizedWeights: weights
+                    }),
+                    getVault()
+                ),
+                _calculateSalt(highWeightToken, lowWeightToken)
+            );
+        }
 
         IProtocolFeeCollector feeCollector = getVault().getProtocolFeeCollector();
 

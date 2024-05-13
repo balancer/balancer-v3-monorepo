@@ -40,6 +40,7 @@ describe('WeightedPool', function () {
   let vault: IVaultMock;
   let pool: PoolMock;
   let router: Router;
+  let protocolFeeCollector: Contract;
   let alice: SignerWithAddress;
   let bob: SignerWithAddress;
   let tokenA: ERC20TestToken;
@@ -58,6 +59,8 @@ describe('WeightedPool', function () {
 
   sharedBeforeEach('deploy vault, router, tokens, and pool', async function () {
     vault = await TypesConverter.toIVaultMock(await VaultDeployer.deployMock());
+
+    protocolFeeCollector = await deployedAt('v3-vault/ProtocolFeeCollector', await vault.getProtocolFeeCollector());
 
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
@@ -191,8 +194,8 @@ describe('WeightedPool', function () {
     });
 
     sharedBeforeEach('grant permission', async () => {
-      const setSwapFeeAction = await actionId(vault, 'setProtocolSwapFeePercentage');
-      const setYieldFeeAction = await actionId(vault, 'setProtocolYieldFeePercentage');
+      const setSwapFeeAction = await actionId(protocolFeeCollector, 'setProtocolSwapFeePercentage');
+      const setYieldFeeAction = await actionId(protocolFeeCollector, 'setProtocolYieldFeePercentage');
       const setPoolSwapFeeAction = await actionId(vault, 'setStaticSwapFeePercentage');
 
       const authorizerAddress = await vault.getAuthorizer();
@@ -202,8 +205,8 @@ describe('WeightedPool', function () {
       await authorizer.grantRole(setYieldFeeAction, bob.address);
       await authorizer.grantRole(setPoolSwapFeeAction, bob.address);
 
-      await vault.connect(bob).setProtocolSwapFeePercentage(MAX_PROTOCOL_SWAP_FEE);
-      await vault.connect(bob).setProtocolYieldFeePercentage(MAX_PROTOCOL_YIELD_FEE);
+      await protocolFeeCollector.connect(bob).setProtocolSwapFeePercentage(MAX_PROTOCOL_SWAP_FEE);
+      await protocolFeeCollector.connect(bob).setProtocolYieldFeePercentage(MAX_PROTOCOL_YIELD_FEE);
       await vault.connect(bob).setStaticSwapFeePercentage(realPoolAddress, POOL_SWAP_FEE);
     });
 
@@ -213,8 +216,8 @@ describe('WeightedPool', function () {
       expect(poolConfig.isPoolRegistered).to.be.true;
       expect(poolConfig.isPoolInitialized).to.be.true;
 
-      expect(await vault.getProtocolSwapFeePercentage()).to.eq(MAX_PROTOCOL_SWAP_FEE);
-      expect(await vault.getProtocolYieldFeePercentage()).to.eq(MAX_PROTOCOL_YIELD_FEE);
+      expect(await protocolFeeCollector.getProtocolSwapFeePercentage()).to.eq(MAX_PROTOCOL_SWAP_FEE);
+      expect(await protocolFeeCollector.getProtocolYieldFeePercentage()).to.eq(MAX_PROTOCOL_YIELD_FEE);
       expect(await vault.getStaticSwapFeePercentage(realPoolAddress)).to.eq(POOL_SWAP_FEE);
     });
 
