@@ -64,6 +64,8 @@ interface IVaultMainMock {
 
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory);
 
+    function getMaxConvertError() external view returns (uint256);
+
     function recoveryModeExit(address pool) external view;
 
     function computePoolDataUpdatingBalancesAndFees(

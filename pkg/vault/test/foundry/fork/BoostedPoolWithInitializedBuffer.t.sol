@@ -231,7 +231,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         // However, EXACT_OUT DAI -> USDC has rounding issues, because amount out is given in 6 digits, and we want an
         // 18 decimals amount in, which is not precisely calculated. The calculation below reproduces what happens in
         // the vault to scale tokens in the swap operation of the boosted pool
-        uint256 expectedWrappedTokenOutUsdc = waUSDC.previewWithdraw(swapAmount / USDC_FACTOR);
+        uint256 expectedWrappedTokenOutUsdc = waUSDC.convertToShares(swapAmount / USDC_FACTOR);
         uint256 expectedScaled18WrappedTokenOutUsdc = FixedPoint.mulDown(
             expectedWrappedTokenOutUsdc * USDC_FACTOR,
             waUSDC.convertToAssets(FixedPoint.ONE)

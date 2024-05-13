@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
@@ -22,8 +24,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     uint256 private constant _userAmount = 10e6 * 1e18;
     uint256 private constant _wrapAmount = _userAmount / 100;
 
+    uint256 private _ABOVE_CONVERT_ERROR;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        _ABOVE_CONVERT_ERROR = vault.getMaxConvertError() + 1;
 
         waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
         vm.label(address(waDAI), "waDAI");
@@ -143,7 +149,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        waDAI.setSharesToReturn(waDAI.previewDeposit(_wrapAmount) - 1);
+        waDAI.setSharesToReturn(waDAI.previewDeposit(_wrapAmount) - _ABOVE_CONVERT_ERROR);
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
@@ -159,7 +165,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        waDAI.setSharesToReturn(waDAI.previewDeposit(_wrapAmount) + 1);
+        waDAI.setSharesToReturn(waDAI.previewDeposit(_wrapAmount) + _ABOVE_CONVERT_ERROR);
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
@@ -175,7 +181,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        waDAI.setAssetsToConsume(_wrapAmount - 1);
+        waDAI.setAssetsToConsume(_wrapAmount - _ABOVE_CONVERT_ERROR);
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnderlyingAmount.selector, address(waDAI)));
@@ -183,7 +189,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testDepositConsumesMoreAssets() public {
-        uint256 changedWrapAmount = _wrapAmount + 1;
+        uint256 changedWrapAmount = _wrapAmount + _ABOVE_CONVERT_ERROR;
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount,
@@ -246,7 +252,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        waDAI.setSharesToReturn(_wrapAmount - 1);
+        waDAI.setSharesToReturn(_wrapAmount - _ABOVE_CONVERT_ERROR);
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
@@ -262,7 +268,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        waDAI.setSharesToReturn(_wrapAmount + 1);
+        waDAI.setSharesToReturn(_wrapAmount + _ABOVE_CONVERT_ERROR);
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
@@ -278,7 +284,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        waDAI.setAssetsToConsume(_wrapAmount - 1);
+        waDAI.setAssetsToConsume(_wrapAmount - _ABOVE_CONVERT_ERROR);
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnderlyingAmount.selector, address(waDAI)));
@@ -286,7 +292,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testMintConsumesMoreAssets() public {
-        uint256 changedWrapAmount = _wrapAmount + 1;
+        uint256 changedWrapAmount = _wrapAmount + _ABOVE_CONVERT_ERROR;
 
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
             2 * _wrapAmount,
@@ -353,7 +359,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        waDAI.setSharesToConsume(_wrapAmount - 1);
+        waDAI.setSharesToConsume(_wrapAmount - _ABOVE_CONVERT_ERROR);
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
@@ -369,7 +375,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        waDAI.setSharesToConsume(_wrapAmount + 1);
+        waDAI.setSharesToConsume(_wrapAmount + _ABOVE_CONVERT_ERROR);
 
         vm.startPrank(lp);
         // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount
@@ -388,7 +394,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        waDAI.setAssetsToReturn(waDAI.previewRedeem(_wrapAmount) + 1);
+        waDAI.setAssetsToReturn(waDAI.previewRedeem(_wrapAmount) + _ABOVE_CONVERT_ERROR);
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnderlyingAmount.selector, address(waDAI)));
@@ -404,7 +410,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        waDAI.setAssetsToReturn(waDAI.previewRedeem(_wrapAmount) - 1);
+        waDAI.setAssetsToReturn(waDAI.previewRedeem(_wrapAmount) - _ABOVE_CONVERT_ERROR);
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnderlyingAmount.selector, address(waDAI)));
@@ -449,7 +455,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        waDAI.setSharesToConsume(waDAI.previewWithdraw(_wrapAmount) - 1);
+        waDAI.setSharesToConsume(waDAI.previewWithdraw(_wrapAmount) - _ABOVE_CONVERT_ERROR);
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
@@ -465,7 +471,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        waDAI.setSharesToConsume(waDAI.previewWithdraw(_wrapAmount) + 1);
+        waDAI.setSharesToConsume(waDAI.previewWithdraw(_wrapAmount) + _ABOVE_CONVERT_ERROR);
 
         vm.startPrank(lp);
         // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount
@@ -484,7 +490,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        waDAI.setAssetsToReturn(_wrapAmount + 1);
+        waDAI.setAssetsToReturn(_wrapAmount + _ABOVE_CONVERT_ERROR);
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnderlyingAmount.selector, address(waDAI)));
@@ -500,7 +506,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        waDAI.setAssetsToReturn(_wrapAmount - 1);
+        waDAI.setAssetsToReturn(_wrapAmount - _ABOVE_CONVERT_ERROR);
 
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongUnderlyingAmount.selector, address(waDAI)));

@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
 import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -1093,13 +1095,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // EXACT_IN wrap, so AmountGiven is underlying amount
             // Cannot use convertToShares because the actual deposit operation returns a different (usually smaller)
             // amount of shares.
-            amountCalculated = wrappedToken.previewDeposit(amountGiven);
+            amountCalculated = wrappedToken.convertToShares(amountGiven);
             (amountInUnderlying, amountOutWrapped) = (amountGiven, amountCalculated);
         } else {
             // EXACT_OUT wrap, so AmountGiven is wrapped amount
             // Cannot use convertToAssets because the actual mint operation deposits a different (usually bigger)
             // amount of assets.
-            amountCalculated = wrappedToken.previewMint(amountGiven);
+            amountCalculated = wrappedToken.convertToAssets(amountGiven);
             (amountInUnderlying, amountOutWrapped) = (amountCalculated, amountGiven);
         }
 
@@ -1130,7 +1132,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (bufferUnderlyingSurplus)
                 deltaUnderlyingDeposited = amountInUnderlying + bufferUnderlyingSurplus;
 
-                underlyingToken.forceApprove(address(wrappedToken), deltaUnderlyingDeposited);
+                underlyingToken.forceApprove(address(wrappedToken), deltaUnderlyingDeposited + _MAX_CONVERT_ERROR);
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called
                 wrappedToken.deposit(deltaUnderlyingDeposited, address(this));
             } else {
@@ -1142,10 +1144,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (bufferWrappedSurplus)
                 if (bufferWrappedSurplus > 0) {
                     deltaWrappedMinted = amountOutWrapped + bufferWrappedSurplus;
-                    underlyingToken.forceApprove(address(wrappedToken), wrappedToken.previewMint(deltaWrappedMinted));
+                    underlyingToken.forceApprove(
+                        address(wrappedToken),
+                        wrappedToken.convertToAssets(deltaWrappedMinted) + _MAX_CONVERT_ERROR
+                    );
                 } else {
                     deltaWrappedMinted = amountOutWrapped;
-                    underlyingToken.forceApprove(address(wrappedToken), amountInUnderlying);
+                    underlyingToken.forceApprove(address(wrappedToken), amountInUnderlying + _MAX_CONVERT_ERROR);
                 }
 
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called
@@ -1157,16 +1162,28 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IERC20(wrappedToken)
             );
 
-            if (deltaUnderlyingDeposited != amountInUnderlying + bufferUnderlyingSurplus) {
+            if (
+                (deltaUnderlyingDeposited < amountInUnderlying + bufferUnderlyingSurplus &&
+                    amountInUnderlying + bufferUnderlyingSurplus - deltaUnderlyingDeposited > _MAX_CONVERT_ERROR) ||
+                (deltaUnderlyingDeposited < amountInUnderlying + bufferUnderlyingSurplus &&
+                    deltaUnderlyingDeposited - amountInUnderlying - bufferUnderlyingSurplus > _MAX_CONVERT_ERROR)
+            ) {
                 // If this error is thrown, it means the previewDeposit or previewMint had a different result from
                 // the delta operation.
                 revert WrongUnderlyingAmount(address(wrappedToken));
             }
-            if (deltaWrappedMinted != amountOutWrapped + bufferWrappedSurplus) {
+            amountInUnderlying = deltaUnderlyingDeposited - bufferUnderlyingSurplus;
+            if (
+                (deltaWrappedMinted > amountOutWrapped + bufferWrappedSurplus &&
+                    deltaWrappedMinted - amountOutWrapped - bufferWrappedSurplus > _MAX_CONVERT_ERROR) ||
+                (deltaWrappedMinted < amountOutWrapped + bufferWrappedSurplus &&
+                    amountOutWrapped + bufferWrappedSurplus - deltaWrappedMinted > _MAX_CONVERT_ERROR)
+            ) {
                 // If this error is thrown, it means the previewDeposit or previewMint had a different result from
                 // the delta operation.
                 revert WrongWrappedAmount(address(wrappedToken));
             }
+            amountOutWrapped = deltaWrappedMinted - bufferWrappedSurplus;
 
             // Only updates buffer balances if buffer has a surplus of underlying or wrapped tokens
             if (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0) {
@@ -1206,13 +1223,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // EXACT_IN unwrap, so AmountGiven is wrapped amount
             // Cannot use convertToAssets because the actual withdraw operation returns a different (usually smaller)
             // amount of assets.
-            amountCalculated = wrappedToken.previewRedeem(amountGiven);
+            amountCalculated = wrappedToken.convertToAssets(amountGiven);
             (amountOutUnderlying, amountInWrapped) = (amountCalculated, amountGiven);
         } else {
             // EXACT_OUT unwrap, so AmountGiven is underlying amount
             // Cannot use convertToShares because the actual withdraw operation burns a different (usually bigger)
             // amount of shares.
-            amountCalculated = wrappedToken.previewWithdraw(amountGiven);
+            amountCalculated = wrappedToken.convertToShares(amountGiven);
             (amountOutUnderlying, amountInWrapped) = (amountGiven, amountCalculated);
         }
 
@@ -1255,16 +1272,28 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IERC20(wrappedToken)
             );
 
-            if (deltaUnderlyingWithdrawn != amountOutUnderlying + bufferUnderlyingSurplus) {
+            if (
+                (deltaUnderlyingWithdrawn < amountOutUnderlying + bufferUnderlyingSurplus &&
+                    amountOutUnderlying + bufferUnderlyingSurplus - deltaUnderlyingWithdrawn > _MAX_CONVERT_ERROR) ||
+                (deltaUnderlyingWithdrawn > amountOutUnderlying + bufferUnderlyingSurplus &&
+                    deltaUnderlyingWithdrawn - amountOutUnderlying - bufferUnderlyingSurplus > _MAX_CONVERT_ERROR)
+            ) {
                 // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
                 // the actual operation.
                 revert WrongUnderlyingAmount(address(wrappedToken));
             }
-            if (deltaWrappedRedeemed != amountInWrapped + bufferWrappedSurplus) {
+            amountOutUnderlying = deltaUnderlyingWithdrawn - bufferUnderlyingSurplus;
+            if (
+                ((deltaWrappedRedeemed > amountInWrapped + bufferWrappedSurplus) &&
+                    (deltaWrappedRedeemed - amountInWrapped - bufferWrappedSurplus > _MAX_CONVERT_ERROR)) ||
+                (deltaWrappedRedeemed < amountInWrapped + bufferWrappedSurplus &&
+                    amountInWrapped + bufferWrappedSurplus - deltaWrappedRedeemed > _MAX_CONVERT_ERROR)
+            ) {
                 // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
                 // the actual operation.
                 revert WrongWrappedAmount(address(wrappedToken));
             }
+            amountInWrapped = deltaWrappedRedeemed - bufferWrappedSurplus;
 
             // Only updates buffer balances if buffer has a surplus of underlying or wrapped tokens
             if (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0) {
