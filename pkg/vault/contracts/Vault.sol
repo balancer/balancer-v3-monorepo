@@ -379,7 +379,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         (vars.protocolSwapFeeAmountRaw, vars.creatorSwapFeeAmountRaw) = _computeAndChargeProtocolAndCreatorFees(
             poolData,
             vars.swapFeeAmountScaled18,
-            _protocolFeeCollector.getProtocolSwapFeePercentage(),
             params.pool,
             swapFeeToken,
             swapFeeIndex
@@ -674,7 +673,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 (vars.protocolSwapFeeAmountRaw, vars.creatorSwapFeeAmountRaw) = _computeAndChargeProtocolAndCreatorFees(
                     poolData,
                     swapFeeAmountsScaled18[i],
-                    _protocolFeeCollector.getProtocolSwapFeePercentage(),
                     params.pool,
                     token,
                     i
@@ -901,7 +899,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 (vars.protocolSwapFeeAmountRaw, vars.creatorSwapFeeAmountRaw) = _computeAndChargeProtocolAndCreatorFees(
                     poolData,
                     swapFeeAmountsScaled18[i],
-                    _protocolFeeCollector.getProtocolSwapFeePercentage(),
                     params.pool,
                     token,
                     i
@@ -960,7 +957,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _computeAndChargeProtocolAndCreatorFees(
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
-        uint256 protocolSwapFeePercentage,
         address pool,
         IERC20 token,
         uint256 index
@@ -972,8 +968,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 protocolSwapFeeAmountScaled18;
             uint256 creatorSwapFeeAmountScaled18;
 
-            if (protocolSwapFeePercentage > 0) {
-                protocolSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(protocolSwapFeePercentage);
+            if (poolData.poolConfig.protocolSwapFeePercentage > 0) {
+                protocolSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(
+                    poolData.poolConfig.protocolSwapFeePercentage
+                );
                 protocolSwapFeeAmountRaw = protocolSwapFeeAmountScaled18.toRawUndoRateRoundDown(
                     poolData.decimalScalingFactors[index],
                     poolData.tokenRates[index]

@@ -190,7 +190,12 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     function setProtocolSwapFeePercentage(uint64 percentage) internal {
         IProtocolFeeCollector feeCollector = vault.getProtocolFeeCollector();
 
-        authorizer.grantRole(IAuthentication(address(feeCollector)).getActionId(IProtocolFeeCollector.setProtocolSwapFeePercentage.selector), admin);
+        authorizer.grantRole(
+            IAuthentication(address(feeCollector)).getActionId(
+                IProtocolFeeCollector.setProtocolSwapFeePercentage.selector
+            ),
+            admin
+        );
         vm.prank(admin);
         feeCollector.setProtocolSwapFeePercentage(percentage);
     }

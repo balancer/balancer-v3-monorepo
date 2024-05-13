@@ -155,7 +155,6 @@ interface IVaultMainMock {
     function manualComputeAndChargeProtocolAndCreatorFees(
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
-        uint256 protocolSwapFeePercentage,
         address pool,
         IERC20 token,
         uint256 index

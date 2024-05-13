@@ -92,14 +92,7 @@ contract VaultUnitTest is BaseTest {
         emit IVaultEvents.ProtocolSwapFeeCharged(pool, address(dai), expectedSwapFeeAmountScaled18);
 
         (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolAndCreatorFees(
-                poolData,
-                swapFeeAmountScaled18,
-                protocolSwapFeePercentage,
-                pool,
-                dai,
-                tokenIndex
-            );
+            .manualComputeAndChargeProtocolAndCreatorFees(poolData, swapFeeAmountScaled18, pool, dai, tokenIndex);
 
         assertEq(creatorSwapFeeAmountRaw, 0, "Unexpected creatorSwapFeeAmountRaw");
         assertEq(protocolSwapFeeAmountRaw, expectedSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
@@ -142,14 +135,7 @@ contract VaultUnitTest is BaseTest {
         emit IVaultEvents.PoolCreatorSwapFeeCharged(pool, address(dai), expectCreatorFeeAmountRaw);
 
         (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolAndCreatorFees(
-                poolData,
-                swapFeeAmountScaled18,
-                protocolSwapFeePercentage,
-                pool,
-                dai,
-                0
-            );
+            .manualComputeAndChargeProtocolAndCreatorFees(poolData, swapFeeAmountScaled18, pool, dai, 0);
 
         assertEq(protocolSwapFeeAmountRaw, expectedSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
         assertEq(creatorSwapFeeAmountRaw, expectCreatorFeeAmountRaw, "Unexpected creatorSwapFeeAmountRaw");
@@ -167,7 +153,7 @@ contract VaultUnitTest is BaseTest {
         poolData.poolConfig.isPoolInRecoveryMode = true;
 
         (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolAndCreatorFees(poolData, 1e18, 10e16, pool, dai, 0);
+            .manualComputeAndChargeProtocolAndCreatorFees(poolData, 1e18, pool, dai, 0);
 
         //TODO adjust to protocol fee collector
         //assertEq(protocolSwapFeeAmountRaw, 0, "Unexpected protocolSwapFeeAmountRaw");

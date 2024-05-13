@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -71,11 +72,15 @@ contract YieldFeesTest is BaseVaultTest {
     }
 
     function setProtocolYieldFeePercentage(uint256 yieldFeePercentage) internal {
-        bytes32 setFeeRole = vault.getActionId(IProtocolFeeCollector.setProtocolYieldFeePercentage.selector);
+        IProtocolFeeCollector feeCollector = vault.getProtocolFeeCollector();
+
+        bytes32 setFeeRole = IAuthentication(address(feeCollector)).getActionId(
+            IProtocolFeeCollector.setProtocolYieldFeePercentage.selector
+        );
         authorizer.grantRole(setFeeRole, alice);
 
         vm.prank(alice);
-        vault.getProtocolFeeCollector().setProtocolYieldFeePercentage(yieldFeePercentage);
+        feeCollector.setProtocolYieldFeePercentage(yieldFeePercentage);
     }
 
     function testPoolDataAfterInitialization__Fuzz(bool roundUp) public {
