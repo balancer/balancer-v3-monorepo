@@ -155,11 +155,7 @@ contract RouterCommon is IRouterSender {
     }
 
     function callAndSaveSender(bytes calldata data) external returns (bytes memory result) {
-        StorageSlot.AddressSlotType senderSlot = _getSenderSlot();
-        address sender = senderSlot.tload();
-        if (sender == address(0)) {
-            senderSlot.tstore(msg.sender);
-        }
+        _getSenderSlot().tstore(msg.sender);
 
         result = Address.functionDelegateCall(address(this), data);
     }
