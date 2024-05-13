@@ -76,12 +76,13 @@ contract VaultUnitTest is BaseTest {
         uint256 tokenIndex = 0;
         vault.manualSetPoolCreatorFees(pool, dai, tokenIndex);
 
-        PoolData memory poolData;
-        poolData.decimalScalingFactors = decimalScalingFactors;
-        poolData.tokenRates = tokenRates;
-
         uint256 swapFeeAmountScaled18 = 1e18;
         uint256 protocolSwapFeePercentage = 10e16;
+
+        PoolData memory poolData;
+        poolData.decimalScalingFactors = decimalScalingFactors;
+        poolData.poolConfig.protocolSwapFeePercentage = protocolSwapFeePercentage;
+        poolData.tokenRates = tokenRates;
 
         uint256 expectedSwapFeeAmountScaled18 = swapFeeAmountScaled18
             .mulUp(protocolSwapFeePercentage)
@@ -119,6 +120,7 @@ contract VaultUnitTest is BaseTest {
 
         PoolData memory poolData;
         poolData.decimalScalingFactors = decimalScalingFactors;
+        poolData.poolConfig.protocolSwapFeePercentage = protocolSwapFeePercentage;
         poolData.poolConfig.poolCreatorFeePercentage = creatorFeePercentage;
         poolData.tokenRates = tokenRates;
 

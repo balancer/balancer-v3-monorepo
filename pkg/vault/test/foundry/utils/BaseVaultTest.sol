@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
@@ -187,9 +188,11 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     }
 
     function setProtocolSwapFeePercentage(uint64 percentage) internal {
-        authorizer.grantRole(vault.getActionId(IProtocolFeeCollector.setProtocolSwapFeePercentage.selector), admin);
+        IProtocolFeeCollector feeCollector = vault.getProtocolFeeCollector();
+
+        authorizer.grantRole(IAuthentication(address(feeCollector)).getActionId(IProtocolFeeCollector.setProtocolSwapFeePercentage.selector), admin);
         vm.prank(admin);
-        vault.getProtocolFeeCollector().setProtocolSwapFeePercentage(percentage);
+        feeCollector.setProtocolSwapFeePercentage(percentage);
     }
 
     function getBalances(address user) internal view returns (Balances memory balances) {
