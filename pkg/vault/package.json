@@ -41,6 +41,7 @@
   "devDependencies": {
     "@balancer-labs/solidity-toolbox": "workspace:*",
     "@balancer-labs/v3-solidity-utils": "workspace:*",
+    "@tenderly/hardhat-tenderly": "2.1.0",
     "@typescript-eslint/eslint-plugin": "^5.41.0",
     "@typescript-eslint/parser": "^5.41.0",
     "decimal.js": "^10.4.2",
