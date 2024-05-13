@@ -63,6 +63,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _vaultPauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
         _vaultBufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
         _vaultBufferPeriodEndTime = IVaultAdmin(address(vaultExtension)).getBufferPeriodEndTime();
+        _protocolFeeCollector = IVaultAdmin(address(vaultExtension)).getProtocolFeeCollector();
 
         _authorizer = authorizer;
     }
@@ -235,7 +236,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Non-reentrant call that updates accounting.
         (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData);
-
         if (poolData.poolConfig.hooks.shouldCallAfterSwap) {
             // Adjust balances for the AfterSwap hook.
             (uint256 amountInScaled18, uint256 amountOutScaled18) = params.kind == SwapKind.EXACT_IN
@@ -321,7 +321,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Perform the swap request hook and compute the new balances for 'token in' and 'token out' after the swap
 
         vars.amountCalculatedScaled18 = IBasePool(params.pool).onSwap(_buildPoolSwapParams(params, vars, poolData));
-
         // Note that balances are kept in memory, and are not fully computed until the `setPoolBalances` below.
         // Intervening code cannot read balances from storage, as they are temporarily out-of-sync here. This function
         // is nonReentrant, to guard against read-only reentrancy issues.
@@ -980,6 +979,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     poolData.tokenRates[index]
                 );
 
+                // NB: assumes tokens are in the Vault at this point; use transient storage and transfer at the end?
                 token.safeTransfer(address(_protocolFeeCollector), protocolSwapFeeAmountRaw);
                 emit ProtocolSwapFeeCharged(pool, address(token), protocolSwapFeeAmountRaw);
             }
