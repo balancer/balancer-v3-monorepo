@@ -201,16 +201,16 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         waDAI.setAssetsToConsume(changedWrapAmount);
 
-        vm.prank(lp);
         // When the assets amount is higher than predicted, vault did not give allowance to make the transfer
         vm.expectRevert(
             abi.encodeWithSelector(
                 IERC20Errors.ERC20InsufficientAllowance.selector,
                 address(waDAI),
-                _wrapAmount,
+                _wrapAmount + vault.getMaxConvertError(),
                 changedWrapAmount
             )
         );
+        vm.prank(lp);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -304,16 +304,16 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         waDAI.setAssetsToConsume(changedWrapAmount);
 
-        vm.prank(lp);
         // When the assets amount is higher than predicted, vault did not give allowance to make the transfer
         vm.expectRevert(
             abi.encodeWithSelector(
                 IERC20Errors.ERC20InsufficientAllowance.selector,
                 address(waDAI),
-                _wrapAmount,
+                _wrapAmount + vault.getMaxConvertError(),
                 changedWrapAmount
             )
         );
+        vm.prank(lp);
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
     }
 
