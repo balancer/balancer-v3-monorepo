@@ -7,6 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
+import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
@@ -37,6 +38,7 @@ import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
+import { ProtocolFeeCollector } from "./ProtocolFeeCollector.sol";
 
 /**
  * @dev Bytecode extension for Vault.
@@ -122,7 +124,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
-        uint256 swapFeePercentage;
+        uint256 poolSwapFeePercentage;
+        uint256 protocolSwapFeePercentage;
+        uint256 protocolYieldFeePercentage;
         uint256 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
         PoolHooks poolHooks;
@@ -133,7 +137,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
-        uint256 swapFeePercentage,
+        uint256 poolSwapFeePercentage,
+        uint256 protocolSwapFeePercentage,
+        uint256 protocolYieldFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
@@ -143,7 +149,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             pool,
             PoolRegistrationParams({
                 tokenConfig: tokenConfig,
-                swapFeePercentage: swapFeePercentage,
+                poolSwapFeePercentage: poolSwapFeePercentage,
+                protocolSwapFeePercentage: protocolSwapFeePercentage,
+                protocolYieldFeePercentage: protocolYieldFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
                 roleAccounts: roleAccounts,
                 poolHooks: poolHooks,
@@ -176,6 +184,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
         if (numTokens > _MAX_TOKENS) {
             revert MaxTokens();
+        }
+
+        IProtocolFeeCollector feeCollector = _vault.getProtocolFeeCollector();
+
+        if (params.protocolSwapFeePercentage > feeCollector.getMaxProtocolSwapFeePercentage()) {
+            revert IProtocolFeeCollector.ProtocolSwapFeePercentageTooHigh();
+        }
+
+        if (params.protocolYieldFeePercentage > feeCollector.getMaxProtocolYieldFeePercentage()) {
+            revert IProtocolFeeCollector.ProtocolYieldFeePercentageTooHigh();
         }
 
         // Retrieve or create the pool's token balances mapping.
@@ -238,9 +256,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         config.liquidityManagement = params.liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime;
+        config.protocolSwapFeePercentage = params.protocolSwapFeePercentage;
+        config.protocolYieldFeePercentage = params.protocolYieldFeePercentage;
         _poolConfig[pool] = config.fromPoolConfig();
 
-        _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
+        _setStaticSwapFeePercentage(pool, params.poolSwapFeePercentage);
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
         emit PoolRegistered(
@@ -299,7 +319,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     ) external onlyWhenUnlocked withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
         _ensureUnpausedAndGetVaultState(pool);
 
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
+            pool,
+            Rounding.ROUND_DOWN
+        );
 
         if (poolData.poolConfig.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);

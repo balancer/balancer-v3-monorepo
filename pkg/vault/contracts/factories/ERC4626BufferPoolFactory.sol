@@ -6,6 +6,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
+import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -105,10 +106,14 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         // We are assuming the underlyingToken is STANDARD (the default type, with enum value 0).
         tokenConfig[baseTokenIndex].token = IERC20(wrappedToken.asset());
 
+        IProtocolFeeCollector feeCollector = getVault().getProtocolFeeCollector();
+
         getVault().registerPool(
             pool,
             tokenConfig,
             0, // zero swap fee
+            feeCollector.getProtocolSwapFeePercentage(),
+            feeCollector.getProtocolYieldFeePercentage(),
             pauseWindowEndTime,
             roleAccounts,
             poolHooks,
