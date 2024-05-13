@@ -47,7 +47,7 @@ contract VaultUnitSwapTest is BaseTest {
     }
 
     function testSwapExactInWithZeroFee() public {
-        (SwapParams memory params, SwapVars memory vars, PoolData memory poolData, ) = _makeParams(
+        (SwapParams memory params, SwapVars memory vars, PoolData memory poolData) = _makeParams(
             SwapKind.EXACT_IN,
             amountGivenRaw,
             0,
@@ -79,7 +79,7 @@ contract VaultUnitSwapTest is BaseTest {
         // set zero pool creator fee
         vault.manualSetPoolCreatorFees(pool, swapTokens[1], 0);
 
-        (SwapParams memory params, SwapVars memory vars, PoolData memory poolData, ) = _makeParams(
+        (SwapParams memory params, SwapVars memory vars, PoolData memory poolData) = _makeParams(
             SwapKind.EXACT_IN,
             amountGivenRaw,
             0,

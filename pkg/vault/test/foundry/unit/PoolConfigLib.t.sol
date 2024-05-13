@@ -50,6 +50,8 @@ contract PoolConfigLibTest is Test {
 
         _checkBits(PoolConfigLib.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH);
         _checkBits(PoolConfigLib.POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH);
+        _checkBits(PoolConfigLib.PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH);
+        _checkBits(PoolConfigLib.PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH);
         _checkBits(PoolConfigLib.DECIMAL_SCALING_FACTORS_OFFSET, TOKEN_DECIMAL_DIFFS_BITLENGTH);
         _checkBits(PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH);
     }
