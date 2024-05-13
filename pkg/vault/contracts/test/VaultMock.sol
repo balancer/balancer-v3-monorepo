@@ -355,7 +355,7 @@ contract VaultMock is IVaultMainMock, Vault {
         }
     }
 
-    function getMaxConvertError() external view returns (uint256) {
+    function getMaxConvertError() external pure returns (uint256) {
         return _MAX_CONVERT_ERROR;
     }
 
