@@ -4,13 +4,15 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { PackedTokenBalance } from "../../contracts/lib/PackedTokenBalance.sol";
+import { PackedTokenBalance } from "../../../contracts/lib/PackedTokenBalance.sol";
 
 contract PackedTokenBalanceTest is Test {
+    using PackedTokenBalance for bytes32;
+
     function testToFromPackedBalance__Fuzz(uint128 raw, uint128 live) public {
         bytes32 balance = PackedTokenBalance.toPackedBalance(raw, live);
 
-        (uint256 recoveredRaw, uint256 recoveredLive) = PackedTokenBalance.fromPackedBalance(balance);
+        (uint256 recoveredRaw, uint256 recoveredLive) = balance.fromPackedBalance();
 
         assertEq(recoveredRaw, raw);
         assertEq(recoveredLive, live);
@@ -19,8 +21,8 @@ contract PackedTokenBalanceTest is Test {
     function testPackedTokenBalanceGetters__Fuzz(uint128 raw, uint128 live) public {
         bytes32 balance = PackedTokenBalance.toPackedBalance(raw, live);
 
-        uint256 recoveredRaw = PackedTokenBalance.getRawBalance(balance);
-        uint256 recoveredLive = PackedTokenBalance.getLastLiveBalanceScaled18(balance);
+        uint256 recoveredRaw = balance.getBalanceRaw();
+        uint256 recoveredLive = balance.getBalanceDerived();
 
         assertEq(recoveredRaw, raw);
         assertEq(recoveredLive, live);
@@ -30,10 +32,10 @@ contract PackedTokenBalanceTest is Test {
         (uint256 recoveredRaw, uint256 recoveredLive) = PackedTokenBalance.fromPackedBalance(balance);
 
         // Set new raw balance (should not change live).
-        bytes32 newBalance = PackedTokenBalance.setRawBalance(balance, newBalanceValue);
+        bytes32 newBalance = balance.setBalanceRaw(newBalanceValue);
 
-        uint256 newRecoveredRaw = PackedTokenBalance.getRawBalance(newBalance);
-        uint256 newRecoveredLive = PackedTokenBalance.getLastLiveBalanceScaled18(newBalance);
+        uint256 newRecoveredRaw = newBalance.getBalanceRaw();
+        uint256 newRecoveredLive = newBalance.getBalanceDerived();
 
         assertEq(newRecoveredRaw, newBalanceValue);
         assertEq(newRecoveredLive, recoveredLive);
@@ -49,6 +51,6 @@ contract PackedTokenBalanceTest is Test {
         PackedTokenBalance.toPackedBalance(overMaxBalanceValue, validBalanceValue);
 
         vm.expectRevert(PackedTokenBalance.BalanceOverflow.selector);
-        PackedTokenBalance.setRawBalance(balance, overMaxBalanceValue);
+        balance.setBalanceRaw(overMaxBalanceValue);
     }
 }

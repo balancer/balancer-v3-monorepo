@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -10,14 +11,17 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { RouterCommon } from "./RouterCommon.sol";
 
@@ -44,7 +48,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable returns (uint256 bptAmountOut) {
         return
             abi.decode(
-                _vault.lock{ value: msg.value }(
+                _vault.unlock{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.initializeHook.selector,
                         InitializeHookParams({
@@ -82,7 +86,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < params.tokens.length; ++i) {
-            // Receive tokens from the locker
             IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
 
@@ -116,7 +119,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
-            _vault.lock{ value: msg.value }(
+            _vault.unlock{ value: msg.value }(
                 abi.encodeWithSelector(
                     Router.addLiquidityHook.selector,
                     AddLiquidityHookParams({
@@ -143,7 +146,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bytes memory userData
     ) external payable returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
-            _vault.lock{ value: msg.value }(
+            _vault.unlock{ value: msg.value }(
                 abi.encodeWithSelector(
                     Router.addLiquidityHook.selector,
                     AddLiquidityHookParams({
@@ -177,7 +180,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         );
 
         (uint256[] memory amountsIn, , ) = abi.decode(
-            _vault.lock{ value: msg.value }(
+            _vault.unlock{ value: msg.value }(
                 abi.encodeWithSelector(
                     Router.addLiquidityHook.selector,
                     AddLiquidityHookParams({
@@ -207,7 +210,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         return
             abi.decode(
-                _vault.lock{ value: msg.value }(
+                _vault.unlock{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.addLiquidityHook.selector,
                         AddLiquidityHookParams({
@@ -257,7 +260,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < tokens.length; ++i) {
-            // Receive tokens from the locker
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
 
@@ -290,7 +292,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bytes memory userData
     ) external payable returns (uint256[] memory amountsOut) {
         (, amountsOut, ) = abi.decode(
-            _vault.lock(
+            _vault.unlock(
                 abi.encodeWithSelector(
                     Router.removeLiquidityHook.selector,
                     RemoveLiquidityHookParams({
@@ -324,7 +326,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         );
 
         (, uint256[] memory amountsOut, ) = abi.decode(
-            _vault.lock(
+            _vault.unlock(
                 abi.encodeWithSelector(
                     Router.removeLiquidityHook.selector,
                     RemoveLiquidityHookParams({
@@ -356,7 +358,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         (uint256[] memory minAmountsOut, ) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, exactAmountOut);
 
         (bptAmountIn, , ) = abi.decode(
-            _vault.lock(
+            _vault.unlock(
                 abi.encodeWithSelector(
                     Router.removeLiquidityHook.selector,
                     RemoveLiquidityHookParams({
@@ -386,7 +388,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
         return
             abi.decode(
-                _vault.lock(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         Router.removeLiquidityHook.selector,
                         RemoveLiquidityHookParams({
@@ -410,7 +412,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut) {
         amountsOut = abi.decode(
-            _vault.lock(
+            _vault.unlock(
                 abi.encodeWithSelector(Router.removeLiquidityRecoveryHook.selector, pool, msg.sender, exactBptAmountIn)
             ),
             (uint256[])
@@ -508,7 +510,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable returns (uint256) {
         return
             abi.decode(
-                _vault.lock{ value: msg.value }(
+                _vault.unlock{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.swapSingleTokenHook.selector,
                         SwapSingleTokenHookParams({
@@ -542,7 +544,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable returns (uint256) {
         return
             abi.decode(
-                _vault.lock{ value: msg.value }(
+                _vault.unlock{ value: msg.value }(
                     abi.encodeWithSelector(
                         Router.swapSingleTokenHook.selector,
                         SwapSingleTokenHookParams({
@@ -608,6 +610,97 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 userData: params.userData
             })
         );
+    }
+
+    /*******************************************************************************
+                            Yield-bearing token buffers
+    *******************************************************************************/
+
+    /// @inheritdoc IRouter
+    function addLiquidityToBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlyingRaw,
+        uint256 amountWrappedRaw,
+        address sharesOwner
+    ) external returns (uint256 issuedShares) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeWithSelector(
+                        Router.addLiquidityToBufferHook.selector,
+                        wrappedToken,
+                        amountUnderlyingRaw,
+                        amountWrappedRaw,
+                        sharesOwner
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    /**
+     * @notice Hook for adding liquidity to vault buffers.
+     * @dev Can only be called by the Vault.
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
+     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param sharesOwner Address of contract that will own the deposited liquidity. Only
+     *        this contract will be able to remove liquidity from the buffer
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts
+     *         (it is the BPT of vault's internal linear pools)
+     */
+    function addLiquidityToBufferHook(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlyingRaw,
+        uint256 amountWrappedRaw,
+        address sharesOwner
+    ) external nonReentrant onlyVault returns (uint256 issuedShares) {
+        issuedShares = _vault.addLiquidityToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, sharesOwner);
+        _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlyingRaw, false);
+        _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrappedRaw, false);
+    }
+
+    /// @inheritdoc IRouter
+    function removeLiquidityFromBuffer(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove
+    ) external returns (uint256, uint256) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeWithSelector(
+                        Router.removeLiquidityFromBufferHook.selector,
+                        wrappedToken,
+                        sharesToRemove,
+                        msg.sender
+                    )
+                ),
+                (uint256, uint256)
+            );
+    }
+
+    /**
+     * @notice Hook for removing liquidity from vault buffers.
+     * @dev Can only be called by the Vault.
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
+     *        total shares
+     * @param sharesOwner Address of contract that owns the deposited liquidity.
+     * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
+     * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
+     */
+    function removeLiquidityFromBufferHook(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove,
+        address sharesOwner
+    ) external nonReentrant onlyVault returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw) {
+        (removedUnderlyingBalanceRaw, removedWrappedBalanceRaw) = _vault.removeLiquidityFromBuffer(
+            wrappedToken,
+            sharesToRemove,
+            sharesOwner
+        );
+        _sendTokenOut(sharesOwner, IERC20(wrappedToken.asset()), removedUnderlyingBalanceRaw, false);
+        _sendTokenOut(sharesOwner, IERC20(address(wrappedToken)), removedWrappedBalanceRaw, false);
     }
 
     /*******************************************************************************

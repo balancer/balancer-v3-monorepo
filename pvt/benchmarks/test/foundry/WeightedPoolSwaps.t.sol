@@ -49,13 +49,13 @@ contract WeightedPoolSwaps is BaseVaultTest {
         rateProviders.push(new RateProviderMock());
         rateProviders.push(new RateProviderMock());
 
-        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
-
         wsteth.mint(bob, initialFunds);
         dai.mint(bob, initialFunds);
 
         wsteth.mint(alice, initialFunds);
         dai.mint(alice, initialFunds);
+
+        PoolRoleAccounts memory poolRoleAccounts;
 
         weightedPoolWithRate = WeightedPool(
             factory.create(
@@ -63,8 +63,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 "ERC20POOL",
                 vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20(), rateProviders),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-                address(0),
-                address(0),
+                poolRoleAccounts,
                 swapFee,
                 bytes32(0)
             )
@@ -76,8 +75,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 "ERC20POOL",
                 vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20()),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-                address(0),
-                address(0),
+                poolRoleAccounts,
                 swapFee,
                 bytes32(uint256(1))
             )

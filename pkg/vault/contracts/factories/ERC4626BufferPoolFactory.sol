@@ -79,8 +79,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             wrappedToken,
             rateProvider,
             getNewPoolPauseWindowEndTime(),
-            pauseManager,
-            poolCreator,
+            PoolRoleAccounts({ pauseManager: pauseManager, swapFeeManager: address(0), poolCreator: poolCreator }),
             _getDefaultPoolHooks(),
             _getDefaultLiquidityManagement()
         );
@@ -91,8 +90,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         IERC4626 wrappedToken,
         IRateProvider rateProvider,
         uint256 pauseWindowEndTime,
-        address pauseManager,
-        address poolCreator,
+        PoolRoleAccounts memory roleAccounts,
         PoolHooks memory poolHooks,
         LiquidityManagement memory liquidityManagement
     ) internal {
@@ -104,17 +102,15 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         tokenConfig[wrappedTokenIndex].rateProvider = rateProvider;
         // ERC4626 wrapped tokens always pay yield fees.
         tokenConfig[wrappedTokenIndex].paysYieldFees = true;
-        // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
+        // We are assuming the underlyingToken is STANDARD (the default type, with enum value 0).
         tokenConfig[baseTokenIndex].token = IERC20(wrappedToken.asset());
 
-        // Buffers always have 0 swap fees.
         getVault().registerPool(
             pool,
             tokenConfig,
-            0,
+            0, // zero swap fee
             pauseWindowEndTime,
-            pauseManager,
-            poolCreator,
+            roleAccounts,
             poolHooks,
             liquidityManagement
         );
@@ -129,6 +125,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
                 shouldCallAfterAddLiquidity: false,
                 shouldCallBeforeRemoveLiquidity: false,
                 shouldCallAfterRemoveLiquidity: false,
+                shouldCallComputeDynamicSwapFee: false,
                 shouldCallBeforeSwap: true, // rebalancing
                 shouldCallAfterSwap: false
             });

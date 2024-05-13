@@ -37,8 +37,8 @@ library PoolConfigLib {
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
 
     uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
-    uint256 public constant POOL_DEV_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
-    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = POOL_DEV_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant POOL_CREATOR_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = POOL_CREATOR_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
 
@@ -65,16 +65,12 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_PAUSED_OFFSET);
     }
 
-    function hasDynamicSwapFee(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(DYNAMIC_SWAP_FEE_OFFSET);
-    }
-
     function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
         return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
     function getPoolCreatorFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
-        return PoolConfigBits.unwrap(config).decodeUint(POOL_DEV_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
+        return PoolConfigBits.unwrap(config).decodeUint(POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint256) {
@@ -83,6 +79,10 @@ library PoolConfigLib {
 
     function getPauseWindowEndTime(PoolConfigBits config) internal pure returns (uint256) {
         return PoolConfigBits.unwrap(config).decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH);
+    }
+
+    function shouldCallComputeDynamicSwapFee(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(DYNAMIC_SWAP_FEE_OFFSET);
     }
 
     function shouldCallBeforeSwap(PoolConfigBits config) internal pure returns (bool) {
@@ -157,8 +157,7 @@ library PoolConfigLib {
                 .insertBool(config.isPoolRegistered, POOL_REGISTERED_OFFSET)
                 .insertBool(config.isPoolInitialized, POOL_INITIALIZED_OFFSET)
                 .insertBool(config.isPoolPaused, POOL_PAUSED_OFFSET)
-                .insertBool(config.isPoolInRecoveryMode, POOL_RECOVERY_MODE_OFFSET)
-                .insertBool(config.hasDynamicSwapFee, DYNAMIC_SWAP_FEE_OFFSET);
+                .insertBool(config.isPoolInRecoveryMode, POOL_RECOVERY_MODE_OFFSET);
         }
 
         {
@@ -179,7 +178,8 @@ library PoolConfigLib {
         {
             configBits = configBits
                 .insertBool(config.hooks.shouldCallBeforeInitialize, BEFORE_INITIALIZE_OFFSET)
-                .insertBool(config.hooks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET);
+                .insertBool(config.hooks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET)
+                .insertBool(config.hooks.shouldCallComputeDynamicSwapFee, DYNAMIC_SWAP_FEE_OFFSET);
         }
 
         {
@@ -191,7 +191,11 @@ library PoolConfigLib {
         {
             configBits = configBits
                 .insertUint(config.staticSwapFeePercentage / FEE_SCALING_FACTOR, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH)
-                .insertUint(config.poolCreatorFeePercentage / FEE_SCALING_FACTOR, POOL_DEV_FEE_OFFSET, FEE_BITLENGTH);
+                .insertUint(
+                    config.poolCreatorFeePercentage / FEE_SCALING_FACTOR,
+                    POOL_CREATOR_FEE_OFFSET,
+                    FEE_BITLENGTH
+                );
         }
 
         return
@@ -236,31 +240,36 @@ library PoolConfigLib {
     }
 
     function toPoolConfig(PoolConfigBits config) internal pure returns (PoolConfig memory) {
+        bytes32 rawConfig = PoolConfigBits.unwrap(config);
+
+        // Calling the functions (in addition to costing more gas), causes an obscure form of stack error (Yul errors).
         return
             PoolConfig({
-                isPoolRegistered: config.isPoolRegistered(),
-                isPoolInitialized: config.isPoolInitialized(),
-                isPoolPaused: config.isPoolPaused(),
-                isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
-                hasDynamicSwapFee: config.hasDynamicSwapFee(),
-                staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
-                poolCreatorFeePercentage: config.getPoolCreatorFeePercentage(),
-                tokenDecimalDiffs: config.getTokenDecimalDiffs(),
-                pauseWindowEndTime: config.getPauseWindowEndTime(),
+                isPoolRegistered: rawConfig.decodeBool(POOL_REGISTERED_OFFSET),
+                isPoolInitialized: rawConfig.decodeBool(POOL_INITIALIZED_OFFSET),
+                isPoolPaused: rawConfig.decodeBool(POOL_PAUSED_OFFSET),
+                isPoolInRecoveryMode: rawConfig.decodeBool(POOL_RECOVERY_MODE_OFFSET),
+                staticSwapFeePercentage: rawConfig.decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
+                    FEE_SCALING_FACTOR,
+                poolCreatorFeePercentage: rawConfig.decodeUint(POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH) *
+                    FEE_SCALING_FACTOR,
+                tokenDecimalDiffs: rawConfig.decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH),
+                pauseWindowEndTime: rawConfig.decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH),
                 hooks: PoolHooks({
-                    shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
-                    shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
-                    shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
-                    shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
-                    shouldCallBeforeRemoveLiquidity: config.shouldCallBeforeRemoveLiquidity(),
-                    shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
-                    shouldCallBeforeSwap: config.shouldCallBeforeSwap(),
-                    shouldCallAfterSwap: config.shouldCallAfterSwap()
+                    shouldCallBeforeInitialize: rawConfig.decodeBool(BEFORE_INITIALIZE_OFFSET),
+                    shouldCallAfterInitialize: rawConfig.decodeBool(AFTER_INITIALIZE_OFFSET),
+                    shouldCallBeforeAddLiquidity: rawConfig.decodeBool(BEFORE_ADD_LIQUIDITY_OFFSET),
+                    shouldCallAfterAddLiquidity: rawConfig.decodeBool(AFTER_ADD_LIQUIDITY_OFFSET),
+                    shouldCallBeforeRemoveLiquidity: rawConfig.decodeBool(BEFORE_REMOVE_LIQUIDITY_OFFSET),
+                    shouldCallAfterRemoveLiquidity: rawConfig.decodeBool(AFTER_REMOVE_LIQUIDITY_OFFSET),
+                    shouldCallComputeDynamicSwapFee: rawConfig.decodeBool(DYNAMIC_SWAP_FEE_OFFSET),
+                    shouldCallBeforeSwap: rawConfig.decodeBool(BEFORE_SWAP_OFFSET),
+                    shouldCallAfterSwap: rawConfig.decodeBool(AFTER_SWAP_OFFSET)
                 }),
                 liquidityManagement: LiquidityManagement({
-                    disableUnbalancedLiquidity: !config.supportsUnbalancedLiquidity(),
-                    enableAddLiquidityCustom: config.supportsAddLiquidityCustom(),
-                    enableRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom()
+                    disableUnbalancedLiquidity: rawConfig.decodeBool(UNBALANCED_LIQUIDITY_OFFSET),
+                    enableAddLiquidityCustom: rawConfig.decodeBool(ADD_LIQUIDITY_CUSTOM_OFFSET),
+                    enableRemoveLiquidityCustom: rawConfig.decodeBool(REMOVE_LIQUIDITY_CUSTOM_OFFSET)
                 })
             });
     }

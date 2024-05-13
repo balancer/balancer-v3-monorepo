@@ -3,12 +3,14 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IRateProvider } from "./IRateProvider.sol";
 
 /// @dev Represents a pool's hooks.
 struct PoolHooks {
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
+    bool shouldCallComputeDynamicSwapFee;
     bool shouldCallBeforeSwap;
     bool shouldCallAfterSwap;
     bool shouldCallBeforeAddLiquidity;
@@ -35,7 +37,19 @@ struct PoolConfig {
     bool isPoolInitialized;
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
-    bool hasDynamicSwapFee;
+}
+
+/// @dev Represents temporary vars used in a swap operation.
+struct SwapVars {
+    // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
+    uint256 indexIn;
+    uint256 indexOut;
+    uint256 amountGivenScaled18;
+    uint256 amountCalculatedScaled18;
+    uint256 swapFeePercentage;
+    uint256 swapFeeAmountScaled18;
+    uint256 protocolSwapFeeAmountRaw;
+    uint256 creatorSwapFeeAmountRaw;
 }
 
 /**
@@ -46,12 +60,41 @@ struct PoolConfig {
  * @param isQueryDisabled If set to true, disables query functionality of the Vault. Can be modified only by
  * governance.
  * @param isVaultPaused If set to true, Swaps and Add/Remove Liquidity operations are halted
+ * @param areBuffersPaused If set to true, the Vault wrap/unwrap primitives associated with buffers will be disabled
  */
 struct VaultState {
     uint256 protocolSwapFeePercentage;
     uint256 protocolYieldFeePercentage;
     bool isQueryDisabled;
     bool isVaultPaused;
+    bool areBuffersPaused;
+}
+
+/**
+ * @dev Represents the accounts holding certain roles for a given pool. This is passed in on pool registration.
+ * @param pauseManager Account empowered to pause/unpause the pool (or 0 to delegate to governance)
+ * @param swapFeeManager Account empowered to set static swap fees for a pool (or 0 to delegate to goverance)
+ * @param poolCreator Account empowered to set the pool creator fee (or 0 for no fee)
+ */
+struct PoolRoleAccounts {
+    address pauseManager;
+    address swapFeeManager;
+    address poolCreator;
+}
+
+/**
+ * @notice Record pool function permissions (as a sort of local authorizer).
+ * @dev For each permissioned function controlled by a role (e.g., pause/unpause), store the account empowered to call
+ * that function, and flag indicating whether, if the caller is not the designated account (which might be zero),
+ * it should then delegate to governance. If the `onlyOwner` flag is true, it can only be called by the designated
+ * account.
+ *
+ * @param account The account with permission to perform the role
+ * @param onlyOwner Flag indicating whether it is reserved to the account alone, or also governance
+ */
+struct PoolFunctionPermission {
+    address account;
+    bool onlyOwner;
 }
 
 /**
@@ -186,6 +229,34 @@ struct RemoveLiquidityParams {
     uint256 maxBptAmountIn;
     uint256[] minAmountsOut;
     RemoveLiquidityKind kind;
+    bytes userData;
+}
+
+/*******************************************************************************
+                                Remove liquidity
+*******************************************************************************/
+
+enum WrappingDirection {
+    WRAP,
+    UNWRAP
+}
+
+/**
+ * @dev Data for a wrap/unwrap operation.
+ * @param kind Type of swap (Exact In or Exact Out)
+ * @param direction Direction of the wrapping operation (Wrap or Unwrap)
+ * @param wrappedToken Wrapped token, compatible with interface ERC4626
+ * @param amountGivenRaw Amount specified for tokenIn or tokenOut (depends on the type of swap and wrapping direction)
+ * @param limitRaw Minimum or maximum amount specified for the other token (depends on the type of swap and wrapping
+ * direction)
+ * @param userData Optional user data
+ */
+struct BufferWrapOrUnwrapParams {
+    SwapKind kind;
+    WrappingDirection direction;
+    IERC4626 wrappedToken;
+    uint256 amountGivenRaw;
+    uint256 limitRaw;
     bytes userData;
 }
 
