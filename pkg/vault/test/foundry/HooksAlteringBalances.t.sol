@@ -86,7 +86,8 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         // newBalances are raw and scaled18, because rate is 1 and decimals are 18
         uint256[] memory newBalances = [poolInitAmount / 2, poolInitAmount / 3].toMemoryArray();
         uint256[] memory amountsIn = [defaultAmount, defaultAmount].toMemoryArray();
-        uint256[] memory expectedBalances = [newBalances[0] + amountsIn[0], newBalances[1] + amountsIn[1]].toMemoryArray();
+        uint256[] memory expectedBalances = [newBalances[0] + amountsIn[0], newBalances[1] + amountsIn[1]]
+            .toMemoryArray();
 
         // - initial BPT supply = 2 * poolInitAmount
         // - initial pool balance = [poolInitAmount, poolInitAmount]
@@ -94,7 +95,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         // BPT supply is still the same, and amountsIn raw and scaled18 are the same, so:
         // - BPT/token = 2 * poolInitAmount / (poolInitAmount/2 + poolInitAmount/3) = 12/5
         // - expectedBptOut = BPT/token * newTokens = 12/5 * (amountsIn[0] + amountsIn[1])
-        uint256 expectedBptOut = 12 * (amountsIn[0] + amountsIn[1]) / 5;
+        uint256 expectedBptOut = (12 * (amountsIn[0] + amountsIn[1])) / 5;
 
         // Change balances of the pool on before hook
         PoolMock(pool).setChangePoolBalancesOnBeforeAddLiquidityHook(true, newBalances);
@@ -129,13 +130,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         uint256[] memory amountsOut = [defaultAmount, defaultAmount].toMemoryArray();
 
         vm.prank(alice);
-        router.addLiquidityUnbalanced(
-            address(pool),
-            amountsOut,
-            0,
-            false,
-            bytes("")
-        );
+        router.addLiquidityUnbalanced(address(pool), amountsOut, 0, false, bytes(""));
 
         uint256 balanceAfterLiquidity = poolInitAmount + defaultAmount;
 
@@ -159,12 +154,6 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             )
         );
         vm.prank(alice);
-        router.removeLiquidityCustom(
-            address(pool),
-            bptAmount,
-            amountsOut,
-            false,
-            bytes("")
-        );
+        router.removeLiquidityCustom(address(pool), bptAmount, amountsOut, false, bytes(""));
     }
 }

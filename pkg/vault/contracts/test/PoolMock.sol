@@ -135,10 +135,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         _newTokenRate = newTokenRate;
     }
 
-    function setChangePoolBalancesOnBeforeSwapHook(
-        bool changeBalances,
-        uint256[] memory newBalancesRaw
-    ) external {
+    function setChangePoolBalancesOnBeforeSwapHook(bool changeBalances, uint256[] memory newBalancesRaw) external {
         changePoolBalancesOnBeforeSwapHook = changeBalances;
         _newBalancesRaw = newBalancesRaw;
     }
