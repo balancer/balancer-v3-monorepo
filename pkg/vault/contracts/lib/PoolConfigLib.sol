@@ -205,7 +205,10 @@ library PoolConfigLib {
                     config.poolCreatorFeePercentage / FEE_SCALING_FACTOR,
                     POOL_CREATOR_FEE_OFFSET,
                     FEE_BITLENGTH
-                )
+                );
+        }
+        {
+            configBits = configBits
                 .insertUint(
                     config.protocolSwapFeePercentage / FEE_SCALING_FACTOR,
                     PROTOCOL_SWAP_FEE_OFFSET,
