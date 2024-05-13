@@ -10,14 +10,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
-import {
-    AddLiquidityKind,
-    RemoveLiquidityKind,
-    SwapParams,
-    SwapKind
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -77,14 +72,14 @@ contract ERC4626BufferPool is
         IERC4626 wrappedToken,
         IVault vault
     ) BalancerPoolToken(vault, name, symbol) BasePoolAuthentication(vault, msg.sender) {
-        address baseToken = wrappedToken.asset();
+        address underlyingToken = wrappedToken.asset();
 
         _wrappedToken = wrappedToken;
         _wrappedTokenScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(address(wrappedToken)));
-        _baseTokenScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(baseToken));
+        _baseTokenScalingFactor = ScalingHelpers.computeScalingFactor(IERC20(underlyingToken));
 
-        _wrappedTokenIndex = address(wrappedToken) > baseToken ? 1 : 0;
-        _baseTokenIndex = address(wrappedToken) > baseToken ? 0 : 1;
+        _wrappedTokenIndex = address(wrappedToken) > underlyingToken ? 1 : 0;
+        _baseTokenIndex = address(wrappedToken) > underlyingToken ? 0 : 1;
     }
 
     /// @inheritdoc IBasePool
@@ -241,7 +236,7 @@ contract ERC4626BufferPool is
 
     /// @inheritdoc IBufferPool
     function rebalance() external authenticate {
-        getVault().lock(abi.encodeWithSelector(ERC4626BufferPool.forcedRebalanceHook.selector));
+        getVault().unlock(abi.encodeWithSelector(ERC4626BufferPool.forcedRebalanceHook.selector));
     }
 
     function forcedRebalanceHook() external payable onlyVault {
@@ -254,7 +249,7 @@ contract ERC4626BufferPool is
         IVault vault = getVault();
 
         // Get balance of tokens
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors, ) = vault
+        (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors) = vault
             .getPoolTokenInfo(poolAddress);
 
         // PreviewRedeem converts a wrapped amount into a base amount
@@ -283,13 +278,13 @@ contract ERC4626BufferPool is
                 exchangeAmountRaw = desiredBaseAssetsRaw - balanceBaseAssetsRaw;
             }
 
-            _rebalanceInternal(poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_IN);
+            _rebalanceInternal(poolAddress, tokenConfig, exchangeAmountRaw, SwapKind.EXACT_IN);
         } else {
             unchecked {
                 exchangeAmountRaw = balanceBaseAssetsRaw - desiredBaseAssetsRaw;
             }
 
-            _rebalanceInternal(poolAddress, tokens, exchangeAmountRaw, SwapKind.EXACT_OUT);
+            _rebalanceInternal(poolAddress, tokenConfig, exchangeAmountRaw, SwapKind.EXACT_OUT);
         }
     }
 
@@ -301,7 +296,7 @@ contract ERC4626BufferPool is
      */
     function _rebalanceInternal(
         address poolAddress,
-        IERC20[] memory tokens,
+        TokenConfig[] memory tokenConfig,
         uint256 exchangeAmountRaw,
         SwapKind kind
     ) private {
@@ -319,8 +314,8 @@ contract ERC4626BufferPool is
                 SwapParams({
                     kind: SwapKind.EXACT_IN,
                     pool: poolAddress,
-                    tokenIn: tokens[_baseTokenIndex],
-                    tokenOut: tokens[_wrappedTokenIndex],
+                    tokenIn: tokenConfig[_baseTokenIndex].token,
+                    tokenOut: tokenConfig[_wrappedTokenIndex].token,
                     amountGivenRaw: exchangeAmountRaw,
                     limitRaw: limitRaw,
                     userData: ""
@@ -339,8 +334,8 @@ contract ERC4626BufferPool is
                 SwapParams({
                     kind: SwapKind.EXACT_OUT,
                     pool: poolAddress,
-                    tokenIn: tokens[_wrappedTokenIndex],
-                    tokenOut: tokens[_baseTokenIndex],
+                    tokenIn: tokenConfig[_wrappedTokenIndex].token,
+                    tokenOut: tokenConfig[_baseTokenIndex].token,
                     amountGivenRaw: exchangeAmountRaw,
                     limitRaw: limitRaw,
                     userData: ""
@@ -354,11 +349,11 @@ contract ERC4626BufferPool is
 
         (, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
-        IERC20 baseToken;
+        IERC20 underlyingToken;
         IERC20 wrappedToken;
 
         if (params.kind == SwapKind.EXACT_IN) {
-            baseToken = params.tokenIn;
+            underlyingToken = params.tokenIn;
             wrappedToken = params.tokenOut;
 
             vault.sendTo(wrappedToken, address(this), amountOut);
@@ -369,18 +364,18 @@ contract ERC4626BufferPool is
             IERC4626(address(wrappedToken)).redeem(amountOut, address(this), address(this));
             // The explicit transfer is needed, because onSwap considers a slightly larger rate for the wrapped token,
             // so the redeem function returns a bit less assets than amountIn
-            baseToken.safeTransfer(address(vault), amountIn);
-            vault.settle(baseToken);
+            underlyingToken.safeTransfer(address(vault), amountIn);
+            vault.settle(underlyingToken);
         } else {
-            baseToken = params.tokenOut;
+            underlyingToken = params.tokenOut;
             wrappedToken = params.tokenIn;
             // Since the rate used by onSwap is a bit larger than the real rate, the mint operation
             // will take more assets than amountOut. So, we need to recalculate the amount of assets
             // taken to approve the exact amount that will be minted
             uint256 preciseAmountOut = IERC4626(address(wrappedToken)).previewMint(amountIn);
 
-            vault.sendTo(baseToken, address(this), amountOut);
-            baseToken.approve(address(wrappedToken), preciseAmountOut);
+            vault.sendTo(underlyingToken, address(this), amountOut);
+            underlyingToken.forceApprove(address(wrappedToken), preciseAmountOut);
             // Using mint, instead of deposit, to pass the amount of shares (amountIn) instead of the
             // amount of assets. That's because amount of shares is an output of onSwap, so we make sure
             // the buffer contract will never have a different balance of wrapped tokens after the rebalance

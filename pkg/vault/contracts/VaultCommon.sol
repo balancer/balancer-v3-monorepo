@@ -49,20 +49,16 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /**
      * @dev This modifier ensures that the function it modifies can only be called
-     * by the last locker in the `_lockers` array. This is used to enforce the
-     * order of execution when multiple lockers are in play, ensuring only the
-     * current or "active" locker can perform certain operations in the Vault.
-     * If no locker is found or the caller is not the expected locker,
-     * it reverts the transaction with specific error messages.
+     * when a tab has been opened.
      */
-    modifier withOpenTab() {
-        _ensureWithOpenTab();
+    modifier onlyWhenUnlocked() {
+        _ensureUnlocked();
         _;
     }
 
-    function _ensureWithOpenTab() internal view {
-        if (_openTab().tload() == false) {
-            revert TabIsNotOpen();
+    function _ensureUnlocked() internal view {
+        if (_isUnlocked().tload() == false) {
+            revert VaultIsNotUnlocked();
         }
     }
 
@@ -75,42 +71,37 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
-     * @notice Records the `credit` for a given locker and token.
+     * @notice Records the `credit` for a given token.
      * @param token   The ERC20 token for which the 'credit' will be accounted.
-     * @param credit  The amount of `token` supplied to the Vault in favor of the `locker`.
-     * @param locker The account credited with the amount.
+     * @param credit  The amount of `token` supplied to the Vault in favor of the caller.
      */
-    function _supplyCredit(IERC20 token, uint256 credit, address locker) internal {
-        _accountDelta(token, -credit.toInt256(), locker);
+    function _supplyCredit(IERC20 token, uint256 credit) internal {
+        _accountDelta(token, -credit.toInt256());
     }
 
     /**
-     * @notice Records the `debt` for a given locker and token.
+     * @notice Records the `debt` for a given token.
      * @param token   The ERC20 token for which the `debt` will be accounted.
-     * @param debt    The amount of `token` taken from the Vault in favor of the `locker`.
-     * @param locker The account responsible for the debt.
+     * @param debt    The amount of `token` taken from the Vault in favor of the caller.
      */
-    function _takeDebt(IERC20 token, uint256 debt, address locker) internal {
-        _accountDelta(token, debt.toInt256(), locker);
+    function _takeDebt(IERC20 token, uint256 debt) internal {
+        _accountDelta(token, debt.toInt256());
     }
 
     /**
-     * @dev Accounts the delta for the given locker and token.
+     * @dev Accounts the delta for the given token.
      * Positive delta represents debt, while negative delta represents surplus.
-     * The function ensures that only the specified locker can update its respective delta.
      *
      * @param token   The ERC20 token for which the delta is being accounted.
      * @param delta   The difference in the token balance.
      *                Positive indicates a debit or a decrease in Vault's tokens,
      *                negative indicates a credit or an increase in Vault's tokens.
-     * @param locker The locker whose balance difference is being accounted for.
-     *                Must be the same as the caller of the function.
      */
-    function _accountDelta(IERC20 token, int256 delta, address locker) internal {
+    function _accountDelta(IERC20 token, int256 delta) internal {
         // If the delta is zero, there's nothing to account for.
         if (delta == 0) return;
 
-        // Get the current recorded delta for this token and locker.
+        // Get the current recorded delta for this token.
         int256 current = _tokenDeltas().tGet(token);
 
         // Calculate the new delta after accounting for the change.
@@ -129,7 +120,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             }
         }
 
-        // Update the delta for this token and locker.
+        // Update the delta for this token.
         _tokenDeltas().tSet(token, next);
     }
 
@@ -207,6 +198,22 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /*******************************************************************************
+                                     Buffer Pausing
+    *******************************************************************************/
+    /// @dev Modifier to make a function callable only when vault buffers are not paused.
+    modifier whenVaultBuffersAreNotPaused() {
+        _ensureVaultBuffersAreNotPaused();
+        _;
+    }
+
+    /// @dev Reverts if vault buffers are paused.
+    function _ensureVaultBuffersAreNotPaused() internal view {
+        if (_vaultState.areBuffersPaused()) {
+            revert VaultBuffersArePaused();
+        }
+    }
+
+    /*******************************************************************************
                             Pool Registration and Initialization
     *******************************************************************************/
 
@@ -251,19 +258,11 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     *******************************************************************************/
 
     /**
-     * @dev Sets the raw balances of a Pool's tokens to the current values in poolData.balancesRaw, then also
-     * computes and stores the last live balances in the same slot.
-     *
-     * Side effects: mutates `poolData` so that the live balances match the stored values.
+     * @dev Packs and sets the raw and live balances of a Pool's tokens to the current values in poolData.balancesRaw
+     * and poolData.liveBalances in the same storage slot.
      */
     function _setPoolBalances(address pool, PoolData memory poolData) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
-
-        // TODO: consider moving scaling into the loop below. (Tried it: saves gas, but costs bytecode.)
-        poolData.balancesLiveScaled18 = poolData.balancesRaw.copyToScaled18ApplyRateRoundDownArray(
-            poolData.decimalScalingFactors,
-            poolData.tokenRates
-        );
 
         for (uint256 i = 0; i < poolData.balancesRaw.length; ++i) {
             // Since we assume all newBalances are properly ordered, we can simply use `unchecked_setAt`
@@ -298,34 +297,26 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
     }
 
-    function _getPoolTokenInfo(
-        address pool
-    )
-        internal
-        view
-        returns (
-            TokenConfig[] memory tokenConfig,
-            uint256[] memory balancesRaw,
-            uint256[] memory decimalScalingFactors,
-            PoolConfig memory poolConfig
-        )
-    {
+    function _getPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
         mapping(IERC20 => TokenConfig) storage poolTokenConfig = _poolTokenConfig[pool];
 
         uint256 numTokens = poolTokenBalances.length();
-        poolConfig = _poolConfig[pool].toPoolConfig();
+        poolData.poolConfig = _poolConfig[pool].toPoolConfig();
 
-        tokenConfig = new TokenConfig[](numTokens);
-        balancesRaw = new uint256[](numTokens);
-        decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolConfig, numTokens);
+        poolData.tokenConfig = new TokenConfig[](numTokens);
+        poolData.balancesRaw = new uint256[](numTokens);
+        poolData.balancesLiveScaled18 = new uint256[](numTokens);
+        poolData.decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolData.poolConfig, numTokens);
+        poolData.tokenRates = new uint256[](numTokens);
         bytes32 packedBalance;
         IERC20 token;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             (token, packedBalance) = poolTokenBalances.unchecked_at(i);
-            balancesRaw[i] = packedBalance.getRawBalance();
-            tokenConfig[i] = poolTokenConfig[token];
+            poolData.tokenConfig[i] = poolTokenConfig[token];
+            _updateTokenRate(poolData, i);
+            _updateRawAndLiveTokenBalancesInPoolData(poolData, packedBalance.getBalanceRaw(), roundingDirection, i);
         }
     }
 
@@ -339,15 +330,19 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         poolData.tokenRates = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            TokenType tokenType = poolData.tokenConfig[i].tokenType;
+            _updateTokenRate(poolData, i);
+        }
+    }
 
-            if (tokenType == TokenType.STANDARD) {
-                poolData.tokenRates[i] = FixedPoint.ONE;
-            } else if (tokenType == TokenType.WITH_RATE) {
-                poolData.tokenRates[i] = poolData.tokenConfig[i].rateProvider.getRate();
-            } else {
-                revert InvalidTokenConfiguration();
-            }
+    function _updateTokenRate(PoolData memory poolData, uint256 index) internal view {
+        TokenType tokenType = poolData.tokenConfig[index].tokenType;
+
+        if (tokenType == TokenType.STANDARD) {
+            poolData.tokenRates[index] = FixedPoint.ONE;
+        } else if (tokenType == TokenType.WITH_RATE) {
+            poolData.tokenRates[index] = poolData.tokenConfig[index].rateProvider.getRate();
+        } else {
+            revert InvalidTokenConfiguration();
         }
     }
 
@@ -359,26 +354,19 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         address pool,
         Rounding roundingDirection,
         uint256 yieldFeePercentage
-    ) internal view returns (PoolData memory poolData, uint256[] memory dueProtocolYieldFees) {
+    )
+        internal
+        view
+        returns (PoolData memory poolData, uint256[] memory dueProtocolYieldFees, uint256[] memory dueCreatorYieldFees)
+    {
         // Initialize poolData with base information for subsequent calculations.
-        (
-            poolData.tokenConfig,
-            poolData.balancesRaw,
-            poolData.decimalScalingFactors,
-            poolData.poolConfig
-        ) = _getPoolTokenInfo(pool);
+        poolData = _getPoolData(pool, roundingDirection);
 
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
         uint256 numTokens = poolBalances.length();
 
         dueProtocolYieldFees = new uint256[](numTokens);
-
-        // Initialize arrays to store balances and rates based on the number of tokens in the pool.
-        // Will be read raw, then upscaled and rounded as directed.
-        poolData.balancesLiveScaled18 = new uint256[](numTokens);
-
-        // Fill in the tokenRates inside poolData (needed for `_updateLiveTokenBalanceInPoolData`).
-        _updateTokenRatesInPoolData(poolData);
+        dueCreatorYieldFees = new uint256[](numTokens);
 
         bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
             yieldFeePercentage > 0 &&
@@ -387,11 +375,10 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         for (uint256 i = 0; i < numTokens; ++i) {
             TokenConfig memory tokenConfig = poolData.tokenConfig[i];
 
-            // This sets the live balance in poolData from the raw balance, applying scaling and rates,
-            // and respecting the rounding direction. Charging a yield fee changes the raw
+            // poolData already has live balances computed from raw balances according to the token rates and the
+            // given rounding direction. Charging a yield fee changes the raw
             // balance, in which case the safest and most numerically precise way to adjust
             // the live balance is to simply repeat the scaling (hence the second call below).
-            _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, i);
 
             // The Vault actually guarantees a token with paysYieldFees set is a WITH_RATE token, so technically we
             // could just check the flag, but we don't want to introduce that dependency for a slight gas savings.
@@ -399,19 +386,24 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
             // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
             if (poolSubjectToYieldFees && tokenSubjectToYieldFees) {
-                uint256 yieldFeeAmountRaw = _computeYieldProtocolFeesDue(
+                (uint256 protocolYieldFeeAmountRaw, uint256 creatorYieldFeeAmountRaw) = _computeYieldFeesDue(
                     poolData,
-                    poolBalances.unchecked_valueAt(i).getLastLiveBalanceScaled18(),
+                    poolBalances.unchecked_valueAt(i).getBalanceDerived(),
                     i,
                     yieldFeePercentage
                 );
 
-                if (yieldFeeAmountRaw > 0) {
-                    dueProtocolYieldFees[i] = yieldFeeAmountRaw;
+                if (protocolYieldFeeAmountRaw > 0 || creatorYieldFeeAmountRaw > 0) {
+                    dueProtocolYieldFees[i] = protocolYieldFeeAmountRaw;
+                    dueCreatorYieldFees[i] = creatorYieldFeeAmountRaw;
 
                     // Adjust raw and live balances.
-                    poolData.balancesRaw[i] -= yieldFeeAmountRaw;
-                    _updateLiveTokenBalanceInPoolData(poolData, roundingDirection, i);
+                    _updateRawAndLiveTokenBalancesInPoolData(
+                        poolData,
+                        poolData.balancesRaw[i] - protocolYieldFeeAmountRaw - creatorYieldFeeAmountRaw,
+                        roundingDirection,
+                        i
+                    );
                 }
             }
         }
@@ -428,8 +420,13 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         uint256 yieldFeePercentage
     ) internal nonReentrant returns (PoolData memory poolData) {
         uint256[] memory dueProtocolYieldFees;
+        uint256[] memory dueCreatorYieldFees;
 
-        (poolData, dueProtocolYieldFees) = _getPoolDataAndYieldFees(pool, roundingDirection, yieldFeePercentage);
+        (poolData, dueProtocolYieldFees, dueCreatorYieldFees) = _getPoolDataAndYieldFees(
+            pool,
+            roundingDirection,
+            yieldFeePercentage
+        );
         uint256 numTokens = dueProtocolYieldFees.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -438,8 +435,15 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
             if (yieldFeeAmountRaw > 0) {
                 // Charge protocol fee.
-                _protocolFees[token] += yieldFeeAmountRaw;
+                _protocolFees[pool][token] += yieldFeeAmountRaw;
                 emit ProtocolYieldFeeCharged(pool, address(token), yieldFeeAmountRaw);
+            }
+
+            uint256 creatorYieldFeeAmountRaw = dueCreatorYieldFees[i];
+            if (creatorYieldFeeAmountRaw > 0) {
+                // Charge pool creator fee
+                _poolCreatorFees[pool][token] += creatorYieldFeeAmountRaw;
+                emit PoolCreatorYieldFeeCharged(pool, address(token), creatorYieldFeeAmountRaw);
             }
         }
 
@@ -447,12 +451,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         _setPoolBalances(pool, poolData);
     }
 
-    function _computeYieldProtocolFeesDue(
+    function _computeYieldFeesDue(
         PoolData memory poolData,
         uint256 lastLiveBalance,
         uint256 tokenIndex,
-        uint256 yieldFeePercentage
-    ) internal pure returns (uint256 feeAmountRaw) {
+        uint256 protocolYieldFeePercentage
+    ) internal pure returns (uint256 protocolFeeAmountRaw, uint256 creatorFeeAmountRaw) {
         uint256 currentLiveBalance = poolData.balancesLiveScaled18[tokenIndex];
 
         // Do not charge fees if rates go down. If the rate were to go up, down, and back up again, protocol fees
@@ -463,33 +467,45 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         if (currentLiveBalance > lastLiveBalance) {
             unchecked {
                 // Magnitudes checked above, so it's safe to do unchecked math here.
-                uint256 liveBalanceDiff = currentLiveBalance - lastLiveBalance;
-
-                feeAmountRaw = liveBalanceDiff.mulDown(yieldFeePercentage).toRawUndoRateRoundDown(
+                uint256 liveBalanceDiffScaled18 = currentLiveBalance - lastLiveBalance;
+                uint256 liveBalanceDiffRaw = liveBalanceDiffScaled18.toRawUndoRateRoundDown(
                     poolData.decimalScalingFactors[tokenIndex],
                     poolData.tokenRates[tokenIndex]
                 );
+
+                // A pool is subject to yield fees if poolSubjectToYieldFees is true, meaning that
+                // `protocolYieldFeePercentage > 0`. So, we don't need to check this again in here, saving some gas.
+                protocolFeeAmountRaw = liveBalanceDiffRaw.mulUp(protocolYieldFeePercentage);
+
+                if (poolData.poolConfig.poolCreatorFeePercentage > 0) {
+                    creatorFeeAmountRaw = (liveBalanceDiffRaw - protocolFeeAmountRaw).mulUp(
+                        poolData.poolConfig.poolCreatorFeePercentage
+                    );
+                }
             }
         }
     }
 
     /**
-     * @dev Updates the live balance of a given token in poolData, scaling the raw balance by both decimal
-     * and token rates, and rounding the result in the given direction. Assumes raw balances, scaling factors,
-     * and rates are current in PoolData.
+     * @dev Updates the raw and live balance of a given token in poolData, scaling the given raw balance by both decimal
+     * and token rates, and rounding the result in the given direction. Assumes scaling factors and rates are current
+     * in PoolData.
      */
-    function _updateLiveTokenBalanceInPoolData(
+    function _updateRawAndLiveTokenBalancesInPoolData(
         PoolData memory poolData,
+        uint256 newRawBalance,
         Rounding roundingDirection,
         uint256 tokenIndex
     ) internal pure {
+        poolData.balancesRaw[tokenIndex] = newRawBalance;
+
         function(uint256, uint256, uint256) internal pure returns (uint256) _upOrDown = roundingDirection ==
             Rounding.ROUND_UP
             ? ScalingHelpers.toScaled18ApplyRateRoundUp
             : ScalingHelpers.toScaled18ApplyRateRoundDown;
 
         poolData.balancesLiveScaled18[tokenIndex] = _upOrDown(
-            poolData.balancesRaw[tokenIndex],
+            newRawBalance,
             poolData.decimalScalingFactors[tokenIndex],
             poolData.tokenRates[tokenIndex]
         );

@@ -23,8 +23,9 @@ library VaultStateLib {
     // Bit offsets for pool config
     uint256 public constant QUERY_DISABLED_OFFSET = 0;
     uint256 public constant VAULT_PAUSED_OFFSET = QUERY_DISABLED_OFFSET + 1;
+    uint256 public constant BUFFER_PAUSED_OFFSET = VAULT_PAUSED_OFFSET + 1;
 
-    uint256 public constant PROTOCOL_SWAP_FEE_OFFSET = VAULT_PAUSED_OFFSET + 1;
+    uint256 public constant PROTOCOL_SWAP_FEE_OFFSET = BUFFER_PAUSED_OFFSET + 1;
     uint256 public constant PROTOCOL_YIELD_FEE_OFFSET = PROTOCOL_SWAP_FEE_OFFSET + FEE_BITLENGTH;
 
     function isQueryDisabled(VaultStateBits config) internal pure returns (bool) {
@@ -33,6 +34,10 @@ library VaultStateLib {
 
     function isVaultPaused(VaultStateBits config) internal pure returns (bool) {
         return VaultStateBits.unwrap(config).decodeBool(VAULT_PAUSED_OFFSET);
+    }
+
+    function areBuffersPaused(VaultStateBits config) internal pure returns (bool) {
+        return VaultStateBits.unwrap(config).decodeBool(BUFFER_PAUSED_OFFSET);
     }
 
     function getProtocolSwapFeePercentage(VaultStateBits config) internal pure returns (uint256) {
@@ -46,15 +51,25 @@ library VaultStateLib {
     function fromVaultState(VaultState memory config) internal pure returns (VaultStateBits) {
         bytes32 configBits = bytes32(0);
 
-        configBits = configBits
-            .insertBool(config.isQueryDisabled, QUERY_DISABLED_OFFSET)
-            .insertBool(config.isVaultPaused, VAULT_PAUSED_OFFSET)
-            .insertUint(config.protocolSwapFeePercentage / FEE_SCALING_FACTOR, PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH)
-            .insertUint(
-                config.protocolYieldFeePercentage / FEE_SCALING_FACTOR,
-                PROTOCOL_YIELD_FEE_OFFSET,
-                FEE_BITLENGTH
-            );
+        {
+            configBits = configBits
+                .insertBool(config.isQueryDisabled, QUERY_DISABLED_OFFSET)
+                .insertBool(config.isVaultPaused, VAULT_PAUSED_OFFSET)
+                .insertBool(config.areBuffersPaused, BUFFER_PAUSED_OFFSET);
+        }
+        {
+            configBits = configBits
+                .insertUint(
+                    config.protocolSwapFeePercentage / FEE_SCALING_FACTOR,
+                    PROTOCOL_SWAP_FEE_OFFSET,
+                    FEE_BITLENGTH
+                )
+                .insertUint(
+                    config.protocolYieldFeePercentage / FEE_SCALING_FACTOR,
+                    PROTOCOL_YIELD_FEE_OFFSET,
+                    FEE_BITLENGTH
+                );
+        }
 
         return VaultStateBits.wrap(configBits);
     }
@@ -64,6 +79,7 @@ library VaultStateLib {
             VaultState({
                 isQueryDisabled: config.isQueryDisabled(),
                 isVaultPaused: config.isVaultPaused(),
+                areBuffersPaused: config.areBuffersPaused(),
                 protocolSwapFeePercentage: config.getProtocolSwapFeePercentage(),
                 protocolYieldFeePercentage: config.getProtocolYieldFeePercentage()
             });

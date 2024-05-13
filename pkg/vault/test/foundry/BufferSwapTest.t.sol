@@ -12,6 +12,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -140,10 +141,10 @@ contract BufferSwapTest is BaseVaultTest {
         // bob should have the full boostedPool BPT.
         assertEq(IERC20(boostedPool).balanceOf(bob), boostedPoolAmount * 2 - MIN_BPT, "Wrong boosted pool BPT amount");
 
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, , ) = vault.getPoolTokenInfo(boostedPool);
+        (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
         // The boosted pool should have `boostedPoolAmount` of both tokens.
-        assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong boosted pool token (waDAI)");
-        assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong boosted pool token (waUSDC)");
+        assertEq(address(tokenConfig[waDaiIdx].token), address(waDAI), "Wrong boosted pool token (waDAI)");
+        assertEq(address(tokenConfig[waUsdcIdx].token), address(waUSDC), "Wrong boosted pool token (waUSDC)");
         assertEq(balancesRaw[0], boostedPoolAmount, "Wrong boosted pool balance [0]");
         assertEq(balancesRaw[1], boostedPoolAmount, "Wrong boosted pool balance [1]");
 
@@ -161,16 +162,16 @@ contract BufferSwapTest is BaseVaultTest {
 
         // The buffer pools should each have `defaultAmount` of their respective tokens.
         (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
-        (tokens, , balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
-        assertEq(address(tokens[wrappedIdx]), address(waDAI), "Wrong DAI buffer pool wrapped token");
-        assertEq(address(tokens[baseIdx]), address(dai), "Wrong DAI buffer pool base token");
+        (tokenConfig, balancesRaw, ) = vault.getPoolTokenInfo(waDAIBufferPool);
+        assertEq(address(tokenConfig[wrappedIdx].token), address(waDAI), "Wrong DAI buffer pool wrapped token");
+        assertEq(address(tokenConfig[baseIdx].token), address(dai), "Wrong DAI buffer pool base token");
         assertEq(balancesRaw[0], defaultAmount, "Wrong waDAI buffer pool balance [0]");
         assertEq(balancesRaw[1], defaultAmount, "Wrong waDAI buffer pool balance [1]");
 
         (wrappedIdx, baseIdx) = getSortedIndexes(address(waUSDC), address(usdc));
-        (tokens, , balancesRaw, , ) = vault.getPoolTokenInfo(waUSDCBufferPool);
-        assertEq(address(tokens[wrappedIdx]), address(waUSDC), "Wrong USDC buffer pool wrapped token");
-        assertEq(address(tokens[baseIdx]), address(usdc), "Wrong USDC buffer pool base token");
+        (tokenConfig, balancesRaw, ) = vault.getPoolTokenInfo(waUSDCBufferPool);
+        assertEq(address(tokenConfig[wrappedIdx].token), address(waUSDC), "Wrong USDC buffer pool wrapped token");
+        assertEq(address(tokenConfig[baseIdx].token), address(usdc), "Wrong USDC buffer pool base token");
         assertEq(balancesRaw[0], defaultAmount, "Wrong waUSDC buffer pool balance [0]");
         assertEq(balancesRaw[1], defaultAmount, "Wrong waUSDC buffer pool balance [1]");
     }
@@ -179,7 +180,7 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
 
         vm.prank(alice);
-        snapStart("boostedPoolSwapExactIn");
+        snapStart("boostedPoolSwapExactIn-pool");
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
@@ -191,7 +192,7 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount);
 
         vm.prank(alice);
-        snapStart("boostedPoolSwapExactOut");
+        snapStart("boostedPoolSwapExactOut-pool");
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
@@ -209,7 +210,7 @@ contract BufferSwapTest is BaseVaultTest {
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
         vm.prank(alice);
-        snapStart("boostedPoolSwapTooLarge");
+        snapStart("boostedPoolSwapTooLarge-pool");
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
     }
@@ -221,7 +222,7 @@ contract BufferSwapTest is BaseVaultTest {
 
         // Check that it is unbalanced
         (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
-        (, , uint256[] memory balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
+        (, uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(waDAIBufferPool);
 
         assertEq(balancesRaw[wrappedIdx], swapAmount, "Wrong waDAI buffer pool balance (waDAI)");
         assertEq(balancesRaw[baseIdx], defaultAmount + amountToUnwrap, "Wrong waDAI buffer pool balance (DAI)");
@@ -236,7 +237,7 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount * 2);
 
         vm.prank(alice);
-        snapStart("boostedPoolSwapSimpleRebalance");
+        snapStart("boostedPoolSwapSimpleRebalance-pool");
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
@@ -253,7 +254,7 @@ contract BufferSwapTest is BaseVaultTest {
 
         // Check that it is balanced
         (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
-        (, , uint256[] memory balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
+        (, uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(waDAIBufferPool);
 
         assertEq(balancesRaw[wrappedIdx], defaultAmount, "Wrong waDAI buffer pool balance (waDAI)");
         assertEq(balancesRaw[baseIdx], defaultAmount, "Wrong waDAI buffer pool balance (DAI)");
@@ -268,7 +269,7 @@ contract BufferSwapTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountToSwap);
 
         vm.prank(alice);
-        snapStart("boostedPoolSwapMoreThan50pRebalance");
+        snapStart("boostedPoolSwapMoreThan50pRebalance-pool");
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
@@ -296,7 +297,7 @@ contract BufferSwapTest is BaseVaultTest {
         // Check that it is unbalanced
         {
             (uint256 wrappedDaiIdx, uint256 baseDaiIdx) = getSortedIndexes(address(waDAI), address(dai));
-            (, , uint256[] memory balancesDaiRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
+            (, uint256[] memory balancesDaiRaw, ) = vault.getPoolTokenInfo(waDAIBufferPool);
             assertEq(
                 balancesDaiRaw[wrappedDaiIdx],
                 defaultAmount - unbalancedAmountDai,
@@ -309,7 +310,7 @@ contract BufferSwapTest is BaseVaultTest {
             );
 
             (uint256 wrappedUsdcIdx, uint256 baseUsdcIdx) = getSortedIndexes(address(waUSDC), address(usdc));
-            (, , uint256[] memory balancesUsdcRaw, , ) = vault.getPoolTokenInfo(waUSDCBufferPool);
+            (, uint256[] memory balancesUsdcRaw, ) = vault.getPoolTokenInfo(waUSDCBufferPool);
             assertEq(
                 balancesUsdcRaw[wrappedUsdcIdx],
                 defaultAmount + unbalancedAmountUsdc,
@@ -369,9 +370,9 @@ contract BufferSwapTest is BaseVaultTest {
         // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the boosted pool,
         // and finally post-swap the waUSDC through the USDC buffer to calculate the USDC amount out.
         // The only token transfers are DAI in (given) and USDC out (calculated).
-        steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC });
-        steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc });
+        steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI, isBuffer: false });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC, isBuffer: false });
+        steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc, isBuffer: false });
 
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
             tokenIn: dai,
@@ -392,9 +393,9 @@ contract BufferSwapTest is BaseVaultTest {
         // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the boosted pool,
         // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
         // The only token transfers are DAI in (calculated) and USDC out (given).
-        steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC });
-        steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc });
+        steps[0] = IBatchRouter.SwapPathStep({ pool: waDAIBufferPool, tokenOut: waDAI, isBuffer: false });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC, isBuffer: false });
+        steps[2] = IBatchRouter.SwapPathStep({ pool: waUSDCBufferPool, tokenOut: usdc, isBuffer: false });
 
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
             tokenIn: dai,
@@ -429,7 +430,7 @@ contract BufferSwapTest is BaseVaultTest {
         uint256[] memory balancesRaw;
 
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
-        (, , balancesRaw, , ) = vault.getPoolTokenInfo(boostedPool);
+        (, balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
         assertEq(balancesRaw[daiIdx], boostedPoolAmount + expectedDelta, "Wrong boosted pool DAI balance");
         assertEq(balancesRaw[usdcIdx], boostedPoolAmount - expectedDelta, "Wrong boosted pool USDC balance");
 
@@ -440,7 +441,7 @@ contract BufferSwapTest is BaseVaultTest {
         // tolerance = tolerance1 + tolerance2
         uint256 tolerance = (4 * defaultAmount) / FixedPoint.ONE + 10;
         (uint256 wrappedIdx, uint256 baseIdx) = getSortedIndexes(address(waDAI), address(dai));
-        (, , balancesRaw, , ) = vault.getPoolTokenInfo(waDAIBufferPool);
+        (, balancesRaw, ) = vault.getPoolTokenInfo(waDAIBufferPool);
         assertApproxEqAbs(
             balancesRaw[baseIdx],
             defaultAmount + bufferExpectedDelta,
@@ -455,7 +456,7 @@ contract BufferSwapTest is BaseVaultTest {
         );
 
         (wrappedIdx, baseIdx) = getSortedIndexes(address(waUSDC), address(usdc));
-        (, , balancesRaw, , ) = vault.getPoolTokenInfo(waUSDCBufferPool);
+        (, balancesRaw, ) = vault.getPoolTokenInfo(waUSDCBufferPool);
         assertApproxEqAbs(
             balancesRaw[baseIdx],
             defaultAmount - bufferExpectedDelta,

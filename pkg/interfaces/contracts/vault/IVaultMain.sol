@@ -14,14 +14,14 @@ interface IVaultMain {
     *******************************************************************************/
 
     /**
-     * @notice Creates a lock context for a sequence of operations.
+     * @notice Creates a context for a sequence of operations (i.e., "unlocks" the Vault).
      * @dev Performs a callback on msg.sender with arguments provided in `data`. The Callback is `transient`,
      * meaning all balances for the caller have to be settled at the end.
      *
      * @param data Contains function signature and args to be passed to the msg.sender
      * @return result Resulting data from the call
      */
-    function lock(bytes calldata data) external payable returns (bytes memory result);
+    function unlock(bytes calldata data) external payable returns (bytes memory result);
 
     /**
      * @notice Settles deltas for a token; must be successful for the current lock to be released.
@@ -82,24 +82,6 @@ interface IVaultMain {
     ***************************************************************************/
 
     /**
-     * @notice A swap has occurred.
-     * @param pool The pool with the tokens being swapped
-     * @param tokenIn The token entering the Vault (balance increases)
-     * @param tokenOut The token leaving the Vault (balance decreases)
-     * @param amountIn Number of tokenIn tokens
-     * @param amountOut Number of tokenOut tokens
-     * @param swapFeeAmount Swap fee amount paid in token out
-     */
-    event Swap(
-        address indexed pool,
-        IERC20 indexed tokenIn,
-        IERC20 indexed tokenOut,
-        uint256 amountIn,
-        uint256 amountOut,
-        uint256 swapFeeAmount
-    );
-
-    /**
      * @notice Swaps tokens based on provided parameters.
      * @dev All parameters are given in raw token decimal encoding.
      * @param params Parameters for the swap (see above for struct definition)
@@ -124,6 +106,23 @@ interface IVaultMain {
      * @return index Index corresponding to the given token in the pool's token list
      */
     function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
+
+    /*******************************************************************************
+                            Yield-bearing token buffers
+    *******************************************************************************/
+
+    /**
+     * @notice Wraps/unwraps tokens based on provided parameters, using the buffer of the wrapped token when it has
+     * enough liquidity to avoid external calls.
+     * @dev All parameters are given in raw token decimal encoding.
+     * @param params Parameters for the wrap/unwrap operation (see struct definition)
+     * @return amountCalculatedRaw Calculated swap amount
+     * @return amountInRaw Amount of input tokens for the swap
+     * @return amountOutRaw Amount of output tokens from the swap
+     */
+    function erc4626BufferWrapOrUnwrap(
+        BufferWrapOrUnwrapParams memory params
+    ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     /*******************************************************************************
                                 Authentication

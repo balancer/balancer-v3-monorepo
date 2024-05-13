@@ -52,7 +52,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
 
     /// @inheritdoc IBasePoolFactory
     function getDeploymentAddress(bytes32 salt) public view returns (address) {
-        return CREATE3.getDeployed(salt);
+        return CREATE3.getDeployed(_computeFinalSalt(salt));
     }
 
     /// @inheritdoc IBasePoolFactory
@@ -93,8 +93,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         address pool,
         TokenConfig[] memory tokens,
         uint256 swapFeePercentage,
-        address pauseManager,
-        address poolCreator,
+        PoolRoleAccounts memory roleAccounts,
         PoolHooks memory poolHooks,
         LiquidityManagement memory liquidityManagement
     ) internal {
@@ -103,8 +102,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
             tokens,
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
-            pauseManager,
-            poolCreator,
+            roleAccounts,
             poolHooks,
             liquidityManagement
         );

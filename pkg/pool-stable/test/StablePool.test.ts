@@ -69,8 +69,7 @@ describe('StablePool', () => {
       `STABLE-${numTokens}`,
       tokenConfig,
       200n,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
+      [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
       0, // swap fee
       TypesConverter.toBytes32(bn(numTokens))
     );
@@ -131,7 +130,9 @@ describe('StablePool', () => {
           const tokensFromPool = await pool.getPoolTokens();
           expect(tokensFromPool).to.deep.equal(poolTokens.slice(0, numTokens));
 
-          const [tokensFromVault, , balancesFromVault] = await vault.getPoolTokenInfo(pool);
+          const [tokenConfigFromVault, balancesFromVault] = await vault.getPoolTokenInfo(pool);
+          const tokensFromVault = tokenConfigFromVault.map((config) => config.token);
+
           expect(tokensFromVault).to.deep.equal(tokensFromPool);
           expect(balancesFromVault).to.deep.equal(initialBalances);
         });
