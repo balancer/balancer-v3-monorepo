@@ -19,10 +19,10 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     using SafeERC20 for IERC20;
 
     // Maximum protocol swap fee percentage. 1e18 corresponds to a 100% fee.
-    uint256 internal constant MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
+    uint256 internal constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
     // Maximum protocol yield fee percentage.
-    uint256 internal constant MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 20e16; // 20%
+    uint256 internal constant _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 20e16; // 20%
 
     IVault private immutable _vault;
 
@@ -36,12 +36,12 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
 
     /// @inheritdoc IProtocolFeeCollector
     function getMaxProtocolSwapFeePercentage() external pure returns (uint256) {
-        return MAX_PROTOCOL_SWAP_FEE_PERCENTAGE;
+        return _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE;
     }
 
     /// @inheritdoc IProtocolFeeCollector
     function getMaxProtocolYieldFeePercentage() external pure returns (uint256) {
-        return MAX_PROTOCOL_YIELD_FEE_PERCENTAGE;
+        return _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE;
     }
 
     /// @inheritdoc IProtocolFeeCollector
@@ -56,7 +56,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
 
     /// @inheritdoc IProtocolFeeCollector
     function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate {
-        if (newProtocolSwapFeePercentage > MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
+        if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
 
@@ -66,7 +66,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
 
     /// @inheritdoc IProtocolFeeCollector
     function setProtocolYieldFeePercentage(uint256 newProtocolYieldFeePercentage) external authenticate {
-        if (newProtocolYieldFeePercentage > MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
+        if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
             revert ProtocolYieldFeePercentageTooHigh();
         }
 
