@@ -32,14 +32,26 @@ interface IProtocolFeeCollector {
     error ProtocolYieldFeePercentageTooHigh();
 
     /**
+     * @notice Gets the maximum swap fee percentage for the protocol.
+     * @return maxSwapFeePercentage The maximum permitted swap fee percentage
+     */
+    function getMaxProtocolSwapFeePercentage() external pure returns (uint256);
+
+    /**
+     * @notice Gets the maximum yield fee percentage for the protocol.
+     * @return maxSwapFeePercentage The maximum permitted yield fee percentage
+     */
+    function getMaxProtocolYieldFeePercentage() external pure returns (uint256);
+
+    /**
      * @notice Gets the current swap fee percentage for the protocol.
-     * @return swapFeePercentage The new swap fee percentage to be set
+     * @return swapFeePercentage The new swap fee percentage
      */
     function getProtocolSwapFeePercentage() external view returns (uint256);
 
     /**
      * @notice Gets the current yield fee percentage for the protocol.
-     * @return yieldFeePercentage The new swap fee percentage to be set
+     * @return yieldFeePercentage The new swap fee percentage
      */
     function getProtocolYieldFeePercentage() external view returns (uint256);
 
