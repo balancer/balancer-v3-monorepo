@@ -222,7 +222,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         }
 
         if (changePoolBalancesOnBeforeSwapHook) {
-            _updateBalancesOnVault();
+            _setBalancesInVault();
         }
 
         if (swapReentrancyHookActive) {
@@ -300,7 +300,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         }
 
         if (changePoolBalancesOnBeforeAddLiquidityHook) {
-            _updateBalancesOnVault();
+            _setBalancesInVault();
         }
 
         return !failOnBeforeAddLiquidity;
@@ -319,7 +319,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         }
 
         if (changePoolBalancesOnBeforeRemoveLiquidityHook) {
-            _updateBalancesOnVault();
+            _setBalancesInVault();
         }
 
         return !failOnBeforeRemoveLiquidity;
@@ -379,7 +379,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         _rateProvider.mockRate(_newTokenRate);
     }
 
-    function _updateBalancesOnVault() private {
+    function _setBalancesInVault() private {
         IERC20[] memory poolTokens = getVault().getPoolTokens(address(this));
         IVaultMock(address(getVault())).manualSetPoolTokenBalances(address(this), poolTokens, _newBalancesRaw);
     }

@@ -50,6 +50,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
     }
 
     function testOnBeforeSwapHookAltersBalances() public {
+        uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
         // newBalances are raw and scaled18, because rate is 1 and decimals are 18
         uint256[] memory newBalances = [poolInitAmount / 2, poolInitAmount / 3].toMemoryArray();
 
@@ -58,6 +59,23 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook
         vm.prank(bob);
+        // Check if balances were not changed before onBeforeHook
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IPoolHooks.onBeforeSwap.selector,
+                IBasePool.PoolSwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    amountGivenScaled18: _swapAmount,
+                    balancesScaled18: originalBalances,
+                    indexIn: daiIdx,
+                    indexOut: usdcIdx,
+                    sender: address(router),
+                    userData: bytes("")
+                })
+            )
+        );
+
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
@@ -83,6 +101,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         config.hooks.shouldCallAfterAddLiquidity = true;
         vault.setConfig(address(pool), config);
 
+        uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
         // newBalances are raw and scaled18, because rate is 1 and decimals are 18
         uint256[] memory newBalances = [poolInitAmount / 2, poolInitAmount / 3].toMemoryArray();
         uint256[] memory amountsIn = [defaultAmount, defaultAmount].toMemoryArray();
@@ -101,6 +120,20 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         PoolMock(pool).setChangePoolBalancesOnBeforeAddLiquidityHook(true, newBalances);
 
         vm.prank(bob);
+        // Check if balances were not changed before onBeforeHook
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IPoolHooks.onBeforeAddLiquidity.selector,
+                bob,
+                AddLiquidityKind.UNBALANCED,
+                amountsIn,
+                bptAmountRoundDown,
+                originalBalances,
+                bytes("")
+            )
+        );
+
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
@@ -113,13 +146,17 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             )
         );
 
-        router.addLiquidityUnbalanced(
+        vm.expectCall(address(pool), abi.encodeWithSelector(IBasePool.computeInvariant.selector, expectedBalances));
+
+        uint256 actualBptAmount = router.addLiquidityUnbalanced(
             address(pool),
             [defaultAmount, defaultAmount].toMemoryArray(),
             bptAmountRoundDown,
             false,
             bytes("")
         );
+
+        assertEq(actualBptAmount, expectedBptOut, "Wrong BPT amount");
     }
 
     function testOnBeforeRemoveLiquidityHookAlterBalance() public {
@@ -130,16 +167,32 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         uint256[] memory amountsOut = [defaultAmount, defaultAmount].toMemoryArray();
 
         vm.prank(alice);
+        // Add liquidity to have BPTs to remove liquidity later
         router.addLiquidityUnbalanced(address(pool), amountsOut, 0, false, bytes(""));
 
         uint256 balanceAfterLiquidity = poolInitAmount + defaultAmount;
 
+        uint256[] memory originalBalances = [balanceAfterLiquidity, balanceAfterLiquidity].toMemoryArray();
         // We set balances to something related to balanceAfterLiquidity because bptAmountsOut is simpler to calculate.
         // newBalances are raw and scaled18, because rate is 1 and decimals are 18
         uint256[] memory newBalances = [2 * balanceAfterLiquidity, 3 * balanceAfterLiquidity].toMemoryArray();
 
         // Change balances of the pool on before hook
         PoolMock(pool).setChangePoolBalancesOnBeforeRemoveLiquidityHook(true, newBalances);
+
+        // Check if balances were not changed before onBeforeHook
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IPoolHooks.onBeforeRemoveLiquidity.selector,
+                alice,
+                RemoveLiquidityKind.CUSTOM,
+                bptAmount,
+                amountsOut,
+                originalBalances,
+                bytes("")
+            )
+        );
 
         // removeLiquidityCustom passes the minAmountsOut to the callback, so we can check that they are updated.
         vm.expectCall(
