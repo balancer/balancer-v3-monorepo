@@ -164,6 +164,7 @@ contract RouterCommon is IRouterSender {
         result = Address.functionDelegateCall(address(this), data);
     }
 
+    // solhint-disable no-inline-assembly
     function _getSenderSlot() internal pure returns (StorageSlot.AddressSlotType) {
         StorageSlot.AddressSlotType slot;
 
