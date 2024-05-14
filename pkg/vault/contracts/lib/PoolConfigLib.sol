@@ -168,14 +168,14 @@ library PoolConfigLib {
         bytes32 poolConfig = PoolConfigBits.unwrap(configBits);
         // Subtract if we want to short-circuit and not do other checks.
         // Just tried for most common first (paused check).
-        uint16 picked = cherryPicks;
+        // uint16 picked = cherryPicks;
 
         if (cherryPicks & PAUSED_FLAG != 0) {
             poolConfig = poolConfig.insertBool(config.isPoolPaused, POOL_PAUSED_OFFSET);
-            picked -= PAUSED_FLAG;
+            /*picked -= PAUSED_FLAG;
             if (picked == 0) {
                 return PoolConfigBits.wrap(poolConfig);
-            }
+            }*/
         }
         if (cherryPicks & PAUSE_WINDOW_FLAG != 0) {
             poolConfig = poolConfig.insertUint(
@@ -183,10 +183,14 @@ library PoolConfigLib {
                 PAUSE_WINDOW_END_TIME_OFFSET,
                 _TIMESTAMP_BITLENGTH
             );
-            picked -= PAUSE_WINDOW_FLAG;
+            /*picked -= PAUSE_WINDOW_FLAG;
             if (picked == 0) {
                 return PoolConfigBits.wrap(poolConfig);
-            }
+            }*/
+        }
+
+        if (cherryPicks == PAUSED_FLAG | PAUSE_WINDOW_FLAG) {
+            return PoolConfigBits.wrap(poolConfig);
         }
         if (cherryPicks & REGISTERED_FLAG != 0) {
             poolConfig = poolConfig.insertBool(config.isPoolRegistered, POOL_REGISTERED_OFFSET);
