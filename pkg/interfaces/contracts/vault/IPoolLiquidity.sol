@@ -10,7 +10,7 @@ import { IVault } from "./IVault.sol";
 interface IPoolLiquidity {
     /**
      * @notice Add liquidity to the pool with a custom hook.
-     * @param router Address which sends call to the vault
+     * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param maxAmountsInScaled18 Maximum input amounts, in the same order as the tokens registered in the pool
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
@@ -37,7 +37,7 @@ interface IPoolLiquidity {
 
     /**
      * @notice Remove liquidity from the pool with a custom hook.
-     * @param router Address which sends call to the vault
+     * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param maxBptAmountIn Maximum amount of input pool tokens
      * @param minAmountsOutScaled18 Minimum output amounts, in the same order as the tokens registered in the pool
      * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool

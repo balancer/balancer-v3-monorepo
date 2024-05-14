@@ -37,6 +37,7 @@ contract RouterCommonTest is BaseTest {
         );
     }
 
+    // This test verifies that the sender does not change when another sender reenter.
     function testCallAndSaveSenderWithReentrancyAttack() external {
         vm.expectEmit();
         emit RouterCommonMock.CurrentSenderMock(address(this));

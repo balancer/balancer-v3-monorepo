@@ -431,7 +431,7 @@ contract VaultSwapTest is BaseVaultTest {
         vault.swap(params);
     }
 
-    function startSwap(address user) public {
+    function startSwap() public {
         SwapParams memory params = SwapParams({
             kind: SwapKind.EXACT_IN,
             pool: address(pool),
