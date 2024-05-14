@@ -98,23 +98,12 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
     function testOnBeforeAddLiquidityHookAltersBalances() public {
         PoolConfig memory config = vault.getPoolConfig(address(pool));
         config.hooks.shouldCallBeforeAddLiquidity = true;
-        config.hooks.shouldCallAfterAddLiquidity = true;
         vault.setConfig(address(pool), config);
 
         uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
         // newBalances are raw and scaled18, because rate is 1 and decimals are 18
         uint256[] memory newBalances = [poolInitAmount / 2, poolInitAmount / 3].toMemoryArray();
         uint256[] memory amountsIn = [defaultAmount, defaultAmount].toMemoryArray();
-        uint256[] memory expectedBalances = [newBalances[0] + amountsIn[0], newBalances[1] + amountsIn[1]]
-            .toMemoryArray();
-
-        // - initial BPT supply = 2 * poolInitAmount
-        // - initial pool balance = [poolInitAmount, poolInitAmount]
-        // - new pool balance = [poolInitAmount / 2, poolInitAmount / 3]
-        // BPT supply is still the same, and amountsIn raw and scaled18 are the same, so:
-        // - BPT/token = 2 * poolInitAmount / (poolInitAmount/2 + poolInitAmount/3) = 12/5
-        // - expectedBptOut = BPT/token * newTokens = 12/5 * (amountsIn[0] + amountsIn[1])
-        uint256 expectedBptOut = (12 * (amountsIn[0] + amountsIn[1])) / 5;
 
         // Change balances of the pool on before hook
         PoolMock(pool).setChangePoolBalancesOnBeforeAddLiquidityHook(true, newBalances);
