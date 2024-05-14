@@ -60,6 +60,7 @@ struct SwapVars {
  * @param isQueryDisabled If set to true, disables query functionality of the Vault. Can be modified only by
  * governance.
  * @param isVaultPaused If set to true, Swaps and Add/Remove Liquidity operations are halted
+ * @param areBuffersPaused If set to true, the Vault wrap/unwrap primitives associated with buffers will be disabled
  */
 struct VaultState {
     uint256 protocolSwapFeePercentage;

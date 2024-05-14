@@ -5,22 +5,19 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    SwapParams,
-    SwapVars,
-    PoolData,
-    SwapKind,
-    VaultState
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
-import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
+
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
+import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
+import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
 contract VaultUnitSwapTest is BaseTest {
     using ArrayHelpers for *;
@@ -44,6 +41,10 @@ contract VaultUnitSwapTest is BaseTest {
 
         swapTokens = [dai, usdc];
         vault.manualSetPoolTokenBalances(pool, swapTokens, initialBalances);
+
+        for (uint256 i = 0; i < swapTokens.length; i++) {
+            vault.manualSetPoolCreatorFees(pool, swapTokens[i], 0);
+        }
     }
 
     function testSwapExactInWithZeroFee() public {
@@ -293,6 +294,12 @@ contract VaultUnitSwapTest is BaseTest {
             "Unexpected swapFeeAmountScaled18"
         );
         assertEq(
+            vault.getProtocolFees(pool, swapTokens[vars.indexOut]),
+            vars.protocolSwapFeeAmountRaw,
+            "Unexpected protocol fees in storage"
+        );
+
+        assertEq(
             vars.creatorSwapFeeAmountRaw,
             (vars.swapFeeAmountScaled18 - protocolSwapFeeAmountScaled18)
                 .mulUp(poolData.poolConfig.poolCreatorFeePercentage)
@@ -302,8 +309,13 @@ contract VaultUnitSwapTest is BaseTest {
                 ),
             "Unexpected creatorSwapFeeAmountRaw"
         );
+        assertEq(
+            vault.getPoolCreatorFees(address(params.pool), swapTokens[vars.indexOut]),
+            vars.creatorSwapFeeAmountRaw,
+            "Unexpected creator fees in storage"
+        );
 
-        _checkSwapResult(amountIn, amountOut, params, vars, poolData, vaultState);
+        _checkCommonSwapResult(amountIn, amountOut, params, vars, poolData, vaultState);
     }
 
     function _checkSwapExactOutResult(
@@ -354,10 +366,13 @@ contract VaultUnitSwapTest is BaseTest {
         assertEq(vars.protocolSwapFeeAmountRaw, expectedProtocolFeeAmountRaw, "Unexpected protocolFeeAmountRaw");
         assertEq(vars.creatorSwapFeeAmountRaw, expectedCreatorFeeAmountRaw, "Unexpected creatorSwapFeeAmountRaw");
 
-        _checkSwapResult(amountIn, amountOut, params, vars, poolData, vaultState);
+        assertEq(vault.getProtocolFees(pool, swapTokens[vars.indexOut]), 0, "Unexpected protocol fees in storage");
+        assertEq(vault.getPoolCreatorFees(pool, swapTokens[vars.indexOut]), 0, "Unexpected creator fees in storage");
+
+        _checkCommonSwapResult(amountIn, amountOut, params, vars, poolData, vaultState);
     }
 
-    function _checkSwapResult(
+    function _checkCommonSwapResult(
         uint256 amountIn,
         uint256 amountOut,
         SwapParams memory params,
@@ -408,6 +423,23 @@ contract VaultUnitSwapTest is BaseTest {
             storageRawBalances[vars.indexOut],
             poolData.balancesRaw[vars.indexOut],
             "Unexpected storageRawBalances[vars.indexIn]"
+        );
+
+        uint256[] memory storageLastLiveBalances = vault.getLastLiveBalances(params.pool);
+        assertEq(
+            storageLastLiveBalances.length,
+            poolData.balancesLiveScaled18.length,
+            "Unexpected storageLastLiveBalances length"
+        );
+        assertEq(
+            storageLastLiveBalances[vars.indexIn],
+            poolData.balancesLiveScaled18[vars.indexIn],
+            "Unexpected storageLastLiveBalances[vars.indexIn]"
+        );
+        assertEq(
+            storageLastLiveBalances[vars.indexOut],
+            poolData.balancesLiveScaled18[vars.indexOut],
+            "Unexpected storageLastLiveBalances[vars.indexIn]"
         );
 
         // check _takeDebt called

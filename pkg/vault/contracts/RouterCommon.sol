@@ -157,8 +157,7 @@ contract RouterCommon is IRouterSender {
 
     /**
      * @notice Save the sender address and call a function on Router.
-     * @dev Only the first call to this function will save the sender address. Other calls within one transaction can't change the
-     * @param params Remove liquidity parameters (see IRouter for struct definition)
+     * @dev Only the first call to this function will save the sender address. Other calls within one transaction can't change the sender.
      * @return result The result of the function call
      */
     function saveSenderAndCall(bytes calldata data) external returns (bytes memory result) {
