@@ -42,6 +42,7 @@ contract RouterCommonTest is BaseTest {
                 ReentrancyAttack.callSender.selector,
                 abi.encodeWithSelector(
                     RouterCommonMock.call.selector,
+                    router,
                     abi.encodeWithSelector(RouterCommonMock.emitSender.selector)
                 )
             )
