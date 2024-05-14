@@ -146,13 +146,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             )
         );
 
-        router.addLiquidityCustom(
-            address(pool),
-            amountsIn,
-            bptAmountRoundDown,
-            false,
-            bytes("")
-        );
+        router.addLiquidityCustom(address(pool), amountsIn, bptAmountRoundDown, false, bytes(""));
     }
 
     function testOnBeforeRemoveLiquidityHookAlterBalance() public {
