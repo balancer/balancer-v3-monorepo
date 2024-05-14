@@ -126,7 +126,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeAddLiquidity.selector,
                 bob,
-                AddLiquidityKind.UNBALANCED,
+                AddLiquidityKind.CUSTOM,
                 amountsIn,
                 bptAmountRoundDown,
                 originalBalances,
@@ -137,26 +137,22 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         vm.expectCall(
             address(pool),
             abi.encodeWithSelector(
-                IPoolHooks.onAfterAddLiquidity.selector,
+                IPoolLiquidity.onAddLiquidityCustom.selector,
                 bob,
                 amountsIn,
-                expectedBptOut,
-                expectedBalances,
+                bptAmountRoundDown,
+                newBalances,
                 bytes("")
             )
         );
 
-        vm.expectCall(address(pool), abi.encodeWithSelector(IBasePool.computeInvariant.selector, expectedBalances));
-
-        uint256 actualBptAmount = router.addLiquidityUnbalanced(
+        router.addLiquidityCustom(
             address(pool),
-            [defaultAmount, defaultAmount].toMemoryArray(),
+            amountsIn,
             bptAmountRoundDown,
             false,
             bytes("")
         );
-
-        assertEq(actualBptAmount, expectedBptOut, "Wrong BPT amount");
     }
 
     function testOnBeforeRemoveLiquidityHookAlterBalance() public {
