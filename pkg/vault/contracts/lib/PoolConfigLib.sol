@@ -49,6 +49,18 @@ library PoolConfigLib {
 
     uint8 private constant _TIMESTAMP_BITLENGTH = 32;
 
+    // Flags used to read/write fields selectively.
+    uint16 public constant REGISTERED_FLAG = 1;
+    uint16 public constant INITIALIZED_FLAG = 1 << 1;
+    uint16 public constant PAUSED_FLAG = 1 << 2;
+    uint16 public constant RECOVERY_MODE_FLAG = 1 << 3;
+    uint16 public constant STATIC_SWAP_FEE_FLAG = 1 << 4;
+    uint16 public constant POOL_CREATOR_FEE_FLAG = 1 << 5;
+    uint16 public constant TOKEN_DECIMALS_FLAG = 1 << 6;
+    uint16 public constant PAUSE_WINDOW_FLAG = 1 << 7;
+    uint16 public constant HOOKS_FLAG = 1 << 8;
+    uint16 public constant LIQUIDITY_FLAG = 1 << 9;
+
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
     }
@@ -148,6 +160,96 @@ library PoolConfigLib {
         }
     }
 
+    function fromPoolConfig(
+        PoolConfigBits configBits,
+        PoolConfig memory config,
+        uint16 cherryPicks
+    ) internal pure returns (PoolConfigBits) {
+        bytes32 poolConfig = PoolConfigBits.unwrap(configBits);
+        // Subtract if we want to short-circuit and not do other checks.
+        // Just tried for most common first (paused check).
+        uint16 picked = cherryPicks;
+
+        if (cherryPicks & PAUSED_FLAG != 0) {
+            poolConfig = poolConfig.insertBool(config.isPoolPaused, POOL_PAUSED_OFFSET);
+            picked -= PAUSED_FLAG;
+            if (picked == 0) {
+                return PoolConfigBits.wrap(poolConfig);
+            }
+        }
+        if (cherryPicks & PAUSE_WINDOW_FLAG != 0) {
+            poolConfig = poolConfig.insertUint(
+                config.pauseWindowEndTime,
+                PAUSE_WINDOW_END_TIME_OFFSET,
+                _TIMESTAMP_BITLENGTH
+            );
+            picked -= PAUSE_WINDOW_FLAG;
+            if (picked == 0) {
+                return PoolConfigBits.wrap(poolConfig);
+            }
+        }
+        if (cherryPicks & REGISTERED_FLAG != 0) {
+            poolConfig = poolConfig.insertBool(config.isPoolRegistered, POOL_REGISTERED_OFFSET);
+        }
+        if (cherryPicks & INITIALIZED_FLAG != 0) {
+            poolConfig = poolConfig.insertBool(config.isPoolInitialized, POOL_INITIALIZED_OFFSET);
+        }
+        if (cherryPicks & RECOVERY_MODE_FLAG != 0) {
+            poolConfig = poolConfig.insertBool(config.isPoolInRecoveryMode, POOL_RECOVERY_MODE_OFFSET);
+        }
+        if (cherryPicks & STATIC_SWAP_FEE_FLAG != 0) {
+            poolConfig = poolConfig.insertUint(
+                config.staticSwapFeePercentage / FEE_SCALING_FACTOR,
+                STATIC_SWAP_FEE_OFFSET,
+                FEE_BITLENGTH
+            );
+        }
+        if (cherryPicks & POOL_CREATOR_FEE_FLAG != 0) {
+            poolConfig = poolConfig.insertUint(
+                config.poolCreatorFeePercentage / FEE_SCALING_FACTOR,
+                POOL_CREATOR_FEE_OFFSET,
+                FEE_BITLENGTH
+            );
+        }
+        if (cherryPicks & TOKEN_DECIMALS_FLAG != 0) {
+            poolConfig = poolConfig.insertUint(
+                config.tokenDecimalDiffs,
+                DECIMAL_SCALING_FACTORS_OFFSET,
+                _TOKEN_DECIMAL_DIFFS_BITLENGTH
+            );
+        }
+        if (cherryPicks & HOOKS_FLAG != 0) {
+            {
+                poolConfig = poolConfig
+                    .insertBool(config.hooks.shouldCallBeforeSwap, BEFORE_SWAP_OFFSET)
+                    .insertBool(config.hooks.shouldCallAfterSwap, AFTER_SWAP_OFFSET)
+                    .insertBool(config.hooks.shouldCallBeforeAddLiquidity, BEFORE_ADD_LIQUIDITY_OFFSET)
+                    .insertBool(config.hooks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET);
+            }
+
+            {
+                poolConfig = poolConfig
+                    .insertBool(config.hooks.shouldCallBeforeRemoveLiquidity, BEFORE_REMOVE_LIQUIDITY_OFFSET)
+                    .insertBool(config.hooks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET)
+                    .insertBool(config.hooks.shouldCallBeforeInitialize, BEFORE_INITIALIZE_OFFSET);
+            }
+            {
+                poolConfig = poolConfig
+                    .insertBool(config.hooks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET)
+                    .insertBool(config.hooks.shouldCallComputeDynamicSwapFee, DYNAMIC_SWAP_FEE_OFFSET);
+            }
+        }
+
+        if (cherryPicks & LIQUIDITY_FLAG != 0) {
+            poolConfig = poolConfig
+                .insertBool(config.liquidityManagement.disableUnbalancedLiquidity, UNBALANCED_LIQUIDITY_OFFSET)
+                .insertBool(config.liquidityManagement.enableAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET)
+                .insertBool(config.liquidityManagement.enableRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
+        }
+
+        return PoolConfigBits.wrap(poolConfig);
+    }
+
     function fromPoolConfig(PoolConfig memory config) internal pure returns (PoolConfigBits) {
         bytes32 configBits = bytes32(0);
 
@@ -239,6 +341,75 @@ library PoolConfigLib {
         return scalingFactors;
     }
 
+    function toPoolConfig(
+        PoolConfigBits config,
+        uint16 cherryPicks
+    ) internal pure returns (PoolConfig memory poolConfig) {
+        bytes32 rawConfig = PoolConfigBits.unwrap(config);
+        uint16 picked = cherryPicks;
+
+        if (cherryPicks & PAUSED_FLAG != 0) {
+            poolConfig.isPoolPaused = rawConfig.decodeBool(POOL_PAUSED_OFFSET);
+            picked -= PAUSED_FLAG;
+            if (picked == 0) {
+                return poolConfig;
+            }
+        }
+        if (cherryPicks & PAUSE_WINDOW_FLAG != 0) {
+            poolConfig.pauseWindowEndTime = rawConfig.decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH);
+            picked -= PAUSE_WINDOW_FLAG;
+            if (picked == 0) {
+                return poolConfig;
+            }
+        }
+
+        if (cherryPicks & REGISTERED_FLAG != 0) {
+            poolConfig.isPoolRegistered = rawConfig.decodeBool(POOL_REGISTERED_OFFSET);
+        }
+        if (cherryPicks & INITIALIZED_FLAG != 0) {
+            poolConfig.isPoolInitialized = rawConfig.decodeBool(POOL_INITIALIZED_OFFSET);
+        }
+        if (cherryPicks & RECOVERY_MODE_FLAG != 0) {
+            poolConfig.isPoolInRecoveryMode = rawConfig.decodeBool(POOL_RECOVERY_MODE_OFFSET);
+        }
+        if (cherryPicks & STATIC_SWAP_FEE_FLAG != 0) {
+            poolConfig.staticSwapFeePercentage =
+                rawConfig.decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
+                FEE_SCALING_FACTOR;
+        }
+        if (cherryPicks & POOL_CREATOR_FEE_FLAG != 0) {
+            poolConfig.poolCreatorFeePercentage =
+                rawConfig.decodeUint(POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH) *
+                FEE_SCALING_FACTOR;
+        }
+        if (cherryPicks & TOKEN_DECIMALS_FLAG != 0) {
+            poolConfig.tokenDecimalDiffs = rawConfig.decodeUint(
+                DECIMAL_SCALING_FACTORS_OFFSET,
+                _TOKEN_DECIMAL_DIFFS_BITLENGTH
+            );
+        }
+        if (cherryPicks & HOOKS_FLAG != 0) {
+            poolConfig.hooks = PoolHooks({
+                shouldCallBeforeInitialize: rawConfig.decodeBool(BEFORE_INITIALIZE_OFFSET),
+                shouldCallAfterInitialize: rawConfig.decodeBool(AFTER_INITIALIZE_OFFSET),
+                shouldCallBeforeAddLiquidity: rawConfig.decodeBool(BEFORE_ADD_LIQUIDITY_OFFSET),
+                shouldCallAfterAddLiquidity: rawConfig.decodeBool(AFTER_ADD_LIQUIDITY_OFFSET),
+                shouldCallBeforeRemoveLiquidity: rawConfig.decodeBool(BEFORE_REMOVE_LIQUIDITY_OFFSET),
+                shouldCallAfterRemoveLiquidity: rawConfig.decodeBool(AFTER_REMOVE_LIQUIDITY_OFFSET),
+                shouldCallComputeDynamicSwapFee: rawConfig.decodeBool(DYNAMIC_SWAP_FEE_OFFSET),
+                shouldCallBeforeSwap: rawConfig.decodeBool(BEFORE_SWAP_OFFSET),
+                shouldCallAfterSwap: rawConfig.decodeBool(AFTER_SWAP_OFFSET)
+            });
+        }
+        if (cherryPicks & LIQUIDITY_FLAG != 0) {
+            poolConfig.liquidityManagement = LiquidityManagement({
+                disableUnbalancedLiquidity: rawConfig.decodeBool(UNBALANCED_LIQUIDITY_OFFSET),
+                enableAddLiquidityCustom: rawConfig.decodeBool(ADD_LIQUIDITY_CUSTOM_OFFSET),
+                enableRemoveLiquidityCustom: rawConfig.decodeBool(REMOVE_LIQUIDITY_CUSTOM_OFFSET)
+            });
+        }
+    }
+
     function toPoolConfig(PoolConfigBits config) internal pure returns (PoolConfig memory) {
         bytes32 rawConfig = PoolConfigBits.unwrap(config);
 
@@ -272,18 +443,5 @@ library PoolConfigLib {
                     enableRemoveLiquidityCustom: rawConfig.decodeBool(REMOVE_LIQUIDITY_CUSTOM_OFFSET)
                 })
             });
-    }
-
-    /**
-     * @dev There is a lot of data packed into the PoolConfig, but most often we only need one or two pieces of it.
-     * Since it is costly to pack and unpack the entire structure, convenience functions like `getPoolPausedState`
-     * help streamline frequent operations. The pause state needs to be checked on every state-changing pool operation.
-     *
-     * @param config The encoded pool configuration
-     * @return paused Whether the pool was paused (i.e., the bit was set)
-     * @return pauseWindowEndTime The end of the pause period, used to determine whether the pool is actually paused
-     */
-    function getPoolPausedState(PoolConfigBits config) internal pure returns (bool, uint256) {
-        return (config.isPoolPaused(), config.getPauseWindowEndTime());
     }
 }
