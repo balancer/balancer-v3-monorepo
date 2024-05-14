@@ -28,13 +28,7 @@ contract RouterCommonTest is BaseTest {
     function testSaveSenderAndCall() external {
         vm.expectEmit();
         emit RouterCommonMock.CurrentSenderMock(address(this));
-
-        router.saveSenderAndCall(
-            abi.encodeWithSelector(
-                RouterCommon.saveSenderAndCall.selector,
-                abi.encodeWithSelector(RouterCommonMock.emitSender.selector)
-            )
-        );
+        router.call(address(router), abi.encodeWithSelector(RouterCommonMock.emitSender.selector));
     }
 
     // This test verifies that the sender does not change when another sender reenter.
@@ -42,16 +36,13 @@ contract RouterCommonTest is BaseTest {
         vm.expectEmit();
         emit RouterCommonMock.CurrentSenderMock(address(this));
 
-        router.saveSenderAndCall(
+        router.call(
+            address(reentrancyAttack),
             abi.encodeWithSelector(
-                RouterCommonMock.call.selector,
-                reentrancyAttack,
+                ReentrancyAttack.callSender.selector,
                 abi.encodeWithSelector(
-                    ReentrancyAttack.callSender.selector,
-                    abi.encodeWithSelector(
-                        RouterCommon.saveSenderAndCall.selector,
-                        abi.encodeWithSelector(RouterCommonMock.emitSender.selector)
-                    )
+                    RouterCommonMock.call.selector,
+                    abi.encodeWithSelector(RouterCommonMock.emitSender.selector)
                 )
             )
         );

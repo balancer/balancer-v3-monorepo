@@ -11,12 +11,12 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
-import { IRouterSender } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterSender.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 
-contract RouterCommon is IRouterSender {
+contract RouterCommon is IRouterCommon {
     using Address for address payable;
     using SafeERC20 for IWETH;
     using StorageSlot for *;
@@ -45,6 +45,19 @@ contract RouterCommon is IRouterSender {
 
     modifier onlyVault() {
         _ensureOnlyVault();
+        _;
+    }
+
+    modifier saveSender() {
+        {
+            StorageSlot.AddressSlotType senderSlot = _getSenderSlot();
+            address sender = senderSlot.tload();
+
+            // NOTE: This is a one-time operation. The sender can't be changed within the one transaction.
+            if (sender == address(0)) {
+                senderSlot.tstore(msg.sender);
+            }
+        }
         _;
     }
 
@@ -150,27 +163,9 @@ contract RouterCommon is IRouterSender {
         }
     }
 
-    /// @inheritdoc IRouterSender
+    /// @inheritdoc IRouterCommon
     function getSender() external view returns (address) {
         return _getSenderSlot().tload();
-    }
-
-    /**
-     * @notice Save the sender address and call a function on Router.
-     * @dev Only the first call to this function will save the sender address.
-     * Other calls within one transaction can't change the sender.
-     * @return result The result of the function call
-     */
-    function saveSenderAndCall(bytes calldata data) external returns (bytes memory result) {
-        StorageSlot.AddressSlotType senderSlot = _getSenderSlot();
-        address sender = senderSlot.tload();
-
-        // NOTE: This is a one-time operation. The sender can't be changed within the one transaction.
-        if (sender == address(0)) {
-            senderSlot.tstore(msg.sender);
-        }
-
-        result = Address.functionDelegateCall(address(this), data);
     }
 
     // solhint-disable no-inline-assembly

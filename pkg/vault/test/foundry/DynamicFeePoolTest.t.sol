@@ -148,19 +148,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         uint256 aliceBalanceBefore = usdc.balanceOf(alice);
 
         vm.prank(alice);
-        router.callAndSaveSender(
-            abi.encodeWithSelector(
-                IRouter.swapSingleTokenExactIn.selector,
-                address(pool),
-                dai,
-                usdc,
-                defaultAmount,
-                0,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        );
+        router.swapSingleTokenExactIn(address(pool), dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
 
         uint256 aliceBalanceAfter = usdc.balanceOf(alice);
         // 100% fee; should get nothing
@@ -171,19 +159,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         aliceBalanceBefore = aliceBalanceAfter;
 
         vm.prank(alice);
-        router.callAndSaveSender(
-            abi.encodeWithSelector(
-                IRouter.swapSingleTokenExactIn.selector,
-                address(pool),
-                dai,
-                usdc,
-                defaultAmount,
-                0,
-                MAX_UINT256,
-                false,
-                bytes("")
-            )
-        );
+        router.swapSingleTokenExactIn(address(pool), dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
 
         aliceBalanceAfter = usdc.balanceOf(alice);
         // No fee; should get full swap amount

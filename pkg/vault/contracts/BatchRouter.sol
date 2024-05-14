@@ -62,6 +62,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
     )
         external
         payable
+        saveSender
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
         return
@@ -88,7 +89,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
+    ) external saveSender payable returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
         return
             abi.decode(
                 _vault.unlock{ value: msg.value }(
@@ -593,7 +594,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
     function querySwapExactIn(
         SwapPathExactAmountIn[] memory paths,
         bytes calldata userData
-    ) external returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) {
+    ) external saveSender returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) {
         for (uint256 i = 0; i < paths.length; ++i) {
             paths[i].minAmountOut = 0;
         }
@@ -632,7 +633,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
     function querySwapExactOut(
         SwapPathExactAmountOut[] memory paths,
         bytes calldata userData
-    ) external returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
+    ) external saveSender returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
         for (uint256 i = 0; i < paths.length; ++i) {
             paths[i].maxAmountIn = _MAX_AMOUNT;
         }
