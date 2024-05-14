@@ -1225,8 +1225,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountOutUnderlying, amountInWrapped) = (amountCalculated, amountGiven);
         } else {
             // EXACT_OUT unwrap, so AmountGiven is underlying amount
-            // Cannot use convertToShares because the actual withdraw operation burns a different (usually bigger)
-            // amount of shares.
             amountCalculated = wrappedToken.convertToShares(amountGiven);
             (amountOutUnderlying, amountInWrapped) = (amountGiven, amountCalculated);
         }
