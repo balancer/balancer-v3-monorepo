@@ -1223,14 +1223,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGiven is wrapped amount
-            // Cannot use convertToAssets because the actual withdraw operation returns a different (usually smaller)
-            // amount of assets.
             amountCalculated = wrappedToken.convertToAssets(amountGiven);
             (amountOutUnderlying, amountInWrapped) = (amountCalculated, amountGiven);
         } else {
             // EXACT_OUT unwrap, so AmountGiven is underlying amount
-            // Cannot use convertToShares because the actual withdraw operation burns a different (usually bigger)
-            // amount of shares.
             amountCalculated = wrappedToken.convertToShares(amountGiven);
             (amountOutUnderlying, amountInWrapped) = (amountGiven, amountCalculated);
         }
