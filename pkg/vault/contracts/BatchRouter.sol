@@ -12,6 +12,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import {
     TransientEnumerableSet
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
@@ -157,7 +158,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
             uint256 stepExactAmountIn = path.exactAmountIn;
             IERC20 stepTokenIn = path.tokenIn;
 
-            if (path.steps[0].isBuffer) {
+            if (path.steps[0].isBuffer && !EVMCallModeHelpers.isStaticCall()) {
                 // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
                 _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, false);
                 _settledTokenAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
@@ -433,7 +434,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                 }
 
                 if (step.isBuffer) {
-                    if (stepLocals.isLastStep) {
+                    if (stepLocals.isLastStep && !EVMCallModeHelpers.isStaticCall()) {
                         // The buffer will need this token to wrap/unwrap, so take it from the user in advance
                         _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
                     }

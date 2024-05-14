@@ -25,7 +25,7 @@ import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
+contract QueryBoostedPoolBufferTest is BaseVaultTest {
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
@@ -166,60 +166,84 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         assertEq(wrappedBalance, bufferAmount, "Wrong waUSDC buffer balance for wrapped token");
     }
 
-    function testBoostedPoolSwapWithinBufferRangeExactIn() public {
+    function testQuerySwapWithinBufferRangeExactIn() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
 
-        snapStart("boostedPoolSwapExactIn-vault");
-        vm.prank(alice);
-        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
-            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
-        snapEnd();
+        // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
+        vm.startPrank(address(0), address(0));
+        // Not using staticCall because it does not allow changes in the transient storage, and reverts with
+        // a StateChangeDuringStaticCall error
+        (, bytes memory data) = address(batchRouter).call(
+            abi.encodeWithSelector(IBatchRouter.querySwapExactIn.selector, paths, bytes(""))
+        );
+        vm.stopPrank();
 
-        // When the buffer has enough liquidity to wrap/unwrap, bufferExpectedDelta is swapAmount because the
-        // `erc4626BufferWrapOrUnwrap` just transfer swapAmount from underlying to wrapped balance (and vice-versa)
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, swapAmount);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = abi.decode(
+            data,
+            (uint256[], address[], uint256[])
+        );
+
+        _verifyQuerySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN);
     }
 
-    function testBoostedPoolSwapWithinBufferRangeExactOut() public {
+    function testQuerySwapWithinBufferRangeExactOut() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount);
 
-        snapStart("boostedPoolSwapExactOut-vault");
-        vm.prank(alice);
-        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
-            .swapExactOut(paths, MAX_UINT256, false, bytes(""));
-        snapEnd();
+        // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
+        vm.startPrank(address(0), address(0));
+        // Not using staticCall because it does not allow changes in the transient storage, and reverts with
+        // a StateChangeDuringStaticCall error
+        (, bytes memory data) = address(batchRouter).call(
+            abi.encodeWithSelector(IBatchRouter.querySwapExactOut.selector, paths, bytes(""))
+        );
+        vm.stopPrank();
 
-        // When the buffer has enough liquidity to wrap/unwrap, bufferExpectedDelta is swapAmount because the
-        // `erc4626BufferWrapOrUnwrap` just transfer swapAmount from underlying to wrapped balance (and vice-versa)
-        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, swapAmount);
+        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = abi.decode(
+            data,
+            (uint256[], address[], uint256[])
+        );
+
+        _verifyQuerySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT);
     }
 
-    function testBoostedPoolSwapOutOfBufferRangeExactIn() public {
+    function testQuerySwapOutOfBufferRangeExactIn() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(tooLargeSwapAmount);
 
-        snapStart("boostedPoolSwapTooLarge-ExactIn-vault");
-        vm.prank(alice);
-        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
-            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
-        snapEnd();
+        // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
+        vm.startPrank(address(0), address(0));
+        // Not using staticCall because it does not allow changes in the transient storage, and reverts with
+        // a StateChangeDuringStaticCall error
+        (, bytes memory data) = address(batchRouter).call(
+            abi.encodeWithSelector(IBatchRouter.querySwapExactIn.selector, paths, bytes(""))
+        );
+        vm.stopPrank();
 
-        // When the buffer has not enough liquidity to wrap/unwrap, bufferExpectedDelta is 0 because the
-        // `erc4626BufferWrapOrUnwrap` function leaves the buffer perfectly balanced at the end.
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, tooLargeSwapAmount, SwapKind.EXACT_IN, 0);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = abi.decode(
+            data,
+            (uint256[], address[], uint256[])
+        );
+
+        _verifyQuerySwapResult(pathAmountsOut, tokensOut, amountsOut, tooLargeSwapAmount, SwapKind.EXACT_IN);
     }
 
-    function testBoostedPoolSwapOutOfBufferRangeExactOut() public {
+    function testQuerySwapOutOfBufferRangeExactOut() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(tooLargeSwapAmount);
 
-        snapStart("boostedPoolSwapTooLarge-ExactOut-vault");
-        vm.prank(alice);
-        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
-            .swapExactOut(paths, MAX_UINT256, false, bytes(""));
-        snapEnd();
+        // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
+        vm.startPrank(address(0), address(0));
+        // Not using staticCall because it does not allow changes in the transient storage, and reverts with
+        // a StateChangeDuringStaticCall error
+        (, bytes memory data) = address(batchRouter).call(
+            abi.encodeWithSelector(IBatchRouter.querySwapExactOut.selector, paths, bytes(""))
+        );
+        vm.stopPrank();
 
-        // When the buffer has not enough liquidity to wrap/unwrap, bufferExpectedDelta is 0 because the
-        // `erc4626BufferWrapOrUnwrap` function leaves the buffer perfectly balanced at the end.
-        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, tooLargeSwapAmount, SwapKind.EXACT_OUT, 0);
+        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = abi.decode(
+            data,
+            (uint256[], address[], uint256[])
+        );
+
+        _verifyQuerySwapResult(pathAmountsIn, tokensIn, amountsIn, tooLargeSwapAmount, SwapKind.EXACT_OUT);
     }
 
     function _buildExactInPaths(
@@ -266,13 +290,12 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         });
     }
 
-    function _verifySwapResult(
+    function _verifyQuerySwapResult(
         uint256[] memory paths,
         address[] memory tokens,
         uint256[] memory amounts,
         uint256 expectedDelta,
-        SwapKind kind,
-        uint256 bufferExpectedDelta
+        SwapKind kind
     ) private {
         assertEq(paths.length, 1, "Incorrect output array length");
 
@@ -283,26 +306,5 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         assertApproxEqAbs(paths[0], expectedDelta, 1, "Wrong path count");
         assertApproxEqAbs(amounts[0], expectedDelta, 1, "Wrong amounts count");
         assertEq(tokens[0], kind == SwapKind.EXACT_IN ? address(usdc) : address(dai), "Wrong token for SwapKind");
-
-        // Tokens were transferred
-        assertApproxEqAbs(dai.balanceOf(alice), defaultBalance - expectedDelta, 1, "Wrong ending balance of DAI");
-        assertApproxEqAbs(usdc.balanceOf(alice), defaultBalance + expectedDelta, 1, "Wrong ending balance of USDC");
-
-        uint256[] memory balancesRaw;
-
-        (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
-        (, balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
-        assertEq(balancesRaw[daiIdx], boostedPoolAmount + expectedDelta, "Wrong boosted pool DAI balance");
-        assertEq(balancesRaw[usdcIdx], boostedPoolAmount - expectedDelta, "Wrong boosted pool USDC balance");
-
-        uint256 baseBalance;
-        uint256 wrappedBalance;
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
-        assertEq(baseBalance, bufferAmount + bufferExpectedDelta, "Wrong DAI buffer pool base balance");
-        assertEq(wrappedBalance, bufferAmount - bufferExpectedDelta, "Wrong DAI buffer pool wrapped balance");
-
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
-        assertEq(baseBalance, bufferAmount - bufferExpectedDelta, "Wrong USDC buffer pool base balance");
-        assertEq(wrappedBalance, bufferAmount + bufferExpectedDelta, "Wrong USDC buffer pool wrapped balance");
     }
 }
