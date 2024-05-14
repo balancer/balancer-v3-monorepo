@@ -1130,7 +1130,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (bufferUnderlyingSurplus)
                 deltaUnderlyingDeposited = amountInUnderlying + bufferUnderlyingSurplus;
 
-                underlyingToken.forceApprove(address(wrappedToken), deltaUnderlyingDeposited + _MAX_CONVERT_ERROR);
+                underlyingToken.forceApprove(address(wrappedToken), _addConvertError(deltaUnderlyingDeposited));
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called
                 wrappedToken.deposit(deltaUnderlyingDeposited, address(this));
             } else {
@@ -1144,11 +1144,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     deltaWrappedMinted = amountOutWrapped + bufferWrappedSurplus;
                     underlyingToken.forceApprove(
                         address(wrappedToken),
-                        wrappedToken.convertToAssets(deltaWrappedMinted) + _MAX_CONVERT_ERROR
+                        _addConvertError(wrappedToken.convertToAssets(deltaWrappedMinted))
                     );
                 } else {
                     deltaWrappedMinted = amountOutWrapped;
-                    underlyingToken.forceApprove(address(wrappedToken), amountInUnderlying + _MAX_CONVERT_ERROR);
+                    underlyingToken.forceApprove(address(wrappedToken), _addConvertError(amountInUnderlying));
                 }
 
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called
@@ -1390,6 +1390,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // wrappedBefore - wrappedAfter
             deltaWrapped = vaultWrappedBefore - vaultWrappedAfter;
         }
+    }
+
+    /**
+     * @dev IERC4626 convert and preview may have different results for the same input, and preview is usually more
+     * accurate, but more expensive than convert. _MAX_CONVERT_ERROR limits the error between these two functions and
+     * allow us to use convert safely.
+     */
+    function _addConvertError(uint256 amount) private pure returns (uint256) {
+        return amount + _MAX_CONVERT_ERROR;
     }
 
     /*******************************************************************************
