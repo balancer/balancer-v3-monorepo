@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-interface IRouterSender {
+interface IRouterCommon {
     /**
      * @notice Get the first sender which initialized the call to Router.
      * @return address The sender address.
