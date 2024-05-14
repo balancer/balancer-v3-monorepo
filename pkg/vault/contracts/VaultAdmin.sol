@@ -229,9 +229,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     function _setPoolPaused(address pool, bool pausing) internal {
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig(
+            PoolConfigLib.PAUSED_FLAG | PoolConfigLib.PAUSE_WINDOW_FLAG
+        );
 
-        if (_isPoolPaused(pool)) {
+        if (_isPoolPaused(config)) {
             if (pausing) {
                 // Already paused, and we're trying to pause it again.
                 revert PoolPaused(pool);
@@ -255,7 +257,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
         // Update poolConfig.
         config.isPoolPaused = pausing;
-        _poolConfig[pool] = config.fromPoolConfig();
+        _poolConfig[pool] = _poolConfig[pool].fromPoolConfig(config, PoolConfigLib.PAUSED_FLAG);
 
         emit PoolPausedStateChanged(pool, pausing);
     }
@@ -321,9 +323,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             revert PoolCreatorFeePercentageTooHigh();
         }
 
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        PoolConfig memory config;
         config.poolCreatorFeePercentage = poolCreatorFeePercentage;
-        _poolConfig[pool] = config.fromPoolConfig();
+        _poolConfig[pool] = _poolConfig[pool].fromPoolConfig(config, PoolConfigLib.POOL_CREATOR_FEE_FLAG);
 
         emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
     }
@@ -372,8 +374,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function enableRecoveryMode(address pool) external withRegisteredPool(pool) onlyVault {
         _ensurePoolNotInRecoveryMode(pool);
 
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig(
+            PoolConfigLib.PAUSED_FLAG | PoolConfigLib.PAUSE_WINDOW_FLAG
+        );
+
         // If the Vault or pool is pausable (and currently paused), this call is permissionless.
-        if (_isPoolPaused(pool) == false && _isVaultPaused() == false) {
+        if (_isPoolPaused(config) == false && _isVaultPaused() == false) {
             // If not permissionless, authenticate with governance.
             _authenticateCaller();
         }
@@ -406,9 +412,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
      */
     function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
         // Update poolConfig
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        PoolConfig memory config;
         config.isPoolInRecoveryMode = recoveryMode;
-        _poolConfig[pool] = config.fromPoolConfig();
+        _poolConfig[pool] = _poolConfig[pool].fromPoolConfig(config, PoolConfigLib.RECOVERY_MODE_FLAG);
 
         if (recoveryMode == false) {
             _setPoolBalances(pool, _getPoolData(pool, Rounding.ROUND_DOWN));

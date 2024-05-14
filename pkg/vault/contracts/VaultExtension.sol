@@ -231,14 +231,21 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _assignPoolRoles(pool, params.roleAccounts);
 
         // Store config and mark the pool as registered
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        PoolConfig memory config;
 
         config.isPoolRegistered = true;
         config.hooks = params.poolHooks;
         config.liquidityManagement = params.liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime;
-        _poolConfig[pool] = config.fromPoolConfig();
+        _poolConfig[pool] = _poolConfig[pool].fromPoolConfig(
+            config,
+            PoolConfigLib.REGISTERED_FLAG |
+                PoolConfigLib.HOOKS_FLAG |
+                PoolConfigLib.LIQUIDITY_FLAG |
+                PoolConfigLib.TOKEN_DECIMALS_FLAG |
+                PoolConfigLib.PAUSE_WINDOW_FLAG
+        );
 
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
 
@@ -376,7 +383,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Store config and mark the pool as initialized
         poolData.poolConfig.isPoolInitialized = true;
-        _poolConfig[pool] = poolData.poolConfig.fromPoolConfig();
+        _poolConfig[pool] = _poolConfig[pool].fromPoolConfig(poolData.poolConfig, PoolConfigLib.INITIALIZED_FLAG);
 
         // Pass scaled balances to the pool
         bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18);
@@ -488,14 +495,21 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function isPoolPaused(address pool) external view withRegisteredPool(pool) onlyVault returns (bool) {
-        return _isPoolPaused(pool);
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig(
+            PoolConfigLib.PAUSED_FLAG | PoolConfigLib.PAUSE_WINDOW_FLAG
+        );
+
+        return _isPoolPaused(config);
     }
 
     /// @inheritdoc IVaultExtension
     function getPoolPausedState(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (bool, uint256, uint256, address) {
-        (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig(
+            PoolConfigLib.PAUSED_FLAG | PoolConfigLib.PAUSE_WINDOW_FLAG
+        );
+        (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(config);
 
         return (
             paused,
@@ -528,7 +542,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function getStaticSwapFeePercentage(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
-        return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
+        return _poolConfig[pool].toPoolConfig(PoolConfigLib.STATIC_SWAP_FEE_FLAG).staticSwapFeePercentage;
     }
 
     /// @inheritdoc IVaultExtension

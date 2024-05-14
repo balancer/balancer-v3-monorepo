@@ -155,7 +155,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         if (vaultState.isVaultPaused && block.timestamp <= _vaultBufferPeriodEndTime) {
             revert VaultPaused();
         }
-        _ensurePoolNotPaused(pool);
+
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig(
+            PoolConfigLib.PAUSED_FLAG | PoolConfigLib.PAUSE_WINDOW_FLAG
+        );
+
+        _ensurePoolNotPaused(pool, config);
     }
 
     /**
@@ -175,26 +180,30 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @dev Reverts if the pool is paused.
      * @param pool The pool
      */
-    function _ensurePoolNotPaused(address pool) internal view {
-        if (_isPoolPaused(pool)) {
+    function _ensurePoolNotPaused(address pool, PoolConfig memory poolConfig) internal view {
+        if (_isPoolPaused(poolConfig)) {
             revert PoolPaused(pool);
         }
     }
 
     /// @dev Check both the flag and timestamp to determine whether the pool is paused.
-    function _isPoolPaused(address pool) internal view returns (bool) {
-        (bool paused, ) = _getPoolPausedState(pool);
+    function _isPoolPaused(PoolConfig memory poolConfig) internal view returns (bool) {
+        (bool paused, ) = _getPoolPausedState(poolConfig);
 
         return paused;
     }
 
-    /// @dev Lowest level routine that plucks only the minimum necessary parts from storage.
-    function _getPoolPausedState(address pool) internal view returns (bool, uint256) {
-        (bool pauseBit, uint256 pauseWindowEndTime) = PoolConfigLib.getPoolPausedState(_poolConfig[pool]);
+    /// @dev Check pause bit and pause window expiration.
+    function _getPoolPausedState(PoolConfig memory poolConfig) internal view returns (bool, uint256) {
+        //(bool pauseBit, uint256 pauseWindowEndTime) = PoolConfigLib.getPoolPausedState(_poolConfig[pool]);
 
         // Use the Vault's buffer period.
-        // solhint-disable-next-line not-rely-on-time
-        return (pauseBit && block.timestamp <= pauseWindowEndTime + _vaultBufferPeriodDuration, pauseWindowEndTime);
+        // solhint-disable not-rely-on-time
+        return (
+            poolConfig.isPoolPaused && block.timestamp <= poolConfig.pauseWindowEndTime + _vaultBufferPeriodDuration,
+            poolConfig.pauseWindowEndTime
+        );
+        //solhint-enable not-rely-on-time
     }
 
     /*******************************************************************************
@@ -523,9 +532,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             }
         }
 
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        PoolConfig memory config;
         config.staticSwapFeePercentage = swapFeePercentage;
-        _poolConfig[pool] = config.fromPoolConfig();
+        _poolConfig[pool] = _poolConfig[pool].fromPoolConfig(config, PoolConfigLib.STATIC_SWAP_FEE_FLAG);
 
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }

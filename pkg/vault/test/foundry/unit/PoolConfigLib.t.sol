@@ -238,54 +238,6 @@ contract PoolConfigLibTest is Test {
         );
     }
 
-    function testGetPoolPausedState() public {
-        bytes32 configBits = bytes32(0);
-
-        bool isPaused;
-        uint256 pauseWithdrawEndTime;
-
-        (isPaused, pauseWithdrawEndTime) = PoolConfigBits.wrap(configBits).getPoolPausedState();
-        assertFalse(isPaused, "(empty bytes) isPaused mismatch");
-
-        (isPaused, pauseWithdrawEndTime) = PoolConfigBits
-            .wrap(configBits.insertBool(true, PoolConfigLib.POOL_PAUSED_OFFSET))
-            .getPoolPausedState();
-        assertTrue(isPaused, "(isPaused = true && pauseWithdrawEndTime == 0) isPaused mismatch");
-        assertEq(
-            pauseWithdrawEndTime,
-            0,
-            "(isPaused = true && pauseWithdrawEndTime == 0) pauseWithdrawEndTime mismatch"
-        );
-
-        (isPaused, pauseWithdrawEndTime) = PoolConfigBits
-            .wrap(
-                configBits.insertUint(MAX_UINT32_VALUE, PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH)
-            )
-            .getPoolPausedState();
-        assertFalse(isPaused, "(isPaused = false && pauseWithdrawEndTime != 0) isPaused mismatch");
-        assertEq(
-            pauseWithdrawEndTime,
-            MAX_UINT32_VALUE,
-            "(isPaused = false && pauseWithdrawEndTime != 0) pauseWithdrawEndTime mismatch"
-        );
-
-        (isPaused, pauseWithdrawEndTime) = PoolConfigBits
-            .wrap(
-                configBits.insertBool(true, PoolConfigLib.POOL_PAUSED_OFFSET).insertUint(
-                    MAX_UINT32_VALUE,
-                    PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET,
-                    TIMESTAMP_BITLENGTH
-                )
-            )
-            .getPoolPausedState();
-        assertTrue(isPaused, "(isPaused = true && pauseWithdrawEndTime != 0) isPaused mismatch");
-        assertEq(
-            pauseWithdrawEndTime,
-            MAX_UINT32_VALUE,
-            "(isPaused = true && pauseWithdrawEndTime != 0) pauseWithdrawEndTime mismatch"
-        );
-    }
-
     function testZeroConfigBytes() public {
         PoolConfigBits configBits = PoolConfigBits.wrap(bytes32(0));
 

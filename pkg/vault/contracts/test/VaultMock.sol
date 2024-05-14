@@ -143,21 +143,21 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) public {
-        PoolConfig memory poolConfig = _poolConfig[pool].toPoolConfig();
+        PoolConfig memory poolConfig;
         poolConfig.isPoolInitialized = isPoolInitialized;
-        _poolConfig[pool] = poolConfig.fromPoolConfig();
+        _poolConfig[pool] = _poolConfig[pool].fromPoolConfig(poolConfig, PoolConfigLib.INITIALIZED_FLAG);
     }
 
     function manualSetPoolPauseWindowEndTime(address pool, uint256 pauseWindowEndTime) public {
-        PoolConfig memory poolConfig = _poolConfig[pool].toPoolConfig();
+        PoolConfig memory poolConfig;
         poolConfig.pauseWindowEndTime = pauseWindowEndTime;
-        _poolConfig[pool] = poolConfig.fromPoolConfig();
+        _poolConfig[pool] = _poolConfig[pool].fromPoolConfig(poolConfig, PoolConfigLib.PAUSE_WINDOW_FLAG);
     }
 
     function manualSetPoolPaused(address pool, bool isPoolPaused) public {
-        PoolConfig memory poolConfig = _poolConfig[pool].toPoolConfig();
+        PoolConfig memory poolConfig;
         poolConfig.isPoolPaused = isPoolPaused;
-        _poolConfig[pool] = poolConfig.fromPoolConfig();
+        _poolConfig[pool] = _poolConfig[pool].fromPoolConfig(poolConfig, PoolConfigLib.PAUSED_FLAG);
     }
 
     function manualSetVaultPaused(bool isVaultPaused) public {
@@ -202,7 +202,12 @@ contract VaultMock is IVaultMainMock, Vault {
     function mockWithInitializedPool(address pool) public view withInitializedPool(pool) {}
 
     function ensurePoolNotPaused(address pool) public view {
-        _ensurePoolNotPaused(pool);
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(
+            _poolConfig[pool],
+            PoolConfigLib.PAUSED_FLAG | PoolConfigLib.PAUSE_WINDOW_FLAG
+        );
+
+        _ensurePoolNotPaused(pool, config);
     }
 
     function ensureUnpausedAndGetVaultState(address pool) public view returns (VaultState memory vaultState) {
