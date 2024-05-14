@@ -1160,27 +1160,31 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IERC20(wrappedToken)
             );
 
+            uint256 totalExpectedUnderlying = amountInUnderlying + bufferUnderlyingSurplus;
             if (
-                (deltaUnderlyingDeposited < amountInUnderlying + bufferUnderlyingSurplus &&
-                    amountInUnderlying + bufferUnderlyingSurplus - deltaUnderlyingDeposited > _MAX_CONVERT_ERROR) ||
-                (deltaUnderlyingDeposited < amountInUnderlying + bufferUnderlyingSurplus &&
-                    deltaUnderlyingDeposited - amountInUnderlying - bufferUnderlyingSurplus > _MAX_CONVERT_ERROR)
+                (deltaUnderlyingDeposited < totalExpectedUnderlying &&
+                    totalExpectedUnderlying - deltaUnderlyingDeposited > _MAX_CONVERT_ERROR) ||
+                (deltaUnderlyingDeposited < totalExpectedUnderlying &&
+                    deltaUnderlyingDeposited - totalExpectedUnderlying > _MAX_CONVERT_ERROR)
             ) {
                 // If this error is thrown, it means the previewDeposit or previewMint had a different result from
                 // the delta operation.
                 revert WrongUnderlyingAmount(address(wrappedToken));
             }
-            amountInUnderlying = deltaUnderlyingDeposited - bufferUnderlyingSurplus;
+
+            uint256 totalExpectedWrapped = amountOutWrapped + bufferWrappedSurplus;
             if (
-                (deltaWrappedMinted > amountOutWrapped + bufferWrappedSurplus &&
-                    deltaWrappedMinted - amountOutWrapped - bufferWrappedSurplus > _MAX_CONVERT_ERROR) ||
-                (deltaWrappedMinted < amountOutWrapped + bufferWrappedSurplus &&
-                    amountOutWrapped + bufferWrappedSurplus - deltaWrappedMinted > _MAX_CONVERT_ERROR)
+                (deltaWrappedMinted > totalExpectedWrapped &&
+                    deltaWrappedMinted - totalExpectedWrapped > _MAX_CONVERT_ERROR) ||
+                (deltaWrappedMinted < totalExpectedWrapped &&
+                    totalExpectedWrapped - deltaWrappedMinted > _MAX_CONVERT_ERROR)
             ) {
                 // If this error is thrown, it means the previewDeposit or previewMint had a different result from
                 // the delta operation.
                 revert WrongWrappedAmount(address(wrappedToken));
             }
+
+            amountInUnderlying = deltaUnderlyingDeposited - bufferUnderlyingSurplus;
             amountOutWrapped = deltaWrappedMinted - bufferWrappedSurplus;
 
             // Only updates buffer balances if buffer has a surplus of underlying or wrapped tokens
@@ -1270,27 +1274,31 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IERC20(wrappedToken)
             );
 
+            uint256 totalExpectedUnderlying = amountOutUnderlying + bufferUnderlyingSurplus;
             if (
-                (deltaUnderlyingWithdrawn < amountOutUnderlying + bufferUnderlyingSurplus &&
-                    amountOutUnderlying + bufferUnderlyingSurplus - deltaUnderlyingWithdrawn > _MAX_CONVERT_ERROR) ||
-                (deltaUnderlyingWithdrawn > amountOutUnderlying + bufferUnderlyingSurplus &&
-                    deltaUnderlyingWithdrawn - amountOutUnderlying - bufferUnderlyingSurplus > _MAX_CONVERT_ERROR)
+                (deltaUnderlyingWithdrawn < totalExpectedUnderlying &&
+                    totalExpectedUnderlying - deltaUnderlyingWithdrawn > _MAX_CONVERT_ERROR) ||
+                (deltaUnderlyingWithdrawn > totalExpectedUnderlying &&
+                    deltaUnderlyingWithdrawn - totalExpectedUnderlying > _MAX_CONVERT_ERROR)
             ) {
                 // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
                 // the actual operation.
                 revert WrongUnderlyingAmount(address(wrappedToken));
             }
-            amountOutUnderlying = deltaUnderlyingWithdrawn - bufferUnderlyingSurplus;
+
+            uint256 totalExpectedWrapped = amountInWrapped + bufferWrappedSurplus;
             if (
-                ((deltaWrappedRedeemed > amountInWrapped + bufferWrappedSurplus) &&
-                    (deltaWrappedRedeemed - amountInWrapped - bufferWrappedSurplus > _MAX_CONVERT_ERROR)) ||
-                (deltaWrappedRedeemed < amountInWrapped + bufferWrappedSurplus &&
-                    amountInWrapped + bufferWrappedSurplus - deltaWrappedRedeemed > _MAX_CONVERT_ERROR)
+                ((deltaWrappedRedeemed > totalExpectedWrapped) &&
+                    (deltaWrappedRedeemed - totalExpectedWrapped > _MAX_CONVERT_ERROR)) ||
+                (deltaWrappedRedeemed < totalExpectedWrapped &&
+                    totalExpectedWrapped - deltaWrappedRedeemed > _MAX_CONVERT_ERROR)
             ) {
                 // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
                 // the actual operation.
                 revert WrongWrappedAmount(address(wrappedToken));
             }
+
+            amountOutUnderlying = deltaUnderlyingWithdrawn - bufferUnderlyingSurplus;
             amountInWrapped = deltaWrappedRedeemed - bufferWrappedSurplus;
 
             // Only updates buffer balances if buffer has a surplus of underlying or wrapped tokens
