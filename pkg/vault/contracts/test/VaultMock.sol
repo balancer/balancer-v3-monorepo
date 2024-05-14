@@ -454,13 +454,46 @@ contract VaultMock is IVaultMainMock, Vault {
     )
         external
         returns (
+            PoolData memory updatedPoolData,
             uint256[] memory amountsInRaw,
             uint256[] memory amountsInScaled18,
             uint256 bptAmountOut,
             bytes memory returnData
         )
     {
-        return _addLiquidity(poolData, params, maxAmountsInScaled18, vaultState);
+        (amountsInRaw, amountsInScaled18, bptAmountOut, returnData) = _addLiquidity(
+            poolData,
+            params,
+            maxAmountsInScaled18,
+            vaultState
+        );
+
+        updatedPoolData = poolData;
+    }
+
+    function manualRemoveLiquidity(
+        PoolData memory poolData,
+        RemoveLiquidityParams memory params,
+        uint256[] memory minAmountsOutScaled18,
+        VaultState memory vaultState
+    )
+        external
+        returns (
+            PoolData memory updatedPoolData,
+            uint256 bptAmountIn,
+            uint256[] memory amountsOutRaw,
+            uint256[] memory amountsOutScaled18,
+            bytes memory returnData
+        )
+    {
+        (bptAmountIn, amountsOutRaw, amountsOutScaled18, returnData) = _removeLiquidity(
+            poolData,
+            params,
+            minAmountsOutScaled18,
+            vaultState
+        );
+
+        updatedPoolData = poolData;
     }
 
     function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256) {
