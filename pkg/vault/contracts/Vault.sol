@@ -1091,14 +1091,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN wrap, so AmountGiven is underlying amount
-            // Cannot use convertToShares because the actual deposit operation returns a different (usually smaller)
-            // amount of shares.
             amountCalculated = wrappedToken.convertToShares(amountGiven);
             (amountInUnderlying, amountOutWrapped) = (amountGiven, amountCalculated);
         } else {
             // EXACT_OUT wrap, so AmountGiven is wrapped amount
-            // Cannot use convertToAssets because the actual mint operation deposits a different (usually bigger)
-            // amount of assets.
             amountCalculated = wrappedToken.convertToAssets(amountGiven);
             (amountInUnderlying, amountOutWrapped) = (amountCalculated, amountGiven);
         }
