@@ -1175,8 +1175,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
                 // Only updates buffer balances if buffer has a surplus of underlying or wrapped tokens
                 if (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0) {
-                    // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
-                    // increase. To decrease underlying balance, we get the delta amount that was deposited
+                    // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance
+                    // will increase. To decrease underlying balance, we get the delta amount that was deposited
                     // (deltaUnderlyingDeposited) and discounts the amount needed in the wrapping operation
                     // (amountInUnderlying). Same logic applies to wrapped balances.
                     bufferBalances = PackedTokenBalance.toPackedBalance(
@@ -1264,22 +1264,22 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 );
 
                 if (deltaUnderlyingWithdrawn != amountOutUnderlying + bufferUnderlyingSurplus) {
-                    // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
-                    // the actual operation.
+                    // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result
+                    // from the actual operation.
                     revert WrongUnderlyingAmount(address(wrappedToken));
                 }
                 if (deltaWrappedRedeemed != amountInWrapped + bufferWrappedSurplus) {
-                    // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result from
-                    // the actual operation.
+                    // If this error is thrown, it means the previewWithdraw or previewRedeem had a different result
+                    // from the actual operation.
                     revert WrongWrappedAmount(address(wrappedToken));
                 }
 
                 // Only updates buffer balances if buffer has a surplus of underlying or wrapped tokens
                 if (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0) {
-                    // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance
-                    // will decrease. To increase the underlying balance, we get the delta amount that was withdrawn
-                    // (deltaUnderlyingWithdrawn) and discount the amount expected in the unwrapping operation
-                    // (amountOutUnderlying). The same logic applies to wrapped balances.
+                    // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped
+                    // balance will decrease. To increase the underlying balance, we get the delta amount that was
+                    // withdrawn (deltaUnderlyingWithdrawn) and discount the amount expected in the unwrapping
+                    // operation (amountOutUnderlying). The same logic applies to wrapped balances.
                     bufferBalances = PackedTokenBalance.toPackedBalance(
                         bufferBalances.getBalanceRaw() + (deltaUnderlyingWithdrawn - amountOutUnderlying),
                         bufferBalances.getBalanceDerived() - (deltaWrappedRedeemed - amountInWrapped)
