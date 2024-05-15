@@ -1104,7 +1104,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         // Checking isStaticCall first, so we only parse _vaultState in static calls
-        if (!EVMCallModeHelpers.isStaticCall() || _vaultState.toVaultState().isQueryDisabled) {
+        if (EVMCallModeHelpers.isStaticCall() == false || _vaultState.toVaultState().isQueryDisabled) {
             if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
                 // The buffer has enough liquidity to facilitate the wrap without making an external call.
 
@@ -1223,7 +1223,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         // Checking isStaticCall first, so we only parse _vaultState in static calls
-        if (!EVMCallModeHelpers.isStaticCall() || _vaultState.toVaultState().isQueryDisabled) {
+        if (EVMCallModeHelpers.isStaticCall() == false || _vaultState.toVaultState().isQueryDisabled) {
             if (bufferBalances.getBalanceRaw() > amountOutUnderlying) {
                 // the buffer has enough liquidity to facilitate the wrap without making an external call.
                 bufferBalances = PackedTokenBalance.toPackedBalance(
