@@ -924,8 +924,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // A Pool's token balance always decreases after an exit
             // (potentially by 0). Also adjust by protocol and pool creator fees.
-            uint256 amountToDecreaseRaw = amountOutRaw -
-                vars.protocolSwapFeeAmountRaw -
+            uint256 amountToDecreaseRaw = amountOutRaw +
+                vars.protocolSwapFeeAmountRaw +
                 vars.creatorSwapFeeAmountRaw;
 
             poolData.decreaseTokenBalance(i, amountToDecreaseRaw);
