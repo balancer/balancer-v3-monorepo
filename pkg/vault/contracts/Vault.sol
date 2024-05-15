@@ -153,14 +153,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                                           Swaps
     *******************************************************************************/
 
-    /// @dev Represents temporary state used in a swap operation.
-    struct SwapState {
-        uint256 indexIn;
-        uint256 indexOut;
-        uint256 amountGivenScaled18;
-        uint256 swapFeePercentage;
-    }
-
     /// @inheritdoc IVaultMain
     function swap(
         SwapParams memory params
@@ -236,7 +228,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData.balancesLiveScaled18 are adjusted for swap amounts and fees inside of _swap.
         // These side-effects are unintuitive, but are done to avoid stack too deep issues.
         uint256 amountCalculatedScaled18;
-        (amountCalculated, amountIn, amountOut, amountCalculatedScaled18) = _swap(params, state, poolData, vaultState);
+        (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, vaultState);
 
         if (poolData.poolConfig.hooks.shouldCallAfterSwap) {
             // Adjust balances for the AfterSwap hook.
@@ -357,9 +349,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         VaultState memory vaultState
     ) internal nonReentrant returns (
         uint256 amountCalculatedRaw,
+        uint256 amountCalculatedScaled18,
         uint256 amountInRaw,
-        uint256 amountOutRaw,
-        uint256 amountCalculatedScaled18
+        uint256 amountOutRaw
     ) {
         SwapInternalLocals memory locals;
         

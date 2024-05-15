@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
     SwapParams,
-    SwapVars,
+    SwapState,
     PoolData,
     SwapKind,
     TokenConfig,
@@ -49,25 +49,25 @@ contract VaultUnitTest is BaseTest {
         params.userData[0] = 0x01;
         params.userData[19] = 0x05;
 
-        SwapVars memory vars;
-        vars.amountGivenScaled18 = 2e18;
-        vars.indexIn = 3;
-        vars.indexOut = 4;
+        SwapState memory state;
+        state.amountGivenScaled18 = 2e18;
+        state.indexIn = 3;
+        state.indexOut = 4;
 
         PoolData memory poolData;
         poolData.balancesLiveScaled18 = [uint256(1e18), 1e18].toMemoryArray();
 
-        IBasePool.PoolSwapParams memory poolSwapParams = vault.manualBuildPoolSwapParams(params, vars, poolData);
+        IBasePool.PoolSwapParams memory poolSwapParams = vault.manualBuildPoolSwapParams(params, state, poolData);
 
         assertEq(uint8(poolSwapParams.kind), uint8(params.kind), "Unexpected kind");
-        assertEq(poolSwapParams.amountGivenScaled18, vars.amountGivenScaled18, "Unexpected amountGivenScaled18");
+        assertEq(poolSwapParams.amountGivenScaled18, state.amountGivenScaled18, "Unexpected amountGivenScaled18");
         assertEq(
             keccak256(abi.encodePacked(poolSwapParams.balancesScaled18)),
             keccak256(abi.encodePacked(poolData.balancesLiveScaled18)),
             "Unexpected balancesScaled18"
         );
-        assertEq(poolSwapParams.indexIn, vars.indexIn, "Unexpected indexIn");
-        assertEq(poolSwapParams.indexOut, vars.indexOut, "Unexpected indexOut");
+        assertEq(poolSwapParams.indexIn, state.indexIn, "Unexpected indexIn");
+        assertEq(poolSwapParams.indexOut, state.indexOut, "Unexpected indexOut");
         assertEq(poolSwapParams.sender, address(this), "Unexpected sender");
         assertEq(poolSwapParams.userData, params.userData, "Unexpected userData");
     }

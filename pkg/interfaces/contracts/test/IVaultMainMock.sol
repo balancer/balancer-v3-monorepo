@@ -127,17 +127,18 @@ interface IVaultMainMock {
 
     function manualInternalSwap(
         SwapParams memory params,
-        SwapVars memory vars,
+        SwapState memory state,
         PoolData memory poolData,
         VaultState memory vaultState
     )
         external
         returns (
-            uint256 amountCalculated,
+            uint256 amountCalculatedRaw,
+            uint256 amountCalculatedScaled18,
             uint256 amountIn,
             uint256 amountOut,
             SwapParams memory,
-            SwapVars memory,
+            SwapState memory,
             PoolData memory,
             VaultState memory
         );
@@ -146,7 +147,7 @@ interface IVaultMainMock {
 
     function manualBuildPoolSwapParams(
         SwapParams memory params,
-        SwapVars memory vars,
+        SwapState memory state,
         PoolData memory poolData
     ) external view returns (IBasePool.PoolSwapParams memory);
 

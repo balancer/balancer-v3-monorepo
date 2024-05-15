@@ -30,6 +30,13 @@ import { VaultExtension } from "../VaultExtension.sol";
 import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
 import { PoolDataLib } from "../lib/PoolDataLib.sol";
 
+struct SwapInternalStateLocals {
+    SwapParams params;
+    SwapState swapState;
+    PoolData poolData;
+    VaultState vaultState;
+}
+
 contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using ScalingHelpers for uint256;
@@ -385,24 +392,25 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualInternalSwap(
         SwapParams memory params,
-        SwapVars memory vars,
+        SwapState memory state,
         PoolData memory poolData,
         VaultState memory vaultState
     )
         external
         returns (
-            uint256 amountCalculated,
+            uint256 amountCalculatedRaw,
+            uint256 amountCalculatedScaled18,
             uint256 amountIn,
             uint256 amountOut,
             SwapParams memory,
-            SwapVars memory,
+            SwapState memory,
             PoolData memory,
             VaultState memory
         )
     {
-        (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, vaultState);
+        (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, vaultState);
 
-        return (amountCalculated, amountIn, amountOut, params, vars, poolData, vaultState);
+        return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut, params, state, poolData, vaultState);
     }
 
     function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external {
@@ -411,10 +419,10 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualBuildPoolSwapParams(
         SwapParams memory params,
-        SwapVars memory vars,
+        SwapState memory state,
         PoolData memory poolData
     ) external view returns (IBasePool.PoolSwapParams memory) {
-        return _buildPoolSwapParams(params, vars, poolData);
+        return _buildPoolSwapParams(params, state, poolData);
     }
 
     function manualComputeAndChargeProtocolAndCreatorFees(
