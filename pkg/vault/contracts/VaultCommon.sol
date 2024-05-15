@@ -284,12 +284,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     function _loadPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
-        return PoolDataLib.load(
-            _poolTokenBalances[pool],
-            _poolConfig[pool],
-            _poolTokenConfig[pool],
-            roundingDirection
-        );
+        return PoolDataLib.load(_poolTokenBalances[pool], _poolConfig[pool], _poolTokenConfig[pool], roundingDirection);
     }
 
     /**
@@ -300,11 +295,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         address pool,
         PoolData memory poolData,
         uint256 yieldFeePercentage
-    )
-        internal
-        view
-        returns (uint256[] memory dueProtocolYieldFees, uint256[] memory dueCreatorYieldFees)
-    {
+    ) internal view returns (uint256[] memory dueProtocolYieldFees, uint256[] memory dueCreatorYieldFees) {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
         uint256 numTokens = poolBalances.length();
 
@@ -454,11 +445,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             poolData.tokenRates[tokenIndex]
         );
 
-        return _upOrDown(
-            newRawBalance,
-            poolData.decimalScalingFactors[tokenIndex],
-            poolData.tokenRates[tokenIndex]
-        );
+        return _upOrDown(newRawBalance, poolData.decimalScalingFactors[tokenIndex], poolData.tokenRates[tokenIndex]);
     }
 
     function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {

@@ -308,7 +308,12 @@ contract VaultMock is IVaultMainMock, Vault {
         Rounding roundingDirection
     ) external returns (PoolData memory) {
         VaultState memory vaultState = VaultStateLib.toVaultState(_vaultState);
-        return _chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData(pool, roundingDirection, vaultState.protocolYieldFeePercentage);
+        return
+            _chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData(
+                pool,
+                roundingDirection,
+                vaultState.protocolYieldFeePercentage
+            );
     }
 
     function updateLiveTokenBalanceInPoolData(
@@ -408,9 +413,23 @@ contract VaultMock is IVaultMainMock, Vault {
             VaultState memory
         )
     {
-        (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, vaultState);
+        (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut) = _swap(
+            params,
+            state,
+            poolData,
+            vaultState
+        );
 
-        return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut, params, state, poolData, vaultState);
+        return (
+            amountCalculatedRaw,
+            amountCalculatedScaled18,
+            amountIn,
+            amountOut,
+            params,
+            state,
+            poolData,
+            vaultState
+        );
     }
 
     function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external {

@@ -2,16 +2,15 @@
 
 pragma solidity ^0.8.24;
 
-
 import { PackedTokenBalance } from "./PackedTokenBalance.sol";
 import { PoolConfigBits, PoolConfigLib } from "./PoolConfigLib.sol";
 
-import { 
+import {
     PoolData,
     Rounding,
     TokenType,
     PoolConfig,
-    TokenConfig 
+    TokenConfig
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
