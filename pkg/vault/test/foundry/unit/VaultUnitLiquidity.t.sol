@@ -484,16 +484,7 @@ contract VaultUnitLiquidityTest is BaseTest {
                 poolData.balancesLiveScaled18[tokenIndex]
             ) - newBalances[tokenIndex];
 
-            console.log("taxableAmount", taxableAmount);
-
-            console.log(
-                "taxableAmount.divUp(swapFeePercentage.complement())",
-                taxableAmount.divUp(swapFeePercentage.complement())
-            );
-            console.log("taxableAmount", taxableAmount);
             uint256 fee = taxableAmount.divUp(swapFeePercentage.complement()) - taxableAmount;
-            console.log("fee", fee);
-            console.log("newBalances[tokenIndex]", newBalances[tokenIndex]);
             newBalances[tokenIndex] -= fee;
 
             uint256 newInvariantAndInvariantWithFeesApplied = 1e5;
