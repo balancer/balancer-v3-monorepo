@@ -206,4 +206,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     function getSalt(address addr) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
     }
+
+    function _getAggregateFeePercentage(uint256 protocolFeePercentage, uint256 creatorFeePercentage) internal pure returns (uint256) {
+        return protocolFeePercentage + protocolFeePercentage.complement().mulDown(creatorFeePercentage);
+    }
 }

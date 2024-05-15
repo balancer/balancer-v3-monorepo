@@ -5,25 +5,20 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    SwapParams,
-    SwapVars,
-    PoolData,
-    SwapKind,
-    TokenConfig,
-    TokenType,
-    Rounding
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
-import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
+
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
+import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
+import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
+import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 
 contract VaultUnitTest is BaseTest {
     using ArrayHelpers for *;
@@ -75,7 +70,7 @@ contract VaultUnitTest is BaseTest {
     /*TODO
     function testComputeAndChargeProtocolFees() public {
         uint256 tokenIndex = 0;
-        vault.manualSetPoolCreatorFees(pool, dai, tokenIndex);
+        vault.manualSetPoolCreatorFees(pool, dai, 0);
 
         PoolData memory poolData;
         poolData.decimalScalingFactors = decimalScalingFactors;
@@ -92,7 +87,7 @@ contract VaultUnitTest is BaseTest {
         emit IVaultEvents.ProtocolSwapFeeCharged(pool, address(dai), expectedSwapFeeAmountScaled18);
 
         (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolAndCreatorFees(
+            .manualComputeAndChargeProtocolSwapFees(
                 poolData,
                 swapFeeAmountScaled18,
                 protocolSwapFeePercentage,
@@ -140,7 +135,7 @@ contract VaultUnitTest is BaseTest {
         emit IVaultEvents.PoolCreatorSwapFeeCharged(pool, address(dai), expectCreatorFeeAmountRaw);
 
         (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolAndCreatorFees(
+            .manualComputeAndChargeProtocolSwapFees(
                 poolData,
                 swapFeeAmountScaled18,
                 protocolSwapFeePercentage,
@@ -164,7 +159,7 @@ contract VaultUnitTest is BaseTest {
         poolData.poolConfig.isPoolInRecoveryMode = true;
 
         (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolAndCreatorFees(poolData, 1e18, 10e16, pool, dai, 0);
+            .manualComputeAndChargeProtocolSwapFees(poolData, 1e18, 10e16, pool, dai, 0);
 
         assertEq(protocolSwapFeeAmountRaw, 0, "Unexpected protocolSwapFeeAmountRaw");
         assertEq(creatorSwapFeeAmountRaw, 0, "Unexpected creatorSwapFeeAmountRaw");

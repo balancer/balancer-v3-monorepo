@@ -131,10 +131,7 @@ contract YieldFeesTest is BaseVaultTest {
         uint256[] memory originalLiveBalances = verifyLiveBalances(wstethRate, daiRate, roundUp);
 
         // Set non-zero yield fee
-        setProtocolYieldFeePercentage(protocolYieldFeePercentage);
-        // lp is the pool creator, the only user who can change the pool creator fee percentage
-        vm.prank(lp);
-        vault.setPoolCreatorFeePercentage(address(pool), creatorYieldFeePercentage);
+        setAggregateProtocolYieldFeePercentage(_getAggregateFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage));
 
         // Now raise both rates
         uint256 rateDelta = 0.2e18;
@@ -314,10 +311,7 @@ contract YieldFeesTest is BaseVaultTest {
         require(feeAmounts[0] == 0, "Initial protocol fees for DAI not 0");
         require(feeAmounts[1] == 0, "Initial protocol fees for wstETH not 0");
 
-        setProtocolYieldFeePercentage(protocolYieldFeePercentage);
-        // lp is the pool creator, the only user who can change the pool creator fee percentage
-        vm.prank(lp);
-        vault.setPoolCreatorFeePercentage(address(pool), creatorYieldFeePercentage);
+        setAggregateProtocolYieldFeePercentage(_getAggregateSwapFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage));
 
         // Pump the rates 10 times
         wstethRate *= 10;

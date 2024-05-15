@@ -58,9 +58,6 @@ contract VaultStorage {
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
 
-    // Store pool pause managers.
-    mapping(address => address) internal _poolPauseManagers;
-
     // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
     // Last live balances are used for yield fee computation, and since these have rates applied, they are stored
     // as scaled 18-decimal FP values. Each value takes up half the storage slot (i.e., 128 bits).
@@ -83,21 +80,6 @@ contract VaultStorage {
      * @dev Must all net to zero when the operation is finished.
      */
     mapping(IERC20 => int256) private __tokenDeltas;
-
-    /**
-     * @dev The aggregate fee percentage charged on swaps, composed of both the protocol swap fee and creator fee.
-     * It is given by: protocolSwapFeePct + (1 - protocolSwapFeePct) * poolCreatorFeePct (see derivation in TODO).
-     * This will not change during the operation, so cache it in transient storage.
-     */
-    uint256 private __aggregateProtocolSwapFeePercentage;
-
-    /**
-     * @dev The aggregate fee percentage charged on swaps, composed of both the protocol yield fee and creator fee.
-     * It is given by: protocolYieldFeePct + (1 - protocolYieldFeePct) * poolCreatorFeePct (see derivation in TODO).
-     * This will not change during the operation, so cache it in transient storage. Note that the creator takes the
-     * same proportion of protocol fees, whether swap or yield.
-     */
-    uint256 private __aggregateProtocolYieldFeePercentage;
 
     // Pool -> (Token -> fee): protocol fees (swap and creator) accumulated in the Vault for harvest.
     mapping(address => mapping(IERC20 => uint256)) internal _protocolSwapFees;
@@ -171,18 +153,6 @@ contract VaultStorage {
     function _tokenDeltas() internal pure returns (TokenDeltaMappingSlotType slot) {
         assembly {
             slot := __tokenDeltas.slot
-        }
-    }
-
-    function _aggregateProtocolSwapFeePercentage() internal pure returns (StorageSlot.Uint256SlotType slot) {
-        assembly {
-            slot := __aggregateProtocolSwapFeePercentage.slot
-        }
-    }
-
-    function _aggregateProtocolYieldFeePercentage() internal pure returns (StorageSlot.Uint256SlotType slot) {
-        assembly {
-            slot := __aggregateProtocolYieldFeePercentage.slot
         }
     }
 }

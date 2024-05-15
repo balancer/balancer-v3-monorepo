@@ -277,15 +277,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 onlyOwner: true
             });
         }
-
-        if (roleAccounts.poolCreator != address(0)) {
-            bytes32 creatorFeeAction = vaultAdmin.getActionId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
-
-            roleAssignments[creatorFeeAction] = PoolFunctionPermission({
-                account: roleAccounts.poolCreator,
-                onlyOwner: true
-            });
-        }
     }
 
     /// @inheritdoc IVaultExtension
@@ -297,9 +288,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external onlyWhenUnlocked withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
-        VaultState memory vaultState = _ensureUnpausedAndGetVaultState(pool);
+        _ensureUnpausedAndGetVaultState(pool);
 
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, vaultState, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN);
 
         if (poolData.poolConfig.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);
@@ -504,16 +495,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /*******************************************************************************
                                         Fees
     *******************************************************************************/
-
-    /// @inheritdoc IVaultExtension
-    function getProtocolSwapFeePercentage() external view onlyVault returns (uint256) {
-        return _vaultState.getProtocolSwapFeePercentage();
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getProtocolYieldFeePercentage() external view onlyVault returns (uint256) {
-        return _vaultState.getProtocolYieldFeePercentage();
-    }
 
     /// @inheritdoc IVaultExtension
     function getProtocolSwapFees(address pool, IERC20 token) external view onlyVault returns (uint256) {

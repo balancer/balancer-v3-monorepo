@@ -38,7 +38,7 @@ interface IVaultMainMock {
 
     function manualSetVaultPaused(bool) external;
 
-    function manualSetVaultState(bool, bool, uint256, uint256) external;
+    function manualSetVaultState(bool, bool) external;
 
     function manualSetPoolTokenConfig(address, IERC20[] memory, TokenConfig[] memory) external;
 
@@ -132,8 +132,7 @@ interface IVaultMainMock {
     function manualInternalSwap(
         SwapParams memory params,
         SwapVars memory vars,
-        PoolData memory poolData,
-        VaultState memory vaultState
+        PoolData memory poolData
     )
         external
         returns (
@@ -142,8 +141,7 @@ interface IVaultMainMock {
             uint256 amountOut,
             SwapParams memory,
             SwapVars memory,
-            PoolData memory,
-            VaultState memory
+            PoolData memory
         );
 
     function manualSetProtocolSwapFees(address pool, IERC20 token, uint256 value) external;
@@ -156,9 +154,8 @@ interface IVaultMainMock {
         PoolData memory poolData
     ) external view returns (IBasePool.PoolSwapParams memory);
 
-    function manualComputeAndChargeProtocolAndCreatorFees(
+    function manualComputeAndChargeProtocolSwapFees(
         PoolData memory poolData,
-        VaultState memory vaultState,
         uint256 swapFeeAmountScaled18,
         address pool,
         IERC20 token,
@@ -174,14 +171,29 @@ interface IVaultMainMock {
     function manualAddLiquidity(
         PoolData memory poolData,
         AddLiquidityParams memory params,
-        uint256[] memory maxAmountsInScaled18,
+        uint256[] memory maxAmountsInScaled18
+    )
+        external
+        returns (
+            PoolData memory updatedPoolData,
+            uint256[] memory amountsInRaw,
+            uint256[] memory amountsInScaled18,
+            uint256 bptAmountOut,
+            bytes memory returnData
+        );
+
+    function manualRemoveLiquidity(
+        PoolData memory poolData,
+        RemoveLiquidityParams memory params,
+        uint256[] memory minAmountsOutScaled18,
         VaultState memory vaultState
     )
         external
         returns (
-            uint256[] memory amountsInRaw,
-            uint256[] memory amountsInScaled18,
-            uint256 bptAmountOut,
+            PoolData memory updatedPoolData,
+            uint256 bptAmountIn,
+            uint256[] memory amountsOutRaw,
+            uint256[] memory amountsOutScaled18,
             bytes memory returnData
         );
 

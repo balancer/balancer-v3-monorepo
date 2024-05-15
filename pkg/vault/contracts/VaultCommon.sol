@@ -352,8 +352,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _getPoolDataAndYieldFees(
         address pool,
-        Rounding roundingDirection,
-        uint256 aggregateYieldFeePercentage
+        Rounding roundingDirection
     ) internal view returns (PoolData memory poolData, uint256[] memory aggregateYieldFeeAmountsRaw) {
         // Initialize poolData with base information for subsequent calculations.
         poolData = _getPoolData(pool, roundingDirection);
@@ -364,7 +363,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         aggregateYieldFeeAmountsRaw = new uint256[](numTokens);
 
         bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
-            aggregateYieldFeePercentage > 0 &&
+            poolData.poolConfig.aggregateProtocolYieldFeePercentage > 0 &&
             poolData.poolConfig.isPoolInRecoveryMode == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -385,7 +384,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                     poolData,
                     poolBalances.unchecked_valueAt(i).getBalanceDerived(),
                     i,
-                    aggregateYieldFeePercentage
+                    poolData.poolConfig.aggregateProtocolYieldFeePercentage
                 );
 
                 if (aggregateYieldFeeAmountRaw > 0) {
@@ -410,25 +409,13 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _computePoolDataUpdatingBalancesAndFees(
         address pool,
-        VaultState memory vaultState,
         Rounding roundingDirection
     ) internal nonReentrant returns (PoolData memory poolData) {
         uint256[] memory aggregateYieldFeeAmountsRaw;
 
-        // Initialize aggregate percentage, if not already set
-        if (_aggregateProtocolYieldFeePercentage().tload() == 0) {
-            _aggregateProtocolYieldFeePercentage().tstore(
-                getAggregateFeePercentage(
-                    vaultState.protocolYieldFeePercentage,
-                    poolData.poolConfig.poolCreatorFeePercentage
-                )
-            );
-        }
-
         (poolData, aggregateYieldFeeAmountsRaw) = _getPoolDataAndYieldFees(
             pool,
-            roundingDirection,
-            _aggregateProtocolYieldFeePercentage().tload()
+            roundingDirection
         );
         uint256 numTokens = aggregateYieldFeeAmountsRaw.length;
 

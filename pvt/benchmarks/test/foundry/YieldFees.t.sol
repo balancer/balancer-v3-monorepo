@@ -178,10 +178,7 @@ contract YieldFeesTest is BaseVaultTest {
     ) private {
         _initializePoolAndRateProviders(wstethRate, daiRate);
 
-        setProtocolYieldFeePercentage(protocolYieldFeePercentage);
-        // lp is the pool creator, the only user who can change the pool creator fee percentage
-        vm.prank(lp);
-        vault.setPoolCreatorFeePercentage(address(pool), creatorYieldFeePercentage);
+        setAggregateProtocolYieldFeePercentage(_getAggregateSwapFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage));
 
         // Warm-up storage slots (using a different pool)
         // Pump the original rates [pumpRate / 2] times

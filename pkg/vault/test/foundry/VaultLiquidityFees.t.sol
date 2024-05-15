@@ -24,9 +24,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         setSwapFeePercentage(swapFeePercentage);
-        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
-        vm.prank(lp);
-        vault.setPoolCreatorFeePercentage(address(pool), poolCreatorFeePercentage);
+        setAggregateProtocolSwapFeePercentage(_getAggregateSwapFeePercentage(protocolSwapFeePercentage, poolCreatorFeePercentage));
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }

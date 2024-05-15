@@ -273,28 +273,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                                         Fees
     *******************************************************************************/
 
-    /// @inheritdoc IVaultAdmin
-    function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate onlyVault {
-        if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
-            revert ProtocolSwapFeePercentageTooHigh();
-        }
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.protocolSwapFeePercentage = newProtocolSwapFeePercentage;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
-        emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
-    }
-
-    /// @inheritdoc IVaultAdmin
-    function setProtocolYieldFeePercentage(uint256 newProtocolYieldFeePercentage) external authenticate onlyVault {
-        if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
-            revert ProtocolYieldFeePercentageTooHigh();
-        }
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.protocolYieldFeePercentage = newProtocolYieldFeePercentage;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
-        emit ProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
-    }
-
     /**
      * @inheritdoc IVaultAdmin
      * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
@@ -309,38 +287,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
-    /**
-     * @inheritdoc IVaultAdmin
-     * @dev This can only be executed by the pool creator and is disabled if the pool is paused.
-     * The creator fee must be <= 100%. It's the percentage of creatorAndLpFees that will be accrued by the creator
-     * of the pool. For more details, check comment of vault's _computeAndChargeProtocolAndCreatorFees function
-     * Emits the poolCreatorFeePercentageChanged event.
-     */
-    function setPoolCreatorFeePercentage(
-        address pool,
-        uint256 poolCreatorFeePercentage
-    ) external withRegisteredPool(pool) authenticateByRole(pool) nonReentrant onlyVault {
-        // Saving bits by not implementing a new modifier
-        _ensureUnpausedAndGetVaultState(pool);
-        _setPoolCreatorFeePercentage(pool, poolCreatorFeePercentage);
-    }
-
-    function _setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) internal virtual {
-        if (poolCreatorFeePercentage > FixedPoint.ONE) {
-            revert PoolCreatorFeePercentageTooHigh();
-        }
-
-        // Force collection of any pool creator fees due, to ensure changes aren't retroactive.
-        _collectProtocolFeesInternal(pool, ProtocolFeeType.SWAP);
-        _collectProtocolFeesInternal(pool, ProtocolFeeType.YIELD);
-
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.poolCreatorFeePercentage = poolCreatorFeePercentage;
-        _poolConfig[pool] = config.fromPoolConfig();
-
-        emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
-    }
-
     enum ProtocolFeeType {
         SWAP,
         YIELD
@@ -348,12 +294,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function collectProtocolSwapFees(address pool) public nonReentrant onlyVault {
-        _collectProtocolFeesInternal(pool, ProtocolFeeType.SWAP);
+        //_collectProtocolFeesInternal(pool, ProtocolFeeType.SWAP);
     }
 
     /// @inheritdoc IVaultAdmin
     function collectProtocolYieldFees(address pool) public nonReentrant onlyVault {
-        _collectProtocolFeesInternal(pool, ProtocolFeeType.YIELD);
+        //_collectProtocolFeesInternal(pool, ProtocolFeeType.YIELD);
     }
 
     // stack-too-deep
@@ -363,7 +309,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         IERC20[] poolTokens;
         address poolCreator;
     }
-
+    /*
     // Code is nearly identical, so factor out into this routine, parameterized by fee type.
     function _collectProtocolFeesInternal(address pool, ProtocolFeeType feeType) private {
         ProtocolFeeLocals memory vars = _initProtocolFeeLocals(pool);
@@ -429,7 +375,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         vars.vaultState = _vaultState.toVaultState();
         vars.poolTokens = _vault.getPoolTokens(pool);
         vars.poolCreator = _poolRoleAccounts[pool].poolCreator;
-    }
+    }*/
 
     /*******************************************************************************
                                     Recovery Mode
