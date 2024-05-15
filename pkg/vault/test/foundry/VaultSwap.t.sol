@@ -459,7 +459,7 @@ contract VaultSwapTest is BaseVaultTest {
 
         (, uint256[] memory balancesRawBefore, ) = vault.getPoolTokenInfo(address(pool));
 
-        vault.unlock(abi.encode(this.startSwap.selector, address(this)));
+        vault.unlock(abi.encode(this.startSwap.selector));
 
         (, uint256[] memory balancesRawAfter, ) = vault.getPoolTokenInfo(address(pool));
 
