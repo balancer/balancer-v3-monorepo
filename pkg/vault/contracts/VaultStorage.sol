@@ -58,9 +58,6 @@ contract VaultStorage {
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
 
-    // Store pool pause managers.
-    mapping(address => address) internal _poolPauseManagers;
-
     // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
     // Last live balances are used for yield fee computation, and since these have rates applied, they are stored
     // as scaled 18-decimal FP values. Each value takes up half the storage slot (i.e., 128 bits).
