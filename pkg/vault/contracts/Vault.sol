@@ -184,14 +184,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vaultState.protocolYieldFeePercentage
         );
 
-        // State is populated by pieces in this function, and shall not be modified at a lower level.
-        SwapState memory state;
-
-        (state.indexIn, state.indexOut) = _getSwapTokenIndexes(params);
-
-        // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
-        // to a lower calculated amountOut, favoring the pool.
-        state.amountGivenScaled18 = _computeAmountGivenScaled18(state, params, poolData);
+        // State is fully populated here, and shall not be modified at a lower level.
+        SwapState memory state = _loadSwapState(params, poolData);
 
         if (poolData.poolConfig.hooks.shouldCallBeforeSwap) {
             if (IPoolHooks(params.pool).onBeforeSwap(_buildPoolSwapParams(params, state, poolData)) == false) {
@@ -204,11 +198,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.reloadPossiblyStaleBalancesAndTokenRates(_poolTokenBalances[params.pool], Rounding.ROUND_DOWN);
 
             // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
-            state.amountGivenScaled18 = _computeAmountGivenScaled18(state, params, poolData);
+            state.amountGivenScaled18 = _computeAmountGivenScaled18(state.indexIn, state.indexOut, params, poolData);
         }
 
         // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
         // as those passed to the main operation.
+        // At this point, the static swap fee percentage is loaded in the swap state as default.
         if (poolData.poolConfig.hooks.shouldCallComputeDynamicSwapFee) {
             bool success;
 
@@ -219,8 +214,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (success == false) {
                 revert DynamicSwapFeeHookFailed();
             }
-        } else {
-            state.swapFeePercentage = poolData.poolConfig.staticSwapFeePercentage;
         }
 
         // Non-reentrant call that updates accounting.
@@ -255,13 +248,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
     }
 
-    function _getSwapTokenIndexes(SwapParams memory params) private view returns (uint256 indexIn, uint256 indexOut) {
+    function _loadSwapState(
+        SwapParams memory params,
+        PoolData memory poolData
+    ) private view returns (SwapState memory state) {
         // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
 
         // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value for non-existence.
-        indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
-        indexOut = poolBalances.unchecked_indexOf(params.tokenOut);
+        uint256 indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
+        uint256 indexOut = poolBalances.unchecked_indexOf(params.tokenOut);
 
         // If either are zero, revert because the token wasn't registered to this pool.
         if (indexIn == 0 || indexOut == 0) {
@@ -275,6 +271,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             indexIn -= 1;
             indexOut -= 1;
         }
+
+        state.indexIn = indexIn;
+        state.indexOut = indexOut;
+
+        // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
+        // to a lower calculated amountOut, favoring the pool.
+        state.amountGivenScaled18 = _computeAmountGivenScaled18(indexIn, indexOut, params, poolData);
+        state.swapFeePercentage = poolData.poolConfig.staticSwapFeePercentage;
     }
 
     function _buildPoolSwapParams(
@@ -299,7 +303,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * Uses amountGivenRaw and kind from `params`.
      */
     function _computeAmountGivenScaled18(
-        SwapState memory state,
+        uint256 indexIn,
+        uint256 indexOut,
         SwapParams memory params,
         PoolData memory poolData
     ) private pure returns (uint256) {
@@ -308,12 +313,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         return
             params.kind == SwapKind.EXACT_IN
                 ? params.amountGivenRaw.toScaled18ApplyRateRoundDown(
-                    poolData.decimalScalingFactors[state.indexIn],
-                    poolData.tokenRates[state.indexIn]
+                    poolData.decimalScalingFactors[indexIn],
+                    poolData.tokenRates[indexIn]
                 )
                 : params.amountGivenRaw.toScaled18ApplyRateRoundUp(
-                    poolData.decimalScalingFactors[state.indexOut],
-                    poolData.tokenRates[state.indexOut]
+                    poolData.decimalScalingFactors[indexOut],
+                    poolData.tokenRates[indexOut]
                 );
     }
 
@@ -421,6 +426,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // 5) Pool balances: raw and live
         // Adjust for raw swap amounts and total fees on the calculated end.
+        // Fees are always subtracted from pool balances, so they add up with amounts out or are deduced from amount in.
         (locals.balanceInIncrement, locals.balanceOutDecrement) = params.kind == SwapKind.EXACT_IN
             ? (amountInRaw, amountOutRaw + totalFeesRaw)
             : (amountInRaw - totalFeesRaw, amountOutRaw);
