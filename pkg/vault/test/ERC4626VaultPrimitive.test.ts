@@ -98,13 +98,11 @@ describe('ERC4626VaultPrimitive', function () {
       args: [await wUSDC.getAddress()],
     });
 
-    await factory
-      .connect(lp)
-      .registerTestPool(
-        pool,
-        buildTokenConfig(boostedPoolTokens, [await rpwDAI.getAddress(), await rpwUSDC.getAddress()]),
-        ZERO_ADDRESS
-      );
+    const rateProviders: string[] = [];
+    rateProviders[boostedPoolTokens.indexOf(await DAI.getAddress())] = await rpwDAI.getAddress();
+    rateProviders[boostedPoolTokens.indexOf(await USDC.getAddress())] = await rpwUSDC.getAddress();
+
+    await factory.connect(lp).registerTestPool(pool, buildTokenConfig(boostedPoolTokens, rateProviders), ZERO_ADDRESS);
 
     return (await deployedAt('PoolMock', await pool.getAddress())) as unknown as PoolMock;
   }
