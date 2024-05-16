@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -16,6 +17,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { RouterCommon } from "@balancer-labs/v3-vault/contracts/RouterCommon.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
@@ -86,7 +88,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
             balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
             indexIn: daiIdx,
             indexOut: usdcIdx,
-            sender: address(router),
+            router: address(router),
             userData: bytes("")
         });
 
@@ -114,6 +116,54 @@ contract DynamicFeePoolTest is BaseVaultTest {
             false,
             bytes("")
         );
+    }
+
+    function testSwapCallsComputeFeeWithSender() public {
+        IBasePool.PoolSwapParams memory poolSwapParams = IBasePool.PoolSwapParams({
+            kind: SwapKind.EXACT_IN,
+            amountGivenScaled18: defaultAmount,
+            balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
+            indexIn: daiIdx,
+            indexOut: usdcIdx,
+            router: address(router),
+            userData: bytes("")
+        });
+
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(PoolMock.onComputeDynamicSwapFee.selector, poolSwapParams),
+            1 // callCount
+        );
+
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(PoolMock.onSwap.selector, poolSwapParams),
+            1 // callCount
+        );
+
+        // Set a 100% fee, and bob as 0 swap fee sender.
+        PoolMock(pool).setDynamicSwapFeePercentage(FixedPoint.ONE);
+        PoolMock(pool).setSpecialSender(bob);
+
+        uint256 aliceBalanceBefore = usdc.balanceOf(alice);
+
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(address(pool), dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
+
+        uint256 aliceBalanceAfter = usdc.balanceOf(alice);
+        // 100% fee; should get nothing
+        assertEq(aliceBalanceAfter - aliceBalanceBefore, 0);
+
+        // Now set Alice as the special 0-fee sender
+        PoolMock(pool).setSpecialSender(alice);
+        aliceBalanceBefore = aliceBalanceAfter;
+
+        vm.prank(alice);
+        router.swapSingleTokenExactIn(address(pool), dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
+
+        aliceBalanceAfter = usdc.balanceOf(alice);
+        // No fee; should get full swap amount
+        assertEq(aliceBalanceAfter - aliceBalanceBefore, defaultAmount);
     }
 
     function testExternalComputeFee() public {

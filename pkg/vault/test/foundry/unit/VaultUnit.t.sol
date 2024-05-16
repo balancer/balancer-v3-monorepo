@@ -63,7 +63,7 @@ contract VaultUnitTest is BaseTest {
         );
         assertEq(poolSwapParams.indexIn, vars.indexIn, "Unexpected indexIn");
         assertEq(poolSwapParams.indexOut, vars.indexOut, "Unexpected indexOut");
-        assertEq(poolSwapParams.sender, address(this), "Unexpected sender");
+        assertEq(poolSwapParams.router, address(this), "Unexpected router");
         assertEq(poolSwapParams.userData, params.userData, "Unexpected userData");
     }
 
