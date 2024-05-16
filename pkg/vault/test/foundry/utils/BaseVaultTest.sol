@@ -17,6 +17,7 @@ import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/V
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
@@ -33,6 +34,7 @@ import { VaultMockDeployer } from "./VaultMockDeployer.sol";
 import { Permit2Helpers } from "./Permit2Helpers.sol";
 
 abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
+    using FixedPoint for uint256;
     using ArrayHelpers for *;
 
     struct Balances {
@@ -185,12 +187,6 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         }
     }
 
-    function setProtocolSwapFeePercentage(uint64 percentage) internal {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setProtocolSwapFeePercentage.selector), admin);
-        vm.prank(admin);
-        vault.setProtocolSwapFeePercentage(percentage);
-    }
-
     function getBalances(address user) internal view returns (Balances memory balances) {
         balances.userBpt = IERC20(pool).balanceOf(user);
 
@@ -207,7 +203,10 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         return bytes32(uint256(uint160(addr)));
     }
 
-    function _getAggregateFeePercentage(uint256 protocolFeePercentage, uint256 creatorFeePercentage) internal pure returns (uint256) {
+    function _getAggregateFeePercentage(
+        uint256 protocolFeePercentage,
+        uint256 creatorFeePercentage
+    ) internal pure returns (uint256) {
         return protocolFeePercentage + protocolFeePercentage.complement().mulDown(creatorFeePercentage);
     }
 }

@@ -148,6 +148,10 @@ interface IVaultMainMock {
 
     function manualSetProtocolYieldFees(address pool, IERC20 token, uint256 value) external;
 
+    function manualSetAggregateProtocolSwapFeePercentage(address pool, uint256 value) external;
+
+    function manualSetAggregateProtocolYieldFeePercentage(address pool, uint256 value) external;
+
     function manualBuildPoolSwapParams(
         SwapParams memory params,
         SwapVars memory vars,

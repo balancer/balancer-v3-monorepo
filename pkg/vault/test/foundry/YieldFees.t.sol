@@ -71,11 +71,11 @@ contract YieldFeesTest is BaseVaultTest {
     }
 
     function setProtocolYieldFeePercentage(uint256 yieldFeePercentage) internal {
-        bytes32 setFeeRole = vault.getActionId(IVaultAdmin.setProtocolYieldFeePercentage.selector);
+        bytes32 setFeeRole = vault.getActionId(IVaultAdmin.setAggregateProtocolYieldFeePercentage.selector);
         authorizer.grantRole(setFeeRole, alice);
 
         vm.prank(alice);
-        vault.setProtocolYieldFeePercentage(yieldFeePercentage);
+        vault.setAggregateProtocolYieldFeePercentage(pool, yieldFeePercentage);
     }
 
     function testPoolDataAfterInitialization__Fuzz(bool roundUp) public {
@@ -131,7 +131,10 @@ contract YieldFeesTest is BaseVaultTest {
         uint256[] memory originalLiveBalances = verifyLiveBalances(wstethRate, daiRate, roundUp);
 
         // Set non-zero yield fee
-        setAggregateProtocolYieldFeePercentage(_getAggregateFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage));
+        vault.setAggregateProtocolYieldFeePercentage(
+            pool,
+            _getAggregateFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage)
+        );
 
         // Now raise both rates
         uint256 rateDelta = 0.2e18;
@@ -311,7 +314,10 @@ contract YieldFeesTest is BaseVaultTest {
         require(feeAmounts[0] == 0, "Initial protocol fees for DAI not 0");
         require(feeAmounts[1] == 0, "Initial protocol fees for wstETH not 0");
 
-        setAggregateProtocolYieldFeePercentage(_getAggregateSwapFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage));
+        vault.setAggregateProtocolYieldFeePercentage(
+            pool,
+            _getAggregateFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage)
+        );
 
         // Pump the rates 10 times
         wstethRate *= 10;

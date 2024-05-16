@@ -413,10 +413,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     ) internal nonReentrant returns (PoolData memory poolData) {
         uint256[] memory aggregateYieldFeeAmountsRaw;
 
-        (poolData, aggregateYieldFeeAmountsRaw) = _getPoolDataAndYieldFees(
-            pool,
-            roundingDirection
-        );
+        (poolData, aggregateYieldFeeAmountsRaw) = _getPoolDataAndYieldFees(pool, roundingDirection);
         uint256 numTokens = aggregateYieldFeeAmountsRaw.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {

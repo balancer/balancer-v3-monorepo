@@ -213,8 +213,6 @@ describe('WeightedPool', function () {
       expect(poolConfig.isPoolRegistered).to.be.true;
       expect(poolConfig.isPoolInitialized).to.be.true;
 
-      expect(await vault.getProtocolSwapFeePercentage()).to.eq(MAX_PROTOCOL_SWAP_FEE);
-      expect(await vault.getProtocolYieldFeePercentage()).to.eq(MAX_PROTOCOL_YIELD_FEE);
       expect(await vault.getStaticSwapFeePercentage(realPoolAddress)).to.eq(POOL_SWAP_FEE);
     });
 

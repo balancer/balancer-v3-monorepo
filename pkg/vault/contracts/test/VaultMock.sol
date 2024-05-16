@@ -166,10 +166,7 @@ contract VaultMock is IVaultMainMock, Vault {
         _vaultState = vaultState.fromVaultState();
     }
 
-    function manualSetVaultState(
-        bool isVaultPaused,
-        bool isQueryDisabled
-    ) public {
+    function manualSetVaultState(bool isVaultPaused, bool isQueryDisabled) public {
         VaultState memory vaultState = _vaultState.toVaultState();
         vaultState.isVaultPaused = isVaultPaused;
         vaultState.isQueryDisabled = isQueryDisabled;
@@ -404,6 +401,18 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualSetProtocolYieldFees(address pool, IERC20 token, uint256 value) external {
         _protocolYieldFees[pool][token] = value;
+    }
+
+    function manualSetAggregateProtocolSwapFeePercentage(address pool, uint256 value) external {
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+        config.aggregateProtocolSwapFeePercentage = value;
+        _poolConfig[pool] = config.fromPoolConfig();
+    }
+
+    function manualSetAggregateProtocolYieldFeePercentage(address pool, uint256 value) external {
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+        config.aggregateProtocolYieldFeePercentage = value;
+        _poolConfig[pool] = config.fromPoolConfig();
     }
 
     function manualBuildPoolSwapParams(

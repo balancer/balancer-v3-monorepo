@@ -130,6 +130,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         VaultState memory vaultState = vault.ensureUnpausedAndGetVaultState(address(pool));
         assertEq(vaultState.isVaultPaused, false, "vaultState.isVaultPaused should be false");
         assertEq(vaultState.isQueryDisabled, true, "vaultState.isQueryDisabled should be true");
+    }
 
     // Returns the correct block.timestamp to consider the pool unpaused
     function _getTimeAfterPoolPauseBufferPeriod() private view returns (uint256) {

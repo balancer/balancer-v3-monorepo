@@ -24,7 +24,10 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         setSwapFeePercentage(swapFeePercentage);
-        setAggregateProtocolSwapFeePercentage(_getAggregateSwapFeePercentage(protocolSwapFeePercentage, poolCreatorFeePercentage));
+        vault.manualSetAggregateProtocolSwapFeePercentage(
+            pool,
+            _getAggregateFeePercentage(protocolSwapFeePercentage, poolCreatorFeePercentage)
+        );
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
@@ -37,8 +40,11 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         PoolConfig memory config = vault.getPoolConfig(address(pool));
 
         assertEq(config.staticSwapFeePercentage, swapFeePercentage);
-        assertEq(config.poolCreatorFeePercentage, poolCreatorFeePercentage);
-        assertEq(vault.getProtocolSwapFeePercentage(), protocolSwapFeePercentage);
+        assertEq(
+            config.aggregateProtocolSwapFeePercentage,
+            _getAggregateFeePercentage(protocolSwapFeePercentage, poolCreatorFeePercentage)
+        );
+        //TODO assertEq(vault.getProtocolSwapFeePercentage(), protocolSwapFeePercentage);
     }
 
     /// Add

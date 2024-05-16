@@ -100,7 +100,10 @@ contract PoolCreatorFeesTest is BaseVaultTest {
     ) private returns (uint256 chargedCreatorFee) {
         SwapTestLocals memory vars;
 
-        setAggregateProtocolSwapFeePercentage(_getAggregateSwapFeePercentage(protocolFeePercentage, creatorFeePercentage));
+        vault.manualSetAggregateProtocolSwapFeePercentage(
+            pool,
+            _getAggregateFeePercentage(protocolFeePercentage, creatorFeePercentage)
+        );
         setSwapFeePercentage(swapFeePercentage);
         vm.prank(lp);
 

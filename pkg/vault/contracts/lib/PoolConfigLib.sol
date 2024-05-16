@@ -200,7 +200,8 @@ library PoolConfigLib {
                     config.aggregateProtocolSwapFeePercentage / FEE_SCALING_FACTOR,
                     PROTOCOL_SWAP_FEE_OFFSET,
                     FEE_BITLENGTH
-                ).insertUint(
+                )
+                .insertUint(
                     config.aggregateProtocolYieldFeePercentage / FEE_SCALING_FACTOR,
                     PROTOCOL_YIELD_FEE_OFFSET,
                     FEE_BITLENGTH

@@ -273,6 +273,36 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                                         Fees
     *******************************************************************************/
 
+    /// @inheritdoc IVaultAdmin
+    function setAggregateProtocolSwapFeePercentage(
+        address pool,
+        uint256 newProtocolSwapFeePercentage
+    ) external authenticate onlyVault {
+        if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
+            revert ProtocolSwapFeePercentageTooHigh();
+        }
+
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+        config.aggregateProtocolSwapFeePercentage = newProtocolSwapFeePercentage;
+        _poolConfig[pool] = PoolConfigLib.fromPoolConfig(config);
+        emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function setAggregateProtocolYieldFeePercentage(
+        address pool,
+        uint256 newProtocolYieldFeePercentage
+    ) external authenticate onlyVault {
+        if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
+            revert ProtocolYieldFeePercentageTooHigh();
+        }
+
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+        config.aggregateProtocolYieldFeePercentage = newProtocolYieldFeePercentage;
+        _poolConfig[pool] = PoolConfigLib.fromPoolConfig(config);
+        emit ProtocolSwapFeePercentageChanged(newProtocolYieldFeePercentage);
+    }
+
     /**
      * @inheritdoc IVaultAdmin
      * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
@@ -309,6 +339,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         IERC20[] poolTokens;
         address poolCreator;
     }
+
     /*
     // Code is nearly identical, so factor out into this routine, parameterized by fee type.
     function _collectProtocolFeesInternal(address pool, ProtocolFeeType feeType) private {

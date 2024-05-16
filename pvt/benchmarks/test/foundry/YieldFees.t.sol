@@ -178,7 +178,7 @@ contract YieldFeesTest is BaseVaultTest {
     ) private {
         _initializePoolAndRateProviders(wstethRate, daiRate);
 
-        setAggregateProtocolYieldFeePercentage(_getAggregateSwapFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage));
+        vault.setAggregateProtocolYieldFeePercentage(_getAggregateFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage));
 
         // Warm-up storage slots (using a different pool)
         // Pump the original rates [pumpRate / 2] times
