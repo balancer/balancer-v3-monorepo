@@ -67,7 +67,7 @@ contract StablePoolTest is BaseVaultTest {
                 "ERC20POOL",
                 inputHelpersMock.sortTokenConfig(tokens),
                 DEFAULT_AMP_FACTOR,
-                PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+                PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
                 DEFAULT_SWAP_FEE,
                 ZERO_BYTES32
             )

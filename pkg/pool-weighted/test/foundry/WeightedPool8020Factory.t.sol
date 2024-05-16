@@ -49,7 +49,7 @@ contract WeightedPool8020FactoryTest is Test {
                 factory.create(
                     tokenConfig[0],
                     tokenConfig[1],
-                    PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+                    PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
                     DEFAULT_SWAP_FEE
                 )
             );
@@ -114,7 +114,7 @@ contract WeightedPool8020FactoryTest is Test {
         factory.create(
             tokenConfig[0],
             tokenConfig[1],
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
             DEFAULT_SWAP_FEE
         );
     }

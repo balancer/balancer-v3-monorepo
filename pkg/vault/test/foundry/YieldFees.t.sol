@@ -56,14 +56,14 @@ contract YieldFeesTest is BaseVaultTest {
 
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
+        // creator is lp
         factoryMock.registerTestPool(
             address(newPool),
             vault.buildTokenConfig(
                 [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
                 rateProviders,
                 yieldFeeFlags
-            ),
-            address(lp)
+            )
         );
 
         vm.label(address(newPool), "pool");

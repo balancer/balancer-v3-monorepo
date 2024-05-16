@@ -64,7 +64,7 @@ contract WeightedPoolTest is BaseVaultTest {
                 "ERC20POOL",
                 vault.buildTokenConfig(tokens.asIERC20()),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-                PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+                PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
                 DEFAULT_SWAP_FEE,
                 ZERO_BYTES32
             )
@@ -259,12 +259,12 @@ contract WeightedPoolTest is BaseVaultTest {
             "ERC20POOL",
             tokens,
             [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
             MIN_SWAP_FEE - 1, // Swap fee too low
             ZERO_BYTES32
         );
 
-        factoryMock.registerTestPool(lowFeeWeightedPool, tokens, address(0));
+        factoryMock.registerTestPool(lowFeeWeightedPool, tokens);
     }
 
     function testSetSwapFeeTooLow() public {

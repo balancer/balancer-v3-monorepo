@@ -241,7 +241,7 @@ interface IVaultExtension {
     *******************************************************************************/
 
     /**
-     * @notice Returns the accumulated total swap fees (protocol and creator) in `token` collected by the pool.
+     * @notice Returns the accumulated swap fees (including aggregate protocol fees) in `token` collected by the pool.
      * @param pool The address of the pool for which protocol fees have been collected
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
@@ -263,19 +263,12 @@ interface IVaultExtension {
     function getStaticSwapFeeManager(address pool) external view returns (address);
 
     /**
-     * @notice Returns the accumulated total yield fees (protocol and creator) in `token` collected by the pool.
+     * @notice Returns the accumulated yield fees (including aggregate protocol fees) in `token` collected by the pool.
      * @param pool The address of the pool for which protocol fees have been collected
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
      */
     function getProtocolYieldFees(address pool, IERC20 token) external view returns (uint256);
-
-    /**
-     * @notice Fetches the address of the creator of a pool, who can collect creator fees.
-     * @param pool The address of the pool whose creator is being queried
-     * @return poolCreator The address of the creator
-     */
-    function getPoolCreator(address pool) external returns (address poolCreator);
 
     /**
      * @notice Query the current dynamic swap fee of a pool, given a set of swap parameters.

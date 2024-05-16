@@ -456,31 +456,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
-     * @notice Calculate the aggregate percentage, given protocol and creator fee components.
-     * @dev Fees will be combined to give the total aggregate percentage.
-     * See example:
-     * tokenOutAmount = 10000; poolSwapFeePct = 10%; protocolFeePct = 40%; creatorFeePct = 60%
-     * totalFees = tokenOutAmount * poolSwapFeePct = 10000 * 10% = 1000
-     * protocolFees = totalFees * protocolFeePct = 1000 * 40% = 400
-     * creatorAndLpFees = totalFees - protocolFees = 1000 - 400 = 600
-     * creatorFees = creatorAndLpFees * creatorFeePct = 600 * 60% = 360
-     * lpFees (will stay in the pool) = creatorAndLpFees - creatorFees = 600 - 360 = 240
-     *
-     * So, the aggregate percentage is: totalFees * protocolFeePct +
-     *     (totalFees - totalFees * protocolFeePct) * creatorFeePct
-     *     = totalFees * protocolFeePct + totalFees * (1 - protocolFeePct) * creatorFeePct
-     *     = protocolFeePct + (1 - protocolFeePct) * creatorFeePct
-     *
-     * In the example, that would be: 0.4 + (1 - 0.4) * 0.6 = 0.4 + 0.6 * 0.6 = 0.4 + 0.36 = 0.76 (76%)
-     */
-    function getAggregateFeePercentage(
-        uint256 protocolFeePercentage,
-        uint256 creatorFeePercentage
-    ) public pure returns (uint256) {
-        return protocolFeePercentage + protocolFeePercentage.complement().mulDown(creatorFeePercentage);
-    }
-
-    /**
      * @dev Updates the raw and live balance of a given token in poolData, scaling the given raw balance by both decimal
      * and token rates, and rounding the result in the given direction. Assumes scaling factors and rates are current
      * in PoolData.

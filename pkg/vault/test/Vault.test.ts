@@ -142,7 +142,7 @@ describe('Vault', function () {
         factory: await vault.getPoolFactoryMock(),
         tokenConfig,
         pauseWindowEndTime: pauseWindowEndTime.toString(),
-        roleAccounts: [ANY_ADDRESS, ZERO_ADDRESS, ANY_ADDRESS],
+        roleAccounts: [ANY_ADDRESS, ZERO_ADDRESS],
         poolHooks: [false, false, false, false, false, false, false, false, false],
         liquidityManagement: [false, true, true],
       };
@@ -150,7 +150,6 @@ describe('Vault', function () {
       const roleAccounts: PoolRoleAccountsStruct = {
         pauseManager: ANY_ADDRESS,
         swapFeeManager: ZERO_ADDRESS,
-        poolCreator: ANY_ADDRESS,
       };
 
       // Use expectEvent here to prevent errors with structs of arrays with hardhat matchers.
@@ -282,7 +281,7 @@ describe('Vault', function () {
           args: [vault, 'Pool C', 'POOLC'],
         });
 
-        await factory.registerTestPool(poolC, buildTokenConfig(poolATokens, rateProviders), ZERO_ADDRESS);
+        await factory.registerTestPool(poolC, buildTokenConfig(poolATokens, rateProviders));
       });
 
       it('has rate providers', async () => {
@@ -315,7 +314,7 @@ describe('Vault', function () {
         });
         poolAddress = await pool.getAddress();
 
-        await factory.registerTestPool(poolAddress, buildTokenConfig(poolATokens), ZERO_ADDRESS);
+        await factory.registerTestPool(poolAddress, buildTokenConfig(poolATokens));
       });
 
       it('Pools are temporarily pausable', async () => {

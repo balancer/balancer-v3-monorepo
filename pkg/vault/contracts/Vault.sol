@@ -178,8 +178,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData in memory. Since the swap hooks are reentrant and could do anything, including change these
         // balances, we cannot defer settlement until `_swap`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
-        // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolSwapFees` in storage.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
 
         // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
@@ -308,10 +307,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      *
      * Preconditions: amountGivenScaled18, indexIn, indexOut in vars; decimalScalingFactors, tokenRates, poolConfig,
      *                balancesLiveScaled18 in `poolData`.
-     * Side effects: mutates swapFeeAmountScaled18, amountCalculatedScaled18, protocolSwapFeeAmountRaw,
-     *               creatorSwapFeeAmountRaw in vars; balancesRaw, balancesLiveScaled18 in `poolData`.
-     * Updates `_protocolFees`, `_poolCreatorFees`, `_poolTokenBalances` in storage.
-     * Emits Swap event. May emit ProtocolSwapFeeCharged, PoolCreatorSwapFeeCharged events.
+     * Side effects: mutates swapFeeAmountScaled18, amountCalculatedScaled18, aggregateSwapFeeAmountRaw in vars;
+     *               balancesRaw, balancesLiveScaled18 in `poolData`.
+     * Updates `_protocolSwapFees`, `_poolTokenBalances` in storage.
+     * Emits Swap event.
      */
     function _swap(
         SwapParams memory params,
@@ -370,12 +369,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _takeDebt(params.tokenIn, amountIn);
         _supplyCredit(params.tokenOut, amountOut);
 
-        // 4) Compute and charge protocol and creator fees.
+        // 4) Compute and charge aggregate protocol fees.
         (uint256 swapFeeIndex, IERC20 swapFeeToken) = params.kind == SwapKind.EXACT_IN
             ? (vars.indexOut, params.tokenOut)
             : (vars.indexIn, params.tokenIn);
 
-        // Compute and charge protocol and creator fees. Note that protocol fee storage is updated
+        // Compute and charge aggregate protocol fees. Note that protocol fee storage is updated
         // before balance storage, as the final raw balances need to take the fees into account.
 
         // `_onBeforeChargingProtocolFees` forces collection of protocol fees if the percentages have changed since
@@ -468,7 +467,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
     struct LiquidityLocals {
         uint256 numTokens;
-        uint256 aggregateSwapFeeAmountRaw; // protocol and creator swap fees
+        uint256 aggregateSwapFeeAmountRaw;
         uint256 tokenIndex;
     }
 
@@ -492,8 +491,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData in memory. Since the add liquidity hooks are reentrant and could do anything, including change
         // these balances, we cannot defer settlement until `_addLiquidity`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
-        // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolSwapFees`
+        // in storage.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_UP);
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.maxAmountsIn.length);
 
@@ -669,7 +668,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // 3) Deltas: Debit of token[i] for amountInRaw
                 _takeDebt(token, amountInRaw);
 
-                // 4) Compute and charge protocol and creator fees.
+                // 4) Compute and charge aggregate protocol fees.
                 vars.aggregateSwapFeeAmountRaw = _computeAndChargeProtocolSwapFees(
                     poolData,
                     swapFeeAmountsScaled18[i],
@@ -720,8 +719,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData in memory. Since the remove liquidity hooks are reentrant and could do anything, including change
         // these balances, we cannot defer settlement until `_removeLiquidity`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
-        // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolSwapFees`,
+        // in storage.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.minAmountsOut.length);
 
@@ -889,7 +888,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // 3) Deltas: Credit token[i] for amountOutRaw
             _supplyCredit(token, amountOutRaw);
 
-            // 4) Compute and charge protocol and creator fees.
+            // 4) Compute and charge aggregate protocol fees.
             vars.aggregateSwapFeeAmountRaw = _computeAndChargeProtocolSwapFees(
                 poolData,
                 swapFeeAmountsScaled18[i],
@@ -903,7 +902,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // to use in the `after` hook later on.
 
             // A Pool's token balance always decreases after an exit
-            // (potentially by 0). Also adjust by protocol and pool creator fees.
+            // (potentially by 0). Also adjust by aggregate protocol fees.
             uint256 newRawBalance = poolData.balancesRaw[i] - amountOutRaw - vars.aggregateSwapFeeAmountRaw;
             _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalance, Rounding.ROUND_DOWN, i);
         }
@@ -935,9 +934,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     /**
      * @dev Preconditions: poolConfig, decimalScalingFactors, tokenRates in `poolData`.
      * Side effects: updates `_protocolSwapFees` storage.
-     * Note that this computes the aggregate total of both the protocol swap and creator fees and stores it,
-     * without emitting any events. Splitting between the protocol and creator, and event emission, occurs during
-     * fee collection.
+     * Note that this computes the aggregate total of the protocol fees and stores it, without emitting any events.
+     * Splitting the fees and event emission occur during fee collection.
      *
      * Should only be called in a non-reentrant context.
      */

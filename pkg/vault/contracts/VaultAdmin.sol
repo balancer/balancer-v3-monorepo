@@ -324,11 +324,13 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function collectProtocolSwapFees(address pool) public nonReentrant onlyVault {
+        // solhint-disable-previous-line no-empty-blocks
         //_collectProtocolFeesInternal(pool, ProtocolFeeType.SWAP);
     }
 
     /// @inheritdoc IVaultAdmin
     function collectProtocolYieldFees(address pool) public nonReentrant onlyVault {
+        // solhint-disable-previous-line no-empty-blocks
         //_collectProtocolFeesInternal(pool, ProtocolFeeType.YIELD);
     }
 
@@ -337,7 +339,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         PoolConfig poolConfig;
         VaultState vaultState;
         IERC20[] poolTokens;
-        address poolCreator;
     }
 
     /*

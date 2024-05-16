@@ -69,12 +69,10 @@ struct VaultState {
  * @dev Represents the accounts holding certain roles for a given pool. This is passed in on pool registration.
  * @param pauseManager Account empowered to pause/unpause the pool (or 0 to delegate to governance)
  * @param swapFeeManager Account empowered to set static swap fees for a pool (or 0 to delegate to goverance)
- * @param poolCreator Account empowered to set the pool creator fee (or 0 for no fee)
  */
 struct PoolRoleAccounts {
     address pauseManager;
     address swapFeeManager;
-    address poolCreator;
 }
 
 /**

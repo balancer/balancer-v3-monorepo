@@ -518,11 +518,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return _protocolYieldFees[pool][token];
     }
 
-    /// @inheritdoc IVaultExtension
-    function getPoolCreator(address pool) external view returns (address poolCreator) {
-        return _poolRoleAccounts[pool].poolCreator;
-    }
-
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/
