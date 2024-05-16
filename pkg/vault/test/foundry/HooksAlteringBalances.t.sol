@@ -70,7 +70,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
                     balancesScaled18: originalBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
-                    sender: address(router),
+                    router: address(router),
                     userData: bytes("")
                 })
             )
@@ -86,7 +86,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
                     balancesScaled18: newBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
-                    sender: address(router),
+                    router: address(router),
                     userData: bytes("")
                 })
             )
@@ -114,7 +114,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeAddLiquidity.selector,
-                bob,
+                router,
                 AddLiquidityKind.CUSTOM,
                 amountsIn,
                 bptAmountRoundDown,
@@ -127,7 +127,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolLiquidity.onAddLiquidityCustom.selector,
-                bob,
+                router,
                 amountsIn,
                 bptAmountRoundDown,
                 newBalances,
@@ -164,7 +164,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeRemoveLiquidity.selector,
-                alice,
+                router,
                 RemoveLiquidityKind.CUSTOM,
                 bptAmount,
                 amountsOut,
@@ -178,7 +178,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolLiquidity.onRemoveLiquidityCustom.selector,
-                alice,
+                router,
                 bptAmount,
                 amountsOut,
                 newBalances,
