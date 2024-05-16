@@ -325,7 +325,6 @@ contract VaultUnitSwapTest is BaseTest {
         vaultState.protocolSwapFeePercentage = protocolFeePercentage;
         poolData.poolConfig.poolCreatorFeePercentage = poolCreatorFeePercentage;
 
-        // TODO: check these after the operations.
         poolData.balancesLiveScaled18 = new uint256[](initialBalances.length);
     }
 
@@ -526,6 +525,19 @@ contract VaultUnitSwapTest is BaseTest {
             storageRawBalances[state.indexOut],
             poolData.balancesRaw[state.indexOut],
             "Unexpected storageRawBalances[state.indexIn]"
+        );
+
+        uint256[] memory storageLiveBalances = vault.getLastLiveBalances(params.pool);
+        assertEq(storageLiveBalances.length, poolData.balancesLiveScaled18.length, "Unexpected storageRawBalances length");
+        assertEq(
+            storageLiveBalances[state.indexIn],
+            poolData.balancesLiveScaled18[state.indexIn],
+            "Unexpected storageLiveBalances[state.indexIn]"
+        );
+        assertEq(
+            storageLiveBalances[state.indexOut],
+            poolData.balancesLiveScaled18[state.indexOut],
+            "Unexpected storageLiveBalances[state.indexIn]"
         );
 
         // check _takeDebt called
