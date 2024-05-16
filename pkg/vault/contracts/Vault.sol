@@ -208,13 +208,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _updateAmountGivenInVars(vars, params, poolData);
 
         if (poolData.poolConfig.hooks.shouldCallBeforeSwap) {
-            if (IPoolHooks(params.pool).onBeforeSwap(_buildPoolSwapParams(params, vars, poolData)) == false) {
+            bool success;
+            (success, params.amountGivenRaw) = IPoolHooks(params.pool).onBeforeSwap(_buildPoolSwapParams(params, vars, poolData));
+
+            if (success == false) {
                 revert BeforeSwapHookFailed();
             }
 
             _updatePoolDataLiveBalancesAndRates(params.pool, poolData, Rounding.ROUND_DOWN);
 
-            // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
+            // Also update amountGivenScaled18
             _updateAmountGivenInVars(vars, params, poolData);
         }
 
@@ -238,28 +241,35 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, vaultState);
 
         if (poolData.poolConfig.hooks.shouldCallAfterSwap) {
+            bool success;
             // Adjust balances for the AfterSwap hook.
             (uint256 amountInScaled18, uint256 amountOutScaled18) = params.kind == SwapKind.EXACT_IN
                 ? (vars.amountGivenScaled18, vars.amountCalculatedScaled18)
                 : (vars.amountCalculatedScaled18, vars.amountGivenScaled18);
-            if (
-                IPoolHooks(params.pool).onAfterSwap(
-                    IPoolHooks.AfterSwapParams({
-                        kind: params.kind,
-                        tokenIn: params.tokenIn,
-                        tokenOut: params.tokenOut,
-                        amountInScaled18: amountInScaled18,
-                        amountOutScaled18: amountOutScaled18,
-                        tokenInBalanceScaled18: poolData.balancesLiveScaled18[vars.indexIn],
-                        tokenOutBalanceScaled18: poolData.balancesLiveScaled18[vars.indexOut],
-                        sender: msg.sender,
-                        userData: params.userData
-                    }),
-                    vars.amountCalculatedScaled18
-                ) == false
-            ) {
+                
+            (success, amountCalculated) = IPoolHooks(params.pool).onAfterSwap(
+                IPoolHooks.AfterSwapParams({
+                    kind: params.kind,
+                    tokenIn: params.tokenIn,
+                    tokenOut: params.tokenOut,
+                    amountInScaled18: amountInScaled18,
+                    amountOutScaled18: amountOutScaled18,
+                    tokenInBalanceScaled18: poolData.balancesLiveScaled18[vars.indexIn],
+                    tokenOutBalanceScaled18: poolData.balancesLiveScaled18[vars.indexOut],
+                    sender: msg.sender,
+                    userData: params.userData
+                }),
+                vars.amountCalculatedScaled18,
+                amountCalculated
+            )
+
+            if (success == false) {
                 revert AfterSwapHookFailed();
             }
+            
+            (uint256 amountIn, uint256 amountOut) = params.kind == SwapKind.EXACT_IN
+                ? (vars.amountGivenRaw, amountCalculated)
+                : (amountCalculated, vars.amountGivenRaw);
         }
     }
 
@@ -272,6 +282,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             IBasePool.PoolSwapParams({
                 kind: params.kind,
                 amountGivenScaled18: vars.amountGivenScaled18,
+                amountGivenRaw: params.amountGivenRaw,
                 balancesScaled18: poolData.balancesLiveScaled18,
                 indexIn: vars.indexIn,
                 indexOut: vars.indexOut,
@@ -553,15 +564,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         if (poolData.poolConfig.hooks.shouldCallAfterAddLiquidity) {
-            if (
-                IPoolHooks(params.pool).onAfterAddLiquidity(
-                    params.to,
-                    amountsInScaled18,
-                    bptAmountOut,
-                    poolData.balancesLiveScaled18,
-                    params.userData
-                ) == false
-            ) {
+            bool success;
+            (success, amountsIn) = IPoolHooks(params.pool).onAfterAddLiquidity(
+                params.to,
+                amountsInScaled18,
+                amountsIn,
+                bptAmountOut,
+                poolData.balancesLiveScaled18,
+                params.userData
+            );
+
+            if (success == false) {
                 revert AfterAddLiquidityHookFailed();
             }
         }
@@ -787,17 +800,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         if (poolData.poolConfig.hooks.shouldCallAfterRemoveLiquidity) {
-            if (
-                IPoolHooks(params.pool).onAfterRemoveLiquidity(
-                    params.from,
-                    bptAmountIn,
-                    amountsOutScaled18,
-                    poolData.balancesLiveScaled18,
-                    params.userData
-                ) == false
-            ) {
+            bool success;
+            (success, amountsOut) = IPoolHooks(params.pool).onAfterRemoveLiquidity(
+                params.from,
+                bptAmountIn,
+                amountsOutScaled18,
+                amountsOut,
+                poolData.balancesLiveScaled18,
+                params.userData
+            );
+
+            if (success == false) {
                 revert AfterRemoveLiquidityHookFailed();
-            }
+            }            
         }
     }
 

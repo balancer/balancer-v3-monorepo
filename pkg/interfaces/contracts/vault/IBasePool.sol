@@ -59,6 +59,7 @@ interface IBasePool {
     struct PoolSwapParams {
         SwapKind kind;
         uint256 amountGivenScaled18;
+        uint256 amountGivenRaw;
         uint256[] balancesScaled18;
         uint256 indexIn;
         uint256 indexOut;
