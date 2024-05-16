@@ -61,9 +61,6 @@ library PoolDataLib {
     ) internal view {
         uint256 numTokens = poolData.tokenConfig.length;
 
-        // Initialize arrays to store tokens based on the number of tokens in the pool.
-        poolData.tokenRates = new uint256[](numTokens);
-
         // It's possible a reentrant hook changed the raw balances in Vault storage.
         // Update them before computing the live balances.
         bytes32 packedBalance;

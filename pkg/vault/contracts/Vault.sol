@@ -184,6 +184,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vaultState.protocolYieldFeePercentage
         );
 
+        // State is populated by pieces in this function, and shall not be modified at a lower level.
         SwapState memory state;
 
         (state.indexIn, state.indexOut) = _getSwapTokenIndexes(params);
@@ -224,7 +225,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Non-reentrant call that updates accounting.
         // The following side-effects are important to note:
-        // PoolData raw and balancesLiveScaled18 are adjusted for swap amounts and fees inside of _swap.
+        // PoolData balancesRaw and balancesLiveScaled18 are adjusted for swap amounts and fees inside of _swap.
         uint256 amountCalculatedScaled18;
         (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, vaultState);
 
