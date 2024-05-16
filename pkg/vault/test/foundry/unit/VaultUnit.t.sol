@@ -90,19 +90,22 @@ contract VaultUnitTest is BaseTest {
         vm.expectEmit();
         emit IVaultEvents.ProtocolSwapFeeCharged(pool, address(dai), expectedSwapFeeAmountScaled18);
 
-        (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolAndCreatorFees(
-                poolData,
-                swapFeeAmountScaled18,
-                protocolSwapFeePercentage,
-                pool,
-                dai,
-                tokenIndex
-            );
+        uint256 totalFeesRaw = vault.manualComputeAndChargeProtocolAndCreatorFees(
+            poolData,
+            swapFeeAmountScaled18,
+            protocolSwapFeePercentage,
+            pool,
+            dai,
+            tokenIndex
+        );
 
-        assertEq(creatorSwapFeeAmountRaw, 0, "Unexpected creatorSwapFeeAmountRaw");
-        assertEq(protocolSwapFeeAmountRaw, expectedSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
-        assertEq(vault.getProtocolFees(pool, dai), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
+        // No creator fees, so protocol fees is equal to the total
+        assertEq(totalFeesRaw, expectedSwapFeeAmountScaled18, "Unexpected totalFeesRaw");
+        assertEq(
+            vault.getProtocolFees(pool, dai),
+            expectedSwapFeeAmountScaled18,
+            "Unexpected protocol fees in storage"
+        );
         assertEq(vault.getPoolCreatorFees(pool, dai), 0, "Unexpected creator fees in storage");
     }
 
@@ -128,7 +131,7 @@ contract VaultUnitTest is BaseTest {
             poolData.tokenRates[tokenIndex]
         );
 
-        uint256 expectCreatorFeeAmountRaw = (swapFeeAmountScaled18 - expectedSwapFeeAmountScaled18)
+        uint256 expectedCreatorFeeAmountRaw = (swapFeeAmountScaled18 - expectedSwapFeeAmountScaled18)
             .mulUp(creatorFeePercentage)
             .toRawUndoRateRoundDown(poolData.decimalScalingFactors[tokenIndex], poolData.tokenRates[tokenIndex]);
 
@@ -136,38 +139,39 @@ contract VaultUnitTest is BaseTest {
         emit IVaultEvents.ProtocolSwapFeeCharged(pool, address(dai), expectSwapFeeAmountRaw);
 
         vm.expectEmit();
-        emit IVaultEvents.PoolCreatorSwapFeeCharged(pool, address(dai), expectCreatorFeeAmountRaw);
+        emit IVaultEvents.PoolCreatorSwapFeeCharged(pool, address(dai), expectedCreatorFeeAmountRaw);
 
-        (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolAndCreatorFees(
-                poolData,
-                swapFeeAmountScaled18,
-                protocolSwapFeePercentage,
-                pool,
-                dai,
-                0
-            );
+        uint256 totalFeesRaw = vault.manualComputeAndChargeProtocolAndCreatorFees(
+            poolData,
+            swapFeeAmountScaled18,
+            protocolSwapFeePercentage,
+            pool,
+            dai,
+            0
+        );
 
-        assertEq(protocolSwapFeeAmountRaw, expectedSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
-        assertEq(creatorSwapFeeAmountRaw, expectCreatorFeeAmountRaw, "Unexpected creatorSwapFeeAmountRaw");
+        assertEq(totalFeesRaw, expectedSwapFeeAmountScaled18 + expectedCreatorFeeAmountRaw, "Unexpected totalFeesRaw");
         assertEq(
             vault.getPoolCreatorFees(pool, dai),
-            initVault + creatorSwapFeeAmountRaw,
+            initVault + expectedCreatorFeeAmountRaw,
             "Unexpected creator fees in storage"
         );
-        assertEq(vault.getProtocolFees(pool, dai), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
+        assertEq(
+            vault.getProtocolFees(pool, dai),
+            expectedSwapFeeAmountScaled18,
+            "Unexpected protocol fees in storage"
+        );
     }
 
     function testComputeAndChargeProtocolAndCreatorFeesIfPoolIsInRecoveryMode() public {
         PoolData memory poolData;
         poolData.poolConfig.isPoolInRecoveryMode = true;
 
-        (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolAndCreatorFees(poolData, 1e18, 10e16, pool, dai, 0);
+        uint256 totalFeesRaw = vault.manualComputeAndChargeProtocolAndCreatorFees(poolData, 1e18, 10e16, pool, dai, 0);
 
-        assertEq(protocolSwapFeeAmountRaw, 0, "Unexpected protocolSwapFeeAmountRaw");
-        assertEq(creatorSwapFeeAmountRaw, 0, "Unexpected creatorSwapFeeAmountRaw");
+        assertEq(totalFeesRaw, 0, "Unexpected totalFeesRaw");
         assertEq(vault.getProtocolFees(pool, dai), 0, "Unexpected protocol fees in storage");
+        assertEq(vault.getPoolCreatorFees(pool, dai), 0, "Unexpected pool creator fees in storage");
     }
 
     function testManualUpdatePoolDataLiveBalancesAndRates() public {

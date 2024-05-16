@@ -528,7 +528,11 @@ contract VaultUnitSwapTest is BaseTest {
         );
 
         uint256[] memory storageLiveBalances = vault.getLastLiveBalances(params.pool);
-        assertEq(storageLiveBalances.length, poolData.balancesLiveScaled18.length, "Unexpected storageRawBalances length");
+        assertEq(
+            storageLiveBalances.length,
+            poolData.balancesLiveScaled18.length,
+            "Unexpected storageRawBalances length"
+        );
         assertEq(
             storageLiveBalances[state.indexIn],
             poolData.balancesLiveScaled18[state.indexIn],
