@@ -99,8 +99,8 @@ describe('ERC4626VaultPrimitive', function () {
     });
 
     const rateProviders: string[] = [];
-    rateProviders[boostedPoolTokens.indexOf(await DAI.getAddress())] = await rpwDAI.getAddress();
-    rateProviders[boostedPoolTokens.indexOf(await USDC.getAddress())] = await rpwUSDC.getAddress();
+    rateProviders[boostedPoolTokens.indexOf(await wDAI.getAddress())] = await rpwDAI.getAddress();
+    rateProviders[boostedPoolTokens.indexOf(await wUSDC.getAddress())] = await rpwUSDC.getAddress();
 
     await factory.connect(lp).registerTestPool(pool, buildTokenConfig(boostedPoolTokens, rateProviders), ZERO_ADDRESS);
 
