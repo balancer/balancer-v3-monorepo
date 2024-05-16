@@ -85,7 +85,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
                     balancesScaled18: expectedBalances,
                     indexIn: daiIdx,
                     indexOut: wstethIdx,
-                    sender: address(router),
+                    router: address(router),
                     userData: bytes("")
                 })
             )
@@ -122,7 +122,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
                     balancesScaled18: expectedBalances,
                     indexIn: daiIdx,
                     indexOut: wstethIdx,
-                    sender: address(router),
+                    router: address(router),
                     userData: bytes("")
                 })
             )

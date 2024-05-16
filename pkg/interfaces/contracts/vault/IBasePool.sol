@@ -53,7 +53,8 @@ interface IBasePool {
      * @param balancesScaled18 Current pool balances
      * @param indexIn Index of tokenIn
      * @param indexOut Index of tokenOut
-     * @param sender Originator of the swap transaction
+     * @param user Account originating the swap operation
+     * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param userData Additional (optional) data required for the swap
      */
     struct PoolSwapParams {
@@ -62,7 +63,7 @@ interface IBasePool {
         uint256[] balancesScaled18;
         uint256 indexIn;
         uint256 indexOut;
-        address sender;
+        address router;
         bytes userData;
     }
 

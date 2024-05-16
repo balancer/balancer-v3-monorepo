@@ -11,6 +11,7 @@ import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPo
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -53,6 +54,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     RateProviderMock _rateProvider;
     uint256 private _newTokenRate;
     uint256 private _dynamicSwapFee;
+    address private _specialSender;
     uint256[] private _newBalancesRaw;
 
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
@@ -84,6 +86,10 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         // inv = x + y
         uint256 invariant = computeInvariant(balances);
         return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
+    }
+
+    function setSpecialSender(address sender) external {
+        _specialSender = sender;
     }
 
     function setSwapReentrancyHookActive(bool _swapReentrancyHookActive) external {
@@ -212,8 +218,18 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         return !failOnAfterInitialize;
     }
 
-    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata) external view returns (bool, uint256) {
-        return (!failComputeDynamicSwapFeeHook, _dynamicSwapFee);
+    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata params) external view returns (bool, uint256) {
+        uint256 finalSwapFee = _dynamicSwapFee;
+
+        if (_specialSender != address(0)) {
+            // Check the sender
+            address swapper = IRouterCommon(params.router).getSender();
+            if (swapper == _specialSender) {
+                finalSwapFee = 0;
+            }
+        }
+
+        return (!failComputeDynamicSwapFeeHook, finalSwapFee);
     }
 
     function onBeforeSwap(IBasePool.PoolSwapParams calldata) external override returns (bool success) {
