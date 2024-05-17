@@ -622,7 +622,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
         address sharesOwner
-    ) external saveSender returns (uint256 issuedShares) {
+    ) external returns (uint256 issuedShares) {
         return
             abi.decode(
                 _vault.unlock(
@@ -664,7 +664,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     function removeLiquidityFromBuffer(
         IERC4626 wrappedToken,
         uint256 sharesToRemove
-    ) external saveSender returns (uint256, uint256) {
+    ) external returns (uint256, uint256) {
         return
             abi.decode(
                 _vault.unlock(
