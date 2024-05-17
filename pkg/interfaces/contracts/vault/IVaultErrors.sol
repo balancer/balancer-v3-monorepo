@@ -155,12 +155,6 @@ interface IVaultErrors {
                                      Fees
     *******************************************************************************/
 
-    /// @dev Error raised when the protocol swap fee percentage exceeds the maximum allowed value.
-    error ProtocolSwapFeePercentageTooHigh();
-
-    /// @dev Error raised when the protocol yield fee percentage exceeds the maximum allowed value.
-    error ProtocolYieldFeePercentageTooHigh();
-
     /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
     error SwapFeePercentageTooHigh();
 
@@ -268,6 +262,9 @@ interface IVaultErrors {
 
     /// @dev The vault extension was configured with an incorrect Vault address.
     error WrongVaultExtensionDeployment();
+
+    /// @dev The protocol fee collector was configured with an incorrect Vault address.
+    error WrongProtocolFeeCollectorDeployment();
 
     /// @dev The vault admin was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();
