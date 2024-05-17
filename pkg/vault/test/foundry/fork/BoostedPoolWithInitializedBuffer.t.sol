@@ -307,8 +307,6 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
 
-    // TODO create a test that should revert if maxAmountsIn or minAmountsOut is not respected (validating the router)
-
     function _buildExactInPaths(
         uint256 exactAmountIn,
         uint256 minAmountOut
@@ -316,7 +314,6 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
 
-        // TODO check comment "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
         // Since this is exact in, swaps will be executed in the order given.
         // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the boosted pool,
         // and finally post-swap the waUSDC through the USDC buffer to calculate the USDC amount out.
@@ -340,7 +337,6 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountOut[](1);
 
-        // TODO check comment "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
         // Since this is exact out, swaps will be executed in reverse order (though we submit in logical order).
         // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the boosted pool,
         // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.

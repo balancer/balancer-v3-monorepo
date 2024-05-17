@@ -1114,8 +1114,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 vaultUnderlyingDelta;
             uint256 vaultWrappedDelta;
 
-            uint256 bufferUnderlyingSurplus;
-            uint256 bufferWrappedSurplus;
+            uint256 bufferUnderlyingSurplus = 0;
 
             if (kind == SwapKind.EXACT_IN) {
                 // Gets the amount of underlying to wrap in order to rebalance the buffer
@@ -1130,22 +1129,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called
                 wrappedToken.deposit(vaultUnderlyingDelta, address(this));
             } else {
-                // Gets the amount of wrapped tokens to unwrap in order to rebalance the buffer
-                bufferWrappedSurplus = _getBufferWrappedSurplus(bufferBalances, wrappedToken);
-
-                // The amount of wrapped tokens to mint is the necessary amount to fulfill the trade
-                // (amountOutWrapped), plus the amount needed to leave the buffer rebalanced 50/50 at the end
-                // (bufferWrappedSurplus)
-                if (bufferWrappedSurplus > 0) {
-                    vaultWrappedDelta = amountOutWrapped + bufferWrappedSurplus;
-                    underlyingToken.forceApprove(
-                        address(wrappedToken),
-                        _addConvertError(wrappedToken.convertToAssets(vaultWrappedDelta))
-                    );
-                } else {
-                    vaultWrappedDelta = amountOutWrapped;
-                    underlyingToken.forceApprove(address(wrappedToken), _addConvertError(amountInUnderlying));
-                }
+                vaultWrappedDelta = amountOutWrapped;
+                underlyingToken.forceApprove(address(wrappedToken), _addConvertError(amountInUnderlying));
 
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called
                 wrappedToken.mint(vaultWrappedDelta, address(this));
@@ -1157,29 +1142,33 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
 
             _checkWrapOrUnwrapResults(
-                address(wrappedToken),
+                wrappedToken,
                 amountInUnderlying,
                 bufferUnderlyingSurplus,
                 vaultUnderlyingDelta,
                 amountOutWrapped,
-                bufferWrappedSurplus,
+                0,
                 vaultWrappedDelta
             );
 
-            amountInUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus;
-            amountOutWrapped = vaultWrappedDelta - bufferWrappedSurplus;
+            // Only updates buffer balances if buffer has a surplus of underlying tokens
+            if (bufferUnderlyingSurplus > 0) {
+                // TODO explain
+                amountInUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus;
+                amountOutWrapped = vaultWrappedDelta - wrappedToken.convertToShares(bufferUnderlyingSurplus);
 
-            // Only updates buffer balances if buffer has a surplus of underlying or wrapped tokens
-            if (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0) {
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
                 // increase. To decrease underlying balance, we get the delta amount that was deposited
-                // (deltaUnderlyingDeposited) and discounts the amount needed in the wrapping operation
+                // (vaultUnderlyingDelta) and discounts the amount needed in the wrapping operation
                 // (amountInUnderlying). Same logic applies to wrapped balances.
                 bufferBalances = PackedTokenBalance.toPackedBalance(
                     bufferBalances.getBalanceRaw() - (vaultUnderlyingDelta - amountInUnderlying),
                     bufferBalances.getBalanceDerived() + (vaultWrappedDelta - amountOutWrapped)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
+            } else {
+                amountInUnderlying = vaultUnderlyingDelta;
+                amountOutWrapped = vaultWrappedDelta;
             }
         }
 
@@ -1224,8 +1213,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The buffer does not have enough liquidity to facilitate the unwrap without making an external call.
             // We unwrap the user's tokens via an external call and additionally rebalance the buffer if it has a
             // surplus of underlying tokens.
-            uint256 bufferUnderlyingSurplus;
-            uint256 bufferWrappedSurplus;
+            uint256 bufferWrappedSurplus = 0;
 
             if (kind == SwapKind.EXACT_IN) {
                 // Gets the amount of wrapped tokens to unwrap in order to rebalance the buffer
@@ -1237,14 +1225,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (bufferWrappedSurplus)
                 wrappedToken.redeem(amountInWrapped + bufferWrappedSurplus, address(this), address(this));
             } else {
-                // Gets the amount of underlying to wrap in order to rebalance the buffer
-                bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalances, wrappedToken);
-
                 // EXACT_OUT requires the exact amount of underlying tokens to be returned, so withdraw is called.
                 // The amount of underlying tokens to withdraw is the necessary amount to fulfill the trade
                 // (amountOutUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingSurplus).
-                wrappedToken.withdraw(amountOutUnderlying + bufferUnderlyingSurplus, address(this), address(this));
+                wrappedToken.withdraw(amountOutUnderlying, address(this), address(this));
             }
 
             (uint256 vaultUnderlyingDelta, uint256 vaultWrappedDelta) = _updateReservesAfterWrapping(
@@ -1253,29 +1238,33 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
 
             _checkWrapOrUnwrapResults(
-                address(wrappedToken),
+                wrappedToken,
                 amountOutUnderlying,
-                bufferUnderlyingSurplus,
+                0,
                 vaultUnderlyingDelta,
                 amountInWrapped,
                 bufferWrappedSurplus,
                 vaultWrappedDelta
             );
 
-            amountOutUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus;
-            amountInWrapped = vaultWrappedDelta - bufferWrappedSurplus;
+            // Only updates buffer balances if buffer has a surplus of wrapped tokens
+            if (bufferWrappedSurplus > 0) {
+                // TODO explain
+                amountOutUnderlying = vaultUnderlyingDelta - wrappedToken.convertToAssets(bufferWrappedSurplus);
+                amountInWrapped = vaultWrappedDelta - bufferWrappedSurplus;
 
-            // Only updates buffer balances if buffer has a surplus of underlying or wrapped tokens
-            if (bufferUnderlyingSurplus > 0 || bufferWrappedSurplus > 0) {
                 // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance
                 // will decrease. To increase the underlying balance, we get the delta amount that was withdrawn
-                // (deltaUnderlyingWithdrawn) and discount the amount expected in the unwrapping operation
+                // (vaultUnderlyingDelta) and discount the amount expected in the unwrapping operation
                 // (amountOutUnderlying). The same logic applies to wrapped balances.
                 bufferBalances = PackedTokenBalance.toPackedBalance(
                     bufferBalances.getBalanceRaw() + (vaultUnderlyingDelta - amountOutUnderlying),
                     bufferBalances.getBalanceDerived() - (vaultWrappedDelta - amountInWrapped)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
+            } else {
+                amountOutUnderlying = vaultUnderlyingDelta;
+                amountInWrapped = vaultWrappedDelta;
             }
         }
 
@@ -1369,15 +1358,26 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * convertToAssets/convertToShares, with an error tolerance of _MAX_CONVERT_ERROR
      */
     function _checkWrapOrUnwrapResults(
-        address wrappedToken,
+        IERC4626 wrappedToken,
         uint256 wrapUnwrapUnderlyingExpected,
         uint256 bufferUnderlyingSurplus,
         uint256 vaultUnderlyingDelta,
         uint256 wrapUnwrapWrappedExpected,
         uint256 bufferWrappedSurplus,
         uint256 vaultWrappedDelta
-    ) private pure {
-        uint256 totalExpectedUnderlying = wrapUnwrapUnderlyingExpected + bufferUnderlyingSurplus;
+    ) private view {
+
+        // TODO explain
+        uint256 totalExpectedUnderlying;
+        uint256 totalExpectedWrapped;
+        if (bufferUnderlyingSurplus > 0) {
+            totalExpectedUnderlying = wrapUnwrapUnderlyingExpected + bufferUnderlyingSurplus;
+            totalExpectedWrapped = wrapUnwrapWrappedExpected + wrappedToken.convertToShares(bufferUnderlyingSurplus);
+        } else {
+            totalExpectedUnderlying = wrapUnwrapUnderlyingExpected + wrappedToken.convertToAssets(bufferWrappedSurplus);
+            totalExpectedWrapped = wrapUnwrapWrappedExpected + bufferWrappedSurplus;
+        }
+
         if (
             (vaultUnderlyingDelta < totalExpectedUnderlying &&
                 totalExpectedUnderlying - vaultUnderlyingDelta > _MAX_CONVERT_ERROR) ||
@@ -1386,10 +1386,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         ) {
             // If this error is thrown, it means the convert result had an absolute error greater than
             // _MAX_CONVERT_ERROR in comparison with the actual operation.
-            revert WrongUnderlyingAmount(wrappedToken);
+            revert WrongUnderlyingAmount(address(wrappedToken));
         }
 
-        uint256 totalExpectedWrapped = wrapUnwrapWrappedExpected + bufferWrappedSurplus;
         if (
             ((vaultWrappedDelta > totalExpectedWrapped) &&
                 (vaultWrappedDelta - totalExpectedWrapped > _MAX_CONVERT_ERROR)) ||
@@ -1397,7 +1396,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         ) {
             // If this error is thrown, it means the convert result had an absolute error greater than
             // _MAX_CONVERT_ERROR in comparison with the actual operation.
-            revert WrongWrappedAmount(wrappedToken);
+            revert WrongWrappedAmount(address(wrappedToken));
         }
     }
 
