@@ -1123,7 +1123,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (bufferUnderlyingSurplus)
                 calculatedUnderlyingDelta = amountInUnderlying + bufferUnderlyingSurplus;
 
-                underlyingToken.forceApprove(address(wrappedToken), _addConvertError(calculatedUnderlyingDelta));
+                underlyingToken.forceApprove(address(wrappedToken), calculatedUnderlyingDelta);
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called
                 wrappedToken.deposit(calculatedUnderlyingDelta, address(this));
             } else {
@@ -1132,6 +1132,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 } else {
                     calculatedWrappedDelta = amountOutWrapped;
                 }
+                // Add convert error because mint can consume a different amount of tokens than we anticipated with
+                // convert
                 underlyingToken.forceApprove(
                     address(wrappedToken),
                     _addConvertError(amountInUnderlying + bufferUnderlyingSurplus)
@@ -1139,6 +1141,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called
                 wrappedToken.mint(calculatedWrappedDelta, address(this));
+
+                // Remove approval, in case mint consumed less tokens than we approved, due to convert error
+                underlyingToken.forceApprove(address(wrappedToken), 0);
             }
 
             (uint256 vaultUnderlyingDelta, uint256 vaultWrappedDelta) = _updateReservesAfterWrapping(

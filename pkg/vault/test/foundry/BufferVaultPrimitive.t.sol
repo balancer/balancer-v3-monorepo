@@ -206,7 +206,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IERC20Errors.ERC20InsufficientAllowance.selector,
                 address(waDAI),
-                _wrapAmount + vault.getMaxConvertError(),
+                _wrapAmount,
                 changedWrapAmount
             )
         );
