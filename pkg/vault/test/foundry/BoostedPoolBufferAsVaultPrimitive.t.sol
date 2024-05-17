@@ -261,9 +261,12 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testBoostedPoolSwapUnbalancedBufferExactIn() public {
-        vm.prank(lp);
+        vm.startPrank(lp);
         // Surplus of underlying
         router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, address(lp));
+        // Surplus of wrapped
+        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, address(lp));
+        vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
 
@@ -278,22 +281,25 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         // When the buffer has not enough liquidity to wrap/unwrap and buffers were not balanced, buffers should be
         // perfectly balanced at the end, but only if the wrap/unwrap direction is the same as the operation executed
         // by the user. E.g.:
-        // - If user is wrapping EXACT_IN and buffer has a surplus of underlying, buffer will be balanced (deposit)
-        // - If user is wrapping EXACT_OUT and buffer has a surplus of wrapped, buffer will be balanced (mint)
-        // - But if user is wrapping EXACT_IN and buffer has a surplus of wrapped, buffer will stay as is
+        // - If user is wrapping and buffer has a surplus of underlying, buffer will be balanced
+        // - If user is unwrapping and buffer has a surplus of wrapped, buffer will be balanced
+        // - But if user is wrapping and buffer has a surplus of wrapped, buffer will stay as is
         vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai - (unbalanceDelta / 2);
         vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai + (unbalanceDelta / 2);
-        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc;
-        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc;
+        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc + (unbalanceDelta / 2);
+        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc - (unbalanceDelta / 2);
         vars.expectedAliceDelta = tooLargeSwapAmount;
 
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, vars);
     }
 
     function testBoostedPoolSwapUnbalancedBufferExactOut() public {
-        vm.prank(lp);
+        vm.startPrank(lp);
         // Surplus of underlying
         router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, address(lp));
+        // Surplus of wrapped
+        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, address(lp));
+        vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
 
@@ -305,11 +311,16 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
-        // Buffer does not rebalance in EXACT_OUT
-        vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai;
-        vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai;
-        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc;
-        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc;
+        // When the buffer has not enough liquidity to wrap/unwrap and buffers were not balanced, buffers should be
+        // perfectly balanced at the end, but only if the wrap/unwrap direction is the same as the operation executed
+        // by the user. E.g.:
+        // - If user is wrapping and buffer has a surplus of underlying, buffer will be balanced
+        // - If user is unwrapping and buffer has a surplus of wrapped, buffer will be balanced
+        // - But if user is wrapping and buffer has a surplus of wrapped, buffer will stay as is
+        vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai - (unbalanceDelta / 2);
+        vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai + (unbalanceDelta / 2);
+        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc + (unbalanceDelta / 2);
+        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc - (unbalanceDelta / 2);
         vars.expectedAliceDelta = tooLargeSwapAmount;
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);

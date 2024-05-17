@@ -1114,12 +1114,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 vaultUnderlyingDelta;
             uint256 vaultWrappedDelta;
 
-            uint256 bufferUnderlyingSurplus = 0;
+            // Gets the amount of underlying to wrap in order to rebalance the buffer
+            uint256 bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalances, wrappedToken);
 
             if (kind == SwapKind.EXACT_IN) {
-                // Gets the amount of underlying to wrap in order to rebalance the buffer
-                bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalances, wrappedToken);
-
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                 // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingSurplus)
@@ -1129,8 +1127,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called
                 wrappedToken.deposit(vaultUnderlyingDelta, address(this));
             } else {
-                vaultWrappedDelta = amountOutWrapped;
-                underlyingToken.forceApprove(address(wrappedToken), _addConvertError(amountInUnderlying));
+                if (bufferUnderlyingSurplus > 0) {
+                    vaultWrappedDelta = amountOutWrapped + wrappedToken.convertToShares(bufferUnderlyingSurplus);
+                } else {
+                    vaultWrappedDelta = amountOutWrapped;
+                }
+                underlyingToken.forceApprove(
+                    address(wrappedToken),
+                    _addConvertError(amountInUnderlying + bufferUnderlyingSurplus)
+                );
 
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called
                 wrappedToken.mint(vaultWrappedDelta, address(this));
@@ -1216,12 +1221,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The buffer does not have enough liquidity to facilitate the unwrap without making an external call.
             // We unwrap the user's tokens via an external call and additionally rebalance the buffer if it has a
             // surplus of underlying tokens.
-            uint256 bufferWrappedSurplus = 0;
+
+            // Gets the amount of wrapped tokens to unwrap in order to rebalance the buffer
+            uint256 bufferWrappedSurplus = _getBufferWrappedSurplus(bufferBalances, wrappedToken);
 
             if (kind == SwapKind.EXACT_IN) {
-                // Gets the amount of wrapped tokens to unwrap in order to rebalance the buffer
-                bufferWrappedSurplus = _getBufferWrappedSurplus(bufferBalances, wrappedToken);
-
                 // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so redeem is called
                 // The amount of wrapped tokens to redeem is the necessary amount to fulfill the trade
                 // (amountInWrapped), plus the amount needed to leave the buffer rebalanced 50/50 at the end
@@ -1232,7 +1236,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // The amount of underlying tokens to withdraw is the necessary amount to fulfill the trade
                 // (amountOutUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingSurplus).
-                wrappedToken.withdraw(amountOutUnderlying, address(this), address(this));
+                if (bufferWrappedSurplus > 0) {
+                    wrappedToken.withdraw(
+                        amountOutUnderlying + wrappedToken.convertToAssets(bufferWrappedSurplus),
+                        address(this),
+                        address(this)
+                    );
+                } else {
+                    wrappedToken.withdraw(amountOutUnderlying, address(this), address(this));
+                }
             }
 
             (uint256 vaultUnderlyingDelta, uint256 vaultWrappedDelta) = _updateReservesAfterWrapping(
@@ -1393,8 +1405,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // reserves because wrapped was redeemed
             expectedUnderlyingDelta = wrapUnwrapUnderlyingExpected + wrappedToken.convertToAssets(bufferWrappedSurplus);
         } else {
-            // If no surplus, the expected delta is the amountsIn and amountsOut
-            // (EXACT_OUT Wrap/Unwrap or perfectly balanced buffer)
+            // If no surplus, the expected delta is the amountsIn and amountsOut (perfectly balanced buffer or
+            // operation was not in favor of rebalance)
             expectedUnderlyingDelta = wrapUnwrapUnderlyingExpected;
             expectedWrappedDelta = wrapUnwrapWrappedExpected;
         }
