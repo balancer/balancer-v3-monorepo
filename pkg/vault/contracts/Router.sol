@@ -410,7 +410,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     function removeLiquidityRecovery(
         address pool,
         uint256 exactBptAmountIn
-    ) external saveSender returns (uint256[] memory amountsOut) {
+    ) external returns (uint256[] memory amountsOut) {
         amountsOut = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(Router.removeLiquidityRecoveryHook.selector, pool, msg.sender, exactBptAmountIn)
@@ -1058,7 +1058,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     function queryRemoveLiquidityRecovery(
         address pool,
         uint256 exactBptAmountIn
-    ) external saveSender returns (uint256[] memory amountsOut) {
+    ) external returns (uint256[] memory amountsOut) {
         return
             abi.decode(
                 _vault.quote(
