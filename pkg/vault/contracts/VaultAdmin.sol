@@ -14,7 +14,10 @@ import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHo
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
+import {
+    IProtocolFeeCollector,
+    ProtocolFeeType
+} from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
@@ -32,7 +35,6 @@ import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
-import { ProtocolFeeCollector } from "./ProtocolFeeCollector.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 
 /**
@@ -82,8 +84,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
 
         _vault = mainVault;
-
-        _protocolFeeCollector = new ProtocolFeeCollector(mainVault);
     }
 
     /*******************************************************************************
@@ -273,36 +273,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                                         Fees
     *******************************************************************************/
 
-    /// @inheritdoc IVaultAdmin
-    function setAggregateProtocolSwapFeePercentage(
-        address pool,
-        uint256 newProtocolSwapFeePercentage
-    ) external authenticate onlyVault {
-        if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
-            revert ProtocolSwapFeePercentageTooHigh();
-        }
-
-        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
-        config.aggregateProtocolSwapFeePercentage = newProtocolSwapFeePercentage;
-        _poolConfig[pool] = PoolConfigLib.fromPoolConfig(config);
-        emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
-    }
-
-    /// @inheritdoc IVaultAdmin
-    function setAggregateProtocolYieldFeePercentage(
-        address pool,
-        uint256 newProtocolYieldFeePercentage
-    ) external authenticate onlyVault {
-        if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
-            revert ProtocolYieldFeePercentageTooHigh();
-        }
-
-        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
-        config.aggregateProtocolYieldFeePercentage = newProtocolYieldFeePercentage;
-        _poolConfig[pool] = PoolConfigLib.fromPoolConfig(config);
-        emit ProtocolSwapFeePercentageChanged(newProtocolYieldFeePercentage);
-    }
-
     /**
      * @inheritdoc IVaultAdmin
      * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
@@ -317,97 +287,61 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
-    enum ProtocolFeeType {
-        SWAP,
-        YIELD
-    }
-
     /// @inheritdoc IVaultAdmin
-    function collectProtocolSwapFees(address pool) public nonReentrant onlyVault {
-        // solhint-disable-previous-line no-empty-blocks
-        //_collectProtocolFeesInternal(pool, ProtocolFeeType.SWAP);
+    function collectProtocolFees(address pool) external nonReentrant onlyVault {
+        _collectProtocolFeesInternal(pool, ProtocolFeeType.SWAP);
+        _collectProtocolFeesInternal(pool, ProtocolFeeType.YIELD);
     }
 
-    /// @inheritdoc IVaultAdmin
-    function collectProtocolYieldFees(address pool) public nonReentrant onlyVault {
-        // solhint-disable-previous-line no-empty-blocks
-        //_collectProtocolFeesInternal(pool, ProtocolFeeType.YIELD);
-    }
-
-    // stack-too-deep
-    struct ProtocolFeeLocals {
-        PoolConfig poolConfig;
-        VaultState vaultState;
-        IERC20[] poolTokens;
-    }
-
-    /*
-    // Code is nearly identical, so factor out into this routine, parameterized by fee type.
     function _collectProtocolFeesInternal(address pool, ProtocolFeeType feeType) private {
-        ProtocolFeeLocals memory vars = _initProtocolFeeLocals(pool);
-
+        IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
         bool isSwapFee = feeType == ProtocolFeeType.SWAP;
-        uint256 protocolFeePercentage = isSwapFee
-            ? vars.vaultState.protocolSwapFeePercentage
-            : vars.vaultState.protocolYieldFeePercentage;
-        bool needToSplitWithPoolCreator = vars.poolCreator != address(0) &&
-            vars.poolConfig.poolCreatorFeePercentage > 0;
-        uint256 aggregateFeePercentage;
 
-        if (needToSplitWithPoolCreator) {
-            // Only need this if there is a pool creator and fees must be split
-            aggregateFeePercentage = getAggregateFeePercentage(
-                protocolFeePercentage,
-                vars.poolConfig.poolCreatorFeePercentage
-            );
-        }
+        for (uint256 i = 0; i < poolTokens.length; ++i) {
+            IERC20 token = poolTokens[i];
 
-        for (uint256 i = 0; i < vars.poolTokens.length; ++i) {
-            IERC20 token = vars.poolTokens[i];
-            // Disaggregate the protocol and creator fees
             uint256 totalFees = isSwapFee ? _protocolSwapFees[pool][token] : _protocolYieldFees[pool][token];
-
             if (totalFees > 0) {
-                uint256 protocolPortion;
+                token.approve(address(_protocolFeeCollector), totalFees);
 
-                // Clear protocol fee balance.
                 if (isSwapFee) {
                     _protocolSwapFees[pool][token] = 0;
+                    _protocolFeeCollector.receiveProtocolSwapFees(pool, token, totalFees);
                 } else {
                     _protocolYieldFees[pool][token] = 0;
-                }
-
-                if (needToSplitWithPoolCreator) {
-                    uint256 totalVolume = totalFees.divUp(aggregateFeePercentage);
-                    protocolPortion = totalVolume.mulUp(protocolFeePercentage);
-                    uint256 poolCreatorPortion = totalFees - protocolPortion;
-
-                    token.safeTransfer(vars.poolCreator, poolCreatorPortion);
-                    if (isSwapFee) {
-                        emit PoolCreatorSwapFeeCollected(pool, token, poolCreatorPortion);
-                    } else {
-                        emit PoolCreatorYieldFeeCollected(pool, token, poolCreatorPortion);
-                    }
-                } else {
-                    protocolPortion = totalFees;
-                }
-
-                token.safeTransfer(address(_protocolFeeCollector), protocolPortion);
-                if (isSwapFee) {
-                    emit ProtocolSwapFeeCollected(pool, token, protocolPortion);
-                } else {
-                    emit ProtocolYieldFeeCollected(pool, token, protocolPortion);
+                    _protocolFeeCollector.receiveProtocolYieldFees(pool, token, totalFees);
                 }
             }
         }
     }
 
-    function _initProtocolFeeLocals(address pool) private view returns (ProtocolFeeLocals memory vars) {
-        vars.poolConfig = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        vars.vaultState = _vaultState.toVaultState();
-        vars.poolTokens = _vault.getPoolTokens(pool);
-        vars.poolCreator = _poolRoleAccounts[pool].poolCreator;
-    }*/
+    /// @inheritdoc IVaultAdmin
+    function updateAggregateFeePercentage(
+        address pool,
+        ProtocolFeeType feeType,
+        uint256 newAggregateFeePercentage
+    ) external {
+        if (msg.sender != address(_protocolFeeCollector)) {
+            revert SenderNotAllowed();
+        }
+
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+        if (feeType == ProtocolFeeType.SWAP) {
+            config.aggregateProtocolSwapFeePercentage = newAggregateFeePercentage;
+        } else {
+            config.aggregateProtocolYieldFeePercentage = newAggregateFeePercentage;
+        }
+        _poolConfig[pool] = config.fromPoolConfig();
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function setProtocolFeeCollector(
+        IProtocolFeeCollector newProtocolFeeCollector
+    ) external nonReentrant authenticate onlyVault {
+        _protocolFeeCollector = newProtocolFeeCollector;
+
+        emit ProtocolFeeCollectorChanged(newProtocolFeeCollector);
+    }
 
     /*******************************************************************************
                                     Recovery Mode

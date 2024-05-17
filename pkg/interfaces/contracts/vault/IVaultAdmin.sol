@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import { IProtocolFeeCollector } from "./IProtocolFeeCollector.sol";
+import { IProtocolFeeCollector, ProtocolFeeType } from "./IProtocolFeeCollector.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IVault } from "./IVault.sol";
 
@@ -117,18 +117,6 @@ interface IVaultAdmin {
     *******************************************************************************/
 
     /**
-     * @notice Sets a new swap fee percentage for the protocol.
-     * @param newSwapFeePercentage The new swap fee percentage to be set
-     */
-    function setAggregateProtocolSwapFeePercentage(address pool, uint256 newSwapFeePercentage) external;
-
-    /**
-     * @notice Sets a new yield fee percentage for the protocol.
-     * @param newYieldFeePercentage The new swap fee percentage to be set
-     */
-    function setAggregateProtocolYieldFeePercentage(address pool, uint256 newYieldFeePercentage) external;
-
-    /**
      * @notice Assigns a new static swap fee percentage to the specified pool.
      * @param pool The address of the pool for which the static swap fee will be changed
      * @param swapFeePercentage The new swap fee percentage to apply to the pool
@@ -136,18 +124,31 @@ interface IVaultAdmin {
     function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
 
     /**
-     * @notice Collects accumulated protocol swap fees for the specified pool.
+     * @notice Collects accumulated protocol swap and yield fees for the specified pool.
      * @dev Fees are sent to the ProtocolFeeCollector address.
      * @param pool The pool on which all protocol fees should be collected
      */
-    function collectProtocolSwapFees(address pool) external;
+    function collectProtocolFees(address pool) external;
 
     /**
-     * @notice Collects accumulated protocol yield fees for the specified pool.
-     * @dev Fees are sent to the ProtocolFeeCollector address.
-     * @param pool The pool on which all protocol fees should be collected
+     * @notice Update an aggregate fee percentage if governance is overriding a protocol fee for a specific pool.
+     * @dev Can only be called by the current protocol fee collector.
+     * @param pool The pool whose fee will be updated
+     * @param feeType The type of fee to update: Swap or Yield
+     * @param newAggregateFeePercentage The new aggregate percentage, as calculated by the Protocol Fee Collector
      */
-    function collectProtocolYieldFees(address pool) external;
+    function updateAggregateFeePercentage(
+        address pool,
+        ProtocolFeeType feeType,
+        uint256 newAggregateFeePercentage
+    ) external;
+
+    /**
+     * @notice Sets a new Protocol Fee Collector for the Vault.
+     * @dev This is a permissioned call.
+     * Emits a `ProtocolFeeCollectorChanged` event.
+     */
+    function setProtocolFeeCollector(IProtocolFeeCollector newProtocolFeeCollector) external;
 
     /*******************************************************************************
                                     Recovery Mode

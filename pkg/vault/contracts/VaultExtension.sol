@@ -122,7 +122,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
-        uint256 swapFeePercentage;
+        PoolFeeConfig feeConfig;
         uint256 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
         PoolHooks poolHooks;
@@ -133,7 +133,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
-        uint256 swapFeePercentage,
+        PoolFeeConfig memory feeConfig,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
@@ -143,7 +143,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             pool,
             PoolRegistrationParams({
                 tokenConfig: tokenConfig,
-                swapFeePercentage: swapFeePercentage,
+                feeConfig: feeConfig,
                 pauseWindowEndTime: pauseWindowEndTime,
                 roleAccounts: roleAccounts,
                 poolHooks: poolHooks,
@@ -238,15 +238,18 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         config.liquidityManagement = params.liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime;
+        (config.aggregateProtocolSwapFeePercentage, config.aggregateProtocolYieldFeePercentage) = _protocolFeeCollector
+            .registerPoolFeeConfig(pool, params.feeConfig);
         _poolConfig[pool] = config.fromPoolConfig();
 
-        _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
+        _setStaticSwapFeePercentage(pool, params.feeConfig.poolSwapFeePercentage);
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
         emit PoolRegistered(
             pool,
             msg.sender,
             params.tokenConfig,
+            params.feeConfig,
             params.pauseWindowEndTime,
             params.roleAccounts,
             params.poolHooks,
