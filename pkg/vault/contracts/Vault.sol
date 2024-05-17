@@ -1111,8 +1111,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The buffer does not have enough liquidity to facilitate the wrap without making an external call.
             // We wrap the user's tokens via an external call and additionally rebalance the buffer if it has a
             // surplus of underlying tokens.
-            uint256 vaultUnderlyingDelta;
-            uint256 vaultWrappedDelta;
+            uint256 calculatedUnderlyingDelta;
+            uint256 calculatedWrappedDelta;
 
             // Gets the amount of underlying to wrap in order to rebalance the buffer
             uint256 bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalances, wrappedToken);
@@ -1121,16 +1121,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                 // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingSurplus)
-                vaultUnderlyingDelta = amountInUnderlying + bufferUnderlyingSurplus;
+                calculatedUnderlyingDelta = amountInUnderlying + bufferUnderlyingSurplus;
 
-                underlyingToken.forceApprove(address(wrappedToken), _addConvertError(vaultUnderlyingDelta));
+                underlyingToken.forceApprove(address(wrappedToken), _addConvertError(calculatedUnderlyingDelta));
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called
-                wrappedToken.deposit(vaultUnderlyingDelta, address(this));
+                wrappedToken.deposit(calculatedUnderlyingDelta, address(this));
             } else {
                 if (bufferUnderlyingSurplus > 0) {
-                    vaultWrappedDelta = amountOutWrapped + wrappedToken.convertToShares(bufferUnderlyingSurplus);
+                    calculatedWrappedDelta = amountOutWrapped + wrappedToken.convertToShares(bufferUnderlyingSurplus);
                 } else {
-                    vaultWrappedDelta = amountOutWrapped;
+                    calculatedWrappedDelta = amountOutWrapped;
                 }
                 underlyingToken.forceApprove(
                     address(wrappedToken),
@@ -1138,10 +1138,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 );
 
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called
-                wrappedToken.mint(vaultWrappedDelta, address(this));
+                wrappedToken.mint(calculatedWrappedDelta, address(this));
             }
 
-            (vaultUnderlyingDelta, vaultWrappedDelta) = _updateReservesAfterWrapping(
+            (uint256 vaultUnderlyingDelta, uint256 vaultWrappedDelta) = _updateReservesAfterWrapping(
                 underlyingToken,
                 IERC20(wrappedToken)
             );
