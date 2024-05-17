@@ -100,7 +100,12 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         getVault().registerPool(
             pool,
             tokens,
-            swapFeePercentage,
+            PoolFeeConfig({
+                poolSwapFeePercentage: swapFeePercentage,
+                protocolSwapFeePercentage: 0,
+                poolCreatorFeePercentage: 0,
+                poolCreator: address(0)
+            }),
             getNewPoolPauseWindowEndTime(),
             roleAccounts,
             poolHooks,

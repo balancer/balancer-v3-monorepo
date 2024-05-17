@@ -24,7 +24,12 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault.registerPool(
             pool,
             tokenConfig,
-            DEFAULT_SWAP_FEE,
+            PoolFeeConfig({
+                poolSwapFeePercentage: DEFAULT_SWAP_FEE,
+                protocolSwapFeePercentage: 0,
+                poolCreatorFeePercentage: 0,
+                poolCreator: address(0)
+            }),
             getNewPoolPauseWindowEndTime(),
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
@@ -46,7 +51,12 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault.registerPool(
             pool,
             tokenConfig,
-            swapFee,
+            PoolFeeConfig({
+                poolSwapFeePercentage: swapFee,
+                protocolSwapFeePercentage: 0,
+                poolCreatorFeePercentage: 0,
+                poolCreator: address(0)
+            }),
             block.timestamp + pauseWindowDuration,
             roleAccounts,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
@@ -68,7 +78,12 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault.registerPool(
             pool,
             tokenConfig,
-            DEFAULT_SWAP_FEE,
+            PoolFeeConfig({
+                poolSwapFeePercentage: DEFAULT_SWAP_FEE,
+                protocolSwapFeePercentage: 0,
+                poolCreatorFeePercentage: 0,
+                poolCreator: address(0)
+            }),
             getNewPoolPauseWindowEndTime(),
             roleAccounts,
             poolHooks,
@@ -86,7 +101,12 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault.registerPool(
             pool,
             tokenConfig,
-            swapFeePercentage,
+            PoolFeeConfig({
+                poolSwapFeePercentage: swapFeePercentage,
+                protocolSwapFeePercentage: 0,
+                poolCreatorFeePercentage: 0,
+                poolCreator: address(0)
+            }),
             getNewPoolPauseWindowEndTime(),
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
             poolHooks,
@@ -106,7 +126,12 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault.registerPool(
             pool,
             tokenConfig,
-            DEFAULT_SWAP_FEE,
+            PoolFeeConfig({
+                poolSwapFeePercentage: DEFAULT_SWAP_FEE,
+                protocolSwapFeePercentage: 0,
+                poolCreatorFeePercentage: 0,
+                poolCreator: address(0)
+            }),
             timestamp,
             roleAccounts,
             poolHooks,

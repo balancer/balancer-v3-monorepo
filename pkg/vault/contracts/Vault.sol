@@ -20,6 +20,7 @@ import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHo
 import { IBufferPool } from "@balancer-labs/v3-interfaces/contracts/vault/IBufferPool.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -32,6 +33,9 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import {
+    SingletonAuthentication
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -54,12 +58,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using TransientStorageHelpers for *;
     using StorageSlot for *;
 
-    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) {
+    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer, IProtocolFeeCollector protocolFeeCollector) {
         if (address(vaultExtension.vault()) != address(this)) {
             revert WrongVaultExtensionDeployment();
         }
+        if (address(SingletonAuthentication(address(protocolFeeCollector)).getVault()) != address(this)) {
+            revert WrongProtocolFeeCollectorDeployment();
+        }
 
         _vaultExtension = vaultExtension;
+        _protocolFeeCollector = protocolFeeCollector;
 
         _vaultPauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
         _vaultBufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();

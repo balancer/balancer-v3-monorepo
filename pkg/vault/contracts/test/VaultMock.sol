@@ -12,6 +12,7 @@ import { IVaultMainMock } from "@balancer-labs/v3-interfaces/contracts/test/IVau
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
@@ -45,7 +46,11 @@ contract VaultMock is IVaultMainMock, Vault {
 
     bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
 
-    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) Vault(vaultExtension, authorizer) {
+    constructor(
+        IVaultExtension vaultExtension,
+        IAuthorizer authorizer,
+        IProtocolFeeCollector protocolFeeCollector
+    ) Vault(vaultExtension, authorizer, protocolFeeCollector) {
         uint256 pauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
         uint256 bufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
         _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowEndTime - bufferPeriodDuration);
