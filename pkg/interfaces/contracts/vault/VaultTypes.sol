@@ -125,6 +125,13 @@ struct TokenConfig {
     bool paysYieldFees;
 }
 
+struct PoolFeeConfig {
+    uint256 poolSwapFeePercentage;
+    uint256 protocolSwapFeePercentage;
+    uint256 poolCreatorFeePercentage;
+    address poolCreator;
+}
+
 struct PoolData {
     PoolConfig poolConfig;
     TokenConfig[] tokenConfig;
