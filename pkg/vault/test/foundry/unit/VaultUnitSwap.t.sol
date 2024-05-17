@@ -388,10 +388,26 @@ contract VaultUnitSwapTest is BaseTest {
                 poolData.tokenRates[swapState.indexOut]
             );
 
-        assertEq(vault.getProtocolFees(pool, swapTokens[swapState.indexOut]), expectedProtocolFeeAmountRaw, "Unexpected protocol fees in storage");
-        assertEq(vault.getPoolCreatorFees(pool, swapTokens[swapState.indexOut]), expectedCreatorFeeAmountRaw, "Unexpected creator fees in storage");
-        assertEq(vault.getProtocolFees(pool, swapTokens[swapState.indexIn]), 0, "Unexpected non-zero protocol fees in storage");
-        assertEq(vault.getPoolCreatorFees(pool, swapTokens[swapState.indexIn]), 0, "Unexpected non-zero creator fees in storage");
+        assertEq(
+            vault.getProtocolFees(pool, swapTokens[swapState.indexOut]),
+            expectedProtocolFeeAmountRaw,
+            "Unexpected protocol fees in storage"
+        );
+        assertEq(
+            vault.getPoolCreatorFees(pool, swapTokens[swapState.indexOut]),
+            expectedCreatorFeeAmountRaw,
+            "Unexpected creator fees in storage"
+        );
+        assertEq(
+            vault.getProtocolFees(pool, swapTokens[swapState.indexIn]),
+            0,
+            "Unexpected non-zero protocol fees in storage"
+        );
+        assertEq(
+            vault.getPoolCreatorFees(pool, swapTokens[swapState.indexIn]),
+            0,
+            "Unexpected non-zero creator fees in storage"
+        );
 
         _checkCommonSwapResult(
             amountIn,
@@ -465,10 +481,26 @@ contract VaultUnitSwapTest is BaseTest {
                 poolData.tokenRates[swapState.indexIn]
             );
 
-        assertEq(vault.getProtocolFees(pool, swapTokens[swapState.indexIn]), expectedProtocolFeeAmountRaw, "Unexpected protocol fees in storage");
-        assertEq(vault.getPoolCreatorFees(pool, swapTokens[swapState.indexIn]), expectedCreatorFeeAmountRaw, "Unexpected creator fees in storage");
-        assertEq(vault.getProtocolFees(pool, swapTokens[swapState.indexOut]), 0, "Unexpected non-zero protocol fees in storage");
-        assertEq(vault.getPoolCreatorFees(pool, swapTokens[swapState.indexOut]), 0, "Unexpected non-zero creator fees in storage");
+        assertEq(
+            vault.getProtocolFees(pool, swapTokens[swapState.indexIn]),
+            expectedProtocolFeeAmountRaw,
+            "Unexpected protocol fees in storage"
+        );
+        assertEq(
+            vault.getPoolCreatorFees(pool, swapTokens[swapState.indexIn]),
+            expectedCreatorFeeAmountRaw,
+            "Unexpected creator fees in storage"
+        );
+        assertEq(
+            vault.getProtocolFees(pool, swapTokens[swapState.indexOut]),
+            0,
+            "Unexpected non-zero protocol fees in storage"
+        );
+        assertEq(
+            vault.getPoolCreatorFees(pool, swapTokens[swapState.indexOut]),
+            0,
+            "Unexpected non-zero creator fees in storage"
+        );
 
         _checkCommonSwapResult(
             amountIn,
