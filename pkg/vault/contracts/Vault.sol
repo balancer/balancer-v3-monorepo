@@ -436,8 +436,22 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         poolData.increaseTokenBalance(state.indexIn, locals.balanceInIncrement);
         poolData.decreaseTokenBalance(state.indexOut, locals.balanceOutDecrement);
 
-        // 6) Store pool balances, raw and live
-        _writePoolBalancesToStorage(params.pool, poolData);
+        // 6) Store pool balances, raw and live (only index in and out)
+        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
+        poolBalances.unchecked_setAt(
+            state.indexIn,
+            PackedTokenBalance.toPackedBalance(
+                poolData.balancesRaw[state.indexIn],
+                poolData.balancesLiveScaled18[state.indexIn]
+            )
+        );
+        poolBalances.unchecked_setAt(
+            state.indexOut,
+            PackedTokenBalance.toPackedBalance(
+                poolData.balancesRaw[state.indexOut],
+                poolData.balancesLiveScaled18[state.indexOut]
+            )
+        );
 
         // 7) Off-chain events
         // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
