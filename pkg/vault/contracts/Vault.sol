@@ -1153,8 +1153,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Only updates buffer balances if buffer has a surplus of underlying tokens
             if (bufferUnderlyingSurplus > 0) {
-                // TODO explain
+                // If buffer has an underlying surplus, it wraps the surplus + amountIn, so the final amountIn needs
+                // to discount that
                 amountInUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus;
+                // Since bufferUnderlyingSurplus was wrapped, the final amountOut needs to discount the wrapped amount
+                // that will stay in the buffer
                 amountOutWrapped = vaultWrappedDelta - wrappedToken.convertToShares(bufferUnderlyingSurplus);
 
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
@@ -1249,9 +1252,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Only updates buffer balances if buffer has a surplus of wrapped tokens
             if (bufferWrappedSurplus > 0) {
-                // TODO explain
-                amountOutUnderlying = vaultUnderlyingDelta - wrappedToken.convertToAssets(bufferWrappedSurplus);
+                // If buffer has a wrapped surplus, it unwraps surplus + amountIn, so the final amountIn needs to
+                // discount that
                 amountInWrapped = vaultWrappedDelta - bufferWrappedSurplus;
+                // Since bufferWrappedSurplus was unwrapped, the final amountOut needs to discount the underlying
+                // amount that will stay in the buffer
+                amountOutUnderlying = vaultUnderlyingDelta - wrappedToken.convertToAssets(bufferWrappedSurplus);
 
                 // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance
                 // will decrease. To increase the underlying balance, we get the delta amount that was withdrawn
@@ -1366,23 +1372,38 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 bufferWrappedSurplus,
         uint256 vaultWrappedDelta
     ) private view {
-
-        // TODO explain
-        uint256 totalExpectedUnderlying;
-        uint256 totalExpectedWrapped;
+        uint256 expectedUnderlyingDelta;
+        uint256 expectedWrappedDelta;
         if (bufferUnderlyingSurplus > 0) {
-            totalExpectedUnderlying = wrapUnwrapUnderlyingExpected + bufferUnderlyingSurplus;
-            totalExpectedWrapped = wrapUnwrapWrappedExpected + wrappedToken.convertToShares(bufferUnderlyingSurplus);
+            // If buffer has a surplus of underlying, the expected underlying delta is the underlying amountIn from the
+            // user (wrapUnwrapUnderlyingExpected) + bufferUnderlyingSurplus. This value left vault's reserves because
+            // it was wrapped
+            expectedUnderlyingDelta = wrapUnwrapUnderlyingExpected + bufferUnderlyingSurplus;
+            // If buffer has a surplus of underlying, the expected wrapped delta is the wrapped amountOut to the
+            // user (wrapUnwrapWrappedExpected) + converted bufferUnderlyingSurplus. This value was added to vault's
+            // reserves because underlying was wrapped
+            expectedWrappedDelta = wrapUnwrapWrappedExpected + wrappedToken.convertToShares(bufferUnderlyingSurplus);
+        } else if (bufferWrappedSurplus > 0) {
+            // If buffer has a surplus of wrapped, the expected wrapped delta is the wrapped amountIn from the
+            // user (wrapUnwrapWrappedExpected) + bufferWrappedSurplus. This value left vault's reserves because
+            // it was unwrapped
+            expectedWrappedDelta = wrapUnwrapWrappedExpected + bufferWrappedSurplus;
+            // If buffer has a surplus of wrapped, the expected underlying delta is the underlying amountOut to the
+            // user (wrapUnwrapUnderlyingExpected) + converted bufferWrappedSurplus. This value was added to vault's
+            // reserves because wrapped was redeemed
+            expectedUnderlyingDelta = wrapUnwrapUnderlyingExpected + wrappedToken.convertToAssets(bufferWrappedSurplus);
         } else {
-            totalExpectedUnderlying = wrapUnwrapUnderlyingExpected + wrappedToken.convertToAssets(bufferWrappedSurplus);
-            totalExpectedWrapped = wrapUnwrapWrappedExpected + bufferWrappedSurplus;
+            // If no surplus, the expected delta is the amountsIn and amountsOut
+            // (EXACT_OUT Wrap/Unwrap or perfectly balanced buffer)
+            expectedUnderlyingDelta = wrapUnwrapUnderlyingExpected;
+            expectedWrappedDelta = wrapUnwrapWrappedExpected;
         }
 
         if (
-            (vaultUnderlyingDelta < totalExpectedUnderlying &&
-                totalExpectedUnderlying - vaultUnderlyingDelta > _MAX_CONVERT_ERROR) ||
-            (vaultUnderlyingDelta > totalExpectedUnderlying &&
-                vaultUnderlyingDelta - totalExpectedUnderlying > _MAX_CONVERT_ERROR)
+            (vaultUnderlyingDelta < expectedUnderlyingDelta &&
+                expectedUnderlyingDelta - vaultUnderlyingDelta > _MAX_CONVERT_ERROR) ||
+            (vaultUnderlyingDelta > expectedUnderlyingDelta &&
+                vaultUnderlyingDelta - expectedUnderlyingDelta > _MAX_CONVERT_ERROR)
         ) {
             // If this error is thrown, it means the convert result had an absolute error greater than
             // _MAX_CONVERT_ERROR in comparison with the actual operation.
@@ -1390,9 +1411,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (
-            ((vaultWrappedDelta > totalExpectedWrapped) &&
-                (vaultWrappedDelta - totalExpectedWrapped > _MAX_CONVERT_ERROR)) ||
-            (vaultWrappedDelta < totalExpectedWrapped && totalExpectedWrapped - vaultWrappedDelta > _MAX_CONVERT_ERROR)
+            ((vaultWrappedDelta > expectedWrappedDelta) &&
+                (vaultWrappedDelta - expectedWrappedDelta > _MAX_CONVERT_ERROR)) ||
+            (vaultWrappedDelta < expectedWrappedDelta && expectedWrappedDelta - vaultWrappedDelta > _MAX_CONVERT_ERROR)
         ) {
             // If this error is thrown, it means the convert result had an absolute error greater than
             // _MAX_CONVERT_ERROR in comparison with the actual operation.
