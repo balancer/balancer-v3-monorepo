@@ -102,7 +102,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         tokenConfig[wrappedTokenIndex].rateProvider = rateProvider;
         // ERC4626 wrapped tokens always pay yield fees.
         tokenConfig[wrappedTokenIndex].paysYieldFees = true;
-        // We are assuming the baseToken is STANDARD (the default type, with enum value 0).
+        // We are assuming the underlyingToken is STANDARD (the default type, with enum value 0).
         tokenConfig[baseTokenIndex].token = IERC20(wrappedToken.asset());
 
         getVault().registerPool(

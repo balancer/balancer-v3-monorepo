@@ -29,6 +29,7 @@ import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
 import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
 import { PoolDataLib } from "../lib/PoolDataLib.sol";
+import { BufferPackedTokenBalance } from "../lib/BufferPackedBalance.sol";
 
 struct SwapInternalStateLocals {
     SwapParams params;
@@ -46,6 +47,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
+    using BufferPackedTokenBalance for bytes32;
 
     PoolFactoryMock private immutable _poolFactoryMock;
     InputHelpersMock private immutable _inputHelpersMock;
@@ -344,7 +346,7 @@ contract VaultMock is IVaultMainMock, Vault {
 
         for (uint256 i = 0; i < numTokens; ++i) {
             (, packedBalances) = poolTokenBalances.unchecked_at(i);
-            balancesRaw[i] = packedBalances.getRawBalance();
+            balancesRaw[i] = packedBalances.getBalanceRaw();
         }
     }
 
@@ -363,7 +365,7 @@ contract VaultMock is IVaultMainMock, Vault {
 
         for (uint256 i = 0; i < numTokens; ++i) {
             (, packedBalances) = poolTokenBalances.unchecked_at(i);
-            lastLiveBalances[i] = packedBalances.getLastLiveBalanceScaled18();
+            lastLiveBalances[i] = packedBalances.getBalanceDerived();
         }
     }
 
@@ -481,12 +483,66 @@ contract VaultMock is IVaultMainMock, Vault {
     )
         external
         returns (
+            PoolData memory updatedPoolData,
             uint256[] memory amountsInRaw,
             uint256[] memory amountsInScaled18,
             uint256 bptAmountOut,
             bytes memory returnData
         )
     {
-        return _addLiquidity(poolData, params, maxAmountsInScaled18, vaultState);
+        (amountsInRaw, amountsInScaled18, bptAmountOut, returnData) = _addLiquidity(
+            poolData,
+            params,
+            maxAmountsInScaled18,
+            vaultState
+        );
+
+        updatedPoolData = poolData;
+    }
+
+    function manualRemoveLiquidity(
+        PoolData memory poolData,
+        RemoveLiquidityParams memory params,
+        uint256[] memory minAmountsOutScaled18,
+        VaultState memory vaultState
+    )
+        external
+        returns (
+            PoolData memory updatedPoolData,
+            uint256 bptAmountIn,
+            uint256[] memory amountsOutRaw,
+            uint256[] memory amountsOutScaled18,
+            bytes memory returnData
+        )
+    {
+        (bptAmountIn, amountsOutRaw, amountsOutScaled18, returnData) = _removeLiquidity(
+            poolData,
+            params,
+            minAmountsOutScaled18,
+            vaultState
+        );
+
+        updatedPoolData = poolData;
+    }
+
+    function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256) {
+        bytes32 bufferBalance = _bufferTokenBalances[IERC20(address(wrappedToken))];
+        return _getBufferUnderlyingSurplus(bufferBalance, wrappedToken);
+    }
+
+    function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256) {
+        bytes32 bufferBalance = _bufferTokenBalances[IERC20(address(wrappedToken))];
+        return _getBufferWrappedSurplus(bufferBalance, wrappedToken);
+    }
+
+    function manualUpdateReservesAfterWrapping(
+        IERC20 underlyingToken,
+        IERC20 wrappedToken
+    ) external returns (uint256, uint256) {
+        return _updateReservesAfterWrapping(underlyingToken, wrappedToken);
+    }
+
+    function manualTransfer(IERC20 token, address to, uint256 amount) external {
+        token.transfer(to, amount);
     }
 }

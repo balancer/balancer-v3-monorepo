@@ -200,6 +200,22 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /*******************************************************************************
+                                     Buffer Pausing
+    *******************************************************************************/
+    /// @dev Modifier to make a function callable only when vault buffers are not paused.
+    modifier whenVaultBuffersAreNotPaused() {
+        _ensureVaultBuffersAreNotPaused();
+        _;
+    }
+
+    /// @dev Reverts if vault buffers are paused.
+    function _ensureVaultBuffersAreNotPaused() internal view {
+        if (_vaultState.areBuffersPaused()) {
+            revert VaultBuffersArePaused();
+        }
+    }
+
+    /*******************************************************************************
                             Pool Registration and Initialization
     *******************************************************************************/
 
@@ -322,7 +338,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             if (poolSubjectToYieldFees && tokenSubjectToYieldFees) {
                 (uint256 protocolYieldFeeAmountRaw, uint256 creatorYieldFeeAmountRaw) = _computeYieldFeesDue(
                     poolData,
-                    poolBalances.unchecked_valueAt(i).getLastLiveBalanceScaled18(),
+                    poolBalances.unchecked_valueAt(i).getBalanceDerived(),
                     i,
                     yieldFeePercentage
                 );

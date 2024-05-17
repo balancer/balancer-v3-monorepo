@@ -43,7 +43,7 @@ library PoolDataLib {
             (token, packedBalance) = poolTokenBalances.unchecked_at(i);
             poolData.tokenConfig[i] = poolTokenConfig[token];
             updateTokenRate(poolData, i);
-            updateRawAndLiveBalance(poolData, i, packedBalance.getRawBalance(), roundingDirection);
+            updateRawAndLiveBalance(poolData, i, packedBalance.getBalanceRaw(), roundingDirection);
         }
     }
 
@@ -71,7 +71,7 @@ library PoolDataLib {
             (, packedBalance) = poolTokenBalances.unchecked_at(i);
 
             // Note the order dependency. This requires up-to-date tokenRate for the token at index `i` in `poolData`
-            updateRawAndLiveBalance(poolData, i, packedBalance.getRawBalance(), roundingDirection);
+            updateRawAndLiveBalance(poolData, i, packedBalance.getBalanceRaw(), roundingDirection);
         }
     }
 
