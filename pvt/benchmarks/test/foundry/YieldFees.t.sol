@@ -85,14 +85,6 @@ contract YieldFeesTest is BaseVaultTest {
         return address(weightedPoolWithRate);
     }
 
-    function setProtocolYieldFeePercentage(uint256 yieldFeePercentage) internal {
-        bytes32 setFeeRole = vault.getActionId(IVaultAdmin.setProtocolYieldFeePercentage.selector);
-        authorizer.grantRole(setFeeRole, alice);
-
-        vm.prank(alice);
-        vault.setProtocolYieldFeePercentage(yieldFeePercentage);
-    }
-
     function testSwapWithoutYieldFeesSnapshot() public {
         uint256 yieldFeePercentage;
         uint256 creatorYieldFeePercentage;

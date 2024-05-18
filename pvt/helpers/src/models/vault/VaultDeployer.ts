@@ -6,6 +6,7 @@ import { VaultDeploymentInputParams, VaultDeploymentParams } from './types';
 
 import TypesConverter from '../types/TypesConverter';
 import {
+  ProtocolFeeCollector,
   Vault,
   VaultAdmin,
   VaultAdminMock,
@@ -45,8 +46,13 @@ async function deployReal(deployment: VaultDeploymentParams, authorizer: BaseCon
     from: admin,
   });
 
+  const protocolFeeCollector: ProtocolFeeCollector = await contract.deploy('v3-vault/ProtocolFeeCollector', {
+    args: [futureVaultAddress],
+    from: admin,
+  });
+
   return await contract.deploy('v3-vault/Vault', {
-    args: [vaultExtension, authorizer],
+    args: [vaultExtension, authorizer, protocolFeeCollector],
     from: admin,
   });
 }
@@ -66,8 +72,13 @@ async function deployMocked(deployment: VaultDeploymentParams, authorizer: BaseC
     from: admin,
   });
 
+  const protocolFeeCollector: ProtocolFeeCollector = await contract.deploy('v3-vault/ProtocolFeeCollector', {
+    args: [futureVaultAddress],
+    from: admin,
+  });
+
   return await contract.deploy('v3-vault/VaultMock', {
-    args: [vaultExtension, authorizer],
+    args: [vaultExtension, authorizer, protocolFeeCollector],
     from: admin,
   });
 }
@@ -77,7 +88,7 @@ async function getVaultAddress(from: SignerWithAddress): Promise<string> {
   const nonce = await from.getNonce();
   const futureAddress = ethers.getCreateAddress({
     from: from.address,
-    nonce: nonce + 2,
+    nonce: nonce + 3,
   });
   return futureAddress;
 }

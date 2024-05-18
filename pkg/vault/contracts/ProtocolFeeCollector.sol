@@ -91,6 +91,11 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     }
 
     /// @inheritdoc IProtocolFeeCollector
+    function vault() external view returns (IVault) {
+        return getVault();
+    }
+
+    /// @inheritdoc IProtocolFeeCollector
     function getGlobalProtocolSwapFeePercentage() public view returns (uint256) {
         return _protocolSwapFeePercentage;
     }

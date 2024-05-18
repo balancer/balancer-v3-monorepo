@@ -245,8 +245,8 @@ describe('Vault', function () {
       // We subtract 2 because the timestamp is set when the extension is deployed.
       // Each contract deployment pushes the timestamp by 1, and the main Vault is deployed right after the extension
       // and the vault admin.
-      expect(pauseWindowEndTime).to.equal(await fromNow(PAUSE_WINDOW_DURATION - 2));
-      expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION - 2)) + bn(BUFFER_PERIOD_DURATION));
+      expect(pauseWindowEndTime).to.equal(await fromNow(PAUSE_WINDOW_DURATION - 3));
+      expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION - 3)) + bn(BUFFER_PERIOD_DURATION));
 
       await timedVault.manualPauseVault();
       expect(await timedVault.isVaultPaused()).to.be.true;

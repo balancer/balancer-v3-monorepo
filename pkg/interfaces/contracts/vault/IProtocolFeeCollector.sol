@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { PoolFeeConfig } from "./VaultTypes.sol";
+import { IVault } from "./IVault.sol";
 
 enum ProtocolFeeType {
     SWAP,
@@ -77,6 +78,9 @@ interface IProtocolFeeCollector {
 
     /// @dev The fee percentages are inconsistent (e.g., there is a creator fee, with no creator).
     error InvalidFeeConfiguration();
+
+    /// @dev Returns the main Vault address.
+    function vault() external view returns (IVault);
 
     /**
      * @notice Getter for the current suggested global protocol swap fee.

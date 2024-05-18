@@ -70,14 +70,6 @@ contract YieldFeesTest is BaseVaultTest {
         return address(newPool);
     }
 
-    function setProtocolYieldFeePercentage(uint256 yieldFeePercentage) internal {
-        bytes32 setFeeRole = vault.getActionId(IVaultAdmin.setAggregateProtocolYieldFeePercentage.selector);
-        authorizer.grantRole(setFeeRole, alice);
-
-        vm.prank(alice);
-        vault.setAggregateProtocolYieldFeePercentage(pool, yieldFeePercentage);
-    }
-
     function testPoolDataAfterInitialization__Fuzz(bool roundUp) public {
         pool = createPool();
         initPool();
@@ -131,7 +123,7 @@ contract YieldFeesTest is BaseVaultTest {
         uint256[] memory originalLiveBalances = verifyLiveBalances(wstethRate, daiRate, roundUp);
 
         // Set non-zero yield fee
-        vault.setAggregateProtocolYieldFeePercentage(
+        vault.manualSetAggregateProtocolYieldFeePercentage(
             pool,
             _getAggregateFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage)
         );
@@ -161,7 +153,7 @@ contract YieldFeesTest is BaseVaultTest {
             IERC20[] memory feeTokens = new IERC20[](2);
             feeTokens[0] = dai;
             feeTokens[1] = wsteth;
-            uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
+            uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedProtocolFeeAmounts(pool);
 
             // Should be no protocol fees on dai, since it is yield fee exempt
             assertEq(feeAmounts[0], 0, "Protocol fees on exempt dai are not 0");
@@ -309,12 +301,12 @@ contract YieldFeesTest is BaseVaultTest {
         IERC20[] memory feeTokens = new IERC20[](2);
         feeTokens[0] = dai;
         feeTokens[1] = wsteth;
-        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
+        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedProtocolFeeAmounts(pool);
 
         require(feeAmounts[0] == 0, "Initial protocol fees for DAI not 0");
         require(feeAmounts[1] == 0, "Initial protocol fees for wstETH not 0");
 
-        vault.setAggregateProtocolYieldFeePercentage(
+        vault.manualSetAggregateProtocolYieldFeePercentage(
             pool,
             _getAggregateFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage)
         );
@@ -337,7 +329,7 @@ contract YieldFeesTest is BaseVaultTest {
 
         // No matter what the rates are, the value of wsteth grows from 1x to 10x.
         // Then, the protocol takes its cut out of the 9x difference.
-        feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
+        feeAmounts = vault.getProtocolFeeCollector().getCollectedProtocolFeeAmounts(pool);
 
         assertEq(
             feeAmounts[1],

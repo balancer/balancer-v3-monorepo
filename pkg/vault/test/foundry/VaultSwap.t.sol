@@ -419,16 +419,13 @@ contract VaultSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        authorizer.grantRole(vault.getActionId(IProtocolFeeCollector.withdrawCollectedFees.selector), admin);
+        authorizer.grantRole(vault.getActionId(IProtocolFeeCollector.withdrawProtocolFees.selector), admin);
         vm.prank(admin);
-        vault.getProtocolFeeCollector().withdrawCollectedFees(
-            [address(dai)].toMemoryArray().asIERC20(),
-            address(admin)
-        );
+        vault.getProtocolFeeCollector().withdrawProtocolFees(address(admin), address(admin));
 
-        IERC20[] memory feeTokens = new IERC20[](1);
+        IERC20[] memory feeTokens = new IERC20[](2);
         feeTokens[0] = dai;
-        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
+        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedProtocolFeeAmounts(pool);
 
         // protocol fees are zero
         assertEq(0, feeAmounts[0], "Protocol fees are not zero");
@@ -521,9 +518,9 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(balances[daiIdx], daiFee - daiProtocolFee, "Swap: Pool's [0] balance is wrong");
         assertEq(balances[usdcIdx], 2 * defaultAmount + usdcFee - usdcProtocolFee, "Swap: Pool's [1] balance is wrong");
 
-        IERC20[] memory feeTokens = new IERC20[](1);
+        IERC20[] memory feeTokens = new IERC20[](2);
         feeTokens[0] = dai;
-        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
+        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedProtocolFeeAmounts(pool);
 
         // protocol fees are accrued
         assertEq(protocolFee, feeAmounts[0], "Swap: Protocol's fee amount is wrong");
