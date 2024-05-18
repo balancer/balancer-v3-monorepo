@@ -90,12 +90,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                               Constants and immutables
     *******************************************************************************/
 
+    /// @inheritdoc IVaultAdmin
     function vault() external view returns (IVault) {
         return _vault;
-    }
-
-    function getProtocolFeeCollector() external view onlyVault returns (IProtocolFeeCollector) {
-        return _protocolFeeCollector;
     }
 
     /// @inheritdoc IVaultAdmin

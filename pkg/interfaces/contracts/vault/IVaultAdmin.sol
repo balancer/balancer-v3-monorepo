@@ -48,9 +48,6 @@ interface IVaultAdmin {
     /// @dev Returns the main Vault address.
     function vault() external view returns (IVault);
 
-    /// @dev Returns the ProtocolFeeCollector address.
-    function getProtocolFeeCollector() external view returns (IProtocolFeeCollector);
-
     /*******************************************************************************
                                     Pool Information
     *******************************************************************************/
