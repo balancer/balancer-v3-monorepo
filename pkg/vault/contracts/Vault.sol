@@ -12,7 +12,6 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -33,9 +32,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
-import {
-    SingletonAuthentication
-} from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -385,9 +381,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Compute and charge aggregate protocol fees. Note that protocol fee storage is updated
         // before balance storage, as the final raw balances need to take the fees into account.
-
-        // `_onBeforeChargingProtocolFees` forces collection of protocol fees if the percentages have changed since
-        // the last operation. Then returns whether or not protocol fees can be charged (e.g., would be non-zero).
         vars.aggregateSwapFeeAmountRaw = _computeAndChargeProtocolSwapFees(
             poolData,
             vars.swapFeeAmountScaled18,
@@ -472,13 +465,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     /*******************************************************************************
                                 Pool Operations
     *******************************************************************************/
-
-    /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
-    struct LiquidityLocals {
-        uint256 numTokens;
-        uint256 aggregateSwapFeeAmountRaw;
-        uint256 tokenIndex;
-    }
 
     /// @inheritdoc IVaultMain
     function addLiquidity(
@@ -592,14 +578,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             bytes memory returnData
         )
     {
-        LiquidityLocals memory vars;
-        vars.numTokens = poolData.tokenConfig.length;
+        uint256 aggregateSwapFeeAmountRaw;
+        uint256 tokenIndex;
+
+        uint256 numTokens = poolData.tokenConfig.length;
         uint256[] memory swapFeeAmountsScaled18;
 
         if (params.kind == AddLiquidityKind.PROPORTIONAL) {
             bptAmountOut = params.minBptAmountOut;
             // Initializes the swapFeeAmountsScaled18 empty array (no swap fees on proportional add liquidity)
-            swapFeeAmountsScaled18 = new uint256[](vars.numTokens);
+            swapFeeAmountsScaled18 = new uint256[](numTokens);
 
             amountsInScaled18 = BasePoolMath.computeProportionalAmountsIn(
                 poolData.balancesLiveScaled18,
@@ -621,13 +609,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.poolConfig.requireUnbalancedLiquidityEnabled();
 
             bptAmountOut = params.minBptAmountOut;
-            vars.tokenIndex = InputHelpers.getSingleInputIndex(maxAmountsInScaled18);
+            tokenIndex = InputHelpers.getSingleInputIndex(maxAmountsInScaled18);
 
             amountsInScaled18 = maxAmountsInScaled18;
-            (amountsInScaled18[vars.tokenIndex], swapFeeAmountsScaled18) = BasePoolMath
+            (amountsInScaled18[tokenIndex], swapFeeAmountsScaled18) = BasePoolMath
                 .computeAddLiquiditySingleTokenExactOut(
                     poolData.balancesLiveScaled18,
-                    vars.tokenIndex,
+                    tokenIndex,
                     bptAmountOut,
                     _totalSupply(params.pool),
                     poolData.poolConfig.staticSwapFeePercentage,
@@ -653,9 +641,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert BptAmountOutBelowMin(bptAmountOut, params.minBptAmountOut);
         }
 
-        amountsInRaw = new uint256[](vars.numTokens);
+        amountsInRaw = new uint256[](numTokens);
 
-        for (uint256 i = 0; i < vars.numTokens; ++i) {
+        for (uint256 i = 0; i < numTokens; ++i) {
             // 1) Calculate raw amount in.
             // amountsInRaw are amounts actually entering the Pool, so we round up.
             // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` hook
@@ -666,7 +654,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             amountsInRaw[i] = amountInRaw;
 
             {
-                // stack-too-deep
+                // stack-too-deep (forge)
                 IERC20 token = poolData.tokenConfig[i].token;
 
                 // 2) Check limits for raw amounts
@@ -678,7 +666,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 _takeDebt(token, amountInRaw);
 
                 // 4) Compute and charge aggregate protocol fees.
-                vars.aggregateSwapFeeAmountRaw = _computeAndChargeProtocolSwapFees(
+                aggregateSwapFeeAmountRaw = _computeAndChargeProtocolSwapFees(
                     poolData,
                     swapFeeAmountsScaled18[i],
                     params.pool,
@@ -692,7 +680,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // to use in the `after` hook later on.
 
             // A pool's token balance increases by amounts in after adding liquidity, minus fees.
-            uint256 newRawBalance = poolData.balancesRaw[i] + amountInRaw - vars.aggregateSwapFeeAmountRaw;
+            uint256 newRawBalance = poolData.balancesRaw[i] + amountInRaw - aggregateSwapFeeAmountRaw;
             _updateRawAndLiveTokenBalancesInPoolData(poolData, newRawBalance, Rounding.ROUND_UP, i);
         }
 
@@ -706,6 +694,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // 8) Off-chain events
         emit PoolBalanceChanged(params.pool, params.to, amountsInRaw.unsafeCastToInt256(true));
+    }
+
+    /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
+    struct LiquidityLocals {
+        uint256 numTokens;
+        uint256 aggregateSwapFeeAmountRaw;
+        uint256 tokenIndex;
     }
 
     /// @inheritdoc IVaultMain
