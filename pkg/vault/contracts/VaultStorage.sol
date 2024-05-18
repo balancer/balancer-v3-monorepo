@@ -21,7 +21,6 @@ import {
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
-import { ProtocolFeeCollector } from "./ProtocolFeeCollector.sol";
 
 // solhint-disable max-states-count
 
@@ -69,8 +68,8 @@ contract VaultStorage {
     bool private __isUnlocked;
 
     /**
-     * @notice The total number of nonzero deltas over all active + completed lockers.
-     * @dev It is non-zero only during `lock` calls.
+     * @notice The total number of nonzero deltas.
+     * @dev It is non-zero only during `unlock` calls.
      */
     uint256 private __nonzeroDeltaCount;
 
@@ -88,7 +87,7 @@ contract VaultStorage {
 
     /**
      * @dev Represents the total reserve of each ERC20 token. It should be always equal to `token.balanceOf(vault)`,
-     * except during `lock`.
+     * except during `unlock`.
      */
     mapping(IERC20 => uint256) internal _reservesOf;
 
