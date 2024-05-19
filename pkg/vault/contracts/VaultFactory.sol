@@ -12,6 +12,7 @@ import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREA
 import { Vault } from "./Vault.sol";
 import { VaultAdmin } from "./VaultAdmin.sol";
 import { VaultExtension } from "./VaultExtension.sol";
+import { ProtocolFeeCollector } from "./ProtocolFeeCollector.sol";
 
 /**
  * @dev One-off factory to deploy the Vault at a specific address.
@@ -72,7 +73,9 @@ contract VaultFactory is Authentication {
 
         VaultExtension vaultExtension = new VaultExtension(IVault(vaultAddress), vaultAdmin);
 
-        address deployedAddress = _create(abi.encode(vaultExtension, _authorizer), salt);
+        ProtocolFeeCollector feeCollector = new ProtocolFeeCollector(IVault(vaultAddress));
+
+        address deployedAddress = _create(abi.encode(vaultExtension, _authorizer, feeCollector), salt);
 
         // This should always be the case, but we enforce the end state to match the expected outcome anyways.
         if (deployedAddress != targetAddress) {
