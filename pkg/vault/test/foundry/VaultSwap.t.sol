@@ -9,6 +9,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -419,9 +420,13 @@ contract VaultSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        authorizer.grantRole(vault.getActionId(IProtocolFeeCollector.withdrawProtocolFees.selector), admin);
+        IProtocolFeeCollector feeCollector = vault.getProtocolFeeCollector();
+        authorizer.grantRole(
+            IAuthentication(address(feeCollector)).getActionId(IProtocolFeeCollector.withdrawProtocolFees.selector),
+            admin
+        );
         vm.prank(admin);
-        vault.getProtocolFeeCollector().withdrawProtocolFees(address(admin), address(admin));
+        feeCollector.withdrawProtocolFees(pool, address(admin));
 
         IERC20[] memory feeTokens = new IERC20[](2);
         feeTokens[0] = dai;

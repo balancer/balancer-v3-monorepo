@@ -23,8 +23,8 @@ contract PoolConfigLibTest is Test {
 
     mapping(uint256 => bool) usedBits;
 
-    // 16 flags + 2 * 24 bit fee + 24 bit token diffs + 32 bit timestamp = 120 total bits used.
-    uint256 private constant BITS_IN_USE = 120;
+    // 16 flags + 3 * 24 bit fee + 24 bit token diffs + 32 bit timestamp = 144 total bits used.
+    uint256 private constant BITS_IN_USE = 144;
 
     // #region PoolConfigBits
     function testOffsets() public {
