@@ -46,6 +46,8 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     uint256 internal tooLargeSwapAmount = boostedPoolAmount / 2;
     // We will swap with 10% of the buffer
     uint256 internal swapAmount = bufferAmount / 10;
+    // LP can unbalance buffer with this amount
+    uint256 internal unbalanceDelta = bufferAmount / 2;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -68,13 +70,13 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     function initializeBuffers() private {
         // Create and fund buffer pools
         vm.startPrank(lp);
-        dai.mint(address(lp), bufferAmount);
-        dai.approve(address(waDAI), bufferAmount);
-        waDAI.deposit(bufferAmount, address(lp));
+        dai.mint(address(lp), 2 * bufferAmount);
+        dai.approve(address(waDAI), 2 * bufferAmount);
+        waDAI.deposit(2 * bufferAmount, address(lp));
 
-        usdc.mint(address(lp), bufferAmount);
-        usdc.approve(address(waUSDC), bufferAmount);
-        waUSDC.deposit(bufferAmount, address(lp));
+        usdc.mint(address(lp), 2 * bufferAmount);
+        usdc.approve(address(waUSDC), 2 * bufferAmount);
+        waUSDC.deposit(2 * bufferAmount, address(lp));
         vm.stopPrank();
 
         vm.startPrank(lp);
@@ -167,6 +169,8 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testBoostedPoolSwapWithinBufferRangeExactIn() public {
+        SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
+
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
 
         snapStart("boostedPoolSwapExactIn-vault");
@@ -175,12 +179,22 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
-        // When the buffer has enough liquidity to wrap/unwrap, bufferExpectedDelta is swapAmount because the
-        // `erc4626BufferWrapOrUnwrap` just transfer swapAmount from underlying to wrapped balance (and vice-versa)
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, swapAmount);
+        // When the buffer has enough liquidity to wrap/unwrap, buffer balances should change by swapAmount
+        // DAI buffer receives DAI from user
+        vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai + swapAmount;
+        vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai - swapAmount;
+        // BoostedPool receives WaDai from DAI buffer, and gives waUSDC to USDC buffer
+        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc + swapAmount;
+        // USDC buffer gives USDC to user
+        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc - swapAmount;
+        vars.expectedAliceDelta = swapAmount;
+
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, vars);
     }
 
     function testBoostedPoolSwapWithinBufferRangeExactOut() public {
+        SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
+
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount);
 
         snapStart("boostedPoolSwapExactOut-vault");
@@ -189,12 +203,22 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
-        // When the buffer has enough liquidity to wrap/unwrap, bufferExpectedDelta is swapAmount because the
-        // `erc4626BufferWrapOrUnwrap` just transfer swapAmount from underlying to wrapped balance (and vice-versa)
-        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, swapAmount);
+        // When the buffer has enough liquidity to wrap/unwrap, buffer balances should change by swapAmount
+        // DAI buffer receives DAI from user
+        vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai + swapAmount;
+        vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai - swapAmount;
+        // BoostedPool receives WaDai from DAI buffer, and gives waUSDC to USDC buffer
+        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc + swapAmount;
+        // USDC buffer gives USDC to user
+        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc - swapAmount;
+        vars.expectedAliceDelta = swapAmount;
+
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
 
     function testBoostedPoolSwapOutOfBufferRangeExactIn() public {
+        SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
+
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(tooLargeSwapAmount);
 
         snapStart("boostedPoolSwapTooLarge-ExactIn-vault");
@@ -203,12 +227,20 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
-        // When the buffer has not enough liquidity to wrap/unwrap, bufferExpectedDelta is 0 because the
-        // `erc4626BufferWrapOrUnwrap` function leaves the buffer perfectly balanced at the end.
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, tooLargeSwapAmount, SwapKind.EXACT_IN, 0);
+        // When the buffer has not enough liquidity to wrap/unwrap and buffers were balanced, buffer balances should
+        // not change
+        vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai;
+        vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai;
+        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc;
+        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc;
+        vars.expectedAliceDelta = tooLargeSwapAmount;
+
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, vars);
     }
 
     function testBoostedPoolSwapOutOfBufferRangeExactOut() public {
+        SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
+
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(tooLargeSwapAmount);
 
         snapStart("boostedPoolSwapTooLarge-ExactOut-vault");
@@ -217,9 +249,81 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
         snapEnd();
 
-        // When the buffer has not enough liquidity to wrap/unwrap, bufferExpectedDelta is 0 because the
-        // `erc4626BufferWrapOrUnwrap` function leaves the buffer perfectly balanced at the end.
-        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, tooLargeSwapAmount, SwapKind.EXACT_OUT, 0);
+        // When the buffer has not enough liquidity to wrap/unwrap and buffers were balanced, buffer balances should
+        // not change
+        vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai;
+        vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai;
+        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc;
+        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc;
+        vars.expectedAliceDelta = tooLargeSwapAmount;
+
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
+    }
+
+    function testBoostedPoolSwapUnbalancedBufferExactIn() public {
+        vm.startPrank(lp);
+        // Surplus of underlying
+        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, address(lp));
+        // Surplus of wrapped
+        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, address(lp));
+        vm.stopPrank();
+
+        SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
+
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(tooLargeSwapAmount);
+
+        snapStart("boostedPoolSwapUnbalancedBuffer-ExactIn-vault");
+        vm.prank(alice);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
+
+        // When the buffer has not enough liquidity to wrap/unwrap and buffers were not balanced, buffers should be
+        // perfectly balanced at the end, but only if the wrap/unwrap direction is the same as the operation executed
+        // by the user. E.g.:
+        // - If user is wrapping and buffer has a surplus of underlying, buffer will be balanced
+        // - If user is unwrapping and buffer has a surplus of wrapped, buffer will be balanced
+        // - But if user is wrapping and buffer has a surplus of wrapped, buffer will stay as is
+        vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai - (unbalanceDelta / 2);
+        vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai + (unbalanceDelta / 2);
+        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc + (unbalanceDelta / 2);
+        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc - (unbalanceDelta / 2);
+        vars.expectedAliceDelta = tooLargeSwapAmount;
+
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, vars);
+    }
+
+    function testBoostedPoolSwapUnbalancedBufferExactOut() public {
+        vm.startPrank(lp);
+        // Surplus of underlying
+        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, address(lp));
+        // Surplus of wrapped
+        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, address(lp));
+        vm.stopPrank();
+
+        SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
+
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(tooLargeSwapAmount);
+
+        snapStart("boostedPoolSwapUnbalancedBuffer-ExactOut-vault");
+        vm.prank(alice);
+        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
+            .swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        snapEnd();
+
+        // When the buffer has not enough liquidity to wrap/unwrap and buffers were not balanced, buffers should be
+        // perfectly balanced at the end, but only if the wrap/unwrap direction is the same as the operation executed
+        // by the user. E.g.:
+        // - If user is wrapping and buffer has a surplus of underlying, buffer will be balanced
+        // - If user is unwrapping and buffer has a surplus of wrapped, buffer will be balanced
+        // - But if user is wrapping and buffer has a surplus of wrapped, buffer will stay as is
+        vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai - (unbalanceDelta / 2);
+        vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai + (unbalanceDelta / 2);
+        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc + (unbalanceDelta / 2);
+        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc - (unbalanceDelta / 2);
+        vars.expectedAliceDelta = tooLargeSwapAmount;
+
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
 
     function _buildExactInPaths(
@@ -266,13 +370,49 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         });
     }
 
+    struct SwapResultLocals {
+        SwapKind kind;
+        uint256 aliceBalanceBeforeSwapDai;
+        uint256 aliceBalanceBeforeSwapUsdc;
+        uint256 bufferBalanceBeforeSwapDai;
+        uint256 bufferBalanceBeforeSwapWaDai;
+        uint256 bufferBalanceBeforeSwapUsdc;
+        uint256 bufferBalanceBeforeSwapWaUsdc;
+        uint256 boostedPoolBalanceBeforeSwapWaDai;
+        uint256 boostedPoolBalanceBeforeSwapWaUsdc;
+        uint256 expectedAliceDelta;
+        uint256 expectedBufferBalanceAfterSwapDai;
+        uint256 expectedBufferBalanceAfterSwapWaDai;
+        uint256 expectedBufferBalanceAfterSwapUsdc;
+        uint256 expectedBufferBalanceAfterSwapWaUsdc;
+    }
+
+    function _createSwapResultLocals(SwapKind kind) private view returns (SwapResultLocals memory vars) {
+        vars.kind = kind;
+        vars.aliceBalanceBeforeSwapDai = dai.balanceOf(address(alice));
+        vars.aliceBalanceBeforeSwapUsdc = usdc.balanceOf(address(alice));
+
+        uint256 underlyingBalance;
+        uint256 wrappedBalance;
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
+        vars.bufferBalanceBeforeSwapDai = underlyingBalance;
+        vars.bufferBalanceBeforeSwapWaDai = wrappedBalance;
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
+        vars.bufferBalanceBeforeSwapUsdc = underlyingBalance;
+        vars.bufferBalanceBeforeSwapWaUsdc = wrappedBalance;
+
+        uint256[] memory balancesRaw;
+        (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
+        (, balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
+        vars.boostedPoolBalanceBeforeSwapWaDai = balancesRaw[daiIdx];
+        vars.boostedPoolBalanceBeforeSwapWaUsdc = balancesRaw[usdcIdx];
+    }
+
     function _verifySwapResult(
         uint256[] memory paths,
         address[] memory tokens,
         uint256[] memory amounts,
-        uint256 expectedDelta,
-        SwapKind kind,
-        uint256 bufferExpectedDelta
+        SwapResultLocals memory vars
     ) private {
         assertEq(paths.length, 1, "Incorrect output array length");
 
@@ -280,29 +420,91 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         assertEq(tokens.length, amounts.length, "Output array length mismatch");
 
         // Check results
-        assertApproxEqAbs(paths[0], expectedDelta, 1, "Wrong path count");
-        assertApproxEqAbs(amounts[0], expectedDelta, 1, "Wrong amounts count");
-        assertEq(tokens[0], kind == SwapKind.EXACT_IN ? address(usdc) : address(dai), "Wrong token for SwapKind");
+        if (vars.kind == SwapKind.EXACT_IN) {
+            // Rounding issues occurs in favor of vault, and are very small
+            assertLe(paths[0], vars.expectedAliceDelta, "paths AmountOut must be <= expected amountOut");
+            assertApproxEqAbs(paths[0], vars.expectedAliceDelta, 1, "Wrong path count");
+            assertLe(paths[0], vars.expectedAliceDelta, "amounts AmountOut must be <= expected amountOut");
+            assertApproxEqAbs(amounts[0], vars.expectedAliceDelta, 1, "Wrong amounts count");
+            assertEq(tokens[0], address(usdc), "Wrong token for SwapKind");
+        } else {
+            // Rounding issues occurs in favor of vault, and are very small
+            assertGe(paths[0], vars.expectedAliceDelta, "paths AmountIn must be >= expected amountIn");
+            assertApproxEqAbs(paths[0], vars.expectedAliceDelta, 5, "Wrong path count");
+            assertGe(amounts[0], vars.expectedAliceDelta, "amounts AmountIn must be >= expected amountIn");
+            assertApproxEqAbs(amounts[0], vars.expectedAliceDelta, 5, "Wrong amounts count");
+            assertEq(tokens[0], address(dai), "Wrong token for SwapKind");
+        }
 
         // Tokens were transferred
-        assertApproxEqAbs(dai.balanceOf(alice), defaultBalance - expectedDelta, 1, "Wrong ending balance of DAI");
-        assertApproxEqAbs(usdc.balanceOf(alice), defaultBalance + expectedDelta, 1, "Wrong ending balance of USDC");
+        assertLe(
+            dai.balanceOf(alice),
+            vars.aliceBalanceBeforeSwapDai - vars.expectedAliceDelta,
+            "Alice balance DAI must be <= expected balance"
+        );
+        assertApproxEqAbs(
+            dai.balanceOf(alice),
+            vars.aliceBalanceBeforeSwapDai - vars.expectedAliceDelta,
+            5,
+            "Wrong ending balance of DAI for Alice"
+        );
+        assertLe(
+            usdc.balanceOf(alice),
+            vars.aliceBalanceBeforeSwapUsdc + vars.expectedAliceDelta,
+            "Alice balance USDC must be <= expected balance"
+        );
+        assertApproxEqAbs(
+            usdc.balanceOf(alice),
+            vars.aliceBalanceBeforeSwapUsdc + vars.expectedAliceDelta,
+            1,
+            "Wrong ending balance of USDC for Alice"
+        );
 
         uint256[] memory balancesRaw;
 
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
         (, balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
-        assertEq(balancesRaw[daiIdx], boostedPoolAmount + expectedDelta, "Wrong boosted pool DAI balance");
-        assertEq(balancesRaw[usdcIdx], boostedPoolAmount - expectedDelta, "Wrong boosted pool USDC balance");
+        assertApproxEqAbs(
+            balancesRaw[daiIdx],
+            vars.boostedPoolBalanceBeforeSwapWaDai + waDAI.convertToShares(vars.expectedAliceDelta),
+            5,
+            "Wrong boosted pool DAI balance"
+        );
+        assertApproxEqAbs(
+            balancesRaw[usdcIdx],
+            vars.boostedPoolBalanceBeforeSwapWaUsdc - waUSDC.convertToShares(vars.expectedAliceDelta),
+            1,
+            "Wrong boosted pool USDC balance"
+        );
 
-        uint256 baseBalance;
+        uint256 underlyingBalance;
         uint256 wrappedBalance;
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
-        assertEq(baseBalance, bufferAmount + bufferExpectedDelta, "Wrong DAI buffer pool base balance");
-        assertEq(wrappedBalance, bufferAmount - bufferExpectedDelta, "Wrong DAI buffer pool wrapped balance");
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
+        assertApproxEqAbs(
+            underlyingBalance,
+            vars.expectedBufferBalanceAfterSwapDai,
+            5,
+            "Wrong DAI buffer pool underlying balance"
+        );
+        assertApproxEqAbs(
+            wrappedBalance,
+            vars.expectedBufferBalanceAfterSwapWaDai,
+            5,
+            "Wrong DAI buffer pool wrapped balance"
+        );
 
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
-        assertEq(baseBalance, bufferAmount - bufferExpectedDelta, "Wrong USDC buffer pool base balance");
-        assertEq(wrappedBalance, bufferAmount + bufferExpectedDelta, "Wrong USDC buffer pool wrapped balance");
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
+        assertApproxEqAbs(
+            underlyingBalance,
+            vars.expectedBufferBalanceAfterSwapUsdc,
+            1,
+            "Wrong USDC buffer pool underlying balance"
+        );
+        assertApproxEqAbs(
+            wrappedBalance,
+            vars.expectedBufferBalanceAfterSwapWaUsdc,
+            1,
+            "Wrong USDC buffer pool wrapped balance"
+        );
     }
 }
