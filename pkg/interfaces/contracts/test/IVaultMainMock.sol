@@ -146,6 +146,10 @@ interface IVaultMainMock {
             PoolData memory
         );
 
+    function manualGetProtocolSwapFees(address pool, IERC20 token) external view returns (uint256);
+
+    function manualGetProtocolYieldFees(address pool, IERC20 token) external view returns (uint256);
+
     function manualSetProtocolSwapFees(address pool, IERC20 token, uint256 value) external;
 
     function manualSetProtocolYieldFees(address pool, IERC20 token, uint256 value) external;

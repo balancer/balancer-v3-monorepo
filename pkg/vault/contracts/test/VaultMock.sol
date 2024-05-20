@@ -404,6 +404,14 @@ contract VaultMock is IVaultMainMock, Vault {
         return (amountCalculated, amountIn, amountOut, params, vars, poolData);
     }
 
+    function manualGetProtocolSwapFees(address pool, IERC20 token) external view returns (uint256) {
+        return _protocolSwapFees[pool][token];
+    }
+
+    function manualGetProtocolYieldFees(address pool, IERC20 token) external view returns (uint256) {
+        return _protocolYieldFees[pool][token];
+    }
+
     function manualSetProtocolSwapFees(address pool, IERC20 token, uint256 value) external {
         _protocolSwapFees[pool][token] = value;
     }
