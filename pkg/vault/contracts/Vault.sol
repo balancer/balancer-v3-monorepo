@@ -1130,7 +1130,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     wrappedToken.deposit(calculatedUnderlyingDelta, address(this));
                 } else {
                     if (bufferUnderlyingSurplus > 0) {
-                        calculatedWrappedDelta = amountOutWrapped + wrappedToken.convertToShares(bufferUnderlyingSurplus);
+                        calculatedWrappedDelta =
+                            amountOutWrapped +
+                            wrappedToken.convertToShares(bufferUnderlyingSurplus);
                     } else {
                         calculatedWrappedDelta = amountOutWrapped;
                     }
