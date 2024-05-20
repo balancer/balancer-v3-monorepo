@@ -24,9 +24,10 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         setSwapFeePercentage(swapFeePercentage);
-        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
-        vm.prank(lp);
-        vault.setPoolCreatorFeePercentage(address(pool), poolCreatorFeePercentage);
+        vault.manualSetAggregateProtocolSwapFeePercentage(
+            pool,
+            _getAggregateFeePercentage(protocolSwapFeePercentage, poolCreatorFeePercentage)
+        );
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
@@ -39,8 +40,10 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         PoolConfig memory config = vault.getPoolConfig(address(pool));
 
         assertEq(config.staticSwapFeePercentage, swapFeePercentage);
-        assertEq(config.poolCreatorFeePercentage, poolCreatorFeePercentage);
-        assertEq(vault.getProtocolSwapFeePercentage(), protocolSwapFeePercentage);
+        assertEq(
+            config.aggregateProtocolSwapFeePercentage,
+            _getAggregateFeePercentage(protocolSwapFeePercentage, poolCreatorFeePercentage)
+        );
     }
 
     /// Add
@@ -250,27 +253,17 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             "Add - Pool balance: token 1"
         );
 
-        IERC20[] memory feeTokens = new IERC20[](2);
-        feeTokens[0] = dai;
-        feeTokens[1] = usdc;
-        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
-
-        // Protocols fees are charged
-        assertEq(protocolSwapFees[daiIdx], feeAmounts[0], "Protocol's fee amount is wrong");
-        assertEq(protocolSwapFees[usdcIdx], feeAmounts[1], "Protocol's fee amount is wrong");
-
-        /*TODO replace        assertApproxEqAbs(
-            poolCreatorFees[daiIdx],
-            vault.getPoolCreatorFees(pool, dai),
-            1,
-            "Pool creator's fee amount is wrong"
+        // Protocol + creator fees are charged
+        assertEq(
+            protocolSwapFees[daiIdx] + poolCreatorFees[daiIdx],
+            vault.manualGetProtocolSwapFees(pool, dai),
+            "Protocol's fee amount is wrong"
         );
-        assertApproxEqAbs(
-            poolCreatorFees[usdcIdx],
-            vault.getPoolCreatorFees(pool, usdc),
-            1,
-            "Pool creator's fee amount is wrong"
-        );*/
+        assertEq(
+            protocolSwapFees[usdcIdx] + poolCreatorFees[usdcIdx],
+            vault.manualGetProtocolSwapFees(pool, usdc),
+            "Protocol's fee amount is wrong"
+        );
 
         // Pool creator fees are charged if protocol fees are charged.
         if (protocolSwapFees[0] > 0) {
@@ -339,7 +332,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         IERC20[] memory feeTokens = new IERC20[](2);
         feeTokens[0] = dai;
         feeTokens[1] = usdc;
-        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedFeeAmounts(feeTokens);
+        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedProtocolFeeAmounts(pool);
 
         // Protocols fees are charged
         //assertEq(protocolSwapFees[daiIdx], vault.getProtocolFees(daiIdx), "Protocol's DAI fee amount is wrong");

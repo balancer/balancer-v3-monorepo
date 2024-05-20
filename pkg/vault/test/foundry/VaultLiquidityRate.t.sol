@@ -41,10 +41,10 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
 
         address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
+        // creator is lp
         factoryMock.registerTestPool(
             newPool,
-            vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
-            address(lp)
+            vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders)
         );
 
         return newPool;

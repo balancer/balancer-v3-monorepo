@@ -36,23 +36,29 @@ contract WeightedPool8020Factory is BasePoolFactory {
     function create(
         TokenConfig memory highWeightTokenConfig,
         TokenConfig memory lowWeightTokenConfig,
+        uint256 poolCreatorFeePercentage,
+        address poolCreator,
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage
     ) external returns (address pool) {
         IERC20 highWeightToken = highWeightTokenConfig.token;
         IERC20 lowWeightToken = lowWeightTokenConfig.token;
 
-        // Tokens must be sorted.
-        (uint256 highWeightTokenIdx, uint256 lowWeightTokenIdx) = highWeightToken > lowWeightToken ? (1, 0) : (0, 1);
-
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         uint256[] memory weights = new uint256[](2);
 
-        weights[highWeightTokenIdx] = _EIGHTY;
-        weights[lowWeightTokenIdx] = _TWENTY;
+        {
+            // Tokens must be sorted.
+            (uint256 highWeightTokenIdx, uint256 lowWeightTokenIdx) = highWeightToken > lowWeightToken
+                ? (1, 0)
+                : (0, 1);
 
-        tokenConfig[highWeightTokenIdx] = highWeightTokenConfig;
-        tokenConfig[lowWeightTokenIdx] = lowWeightTokenConfig;
+            weights[highWeightTokenIdx] = _EIGHTY;
+            weights[lowWeightTokenIdx] = _TWENTY;
+
+            tokenConfig[highWeightTokenIdx] = highWeightTokenConfig;
+            tokenConfig[lowWeightTokenIdx] = lowWeightTokenConfig;
+        }
 
         string memory highWeightTokenSymbol = IERC20Metadata(address(highWeightToken)).symbol();
         string memory lowWeightTokenSymbol = IERC20Metadata(address(lowWeightToken)).symbol();
@@ -73,7 +79,12 @@ contract WeightedPool8020Factory is BasePoolFactory {
         _registerPoolWithVault(
             pool,
             tokenConfig,
-            swapFeePercentage,
+            PoolFeeConfig({
+                poolSwapFeePercentage: swapFeePercentage,
+                protocolSwapFeePercentage: getVault().getProtocolFeeCollector().getGlobalProtocolSwapFeePercentage(),
+                poolCreatorFeePercentage: poolCreatorFeePercentage,
+                poolCreator: poolCreator
+            }),
             roleAccounts,
             getDefaultPoolHooks(),
             getDefaultLiquidityManagement()

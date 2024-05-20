@@ -8,6 +8,7 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
 import { PoolFunctionPermission, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
@@ -20,7 +21,6 @@ import {
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
-import { ProtocolFeeCollector } from "./ProtocolFeeCollector.sol";
 
 // solhint-disable max-states-count
 
@@ -38,12 +38,6 @@ contract VaultStorage {
     uint256 internal constant _MIN_TOKENS = 2;
     // This maximum token count is also hard-coded in `PoolConfigLib`.
     uint256 internal constant _MAX_TOKENS = 4;
-
-    // Maximum protocol swap fee percentage. 1e18 corresponds to a 100% fee.
-    uint256 internal constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
-
-    // Maximum protocol yield fee percentage.
-    uint256 internal constant _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 20e16; // 20%
 
     // Maximum pool swap fee percentage.
     uint256 internal constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
@@ -74,8 +68,8 @@ contract VaultStorage {
     bool private __isUnlocked;
 
     /**
-     * @notice The total number of nonzero deltas over all active + completed lockers.
-     * @dev It is non-zero only during `lock` calls.
+     * @notice The total number of nonzero deltas.
+     * @dev It is non-zero only during `unlock` calls.
      */
     uint256 private __nonzeroDeltaCount;
 
@@ -85,30 +79,15 @@ contract VaultStorage {
      */
     mapping(IERC20 => int256) private __tokenDeltas;
 
-    /**
-     * @dev The aggregate fee percentage charged on swaps, composed of both the protocol swap fee and creator fee.
-     * It is given by: protocolSwapFeePct + (1 - protocolSwapFeePct) * poolCreatorFeePct (see derivation in TODO).
-     * This will not change during the operation, so cache it in transient storage.
-     */
-    uint256 private __aggregateProtocolSwapFeePercentage;
-
-    /**
-     * @dev The aggregate fee percentage charged on swaps, composed of both the protocol yield fee and creator fee.
-     * It is given by: protocolYieldFeePct + (1 - protocolYieldFeePct) * poolCreatorFeePct (see derivation in TODO).
-     * This will not change during the operation, so cache it in transient storage. Note that the creator takes the
-     * same proportion of protocol fees, whether swap or yield.
-     */
-    uint256 private __aggregateProtocolYieldFeePercentage;
-
-    // Pool -> (Token -> fee): protocol fees (swap and creator) accumulated in the Vault for harvest.
+    // Pool -> (Token -> fee): aggregate protocol swap fees accumulated in the Vault for harvest.
     mapping(address => mapping(IERC20 => uint256)) internal _protocolSwapFees;
 
-    // Pool -> (Token -> fee): Protocol yield fees (protocol and creator) accumulated in the Vault for harvest.
+    // Pool -> (Token -> fee): aggregate protocol yield fees accumulated in the Vault for harvest.
     mapping(address => mapping(IERC20 => uint256)) internal _protocolYieldFees;
 
     /**
      * @dev Represents the total reserve of each ERC20 token. It should be always equal to `token.balanceOf(vault)`,
-     * except during `lock`.
+     * except during `unlock`.
      */
     mapping(IERC20 => uint256) internal _reservesOf;
 
@@ -133,7 +112,7 @@ contract VaultStorage {
     mapping(address => PoolRoleAccounts) internal _poolRoleAccounts;
 
     // Contract that receives protocol swap and yield fees
-    ProtocolFeeCollector internal immutable _protocolFeeCollector;
+    IProtocolFeeCollector internal _protocolFeeCollector;
 
     // Buffers are a vault internal concept, keyed on the wrapped token address.
     // There will only ever be one buffer per wrapped token. This also means they are permissionless and
@@ -172,18 +151,6 @@ contract VaultStorage {
     function _tokenDeltas() internal pure returns (TokenDeltaMappingSlotType slot) {
         assembly {
             slot := __tokenDeltas.slot
-        }
-    }
-
-    function _aggregateProtocolSwapFeePercentage() internal pure returns (StorageSlot.Uint256SlotType slot) {
-        assembly {
-            slot := __aggregateProtocolSwapFeePercentage.slot
-        }
-    }
-
-    function _aggregateProtocolYieldFeePercentage() internal pure returns (StorageSlot.Uint256SlotType slot) {
-        assembly {
-            slot := __aggregateProtocolYieldFeePercentage.slot
         }
     }
 }

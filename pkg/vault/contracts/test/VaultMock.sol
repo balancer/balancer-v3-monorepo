@@ -12,6 +12,7 @@ import { IVaultMainMock } from "@balancer-labs/v3-interfaces/contracts/test/IVau
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
@@ -45,7 +46,11 @@ contract VaultMock is IVaultMainMock, Vault {
 
     bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
 
-    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer) Vault(vaultExtension, authorizer) {
+    constructor(
+        IVaultExtension vaultExtension,
+        IAuthorizer authorizer,
+        IProtocolFeeCollector protocolFeeCollector
+    ) Vault(vaultExtension, authorizer, protocolFeeCollector) {
         uint256 pauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
         uint256 bufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
         _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowEndTime - bufferPeriodDuration);
@@ -75,7 +80,7 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolFactoryMock.registerPool(
             pool,
             buildTokenConfig(tokens),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -108,7 +113,7 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolFactoryMock.registerPool(
             pool,
             tokenConfig,
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -166,17 +171,10 @@ contract VaultMock is IVaultMainMock, Vault {
         _vaultState = vaultState.fromVaultState();
     }
 
-    function manualSetVaultState(
-        bool isVaultPaused,
-        bool isQueryDisabled,
-        uint256 protocolSwapFeePercentage,
-        uint256 protocolYieldFeePercentage
-    ) public {
+    function manualSetVaultState(bool isVaultPaused, bool isQueryDisabled) public {
         VaultState memory vaultState = _vaultState.toVaultState();
         vaultState.isVaultPaused = isVaultPaused;
         vaultState.isQueryDisabled = isQueryDisabled;
-        vaultState.protocolSwapFeePercentage = protocolSwapFeePercentage;
-        vaultState.protocolYieldFeePercentage = protocolYieldFeePercentage;
         _vaultState = vaultState.fromVaultState();
     }
 
@@ -300,8 +298,7 @@ contract VaultMock is IVaultMainMock, Vault {
         address pool,
         Rounding roundingDirection
     ) external returns (PoolData memory) {
-        VaultState memory vaultState = VaultStateLib.toVaultState(_vaultState);
-        return _computePoolDataUpdatingBalancesAndFees(pool, vaultState, roundingDirection);
+        return _computePoolDataUpdatingBalancesAndFees(pool, roundingDirection);
     }
 
     function updateLiveTokenBalanceInPoolData(
@@ -390,8 +387,7 @@ contract VaultMock is IVaultMainMock, Vault {
     function manualInternalSwap(
         SwapParams memory params,
         SwapVars memory vars,
-        PoolData memory poolData,
-        VaultState memory vaultState
+        PoolData memory poolData
     )
         external
         returns (
@@ -400,13 +396,20 @@ contract VaultMock is IVaultMainMock, Vault {
             uint256 amountOut,
             SwapParams memory,
             SwapVars memory,
-            PoolData memory,
-            VaultState memory
+            PoolData memory
         )
     {
-        (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData, vaultState);
+        (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData);
 
-        return (amountCalculated, amountIn, amountOut, params, vars, poolData, vaultState);
+        return (amountCalculated, amountIn, amountOut, params, vars, poolData);
+    }
+
+    function manualGetProtocolSwapFees(address pool, IERC20 token) external view returns (uint256) {
+        return _protocolSwapFees[pool][token];
+    }
+
+    function manualGetProtocolYieldFees(address pool, IERC20 token) external view returns (uint256) {
+        return _protocolYieldFees[pool][token];
     }
 
     function manualSetProtocolSwapFees(address pool, IERC20 token, uint256 value) external {
@@ -417,6 +420,18 @@ contract VaultMock is IVaultMainMock, Vault {
         _protocolYieldFees[pool][token] = value;
     }
 
+    function manualSetAggregateProtocolSwapFeePercentage(address pool, uint256 value) external {
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+        config.aggregateProtocolSwapFeePercentage = value;
+        _poolConfig[pool] = config.fromPoolConfig();
+    }
+
+    function manualSetAggregateProtocolYieldFeePercentage(address pool, uint256 value) external {
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+        config.aggregateProtocolYieldFeePercentage = value;
+        _poolConfig[pool] = config.fromPoolConfig();
+    }
+
     function manualBuildPoolSwapParams(
         SwapParams memory params,
         SwapVars memory vars,
@@ -425,15 +440,14 @@ contract VaultMock is IVaultMainMock, Vault {
         return _buildPoolSwapParams(params, vars, poolData);
     }
 
-    function manualComputeAndChargeProtocolAndCreatorFees(
+    function manualComputeAndChargeProtocolSwapFees(
         PoolData memory poolData,
-        VaultState memory vaultState,
         uint256 swapFeeAmountScaled18,
         address pool,
         IERC20 token,
         uint256 index
     ) external returns (uint256 aggregateSwapFeeAmountRaw) {
-        return _computeAndChargeProtocolAndCreatorFees(poolData, vaultState, swapFeeAmountScaled18, pool, token, index);
+        return _computeAndChargeProtocolSwapFees(poolData, swapFeeAmountScaled18, pool, token, index);
     }
 
     function manualUpdatePoolDataLiveBalancesAndRates(
@@ -449,8 +463,7 @@ contract VaultMock is IVaultMainMock, Vault {
     function manualAddLiquidity(
         PoolData memory poolData,
         AddLiquidityParams memory params,
-        uint256[] memory maxAmountsInScaled18,
-        VaultState memory vaultState
+        uint256[] memory maxAmountsInScaled18
     )
         external
         returns (
@@ -464,8 +477,7 @@ contract VaultMock is IVaultMainMock, Vault {
         (amountsInRaw, amountsInScaled18, bptAmountOut, returnData) = _addLiquidity(
             poolData,
             params,
-            maxAmountsInScaled18,
-            vaultState
+            maxAmountsInScaled18
         );
 
         updatedPoolData = poolData;

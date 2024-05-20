@@ -352,8 +352,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _getPoolDataAndYieldFees(
         address pool,
-        Rounding roundingDirection,
-        uint256 aggregateYieldFeePercentage
+        Rounding roundingDirection
     ) internal view returns (PoolData memory poolData, uint256[] memory aggregateYieldFeeAmountsRaw) {
         // Initialize poolData with base information for subsequent calculations.
         poolData = _getPoolData(pool, roundingDirection);
@@ -364,7 +363,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         aggregateYieldFeeAmountsRaw = new uint256[](numTokens);
 
         bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
-            aggregateYieldFeePercentage > 0 &&
+            poolData.poolConfig.aggregateProtocolYieldFeePercentage > 0 &&
             poolData.poolConfig.isPoolInRecoveryMode == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -385,7 +384,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                     poolData,
                     poolBalances.unchecked_valueAt(i).getBalanceDerived(),
                     i,
-                    aggregateYieldFeePercentage
+                    poolData.poolConfig.aggregateProtocolYieldFeePercentage
                 );
 
                 if (aggregateYieldFeeAmountRaw > 0) {
@@ -410,26 +409,11 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _computePoolDataUpdatingBalancesAndFees(
         address pool,
-        VaultState memory vaultState,
         Rounding roundingDirection
     ) internal nonReentrant returns (PoolData memory poolData) {
         uint256[] memory aggregateYieldFeeAmountsRaw;
 
-        // Initialize aggregate percentage, if not already set
-        if (_aggregateProtocolYieldFeePercentage().tload() == 0) {
-            _aggregateProtocolYieldFeePercentage().tstore(
-                getAggregateFeePercentage(
-                    vaultState.protocolYieldFeePercentage,
-                    poolData.poolConfig.poolCreatorFeePercentage
-                )
-            );
-        }
-
-        (poolData, aggregateYieldFeeAmountsRaw) = _getPoolDataAndYieldFees(
-            pool,
-            roundingDirection,
-            _aggregateProtocolYieldFeePercentage().tload()
-        );
+        (poolData, aggregateYieldFeeAmountsRaw) = _getPoolDataAndYieldFees(pool, roundingDirection);
         uint256 numTokens = aggregateYieldFeeAmountsRaw.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -469,31 +453,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 aggregateYieldFeeAmountRaw = liveBalanceDiffRaw.mulUp(aggregateYieldFeePercentage);
             }
         }
-    }
-
-    /**
-     * @notice Calculate the aggregate percentage, given protocol and creator fee components.
-     * @dev Fees will be combined to give the total aggregate percentage.
-     * See example:
-     * tokenOutAmount = 10000; poolSwapFeePct = 10%; protocolFeePct = 40%; creatorFeePct = 60%
-     * totalFees = tokenOutAmount * poolSwapFeePct = 10000 * 10% = 1000
-     * protocolFees = totalFees * protocolFeePct = 1000 * 40% = 400
-     * creatorAndLpFees = totalFees - protocolFees = 1000 - 400 = 600
-     * creatorFees = creatorAndLpFees * creatorFeePct = 600 * 60% = 360
-     * lpFees (will stay in the pool) = creatorAndLpFees - creatorFees = 600 - 360 = 240
-     *
-     * So, the aggregate percentage is: totalFees * protocolFeePct +
-     *     (totalFees - totalFees * protocolFeePct) * creatorFeePct
-     *     = totalFees * protocolFeePct + totalFees * (1 - protocolFeePct) * creatorFeePct
-     *     = protocolFeePct + (1 - protocolFeePct) * creatorFeePct
-     *
-     * In the example, that would be: 0.4 + (1 - 0.4) * 0.6 = 0.4 + 0.6 * 0.6 = 0.4 + 0.36 = 0.76 (76%)
-     */
-    function getAggregateFeePercentage(
-        uint256 protocolFeePercentage,
-        uint256 creatorFeePercentage
-    ) public pure returns (uint256) {
-        return protocolFeePercentage + protocolFeePercentage.complement().mulDown(creatorFeePercentage);
     }
 
     /**

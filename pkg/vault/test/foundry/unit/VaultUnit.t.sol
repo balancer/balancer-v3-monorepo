@@ -87,7 +87,7 @@ contract VaultUnitTest is BaseTest {
         emit IVaultEvents.ProtocolSwapFeeCharged(pool, address(dai), expectedSwapFeeAmountScaled18);
 
         (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolAndCreatorFees(
+            .manualComputeAndChargeProtocolSwapFees(
                 poolData,
                 swapFeeAmountScaled18,
                 protocolSwapFeePercentage,
@@ -135,7 +135,7 @@ contract VaultUnitTest is BaseTest {
         emit IVaultEvents.PoolCreatorSwapFeeCharged(pool, address(dai), expectCreatorFeeAmountRaw);
 
         (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolAndCreatorFees(
+            .manualComputeAndChargeProtocolSwapFees(
                 poolData,
                 swapFeeAmountScaled18,
                 protocolSwapFeePercentage,
@@ -159,7 +159,7 @@ contract VaultUnitTest is BaseTest {
         poolData.poolConfig.isPoolInRecoveryMode = true;
 
         (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolAndCreatorFees(poolData, 1e18, 10e16, pool, dai, 0);
+            .manualComputeAndChargeProtocolSwapFees(poolData, 1e18, 10e16, pool, dai, 0);
 
         assertEq(protocolSwapFeeAmountRaw, 0, "Unexpected protocolSwapFeeAmountRaw");
         assertEq(creatorSwapFeeAmountRaw, 0, "Unexpected creatorSwapFeeAmountRaw");
