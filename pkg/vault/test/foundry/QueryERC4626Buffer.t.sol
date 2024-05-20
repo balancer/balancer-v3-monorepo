@@ -61,69 +61,9 @@ contract QueryERC4626BufferTest is BaseVaultTest {
 
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
 
-        initializeBuffers();
-        initializeBoostedPool();
-    }
-
-    function initializeBuffers() private {
-        // Create and fund buffer pools
-        vm.startPrank(lp);
-        dai.mint(address(lp), bufferAmount);
-        dai.approve(address(waDAI), bufferAmount);
-        waDAI.deposit(bufferAmount, address(lp));
-
-        usdc.mint(address(lp), bufferAmount);
-        usdc.approve(address(waUSDC), bufferAmount);
-        waUSDC.deposit(bufferAmount, address(lp));
-        vm.stopPrank();
-
-        vm.startPrank(lp);
-        waDAI.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
-        waUSDC.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
-
-        router.addLiquidityToBuffer(waDAI, bufferAmount, bufferAmount, address(lp));
-        router.addLiquidityToBuffer(waUSDC, bufferAmount, bufferAmount, address(lp));
-        vm.stopPrank();
-    }
-
-    function initializeBoostedPool() private {
-        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
-        tokenConfig[waDaiIdx].token = IERC20(waDAI);
-        tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
-        tokenConfig[0].tokenType = TokenType.WITH_RATE;
-        tokenConfig[1].tokenType = TokenType.WITH_RATE;
-        tokenConfig[waDaiIdx].rateProvider = IRateProvider(address(waDAI));
-        tokenConfig[waUsdcIdx].rateProvider = IRateProvider(address(waUSDC));
-
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
-
-        factoryMock.registerTestPool(address(newPool), tokenConfig, address(0));
-
-        vm.label(address(newPool), "boosted pool");
-        boostedPool = address(newPool);
-
-        vm.startPrank(bob);
-        waDAI.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
-        waUSDC.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
-
-        dai.mint(address(bob), boostedPoolAmount);
-        dai.approve(address(waDAI), boostedPoolAmount);
-        waDAI.deposit(boostedPoolAmount, address(bob));
-
-        usdc.mint(address(bob), boostedPoolAmount);
-        usdc.approve(address(waUSDC), boostedPoolAmount);
-        waUSDC.deposit(boostedPoolAmount, address(bob));
-
-        _initPool(boostedPool, [boostedPoolAmount, boostedPoolAmount].toMemoryArray(), boostedPoolAmount * 2 - MIN_BPT);
-        vm.stopPrank();
+        _initializeBuffers();
+        _initializeBoostedPool();
+        _initializeUser();
     }
 
     function testSwapPreconditions() public {
@@ -167,55 +107,91 @@ contract QueryERC4626BufferTest is BaseVaultTest {
     }
 
     function testQuerySwapWithinBufferRangeExactIn() public {
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
-
-        // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
-        vm.prank(address(0), address(0));
-        // Not using staticCall because it does not allow changes in the transient storage, and reverts with
-        // a StateChangeDuringStaticCall error
-        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
-            .querySwapExactIn(paths, bytes(""));
-
-        _verifyQuerySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN);
+        _testQuerySwapExactIn(swapAmount);
     }
 
     function testQuerySwapWithinBufferRangeExactOut() public {
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount);
-
-        // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
-        vm.prank(address(0), address(0));
-        // Not using staticCall because it does not allow changes in the transient storage, and reverts with
-        // a StateChangeDuringStaticCall error
-        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
-            .querySwapExactOut(paths, bytes(""));
-
-        _verifyQuerySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT);
+        _testQuerySwapExactOut(swapAmount);
     }
 
     function testQuerySwapOutOfBufferRangeExactIn() public {
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(tooLargeSwapAmount);
-
-        // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
-        vm.prank(address(0), address(0));
-        // Not using staticCall because it does not allow changes in the transient storage, and reverts with
-        // a StateChangeDuringStaticCall error
-        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
-            .querySwapExactIn(paths, bytes(""));
-
-        _verifyQuerySwapResult(pathAmountsOut, tokensOut, amountsOut, tooLargeSwapAmount, SwapKind.EXACT_IN);
+        _testQuerySwapExactIn(tooLargeSwapAmount);
     }
 
     function testQuerySwapOutOfBufferRangeExactOut() public {
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(tooLargeSwapAmount);
+        _testQuerySwapExactOut(tooLargeSwapAmount);
+    }
+
+    function _testQuerySwapExactIn(uint256 amount) private {
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amount);
+
+        // Snapshots the current state of the network
+        uint256 snapshotId = vm.snapshot();
 
         // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
         vm.prank(address(0), address(0));
         // Not using staticCall because it does not allow changes in the transient storage, and reverts with
         // a StateChangeDuringStaticCall error
-        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
-            .querySwapExactOut(paths, bytes(""));
+        (
+            uint256[] memory queryPathAmountsOut,
+            address[] memory queryTokensOut,
+            uint256[] memory queryAmountsOut
+        ) = batchRouter.querySwapExactIn(paths, bytes(""));
 
-        _verifyQuerySwapResult(pathAmountsIn, tokensIn, amountsIn, tooLargeSwapAmount, SwapKind.EXACT_OUT);
+        // Checks if results of the query operation are the expected ones
+        _verifyQuerySwapResult(queryPathAmountsOut, queryTokensOut, queryAmountsOut, amount, SwapKind.EXACT_IN);
+
+        // Restores the network state to snapshot
+        vm.revertTo(snapshotId);
+
+        // Executes the actual operation
+        vm.prank(alice);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        // Checks if results of the actual operation are the expected ones
+        _verifyQuerySwapResult(pathAmountsOut, tokensOut, amountsOut, amount, SwapKind.EXACT_IN);
+
+        // Check if results of query and actual operations are equal
+        assertEq(pathAmountsOut[0], queryPathAmountsOut[0], "pathAmountsOut's do not match");
+        assertEq(tokensOut[0], queryTokensOut[0], "tokensOut's do not match");
+        assertEq(amountsOut[0], queryAmountsOut[0], "amountsOut's do not match");
+    }
+
+    function _testQuerySwapExactOut(uint256 amount) private {
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(amount);
+
+        // Snapshots the current state of the network
+        uint256 snapshotId = vm.snapshot();
+
+        // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
+        vm.prank(address(0), address(0));
+        // Not using staticCall because it does not allow changes in the transient storage, and reverts with
+        // a StateChangeDuringStaticCall error
+        (
+            uint256[] memory queryPathAmountsIn,
+            address[] memory queryTokensIn,
+            uint256[] memory queryAmountsIn
+        ) = batchRouter.querySwapExactOut(paths, bytes(""));
+
+        // Checks if results of the query operation are the expected ones
+        _verifyQuerySwapResult(queryPathAmountsIn, queryTokensIn, queryAmountsIn, amount, SwapKind.EXACT_OUT);
+
+        // Restores the network state to snapshot
+        vm.revertTo(snapshotId);
+
+        // Executes the actual operation
+        vm.prank(alice);
+        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
+            .swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        // Checks if results of the actual operation are the expected ones
+        _verifyQuerySwapResult(pathAmountsIn, tokensIn, amountsIn, amount, SwapKind.EXACT_OUT);
+
+        // Check if results of query and actual operations are equal
+        assertEq(pathAmountsIn[0], queryPathAmountsIn[0], "pathAmountsIn's do not match");
+        assertEq(tokensIn[0], queryTokensIn[0], "tokensIn's do not match");
+        assertEq(amountsIn[0], queryAmountsIn[0], "amountsIn's do not match");
     }
 
     function _buildExactInPaths(
@@ -278,5 +254,70 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         assertApproxEqAbs(paths[0], expectedDelta, 1, "Wrong path count");
         assertApproxEqAbs(amounts[0], expectedDelta, 1, "Wrong amounts count");
         assertEq(tokens[0], kind == SwapKind.EXACT_IN ? address(usdc) : address(dai), "Wrong token for SwapKind");
+    }
+
+    function _initializeBuffers() private {
+        // Create and fund buffer pools
+        vm.startPrank(lp);
+        dai.mint(address(lp), bufferAmount);
+        dai.approve(address(waDAI), bufferAmount);
+        waDAI.deposit(bufferAmount, address(lp));
+
+        usdc.mint(address(lp), bufferAmount);
+        usdc.approve(address(waUSDC), bufferAmount);
+        waUSDC.deposit(bufferAmount, address(lp));
+        vm.stopPrank();
+
+        vm.startPrank(lp);
+        waDAI.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
+        waUSDC.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
+
+        router.addLiquidityToBuffer(waDAI, bufferAmount, bufferAmount, address(lp));
+        router.addLiquidityToBuffer(waUSDC, bufferAmount, bufferAmount, address(lp));
+        vm.stopPrank();
+    }
+
+    function _initializeBoostedPool() private {
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[waDaiIdx].token = IERC20(waDAI);
+        tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
+        tokenConfig[0].tokenType = TokenType.WITH_RATE;
+        tokenConfig[1].tokenType = TokenType.WITH_RATE;
+        tokenConfig[waDaiIdx].rateProvider = IRateProvider(address(waDAI));
+        tokenConfig[waUsdcIdx].rateProvider = IRateProvider(address(waUSDC));
+
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
+
+        factoryMock.registerTestPool(address(newPool), tokenConfig, address(0));
+
+        vm.label(address(newPool), "boosted pool");
+        boostedPool = address(newPool);
+
+        vm.startPrank(bob);
+        waDAI.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
+        waUSDC.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
+
+        dai.mint(address(bob), boostedPoolAmount);
+        dai.approve(address(waDAI), boostedPoolAmount);
+        waDAI.deposit(boostedPoolAmount, address(bob));
+
+        usdc.mint(address(bob), boostedPoolAmount);
+        usdc.approve(address(waUSDC), boostedPoolAmount);
+        waUSDC.deposit(boostedPoolAmount, address(bob));
+
+        _initPool(boostedPool, [boostedPoolAmount, boostedPoolAmount].toMemoryArray(), boostedPoolAmount * 2 - MIN_BPT);
+        vm.stopPrank();
+    }
+
+    function _initializeUser() private {
+        dai.mint(address(alice), boostedPoolAmount);
     }
 }
