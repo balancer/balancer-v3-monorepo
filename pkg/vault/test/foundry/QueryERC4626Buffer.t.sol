@@ -25,7 +25,7 @@ import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract QueryBoostedPoolBufferTest is BaseVaultTest {
+contract QueryERC4626BufferTest is BaseVaultTest {
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
@@ -170,18 +170,11 @@ contract QueryBoostedPoolBufferTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
 
         // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
-        vm.startPrank(address(0), address(0));
+        vm.prank(address(0), address(0));
         // Not using staticCall because it does not allow changes in the transient storage, and reverts with
         // a StateChangeDuringStaticCall error
-        (, bytes memory data) = address(batchRouter).call(
-            abi.encodeWithSelector(IBatchRouter.querySwapExactIn.selector, paths, bytes(""))
-        );
-        vm.stopPrank();
-
-        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = abi.decode(
-            data,
-            (uint256[], address[], uint256[])
-        );
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .querySwapExactIn(paths, bytes(""));
 
         _verifyQuerySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN);
     }
@@ -190,18 +183,11 @@ contract QueryBoostedPoolBufferTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount);
 
         // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
-        vm.startPrank(address(0), address(0));
+        vm.prank(address(0), address(0));
         // Not using staticCall because it does not allow changes in the transient storage, and reverts with
         // a StateChangeDuringStaticCall error
-        (, bytes memory data) = address(batchRouter).call(
-            abi.encodeWithSelector(IBatchRouter.querySwapExactOut.selector, paths, bytes(""))
-        );
-        vm.stopPrank();
-
-        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = abi.decode(
-            data,
-            (uint256[], address[], uint256[])
-        );
+        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
+            .querySwapExactOut(paths, bytes(""));
 
         _verifyQuerySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT);
     }
@@ -210,18 +196,11 @@ contract QueryBoostedPoolBufferTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(tooLargeSwapAmount);
 
         // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
-        vm.startPrank(address(0), address(0));
+        vm.prank(address(0), address(0));
         // Not using staticCall because it does not allow changes in the transient storage, and reverts with
         // a StateChangeDuringStaticCall error
-        (, bytes memory data) = address(batchRouter).call(
-            abi.encodeWithSelector(IBatchRouter.querySwapExactIn.selector, paths, bytes(""))
-        );
-        vm.stopPrank();
-
-        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = abi.decode(
-            data,
-            (uint256[], address[], uint256[])
-        );
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .querySwapExactIn(paths, bytes(""));
 
         _verifyQuerySwapResult(pathAmountsOut, tokensOut, amountsOut, tooLargeSwapAmount, SwapKind.EXACT_IN);
     }
@@ -230,18 +209,11 @@ contract QueryBoostedPoolBufferTest is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(tooLargeSwapAmount);
 
         // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
-        vm.startPrank(address(0), address(0));
+        vm.prank(address(0), address(0));
         // Not using staticCall because it does not allow changes in the transient storage, and reverts with
         // a StateChangeDuringStaticCall error
-        (, bytes memory data) = address(batchRouter).call(
-            abi.encodeWithSelector(IBatchRouter.querySwapExactOut.selector, paths, bytes(""))
-        );
-        vm.stopPrank();
-
-        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = abi.decode(
-            data,
-            (uint256[], address[], uint256[])
-        );
+        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
+            .querySwapExactOut(paths, bytes(""));
 
         _verifyQuerySwapResult(pathAmountsIn, tokensIn, amountsIn, tooLargeSwapAmount, SwapKind.EXACT_OUT);
     }
