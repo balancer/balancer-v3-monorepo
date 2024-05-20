@@ -44,11 +44,12 @@ describe('ERC4626VaultPrimitive', function () {
   let boostedPoolTokens: string[];
 
   let lp: SignerWithAddress;
+  let alice: SignerWithAddress;
   let zero: VoidSigner;
 
   before('setup signers', async () => {
     zero = new VoidSigner('0x0000000000000000000000000000000000000000', ethers.provider);
-    [, lp] = await ethers.getSigners();
+    [, lp, alice] = await ethers.getSigners();
   });
 
   sharedBeforeEach('deploy vault, router, tokens, and pool factory', async function () {
@@ -70,6 +71,10 @@ describe('ERC4626VaultPrimitive', function () {
     wUSDC = await deploy('v3-solidity-utils/ERC4626TestToken', {
       args: [USDC, 'Wrapped USDC', 'wUSDC', 18],
     });
+
+    await DAI.mint(alice, TOKEN_AMOUNT);
+    await DAI.connect(alice).approve(permit2, TOKEN_AMOUNT);
+    await permit2.connect(alice).approve(DAI, batchRouter, MAX_UINT160, MAX_UINT48);
 
     boostedPoolTokens = sortAddresses([await wDAI.getAddress(), await wUSDC.getAddress()]);
 
@@ -242,14 +247,21 @@ describe('ERC4626VaultPrimitive', function () {
         },
       ];
 
-      const output = await batchRouter.connect(zero).querySwapExactIn.staticCall(paths, '0x');
+      const queryOutput = await batchRouter.connect(zero).querySwapExactIn.staticCall(paths, '0x');
+      expect(queryOutput.pathAmountsOut).to.have.length(1, 'Wrong pathAmountsOut length');
+      expect(queryOutput.pathAmountsOut[0]).to.be.equal(SWAP_AMOUNT, 'Wrong pathAmountsOut value');
+      expect(queryOutput.amountsOut).to.have.length(1, 'Wrong amountsOut length');
+      expect(queryOutput.amountsOut[0]).to.be.equal(SWAP_AMOUNT, 'Wrong amountsOut value');
+      expect(queryOutput.tokensOut).to.have.length(1, 'Wrong tokensOut length');
+      expect(queryOutput.tokensOut[0]).to.be.equal(await USDC.getAddress(), 'Wrong tokensOut value');
 
-      expect(output.pathAmountsOut).to.have.length(1, 'Wrong pathAmountsOut length');
-      expect(output.pathAmountsOut[0]).to.be.equal(SWAP_AMOUNT, 'Wrong pathAmountsOut value');
-      expect(output.amountsOut).to.have.length(1, 'Wrong amountsOut length');
-      expect(output.amountsOut[0]).to.be.equal(SWAP_AMOUNT, 'Wrong amountsOut value');
-      expect(output.tokensOut).to.have.length(1, 'Wrong tokensOut length');
-      expect(output.tokensOut[0]).to.be.equal(await USDC.getAddress(), 'Wrong tokensOut value');
+      const actualOutput = await batchRouter.connect(alice).swapExactIn(paths, MAX_UINT256, false, '0x');
+      expect(actualOutput)
+        .to.emit(await DAI.getAddress(), 'Transfer')
+        .withArgs(await alice.getAddress(), await vault.getAddress(), SWAP_AMOUNT);
+      expect(actualOutput)
+        .to.emit(await USDC.getAddress(), 'Transfer')
+        .withArgs(await vault.getAddress(), await alice.getAddress(), queryOutput.amountsOut[0]);
     });
 
     it('should not require tokens in advance to querySwapExactOut using buffer', async () => {
@@ -270,14 +282,22 @@ describe('ERC4626VaultPrimitive', function () {
         },
       ];
 
-      const output = await batchRouter.connect(zero).querySwapExactOut.staticCall(paths, '0x');
+      const queryOutput = await batchRouter.connect(zero).querySwapExactOut.staticCall(paths, '0x');
 
-      expect(output.pathAmountsIn).to.have.length(1, 'Wrong pathAmountsIn length');
-      expect(output.pathAmountsIn[0]).to.be.equal(SWAP_AMOUNT, 'Wrong pathAmountsIn value');
-      expect(output.amountsIn).to.have.length(1, 'Wrong amountsIn length');
-      expect(output.amountsIn[0]).to.be.equal(SWAP_AMOUNT, 'Wrong amountsIn value');
-      expect(output.tokensIn).to.have.length(1, 'Wrong tokensIn length');
-      expect(output.tokensIn[0]).to.be.equal(await DAI.getAddress(), 'Wrong tokensIn value');
+      expect(queryOutput.pathAmountsIn).to.have.length(1, 'Wrong pathAmountsIn length');
+      expect(queryOutput.pathAmountsIn[0]).to.be.equal(SWAP_AMOUNT, 'Wrong pathAmountsIn value');
+      expect(queryOutput.amountsIn).to.have.length(1, 'Wrong amountsIn length');
+      expect(queryOutput.amountsIn[0]).to.be.equal(SWAP_AMOUNT, 'Wrong amountsIn value');
+      expect(queryOutput.tokensIn).to.have.length(1, 'Wrong tokensIn length');
+      expect(queryOutput.tokensIn[0]).to.be.equal(await DAI.getAddress(), 'Wrong tokensIn value');
+
+      const actualOutput = await batchRouter.connect(alice).swapExactOut(paths, MAX_UINT256, false, '0x');
+      expect(actualOutput)
+        .to.emit(await DAI.getAddress(), 'Transfer')
+        .withArgs(await alice.getAddress(), await vault.getAddress(), queryOutput.amountsIn[0]);
+      expect(actualOutput)
+        .to.emit(await USDC.getAddress(), 'Transfer')
+        .withArgs(await vault.getAddress(), await alice.getAddress(), SWAP_AMOUNT);
     });
   });
 });
