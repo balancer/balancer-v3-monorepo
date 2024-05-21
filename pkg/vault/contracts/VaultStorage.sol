@@ -79,11 +79,11 @@ contract VaultStorage {
      */
     mapping(IERC20 => int256) private __tokenDeltas;
 
-    // Pool -> (Token -> fee): aggregate protocol swap fees accumulated in the Vault for harvest.
-    mapping(address => mapping(IERC20 => uint256)) internal _protocolSwapFees;
+    // Pool -> (Token -> fee): aggregate protocol swap and yield fees accumulated in the Vault for harvest.
+    mapping(address => mapping(IERC20 => uint256)) internal _protocolFees;
 
-    // Pool -> (Token -> fee): aggregate protocol yield fees accumulated in the Vault for harvest.
-    mapping(address => mapping(IERC20 => uint256)) internal _protocolYieldFees;
+    // Pool-specific creator fee ratios; this is the proportion of swap and yield fees allocated to the pool creator.
+    mapping(address => uint256) _poolCreatorFeeRatios;
 
     /**
      * @dev Represents the total reserve of each ERC20 token. It should be always equal to `token.balanceOf(vault)`,
