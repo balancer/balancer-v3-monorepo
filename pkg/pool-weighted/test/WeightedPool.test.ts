@@ -14,7 +14,6 @@ import {
   MAX_UINT48,
   ZERO_BYTES32,
   ZERO_ADDRESS,
-  ZERO,
 } from '@balancer-labs/v3-helpers/src/constants';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
@@ -139,7 +138,7 @@ describe('WeightedPool', function () {
       });
     });
   });
-  
+
   describe('protocol fee events on swap', () => {
     const WEIGHTS = [fp(0.5), fp(0.5)];
     const REAL_POOL_INITIAL_BALANCES = [TOKEN_AMOUNT, TOKEN_AMOUNT];
