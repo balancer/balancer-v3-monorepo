@@ -26,6 +26,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault.registerPool(
             pool,
             tokenConfig,
+            false,
             DEFAULT_SWAP_FEE,
             0,
             getNewPoolPauseWindowEndTime(),
@@ -42,6 +43,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
     function registerGeneralTestPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        bool creatorControlledFees,
         uint256 swapFee,
         uint256 pauseWindowDuration,
         PoolRoleAccounts memory roleAccounts
@@ -49,6 +51,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault.registerPool(
             pool,
             tokenConfig,
+            creatorControlledFees,
             swapFee,
             0,
             block.timestamp + pauseWindowDuration,
@@ -72,6 +75,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault.registerPool(
             pool,
             tokenConfig,
+            false,
             DEFAULT_SWAP_FEE,
             0,
             getNewPoolPauseWindowEndTime(),
@@ -93,6 +97,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault.registerPool(
             pool,
             tokenConfig,
+            false,
             swapFeePercentage,
             0,
             getNewPoolPauseWindowEndTime(),
@@ -114,6 +119,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault.registerPool(
             pool,
             tokenConfig,
+            false,
             DEFAULT_SWAP_FEE,
             0,
             timestamp,

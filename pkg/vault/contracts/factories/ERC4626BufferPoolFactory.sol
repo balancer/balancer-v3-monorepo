@@ -107,6 +107,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         getVault().registerPool(
             pool,
             tokenConfig,
+            false, // creator-controlled fees
             0, // zero swap fee
             getVault().getProtocolFeeCollector().getGlobalAggregateSwapFeePercentage(),
             pauseWindowEndTime,

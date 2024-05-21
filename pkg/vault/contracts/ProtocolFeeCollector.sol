@@ -205,20 +205,20 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     }
 
     function _ensureCallerIsPoolCreator(address pool) private view {
-        (address poolCreator, ) = getVault().getPoolCreatorInfo(pool);
+        (address poolCreator, , ) = getVault().getPoolCreatorInfo(pool);
 
         if (poolCreator == address(0)) {
             revert PoolCreatorNotRegistered(pool);
         }
 
         if (poolCreator != msg.sender) {
-            revert CallerIsNotPoolCreator(msg.sender);
+            revert IVaultErrors.CallerIsNotPoolCreator(msg.sender);
         }
     }
 
     // Disaggregate and move balances from <Fees>Collected to <Fees>ToWithdraw
     function _disaggregateFees(address pool) private {
-        (address poolCreator, uint256 poolCreatorFeeRatio) = getVault().getPoolCreatorInfo(pool);
+        (address poolCreator, uint256 poolCreatorFeeRatio, ) = getVault().getPoolCreatorInfo(pool);
 
         bool needToSplitWithPoolCreator = poolCreator != address(0) && poolCreatorFeeRatio > 0;
 
