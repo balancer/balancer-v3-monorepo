@@ -363,7 +363,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         aggregateYieldFeeAmountsRaw = new uint256[](numTokens);
 
         bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
-            poolData.poolConfig.aggregateProtocolYieldFeePercentage > 0 &&
+            poolData.poolConfig.aggregateYieldFeePercentage > 0 &&
             poolData.poolConfig.isPoolInRecoveryMode == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -384,7 +384,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                     poolData,
                     poolBalances.unchecked_valueAt(i).getBalanceDerived(),
                     i,
-                    poolData.poolConfig.aggregateProtocolYieldFeePercentage
+                    poolData.poolConfig.aggregateYieldFeePercentage
                 );
 
                 if (aggregateYieldFeeAmountRaw > 0) {
@@ -419,7 +419,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         for (uint256 i = 0; i < numTokens; ++i) {
             IERC20 token = poolData.tokenConfig[i].token;
 
-            _protocolYieldFees[pool][token] += aggregateYieldFeeAmountsRaw[i];
+            _protocolFees[pool][token] += aggregateYieldFeeAmountsRaw[i];
+            emit ProtocolYieldFeeCharged(pool, token, aggregateYieldFeeAmountsRaw[i]);
         }
 
         // Update raw and last live pool balances, as computed by `_getPoolDataAndYieldFees`
@@ -497,6 +498,16 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         _poolConfig[pool] = config.fromPoolConfig();
 
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
+    }
+
+    function _setPoolCreatorFeeRatio(address pool, uint256 poolCreatorFeeRatio) internal virtual {
+        if (poolCreatorFeeRatio > FixedPoint.ONE) {
+            revert PoolCreatorFeeRatioTooHigh();
+        }
+
+        _poolCreatorFeeRatios[pool] = poolCreatorFeeRatio;
+
+        emit PoolCreatorFeeRatioChanged(pool, poolCreatorFeeRatio);
     }
 
     /*******************************************************************************

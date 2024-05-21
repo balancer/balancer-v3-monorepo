@@ -952,11 +952,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     ) internal returns (uint256 aggregateSwapFeeAmountRaw) {
         if (
             swapFeeAmountScaled18 > 0 &&
-            poolData.poolConfig.aggregateProtocolSwapFeePercentage > 0 &&
+            poolData.poolConfig.aggregateSwapFeePercentage > 0 &&
             poolData.poolConfig.isPoolInRecoveryMode == false
         ) {
             uint256 aggregateSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(
-                poolData.poolConfig.aggregateProtocolSwapFeePercentage
+                poolData.poolConfig.aggregateSwapFeePercentage
             );
 
             // Ensure we can never charge more than the total swap fee.
@@ -969,7 +969,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolData.tokenRates[index]
             );
 
-            _protocolSwapFees[pool][token] += aggregateSwapFeeAmountRaw;
+            _protocolFees[pool][token] += aggregateSwapFeeAmountRaw;
+            emit ProtocolSwapFeeCharged(pool, token, aggregateSwapFeeAmountRaw);
         }
     }
 
