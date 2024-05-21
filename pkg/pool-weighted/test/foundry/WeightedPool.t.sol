@@ -65,6 +65,7 @@ contract WeightedPoolTest is BaseVaultTest {
                 "ERC20 Pool",
                 "ERC20POOL",
                 vault.buildTokenConfig(tokens.asIERC20()),
+                false,
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 roleAccounts,
                 DEFAULT_SWAP_FEE,
@@ -261,6 +262,7 @@ contract WeightedPoolTest is BaseVaultTest {
             "ERC20 Pool",
             "ERC20POOL",
             tokens,
+            false,
             [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
             roleAccounts,
             MIN_SWAP_FEE - 1, // Swap fee too low

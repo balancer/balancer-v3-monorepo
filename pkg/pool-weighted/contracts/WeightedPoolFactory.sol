@@ -41,6 +41,7 @@ contract WeightedPoolFactory is BasePoolFactory {
         string memory name,
         string memory symbol,
         TokenConfig[] memory tokens,
+        bool creatorControlledFees,
         uint256[] memory normalizedWeights,
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
@@ -62,6 +63,7 @@ contract WeightedPoolFactory is BasePoolFactory {
         _registerPoolWithVault(
             pool,
             tokens,
+            creatorControlledFees,
             swapFeePercentage,
             getVault().getProtocolFeeCollector().getGlobalAggregateSwapFeePercentage(),
             roleAccounts,

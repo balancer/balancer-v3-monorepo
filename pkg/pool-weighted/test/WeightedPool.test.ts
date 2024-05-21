@@ -160,6 +160,7 @@ describe('WeightedPool', function () {
         'WeightedPool',
         'Test',
         tokenConfig,
+        false,
         WEIGHTS,
         [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
         SWAP_FEE,
