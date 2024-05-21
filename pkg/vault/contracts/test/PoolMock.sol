@@ -78,6 +78,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         return getVault().getPoolTokens(address(this));
     }
 
+    /// @inheritdoc IBasePool
     function computeBalance(
         uint256[] memory balances,
         uint256 tokenInIndex,
@@ -86,6 +87,11 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         // inv = x + y
         uint256 invariant = computeInvariant(balances);
         return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
+    }
+
+    /// @inheritdoc IBasePool
+    function getRate() public view returns (uint256) {
+        return getVault().getBptRate(address(this));
     }
 
     function setSpecialSender(address sender) external {

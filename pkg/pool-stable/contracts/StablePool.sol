@@ -145,6 +145,11 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication {
         }
     }
 
+    /// @inheritdoc IBasePool
+    function getRate() public view returns (uint256) {
+        return getVault().getBptRate(address(this));
+    }
+
     /**
      * @dev Begins changing the amplification parameter to `rawEndValue` over time. The value will change linearly until
      * `endTime` is reached, when it will be `rawEndValue`.

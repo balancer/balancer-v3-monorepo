@@ -30,7 +30,6 @@ import { BasePoolHooks } from "./BasePoolHooks.sol";
 contract ERC4626BufferPool is
     IBasePool,
     IBufferPool,
-    IRateProvider,
     BalancerPoolToken,
     BasePoolHooks,
     BasePoolAuthentication,
@@ -229,8 +228,10 @@ contract ERC4626BufferPool is
         return balancesLiveScaled18[0] + balancesLiveScaled18[1];
     }
 
-    /// @inheritdoc IRateProvider
+    /// @inheritdoc IBasePool
     function getRate() external view onlyVault returns (uint256) {
+        // TODO the rate calculated here reflects the rate of wrapped token in terms of base tokens, and not the
+        // rate of the BPT. We should decide if IBasePool and IRateProvider can share the same getRate function name.
         return _getRate();
     }
 

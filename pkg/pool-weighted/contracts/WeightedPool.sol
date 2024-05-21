@@ -129,6 +129,11 @@ contract WeightedPool is IBasePool, IMinimumSwapFee, BalancerPoolToken {
         }
     }
 
+    /// @inheritdoc IBasePool
+    function getRate() public view returns (uint256) {
+        return getVault().getBptRate(address(this));
+    }
+
     function _getNormalizedWeight(uint256 tokenIndex) internal view virtual returns (uint256) {
         // prettier-ignore
         if (tokenIndex == 0) { return _normalizedWeight0; }
