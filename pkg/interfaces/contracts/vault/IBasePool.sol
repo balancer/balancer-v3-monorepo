@@ -73,11 +73,4 @@ interface IBasePool {
      * @return amountCalculatedScaled18 Calculated amount for the swap
      */
     function onSwap(PoolSwapParams calldata params) external returns (uint256 amountCalculatedScaled18);
-
-    /**
-     * @notice Get the BPT rate, which is invariant/total supply. The Vault Extension has a function to calculate the
-     * BPT rate, which can be used as an implementation of pool's getRate() in most cases.
-     * @return rate Rate of pool's BPT
-     */
-    function getRate() external returns (uint256 rate);
 }

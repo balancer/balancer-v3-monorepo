@@ -89,11 +89,6 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
     }
 
-    /// @inheritdoc IBasePool
-    function getRate() public view returns (uint256) {
-        return getVault().getBptRate(address(this));
-    }
-
     function setSpecialSender(address sender) external {
         _specialSender = sender;
     }

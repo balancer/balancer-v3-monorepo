@@ -5,7 +5,6 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -234,7 +233,7 @@ contract StablePoolTest is BaseVaultTest {
             [TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray()
         );
         uint256 expectedRate = stableInvariant.divDown(totalSupply);
-        uint256 actualRate = IBasePool(address(pool)).getRate();
+        uint256 actualRate = IRateProvider(address(pool)).getRate();
         assertEq(actualRate, expectedRate, "Wrong rate");
 
         uint256[] memory amountsIn = [TOKEN_AMOUNT, 0].toMemoryArray();
@@ -248,7 +247,7 @@ contract StablePoolTest is BaseVaultTest {
         );
 
         expectedRate = stableInvariant.divDown(totalSupply);
-        actualRate = IBasePool(address(pool)).getRate();
+        actualRate = IRateProvider(address(pool)).getRate();
         assertEq(actualRate, expectedRate, "Wrong rate after addLiquidity");
     }
 

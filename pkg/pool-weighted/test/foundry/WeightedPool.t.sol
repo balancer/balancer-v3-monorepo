@@ -6,30 +6,18 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { TokenConfig, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMinimumSwapFee.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
-import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
-import { Router } from "@balancer-labs/v3-vault/contracts/Router.sol";
-import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
-import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
@@ -232,7 +220,7 @@ contract WeightedPoolTest is BaseVaultTest {
         uint256 totalSupply = bptAmountOut + MIN_BPT;
         uint256 weightedInvariant = WeightedMath.computeInvariant(weights, [DAI_AMOUNT, USDC_AMOUNT].toMemoryArray());
         uint256 expectedRate = weightedInvariant.divDown(totalSupply);
-        uint256 actualRate = IBasePool(address(pool)).getRate();
+        uint256 actualRate = IRateProvider(address(pool)).getRate();
         assertEq(actualRate, expectedRate, "Wrong rate");
 
         uint256[] memory amountsIn = [uint256(DAI_AMOUNT), 0].toMemoryArray();
@@ -243,7 +231,7 @@ contract WeightedPoolTest is BaseVaultTest {
         weightedInvariant = WeightedMath.computeInvariant(weights, [2 * DAI_AMOUNT, USDC_AMOUNT].toMemoryArray());
 
         expectedRate = weightedInvariant.divDown(totalSupply);
-        actualRate = IBasePool(address(pool)).getRate();
+        actualRate = IRateProvider(address(pool)).getRate();
         assertEq(actualRate, expectedRate, "Wrong rate after addLiquidity");
     }
 
