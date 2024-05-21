@@ -500,16 +500,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
 
-    function _setPoolCreatorFeeRatio(address pool, uint256 poolCreatorFeeRatio) internal virtual {
-        if (poolCreatorFeeRatio > FixedPoint.ONE) {
-            revert PoolCreatorFeeRatioTooHigh();
-        }
-
-        _poolCreatorFeeRatios[pool] = poolCreatorFeeRatio;
-
-        emit PoolCreatorFeeRatioChanged(pool, poolCreatorFeeRatio);
-    }
-
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/

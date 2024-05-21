@@ -293,8 +293,20 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _setPoolCreatorFeeRatio(pool, poolCreatorFeeRatio);
     }
 
+    function _setPoolCreatorFeeRatio(address pool, uint256 poolCreatorFeeRatio) internal virtual {
+        if (poolCreatorFeeRatio > FixedPoint.ONE) {
+            revert PoolCreatorFeeRatioTooHigh();
+        }
+
+        collectProtocolFees(pool);
+        
+        _poolCreatorFeeRatios[pool] = poolCreatorFeeRatio;
+
+        emit PoolCreatorFeeRatioChanged(pool, poolCreatorFeeRatio);
+    }
+    
     /// @inheritdoc IVaultAdmin
-    function collectProtocolFees(address pool) external onlyVault nonReentrant {
+    function collectProtocolFees(address pool) public onlyVault nonReentrant {
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
 
         for (uint256 i = 0; i < poolTokens.length; ++i) {
