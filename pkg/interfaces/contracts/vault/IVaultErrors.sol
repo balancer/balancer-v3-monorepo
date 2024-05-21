@@ -55,6 +55,12 @@ interface IVaultErrors {
     /// @dev The data in a TokenConfig struct is inconsistent or unsupported.
     error InvalidTokenConfiguration();
 
+    /// @dev The fee percentages are inconsistent (e.g., there is a creator fee, with no creator).
+    error InvalidFeeConfiguration();
+
+    /// @dev Error raised if the wrong account attempts to withdraw pool creator fees.
+    error CallerIsNotPoolCreator(address caller);
+
     /**
      * @dev The token list passed into an operation does not match the pool tokens in the pool.
      * @param pool Address of the pool
