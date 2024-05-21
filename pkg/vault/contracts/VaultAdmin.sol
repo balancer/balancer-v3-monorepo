@@ -299,12 +299,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         }
 
         collectProtocolFees(pool);
-        
+
         _poolCreatorFeeRatios[pool] = poolCreatorFeeRatio;
 
         emit PoolCreatorFeeRatioChanged(pool, poolCreatorFeeRatio);
     }
-    
+
     /// @inheritdoc IVaultAdmin
     function collectProtocolFees(address pool) public onlyVault nonReentrant {
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
