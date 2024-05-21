@@ -15,7 +15,8 @@ interface IVaultEvents {
      * @param pool The pool being registered
      * @param factory The factory creating the pool
      * @param tokenConfig The pool's tokens
-     * @param feeConfig The fees associated with this pool (swap, protocol, creator)
+     * @param poolStaticSwapFeePercentage The pool's static swap fee
+     * @param aggregateSwapFeePercentage The aggregate prtoocol swap fee percentage (protocol and creator)
      * @param pauseWindowEndTime The pool's pause window end time
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHooks Flags indicating which hooks the pool supports
@@ -25,7 +26,8 @@ interface IVaultEvents {
         address indexed pool,
         address indexed factory,
         TokenConfig[] tokenConfig,
-        PoolFeeConfig feeConfig,
+        uint256 poolStaticSwapFeePercentage,
+        uint256 aggregateSwapFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts roleAccounts,
         PoolHooks poolHooks,
@@ -133,4 +135,28 @@ interface IVaultEvents {
      * @param newProtocolFeeCollector The address of the new protocol fee collector
      */
     event ProtocolFeeCollectorChanged(IProtocolFeeCollector indexed newProtocolFeeCollector);
+
+    /**
+     * @notice Logs the collection of protocol swap fees in a specific token and amount.
+     * @param pool The pool on which the swap fee was charged
+     * @param token The token in which the swap fee was charged
+     * @param amount The amount of the token collected in fees
+     */
+    event ProtocolSwapFeeCharged(address indexed pool, IERC20 indexed token, uint256 amount);
+
+    /**
+     * @notice Logs the collection of protocol yield fees in a specific token and amount.
+     * @param pool The pool on which the yield fee was charged
+     * @param token The token in which the yield fee was charged
+     * @param amount The amount of the token collected in fees
+     */
+    event ProtocolYieldFeeCharged(address indexed pool, IERC20 indexed token, uint256 amount);
+
+    /**
+     * @notice Emitted when the pool creator fee ratio is updated.
+     * @dev This is the proportion of aggregate swap or yield fees assigned to the pool creator.
+     * @param pool The pool whose creator fee will be changed
+     * @param poolCreatorFeeRatio The updated pool creator fee percentage
+     */
+    event PoolCreatorFeeRatioChanged(address indexed pool, uint256 poolCreatorFeeRatio);
 }
