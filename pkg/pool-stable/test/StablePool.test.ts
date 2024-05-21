@@ -68,6 +68,7 @@ describe('StablePool', () => {
       'Stable Pool',
       `STABLE-${numTokens}`,
       tokenConfig,
+      false,
       200n,
       [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
       0, // swap fee

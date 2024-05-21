@@ -40,6 +40,7 @@ contract StablePoolFactory is BasePoolFactory {
         string memory name,
         string memory symbol,
         TokenConfig[] memory tokens,
+        bool creatorControlledFees,
         uint256 amplificationParameter,
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
@@ -60,6 +61,7 @@ contract StablePoolFactory is BasePoolFactory {
         _registerPoolWithVault(
             pool,
             tokens,
+            creatorControlledFees,
             swapFeePercentage,
             getVault().getProtocolFeeCollector().getGlobalAggregateSwapFeePercentage(),
             roleAccounts,
