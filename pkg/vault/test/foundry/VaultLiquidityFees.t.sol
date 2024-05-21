@@ -24,7 +24,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         setSwapFeePercentage(swapFeePercentage);
-        vault.manualSetAggregateProtocolSwapFeePercentage(
+        vault.manualSetAggregateSwapFeePercentage(
             pool,
             _getAggregateFeePercentage(protocolSwapFeePercentage, poolCreatorFeePercentage)
         );
