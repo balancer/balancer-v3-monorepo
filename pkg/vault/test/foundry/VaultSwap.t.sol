@@ -512,7 +512,7 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(balances[usdcIdx], 2 * defaultAmount + usdcFee - usdcProtocolFee, "Swap: Pool's [1] balance is wrong");
 
         // protocol fees are accrued
-        uint256 actualFee = vault.manualGetProtocolSwapFees(pool, kind == SwapKind.EXACT_OUT ? usdc : dai);
+        uint256 actualFee = vault.manualGetProtocolFees(pool, kind == SwapKind.EXACT_OUT ? usdc : dai);
         assertEq(protocolFee, actualFee, "Swap: Protocol's fee amount is wrong");
 
         // vault are adjusted balances

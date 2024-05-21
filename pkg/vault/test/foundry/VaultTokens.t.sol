@@ -153,12 +153,13 @@ contract VaultTokenTest is BaseVaultTest {
 
     function _registerPool(TokenConfig[] memory tokenConfig) private {
         LiquidityManagement memory liquidityManagement;
+        PoolRoleAccounts memory roleAccounts;
         PoolHooks memory poolHooks;
 
         poolFactory.registerPool(
             pool,
             tokenConfig,
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            roleAccounts,
             poolHooks,
             liquidityManagement
         );

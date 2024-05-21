@@ -197,23 +197,23 @@ contract PoolConfigLibTest is Test {
         );
     }
 
-    function testGetAggregateProtocolSwapFeePercentage() public {
+    function testGetAggregateSwapFeePercentage() public {
         assertEq(
             PoolConfigBits
                 .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH))
-                .getAggregateProtocolSwapFeePercentage(),
+                .getAggregateSwapFeePercentage(),
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
-            "getAggregateProtocolSwapFeePercentage mismatch (testGetAggregateProtocolSwapFeePercentage)"
+            "getAggregateSwapFeePercentage mismatch (testGetAggregateSwapFeePercentage)"
         );
     }
 
-    function testGetAggregateProtocolYieldFeePercentage() public {
+    function testGetAggregateYieldFeePercentage() public {
         assertEq(
             PoolConfigBits
                 .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH))
-                .getAggregateProtocolYieldFeePercentage(),
+                .getAggregateYieldFeePercentage(),
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
-            "getAggregateProtocolYieldFeePercentage mismatch (testGetAggregateProtocolYieldFeePercentage)"
+            "getAggregateYieldFeePercentage mismatch (testGetAggregateYieldFeePercentage)"
         );
     }
 
@@ -321,14 +321,14 @@ contract PoolConfigLibTest is Test {
         assertFalse(configBits.supportsRemoveLiquidityCustom(), "supportsRemoveLiquidityCustom is true");
         assertEq(configBits.getStaticSwapFeePercentage(), 0, "staticSwapFeePercentage isn't zero");
         assertEq(
-            configBits.getAggregateProtocolSwapFeePercentage(),
+            configBits.getAggregateSwapFeePercentage(),
             0,
-            "aggregateProtocolSwapFeePercentage isn't zero"
+            "aggregateSwapFeePercentage isn't zero"
         );
         assertEq(
-            configBits.getAggregateProtocolYieldFeePercentage(),
+            configBits.getAggregateYieldFeePercentage(),
             0,
-            "aggregateProtocolYieldFeePercentage isn't zero"
+            "aggregateYieldFeePercentage isn't zero"
         );
         assertEq(configBits.getTokenDecimalDiffs(), 0, "tokenDecimalDiffs isn't zero");
         assertEq(configBits.getPauseWindowEndTime(), 0, "pauseWindowEndTime isn't zero");
@@ -383,18 +383,18 @@ contract PoolConfigLibTest is Test {
             PoolConfigBits
                 .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH))
                 .toPoolConfig()
-                .aggregateProtocolSwapFeePercentage,
+                .aggregateSwapFeePercentage,
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
-            "aggregateProtocolSwapFeePercentage mismatch (testToPoolConfig)"
+            "aggregateSwapFeePercentage mismatch (testToPoolConfig)"
         );
 
         assertEq(
             PoolConfigBits
                 .wrap(bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH))
                 .toPoolConfig()
-                .aggregateProtocolYieldFeePercentage,
+                .aggregateYieldFeePercentage,
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
-            "aggregateProtocolYieldFeePercentage mismatch (testToPoolConfig)"
+            "aggregateYieldFeePercentage mismatch (testToPoolConfig)"
         );
 
         assertEq(
@@ -580,19 +580,19 @@ contract PoolConfigLibTest is Test {
         );
 
         config = _createEmptyConfig();
-        config.aggregateProtocolSwapFeePercentage = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
+        config.aggregateSwapFeePercentage = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH),
-            "aggregateProtocolSwapFeePercentage mismatch (testFromPoolConfig)"
+            "aggregateSwapFeePercentage mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();
-        config.aggregateProtocolYieldFeePercentage = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
+        config.aggregateYieldFeePercentage = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
         assertEq(
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertUint(MAX_UINT24_VALUE, PoolConfigLib.PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH),
-            "aggregateProtocolYieldFeePercentage mismatch (testFromPoolConfig)"
+            "aggregateYieldFeePercentage mismatch (testFromPoolConfig)"
         );
 
         config = _createEmptyConfig();

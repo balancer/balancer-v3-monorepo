@@ -769,7 +769,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function _testAddLiquidity(PoolData memory poolData, TestAddLiquidityParams memory params) internal {
-        poolData.poolConfig.aggregateProtocolSwapFeePercentage = swapFeePercentage;
+        poolData.poolConfig.aggregateSwapFeePercentage = swapFeePercentage;
 
         uint256[] memory expectedAmountsInRaw = new uint256[](params.expectedAmountsInScaled18.length);
         for (uint256 i = 0; i < expectedAmountsInRaw.length; i++) {
@@ -806,7 +806,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         // NOTE: stack too deep fix
         TestAddLiquidityParams memory params_ = params;
         PoolData memory poolData_ = poolData;
-        uint256 protocolSwapFeePercentage = poolData.poolConfig.aggregateProtocolSwapFeePercentage;
+        uint256 protocolSwapFeePercentage = poolData.poolConfig.aggregateSwapFeePercentage;
 
         for (uint256 i = 0; i < poolData_.tokenConfig.length; i++) {
             assertEq(amountsInRaw[i], expectedAmountsInRaw[i], "Unexpected tokenIn amount");
@@ -839,7 +839,7 @@ contract VaultUnitLiquidityTest is BaseTest {
 
     function _testRemoveLiquidity(PoolData memory poolData, TestRemoveLiquidityParams memory params) internal {
         VaultState memory vaultState;
-        poolData.poolConfig.aggregateProtocolSwapFeePercentage = 1e16;
+        poolData.poolConfig.aggregateSwapFeePercentage = 1e16;
 
         uint256[] memory expectedAmountsOutRaw = new uint256[](params.expectedAmountsOutScaled18.length);
         for (uint256 i = 0; i < expectedAmountsOutRaw.length; i++) {
@@ -890,7 +890,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         // NOTE: stack too deep fix
         TestRemoveLiquidityParams memory params_ = params;
         PoolData memory poolData_ = poolData;
-        uint256 protocolSwapFeePercentage = poolData.poolConfig.aggregateProtocolSwapFeePercentage;
+        uint256 protocolSwapFeePercentage = poolData.poolConfig.aggregateSwapFeePercentage;
         for (uint256 i = 0; i < poolData.tokenConfig.length; i++) {
             // check _computeAndChargeProtocolSwapFees
             uint256 protocolSwapFeeAmountRaw = _checkProtocolFeeResult(

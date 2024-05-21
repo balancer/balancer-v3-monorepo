@@ -70,11 +70,11 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
-    function getAggregateProtocolSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
+    function getAggregateSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
         return PoolConfigBits.unwrap(config).decodeUint(PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
-    function getAggregateProtocolYieldFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
+    function getAggregateYieldFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
         return PoolConfigBits.unwrap(config).decodeUint(PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
