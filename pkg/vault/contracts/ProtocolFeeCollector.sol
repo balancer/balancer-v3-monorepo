@@ -85,6 +85,18 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         _;
     }
 
+    modifier authenticateByFlag(address pool) {
+        (address poolCreator, , bool creatorControlledFees) = getVault().getPoolCreatorInfo(pool);
+
+        if (creatorControlledFees) {
+            _ensureCallerIsPoolCreatorInternal(pool, poolCreator);
+        } else {
+            // Default to governance.
+            _authenticateCaller();
+        }
+        _;
+    }
+
     constructor(IVault vault_) SingletonAuthentication(vault_) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -126,7 +138,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     function setAggregateSwapFeePercentage(
         address pool,
         uint256 newAggregateSwapFeePercentage
-    ) external authenticate withValidSwapFee(newAggregateSwapFeePercentage) withLatestFees(pool) {
+    ) external authenticateByFlag(pool) withValidSwapFee(newAggregateSwapFeePercentage) withLatestFees(pool) {
         // Update the aggregate swap fee value in the Vault (PoolConfig).
         getVault().updateAggregateFeePercentage(pool, ProtocolFeeType.SWAP, newAggregateSwapFeePercentage);
 
@@ -137,7 +149,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     function setAggregateYieldFeePercentage(
         address pool,
         uint256 newAggregateYieldFeePercentage
-    ) external authenticate withValidYieldFee(newAggregateYieldFeePercentage) withLatestFees(pool) {
+    ) external authenticateByFlag(pool) withValidYieldFee(newAggregateYieldFeePercentage) withLatestFees(pool) {
         // Update the aggregate yield fee value in the Vault (PoolConfig).
         getVault().updateAggregateFeePercentage(pool, ProtocolFeeType.YIELD, newAggregateYieldFeePercentage);
 
@@ -207,6 +219,10 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     function _ensureCallerIsPoolCreator(address pool) private view {
         (address poolCreator, , ) = getVault().getPoolCreatorInfo(pool);
 
+        _ensureCallerIsPoolCreatorInternal(pool, poolCreator);
+    }
+
+    function _ensureCallerIsPoolCreatorInternal(address pool, address poolCreator) private view {
         if (poolCreator == address(0)) {
             revert PoolCreatorNotRegistered(pool);
         }
