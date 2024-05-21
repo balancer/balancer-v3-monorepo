@@ -122,6 +122,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
+        bool creatorControlledFees;
         uint256 poolStaticSwapFeePercentage;
         uint256 aggregateSwapFeePercentage;
         uint256 pauseWindowEndTime;
@@ -134,6 +135,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        bool creatorControlledFees,
         uint256 poolStaticSwapFeePercentage,
         uint256 aggregateSwapFeePercentage,
         uint256 pauseWindowEndTime,
@@ -145,6 +147,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             pool,
             PoolRegistrationParams({
                 tokenConfig: tokenConfig,
+                creatorControlledFees: creatorControlledFees,
                 poolStaticSwapFeePercentage: poolStaticSwapFeePercentage,
                 aggregateSwapFeePercentage: aggregateSwapFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
@@ -227,6 +230,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
         }
 
+        // Set the creator controlled fees flag. If true, the pool creator controls protocol and pool creator fees.
+        if (params.creatorControlledFees) {
+            if (params.roleAccounts.poolCreator == address(0)) {
+                revert InvalidFeeConfiguration();
+            } else {
+                _creatorControlledFees[pool] = true;
+            }
+        }
+
         // Store the role account addresses (for getters).
         _poolRoleAccounts[pool] = params.roleAccounts;
 
@@ -281,16 +293,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
             roleAssignments[swapFeeAction] = PoolFunctionPermission({
                 account: roleAccounts.swapFeeManager,
-                onlyOwner: true
-            });
-        }
-
-        // TODO: this will get more complicated when we have the "protocol-controlled bit".
-        if (roleAccounts.poolCreator != address(0)) {
-            bytes32 creatorFeeAction = vaultAdmin.getActionId(IVaultAdmin.setPoolCreatorFeeRatio.selector);
-
-            roleAssignments[creatorFeeAction] = PoolFunctionPermission({
-                account: roleAccounts.poolCreator,
                 onlyOwner: true
             });
         }

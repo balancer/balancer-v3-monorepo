@@ -66,6 +66,7 @@ interface IVaultExtension {
      *
      * @param pool The address of the pool being registered
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
+     * @param creatorControlledFees If true, the pool creator will control protocol and creator fees
      * @param poolStaticSwapFeePercentage The pool's static swap fee
      * @param aggregateSwapFeePercentage The aggregate prtoocol swap fee percentage (protocol and creator)
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
@@ -76,6 +77,7 @@ interface IVaultExtension {
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
+        bool creatorControlledFees,
         uint256 poolStaticSwapFeePercentage,
         uint256 aggregateSwapFeePercentage,
         uint256 pauseWindowEndTime,
