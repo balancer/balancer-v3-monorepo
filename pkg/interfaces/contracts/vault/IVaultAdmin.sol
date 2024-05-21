@@ -60,6 +60,14 @@ interface IVaultAdmin {
      */
     function getPoolTokenRates(address pool) external view returns (uint256[] memory);
 
+    /**
+     * @notice Retrieve the pool creator account and fee ratio.
+     * @param pool The pool
+     * @return poolCreator The address of the pool creator
+     * @return poolCreatorFeeRatio The proportion of protocol fees allocated to the pool creator
+     */
+    function getPoolCreatorInfo(address pool) external view returns (address, uint256);
+
     /*******************************************************************************
                                     Vault Pausing
     *******************************************************************************/
@@ -119,6 +127,13 @@ interface IVaultAdmin {
      * @param swapFeePercentage The new swap fee percentage to apply to the pool
      */
     function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
+
+    /**
+     * @notice Assigns a new pool creator fee ratio to the specified pool.
+     * @param pool The address of the pool for which the static swap fee will be changed
+     * @param poolCreatorFeeRatio The new swap fee percentage to apply to the pool
+     */
+    function setPoolCreatorFeeRatio(address pool, uint256 poolCreatorFeeRatio) external;
 
     /**
      * @notice Collects accumulated protocol swap and yield fees for the specified pool.
