@@ -6,7 +6,8 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {
-    IProtocolFeeCollector, ProtocolFeeType
+    IProtocolFeeCollector,
+    ProtocolFeeType
 } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -127,11 +128,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         uint256 newAggregateSwapFeePercentage
     ) external authenticate withValidSwapFee(newAggregateSwapFeePercentage) withLatestFees(pool) {
         // Update the aggregate swap fee value in the Vault (PoolConfig).
-        getVault().updateAggregateFeePercentage(
-            pool,
-            ProtocolFeeType.SWAP,
-            newAggregateSwapFeePercentage
-        );
+        getVault().updateAggregateFeePercentage(pool, ProtocolFeeType.SWAP, newAggregateSwapFeePercentage);
 
         emit AggregateSwapFeePercentageChanged(pool, newAggregateSwapFeePercentage);
     }
@@ -142,11 +139,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         uint256 newAggregateYieldFeePercentage
     ) external authenticate withValidYieldFee(newAggregateYieldFeePercentage) withLatestFees(pool) {
         // Update the aggregate yield fee value in the Vault (PoolConfig).
-        getVault().updateAggregateFeePercentage(
-            pool,
-            ProtocolFeeType.YIELD,
-            newAggregateYieldFeePercentage
-        );
+        getVault().updateAggregateFeePercentage(pool, ProtocolFeeType.YIELD, newAggregateYieldFeePercentage);
 
         emit AggregateSwapFeePercentageChanged(pool, newAggregateYieldFeePercentage);
     }

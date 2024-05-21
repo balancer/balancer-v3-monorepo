@@ -112,10 +112,7 @@ contract HooksTest is BaseVaultTest {
 
     function testOnAfterSwapHook() public {
         setSwapFeePercentage(swapFeePercentage);
-        vault.manualSetAggregateSwapFeePercentage(
-            pool,
-            _getAggregateFeePercentage(protocolSwapFeePercentage, 0)
-        );
+        vault.manualSetAggregateSwapFeePercentage(pool, _getAggregateFeePercentage(protocolSwapFeePercentage, 0));
         PoolMock(pool).setDynamicSwapFeePercentage(swapFeePercentage);
 
         uint256 expectedAmountOut = defaultAmount.mulDown(swapFeePercentage.complement());

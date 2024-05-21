@@ -285,7 +285,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function setPoolCreatorFeeRatio(address pool, uint256 poolCreatorFeeRatio) external onlyVault withRegisteredPool(pool) authenticateByRole(pool) {
+    function setPoolCreatorFeeRatio(
+        address pool,
+        uint256 poolCreatorFeeRatio
+    ) external onlyVault withRegisteredPool(pool) authenticateByRole(pool) {
         _ensureUnpausedAndGetVaultState(pool);
         _setPoolCreatorFeeRatio(pool, poolCreatorFeeRatio);
     }
@@ -329,7 +332,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function getPoolCreatorInfo(address pool) external view returns (address, uint256) {
-        return (_poolRoleAccounts[pool].poolCreator, _poolCreatorFeeRatios[pool]);  
+        return (_poolRoleAccounts[pool].poolCreator, _poolCreatorFeeRatios[pool]);
     }
 
     /// @inheritdoc IVaultAdmin

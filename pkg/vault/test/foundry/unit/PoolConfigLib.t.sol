@@ -320,16 +320,8 @@ contract PoolConfigLibTest is Test {
         assertFalse(configBits.supportsAddLiquidityCustom(), "supportsAddLiquidityCustom is true");
         assertFalse(configBits.supportsRemoveLiquidityCustom(), "supportsRemoveLiquidityCustom is true");
         assertEq(configBits.getStaticSwapFeePercentage(), 0, "staticSwapFeePercentage isn't zero");
-        assertEq(
-            configBits.getAggregateSwapFeePercentage(),
-            0,
-            "aggregateSwapFeePercentage isn't zero"
-        );
-        assertEq(
-            configBits.getAggregateYieldFeePercentage(),
-            0,
-            "aggregateYieldFeePercentage isn't zero"
-        );
+        assertEq(configBits.getAggregateSwapFeePercentage(), 0, "aggregateSwapFeePercentage isn't zero");
+        assertEq(configBits.getAggregateYieldFeePercentage(), 0, "aggregateYieldFeePercentage isn't zero");
         assertEq(configBits.getTokenDecimalDiffs(), 0, "tokenDecimalDiffs isn't zero");
         assertEq(configBits.getPauseWindowEndTime(), 0, "pauseWindowEndTime isn't zero");
     }

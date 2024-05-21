@@ -156,13 +156,7 @@ contract VaultTokenTest is BaseVaultTest {
         PoolRoleAccounts memory roleAccounts;
         PoolHooks memory poolHooks;
 
-        poolFactory.registerPool(
-            pool,
-            tokenConfig,
-            roleAccounts,
-            poolHooks,
-            liquidityManagement
-        );
+        poolFactory.registerPool(pool, tokenConfig, roleAccounts, poolHooks, liquidityManagement);
     }
 
     function validateBufferPool(address pool, IERC20[] memory expectedTokens) private {
