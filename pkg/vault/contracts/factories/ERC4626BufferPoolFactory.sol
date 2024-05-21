@@ -77,7 +77,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             wrappedToken,
             rateProvider,
             getNewPoolPauseWindowEndTime(),
-            PoolRoleAccounts({ pauseManager: pauseManager, swapFeeManager: address(0) }),
+            PoolRoleAccounts({ pauseManager: pauseManager, swapFeeManager: address(0), poolCreator: address(0) }),
             _getDefaultPoolHooks(),
             _getDefaultLiquidityManagement()
         );
@@ -95,7 +95,6 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         uint256 wrappedTokenIndex = IBufferPool(pool).getWrappedTokenIndex();
         uint256 baseTokenIndex = IBufferPool(pool).getBaseTokenIndex();
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
-        PoolFeeConfig memory poolFeeConfig;
 
         tokenConfig[wrappedTokenIndex].token = IERC20(wrappedToken);
         tokenConfig[wrappedTokenIndex].tokenType = TokenType.WITH_RATE;
@@ -108,7 +107,8 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         getVault().registerPool(
             pool,
             tokenConfig,
-            poolFeeConfig,
+            0, // zero swap fee
+            getVault().getProtocolFeeCollector().getGlobalAggregateSwapFeePercentage(),
             pauseWindowEndTime,
             roleAccounts,
             poolHooks,

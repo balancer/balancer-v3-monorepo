@@ -36,8 +36,6 @@ contract WeightedPool8020Factory is BasePoolFactory {
     function create(
         TokenConfig memory highWeightTokenConfig,
         TokenConfig memory lowWeightTokenConfig,
-        uint256 poolCreatorFeePercentage,
-        address poolCreator,
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage
     ) external returns (address pool) {
@@ -79,12 +77,8 @@ contract WeightedPool8020Factory is BasePoolFactory {
         _registerPoolWithVault(
             pool,
             tokenConfig,
-            PoolFeeConfig({
-                poolSwapFeePercentage: swapFeePercentage,
-                protocolSwapFeePercentage: getVault().getProtocolFeeCollector().getGlobalProtocolSwapFeePercentage(),
-                poolCreatorFeePercentage: poolCreatorFeePercentage,
-                poolCreator: poolCreator
-            }),
+            swapFeePercentage,
+            getVault().getProtocolFeeCollector().getGlobalAggregateSwapFeePercentage(),
             roleAccounts,
             getDefaultPoolHooks(),
             getDefaultLiquidityManagement()
