@@ -83,7 +83,7 @@ contract VaultStorage {
     mapping(address => mapping(IERC20 => uint256)) internal _protocolFees;
 
     // Pool-specific creator fee ratios; this is the proportion of swap and yield fees allocated to the pool creator.
-    mapping(address => uint256) _poolCreatorFeeRatios;
+    mapping(address => uint256) internal _poolCreatorFeeRatios;
 
     /**
      * @dev Represents the total reserve of each ERC20 token. It should be always equal to `token.balanceOf(vault)`,
