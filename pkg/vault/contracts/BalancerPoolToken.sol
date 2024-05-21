@@ -165,7 +165,13 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvide
         return _domainSeparatorV4();
     }
 
-    // @inheritdoc IRateProvider
+    /**
+     * @notice Get the BPT rate, which is defined as: pool invariant/total supply.
+     * @dev The Vault Extension defines a default implementation (`getBptRate`) to calculate the rate
+     * of any given pool, which should be sufficient in nearly all cases.
+     *
+     * @return rate Rate of the pool's BPT
+     */
     function getRate() public view virtual returns (uint256) {
         return getVault().getBptRate(address(this));
     }
