@@ -85,6 +85,9 @@ contract VaultStorage {
     // Pool-specific creator fee ratios; this is the proportion of swap and yield fees allocated to the pool creator.
     mapping(address => uint256) internal _poolCreatorFeeRatios;
 
+    // If true, the pool creator controls the aggregate swap and creator fees; otherwise, default to governance.
+    mapping(address => bool) internal _creatorControlledFees;
+
     /**
      * @dev Represents the total reserve of each ERC20 token. It should be always equal to `token.balanceOf(vault)`,
      * except during `unlock`.

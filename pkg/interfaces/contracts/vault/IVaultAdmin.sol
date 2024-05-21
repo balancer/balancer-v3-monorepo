@@ -122,6 +122,13 @@ interface IVaultAdmin {
     *******************************************************************************/
 
     /**
+     * @notice Returns whether aggregate and pool creator fees are controlled by the creator, or default to governance.
+     * @param pool The pool whose fee status we are checking
+     * @return creatorControlledFees True if the fees for this pool are controlled by the pool creator
+     */
+    function areFeesCreatorControlled(address pool) external view returns (bool);
+
+    /**
      * @notice Assigns a new static swap fee percentage to the specified pool.
      * @param pool The address of the pool for which the static swap fee will be changed
      * @param swapFeePercentage The new swap fee percentage to apply to the pool

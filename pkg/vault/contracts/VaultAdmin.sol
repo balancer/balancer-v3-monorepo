@@ -270,6 +270,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                                         Fees
     *******************************************************************************/
 
+    /// @inheritdoc IVaultAdmin
+    function areFeesCreatorControlled(address pool) external view returns (bool) {
+        return _creatorControlledFees[pool];
+    }
+
     /**
      * @inheritdoc IVaultAdmin
      * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
