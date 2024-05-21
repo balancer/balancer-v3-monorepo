@@ -30,8 +30,8 @@ struct PoolConfig {
     PoolHooks hooks;
     LiquidityManagement liquidityManagement;
     uint256 staticSwapFeePercentage;
-    uint256 aggregateProtocolSwapFeePercentage;
-    uint256 aggregateProtocolYieldFeePercentage;
+    uint256 aggregateSwapFeePercentage;
+    uint256 aggregateYieldFeePercentage;
     uint256 tokenDecimalDiffs;
     uint256 pauseWindowEndTime;
     bool isPoolRegistered;
@@ -69,10 +69,12 @@ struct VaultState {
  * @dev Represents the accounts holding certain roles for a given pool. This is passed in on pool registration.
  * @param pauseManager Account empowered to pause/unpause the pool (or 0 to delegate to governance)
  * @param swapFeeManager Account empowered to set static swap fees for a pool (or 0 to delegate to goverance)
+ * @param poolCreator Account empowered to collect pool creator fees
  */
 struct PoolRoleAccounts {
     address pauseManager;
     address swapFeeManager;
+    address poolCreator;
 }
 
 /**
@@ -123,13 +125,6 @@ struct TokenConfig {
     TokenType tokenType;
     IRateProvider rateProvider;
     bool paysYieldFees;
-}
-
-struct PoolFeeConfig {
-    uint256 poolSwapFeePercentage;
-    uint256 protocolSwapFeePercentage;
-    uint256 poolCreatorFeePercentage;
-    address poolCreator;
 }
 
 struct PoolData {
