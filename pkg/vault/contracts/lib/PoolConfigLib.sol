@@ -197,12 +197,12 @@ library PoolConfigLib {
             configBits = configBits
                 .insertUint(config.staticSwapFeePercentage / FEE_SCALING_FACTOR, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH)
                 .insertUint(
-                    config.aggregateProtocolSwapFeePercentage / FEE_SCALING_FACTOR,
+                    config.aggregateSwapFeePercentage / FEE_SCALING_FACTOR,
                     PROTOCOL_SWAP_FEE_OFFSET,
                     FEE_BITLENGTH
                 )
                 .insertUint(
-                    config.aggregateProtocolYieldFeePercentage / FEE_SCALING_FACTOR,
+                    config.aggregateYieldFeePercentage / FEE_SCALING_FACTOR,
                     PROTOCOL_YIELD_FEE_OFFSET,
                     FEE_BITLENGTH
                 );
@@ -261,9 +261,9 @@ library PoolConfigLib {
                 isPoolInRecoveryMode: rawConfig.decodeBool(POOL_RECOVERY_MODE_OFFSET),
                 staticSwapFeePercentage: rawConfig.decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
                     FEE_SCALING_FACTOR,
-                aggregateProtocolSwapFeePercentage: rawConfig.decodeUint(PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
+                aggregateSwapFeePercentage: rawConfig.decodeUint(PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
                     FEE_SCALING_FACTOR,
-                aggregateProtocolYieldFeePercentage: rawConfig.decodeUint(PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH) *
+                aggregateYieldFeePercentage: rawConfig.decodeUint(PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH) *
                     FEE_SCALING_FACTOR,
                 tokenDecimalDiffs: rawConfig.decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH),
                 pauseWindowEndTime: rawConfig.decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH),
