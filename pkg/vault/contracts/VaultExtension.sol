@@ -122,7 +122,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
-        PoolFeeConfig feeConfig;
+        uint256 poolStaticSwapFeePercentage;
+        uint256 aggregateSwapFeePercentage;
         uint256 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
         PoolHooks poolHooks;
@@ -133,7 +134,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
-        PoolFeeConfig memory feeConfig,
+        uint256 poolStaticSwapFeePercentage,
+        uint256 aggregateSwapFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
@@ -143,7 +145,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             pool,
             PoolRegistrationParams({
                 tokenConfig: tokenConfig,
-                feeConfig: feeConfig,
+                poolStaticSwapFeePercentage: poolStaticSwapFeePercentage,
+                aggregateSwapFeePercentage: aggregateSwapFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
                 roleAccounts: roleAccounts,
                 poolHooks: poolHooks,
@@ -238,18 +241,19 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         config.liquidityManagement = params.liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime;
-        (config.aggregateProtocolSwapFeePercentage, config.aggregateProtocolYieldFeePercentage) = _protocolFeeCollector
-            .registerPoolFeeConfig(pool, params.feeConfig);
+        config.aggregateSwapFeePercentage = params.aggregateSwapFeePercentage;
+        config.aggregateYieldFeePercentage = _protocolFeeCollector.getGlobalAggregateYieldFeePercentage();
         _poolConfig[pool] = config.fromPoolConfig();
 
-        _setStaticSwapFeePercentage(pool, params.feeConfig.poolSwapFeePercentage);
+        _setStaticSwapFeePercentage(pool, params.poolStaticSwapFeePercentage);
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
         emit PoolRegistered(
             pool,
             msg.sender,
             params.tokenConfig,
-            params.feeConfig,
+            params.poolStaticSwapFeePercentage,
+            params.aggregateSwapFeePercentage,
             params.pauseWindowEndTime,
             params.roleAccounts,
             params.poolHooks,
@@ -277,6 +281,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
             roleAssignments[swapFeeAction] = PoolFunctionPermission({
                 account: roleAccounts.swapFeeManager,
+                onlyOwner: true
+            });
+        }
+
+        // TODO: this will get more complicated when we have the "protocol-controlled bit".
+        if (roleAccounts.poolCreator != address(0)) {
+            bytes32 creatorFeeAction = vaultAdmin.getActionId(IVaultAdmin.setPoolCreatorFeeRatio.selector);
+
+            roleAssignments[creatorFeeAction] = PoolFunctionPermission({
+                account: roleAccounts.poolCreator,
                 onlyOwner: true
             });
         }
@@ -500,8 +514,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function getProtocolSwapFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
-        return _protocolSwapFees[pool][token];
+    function getProtocolFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
+        return _protocolFees[pool][token];
     }
 
     /// @inheritdoc IVaultExtension
@@ -514,11 +528,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function getStaticSwapFeeManager(address pool) external view withRegisteredPool(pool) onlyVault returns (address) {
         return _poolRoleAccounts[pool].swapFeeManager;
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getProtocolYieldFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
-        return _protocolYieldFees[pool][token];
     }
 
     /*******************************************************************************

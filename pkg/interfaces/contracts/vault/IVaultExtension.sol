@@ -66,7 +66,8 @@ interface IVaultExtension {
      *
      * @param pool The address of the pool being registered
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
-     * @param feeConfig Fee configuration (swap, protocol, creator)
+     * @param poolStaticSwapFeePercentage The pool's static swap fee
+     * @param aggregateSwapFeePercentage The aggregate prtoocol swap fee percentage (protocol and creator)
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHooks Flags indicating which hooks the pool supports
@@ -75,7 +76,8 @@ interface IVaultExtension {
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
-        PoolFeeConfig memory feeConfig,
+        uint256 poolStaticSwapFeePercentage,
+        uint256 aggregateSwapFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
@@ -241,12 +243,12 @@ interface IVaultExtension {
     *******************************************************************************/
 
     /**
-     * @notice Returns the accumulated swap fees (including aggregate protocol fees) in `token` collected by the pool.
+     * @notice Returns the accumulated protocol swap and yield fees in `token` collected by the pool.
      * @param pool The address of the pool for which protocol fees have been collected
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
      */
-    function getProtocolSwapFees(address pool, IERC20 token) external view returns (uint256);
+    function getProtocolFees(address pool, IERC20 token) external view returns (uint256);
 
     /**
      * @notice Fetches the static swap fee percentage for a given pool.
@@ -261,14 +263,6 @@ interface IVaultExtension {
      * @return The current static swap fee manager for the specified pool
      */
     function getStaticSwapFeeManager(address pool) external view returns (address);
-
-    /**
-     * @notice Returns the accumulated yield fees (including aggregate protocol fees) in `token` collected by the pool.
-     * @param pool The address of the pool for which protocol fees have been collected
-     * @param token The address of the token in which fees have been accumulated
-     * @return The total amount of fees accumulated in the specified token
-     */
-    function getProtocolYieldFees(address pool, IERC20 token) external view returns (uint256);
 
     /**
      * @notice Query the current dynamic swap fee of a pool, given a set of swap parameters.
