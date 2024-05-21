@@ -275,11 +275,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         return _creatorControlledFees[pool];
     }
 
-    /**
-     * @inheritdoc IVaultAdmin
-     * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
-     * MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
-     */
+    /// @inheritdoc IVaultAdmin
     function setStaticSwapFeePercentage(
         address pool,
         uint256 swapFeePercentage
