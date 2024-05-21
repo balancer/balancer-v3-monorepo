@@ -65,8 +65,9 @@ interface IVaultAdmin {
      * @param pool The pool
      * @return poolCreator The address of the pool creator
      * @return poolCreatorFeeRatio The proportion of protocol fees allocated to the pool creator
+     * @return creatorControlledFees If true, the pool creator controls protocol and pool creator fees
      */
-    function getPoolCreatorInfo(address pool) external view returns (address, uint256);
+    function getPoolCreatorInfo(address pool) external view returns (address, uint256, bool);
 
     /*******************************************************************************
                                     Vault Pausing

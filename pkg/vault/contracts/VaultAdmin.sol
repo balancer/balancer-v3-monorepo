@@ -289,7 +289,18 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function setPoolCreatorFeeRatio(
         address pool,
         uint256 poolCreatorFeeRatio
-    ) external onlyVault withRegisteredPool(pool) authenticateByRole(pool) {
+    ) external onlyVault withRegisteredPool(pool) {
+        // Cannot use authenticate by role, as the logic depends on the creatorControlledFees flag.
+        if (_creatorControlledFees[pool]) {
+            // caller must be the pool creator
+            if (msg.sender != _poolRoleAccounts[pool].poolCreator) {
+                revert CallerIsNotPoolCreator(msg.sender);
+            }
+        } else {
+            // Default to governance if fees are not creator-controlled.
+            _authenticateCaller();
+        }
+
         _ensureUnpausedAndGetVaultState(pool);
         _setPoolCreatorFeeRatio(pool, poolCreatorFeeRatio);
     }
@@ -344,8 +355,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function getPoolCreatorInfo(address pool) external view returns (address, uint256) {
-        return (_poolRoleAccounts[pool].poolCreator, _poolCreatorFeeRatios[pool]);
+    function getPoolCreatorInfo(address pool) external view returns (address, uint256, bool) {
+        return (_poolRoleAccounts[pool].poolCreator, _poolCreatorFeeRatios[pool], _creatorControlledFees[pool]);
     }
 
     /// @inheritdoc IVaultAdmin
