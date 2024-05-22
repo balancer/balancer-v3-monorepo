@@ -71,7 +71,7 @@ interface IVaultExtension {
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHookFlags Flags indicating which hooks the pool supports
-     * @param poolHooks Contract that implements the hooks for the pool
+     * @param poolHooksContract Contract that implements the hooks for the pool
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
     function registerPool(
@@ -81,7 +81,7 @@ interface IVaultExtension {
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         PoolHookFlags calldata poolHookFlags,
-        IPoolHooks poolHooks,
+        IPoolHooks poolHooksContract,
         LiquidityManagement calldata liquidityManagement
     ) external;
 

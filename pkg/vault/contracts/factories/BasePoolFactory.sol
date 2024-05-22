@@ -97,7 +97,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         uint256 swapFeePercentage,
         PoolRoleAccounts memory roleAccounts,
         PoolHookFlags memory poolHookFlags,
-        IPoolHooks poolHooks,
+        IPoolHooks poolHooksContract,
         LiquidityManagement memory liquidityManagement
     ) internal {
         getVault().registerPool(
@@ -107,7 +107,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
             getNewPoolPauseWindowEndTime(),
             roleAccounts,
             poolHookFlags,
-            poolHooks,
+            poolHooksContract,
             liquidityManagement
         );
     }

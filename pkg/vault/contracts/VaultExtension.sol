@@ -126,7 +126,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
         PoolHookFlags poolHookFlags;
-        IPoolHooks poolHooks;
+        IPoolHooks poolHooksContract;
         LiquidityManagement liquidityManagement;
     }
 
@@ -138,7 +138,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         PoolHookFlags calldata poolHookFlags,
-        IPoolHooks poolHooks,
+        IPoolHooks poolHooksContract,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
         _registerPool(
@@ -149,7 +149,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 pauseWindowEndTime: pauseWindowEndTime,
                 roleAccounts: roleAccounts,
                 poolHookFlags: poolHookFlags,
-                poolHooks: poolHooks,
+                poolHooksContract: poolHooksContract,
                 liquidityManagement: liquidityManagement
             })
         );
@@ -174,12 +174,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
 
         // If a hook address was passed, make sure that hook trusts the pool factory
-        if (address(params.poolHooks) != address(0)) {
-            if (params.poolHooks.onRegister(msg.sender) != true) {
-                revert PoolHookRejectedFactory(address(params.poolHooks), msg.sender);
+        if (address(params.poolHooksContract) != address(0)) {
+            if (params.poolHooksContract.onRegister(msg.sender) != true) {
+                revert PoolHookRejectedFactory(address(params.poolHooksContract), msg.sender);
             }
             // Saves the pool hook in the vault
-            _poolHooks[pool] = params.poolHooks;
+            _poolHooks[pool] = params.poolHooksContract;
         }
 
         uint256 numTokens = params.tokenConfig.length;
