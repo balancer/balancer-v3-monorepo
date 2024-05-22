@@ -210,7 +210,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _updateAmountGivenInVars(vars, params, poolData);
 
         if (poolData.poolConfig.hooks.shouldCallBeforeSwap) {
-            if (IPoolHooks(_poolHooks[params.pool]).onBeforeSwap(_buildPoolSwapParams(params, vars, poolData)) == false) {
+            if (
+                IPoolHooks(_poolHooks[params.pool]).onBeforeSwap(_buildPoolSwapParams(params, vars, poolData)) == false
+            ) {
                 revert BeforeSwapHookFailed();
             }
 
