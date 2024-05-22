@@ -80,7 +80,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             rateProvider,
             getNewPoolPauseWindowEndTime(),
             PoolRoleAccounts({ pauseManager: pauseManager, swapFeeManager: address(0), poolCreator: poolCreator }),
-            _getDefaultPoolHooks(),
+            _getDefaultPoolHooksFlags(),
             _getDefaultLiquidityManagement()
         );
     }
@@ -91,7 +91,7 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
         IRateProvider rateProvider,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts memory roleAccounts,
-        PoolHooks memory poolHooks,
+        PoolHooksFlags memory poolHooksFlags,
         LiquidityManagement memory liquidityManagement
     ) internal {
         uint256 wrappedTokenIndex = IBufferPool(pool).getWrappedTokenIndex();
@@ -111,14 +111,14 @@ contract ERC4626BufferPoolFactory is BasePoolFactory {
             0, // zero swap fee
             pauseWindowEndTime,
             roleAccounts,
-            poolHooks,
+            poolHooksFlags,
             liquidityManagement
         );
     }
 
-    function _getDefaultPoolHooks() internal pure returns (PoolHooks memory) {
+    function _getDefaultPoolHooksFlags() internal pure returns (PoolHooksFlags memory) {
         return
-            PoolHooks({
+            PoolHooksFlags({
                 shouldCallBeforeInitialize: true, // ensure proportional
                 shouldCallAfterInitialize: false,
                 shouldCallBeforeAddLiquidity: false,

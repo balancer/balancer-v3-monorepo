@@ -7,7 +7,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IRateProvider } from "./IRateProvider.sol";
 
 /// @dev Represents a pool's hooks.
-struct PoolHooks {
+struct PoolHooksFlags {
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
     bool shouldCallComputeDynamicSwapFee;
@@ -27,7 +27,7 @@ struct LiquidityManagement {
 
 /// @dev Represents a pool's configuration, including hooks.
 struct PoolConfig {
-    PoolHooks hooks;
+    PoolHooksFlags hooks;
     LiquidityManagement liquidityManagement;
     uint256 staticSwapFeePercentage;
     uint256 poolCreatorFeePercentage;

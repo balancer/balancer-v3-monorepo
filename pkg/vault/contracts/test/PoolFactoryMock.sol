@@ -62,7 +62,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         address pool,
         TokenConfig[] memory tokenConfig,
         PoolRoleAccounts memory roleAccounts,
-        PoolHooks calldata poolHooks,
+        PoolHooksFlags calldata poolHooksFlags,
         LiquidityManagement calldata liquidityManagement
     ) external {
         _vault.registerPool(
@@ -71,7 +71,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
             roleAccounts,
-            poolHooks,
+            poolHooksFlags,
             liquidityManagement
         );
     }
@@ -80,7 +80,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         address pool,
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
-        PoolHooks calldata poolHooks,
+        PoolHooksFlags calldata poolHooksFlags,
         LiquidityManagement calldata liquidityManagement
     ) external {
         _vault.registerPool(
@@ -89,7 +89,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
-            poolHooks,
+            poolHooksFlags,
             liquidityManagement
         );
     }
@@ -100,7 +100,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         TokenConfig[] memory tokenConfig,
         uint256 timestamp,
         PoolRoleAccounts memory roleAccounts,
-        PoolHooks calldata poolHooks,
+        PoolHooksFlags calldata poolHooksFlags,
         LiquidityManagement calldata liquidityManagement
     ) external {
         _vault.registerPool(
@@ -109,7 +109,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             DEFAULT_SWAP_FEE,
             timestamp,
             roleAccounts,
-            poolHooks,
+            poolHooksFlags,
             liquidityManagement
         );
     }

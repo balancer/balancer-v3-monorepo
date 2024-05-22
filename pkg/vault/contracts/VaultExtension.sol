@@ -125,7 +125,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 swapFeePercentage;
         uint256 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
-        PoolHooks poolHooks;
+        PoolHooksFlags poolHooksFlags;
         LiquidityManagement liquidityManagement;
     }
 
@@ -136,7 +136,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
-        PoolHooks calldata poolHooks,
+        PoolHooksFlags calldata poolHooksFlags,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
         _registerPool(
@@ -146,7 +146,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 swapFeePercentage: swapFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
                 roleAccounts: roleAccounts,
-                poolHooks: poolHooks,
+                poolHooksFlags: poolHooksFlags,
                 liquidityManagement: liquidityManagement
             })
         );
@@ -234,7 +234,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
 
         config.isPoolRegistered = true;
-        config.hooks = params.poolHooks;
+        config.hooks = params.poolHooksFlags;
         config.liquidityManagement = params.liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime;
@@ -249,7 +249,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.tokenConfig,
             params.pauseWindowEndTime,
             params.roleAccounts,
-            params.poolHooks,
+            params.poolHooksFlags,
             params.liquidityManagement
         );
     }
