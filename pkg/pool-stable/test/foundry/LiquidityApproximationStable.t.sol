@@ -28,6 +28,9 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
         StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days);
 
+        // Allow pools created by `factory` to use poolHooksMock hooks
+        poolHooksMock.allowFactory(address(factory));
+
         StablePool newPool = StablePool(
             factory.create(
                 "ERC20 Pool",

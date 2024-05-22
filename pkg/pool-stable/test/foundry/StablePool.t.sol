@@ -51,6 +51,9 @@ contract StablePoolTest is BaseVaultTest {
         tokens[0].token = IERC20(dai);
         tokens[1].token = IERC20(usdc);
 
+        // Allow pools created by `factory` to use poolHooksMock hooks
+        poolHooksMock.allowFactory(address(factory));
+
         stablePool = StablePool(
             factory.create(
                 "ERC20 Pool",
