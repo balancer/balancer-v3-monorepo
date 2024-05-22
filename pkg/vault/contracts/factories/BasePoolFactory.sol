@@ -121,6 +121,13 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     }
 
     /**
+     * @notice A common place to retrieve a default PoolHooksContract. Currently set to an empty contract.
+     */
+    function getDefaultPoolHooksContract() public pure returns (IPoolHooks) {
+        return IPoolHooks(address(0));
+    }
+
+    /**
      * @notice Convenience function for constructing a LiquidityManagement object.
      * @dev Users can call this to create a structure with all false arguments, then set the ones they need to true.
      */
