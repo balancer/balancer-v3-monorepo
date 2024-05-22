@@ -210,9 +210,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _updateAmountGivenInVars(vars, params, poolData);
 
         if (poolData.poolConfig.hooks.shouldCallBeforeSwap) {
-            if (
-                IPoolHooks(_poolHooks[params.pool]).onBeforeSwap(_buildPoolSwapParams(params, vars, poolData)) == false
-            ) {
+            if (_poolHooks[params.pool].onBeforeSwap(_buildPoolSwapParams(params, vars, poolData)) == false) {
                 revert BeforeSwapHookFailed();
             }
 
@@ -227,7 +225,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (poolData.poolConfig.hooks.shouldCallComputeDynamicSwapFee) {
             bool success;
 
-            (success, vars.swapFeePercentage) = IPoolHooks(_poolHooks[params.pool]).onComputeDynamicSwapFee(
+            (success, vars.swapFeePercentage) = _poolHooks[params.pool].onComputeDynamicSwapFee(
                 _buildPoolSwapParams(params, vars, poolData)
             );
 
@@ -247,7 +245,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 ? (vars.amountGivenScaled18, vars.amountCalculatedScaled18)
                 : (vars.amountCalculatedScaled18, vars.amountGivenScaled18);
             if (
-                IPoolHooks(_poolHooks[params.pool]).onAfterSwap(
+                _poolHooks[params.pool].onAfterSwap(
                     IPoolHooks.AfterSwapParams({
                         kind: params.kind,
                         tokenIn: params.tokenIn,
@@ -518,7 +516,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (poolData.poolConfig.hooks.shouldCallBeforeAddLiquidity) {
             if (
-                IPoolHooks(_poolHooks[params.pool]).onBeforeAddLiquidity(
+                _poolHooks[params.pool].onBeforeAddLiquidity(
                     msg.sender,
                     params.kind,
                     maxAmountsInScaled18,
@@ -558,7 +556,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (poolData.poolConfig.hooks.shouldCallAfterAddLiquidity) {
             if (
-                IPoolHooks(_poolHooks[params.pool]).onAfterAddLiquidity(
+                _poolHooks[params.pool].onAfterAddLiquidity(
                     msg.sender,
                     amountsInScaled18,
                     bptAmountOut,
@@ -755,7 +753,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (poolData.poolConfig.hooks.shouldCallBeforeRemoveLiquidity) {
             if (
-                IPoolHooks(_poolHooks[params.pool]).onBeforeRemoveLiquidity(
+                _poolHooks[params.pool].onBeforeRemoveLiquidity(
                     msg.sender,
                     params.kind,
                     params.maxBptAmountIn,
@@ -792,7 +790,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (poolData.poolConfig.hooks.shouldCallAfterRemoveLiquidity) {
             if (
-                IPoolHooks(_poolHooks[params.pool]).onAfterRemoveLiquidity(
+                _poolHooks[params.pool].onAfterRemoveLiquidity(
                     msg.sender,
                     bptAmountIn,
                     amountsOutScaled18,
