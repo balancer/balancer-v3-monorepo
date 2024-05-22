@@ -19,8 +19,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
-import { ERC4626BufferPoolFactoryMock } from "../utils/ERC4626BufferPoolFactoryMock.sol";
-import { ERC4626BufferPoolMock } from "../utils/ERC4626BufferPoolMock.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 import { RouterCommon } from "../../../contracts/RouterCommon.sol";
 
@@ -53,8 +51,6 @@ contract BoostedPoolWithEmptyBufferTest is BaseVaultTest {
     IERC20 internal usdcMainnet;
     IERC4626 internal waUSDC;
 
-    ERC4626BufferPoolFactoryMock bufferFactory;
-
     // For two-token pools with waDAI/waUSDC, keep track of sorted token order.
     uint256 internal waDaiIdx;
     uint256 internal waUsdcIdx;
@@ -77,8 +73,6 @@ contract BoostedPoolWithEmptyBufferTest is BaseVaultTest {
         _setupTokens();
 
         BaseVaultTest.setUp();
-
-        bufferFactory = new ERC4626BufferPoolFactoryMock(vault, 365 days);
 
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
 
