@@ -219,7 +219,9 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, BasePoolHooks
         return !failOnAfterInitialize;
     }
 
-    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata params) external view override returns (bool, uint256) {
+    function onComputeDynamicSwapFee(
+        IBasePool.PoolSwapParams calldata params
+    ) external view override returns (bool, uint256) {
         uint256 finalSwapFee = _dynamicSwapFee;
 
         if (_specialSender != address(0)) {
