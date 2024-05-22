@@ -26,6 +26,7 @@ import { BatchRouter } from "../../../contracts/BatchRouter.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
+import { PoolHooksMock } from "../../../contracts/test/PoolHooksMock.sol";
 import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
 
 import { VaultMockDeployer } from "./VaultMockDeployer.sol";
@@ -62,6 +63,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     RateProviderMock internal rateProvider;
     // Pool Factory
     PoolFactoryMock internal factoryMock;
+    // Pool Hooks
+    PoolHooksMock internal poolHooksMock;
 
     // Default amount to use in tests for user operations.
     uint256 internal defaultAmount = 1e3 * 1e18;
@@ -98,6 +101,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         vm.label(address(router), "router");
         batchRouter = new BatchRouter(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
+        poolHooksMock = new PoolHooksMock(IVault(address(vault)));
+        vm.label(address(poolHooksMock), "pool hooks");
         pool = createPool();
 
         // Approve vault allowances
@@ -166,7 +171,12 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), label);
 
-        factoryMock.registerTestPool(address(newPool), vault.buildTokenConfig(tokens.asIERC20()), address(lp));
+        factoryMock.registerTestPool(
+            address(newPool),
+            vault.buildTokenConfig(tokens.asIERC20()),
+            poolHooksMock,
+            address(lp)
+        );
 
         return address(newPool);
     }

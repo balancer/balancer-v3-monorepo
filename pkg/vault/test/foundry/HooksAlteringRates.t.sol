@@ -48,14 +48,14 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig, address(lp));
+        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksMock, address(lp));
 
         return address(newPool);
     }
 
     function testOnBeforeSwapHookAltersRate() public {
         // Change rate of first token
-        PoolMock(pool).setChangeTokenRateOnBeforeSwapHook(true, rateProvider, 0.5e18);
+        poolHooksMock.setChangeTokenRateOnBeforeSwapHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
@@ -96,7 +96,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "new-pool");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig, address(lp));
+        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksMock, address(lp));
 
         PoolConfig memory config = vault.getPoolConfig(address(newPool));
         config.hooks.shouldCallBeforeInitialize = true;
@@ -104,7 +104,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         vault.setConfig(address(newPool), config);
 
         // Change rate of first token
-        PoolMock(newPool).setChangeTokenRateOnBeforeInitializeHook(true, rateProvider, 0.5e18);
+        poolHooksMock.setChangeTokenRateOnBeforeInitializeHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
@@ -138,7 +138,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         vault.setConfig(address(pool), config);
 
         // Change rate of first token
-        PoolMock(pool).setChangeTokenRateOnBeforeAddLiquidityHook(true, rateProvider, 0.5e18);
+        poolHooksMock.setChangeTokenRateOnBeforeAddLiquidityHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
@@ -182,7 +182,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         vault.setConfig(address(pool), config);
 
         // Change rate of first token
-        PoolMock(pool).setChangeTokenRateOnBeforeRemoveLiquidityHook(true, rateProvider, 0.5e18);
+        poolHooksMock.setChangeTokenRateOnBeforeRemoveLiquidityHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 

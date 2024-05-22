@@ -126,6 +126,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
         PoolHooksFlags poolHooksFlags;
+        IPoolHooks poolHooks;
         LiquidityManagement liquidityManagement;
     }
 
@@ -137,6 +138,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         PoolHooksFlags calldata poolHooksFlags,
+        IPoolHooks poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
         _registerPool(
@@ -147,6 +149,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 pauseWindowEndTime: pauseWindowEndTime,
                 roleAccounts: roleAccounts,
                 poolHooksFlags: poolHooksFlags,
+                poolHooks: poolHooks,
                 liquidityManagement: liquidityManagement
             })
         );
@@ -168,6 +171,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Ensure the pool isn't already registered
         if (_isPoolRegistered(pool)) {
             revert PoolAlreadyRegistered(pool);
+        }
+
+        // If a hook address was passed, make sure that hook trusts the pool factory
+        if (address(params.poolHooks) != address(0)) {
+            params.poolHooks.onRegister(msg.sender);
+            // Saves the pool hook in the vault
+            _poolHooks[pool] = params.poolHooks;
         }
 
         uint256 numTokens = params.tokenConfig.length;

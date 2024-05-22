@@ -58,7 +58,7 @@ contract HooksTest is BaseVaultTest {
 
     function testOnComputeDynamicSwapFeeHookRevert() public {
         // should fail
-        PoolMock(pool).setFailComputeDynamicSwapFeeHook(true);
+        poolHooksMock.setFailOnComputeDynamicSwapFeeHook(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.DynamicSwapFeeHookFailed.selector));
         router.swapSingleTokenExactIn(
@@ -95,7 +95,7 @@ contract HooksTest is BaseVaultTest {
 
     function testOnBeforeSwapHookRevert() public {
         // should fail
-        PoolMock(pool).setFailOnBeforeSwapHook(true);
+        poolHooksMock.setFailOnBeforeSwapHook(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
         router.swapSingleTokenExactIn(
@@ -113,7 +113,7 @@ contract HooksTest is BaseVaultTest {
     function testOnAfterSwapHook() public {
         setSwapFeePercentage(swapFeePercentage);
         setProtocolSwapFeePercentage(protocolSwapFeePercentage);
-        PoolMock(pool).setDynamicSwapFeePercentage(swapFeePercentage);
+        poolHooksMock.setDynamicSwapFeePercentage(swapFeePercentage);
 
         uint256 expectedAmountOut = defaultAmount.mulDown(swapFeePercentage.complement());
         uint256 swapFee = defaultAmount.mulDown(swapFeePercentage);
@@ -144,7 +144,7 @@ contract HooksTest is BaseVaultTest {
 
     function testOnAfterSwapHookRevert() public {
         // should fail
-        PoolMock(pool).setFailOnAfterSwapHook(true);
+        poolHooksMock.setFailOnAfterSwapHook(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.AfterSwapHookFailed.selector));
         router.swapSingleTokenExactIn(
@@ -162,7 +162,7 @@ contract HooksTest is BaseVaultTest {
     // Before add
 
     function testOnBeforeAddLiquidityFlag() public {
-        PoolMock(pool).setFailOnBeforeAddLiquidityHook(true);
+        poolHooksMock.setFailOnBeforeAddLiquidityHook(true);
 
         vm.prank(bob);
         // Doesn't fail, does not call hooks
@@ -205,7 +205,7 @@ contract HooksTest is BaseVaultTest {
     // Before remove
 
     function testOnBeforeRemoveLiquidityFlag() public {
-        PoolMock(pool).setFailOnBeforeRemoveLiquidityHook(true);
+        poolHooksMock.setFailOnBeforeRemoveLiquidityHook(true);
 
         vm.prank(alice);
         router.addLiquidityUnbalanced(
@@ -265,7 +265,7 @@ contract HooksTest is BaseVaultTest {
     // After add
 
     function testOnAfterAddLiquidityFlag() public {
-        PoolMock(pool).setFailOnAfterAddLiquidityHook(true);
+        poolHooksMock.setFailOnAfterAddLiquidityHook(true);
 
         vm.prank(bob);
         // Doesn't fail, does not call hooks
@@ -307,7 +307,7 @@ contract HooksTest is BaseVaultTest {
     // After remove
 
     function testOnAfterRemoveLiquidityFlag() public {
-        PoolMock(pool).setFailOnAfterRemoveLiquidityHook(true);
+        poolHooksMock.setFailOnAfterRemoveLiquidityHook(true);
 
         vm.prank(alice);
         router.addLiquidityUnbalanced(

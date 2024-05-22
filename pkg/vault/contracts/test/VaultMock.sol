@@ -10,6 +10,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMainMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMainMock.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -77,6 +78,7 @@ contract VaultMock is IVaultMainMock, Vault {
             buildTokenConfig(tokens),
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
+            IPoolHooks(address(0)),
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
@@ -95,6 +97,7 @@ contract VaultMock is IVaultMainMock, Vault {
             buildTokenConfig(tokens),
             swapFeePercentage,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
+            IPoolHooks(address(0)),
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
         );
     }
@@ -110,6 +113,7 @@ contract VaultMock is IVaultMainMock, Vault {
             tokenConfig,
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
+            IPoolHooks(address(0)),
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
@@ -130,6 +134,7 @@ contract VaultMock is IVaultMainMock, Vault {
             timestamp,
             roleAccounts,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
+            IPoolHooks(address(0)),
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,

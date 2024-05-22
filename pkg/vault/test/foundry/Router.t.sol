@@ -68,6 +68,7 @@ contract RouterTest is BaseVaultTest {
         factoryMock.registerTestPool(
             address(newPool),
             vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
+            poolHooksMock,
             address(lp)
         );
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
@@ -78,6 +79,7 @@ contract RouterTest is BaseVaultTest {
         factoryMock.registerTestPool(
             address(wethPool),
             vault.buildTokenConfig([address(dai), address(weth)].toMemoryArray().asIERC20()),
+            poolHooksMock,
             address(lp)
         );
 
@@ -95,6 +97,7 @@ contract RouterTest is BaseVaultTest {
         factoryMock.registerTestPool(
             address(wethPoolNoInit),
             vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
+            poolHooksMock,
             address(lp)
         );
 

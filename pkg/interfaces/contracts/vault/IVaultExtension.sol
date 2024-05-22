@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
+import { IPoolHooks } from "./IPoolHooks.sol";
 import { IBasePool } from "./IBasePool.sol";
 import "./VaultTypes.sol";
 
@@ -70,6 +71,7 @@ interface IVaultExtension {
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHooksFlags Flags indicating which hooks the pool supports
+     * @param poolHooks Contract that implements the hooks for the pool
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
     function registerPool(
@@ -79,6 +81,7 @@ interface IVaultExtension {
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         PoolHooksFlags calldata poolHooksFlags,
+        IPoolHooks poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external;
 

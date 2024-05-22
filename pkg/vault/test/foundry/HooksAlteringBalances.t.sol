@@ -44,7 +44,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig, address(lp));
+        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksMock, address(lp));
 
         return address(newPool);
     }
@@ -55,7 +55,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         uint256[] memory newBalances = [poolInitAmount / 2, poolInitAmount / 3].toMemoryArray();
 
         // Change balances of the pool on before hook
-        PoolMock(pool).setChangePoolBalancesOnBeforeSwapHook(true, newBalances);
+        poolHooksMock.setChangePoolBalancesOnBeforeSwapHook(true, newBalances);
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook
         vm.prank(bob);
@@ -106,7 +106,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         uint256[] memory amountsIn = [defaultAmount, defaultAmount].toMemoryArray();
 
         // Change balances of the pool on before hook
-        PoolMock(pool).setChangePoolBalancesOnBeforeAddLiquidityHook(true, newBalances);
+        poolHooksMock.setChangePoolBalancesOnBeforeAddLiquidityHook(true, newBalances);
 
         vm.prank(bob);
         // Check if balances were not changed before onBeforeHook
@@ -157,7 +157,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         uint256[] memory newBalances = [2 * balanceAfterLiquidity, 3 * balanceAfterLiquidity].toMemoryArray();
 
         // Change balances of the pool on before hook
-        PoolMock(pool).setChangePoolBalancesOnBeforeRemoveLiquidityHook(true, newBalances);
+        poolHooksMock.setChangePoolBalancesOnBeforeRemoveLiquidityHook(true, newBalances);
 
         // Check if balances were not changed before onBeforeHook
         vm.expectCall(

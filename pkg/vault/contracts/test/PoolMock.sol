@@ -19,44 +19,14 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
-import { RateProviderMock } from "./RateProviderMock.sol";
 import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 import { BasePoolHooks } from "../BasePoolHooks.sol";
 
-contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, BasePoolHooks {
+contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
     uint256 public constant MIN_INIT_BPT = 1e6;
-
-    bool public failOnAfterInitialize;
-    bool public failOnBeforeInitialize;
-    bool public failComputeDynamicSwapFeeHook;
-    bool public failOnBeforeSwapHook;
-    bool public failOnAfterSwapHook;
-    bool public failOnBeforeAddLiquidity;
-    bool public failOnAfterAddLiquidity;
-    bool public failOnBeforeRemoveLiquidity;
-    bool public failOnAfterRemoveLiquidity;
-
-    bool public changeTokenRateOnBeforeSwapHook;
-    bool public changeTokenRateOnBeforeInitialize;
-    bool public changeTokenRateOnBeforeAddLiquidity;
-    bool public changeTokenRateOnBeforeRemoveLiquidity;
-
-    bool public changePoolBalancesOnBeforeSwapHook;
-    bool public changePoolBalancesOnBeforeAddLiquidityHook;
-    bool public changePoolBalancesOnBeforeRemoveLiquidityHook;
-
-    bool public swapReentrancyHookActive;
-    address private _swapHookContract;
-    bytes private _swapHookCalldata;
-
-    RateProviderMock _rateProvider;
-    uint256 private _newTokenRate;
-    uint256 private _dynamicSwapFee;
-    address private _specialSender;
-    uint256[] private _newBalancesRaw;
 
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
     uint256 private _multiplier = FixedPoint.ONE;
@@ -89,169 +59,8 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, BasePoolHooks
         return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
     }
 
-    function setSpecialSender(address sender) external {
-        _specialSender = sender;
-    }
-
-    function setSwapReentrancyHookActive(bool _swapReentrancyHookActive) external {
-        swapReentrancyHookActive = _swapReentrancyHookActive;
-    }
-
-    function setSwapReentrancyHook(address hookContract, bytes calldata data) external {
-        _swapHookContract = hookContract;
-        _swapHookCalldata = data;
-    }
-
-    function setFailOnAfterInitializeHook(bool fail) external {
-        failOnAfterInitialize = fail;
-    }
-
-    function setFailOnBeforeInitializeHook(bool fail) external {
-        failOnBeforeInitialize = fail;
-    }
-
-    function setChangeTokenRateOnBeforeInitializeHook(
-        bool changeRate,
-        RateProviderMock rateProvider,
-        uint256 newTokenRate
-    ) external {
-        changeTokenRateOnBeforeInitialize = changeRate;
-        _rateProvider = rateProvider;
-        _newTokenRate = newTokenRate;
-    }
-
-    function setFailComputeDynamicSwapFeeHook(bool fail) external {
-        failComputeDynamicSwapFeeHook = fail;
-    }
-
-    function setDynamicSwapFeePercentage(uint256 dynamicSwapFee) external {
-        _dynamicSwapFee = dynamicSwapFee;
-    }
-
-    function setFailOnBeforeSwapHook(bool fail) external {
-        failOnBeforeSwapHook = fail;
-    }
-
-    function setChangeTokenRateOnBeforeSwapHook(
-        bool changeRate,
-        RateProviderMock rateProvider,
-        uint256 newTokenRate
-    ) external {
-        changeTokenRateOnBeforeSwapHook = changeRate;
-        _rateProvider = rateProvider;
-        _newTokenRate = newTokenRate;
-    }
-
-    function setChangePoolBalancesOnBeforeSwapHook(bool changeBalances, uint256[] memory newBalancesRaw) external {
-        changePoolBalancesOnBeforeSwapHook = changeBalances;
-        _newBalancesRaw = newBalancesRaw;
-    }
-
-    function setChangePoolBalancesOnBeforeAddLiquidityHook(
-        bool changeBalances,
-        uint256[] memory newBalancesRaw
-    ) external {
-        changePoolBalancesOnBeforeAddLiquidityHook = changeBalances;
-        _newBalancesRaw = newBalancesRaw;
-    }
-
-    function setChangePoolBalancesOnBeforeRemoveLiquidityHook(
-        bool changeBalances,
-        uint256[] memory newBalancesRaw
-    ) external {
-        changePoolBalancesOnBeforeRemoveLiquidityHook = changeBalances;
-        _newBalancesRaw = newBalancesRaw;
-    }
-
-    function setFailOnAfterSwapHook(bool fail) external {
-        failOnAfterSwapHook = fail;
-    }
-
-    function setFailOnBeforeAddLiquidityHook(bool fail) external {
-        failOnBeforeAddLiquidity = fail;
-    }
-
-    function setChangeTokenRateOnBeforeAddLiquidityHook(
-        bool changeRate,
-        RateProviderMock rateProvider,
-        uint256 newTokenRate
-    ) external {
-        changeTokenRateOnBeforeAddLiquidity = changeRate;
-        _rateProvider = rateProvider;
-        _newTokenRate = newTokenRate;
-    }
-
-    function setFailOnAfterAddLiquidityHook(bool fail) external {
-        failOnAfterAddLiquidity = fail;
-    }
-
-    function setFailOnBeforeRemoveLiquidityHook(bool fail) external {
-        failOnBeforeRemoveLiquidity = fail;
-    }
-
-    function setChangeTokenRateOnBeforeRemoveLiquidityHook(
-        bool changeRate,
-        RateProviderMock rateProvider,
-        uint256 newTokenRate
-    ) external {
-        changeTokenRateOnBeforeRemoveLiquidity = changeRate;
-        _rateProvider = rateProvider;
-        _newTokenRate = newTokenRate;
-    }
-
-    function setFailOnAfterRemoveLiquidityHook(bool fail) external {
-        failOnAfterRemoveLiquidity = fail;
-    }
-
     function setMultiplier(uint256 newMultiplier) external {
         _multiplier = newMultiplier;
-    }
-
-    function onBeforeInitialize(uint256[] memory, bytes memory) external override returns (bool) {
-        if (changeTokenRateOnBeforeInitialize) {
-            _updateTokenRate();
-        }
-
-        return !failOnBeforeInitialize;
-    }
-
-    function onAfterInitialize(uint256[] memory, uint256, bytes memory) external view override returns (bool) {
-        return !failOnAfterInitialize;
-    }
-
-    function onComputeDynamicSwapFee(
-        IBasePool.PoolSwapParams calldata params
-    ) external view override returns (bool, uint256) {
-        uint256 finalSwapFee = _dynamicSwapFee;
-
-        if (_specialSender != address(0)) {
-            // Check the sender
-            address swapper = IRouterCommon(params.router).getSender();
-            if (swapper == _specialSender) {
-                finalSwapFee = 0;
-            }
-        }
-
-        return (!failComputeDynamicSwapFeeHook, finalSwapFee);
-    }
-
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata) external override returns (bool success) {
-        if (changeTokenRateOnBeforeSwapHook) {
-            _updateTokenRate();
-        }
-
-        if (changePoolBalancesOnBeforeSwapHook) {
-            _setBalancesInVault();
-        }
-
-        if (swapReentrancyHookActive) {
-            require(_swapHookContract != address(0), "Hook contract not set");
-            require(_swapHookCalldata.length != 0, "Hook calldata is empty");
-            swapReentrancyHookActive = false;
-            Address.functionCall(_swapHookContract, _swapHookCalldata);
-        }
-
-        return !failOnBeforeSwapHook;
     }
 
     function onSwap(
@@ -261,107 +70,6 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, BasePoolHooks
             params.kind == SwapKind.EXACT_IN
                 ? params.amountGivenScaled18.mulDown(_multiplier)
                 : params.amountGivenScaled18.divDown(_multiplier);
-    }
-
-    function onAfterSwap(
-        IPoolHooks.AfterSwapParams calldata params,
-        uint256 amountCalculatedScaled18
-    ) external view override returns (bool success) {
-        // check that actual pool balances match
-        (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory scalingFactors) = getVault()
-            .getPoolTokenInfo(address(this));
-
-        uint256[] memory currentLiveBalances = IVaultMock(address(getVault())).getCurrentLiveBalances(address(this));
-
-        uint256[] memory rates = getVault().getPoolTokenRates(address(this));
-
-        for (uint256 i = 0; i < tokenConfig.length; ++i) {
-            if (tokenConfig[i].token == params.tokenIn) {
-                if (params.tokenInBalanceScaled18 != currentLiveBalances[i]) {
-                    return false;
-                }
-                uint256 expectedTokenInBalanceRaw = params.tokenInBalanceScaled18.toRawUndoRateRoundDown(
-                    scalingFactors[i],
-                    rates[i]
-                );
-                if (expectedTokenInBalanceRaw != balancesRaw[i]) {
-                    return false;
-                }
-            } else if (tokenConfig[i].token == params.tokenOut) {
-                if (params.tokenOutBalanceScaled18 != currentLiveBalances[i]) {
-                    return false;
-                }
-                uint256 expectedTokenOutBalanceRaw = params.tokenOutBalanceScaled18.toRawUndoRateRoundDown(
-                    scalingFactors[i],
-                    rates[i]
-                );
-                if (expectedTokenOutBalanceRaw != balancesRaw[i]) {
-                    return false;
-                }
-            }
-        }
-
-        return amountCalculatedScaled18 > 0 && !failOnAfterSwapHook;
-    }
-
-    // Liquidity lifecycle hooks
-
-    function onBeforeAddLiquidity(
-        address,
-        AddLiquidityKind,
-        uint256[] memory,
-        uint256,
-        uint256[] memory,
-        bytes memory
-    ) external override returns (bool) {
-        if (changeTokenRateOnBeforeAddLiquidity) {
-            _updateTokenRate();
-        }
-
-        if (changePoolBalancesOnBeforeAddLiquidityHook) {
-            _setBalancesInVault();
-        }
-
-        return !failOnBeforeAddLiquidity;
-    }
-
-    function onBeforeRemoveLiquidity(
-        address,
-        RemoveLiquidityKind,
-        uint256,
-        uint256[] memory,
-        uint256[] memory,
-        bytes memory
-    ) external override returns (bool) {
-        if (changeTokenRateOnBeforeRemoveLiquidity) {
-            _updateTokenRate();
-        }
-
-        if (changePoolBalancesOnBeforeRemoveLiquidityHook) {
-            _setBalancesInVault();
-        }
-
-        return !failOnBeforeRemoveLiquidity;
-    }
-
-    function onAfterAddLiquidity(
-        address,
-        uint256[] memory,
-        uint256,
-        uint256[] memory,
-        bytes memory
-    ) external view override returns (bool) {
-        return !failOnAfterAddLiquidity;
-    }
-
-    function onAfterRemoveLiquidity(
-        address,
-        uint256,
-        uint256[] memory,
-        uint256[] memory,
-        bytes memory
-    ) external view override returns (bool) {
-        return !failOnAfterRemoveLiquidity;
     }
 
     function onAddLiquidityCustom(
@@ -392,14 +100,5 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, BasePoolHooks
         for (uint256 i = 0; i < tokens.length; ++i) {
             scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
         }
-    }
-
-    function _updateTokenRate() private {
-        _rateProvider.mockRate(_newTokenRate);
-    }
-
-    function _setBalancesInVault() private {
-        IERC20[] memory poolTokens = getVault().getPoolTokens(address(this));
-        IVaultMock(address(getVault())).manualSetPoolTokenBalances(address(this), poolTokens, _newBalancesRaw);
     }
 }
