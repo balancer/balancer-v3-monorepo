@@ -17,7 +17,7 @@ abstract contract BasePoolHooks is IPoolHooks, VaultGuard {
     constructor(IVault vault) VaultGuard(vault) {}
 
     /// @inheritdoc IPoolHooks
-    function onRegister(address factory) external virtual onlyVault returns (bool) {
+    function onRegister(address) external virtual onlyVault returns (bool) {
         // By default, allow all factories
         return true;
     }
