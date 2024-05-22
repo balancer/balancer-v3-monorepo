@@ -35,6 +35,8 @@ contract StablePoolFactory is BasePoolFactory {
      * @param amplificationParameter The starting Amplification Parameter
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
+     * @param poolHookFlags Flags indicating which hooks the pool supports
+     * @param poolHooksContract Contract that implements the hooks for the pool
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
