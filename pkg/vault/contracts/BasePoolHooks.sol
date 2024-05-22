@@ -18,8 +18,8 @@ abstract contract BasePoolHooks is IPoolHooks, VaultGuard {
 
     /// @inheritdoc IPoolHooks
     function onRegister(address) external virtual onlyVault returns (bool) {
-        // By default, allow all factories
-        return true;
+        // By default, deny all factories. This method must be overwritten by the hook contract
+        return false;
     }
 
     /// @inheritdoc IPoolHooks

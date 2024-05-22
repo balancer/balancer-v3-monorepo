@@ -52,7 +52,13 @@ contract PoolHooksMock is BasePoolHooks {
     address private _specialSender;
     uint256[] private _newBalancesRaw;
 
+    mapping(address => bool) private _allowedFactories;
+
     constructor(IVault vault) BasePoolHooks(vault) {}
+
+    function onRegister(address factory) external override returns (bool) {
+        return _allowedFactories[factory];
+    }
 
     function onBeforeInitialize(uint256[] memory, bytes memory) external override returns (bool) {
         if (changeTokenRateOnBeforeInitialize) {
@@ -326,6 +332,14 @@ contract PoolHooksMock is BasePoolHooks {
 
     function setPool(address pool) external {
         _pool = pool;
+    }
+
+    function allowFactory(address factory) external {
+        _allowedFactories[factory] = true;
+    }
+
+    function denyFactory(address factory) external {
+        _allowedFactories[factory] = false;
     }
 
     /****************************************************************

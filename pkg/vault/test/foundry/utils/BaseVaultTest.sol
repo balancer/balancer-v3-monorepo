@@ -102,6 +102,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         batchRouter = new BatchRouter(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
         poolHooksMock = new PoolHooksMock(IVault(address(vault)));
+        // Allow pools built with factoryMock to use the poolHooksMock
+        poolHooksMock.allowFactory(address(factoryMock));
         vm.label(address(poolHooksMock), "pool hooks");
         pool = createPool();
 

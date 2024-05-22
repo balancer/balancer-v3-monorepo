@@ -35,6 +35,13 @@ interface IVaultErrors {
     error PoolNotInitialized(address pool);
 
     /**
+     * @dev A referenced pool has not been initialized.
+     * @param poolHookContract Address of the hook contract that rejected the factory
+     * @param poolFactory Address of the rejected pool factory
+     */
+    error PoolHookRejectedFactory(address poolHookContract, address poolFactory);
+
+    /**
      * @dev A token was already registered (i.e., it is a duplicate in the pool).
      * @param token The duplicate token
      */

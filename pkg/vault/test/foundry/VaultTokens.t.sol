@@ -44,6 +44,9 @@ contract VaultTokenTest is BaseVaultTest {
 
         poolFactory = new PoolFactoryMock(vault, 365 days);
 
+        // Allow pools from factory poolFactory to use the hook poolHooksMock
+        poolHooksMock.allowFactory(address(poolFactory));
+
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
 
