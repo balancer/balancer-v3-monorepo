@@ -103,10 +103,10 @@ struct PoolFunctionPermission {
  * WITH_RATE tokens (e.g., wstETH) require a rate provider. These may be tokens like wstETH, which need to be wrapped
  * because the underlying stETH token is rebasing, and such tokens are unsupported by the Vault. They may also be
  * tokens like sEUR, which track an underlying asset, but are not yield-bearing. Finally, this encompasses
- * yield-bearing ERC4626 tokens, which can be used with ERC4626BufferPools to facilitate swaps without requiring
- * wrapping or unwrapping in most cases. The `paysYieldFees` flag can be used to indicate whether a token is
- * yield-bearing (e.g., waDAI), not yield-bearing (e.g., sEUR), or yield-bearing but exempt from fees (e.g., in
- * certain nested pools, where protocol yield fees are charged elsewhere).
+ * yield-bearing ERC4626 tokens, which can be used to facilitate swaps without requiring wrapping or unwrapping
+ * in most cases. The `paysYieldFees` flag can be used to indicate whether a token is yield-bearing (e.g., waDAI),
+ * not yield-bearing (e.g., sEUR), or yield-bearing but exempt from fees (e.g., in certain nested pools, where
+ * protocol yield fees are charged elsewhere).
  *
  * NB: STANDARD must always be the first enum element, so that newly initialized data structures default to Standard.
  */
