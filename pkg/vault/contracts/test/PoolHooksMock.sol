@@ -48,6 +48,7 @@ contract PoolHooksMock is BasePoolHooks {
     RateProviderMock private _rateProvider;
     uint256 private _newTokenRate;
     uint256 private _dynamicSwapFee;
+    address private _pool;
     address private _specialSender;
     uint256[] private _newBalancesRaw;
 
@@ -106,11 +107,11 @@ contract PoolHooksMock is BasePoolHooks {
     ) external view override returns (bool success) {
         // check that actual pool balances match
         (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory scalingFactors) = _vault
-            .getPoolTokenInfo(address(this));
+            .getPoolTokenInfo(_pool);
 
-        uint256[] memory currentLiveBalances = IVaultMock(address(_vault)).getCurrentLiveBalances(address(this));
+        uint256[] memory currentLiveBalances = IVaultMock(address(_vault)).getCurrentLiveBalances(_pool);
 
-        uint256[] memory rates = _vault.getPoolTokenRates(address(this));
+        uint256[] memory rates = _vault.getPoolTokenRates(_pool);
 
         for (uint256 i = 0; i < tokenConfig.length; ++i) {
             if (tokenConfig[i].token == params.tokenIn) {
@@ -323,6 +324,10 @@ contract PoolHooksMock is BasePoolHooks {
         _dynamicSwapFee = dynamicSwapFee;
     }
 
+    function setPool(address pool) external {
+        _pool = pool;
+    }
+
     /****************************************************************
                            Helpers
     ****************************************************************/
@@ -331,7 +336,7 @@ contract PoolHooksMock is BasePoolHooks {
     }
 
     function _setBalancesInVault() private {
-        IERC20[] memory poolTokens = _vault.getPoolTokens(address(this));
-        IVaultMock(address(_vault)).manualSetPoolTokenBalances(address(this), poolTokens, _newBalancesRaw);
+        IERC20[] memory poolTokens = _vault.getPoolTokens(_pool);
+        IVaultMock(address(_vault)).manualSetPoolTokenBalances(_pool, poolTokens, _newBalancesRaw);
     }
 }

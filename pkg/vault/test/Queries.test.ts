@@ -58,6 +58,7 @@ describe('Queries', function () {
     await factory.registerTestPool(
       pool,
       buildTokenConfig([await DAI.getAddress(), await USDC.getAddress()].sort()),
+      ZERO_ADDRESS,
       ZERO_ADDRESS
     );
 

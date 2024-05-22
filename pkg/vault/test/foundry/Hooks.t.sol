@@ -33,13 +33,16 @@ contract HooksTest is BaseVaultTest {
         config.hooks.shouldCallAfterSwap = true;
         vault.setConfig(address(pool), config);
 
+        // Sets the pool address in the hook, so we can check balances of the pool inside the hook
+        poolHooksMock.setPool(address(pool));
+
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     function testOnComputeDynamicSwapFeeHook() public {
         vm.prank(bob);
         vm.expectCall(
-            address(pool),
+            address(poolHooksMock),
             abi.encodeWithSelector(
                 IPoolHooks.onComputeDynamicSwapFee.selector,
                 IBasePool.PoolSwapParams({
@@ -76,7 +79,7 @@ contract HooksTest is BaseVaultTest {
     function testOnBeforeSwapHook() public {
         vm.prank(bob);
         vm.expectCall(
-            address(pool),
+            address(poolHooksMock),
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeSwap.selector,
                 IBasePool.PoolSwapParams({
@@ -121,7 +124,7 @@ contract HooksTest is BaseVaultTest {
 
         vm.prank(bob);
         vm.expectCall(
-            address(pool),
+            address(poolHooksMock),
             abi.encodeWithSelector(
                 IPoolHooks.onAfterSwap.selector,
                 IPoolHooks.AfterSwapParams({
@@ -182,7 +185,7 @@ contract HooksTest is BaseVaultTest {
 
         vm.prank(bob);
         vm.expectCall(
-            address(pool),
+            address(poolHooksMock),
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeAddLiquidity.selector,
                 router,
@@ -241,7 +244,7 @@ contract HooksTest is BaseVaultTest {
         );
 
         vm.expectCall(
-            address(pool),
+            address(poolHooksMock),
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeRemoveLiquidity.selector,
                 router,
@@ -285,7 +288,7 @@ contract HooksTest is BaseVaultTest {
 
         vm.prank(bob);
         vm.expectCall(
-            address(pool),
+            address(poolHooksMock),
             abi.encodeWithSelector(
                 IPoolHooks.onAfterAddLiquidity.selector,
                 router,
@@ -343,7 +346,7 @@ contract HooksTest is BaseVaultTest {
         );
 
         vm.expectCall(
-            address(pool),
+            address(poolHooksMock),
             abi.encodeWithSelector(
                 IPoolHooks.onAfterRemoveLiquidity.selector,
                 router,

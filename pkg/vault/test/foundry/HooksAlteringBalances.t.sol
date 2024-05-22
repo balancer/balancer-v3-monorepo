@@ -33,6 +33,9 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         config.hooks.shouldCallBeforeSwap = true;
         vault.setConfig(address(pool), config);
 
+        // Sets the pool address in the hook, so we can change pool balances inside the hook
+        poolHooksMock.setPool(address(pool));
+
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
@@ -61,7 +64,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         vm.prank(bob);
         // Check if balances were not changed before onBeforeHook
         vm.expectCall(
-            address(pool),
+            address(poolHooksMock),
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeSwap.selector,
                 IBasePool.PoolSwapParams({
@@ -111,7 +114,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         vm.prank(bob);
         // Check if balances were not changed before onBeforeHook
         vm.expectCall(
-            address(pool),
+            address(poolHooksMock),
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeAddLiquidity.selector,
                 router,
@@ -161,7 +164,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
 
         // Check if balances were not changed before onBeforeHook
         vm.expectCall(
-            address(pool),
+            address(poolHooksMock),
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeRemoveLiquidity.selector,
                 router,

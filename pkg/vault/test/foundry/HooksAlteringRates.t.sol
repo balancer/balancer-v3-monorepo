@@ -117,7 +117,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         // Cannot intercept _initialize, but can check the same values in the AfterInitialize hook
         vm.prank(bob);
         vm.expectCall(
-            address(newPool),
+            address(poolHooksMock),
             abi.encodeWithSelector(IPoolHooks.onAfterInitialize.selector, expectedAmounts, bptAmount, "")
         );
 
@@ -156,7 +156,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
 
         vm.prank(bob);
         vm.expectCall(
-            address(pool),
+            address(poolHooksMock),
             abi.encodeWithSelector(
                 IPoolHooks.onAfterAddLiquidity.selector,
                 router,
