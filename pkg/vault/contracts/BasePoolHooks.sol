@@ -14,7 +14,9 @@ import { VaultGuard } from "./VaultGuard.sol";
  * and only override what they need.
  */
 abstract contract BasePoolHooks is IPoolHooks, VaultGuard {
-    constructor(IVault vault) VaultGuard(vault) {}
+    constructor(IVault vault) VaultGuard(vault) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     /// @inheritdoc IPoolHooks
     function onRegister(address) external virtual onlyVault returns (bool) {
