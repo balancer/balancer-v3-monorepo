@@ -450,7 +450,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         bool shouldCallDynamicSwapFee = _poolConfig[pool].shouldCallComputeDynamicSwapFee();
 
         if (shouldCallDynamicSwapFee) {
-            (success, dynamicSwapFee) = IPoolHooks(pool).onComputeDynamicSwapFee(swapParams);
+            (success, dynamicSwapFee) = IPoolHooks(_poolHooks[pool]).onComputeDynamicSwapFee(swapParams);
         }
     }
 
