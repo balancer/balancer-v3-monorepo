@@ -30,7 +30,7 @@ contract PoolPauseTest is BaseVaultTest {
     PoolFactoryMock internal factory;
 
     function setUp() public virtual override {
-        BaseVaultTest.setUp();
+        BaseVaultTest.setUp(); a
 
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
