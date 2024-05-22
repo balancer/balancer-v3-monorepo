@@ -54,13 +54,27 @@ contract PoolSwapManagerTest is BaseVaultTest {
         unmanagedPool = new PoolMock(IVault(address(vault)), "Unmanaged Pool", "UNMANAGED");
 
         // Pass zero for the swap fee manager.
-        factoryMock.registerGeneralTestPool(address(unmanagedPool), tokenConfig, 0, 365 days, defaultRoleAccounts, poolHooksMock);
+        factoryMock.registerGeneralTestPool(
+            address(unmanagedPool),
+            tokenConfig,
+            0,
+            365 days,
+            defaultRoleAccounts,
+            poolHooksMock
+        );
 
         // Pass zero for the swap fee manager.
         otherPool = new PoolMock(IVault(address(vault)), "Other Pool", "OTHER");
 
         // Pass zero for the swap fee manager.
-        factoryMock.registerGeneralTestPool(address(otherPool), tokenConfig, 0, 365 days, defaultRoleAccounts, poolHooksMock);
+        factoryMock.registerGeneralTestPool(
+            address(otherPool),
+            tokenConfig,
+            0,
+            365 days,
+            defaultRoleAccounts,
+            poolHooksMock
+        );
 
         factory = new PoolFactoryMock(IVault(address(vault)), 365 days);
     }
