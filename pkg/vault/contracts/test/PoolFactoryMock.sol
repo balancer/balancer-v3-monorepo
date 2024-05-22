@@ -71,7 +71,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         address pool,
         TokenConfig[] memory tokenConfig,
         PoolRoleAccounts memory roleAccounts,
-        PoolHooksFlags calldata poolHooksFlags,
+        PoolHookFlags calldata poolHookFlags,
         IPoolHooks poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external {
@@ -81,7 +81,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
             roleAccounts,
-            poolHooksFlags,
+            poolHookFlags,
             poolHooks,
             liquidityManagement
         );
@@ -91,7 +91,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         address pool,
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
-        PoolHooksFlags calldata poolHooksFlags,
+        PoolHookFlags calldata poolHookFlags,
         IPoolHooks poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external {
@@ -101,7 +101,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
-            poolHooksFlags,
+            poolHookFlags,
             poolHooks,
             liquidityManagement
         );
@@ -113,7 +113,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         TokenConfig[] memory tokenConfig,
         uint256 timestamp,
         PoolRoleAccounts memory roleAccounts,
-        PoolHooksFlags calldata poolHooksFlags,
+        PoolHookFlags calldata poolHookFlags,
         IPoolHooks poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external {
@@ -123,7 +123,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             DEFAULT_SWAP_FEE,
             timestamp,
             roleAccounts,
-            poolHooksFlags,
+            poolHookFlags,
             poolHooks,
             liquidityManagement
         );

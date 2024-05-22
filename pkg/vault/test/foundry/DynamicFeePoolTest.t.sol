@@ -54,15 +54,15 @@ contract DynamicFeePoolTest is BaseVaultTest {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), label);
         PoolRoleAccounts memory roleAccounts;
-        PoolHooksFlags memory poolHooksFlags;
+        PoolHookFlags memory poolHookFlags;
 
-        poolHooksFlags.shouldCallComputeDynamicSwapFee = true;
+        poolHookFlags.shouldCallComputeDynamicSwapFee = true;
 
         factoryMock.registerPool(
             address(newPool),
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,
-            poolHooksFlags,
+            poolHookFlags,
             poolHooksMock,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,

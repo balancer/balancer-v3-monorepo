@@ -96,7 +96,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         TokenConfig[] memory tokens,
         uint256 swapFeePercentage,
         PoolRoleAccounts memory roleAccounts,
-        PoolHooksFlags memory poolHooksFlags,
+        PoolHookFlags memory poolHookFlags,
         IPoolHooks poolHooks,
         LiquidityManagement memory liquidityManagement
     ) internal {
@@ -106,17 +106,17 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
             roleAccounts,
-            poolHooksFlags,
+            poolHookFlags,
             poolHooks,
             liquidityManagement
         );
     }
 
     /**
-     * @notice Convenience function for constructing a PoolHooksFlags object.
+     * @notice Convenience function for constructing a PoolHookFlags object.
      * @dev Users can call this to create a structure with all false arguments, then set the ones they need to true.
      */
-    function getDefaultPoolHooksFlags() public pure returns (PoolHooksFlags memory poolHooksFlags) {
+    function getDefaultPoolHookFlags() public pure returns (PoolHookFlags memory poolHookFlags) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

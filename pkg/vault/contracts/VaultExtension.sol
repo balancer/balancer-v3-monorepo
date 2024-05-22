@@ -125,7 +125,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 swapFeePercentage;
         uint256 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
-        PoolHooksFlags poolHooksFlags;
+        PoolHookFlags poolHookFlags;
         IPoolHooks poolHooks;
         LiquidityManagement liquidityManagement;
     }
@@ -137,7 +137,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
-        PoolHooksFlags calldata poolHooksFlags,
+        PoolHookFlags calldata poolHookFlags,
         IPoolHooks poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
@@ -148,7 +148,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 swapFeePercentage: swapFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
                 roleAccounts: roleAccounts,
-                poolHooksFlags: poolHooksFlags,
+                poolHookFlags: poolHookFlags,
                 poolHooks: poolHooks,
                 liquidityManagement: liquidityManagement
             })
@@ -246,7 +246,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
 
         config.isPoolRegistered = true;
-        config.hooks = params.poolHooksFlags;
+        config.hooks = params.poolHookFlags;
         config.liquidityManagement = params.liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime;
@@ -261,7 +261,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.tokenConfig,
             params.pauseWindowEndTime,
             params.roleAccounts,
-            params.poolHooksFlags,
+            params.poolHookFlags,
             params.liquidityManagement
         );
     }
