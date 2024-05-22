@@ -56,7 +56,7 @@ contract PoolHooksMock is BasePoolHooks {
 
     constructor(IVault vault) BasePoolHooks(vault) {}
 
-    function onRegister(address factory) external override returns (bool) {
+    function onRegister(address factory) external view override returns (bool) {
         return _allowedFactories[factory];
     }
 
