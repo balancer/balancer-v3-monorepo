@@ -14,7 +14,6 @@ import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/tes
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
-import { ERC4626BufferPoolFactory } from "../../contracts/factories/ERC4626BufferPoolFactory.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -23,11 +22,6 @@ contract VaultTokenTest is BaseVaultTest {
     using ArrayHelpers for *;
 
     PoolFactoryMock poolFactory;
-    ERC4626BufferPoolFactory bufferFactory;
-
-    address waDAIBuffer;
-    address cDAIBuffer;
-    address waUSDCBuffer;
 
     ERC4626TestToken waDAI;
     ERC4626TestToken cDAI;
@@ -49,7 +43,6 @@ contract VaultTokenTest is BaseVaultTest {
         waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 6);
 
         poolFactory = new PoolFactoryMock(vault, 365 days);
-        bufferFactory = new ERC4626BufferPoolFactory(vault, 365 days);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
@@ -75,21 +68,6 @@ contract VaultTokenTest is BaseVaultTest {
 
         assertEq(address(tokens[waDaiIdx]), address(waDAI));
         assertEq(address(tokens[waUsdcIdx]), address(waUSDC));
-    }
-
-    function testGetBufferPoolTokens() public {
-        registerBuffers();
-        registerPool();
-
-        // Calling `getPoolTokens` on a Buffer Pool should return the actual registered tokens.
-        validateBufferPool(
-            waDAIBuffer,
-            InputHelpers.sortTokens([address(waDAI), address(dai)].toMemoryArray().asIERC20())
-        );
-        validateBufferPool(
-            waUSDCBuffer,
-            InputHelpers.sortTokens([address(waUSDC), address(usdc)].toMemoryArray().asIERC20())
-        );
     }
 
     function testInvalidStandardTokenWithRateProvider() public {
@@ -132,10 +110,6 @@ contract VaultTokenTest is BaseVaultTest {
         usdc.mint(address(alice), defaultAmount);
         usdc.approve(address(waUSDC), defaultAmount);
         waUSDC.deposit(defaultAmount, address(alice));
-
-        waDAIBuffer = bufferFactory.create(waDAI, waDAI, address(0), getSalt(address(waDAI)));
-        cDAIBuffer = bufferFactory.create(cDAI, cDAI, address(0), getSalt(address(cDAI)));
-        waUSDCBuffer = bufferFactory.create(waUSDC, waUSDC, address(0), getSalt(address(waUSDC)));
         vm.stopPrank();
     }
 
@@ -157,15 +131,5 @@ contract VaultTokenTest is BaseVaultTest {
         PoolHooks memory poolHooks;
 
         poolFactory.registerPool(pool, tokenConfig, roleAccounts, poolHooks, liquidityManagement);
-    }
-
-    function validateBufferPool(address pool, IERC20[] memory expectedTokens) private {
-        IERC20[] memory actualTokens = vault.getPoolTokens(pool);
-
-        assertEq(actualTokens.length, expectedTokens.length);
-
-        for (uint256 i = 0; i < expectedTokens.length; ++i) {
-            assertEq(address(actualTokens[i]), address(expectedTokens[i]));
-        }
     }
 }
