@@ -11,6 +11,18 @@ import { IBasePool } from "./IBasePool.sol";
 /// @notice Interface for pool hooks
 interface IPoolHooks {
     /***************************************************************************
+                                   Register
+    ***************************************************************************/
+
+    /**
+     * @notice hook to be executed when pool is registered. It gives to the hook the opportunity to revert the registry
+     * if the factory is not trusted.
+     * @param factory Address of the pool factory
+     * @return success True if the hook allowed the registry
+     */
+    function onRegister(address factory) external returns (bool);
+
+    /***************************************************************************
                                    Initialize
     ***************************************************************************/
 

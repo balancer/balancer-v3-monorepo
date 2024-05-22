@@ -21,8 +21,9 @@ import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { RateProviderMock } from "./RateProviderMock.sol";
 import { BalancerPoolToken } from "../BalancerPoolToken.sol";
+import { BasePoolHooks } from "../BasePoolHooks.sol";
 
-contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
+contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, BasePoolHooks {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
@@ -206,7 +207,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         _multiplier = newMultiplier;
     }
 
-    function onBeforeInitialize(uint256[] memory, bytes memory) external returns (bool) {
+    function onBeforeInitialize(uint256[] memory, bytes memory) external override returns (bool) {
         if (changeTokenRateOnBeforeInitialize) {
             _updateTokenRate();
         }
@@ -214,11 +215,11 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         return !failOnBeforeInitialize;
     }
 
-    function onAfterInitialize(uint256[] memory, uint256, bytes memory) external view returns (bool) {
+    function onAfterInitialize(uint256[] memory, uint256, bytes memory) external view override returns (bool) {
         return !failOnAfterInitialize;
     }
 
-    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata params) external view returns (bool, uint256) {
+    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata params) external view override returns (bool, uint256) {
         uint256 finalSwapFee = _dynamicSwapFee;
 
         if (_specialSender != address(0)) {

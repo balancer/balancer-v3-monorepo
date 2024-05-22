@@ -12,6 +12,12 @@ import { AddLiquidityKind, RemoveLiquidityKind } from "@balancer-labs/v3-interfa
  */
 abstract contract BasePoolHooks is IPoolHooks {
     /// @inheritdoc IPoolHooks
+    function onRegister(address factory) external virtual returns (bool) {
+        // By default, allow all factories
+        return true;
+    }
+
+    /// @inheritdoc IPoolHooks
     function onBeforeInitialize(uint256[] memory, bytes memory) external virtual returns (bool) {
         return false;
     }
