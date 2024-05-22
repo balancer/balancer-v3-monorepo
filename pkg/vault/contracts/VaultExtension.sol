@@ -330,7 +330,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         );
 
         if (poolData.poolConfig.hooks.shouldCallBeforeInitialize) {
-            if (IPoolHooks(pool).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
+            if (IPoolHooks(_poolHooks[pool]).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
                 revert BeforeInitializeHookFailed();
             }
 
@@ -347,7 +347,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         bptAmountOut = _initialize(pool, to, poolData, tokens, exactAmountsIn, exactAmountsInScaled18, minBptAmountOut);
 
         if (poolData.poolConfig.hooks.shouldCallAfterInitialize) {
-            if (IPoolHooks(pool).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
+            if (IPoolHooks(_poolHooks[pool]).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
                 revert AfterInitializeHookFailed();
             }
         }

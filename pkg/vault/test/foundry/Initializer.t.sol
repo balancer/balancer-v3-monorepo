@@ -61,7 +61,7 @@ contract InitializerTest is BaseVaultTest {
     function testOnBeforeInitializeHook() public {
         vm.prank(bob);
         vm.expectCall(
-            address(pool),
+            address(poolHooksMock),
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeInitialize.selector,
                 [defaultAmount, defaultAmount].toMemoryArray(),
@@ -95,7 +95,7 @@ contract InitializerTest is BaseVaultTest {
     function testOnAfterInitializeHook() public {
         vm.prank(bob);
         vm.expectCall(
-            address(pool),
+            address(poolHooksMock),
             abi.encodeWithSelector(
                 IPoolHooks.onAfterInitialize.selector,
                 [defaultAmount, defaultAmount].toMemoryArray(),
