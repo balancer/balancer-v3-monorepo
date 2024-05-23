@@ -7,7 +7,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { LiquidityManagement, PoolHookFlags, PoolRoleAccounts, TokenConfig } from "./VaultTypes.sol";
-import {IPoolHooks} from "./IPoolHooks.sol";
+import { IPoolHooks } from "./IPoolHooks.sol";
 
 interface IVaultEvents {
     /**
