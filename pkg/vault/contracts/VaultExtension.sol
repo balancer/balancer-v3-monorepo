@@ -326,7 +326,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // The before hook is reentrant, and could have changed token rates.
             // Updating balances here is unnecessary since they're 0, but we do not special case before init
             // for the sake of bytecode size.
-            poolData.reloadPossiblyStaleBalancesAndTokenRates(_poolTokenBalances[pool], Rounding.ROUND_DOWN);
+            poolData.reloadBalancesAndRates(_poolTokenBalances[pool], Rounding.ROUND_DOWN);
 
             // Also update exactAmountsInScaled18, in case the underlying rates changed.
             exactAmountsInScaled18 = exactAmountsIn.copyToScaled18ApplyRateRoundDownArray(

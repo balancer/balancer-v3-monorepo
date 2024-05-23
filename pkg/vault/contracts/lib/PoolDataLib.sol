@@ -54,7 +54,7 @@ library PoolDataLib {
      * Preconditions: tokenConfig, balancesRaw, and decimalScalingFactors must be current in `poolData`.
      * Side effects: mutates tokenRates, balancesLiveScaled18 in `poolData`.
      */
-    function reloadPossiblyStaleBalancesAndTokenRates(
+    function reloadBalancesAndRates(
         PoolData memory poolData,
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
         Rounding roundingDirection

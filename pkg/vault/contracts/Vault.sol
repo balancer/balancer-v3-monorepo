@@ -174,13 +174,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert CannotSwapSameToken();
         }
 
-        // `_chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData` is non-reentrant, as it updates storage as well
+        // `_loadPoolDataUpdatingBalancesAndFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the swap hooks are reentrant and could do anything, including
         // change these balances, we cannot defer settlement until `_swap`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
         // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
-        PoolData memory poolData = _chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData(
+        PoolData memory poolData = _loadPoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_DOWN,
             vaultState.protocolYieldFeePercentage
@@ -197,7 +197,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The call to `onBeforeSwap` could potentially update token rates and balances.
             // We update `poolData.tokenRates`, `poolData.rawBalances` and `poolData.balancesLiveScaled18`
             // to ensure the `onSwap` and `onComputeDynamicSwapFee` are called with the current values.
-            poolData.reloadPossiblyStaleBalancesAndTokenRates(_poolTokenBalances[params.pool], Rounding.ROUND_DOWN);
+            poolData.reloadBalancesAndRates(_poolTokenBalances[params.pool], Rounding.ROUND_DOWN);
 
             // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
             state.amountGivenScaled18 = _computeAmountGivenScaled18(state.indexIn, state.indexOut, params, poolData);
@@ -499,13 +499,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
 
-        // `_chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData` is non-reentrant, as it updates storage as well
+        // `_loadPoolDataUpdatingBalancesAndFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the add liquidity hooks are reentrant and could do anything,
         // including change these balances, we cannot defer settlement until `_addLiquidity`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
         // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
-        PoolData memory poolData = _chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData(
+        PoolData memory poolData = _loadPoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_UP,
             vaultState.protocolYieldFeePercentage
@@ -538,7 +538,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
-            poolData.reloadPossiblyStaleBalancesAndTokenRates(_poolTokenBalances[params.pool], Rounding.ROUND_UP);
+            poolData.reloadBalancesAndRates(_poolTokenBalances[params.pool], Rounding.ROUND_UP);
 
             // Also update maxAmountsInScaled18, as the rates might have changed.
             maxAmountsInScaled18 = params.maxAmountsIn.copyToScaled18ApplyRateRoundDownArray(
@@ -735,13 +735,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
 
-        // `_chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData` is non-reentrant, as it updates storage as well
+        // `_loadPoolDataUpdatingBalancesAndFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the swap hooks are reentrant and could do anything, including
         // change these balances, we cannot defer settlement until `_removeLiquidity`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
         // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
-        PoolData memory poolData = _chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData(
+        PoolData memory poolData = _loadPoolDataUpdatingBalancesAndFees(
             params.pool,
             Rounding.ROUND_DOWN,
             vaultState.protocolYieldFeePercentage
@@ -772,7 +772,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
-            poolData.reloadPossiblyStaleBalancesAndTokenRates(_poolTokenBalances[params.pool], Rounding.ROUND_DOWN);
+            poolData.reloadBalancesAndRates(_poolTokenBalances[params.pool], Rounding.ROUND_DOWN);
 
             // Also update minAmountsOutScaled18, as the rates might have changed.
             minAmountsOutScaled18 = params.minAmountsOut.copyToScaled18ApplyRateRoundUpArray(

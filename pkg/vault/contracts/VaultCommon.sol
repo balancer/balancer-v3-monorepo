@@ -355,7 +355,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * calls, it must be nonReentrant.
      * Side effects: updates `_protocolFees`, `_poolCreatorFees` and _poolTokenBalances storage (and emits events).
      */
-    function _chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData(
+    function _loadPoolDataUpdatingBalancesAndFees(
         address pool,
         Rounding roundingDirection,
         uint256 yieldFeePercentage

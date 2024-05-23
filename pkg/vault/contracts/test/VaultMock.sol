@@ -310,12 +310,7 @@ contract VaultMock is IVaultMainMock, Vault {
         Rounding roundingDirection
     ) external returns (PoolData memory) {
         VaultState memory vaultState = VaultStateLib.toVaultState(_vaultState);
-        return
-            _chargePendingYieldFeesUpdatePoolBalancesAndLoadPoolData(
-                pool,
-                roundingDirection,
-                vaultState.protocolYieldFeePercentage
-            );
+        return _loadPoolDataUpdatingBalancesAndFees(pool, roundingDirection, vaultState.protocolYieldFeePercentage);
     }
 
     function updateLiveTokenBalanceInPoolData(
@@ -474,7 +469,7 @@ contract VaultMock is IVaultMainMock, Vault {
         PoolData memory poolData,
         Rounding roundingDirection
     ) external view returns (PoolData memory) {
-        poolData.reloadPossiblyStaleBalancesAndTokenRates(_poolTokenBalances[pool], roundingDirection);
+        poolData.reloadBalancesAndRates(_poolTokenBalances[pool], roundingDirection);
 
         return poolData;
     }
