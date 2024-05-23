@@ -417,9 +417,11 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         uint256 numTokens = aggregateYieldFeeAmountsRaw.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            IERC20 token = poolData.tokenConfig[i].token;
+            if (aggregateYieldFeeAmountsRaw[i] > 0) {
+                IERC20 token = poolData.tokenConfig[i].token;
 
-            _protocolYieldFees[pool][token] += aggregateYieldFeeAmountsRaw[i];
+                _protocolYieldFees[pool][token] += aggregateYieldFeeAmountsRaw[i];
+            }
         }
 
         // Update raw and last live pool balances, as computed by `_getPoolDataAndYieldFees`
