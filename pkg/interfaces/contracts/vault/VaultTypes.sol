@@ -40,16 +40,12 @@ struct PoolConfig {
     bool isPoolInRecoveryMode;
 }
 
-/// @dev Represents temporary vars used in a swap operation.
-struct SwapVars {
-    // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
+/// @dev Represents temporary state used in a swap operation.
+struct SwapState {
     uint256 indexIn;
     uint256 indexOut;
     uint256 amountGivenScaled18;
-    uint256 amountCalculatedScaled18;
     uint256 swapFeePercentage;
-    uint256 swapFeeAmountScaled18;
-    uint256 aggregateSwapFeeAmountRaw;
 }
 
 /**

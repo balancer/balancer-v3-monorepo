@@ -5,7 +5,6 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
@@ -44,25 +43,25 @@ contract VaultUnitTest is BaseTest {
         params.userData[0] = 0x01;
         params.userData[19] = 0x05;
 
-        SwapVars memory vars;
-        vars.amountGivenScaled18 = 2e18;
-        vars.indexIn = 3;
-        vars.indexOut = 4;
+        SwapState memory state;
+        state.amountGivenScaled18 = 2e18;
+        state.indexIn = 3;
+        state.indexOut = 4;
 
         PoolData memory poolData;
         poolData.balancesLiveScaled18 = [uint256(1e18), 1e18].toMemoryArray();
 
-        IBasePool.PoolSwapParams memory poolSwapParams = vault.manualBuildPoolSwapParams(params, vars, poolData);
+        IBasePool.PoolSwapParams memory poolSwapParams = vault.manualBuildPoolSwapParams(params, state, poolData);
 
         assertEq(uint8(poolSwapParams.kind), uint8(params.kind), "Unexpected kind");
-        assertEq(poolSwapParams.amountGivenScaled18, vars.amountGivenScaled18, "Unexpected amountGivenScaled18");
+        assertEq(poolSwapParams.amountGivenScaled18, state.amountGivenScaled18, "Unexpected amountGivenScaled18");
         assertEq(
             keccak256(abi.encodePacked(poolSwapParams.balancesScaled18)),
             keccak256(abi.encodePacked(poolData.balancesLiveScaled18)),
             "Unexpected balancesScaled18"
         );
-        assertEq(poolSwapParams.indexIn, vars.indexIn, "Unexpected indexIn");
-        assertEq(poolSwapParams.indexOut, vars.indexOut, "Unexpected indexOut");
+        assertEq(poolSwapParams.indexIn, state.indexIn, "Unexpected indexIn");
+        assertEq(poolSwapParams.indexOut, state.indexOut, "Unexpected indexOut");
         assertEq(poolSwapParams.router, address(this), "Unexpected router");
         assertEq(poolSwapParams.userData, params.userData, "Unexpected userData");
     }
@@ -86,19 +85,22 @@ contract VaultUnitTest is BaseTest {
         vm.expectEmit();
         emit IVaultEvents.ProtocolSwapFeeCharged(pool, address(dai), expectedSwapFeeAmountScaled18);
 
-        (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolSwapFees(
-                poolData,
-                swapFeeAmountScaled18,
-                protocolSwapFeePercentage,
-                pool,
-                dai,
-                tokenIndex
-            );
+        uint256 totalFeesRaw = vault.manualComputeAndChargeProtocolAndCreatorFees(
+            poolData,
+            swapFeeAmountScaled18,
+            protocolSwapFeePercentage,
+            pool,
+            dai,
+            tokenIndex
+        );
 
-        assertEq(creatorSwapFeeAmountRaw, 0, "Unexpected creatorSwapFeeAmountRaw");
-        assertEq(protocolSwapFeeAmountRaw, expectedSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
-        assertEq(vault.getProtocolFees(pool, dai), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
+        // No creator fees, so protocol fees is equal to the total
+        assertEq(totalFeesRaw, expectedSwapFeeAmountScaled18, "Unexpected totalFeesRaw");
+        assertEq(
+            vault.getProtocolFees(pool, dai),
+            expectedSwapFeeAmountScaled18,
+            "Unexpected protocol fees in storage"
+        );
         assertEq(vault.getPoolCreatorFees(pool, dai), 0, "Unexpected creator fees in storage");
     }
 
@@ -124,7 +126,7 @@ contract VaultUnitTest is BaseTest {
             poolData.tokenRates[tokenIndex]
         );
 
-        uint256 expectCreatorFeeAmountRaw = (swapFeeAmountScaled18 - expectedSwapFeeAmountScaled18)
+        uint256 expectedCreatorFeeAmountRaw = (swapFeeAmountScaled18 - expectedSwapFeeAmountScaled18)
             .mulUp(creatorFeePercentage)
             .toRawUndoRateRoundDown(poolData.decimalScalingFactors[tokenIndex], poolData.tokenRates[tokenIndex]);
 
@@ -132,37 +134,37 @@ contract VaultUnitTest is BaseTest {
         emit IVaultEvents.ProtocolSwapFeeCharged(pool, address(dai), expectSwapFeeAmountRaw);
 
         vm.expectEmit();
-        emit IVaultEvents.PoolCreatorSwapFeeCharged(pool, address(dai), expectCreatorFeeAmountRaw);
+        emit IVaultEvents.PoolCreatorSwapFeeCharged(pool, address(dai), expectedCreatorFeeAmountRaw);
 
-        (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolSwapFees(
-                poolData,
-                swapFeeAmountScaled18,
-                protocolSwapFeePercentage,
-                pool,
-                dai,
-                0
-            );
+        uint256 totalFeesRaw = vault.manualComputeAndChargeProtocolAndCreatorFees(
+            poolData,
+            swapFeeAmountScaled18,
+            protocolSwapFeePercentage,
+            pool,
+            dai,
+            0
+        );
 
-        assertEq(protocolSwapFeeAmountRaw, expectedSwapFeeAmountScaled18, "Unexpected protocolSwapFeeAmountRaw");
-        assertEq(creatorSwapFeeAmountRaw, expectCreatorFeeAmountRaw, "Unexpected creatorSwapFeeAmountRaw");
+        assertEq(totalFeesRaw, expectedSwapFeeAmountScaled18 + expectedCreatorFeeAmountRaw, "Unexpected totalFeesRaw");
         assertEq(
             vault.getPoolCreatorFees(pool, dai),
-            initVault + creatorSwapFeeAmountRaw,
+            initVault + expectedCreatorFeeAmountRaw,
             "Unexpected creator fees in storage"
         );
-        assertEq(vault.getProtocolFees(pool, dai), protocolSwapFeeAmountRaw, "Unexpected protocol fees in storage");
+        assertEq(
+            vault.getProtocolFees(pool, dai),
+            expectedSwapFeeAmountScaled18,
+            "Unexpected protocol fees in storage"
+        );
     }
 
     function testComputeAndChargeProtocolAndCreatorFeesIfPoolIsInRecoveryMode() public {
         PoolData memory poolData;
         poolData.poolConfig.isPoolInRecoveryMode = true;
 
-        (uint256 protocolSwapFeeAmountRaw, uint256 creatorSwapFeeAmountRaw) = vault
-            .manualComputeAndChargeProtocolSwapFees(poolData, 1e18, 10e16, pool, dai, 0);
+        uint256 totalFeesRaw = vault.manualComputeAndChargeProtocolAndCreatorFees(poolData, 1e18, 10e16, pool, dai, 0);
 
-        assertEq(protocolSwapFeeAmountRaw, 0, "Unexpected protocolSwapFeeAmountRaw");
-        assertEq(creatorSwapFeeAmountRaw, 0, "Unexpected creatorSwapFeeAmountRaw");
+        assertEq(totalFeesRaw, 0, "Unexpected totalFeesRaw");
         assertEq(vault.getProtocolFees(pool, dai), 0, "Unexpected protocol fees in storage");
     }*/
 
