@@ -42,6 +42,12 @@ interface IVaultErrors {
     error PoolHookRejectedFactory(address poolHookContract, address poolFactory);
 
     /**
+     * @dev At least one hook flag is true, but a hook contract was not informed.
+     * @param pool The pool to be registered
+     */
+    error NoHookContract(address pool);
+
+    /**
      * @dev A token was already registered (i.e., it is a duplicate in the pool).
      * @param token The duplicate token
      */

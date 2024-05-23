@@ -173,6 +173,21 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert PoolAlreadyRegistered(pool);
         }
 
+        if (
+            (params.poolHookFlags.shouldCallBeforeInitialize == true ||
+                params.poolHookFlags.shouldCallAfterInitialize == true ||
+                params.poolHookFlags.shouldCallComputeDynamicSwapFee == true ||
+                params.poolHookFlags.shouldCallBeforeSwap == true ||
+                params.poolHookFlags.shouldCallAfterSwap == true ||
+                params.poolHookFlags.shouldCallBeforeAddLiquidity == true ||
+                params.poolHookFlags.shouldCallAfterAddLiquidity == true ||
+                params.poolHookFlags.shouldCallBeforeRemoveLiquidity == true ||
+                params.poolHookFlags.shouldCallAfterRemoveLiquidity == true) &&
+            address(params.poolHooksContract) == address(0)
+        ) {
+            revert NoHookContract(pool);
+        }
+
         // If a hook address was passed, make sure that hook trusts the pool factory
         if (address(params.poolHooksContract) != address(0)) {
             if (params.poolHooksContract.onRegister(msg.sender) != true) {
