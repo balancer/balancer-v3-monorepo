@@ -245,8 +245,8 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         assertEq(tokens.length, amounts.length, "Output array length mismatch");
 
         // Check results
-        assertApproxEqAbs(paths[0], expectedDelta, 1, "Wrong path count");
-        assertApproxEqAbs(amounts[0], expectedDelta, 1, "Wrong amounts count");
+        assertEq(paths[0], expectedDelta, "Wrong path count");
+        assertEq(amounts[0], expectedDelta, "Wrong amounts count");
         assertEq(tokens[0], kind == SwapKind.EXACT_IN ? address(usdc) : address(dai), "Wrong token for SwapKind");
     }
 
