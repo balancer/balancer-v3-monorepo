@@ -64,12 +64,8 @@ contract WeightedPoolFactory is BasePoolFactory {
         _registerPoolWithVault(
             pool,
             tokens,
-            PoolFeeConfig({
-                poolSwapFeePercentage: swapFeePercentage,
-                protocolSwapFeePercentage: getVault().getProtocolFeeCollector().getGlobalProtocolSwapFeePercentage(),
-                poolCreatorFeePercentage: poolCreatorFeePercentage,
-                poolCreator: poolCreator
-            }),
+            swapFeePercentage,
+            poolCreatorFeePercentage,
             roleAccounts,
             getDefaultPoolHooks(),
             getDefaultLiquidityManagement()

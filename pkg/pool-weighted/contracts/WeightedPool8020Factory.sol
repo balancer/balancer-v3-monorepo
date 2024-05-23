@@ -79,12 +79,8 @@ contract WeightedPool8020Factory is BasePoolFactory {
         _registerPoolWithVault(
             pool,
             tokenConfig,
-            PoolFeeConfig({
-                poolSwapFeePercentage: swapFeePercentage,
-                protocolSwapFeePercentage: getVault().getProtocolFeeCollector().getGlobalProtocolSwapFeePercentage(),
-                poolCreatorFeePercentage: poolCreatorFeePercentage,
-                poolCreator: poolCreator
-            }),
+            swapFeePercentage,
+            poolCreatorFeePercentage,
             roleAccounts,
             getDefaultPoolHooks(),
             getDefaultLiquidityManagement()
