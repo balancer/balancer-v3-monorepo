@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { PoolFeeConfig } from "./VaultTypes.sol";
 import { IVault } from "./IVault.sol";
 
 enum ProtocolFeeType {
@@ -91,9 +90,6 @@ interface IProtocolFeeCollector {
     /// @dev Error raised if the wrong account attempts to withdraw pool creator fees.
     error CallerIsNotPoolCreator(address caller);
 
-    /// @dev The fee percentages are inconsistent (e.g., there is a creator fee, with no creator).
-    error InvalidFeeConfiguration();
-
     /// @dev Returns the main Vault address.
     function vault() external view returns (IVault);
 
@@ -110,13 +106,6 @@ interface IProtocolFeeCollector {
     function getGlobalProtocolYieldFeePercentage() external view returns (uint256);
 
     /**
-     * @notice Get the current creator fee percentage for a pool.
-     * @param pool The pool on which pool creator fees are collected
-     * @return poolCreator Address of the registered pool creator
-     */
-    function getPoolCreator(address pool) external view returns (address);
-
-    /**
      * @notice Compute the aggregate percentage from the given pool creator fee percentage,
      * using the global protocol fee percentages.
      *
@@ -130,20 +119,27 @@ interface IProtocolFeeCollector {
     ) external view returns (uint256 aggregateFeePercentage);
 
     /**
-     * @notice Compute and return the aggregate percentage, and store it locally for later disaggregation.
-     * @dev It will use the global protocol yield fee percentage for the aggregate yield fee percentage calculation.
-     * Projects can use the TokenConfig to exempt particular tokens from yield fees, so it does not need to be
-     * customized here.
+     * @notice Add pool-specific entries to the protocol swap and yield percentages.
+     * @dev It will initialize the pool to the global protocol fee percentage values. `computeAggregatePercentages`
+     * should be called after registration, to get the aggregate percentages for the PoolConfig.
+     * @param pool The pool being registered
+     */
+    function registerPool(address pool) external;
+
+    /**
+     * @notice Compute and return the aggregate percentage.
+     * @dev This can be called after initialization (e.g., when the pool creator fee is updated), and uses the existing
+     * protocol fee percentages for the pool.
      *
      * @param pool The pool being registered
-     * @param feeConfig The pool-specific fees (and pool creator)
+     * @param poolCreatorFeePercentage The creator fee percentage for the pool
      * @return aggregateProtocolSwapFeePercentage The aggregate swap fee percentage (protocol and creator fees)
      * @return aggregateProtocolYieldFeePercentage The aggregate swap fee percentage (protocol and creator fees)
      */
-    function registerPoolFeeConfig(
+    function computeAggregatePercentages(
         address pool,
-        PoolFeeConfig calldata feeConfig
-    ) external returns (uint256 aggregateProtocolSwapFeePercentage, uint256 aggregateProtocolYieldFeePercentage);
+        uint256 poolCreatorFeePercentage
+    ) external view returns (uint256, uint256);
 
     /**
      * @notice Called by the Vault when protocol swap fees are collected.
@@ -216,13 +212,6 @@ interface IProtocolFeeCollector {
      * @param newProtocolYieldFeePercentage The new protocol yield fee percentage
      */
     function setProtocolYieldFeePercentage(address pool, uint256 newProtocolYieldFeePercentage) external;
-
-    /**
-     * @notice Set the creator fee for a pool.
-     * @param pool The pool to set the pool creator fee on
-     * @param newPoolCreatorFeePercentage The new pool creator fee percentage
-     */
-    function setPoolCreatorFeePercentage(address pool, uint256 newPoolCreatorFeePercentage) external;
 
     /**
      * @notice Withdraw collected protocol fees for a given pool.
