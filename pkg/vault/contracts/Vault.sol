@@ -958,22 +958,24 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolData.poolConfig.aggregateProtocolSwapFeePercentage
             );
 
-            // Ensure we can never charge more than the total swap fee.
-            if (aggregateSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
-                revert ProtocolFeesExceedSwapFee();
+            if (aggregateSwapFeeAmountScaled18 > 0) {
+                // Ensure we can never charge more than the total swap fee.
+                if (aggregateSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
+                    revert ProtocolFeesExceedSwapFee();
+                }
+
+                aggregateSwapFeeAmountRaw = aggregateSwapFeeAmountScaled18.toRawUndoRateRoundDown(
+                    poolData.decimalScalingFactors[index],
+                    poolData.tokenRates[index]
+                );
+
+                // Both Swap and Yield fees are stored together in a PackedTokenBalance.
+                // We have designated "Raw" the derived half for Swap fee storage.
+                bytes32 currentPackedBalance = _protocolFees[pool][token];
+                _protocolFees[pool][token] = currentPackedBalance.setBalanceRaw(
+                    currentPackedBalance.getBalanceRaw() + aggregateSwapFeeAmountRaw
+                );
             }
-
-            aggregateSwapFeeAmountRaw = aggregateSwapFeeAmountScaled18.toRawUndoRateRoundDown(
-                poolData.decimalScalingFactors[index],
-                poolData.tokenRates[index]
-            );
-
-            // Both Swap and Yield fees are stored together in a PackedTokenBalance.
-            // We have designated "Raw" the derived half for Swap fee storage.
-            bytes32 currentPackedBalance = _protocolFees[pool][token];
-            _protocolFees[pool][token] = currentPackedBalance.setBalanceRaw(
-                currentPackedBalance.getBalanceRaw() + aggregateSwapFeeAmountRaw
-            );
         }
     }
 

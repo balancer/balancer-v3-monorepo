@@ -417,14 +417,16 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         uint256 numTokens = aggregateYieldFeeAmountsRaw.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            IERC20 token = poolData.tokenConfig[i].token;
+            if (aggregateYieldFeeAmountsRaw[i] > 0) {
+                IERC20 token = poolData.tokenConfig[i].token;
 
-            // Both Swap and Yield fees are stored together in a PackedTokenBalance.
-            // We have designated "Derived" the derived half for Yield fee storage.
-            bytes32 currentPackedBalance = _protocolFees[pool][token];
-            _protocolFees[pool][token] = currentPackedBalance.setBalanceDerived(
-                currentPackedBalance.getBalanceDerived() + aggregateYieldFeeAmountsRaw[i]
-            );
+                // Both Swap and Yield fees are stored together in a PackedTokenBalance.
+                // We have designated "Derived" the derived half for Yield fee storage.
+                bytes32 currentPackedBalance = _protocolFees[pool][token];
+                _protocolFees[pool][token] = currentPackedBalance.setBalanceDerived(
+                    currentPackedBalance.getBalanceDerived() + aggregateYieldFeeAmountsRaw[i]
+                );
+            }
         }
 
         // Update raw and last live pool balances, as computed by `_getPoolDataAndYieldFees`
