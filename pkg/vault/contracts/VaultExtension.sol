@@ -37,6 +37,7 @@ import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
+import { PoolDataLib } from "./lib/PoolDataLib.sol";
 
 /**
  * @dev Bytecode extension for Vault.
@@ -61,6 +62,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
+    using PoolDataLib for PoolData;
 
     IVault private immutable _vault;
     IVaultAdmin private immutable _vaultAdmin;
@@ -304,13 +306,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external onlyWhenUnlocked withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
-        VaultState memory vaultState = _ensureUnpausedAndGetVaultState(pool);
+        _ensureUnpausedAndGetVaultState(pool);
 
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(
-            pool,
-            Rounding.ROUND_DOWN,
-            vaultState.protocolYieldFeePercentage
-        );
+        // Balances are zero until after initialize is callled, so there is no need to charge pending yield fee here.
+        PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
 
         if (poolData.poolConfig.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);
@@ -332,7 +331,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
 
             // The before hook is reentrant, and could have changed token rates.
-            _updateTokenRatesInPoolData(poolData);
+            // Updating balances here is unnecessary since they're 0, but we do not special case before init
+            // for the sake of bytecode size.
+            poolData.reloadBalancesAndRates(_poolTokenBalances[pool], Rounding.ROUND_DOWN);
 
             // Also update exactAmountsInScaled18, in case the underlying rates changed.
             exactAmountsInScaled18 = exactAmountsIn.copyToScaled18ApplyRateRoundDownArray(
@@ -435,7 +436,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         withRegisteredPool(pool)
         returns (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors)
     {
-        PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
         return (poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors);
     }
 
