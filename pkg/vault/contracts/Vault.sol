@@ -205,7 +205,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
         // as those passed to the main operation.
-        // At this point, the static swap fee percentage is loaded in the swap state as default.
+        // At this point, the static swap fee percentage is loaded in the swap state as the default, 
+        // to be used unless the pool has a dynamic swap fee.
         if (poolData.poolConfig.hooks.shouldCallComputeDynamicSwapFee) {
             bool success;
 
@@ -428,7 +429,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // 5) Pool balances: raw and live
         // Adjust for raw swap amounts and total fees on the calculated end.
-        // Fees are always subtracted from pool balances, so they add up with amounts out or are deduced from amount in.
+        // So that fees are always subtracted from pool balances:
+        // For ExactIn, we increase the tokenIn balance by `amountIn`, and decrease the tokenOut balance by the (`amountOut` + fees).
+        // For ExactOut, we increase the tokenInBalance by (`amountIn` - fees), and decrease the tokenOut balance by `amountOut`.
         (locals.balanceInIncrement, locals.balanceOutDecrement) = params.kind == SwapKind.EXACT_IN
             ? (amountInRaw, amountOutRaw + totalFeesRaw)
             : (amountInRaw - totalFeesRaw, amountOutRaw);
