@@ -1035,10 +1035,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /**
-     * @dev Non-reentrant portion of the wrapping operation.
-     * If the buffer has enough liquidity, it uses the wrapped token buffer to perform the wrap operation without any
-     * external calls. If not, it wraps the assets needed to fulfill the trade + the surplus of assets in the buffer,
-     * so that the buffer is rebalanced at the end of the operation.
+     * @dev If the buffer has enough liquidity, it uses the wrapped token buffer to perform the wrap operation without
+     * any external calls. If not, it wraps the assets needed to fulfill the trade + the surplus of assets in the
+     * buffer, so that the buffer is rebalanced at the end of the operation.
      *
      * Updates `_reservesOf` and token deltas in storage.
      */
@@ -1058,6 +1057,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // EXACT_OUT wrap, so AmountGiven is wrapped amount
             amountCalculated = wrappedToken.convertToAssets(amountGiven);
             (amountInUnderlying, amountOutWrapped) = (amountCalculated, amountGiven);
+        }
+
+        // Checking isStaticCall first, so we only parse _vaultState in static calls
+        if (EVMCallModeHelpers.isStaticCall() == true && _vaultState.toVaultState().isQueryDisabled == false) {
+            // Uses the most accurate calculation so that a query matches the actual operation
+            if (kind == SwapKind.EXACT_IN) {
+                amountCalculated = wrappedToken.previewDeposit(amountGiven);
+                (amountInUnderlying, amountOutWrapped) = (amountGiven, amountCalculated);
+            } else {
+                amountCalculated = wrappedToken.previewMint(amountGiven);
+                (amountInUnderlying, amountOutWrapped) = (amountCalculated, amountGiven);
+            }
+            _takeDebt(underlyingToken, amountInUnderlying);
+            _supplyCredit(wrappedToken, amountOutWrapped);
+            return (amountCalculated, amountInUnderlying, amountOutWrapped);
         }
 
         if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
@@ -1151,10 +1165,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /**
-     * @dev Non-reentrant portion of the unwrapping operation.
-     * If the buffer has enough liquidity, it uses the wrapped token buffer to perform the wrap operation without any
-     * external calls. If not, it wraps the assets needed to fulfill the trade + the surplus of assets in the buffer,
-     * so that the buffer is rebalanced at the end of the operation.
+     * @dev If the buffer has enough liquidity, it uses the wrapped token buffer to perform the unwrap operation
+     * without any external calls. If not, it unwraps the assets needed to fulfill the trade + the surplus of assets
+     * in the buffer, so that the buffer is rebalanced at the end of the operation.
      *
      * Updates `_reservesOf` and token deltas in storage.
      */
@@ -1174,6 +1187,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // EXACT_OUT unwrap, so AmountGiven is underlying amount
             amountCalculated = wrappedToken.convertToShares(amountGiven);
             (amountOutUnderlying, amountInWrapped) = (amountGiven, amountCalculated);
+        }
+
+        // Checking isStaticCall first, so we only parse _vaultState in static calls
+        if (EVMCallModeHelpers.isStaticCall() == true && _vaultState.toVaultState().isQueryDisabled == false) {
+            // Uses the most accurate calculation so that a query matches the actual operation
+            if (kind == SwapKind.EXACT_IN) {
+                amountCalculated = wrappedToken.previewRedeem(amountGiven);
+                (amountOutUnderlying, amountInWrapped) = (amountCalculated, amountGiven);
+            } else {
+                amountCalculated = wrappedToken.previewWithdraw(amountGiven);
+                (amountOutUnderlying, amountInWrapped) = (amountGiven, amountCalculated);
+            }
+            _takeDebt(wrappedToken, amountInWrapped);
+            _supplyCredit(underlyingToken, amountOutUnderlying);
+            return (amountCalculated, amountInWrapped, amountOutUnderlying);
         }
 
         if (bufferBalances.getBalanceRaw() > amountOutUnderlying) {
