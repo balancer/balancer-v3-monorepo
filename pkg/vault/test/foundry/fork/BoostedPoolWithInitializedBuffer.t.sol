@@ -19,13 +19,11 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
-import { ERC4626BufferPoolFactoryMock } from "../utils/ERC4626BufferPoolFactoryMock.sol";
-import { ERC4626BufferPoolMock } from "../utils/ERC4626BufferPoolMock.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 import { RouterCommon } from "../../../contracts/RouterCommon.sol";
+import { ERC4626RateProvider } from "../../../contracts/test/ERC4626RateProvider.sol";
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
-import { ERC4626RateProvider } from "../../../contracts/test/ERC4626RateProvider.sol";
 
 contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     using FixedPoint for uint256;
@@ -53,8 +51,6 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     IERC20 internal usdcMainnet;
     IERC4626 internal waUSDC;
 
-    ERC4626BufferPoolFactoryMock bufferFactory;
-
     // For two-token pools with waDAI/waUSDC, keep track of sorted token order.
     uint256 internal waDaiIdx;
     uint256 internal waUsdcIdx;
@@ -77,8 +73,6 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         _setupTokens();
 
         BaseVaultTest.setUp();
-
-        bufferFactory = new ERC4626BufferPoolFactoryMock(vault, 365 days);
 
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
 
@@ -231,7 +225,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         // However, EXACT_OUT DAI -> USDC has rounding issues, because amount out is given in 6 digits, and we want an
         // 18 decimals amount in, which is not precisely calculated. The calculation below reproduces what happens in
         // the vault to scale tokens in the swap operation of the boosted pool
-        uint256 expectedWrappedTokenOutUsdc = waUSDC.previewWithdraw(swapAmount / USDC_FACTOR);
+        uint256 expectedWrappedTokenOutUsdc = waUSDC.convertToShares(swapAmount / USDC_FACTOR);
         uint256 expectedScaled18WrappedTokenOutUsdc = FixedPoint.mulDown(
             expectedWrappedTokenOutUsdc * USDC_FACTOR,
             waUSDC.convertToAssets(FixedPoint.ONE)
@@ -307,8 +301,6 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
 
-    // TODO create a test that should revert if maxAmountsIn or minAmountsOut is not respected (validating the router)
-
     function _buildExactInPaths(
         uint256 exactAmountIn,
         uint256 minAmountOut
@@ -316,7 +308,6 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
 
-        // TODO check comment "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
         // Since this is exact in, swaps will be executed in the order given.
         // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the boosted pool,
         // and finally post-swap the waUSDC through the USDC buffer to calculate the USDC amount out.
@@ -340,7 +331,6 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountOut[](1);
 
-        // TODO check comment "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
         // Since this is exact out, swaps will be executed in reverse order (though we submit in logical order).
         // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the boosted pool,
         // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.

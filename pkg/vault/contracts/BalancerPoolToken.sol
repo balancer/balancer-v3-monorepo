@@ -11,7 +11,8 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+
+import { VaultGuard } from "./VaultGuard.sol";
 
 /**
  * @notice A fully ERC20-compatible token to be used as the base contract for Balancer Pools,
@@ -20,7 +21,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
  * @dev Implementation of the ERC-20 Permit extension allowing approvals to be made via signatures, as defined in
  * https://eips.ethereum.org/EIPS/eip-2612[ERC-2612].
  */
-contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonces, ERC165 {
+contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonces, ERC165, VaultGuard {
     bytes32 public constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
@@ -30,25 +31,11 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonc
     // @dev Mismatched signature.
     error ERC2612InvalidSigner(address signer, address owner);
 
-    IVault private immutable _vault;
-
     // EIP712 also defines _name.
     string private _bptName;
     string private _bptSymbol;
 
-    modifier onlyVault() {
-        _ensureOnlyVault();
-        _;
-    }
-
-    function _ensureOnlyVault() private view {
-        if (msg.sender != address(_vault)) {
-            revert IVaultErrors.SenderIsNotVault(msg.sender);
-        }
-    }
-
-    constructor(IVault vault_, string memory bptName, string memory bptSymbol) EIP712(bptName, "1") {
-        _vault = vault_;
+    constructor(IVault vault_, string memory bptName, string memory bptSymbol) EIP712(bptName, "1") VaultGuard(vault_) {
         _bptName = bptName;
         _bptSymbol = bptSymbol;
     }

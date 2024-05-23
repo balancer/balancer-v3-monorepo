@@ -7,7 +7,6 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
@@ -16,7 +15,9 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 
-contract RouterCommon is IRouterCommon {
+import { VaultGuard } from "./VaultGuard.sol";
+
+contract RouterCommon is IRouterCommon, VaultGuard {
     using Address for address payable;
     using SafeERC20 for IWETH;
     using StorageSlot for *;
@@ -36,17 +37,10 @@ contract RouterCommon is IRouterCommon {
     // inside the Vault, so sending max uint256 would result in an overflow and revert.
     uint256 internal constant _MAX_AMOUNT = type(uint128).max;
 
-    IVault internal immutable _vault;
-
     // solhint-disable-next-line var-name-mixedcase
     IWETH internal immutable _weth;
 
     IPermit2 internal immutable _permit2;
-
-    modifier onlyVault() {
-        _ensureOnlyVault();
-        _;
-    }
 
     modifier saveSender() {
         {
@@ -61,17 +55,10 @@ contract RouterCommon is IRouterCommon {
         _;
     }
 
-    function _ensureOnlyVault() private view {
-        if (msg.sender != address(_vault)) {
-            revert IVaultErrors.SenderIsNotVault(msg.sender);
-        }
-    }
-
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) {
-        _vault = vault;
+    constructor(IVault vault, IWETH weth, IPermit2 permit2) VaultGuard(vault) {
         _weth = weth;
         _permit2 = permit2;
-        weth.approve(address(_vault), type(uint256).max);
+        weth.approve(address(vault), type(uint256).max);
     }
 
     /**
