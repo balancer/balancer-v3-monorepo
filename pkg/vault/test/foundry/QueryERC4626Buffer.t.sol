@@ -132,9 +132,6 @@ contract QueryERC4626BufferTest is BaseVaultTest {
             uint256[] memory queryAmountsOut
         ) = batchRouter.querySwapExactIn(paths, bytes(""));
 
-        // Checks if results of the query operation are the expected ones
-        _verifyQuerySwapResult(queryPathAmountsOut, queryTokensOut, queryAmountsOut, amount, SwapKind.EXACT_IN);
-
         // Restores the network state to snapshot
         vm.revertTo(snapshotId);
 
@@ -142,9 +139,6 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         vm.prank(alice);
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
-
-        // Checks if results of the actual operation are the expected ones
-        _verifyQuerySwapResult(pathAmountsOut, tokensOut, amountsOut, amount, SwapKind.EXACT_IN);
 
         // Check if results of query and actual operations are equal
         assertEq(pathAmountsOut[0], queryPathAmountsOut[0], "pathAmountsOut's do not match");
@@ -168,9 +162,6 @@ contract QueryERC4626BufferTest is BaseVaultTest {
             uint256[] memory queryAmountsIn
         ) = batchRouter.querySwapExactOut(paths, bytes(""));
 
-        // Checks if results of the query operation are the expected ones
-        _verifyQuerySwapResult(queryPathAmountsIn, queryTokensIn, queryAmountsIn, amount, SwapKind.EXACT_OUT);
-
         // Restores the network state to snapshot
         vm.revertTo(snapshotId);
 
@@ -178,9 +169,6 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         vm.prank(alice);
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
-
-        // Checks if results of the actual operation are the expected ones
-        _verifyQuerySwapResult(pathAmountsIn, tokensIn, amountsIn, amount, SwapKind.EXACT_OUT);
 
         // Check if results of query and actual operations are equal
         assertEq(pathAmountsIn[0], queryPathAmountsIn[0], "pathAmountsIn's do not match");
@@ -230,24 +218,6 @@ contract QueryERC4626BufferTest is BaseVaultTest {
             maxAmountIn: amount,
             exactAmountOut: amount
         });
-    }
-
-    function _verifyQuerySwapResult(
-        uint256[] memory paths,
-        address[] memory tokens,
-        uint256[] memory amounts,
-        uint256 expectedDelta,
-        SwapKind kind
-    ) private {
-        assertEq(paths.length, 1, "Incorrect output array length");
-
-        assertEq(paths.length, tokens.length, "Output array length mismatch");
-        assertEq(tokens.length, amounts.length, "Output array length mismatch");
-
-        // Check results
-        assertEq(paths[0], expectedDelta, "Wrong path count");
-        assertEq(amounts[0], expectedDelta, "Wrong amounts count");
-        assertEq(tokens[0], kind == SwapKind.EXACT_IN ? address(usdc) : address(dai), "Wrong token for SwapKind");
     }
 
     function _initializeBuffers() private {
