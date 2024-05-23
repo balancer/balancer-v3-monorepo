@@ -114,7 +114,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault.registerPool(
             pool,
             tokenConfig,
-            0,
+            DEFAULT_SWAP_FEE,
             0,
             timestamp,
             roleAccounts,
