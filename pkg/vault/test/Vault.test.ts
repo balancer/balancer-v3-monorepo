@@ -143,7 +143,8 @@ describe('Vault', function () {
         tokenConfig,
         pauseWindowEndTime: pauseWindowEndTime.toString(),
         roleAccounts: [ANY_ADDRESS, ZERO_ADDRESS, ANY_ADDRESS],
-        poolHooks: [false, false, false, false, false, false, false, false, false],
+        poolHookFlags: [false, false, false, false, false, false, false, false, false],
+        poolHooksContract: ZERO_ADDRESS,
         liquidityManagement: [false, true, true],
       };
 

@@ -262,6 +262,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.pauseWindowEndTime,
             params.roleAccounts,
             params.poolHookFlags,
+            params.poolHooksContract,
             params.liquidityManagement
         );
     }

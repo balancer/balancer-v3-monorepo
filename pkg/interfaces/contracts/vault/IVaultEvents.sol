@@ -7,6 +7,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { LiquidityManagement, PoolHookFlags, PoolRoleAccounts, TokenConfig } from "./VaultTypes.sol";
+import {IPoolHooks} from "./IPoolHooks.sol";
 
 interface IVaultEvents {
     /**
@@ -17,6 +18,7 @@ interface IVaultEvents {
      * @param pauseWindowEndTime The pool's pause window end time
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHookFlags Flags indicating which hooks the pool supports
+     * @param poolHooksContract Contract that implements the hooks for the pool
      * @param liquidityManagement Supported liquidity management hook flags
      */
     event PoolRegistered(
@@ -26,6 +28,7 @@ interface IVaultEvents {
         uint256 pauseWindowEndTime,
         PoolRoleAccounts roleAccounts,
         PoolHookFlags poolHookFlags,
+        IPoolHooks poolHooksContract,
         LiquidityManagement liquidityManagement
     );
 
