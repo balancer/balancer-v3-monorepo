@@ -454,6 +454,22 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
 
+    function _setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) internal virtual {
+        if (poolCreatorFeePercentage > FixedPoint.ONE) {
+            revert PoolCreatorFeePercentageTooHigh();
+        }
+
+        _poolCreatorFeePercentages[pool] = poolCreatorFeePercentage;
+
+        // Need to update aggregate percentages.
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        (config.aggregateProtocolSwapFeePercentage, config.aggregateProtocolYieldFeePercentage) = _protocolFeeCollector
+            .computeAggregatePercentages(pool, poolCreatorFeePercentage);
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
+    }
+
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/

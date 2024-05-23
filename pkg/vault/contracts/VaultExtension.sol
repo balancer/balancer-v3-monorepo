@@ -31,6 +31,7 @@ import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzepp
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -124,7 +125,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
-        PoolFeeConfig feeConfig;
+        uint256 swapFeePercentage;
+        uint256 poolCreatorFeePercentage;
         uint256 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
         PoolHooks poolHooks;
@@ -135,7 +137,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
-        PoolFeeConfig memory feeConfig,
+        uint256 swapFeePercentage,
+        uint256 poolCreatorFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
@@ -145,7 +148,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             pool,
             PoolRegistrationParams({
                 tokenConfig: tokenConfig,
-                feeConfig: feeConfig,
+                swapFeePercentage: swapFeePercentage,
+                poolCreatorFeePercentage: poolCreatorFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
                 roleAccounts: roleAccounts,
                 poolHooks: poolHooks,
@@ -232,6 +236,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Make pool role assignments. A zero address means default to the authorizer.
         _assignPoolRoles(pool, params.roleAccounts);
 
+        if (_poolRoleAccounts[pool].poolCreator == address(0) && params.poolCreatorFeePercentage > 0) {
+            revert InvalidFeeConfiguration();
+        }
+
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
 
@@ -240,18 +248,20 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         config.liquidityManagement = params.liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime;
-        (config.aggregateProtocolSwapFeePercentage, config.aggregateProtocolYieldFeePercentage) = _protocolFeeCollector
-            .registerPoolFeeConfig(pool, params.feeConfig);
+        // Initialize the pool-specific protocol fee values to the current global defaults.
+        _protocolFeeCollector.registerPool(pool);
         _poolConfig[pool] = config.fromPoolConfig();
 
-        _setStaticSwapFeePercentage(pool, params.feeConfig.poolSwapFeePercentage);
+        _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
+        _setPoolCreatorFeePercentage(pool, params.poolCreatorFeePercentage);
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
         emit PoolRegistered(
             pool,
             msg.sender,
             params.tokenConfig,
-            params.feeConfig,
+            params.swapFeePercentage,
+            params.poolCreatorFeePercentage,
             params.pauseWindowEndTime,
             params.roleAccounts,
             params.poolHooks,
@@ -279,6 +289,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
             roleAssignments[swapFeeAction] = PoolFunctionPermission({
                 account: roleAccounts.swapFeeManager,
+                onlyOwner: true
+            });
+        }
+
+        if (roleAccounts.poolCreator != address(0)) {
+            bytes32 poolCreatorFeeAction = vaultAdmin.getActionId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
+
+            roleAssignments[poolCreatorFeeAction] = PoolFunctionPermission({
+                account: roleAccounts.poolCreator,
                 onlyOwner: true
             });
         }

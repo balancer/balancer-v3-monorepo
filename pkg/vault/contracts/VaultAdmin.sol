@@ -285,7 +285,19 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectProtocolFees(address pool) external nonReentrant onlyVault {
+    function setPoolCreatorFeePercentage(
+        address pool,
+        uint256 poolCreatorFeePercentage
+    ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
+        _ensureUnpausedAndGetVaultState(pool);
+
+        collectProtocolFees(pool);
+
+        _setPoolCreatorFeePercentage(pool, poolCreatorFeePercentage);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function collectProtocolFees(address pool) public nonReentrant onlyVault {
         _collectProtocolFeesInternal(pool, ProtocolFeeType.SWAP);
         _collectProtocolFeesInternal(pool, ProtocolFeeType.YIELD);
     }
@@ -330,6 +342,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             config.aggregateProtocolYieldFeePercentage = newAggregateFeePercentage;
         }
         _poolConfig[pool] = config.fromPoolConfig();
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getPoolCreatorInfo(address pool) external view returns (address, uint256) {
+        return (_poolRoleAccounts[pool].poolCreator, _poolCreatorFeePercentages[pool]);
     }
 
     /// @inheritdoc IVaultAdmin
