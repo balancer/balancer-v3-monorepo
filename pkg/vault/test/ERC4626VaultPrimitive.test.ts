@@ -26,7 +26,7 @@ import '@balancer-labs/v3-common/setupTests';
 import { buildTokenConfig } from './poolSetup';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 
-describe.only('ERC4626VaultPrimitive', function () {
+describe('ERC4626VaultPrimitive', function () {
   const TOKEN_AMOUNT = fp(1000);
   const SWAP_AMOUNT = fp(100);
   const MIN_BPT = bn(1e6);
