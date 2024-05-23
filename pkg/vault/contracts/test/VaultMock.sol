@@ -457,7 +457,7 @@ contract VaultMock is IVaultMainMock, Vault {
         IERC20 token,
         uint256 index
     ) external returns (uint256 totalFeesRaw) {
-        return _computeAndChargeProtocolAndCreatorSwapFees(poolData, swapFeeAmountScaled18, pool, token, index);
+        return _computeAndChargeProtocolSwapFees(poolData, swapFeeAmountScaled18, pool, token, index);
     }
 
     function manualUpdatePoolDataLiveBalancesAndRates(

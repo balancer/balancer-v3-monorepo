@@ -419,7 +419,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Note that protocol fee storage is updated before balance storage, as the final raw balances need to take
         // the fees into account.
-        uint256 totalFeesRaw = _computeAndChargeProtocolAndCreatorSwapFees(
+        uint256 totalFeesRaw = _computeAndChargeProtocolSwapFees(
             poolData,
             locals.swapFeeAmountScaled18,
             params.pool,
@@ -679,7 +679,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 _takeDebt(token, amountInRaw);
 
                 // 4) Compute and charge protocol and creator fees.
-                locals.totalFeesRaw = _computeAndChargeProtocolAndCreatorSwapFees(
+                locals.totalFeesRaw = _computeAndChargeProtocolSwapFees(
                     poolData,
                     swapFeeAmountsScaled18[i],
                     params.pool,
@@ -909,7 +909,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 _supplyCredit(token, amountOutRaw);
 
                 // 4) Compute and charge protocol and creator fees.
-                locals.totalFeesRaw = _computeAndChargeProtocolAndCreatorSwapFees(
+                locals.totalFeesRaw = _computeAndChargeProtocolSwapFees(
                     poolData,
                     swapFeeAmountsScaled18[i],
                     params.pool,
@@ -970,7 +970,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * lpFees (will stay in the pool) = creatorAndLpFees - creatorFees = 600 - 360 = 240
      * @return totalFeesRaw Sum of protocol and pool creator fees raw
      */
-    function _computeAndChargeProtocolAndCreatorSwapFees(
+    function _computeAndChargeProtocolSwapFees(
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         address pool,
