@@ -182,7 +182,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData in memory. Since the swap hooks are reentrant and could do anything, including change these
         // balances, we cannot defer settlement until `_swap`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolSwapFees` in storage.
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees` in storage.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
 
         // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
@@ -313,7 +313,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      *                balancesLiveScaled18 in `poolData`.
      * Side effects: mutates swapFeeAmountScaled18, amountCalculatedScaled18, aggregateSwapFeeAmountRaw in vars;
      *               balancesRaw, balancesLiveScaled18 in `poolData`.
-     * Updates `_protocolSwapFees`, `_poolTokenBalances` in storage.
+     * Updates `_protocolFees`, `_poolTokenBalances` in storage.
      * Emits Swap event.
      */
     function _swap(
@@ -485,7 +485,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData in memory. Since the add liquidity hooks are reentrant and could do anything, including change
         // these balances, we cannot defer settlement until `_addLiquidity`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolSwapFees`
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`
         // in storage.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_UP);
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.maxAmountsIn.length);
@@ -722,7 +722,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // poolData in memory. Since the remove liquidity hooks are reentrant and could do anything, including change
         // these balances, we cannot defer settlement until `_removeLiquidity`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolSwapFees`,
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
         // in storage.
         PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.minAmountsOut.length);
@@ -936,7 +936,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /**
      * @dev Preconditions: poolConfig, decimalScalingFactors, tokenRates in `poolData`.
-     * Side effects: updates `_protocolSwapFees` storage.
+     * Side effects: updates `_protocolFees` storage.
      * Note that this computes the aggregate total of the protocol fees and stores it, without emitting any events.
      * Splitting the fees and event emission occur during fee collection.
      *
@@ -968,7 +968,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolData.tokenRates[index]
             );
 
-            _protocolSwapFees[pool][token] += aggregateSwapFeeAmountRaw;
+            // Both Swap and Yield fees are stored together in a PackedTokenBalance.
+            // We have designated "Raw" the derived half for Swap fee storage.
+            bytes32 currentPackedBalance = _protocolFees[pool][token];
+            _protocolFees[pool][token] = currentPackedBalance.setBalanceRaw(
+                currentPackedBalance.getBalanceRaw() + aggregateSwapFeeAmountRaw
+            );
         }
     }
 

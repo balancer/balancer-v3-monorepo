@@ -404,20 +404,22 @@ contract VaultMock is IVaultMainMock, Vault {
         return (amountCalculated, amountIn, amountOut, params, vars, poolData);
     }
 
+    // Don't want to make `getProtocolSwapFees` public just for tests.
     function manualGetProtocolSwapFees(address pool, IERC20 token) external view returns (uint256) {
-        return _protocolSwapFees[pool][token];
+        return _protocolFees[pool][token].getBalanceRaw();
     }
 
+    // Don't want to make `getProtocolYieldFees` public just for tests.
     function manualGetProtocolYieldFees(address pool, IERC20 token) external view returns (uint256) {
-        return _protocolYieldFees[pool][token];
+        return _protocolFees[pool][token].getBalanceDerived();
     }
 
     function manualSetProtocolSwapFees(address pool, IERC20 token, uint256 value) external {
-        _protocolSwapFees[pool][token] = value;
+        _protocolFees[pool][token] = _protocolFees[pool][token].setBalanceRaw(value);
     }
 
     function manualSetProtocolYieldFees(address pool, IERC20 token, uint256 value) external {
-        _protocolYieldFees[pool][token] = value;
+        _protocolFees[pool][token] = _protocolFees[pool][token].setBalanceDerived(value);
     }
 
     function manualSetAggregateProtocolSwapFeePercentage(address pool, uint256 value) external {

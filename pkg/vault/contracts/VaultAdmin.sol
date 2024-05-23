@@ -286,29 +286,21 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function collectProtocolFees(address pool) external onlyVault nonReentrant {
-        _collectProtocolFeesInternal(pool, ProtocolFeeType.SWAP);
-        _collectProtocolFeesInternal(pool, ProtocolFeeType.YIELD);
-    }
-
-    function _collectProtocolFeesInternal(address pool, ProtocolFeeType feeType) private {
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
-        bool isSwapFee = feeType == ProtocolFeeType.SWAP;
 
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             IERC20 token = poolTokens[i];
 
-            uint256 totalFees = isSwapFee ? _protocolSwapFees[pool][token] : _protocolYieldFees[pool][token];
+            (uint256 totalSwapFees, uint256 totalYieldFees) = _protocolFees[pool][token].fromPackedBalance();
+            uint256 totalFees = totalSwapFees + totalYieldFees;
+
             if (totalFees > 0) {
                 // The ProtocolFeeCollector will pull tokens from the Vault.
                 token.approve(address(_protocolFeeCollector), totalFees);
+                _protocolFees[pool][token] = 0;
 
-                if (isSwapFee) {
-                    _protocolSwapFees[pool][token] = 0;
-                    _protocolFeeCollector.receiveProtocolSwapFees(pool, token, totalFees);
-                } else {
-                    _protocolYieldFees[pool][token] = 0;
-                    _protocolFeeCollector.receiveProtocolYieldFees(pool, token, totalFees);
-                }
+                _protocolFeeCollector.receiveProtocolSwapFees(pool, token, totalSwapFees);
+                _protocolFeeCollector.receiveProtocolYieldFees(pool, token, totalYieldFees);
             }
         }
     }

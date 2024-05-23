@@ -47,6 +47,8 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     mapping(address => address) private _poolCreators;
 
     // Swap and Yield fees cannot be combined, since the pool creator split can be different for each.
+    // Since this is outside the Vault/critical path, we use separate mappings in this contract, instead of
+    // packing the values.
 
     // Pool -> (Token -> fee): aggregate protocol swap fees sent from the Vault.
     mapping(address => mapping(IERC20 => uint256)) internal _protocolSwapFeesCollected;
