@@ -21,6 +21,7 @@ import {
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
+import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 
 // solhint-disable max-states-count
 
@@ -79,11 +80,10 @@ contract VaultStorage {
      */
     mapping(IERC20 => int256) private __tokenDeltas;
 
-    // Pool -> (Token -> fee): aggregate protocol swap fees accumulated in the Vault for harvest.
-    mapping(address => mapping(IERC20 => uint256)) internal _protocolSwapFees;
-
-    // Pool -> (Token -> fee): aggregate protocol yield fees accumulated in the Vault for harvest.
-    mapping(address => mapping(IERC20 => uint256)) internal _protocolYieldFees;
+    // Pool -> (Token -> fee): aggregate protocol swap/yield fees accumulated in the Vault for harvest.
+    // Reusing PackedTokenBalance to save bytecode (despite differing semantics).
+    // It's arbitrary which is which: we define raw=swap; derived=yield
+    mapping(address => mapping(IERC20 => bytes32)) internal _protocolFees;
 
     /**
      * @dev Represents the total reserve of each ERC20 token. It should be always equal to `token.balanceOf(vault)`,
