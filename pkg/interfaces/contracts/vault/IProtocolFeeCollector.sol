@@ -113,11 +113,16 @@ interface IProtocolFeeCollector {
 
     /**
      * @notice Add pool-specific entries to the protocol swap and yield percentages.
-     * @dev It will initialize the pool to the global protocol fee percentage values. `computeAggregatePercentages`
-     * should be called after registration, to get the aggregate percentages for the PoolConfig.
+     * @dev It will initialize the pool to the global protocol fee percentage values, and return the initial
+     * aggregate protocol fee percentages, based on an initial pool creator fee of 0.
+     *
      * @param pool The pool being registered
+     * @return aggregateProtocolSwapFeePercentage The initial aggregate protocol swap fee percentage
+     * @return aggregateProtocolYieldFeePercentage The initial aggregate protocol yield fee percentage
      */
-    function registerPool(address pool) external;
+    function registerPool(
+        address pool
+    ) external returns (uint256 aggregateProtocolSwapFeePercentage, uint256 aggregateProtocolYieldFeePercentage);
 
     /**
      * @notice Compute and return the aggregate percentage.

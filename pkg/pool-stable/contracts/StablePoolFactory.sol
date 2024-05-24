@@ -41,7 +41,6 @@ contract StablePoolFactory is BasePoolFactory {
         string memory symbol,
         TokenConfig[] memory tokens,
         uint256 amplificationParameter,
-        uint256 poolCreatorFeePercentage,
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
         bytes32 salt
@@ -62,7 +61,6 @@ contract StablePoolFactory is BasePoolFactory {
             pool,
             tokens,
             swapFeePercentage,
-            poolCreatorFeePercentage,
             roleAccounts,
             getDefaultPoolHooks(),
             getDefaultLiquidityManagement()

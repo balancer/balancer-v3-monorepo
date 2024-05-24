@@ -34,7 +34,6 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
                 "ERC20POOL",
                 vault.buildTokenConfig(tokens.asIERC20()),
                 DEFAULT_AMP_FACTOR,
-                0, // pool creator fee
                 roleAccounts,
                 0, // zero swap fee
                 ZERO_BYTES32
