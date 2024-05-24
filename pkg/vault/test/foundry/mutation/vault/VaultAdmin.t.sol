@@ -211,12 +211,12 @@ contract VaultAdminMutationTest is BaseVaultTest {
     */
     function testCollectProtocolFeesWhenNotAuthenticated() public {
         vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
-        vault.collectProtocolFees(tokens);
+        vault.collectProtocolFees(pool);
     }
 
     function testCollectProtocolFeesWhenNotVault() public {
         vm.expectRevert();
-        vaultAdmin.collectProtocolFees(tokens);
+        vaultAdmin.collectProtocolFees(pool);
     }
 
     /*

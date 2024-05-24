@@ -198,7 +198,7 @@ contract VaultExtensionMutationTest is BaseVaultTest {
     */
     function testGetProtocolFeesWhenNotVault() public {
         vm.expectRevert();
-        vaultExtension.getProtocolFees(address(dai));
+        vaultExtension.getProtocolFees(pool, dai);
     }
 
     /*
