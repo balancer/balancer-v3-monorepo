@@ -139,7 +139,9 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     ) external withValidSwapFee(newProtocolSwapFeePercentage) withLatestFees(pool) authenticate {
         (, uint256 poolCreatorFeePercentage) = getVault().getPoolCreatorInfo(pool);
 
-        // Update the aggregate swap fee value in the Vault (PoolConfig).
+        // Update local storage of the raw percentage
+        _poolProtocolSwapFeePercentages[pool] = newProtocolSwapFeePercentage;
+        // Update the resulting aggregate swap fee value in the Vault (PoolConfig).
         getVault().updateAggregateFeePercentage(
             pool,
             ProtocolFeeType.SWAP,
@@ -156,7 +158,9 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     ) external withValidYieldFee(newProtocolYieldFeePercentage) withLatestFees(pool) authenticate {
         (, uint256 poolCreatorFeePercentage) = getVault().getPoolCreatorInfo(pool);
 
-        // Update the aggregate yield fee value in the Vault (PoolConfig).
+        // Update local storage of the raw percentage
+        _poolProtocolYieldFeePercentages[pool] = newProtocolYieldFeePercentage;
+        // Update the resulting aggregate yield fee value in the Vault (PoolConfig).
         getVault().updateAggregateFeePercentage(
             pool,
             ProtocolFeeType.YIELD,
