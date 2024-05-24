@@ -30,6 +30,7 @@ contract HooksTest is BaseVaultTest {
     // Another factory and pool to test hook onRegister
     PoolFactoryMock internal anotherFactory;
     address internal anotherPool;
+    address internal poolWith3Tokens;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -46,6 +47,8 @@ contract HooksTest is BaseVaultTest {
         vm.label(address(anotherFactory), "another factory");
         anotherPool = address(new PoolMock(IVault(address(vault)), "Another Pool", "ANOTHER"));
         vm.label(address(anotherPool), "another pool");
+        poolWith3Tokens = address(new PoolMock(IVault(address(vault)), "Pool 3 Tokens", "POOL3T"));
+        vm.label(address(anotherPool), "pool 3 tokens");
     }
 
     function createHook() internal override returns (address) {
@@ -78,9 +81,42 @@ contract HooksTest is BaseVaultTest {
         );
     }
 
-    // TODO register
-    // - can register if hook allows factory
-    // - fail to register if hook flag is true but hook contract is address 0
+    function testOnRegisterAllowedFactory() public {
+        // Should succeed, since factory is allowed in the poolHooksContract
+        PoolHooksMock(poolHooksContract).allowFactory(address(anotherFactory));
+        anotherFactory.registerPool(
+            address(anotherPool),
+            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+            poolHooksContract,
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: true
+            })
+        );
+    }
+
+    function testOnRegisterWrongTokenConfig() public {
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc), address(weth)].toMemoryArray().asIERC20()
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.HookRegisterFailed.selector, poolHooksContract, address(anotherFactory))
+        );
+        anotherFactory.registerPool(
+            address(anotherPool),
+            tokenConfig,
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+            poolHooksContract,
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: true
+            })
+        );
+    }
 
     // dynamic fee
 

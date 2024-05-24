@@ -56,9 +56,13 @@ contract PoolHooksMock is BasePoolHooks {
 
     constructor(IVault vault) BasePoolHooks(vault) {}
 
-    function onRegister(address factory, address, TokenConfig[] memory tokenConfig) external view override returns (bool) {
+    function onRegister(
+        address factory,
+        address,
+        TokenConfig[] memory tokenConfig
+    ) external view override returns (bool) {
         if (tokenConfig.length != 2) {
-            // the register reverts if the pool to be registered has more than 2 tokens
+            // we arbitrarily decided to revert registry of pools with more than 2 tokens, for testing purposes only
             return false;
         }
         return _allowedFactories[factory];
