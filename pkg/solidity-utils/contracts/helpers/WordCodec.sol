@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SignedMath } from "@openzeppelin/contracts/utils/math/SignedMath.sol";
@@ -31,10 +31,6 @@ library WordCodec {
 
     /// @dev Function called with an invalid bitLength or offset.
     error OutOfBounds();
-
-    // Masks are values with the least significant N bits set. They can be used to extract an encoded value from a word,
-    // or to insert a new one replacing the old.
-    uint256 private constant _MASK_1 = 2 ** (1) - 1;
 
     /***************************************************************************
                                  In-place Insertion

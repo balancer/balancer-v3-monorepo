@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
@@ -14,6 +14,8 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
@@ -55,33 +57,31 @@ contract RouterTest is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        approveForPool(IERC20(wethPool));
     }
 
     function createPool() internal override returns (address) {
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
-        );
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
-        wethPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 weth Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
+        factoryMock.registerTestPool(
+            address(newPool),
+            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
+            address(lp)
         );
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+
+        wethPool = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPool), "wethPool");
 
+        factoryMock.registerTestPool(
+            address(wethPool),
+            vault.buildTokenConfig([address(dai), address(weth)].toMemoryArray().asIERC20()),
+            address(lp)
+        );
+
         (daiIdxWethPool, wethIdx) = getSortedIndexes(address(dai), address(weth));
-        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
         wethDaiTokens = InputHelpers.sortTokens([address(weth), address(dai)].toMemoryArray().asIERC20());
 
@@ -89,23 +89,27 @@ contract RouterTest is BaseVaultTest {
         wethDaiAmountsIn[wethIdx] = ethAmountIn;
         wethDaiAmountsIn[daiIdxWethPool] = daiAmountIn;
 
-        wethPoolNoInit = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 weth Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
-        );
+        wethPoolNoInit = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPoolNoInit), "wethPoolNoInit");
+
+        factoryMock.registerTestPool(
+            address(wethPoolNoInit),
+            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
+            address(lp)
+        );
 
         return address(newPool);
     }
 
     function initPool() internal override {
-        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(pool));
+        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(address(pool));
         vm.prank(lp);
+        IERC20[] memory tokens = new IERC20[](tokenConfig.length);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            tokens[i] = tokenConfig[i].token;
+        }
+
         router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
 
         vm.prank(lp);
@@ -163,7 +167,7 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = false;
 
         // Revert when sending ETH while wethIsEth is false (caller holds no weth).
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, broke, 0, ethAmountIn));
+        vm.expectRevert("TRANSFER_FROM_FAILED");
         vm.prank(broke);
         router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, wethIsEth, bytes(""));
     }
@@ -240,7 +244,7 @@ contract RouterTest is BaseVaultTest {
         checkAddLiquidityPreConditions();
 
         // Revert when sending ETH while wethIsEth is false (caller holds no weth).
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, broke, 0, ethAmountIn));
+        vm.expectRevert("TRANSFER_FROM_FAILED");
         vm.prank(broke);
         router.addLiquidityCustom(address(wethPool), wethDaiAmountsIn, bptAmountOut, false, bytes(""));
     }

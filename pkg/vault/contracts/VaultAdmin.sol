@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
@@ -16,17 +15,23 @@ import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHo
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
+import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 
 /**
  * @dev Bytecode extension for the Vault containing permissioned functions. Complementary to the `VaultExtension`.
@@ -39,11 +44,12 @@ import { VaultCommon } from "./VaultCommon.sol";
  * The storage of this contract is in practice unused.
  */
 contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
+    using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
-    using SafeCast for *;
     using VaultExtensionsLib for IVault;
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
+    using VaultStateLib for VaultStateBits;
 
     IVault private immutable _vault;
 
@@ -58,10 +64,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         uint256 pauseWindowDuration,
         uint256 bufferPeriodDuration
     ) Authentication(bytes32(uint256(uint160(address(mainVault))))) {
-        if (pauseWindowDuration > MAX_PAUSE_WINDOW_DURATION) {
+        if (pauseWindowDuration > _MAX_PAUSE_WINDOW_DURATION) {
             revert VaultPauseWindowDurationTooLarge();
         }
-        if (bufferPeriodDuration > MAX_BUFFER_PERIOD_DURATION) {
+        if (bufferPeriodDuration > _MAX_BUFFER_PERIOD_DURATION) {
             revert PauseBufferPeriodDurationTooLarge();
         }
 
@@ -116,7 +122,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function getPoolTokenRates(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256[] memory) {
-        return _getPoolData(pool).tokenRates;
+        return _loadPoolData(pool, Rounding.ROUND_DOWN).tokenRates;
     }
 
     /*******************************************************************************
@@ -170,7 +176,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             }
         }
 
-        _vaultPaused = pausing;
+        VaultState memory vaultState = _vaultState.toVaultState();
+        vaultState.isVaultPaused = pausing;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
 
         emit VaultPausedStateChanged(pausing);
     }
@@ -179,32 +187,44 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                                      Pool Pausing
     *******************************************************************************/
 
-    modifier onlyAuthenticatedPauser(address pool) {
-        _ensureAuthenticatedPauser(pool);
+    modifier authenticateByRole(address pool) {
+        _ensureAuthenticatedByRole(pool);
         _;
     }
 
-    function _ensureAuthenticatedPauser(address pool) private view {
-        address pauseManager = _poolPauseManagers[pool];
+    function _ensureAuthenticatedByRole(address pool) private view {
+        bytes32 actionId = getActionId(msg.sig);
 
-        if (pauseManager == address(0)) {
-            // If there is no pause manager, default to the authorizer.
-            _authenticateCaller();
-        } else {
-            // Sender must be the pause manager.
-            if (msg.sender != pauseManager) {
-                revert SenderIsNotPauseManager(pool);
+        PoolFunctionPermission memory roleAssignment = _poolFunctionPermissions[pool][actionId];
+
+        // If there is no role assigment, fall through and delegate to governance.
+        if (roleAssignment.account != address(0)) {
+            // If the sender matches the permissioned account, all good; just return.
+            if (msg.sender == roleAssignment.account) {
+                return;
             }
+
+            // If it doesn't, check whether it's onlyOwner. onlyOwner means *only* the permissioned account
+            // may call the function, so revert if this is the case. Otherwise, fall through and check
+            // governance.
+            if (roleAssignment.onlyOwner) {
+                revert SenderNotAllowed();
+            }
+        }
+
+        // Delegate to governance.
+        if (_canPerform(actionId, msg.sender, pool) == false) {
+            revert SenderNotAllowed();
         }
     }
 
     /// @inheritdoc IVaultAdmin
-    function pausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) onlyVault {
+    function pausePool(address pool) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
         _setPoolPaused(pool, true);
     }
 
     /// @inheritdoc IVaultAdmin
-    function unpausePool(address pool) external withRegisteredPool(pool) onlyAuthenticatedPauser(pool) onlyVault {
+    function unpausePool(address pool) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
         _setPoolPaused(pool, false);
     }
 
@@ -249,7 +269,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
-        _protocolSwapFeePercentage = newProtocolSwapFeePercentage;
+        VaultState memory vaultState = _vaultState.toVaultState();
+        vaultState.protocolSwapFeePercentage = newProtocolSwapFeePercentage;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
         emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
     }
 
@@ -258,7 +280,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
             revert ProtocolYieldFeePercentageTooHigh();
         }
-        _protocolYieldFeePercentage = newProtocolYieldFeePercentage;
+        VaultState memory vaultState = _vaultState.toVaultState();
+        vaultState.protocolYieldFeePercentage = newProtocolYieldFeePercentage;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
         emit ProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
     }
 
@@ -270,34 +294,72 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function setStaticSwapFeePercentage(
         address pool,
         uint256 swapFeePercentage
-    ) external authenticate withRegisteredPool(pool) whenPoolNotPaused(pool) onlyVault {
+    ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
+        // Saving bits by not implementing a new modifier
+        _ensureUnpausedAndGetVaultState(pool);
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
-    function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
-        if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
-            revert SwapFeePercentageTooHigh();
+    /**
+     * @inheritdoc IVaultAdmin
+     * @dev This can only be executed by the pool creator and is disabled if the pool is paused.
+     * The creator fee must be <= 100%. It's the percentage of creatorAndLpFees that will be accrued by the creator
+     * of the pool. For more details, check comment of vault's _computeAndChargeProtocolAndCreatorSwapFees function
+     * Emits the poolCreatorFeePercentageChanged event.
+     */
+    function setPoolCreatorFeePercentage(
+        address pool,
+        uint256 poolCreatorFeePercentage
+    ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
+        // Saving bits by not implementing a new modifier
+        _ensureUnpausedAndGetVaultState(pool);
+        _setPoolCreatorFeePercentage(pool, poolCreatorFeePercentage);
+    }
+
+    function _setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) internal virtual {
+        if (poolCreatorFeePercentage > FixedPoint.ONE) {
+            revert PoolCreatorFeePercentageTooHigh();
         }
 
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.staticSwapFeePercentage = swapFeePercentage.toUint64();
+        config.poolCreatorFeePercentage = poolCreatorFeePercentage;
         _poolConfig[pool] = config.fromPoolConfig();
 
-        emit SwapFeePercentageChanged(pool, swapFeePercentage);
+        emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectProtocolFees(IERC20[] calldata tokens) external authenticate nonReentrant onlyVault {
-        for (uint256 index = 0; index < tokens.length; index++) {
-            IERC20 token = tokens[index];
-            uint256 amount = _protocolFees[token];
+    function collectProtocolFees(address pool) external authenticate nonReentrant onlyVault {
+        IERC20[] memory tokens = _getPoolTokens(pool);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            uint256 amount = _protocolFees[pool][token];
 
             if (amount > 0) {
                 // set fees to zero for the token
-                _protocolFees[token] = 0;
+                _protocolFees[pool][token] = 0;
 
                 token.safeTransfer(msg.sender, amount);
-                emit ProtocolFeeCollected(token, amount);
+                emit ProtocolFeeCollected(pool, token, amount);
+            }
+        }
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function collectPoolCreatorFees(address pool) external nonReentrant onlyVault {
+        IERC20[] memory tokens = _getPoolTokens(pool);
+
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            IERC20 token = tokens[i];
+            uint256 amount = _poolCreatorFees[pool][token];
+
+            if (amount > 0) {
+                // set fees to zero for the token
+                _poolCreatorFees[pool][token] = 0;
+
+                token.safeTransfer(_poolRoleAccounts[pool].poolCreator, amount);
+                emit PoolCreatorFeeCollected(pool, token, amount);
             }
         }
     }
@@ -307,8 +369,15 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
-    function enableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate onlyVault {
+    function enableRecoveryMode(address pool) external withRegisteredPool(pool) onlyVault {
         _ensurePoolNotInRecoveryMode(pool);
+
+        // If the Vault or pool is pausable (and currently paused), this call is permissionless.
+        if (_isPoolPaused(pool) == false && _isVaultPaused() == false) {
+            // If not permissionless, authenticate with governance.
+            _authenticateCaller();
+        }
+
         _setPoolRecoveryMode(pool, true);
     }
 
@@ -342,22 +411,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _poolConfig[pool] = config.fromPoolConfig();
 
         if (recoveryMode == false) {
-            _setPoolBalances(pool, _getPoolData(pool));
+            _writePoolBalancesToStorage(pool, _loadPoolData(pool, Rounding.ROUND_DOWN));
         }
 
         emit PoolRecoveryModeStateChanged(pool, recoveryMode);
-    }
-
-    /// @dev Factored out as it is reused.
-    function _getPoolData(address pool) internal view returns (PoolData memory poolData) {
-        (
-            poolData.tokenConfig,
-            poolData.balancesRaw,
-            poolData.decimalScalingFactors,
-            poolData.poolConfig
-        ) = _getPoolTokenInfo(pool);
-
-        _updateTokenRatesInPoolData(poolData);
     }
 
     /*******************************************************************************
@@ -366,7 +423,121 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function disableQuery() external authenticate onlyVault {
-        _isQueryDisabled = true;
+        VaultState memory vaultState = _vaultState.toVaultState();
+        vaultState.isQueryDisabled = true;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
+    }
+
+    /*******************************************************************************
+                                Yield-bearing token buffers
+    *******************************************************************************/
+    /// @inheritdoc IVaultAdmin
+    function unpauseVaultBuffers() external authenticate onlyVault {
+        VaultState memory vaultState = _vaultState.toVaultState();
+        vaultState.areBuffersPaused = false;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function pauseVaultBuffers() external authenticate onlyVault {
+        VaultState memory vaultState = _vaultState.toVaultState();
+        vaultState.areBuffersPaused = true;
+        _vaultState = VaultStateLib.fromVaultState(vaultState);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function addLiquidityToBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped,
+        address sharesOwner
+    ) public onlyWhenUnlocked whenVaultBuffersAreNotPaused nonReentrant returns (uint256 issuedShares) {
+        address underlyingToken = wrappedToken.asset();
+
+        // amount of shares to issue is the total underlying token that the user is depositing
+        issuedShares = wrappedToken.convertToAssets(amountWrapped) + amountUnderlying;
+
+        if (_bufferAssets[IERC20(address(wrappedToken))] == address(0)) {
+            // Buffer is not initialized yet, so we initialize it
+
+            // Register asset of wrapper, so it cannot change
+            _bufferAssets[IERC20(address(wrappedToken))] = underlyingToken;
+
+            // Burn MINIMUM_TOTAL_SUPPLY shares, so the buffer can never go back to liquidity 0
+            // (avoids rounding issues with low liquidity)
+            _bufferTotalShares[IERC20(wrappedToken)] = _MINIMUM_TOTAL_SUPPLY;
+            issuedShares -= _MINIMUM_TOTAL_SUPPLY;
+        } else if (_bufferAssets[IERC20(address(wrappedToken))] != underlyingToken) {
+            // Asset was changed since the first bufferAddLiquidity call
+            revert WrongWrappedTokenAsset(address(wrappedToken));
+        }
+
+        bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
+
+        // Adds the issued shares to the total shares of the liquidity pool
+        _bufferLpShares[IERC20(wrappedToken)][sharesOwner] += issuedShares;
+        _bufferTotalShares[IERC20(wrappedToken)] += issuedShares;
+
+        bufferBalances = PackedTokenBalance.toPackedBalance(
+            bufferBalances.getBalanceRaw() + amountUnderlying,
+            bufferBalances.getBalanceDerived() + amountWrapped
+        );
+
+        _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
+
+        _takeDebt(IERC20(underlyingToken), amountUnderlying);
+        _takeDebt(wrappedToken, amountWrapped);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function removeLiquidityFromBuffer(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove,
+        address sharesOwner
+    )
+        public
+        onlyWhenUnlocked
+        nonReentrant
+        authenticate
+        returns (uint256 removedUnderlyingBalance, uint256 removedWrappedBalance)
+    {
+        bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
+
+        if (sharesToRemove > _bufferLpShares[IERC20(wrappedToken)][sharesOwner]) {
+            revert NotEnoughBufferShares();
+        }
+        uint256 totalShares = _bufferTotalShares[IERC20(wrappedToken)];
+
+        removedUnderlyingBalance = (bufferBalances.getBalanceRaw() * sharesToRemove) / totalShares;
+        removedWrappedBalance = (bufferBalances.getBalanceDerived() * sharesToRemove) / totalShares;
+
+        _bufferLpShares[IERC20(wrappedToken)][sharesOwner] -= sharesToRemove;
+        _bufferTotalShares[IERC20(wrappedToken)] -= sharesToRemove;
+
+        bufferBalances = PackedTokenBalance.toPackedBalance(
+            bufferBalances.getBalanceRaw() - removedUnderlyingBalance,
+            bufferBalances.getBalanceDerived() - removedWrappedBalance
+        );
+
+        _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
+
+        _supplyCredit(IERC20(_bufferAssets[IERC20(address(wrappedToken))]), removedUnderlyingBalance);
+        _supplyCredit(wrappedToken, removedWrappedBalance);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getBufferOwnerShares(IERC20 token, address user) external view returns (uint256 shares) {
+        return _bufferLpShares[token][user];
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getBufferTotalShares(IERC20 token) external view returns (uint256 shares) {
+        return _bufferTotalShares[token];
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getBufferBalance(IERC20 token) external view returns (uint256, uint256) {
+        return (_bufferTokenBalances[token].getBalanceRaw(), _bufferTokenBalances[token].getBalanceDerived());
     }
 
     /*******************************************************************************
@@ -383,5 +554,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @dev Access control is delegated to the Authorizer
     function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
         return _authorizer.canPerform(actionId, user, address(this));
+    }
+
+    function _canPerform(bytes32 actionId, address user, address where) internal view returns (bool) {
+        return _authorizer.canPerform(actionId, user, where);
     }
 }

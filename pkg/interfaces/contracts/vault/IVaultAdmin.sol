@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
-import { IAuthorizer } from "./IAuthorizer.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
+import { IAuthorizer } from "./IAuthorizer.sol";
 import { IVault } from "./IVault.sol";
 
 interface IVaultAdmin {
@@ -132,17 +132,25 @@ interface IVaultAdmin {
     function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
 
     /**
-     * @notice Emitted when the swap fee percentage of a pool is updated.
-     * @param swapFeePercentage The new swap fee percentage for the pool
+     * @notice Assigns a new pool creator fee percentage to the specified pool.
+     * @param pool The address of the pool for which the pool creator fee will be changed
+     * @param poolCreatorFeePercentage The new pool creator fee percentage to apply to the pool
      */
-    event SwapFeePercentageChanged(address indexed pool, uint256 indexed swapFeePercentage);
+    function setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) external;
 
     /**
-     * @notice Collects accumulated protocol fees for the specified array of tokens.
-     * @dev Fees are sent to msg.sender.
-     * @param tokens An array of token addresses for which the fees should be collected
+     * @notice Collects accumulated protocol fees for the specified pool.
+     * @dev All pool tokens will be collected. Fees are sent to msg.sender.
+     * @param pool The address of the pool on which we are collecting protocol fees
      */
-    function collectProtocolFees(IERC20[] calldata tokens) external;
+    function collectProtocolFees(address pool) external;
+
+    /**
+     * @notice Collects accumulated pool creator fees for the specified pool.
+     * @dev All pool tokens will be collected. Fees are sent to the pool creator address.
+     * @param pool The address of the pool on which we are collecting pool creator fees
+     */
+    function collectPoolCreatorFees(address pool) external;
 
     /*******************************************************************************
                                     Recovery Mode
@@ -170,12 +178,101 @@ interface IVaultAdmin {
     function disableQuery() external;
 
     /*******************************************************************************
+                         Yield-bearing token buffers
+    *******************************************************************************/
+    /**
+     * @notice Unpauses native vault buffers globally. When buffers are paused, it's not possible to add liquidity or
+     * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity.
+     * @dev This is a permissioned call.
+     */
+    function unpauseVaultBuffers() external;
+
+    /**
+     * @notice Pauses native vault buffers globally. When buffers are paused, it's not possible to add liquidity or
+     * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity.
+     * Currently it's not possible to pause vault buffers individually.
+     * @dev This is a permissioned call.
+     */
+    function pauseVaultBuffers() external;
+
+    /**
+     * @notice Adds liquidity to an yield-bearing token buffer (linear pool embedded in the vault).
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
+     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param sharesOwner Address of contract that will own the deposited liquidity. Only
+     *        this contract will be able to remove liquidity from the buffer
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts
+     *         (it is the BPT of the vault's internal linear pools)
+     */
+    function addLiquidityToBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlyingRaw,
+        uint256 amountWrappedRaw,
+        address sharesOwner
+    ) external returns (uint256 issuedShares);
+
+    /**
+     * @notice Removes liquidity from a yield-bearing token buffer (linear pool embedded in the vault).
+     * Only proportional exits are supported.
+     *
+     * Pre-conditions:
+     * - sharesOwner is the original msg.sender, it needs to be checked in the router. That's why
+     *   this call is authenticated; only routers approved by the DAO can remove the liquidity of a buffer.
+     * - The buffer needs to have some liquidity and have its asset registered in `_bufferAssets` storage.
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
+     *        total shares
+     * @param sharesOwner Address of contract that owns the deposited liquidity.
+     * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
+     * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
+     */
+    function removeLiquidityFromBuffer(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove,
+        address sharesOwner
+    ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw);
+
+    /**
+     * @notice Returns the shares (internal buffer BPT) of a liquidity owner: a user that deposited assets
+     * in the buffer.
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param liquidityOwner Address of the user that owns liquidity in the wrapped token's buffer
+     * @return ownerShares Amount of shares allocated to the liquidity owner
+     */
+    function getBufferOwnerShares(
+        IERC20 wrappedToken,
+        address liquidityOwner
+    ) external view returns (uint256 ownerShares);
+
+    /**
+     * @notice Returns the supply shares (internal buffer BPT) of the ERC4626 buffer.
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @return bufferShares Amount of supply shares of the buffer
+     */
+    function getBufferTotalShares(IERC20 wrappedToken) external view returns (uint256 bufferShares);
+
+    /**
+     * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the vault.
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @return underlyingBalanceRaw Amount of underlying tokens deposited into the buffer
+     * @return wrappedBalanceRaw Amount of wrapped tokens deposited into the buffer
+     */
+    function getBufferBalance(
+        IERC20 wrappedToken
+    ) external view returns (uint256 underlyingBalanceRaw, uint256 wrappedBalanceRaw);
+
+    /*******************************************************************************
                                 Authentication
     *******************************************************************************/
 
     /**
      * @notice Sets a new Authorizer for the Vault.
-     * @dev The caller must be allowed by the current Authorizer to do this.
+     * @dev This is a permissioned call.
      * Emits an `AuthorizerChanged` event.
      */
     function setAuthorizer(IAuthorizer newAuthorizer) external;

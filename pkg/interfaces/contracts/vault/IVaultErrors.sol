@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -70,22 +70,11 @@ interface IVaultErrors {
     /// @dev A transient accounting operation completed with outstanding token deltas.
     error BalanceNotSettled();
 
-    /**
-     * @dev In transient accounting, a locker is attempting to execute an operation out of order.
-     * The caller address should equal the locker.
-     * @param locker Address of the current locker being processed
-     * @param caller Address of the caller (msg.sender)
-     */
-    error WrongLocker(address locker, address caller);
-
     /// @dev A user called a Vault function (swap, add/remove liquidity) outside the lock context.
-    error NoLocker();
+    error VaultIsNotUnlocked();
 
-    /**
-     * @dev The caller attempted to access a Locker at an invalid index.
-     * @param index The invalid index
-     */
-    error LockerOutOfBounds(uint256 index);
+    /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
+    error DynamicSwapFeeHookFailed();
 
     /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
     error BeforeSwapHookFailed();
@@ -175,6 +164,22 @@ interface IVaultErrors {
     /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
     error SwapFeePercentageTooHigh();
 
+    /// @dev Error raised when the sum of the parts (protocol and creator fee) is greater than the whole (swap fee).
+    error ProtocolFeesExceedSwapFee();
+
+    /**
+     * @dev  Error raised when the swap fee percentage is less than the minimum allowed value.
+     * The Vault itself does not impose a universal minimum. Rather, it asks each pool whether
+     * it supports the `IMinimumSwapFee` interface. If it does, the Vault validates against the
+     * minimum value returned by the pool.
+     *
+     * Pools with dynamic fees do not check for a lower limit.
+     */
+    error SwapFeePercentageTooLow();
+
+    /// @dev Error raised when the pool creator fee percentage exceeds the maximum allowed value.
+    error PoolCreatorFeePercentageTooHigh();
+
     /*******************************************************************************
                                     Queries
     *******************************************************************************/
@@ -245,18 +250,15 @@ interface IVaultErrors {
      */
     error PoolPauseWindowExpired(address pool);
 
-    /**
-     * @dev The caller is not the registered pause manager for the pool.
-     * @param pool The pool
-     */
-    error SenderIsNotPauseManager(address pool);
-
     /*******************************************************************************
                                     Miscellaneous
     *******************************************************************************/
 
     /// @dev Optional User Data should be empty in the current add / remove liquidity kind.
     error UserDataNotSupported();
+
+    /// @dev Pool does not support adding / removing liquidity with an unbalanced input.
+    error DoesNotSupportUnbalancedLiquidity();
 
     /// @dev The contract should not receive ETH.
     error CannotReceiveEth();
@@ -273,5 +275,24 @@ interface IVaultErrors {
     /// @dev The vault admin was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();
 
+    /// @dev Quote reverted with a reserved error code.
     error QuoteResultSpoofed();
+
+    /// @dev The user is trying to remove more than their allocated shares from the buffer.
+    error NotEnoughBufferShares();
+
+    /// @dev The wrapped token asset does not match the underlying token of the swap path.
+    error WrongWrappedTokenAsset(address token);
+
+    /// @dev The wrappedToken wrap/unwrap function did not deposit/return the expected amount of underlying tokens.
+    error WrongUnderlyingAmount(address wrappedToken);
+
+    /// @dev The wrappedToken wrap/unwrap function did not burn/mint the expected amount of wrapped tokens.
+    error WrongWrappedAmount(address wrappedToken);
+
+    /// @dev The amount given to wrap/unwrap was too small, which can introduce rounding issues.
+    error WrapAmountTooSmall(address wrappedToken);
+
+    /// @dev Vault buffers are paused.
+    error VaultBuffersArePaused();
 }

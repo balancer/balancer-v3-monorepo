@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -97,16 +97,16 @@ contract WordCodecTest is Test {
         assertEq(insertBool, referenceInsertBool);
     }
 
-    function testDecodeUint__Fuzz(bytes32 word, uint256 offset, uint256 bitLength) external {
-        vm.assume(bitLength > 0 && bitLength < 256);
+    function testDecodeUint__Fuzz(bytes32 word, uint256 offset, uint8 bitLength) external {
+        vm.assume(bitLength > 0);
         uint256 referenceDecodeUint = uint256(word >> offset) & ((1 << bitLength) - 1);
         uint256 decodeUint = WordCodec.decodeUint(word, offset, bitLength);
 
         assertEq(decodeUint, referenceDecodeUint);
     }
 
-    function testDecodeInt__Fuzz(bytes32 word, uint256 offset, uint256 bitLength) external {
-        vm.assume(bitLength > 0 && bitLength < 256);
+    function testDecodeInt__Fuzz(bytes32 word, uint256 offset, uint8 bitLength) external {
+        vm.assume(bitLength > 0);
         int256 maxInt = int256((1 << (bitLength - 1)) - 1);
         uint256 mask = (1 << bitLength) - 1;
         int256 value = int256(uint256(word >> offset) & mask);

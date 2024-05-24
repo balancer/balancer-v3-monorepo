@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -40,16 +40,16 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         rateProvider = new RateProviderMock();
         rateProviders[0] = rateProvider;
 
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20(), rateProviders),
-            true,
-            365 days,
-            address(0)
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            rateProviders
         );
+
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
+
+        factoryMock.registerTestPool(address(newPool), tokenConfig, address(lp));
+
         return address(newPool);
     }
 
@@ -69,13 +69,13 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
-                IBasePool.SwapParams({
+                IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: rateAdjustedAmount,
                     balancesScaled18: expectedBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
-                    sender: address(router),
+                    router: address(router),
                     userData: bytes("")
                 })
             )
@@ -88,16 +88,15 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProviders[0] = rateProvider;
 
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20(), rateProviders),
-            true,
-            365 days,
-            address(0)
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+            rateProviders
         );
+
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "new-pool");
+
+        factoryMock.registerTestPool(address(newPool), tokenConfig, address(lp));
 
         PoolConfig memory config = vault.getPoolConfig(address(newPool));
         config.hooks.shouldCallBeforeInitialize = true;
@@ -160,7 +159,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolHooks.onAfterAddLiquidity.selector,
-                bob,
+                router,
                 expectedAmountsIn,
                 defaultAmount * 2,
                 expectedBalances,
@@ -210,7 +209,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolLiquidity.onRemoveLiquidityCustom.selector,
-                alice,
+                router,
                 bptAmount,
                 expectedAmountsOut,
                 expectedBalances,

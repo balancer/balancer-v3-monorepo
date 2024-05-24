@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -33,6 +33,8 @@ contract WeightedPoolFactory is BasePoolFactory {
      * @param symbol The symbol of the pool
      * @param tokens An array of descriptors for the tokens the pool will manage
      * @param normalizedWeights The pool weights (must add to FixedPoint.ONE)
+     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
+     * @param swapFeePercentage Initial swap fee percentage
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
@@ -40,6 +42,8 @@ contract WeightedPoolFactory is BasePoolFactory {
         string memory symbol,
         TokenConfig[] memory tokens,
         uint256[] memory normalizedWeights,
+        PoolRoleAccounts memory roleAccounts,
+        uint256 swapFeePercentage,
         bytes32 salt
     ) external returns (address pool) {
         pool = _create(
@@ -55,24 +59,13 @@ contract WeightedPoolFactory is BasePoolFactory {
             salt
         );
 
-        getVault().registerPool(
+        _registerPoolWithVault(
             pool,
             tokens,
-            getNewPoolPauseWindowEndTime(),
-            address(0), // no pause manager
-            PoolHooks({
-                shouldCallBeforeInitialize: false,
-                shouldCallAfterInitialize: false,
-                shouldCallBeforeAddLiquidity: false,
-                shouldCallAfterAddLiquidity: false,
-                shouldCallBeforeRemoveLiquidity: false,
-                shouldCallAfterRemoveLiquidity: false,
-                shouldCallBeforeSwap: false,
-                shouldCallAfterSwap: false
-            }),
-            LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false })
+            swapFeePercentage,
+            roleAccounts,
+            getDefaultPoolHooks(),
+            getDefaultLiquidityManagement()
         );
-
-        _registerPoolWithFactory(pool);
     }
 }

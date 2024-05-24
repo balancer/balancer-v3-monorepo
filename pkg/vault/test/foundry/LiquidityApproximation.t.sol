@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -9,10 +9,12 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
@@ -26,6 +28,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
  * unproportional liquidity operation (addLiquidityUnbalanced) combined with
  * add/remove liquidity proportionally, and swapExactIn. Consider the following scenario:
  *
+ * Pool begins with balances of [100, 100].
  * Alice begins with balances of [100, 0].
  * She executes addLiquidityUnbalanced([100, 0]) and subsequently removeLiquidityProportionally,
  * resulting in balances of [66, 33].
@@ -73,62 +76,31 @@ contract LiquidityApproximationTest is BaseVaultTest {
         defaultBalance = 1e10 * 1e18;
         BaseVaultTest.setUp();
 
+        approveForPool(IERC20(liquidityPool));
+        approveForPool(IERC20(swapPool));
+
         (daiIdx, ) = getSortedIndexes(address(dai), address(usdc));
 
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
     }
 
     function createPool() internal virtual override returns (address) {
-        liquidityPool = address(
-            new PoolMock(
-                IVault(address(vault)),
-                "ERC20 Pool",
-                "ERC20POOL",
-                vault.buildTokenConfig(
-                    [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-                    new IRateProvider[](2)
-                ),
-                true,
-                365 days,
-                address(0)
-            )
-        );
-        vm.label(address(liquidityPool), "liquidityPool");
+        address[] memory tokens = [address(dai), address(usdc)].toMemoryArray();
 
-        swapPool = address(
-            new PoolMock(
-                IVault(address(vault)),
-                "ERC20 Pool",
-                "ERC20POOL",
-                vault.buildTokenConfig(
-                    [address(dai), address(usdc)].toMemoryArray().asIERC20(),
-                    new IRateProvider[](2)
-                ),
-                true,
-                365 days,
-                address(0)
-            )
-        );
-        vm.label(address(swapPool), "swapPool");
+        liquidityPool = _createPool(tokens, "liquidityPool");
+        swapPool = _createPool(tokens, "swapPool");
 
-        return address(liquidityPool);
+        // NOTE: stores address in `pool` (unused in this test)
+        return address(0);
     }
 
     function initPool() internal override {
         poolInitAmount = 1e9 * 1e18;
-        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(swapPool));
-        vm.prank(lp);
-        router.initialize(address(swapPool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
 
-        vm.prank(lp);
-        router.initialize(
-            address(liquidityPool),
-            tokens,
-            [poolInitAmount, poolInitAmount].toMemoryArray(),
-            0,
-            false,
-            ""
-        );
+        vm.startPrank(lp);
+        _initPool(swapPool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        _initPool(liquidityPool, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
+        vm.stopPrank();
     }
 
     /// Add
@@ -138,8 +110,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
-        setSwapFeePercentage(swapFeePercentage, address(swapPool));
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
         uint256[] memory amountsIn = new uint256[](2);
         amountsIn[daiIdx] = uint256(daiAmountIn);
@@ -172,6 +144,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function testAddLiquidityUnbalancedNoSwapFee__Fuzz(uint256 daiAmountIn) public {
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
+
         daiAmountIn = bound(daiAmountIn, 1e18, maxAmount);
 
         uint256[] memory amountsIn = new uint256[](2);
@@ -209,8 +184,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
-        setSwapFeePercentage(swapFeePercentage, address(swapPool));
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
         vm.startPrank(alice);
         uint256 daiAmountIn = router.addLiquiditySingleTokenExactOut(
@@ -247,6 +222,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function testAddLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactBptAmountOut) public {
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
+
         exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
 
         vm.startPrank(alice);
@@ -290,8 +268,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
-        setSwapFeePercentage(swapFeePercentage, address(swapPool));
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
         // Add liquidity so we have something to remove
         vm.prank(alice);
@@ -343,6 +321,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function testRemoveLiquiditySingleTokenExactNoSwapFee__Fuzz(uint256 exactAmountOut) public {
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
+
         exactAmountOut = bound(exactAmountOut, 1e18, maxAmount);
 
         // Add liquidity so we have something to remove
@@ -399,8 +380,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
         // swap fee from 0% - 10%
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
 
-        setSwapFeePercentage(swapFeePercentage, address(liquidityPool));
-        setSwapFeePercentage(swapFeePercentage, address(swapPool));
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
         // Add liquidity so we have something to remove
         vm.prank(alice);
@@ -445,6 +426,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function testRemoveLiquiditySingleTokenExactInNoSwapFee__Fuzz(uint256 exactBptAmountIn) public {
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
+
         exactBptAmountIn = bound(exactBptAmountIn, 1e18, maxAmount / 2 - 1);
 
         // Add liquidity so we have something to remove
@@ -492,6 +476,9 @@ contract LiquidityApproximationTest is BaseVaultTest {
     /// Utils
 
     function assertLiquidityOperationNoSwapFee() internal {
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
+
         // See @notice
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
 
@@ -544,11 +531,5 @@ contract LiquidityApproximationTest is BaseVaultTest {
             1e18 + (addLiquidity ? 0 : liquidityTaxPercentage) + roundingDelta,
             "Bob has too much USDC compare to Alice"
         );
-    }
-
-    function setSwapFeePercentage(uint256 swapFeePercentage, address pool) internal {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
-        vm.prank(alice);
-        vault.setStaticSwapFeePercentage(address(pool), swapFeePercentage); // 1%
     }
 }

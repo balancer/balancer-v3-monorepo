@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -56,8 +56,8 @@ library InputHelpers {
      * about the same number of operations, and more concise.
      */
     function sortTokens(IERC20[] memory tokens) internal pure returns (IERC20[] memory) {
-        for (uint256 i = 0; i < tokens.length - 1; i++) {
-            for (uint256 j = 0; j < tokens.length - i - 1; j++) {
+        for (uint256 i = 0; i < tokens.length - 1; ++i) {
+            for (uint256 j = 0; j < tokens.length - i - 1; ++j) {
                 if (tokens[j] > tokens[j + 1]) {
                     // Swap if they're out of order.
                     (tokens[j], tokens[j + 1]) = (tokens[j + 1], tokens[j]);

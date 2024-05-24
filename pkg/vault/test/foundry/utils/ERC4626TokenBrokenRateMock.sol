@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -20,8 +20,8 @@ contract ERC4626TokenBrokenRateMock is ERC4626TokenMock {
         string memory tokenSymbol,
         uint256 initialAssets,
         uint256 initialShares,
-        IERC20 baseToken
-    ) ERC4626TokenMock(tokenName, tokenSymbol, initialAssets, initialShares, baseToken) {}
+        IERC20 underlyingToken
+    ) ERC4626TokenMock(tokenName, tokenSymbol, initialAssets, initialShares, underlyingToken) {}
 
     function _convertToShares(uint256 assets) internal view override returns (uint256) {
         uint256 sharesToAdd = (10 * assets) / 100;

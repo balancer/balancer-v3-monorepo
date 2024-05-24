@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -9,6 +9,7 @@ import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -38,18 +39,15 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         // Still need the rate provider at index 0; buildTokenConfig will sort.
         rateProviders[0] = rateProvider;
 
-        return
-            address(
-                new PoolMock(
-                    IVault(address(vault)),
-                    "ERC20 Pool",
-                    "ERC20POOL",
-                    vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
-                    true,
-                    365 days,
-                    address(0)
-                )
-            );
+        address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+
+        factoryMock.registerTestPool(
+            newPool,
+            vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
+            address(lp)
+        );
+
+        return newPool;
     }
 
     function testLastLiveBalanceInitialization() public {
@@ -101,7 +99,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolLiquidity.onAddLiquidityCustom.selector,
-                alice,
+                router,
                 expectedAmountsInRaw, // maxAmountsIn
                 defaultAmount, // minBptOut
                 expectedBalancesRaw,
@@ -189,7 +187,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolLiquidity.onRemoveLiquidityCustom.selector,
-                alice,
+                router,
                 defaultAmount, // maxBptAmountIn
                 expectedAmountsOutRaw, // minAmountsOut
                 [balances.balancesLiveScaled18[daiIdx], balances.balancesLiveScaled18[wstethIdx]].toMemoryArray(),

@@ -14,20 +14,24 @@ import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
-import { RateProviderMock, VaultExtensionMock } from '../typechain-types';
+import { PoolFactoryMock, RateProviderMock, VaultExtensionMock } from '../typechain-types';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import { PoolRoleAccountsStruct } from '../typechain-types/contracts/Vault';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
+  const POOL_SWAP_FEE = fp(0.01);
 
   let vault: IVaultMock;
   let vaultExtension: VaultExtensionMock;
+  let factory: PoolFactoryMock;
+
   let poolA: PoolMock;
   let poolB: PoolMock;
   let tokenA: ERC20TestToken;
@@ -58,6 +62,8 @@ describe('Vault', function () {
       'VaultExtensionMock',
       await vault.getVaultExtension()
     )) as unknown as VaultExtensionMock;
+
+    factory = await deploy('PoolFactoryMock', { args: [vault, 12 * MONTH] });
 
     tokenA = tokens[0];
     tokenB = tokens[1];
@@ -91,7 +97,7 @@ describe('Vault', function () {
 
   describe('registration', () => {
     it('cannot register a pool with unsorted tokens', async () => {
-      await expect(vault.manualRegisterPoolPassThruTokens(ANY_ADDRESS, unsortedTokens)).to.be.revertedWithCustomError(
+      await expect(vault.manualRegisterPoolPassThruTokens(poolB, unsortedTokens)).to.be.revertedWithCustomError(
         vaultExtension,
         'TokensNotSorted'
       );
@@ -101,7 +107,9 @@ describe('Vault', function () {
       expect(await vault.isPoolRegistered(poolA)).to.be.true;
       expect(await vault.isPoolRegistered(poolB)).to.be.false;
 
-      const [tokens, balances] = await vault.getPoolTokenInfo(poolA);
+      const [tokenConfig, balances] = await vault.getPoolTokenInfo(poolA);
+      const tokens = tokenConfig.map((config) => config.token);
+
       expect(tokens).to.deep.equal(poolATokens);
       expect(balances).to.deep.equal(Array(tokens.length).fill(0));
 
@@ -134,14 +142,26 @@ describe('Vault', function () {
         factory: await vault.getPoolFactoryMock(),
         tokenConfig,
         pauseWindowEndTime: pauseWindowEndTime.toString(),
+        roleAccounts: [ANY_ADDRESS, ZERO_ADDRESS, ANY_ADDRESS],
+        poolHooks: [false, false, false, false, false, false, false, false, false],
+        liquidityManagement: [false, true, true],
+      };
+
+      const roleAccounts: PoolRoleAccountsStruct = {
         pauseManager: ANY_ADDRESS,
-        hooks: [false, false, false, false, false, false, false, false],
-        liquidityManagement: [true, true],
+        swapFeeManager: ZERO_ADDRESS,
+        poolCreator: ANY_ADDRESS,
       };
 
       // Use expectEvent here to prevent errors with structs of arrays with hardhat matchers.
-      const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, ANY_ADDRESS);
+      const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, roleAccounts);
       expectEvent.inReceipt(await tx.wait(), 'PoolRegistered', expectedArgs);
+    });
+
+    it('registering a pool with a swap fee emits an event', async () => {
+      await expect(vault.manualRegisterPoolWithSwapFee(poolB, poolBTokens, POOL_SWAP_FEE))
+        .to.emit(vault, 'SwapFeePercentageChanged')
+        .withArgs(poolBAddress, POOL_SWAP_FEE);
     });
 
     it('cannot register a pool twice', async () => {
@@ -259,20 +279,15 @@ describe('Vault', function () {
         expectedRates = Array(poolATokens.length).fill(FP_ONE);
 
         poolC = await deploy('v3-vault/PoolMock', {
-          args: [
-            vault,
-            'Pool C',
-            'POOLC',
-            buildTokenConfig(poolATokens, rateProviders),
-            true,
-            365 * 24 * 3600,
-            ZERO_ADDRESS,
-          ],
+          args: [vault, 'Pool C', 'POOLC'],
         });
+
+        await factory.registerTestPool(poolC, buildTokenConfig(poolATokens, rateProviders), ZERO_ADDRESS);
       });
 
       it('has rate providers', async () => {
-        const [, , , , poolProviders] = await vault.getPoolTokenInfo(poolC);
+        const [tokenConfig] = await vault.getPoolTokenInfo(poolC);
+        const poolProviders = tokenConfig.map((config) => config.rateProvider);
         const tokenRates = await vault.getPoolTokenRates(poolC);
 
         expect(poolProviders).to.deep.equal(rateProviders);
@@ -296,9 +311,11 @@ describe('Vault', function () {
 
       sharedBeforeEach('deploy pool', async () => {
         pool = await deploy('v3-vault/PoolMock', {
-          args: [vault, 'Pool X', 'POOLX', buildTokenConfig(poolATokens), true, 365 * 24 * 3600, ZERO_ADDRESS],
+          args: [vault, 'Pool X', 'POOLX'],
         });
         poolAddress = await pool.getAddress();
+
+        await factory.registerTestPool(poolAddress, buildTokenConfig(poolATokens), ZERO_ADDRESS);
       });
 
       it('Pools are temporarily pausable', async () => {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "./LogExpMath.sol";
 
@@ -15,9 +15,6 @@ library FixedPoint {
     uint256 internal constant TWO = 2 * ONE;
     uint256 internal constant FOUR = 4 * ONE;
     uint256 internal constant MAX_POW_RELATIVE_ERROR = 10000; // 10^(-14)
-
-    // Minimum base for the power function when the exponent is 'free' (larger than ONE).
-    uint256 internal constant MIN_POW_BASE_FREE_EXPONENT = 0.7e18;
 
     function mulDown(uint256 a, uint256 b) internal pure returns (uint256) {
         // Multiplication overflow protection is provided by Solidity 0.8.x

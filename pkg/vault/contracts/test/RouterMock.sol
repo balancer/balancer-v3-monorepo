@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
+
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
@@ -10,7 +12,7 @@ import "../Router.sol";
 contract RouterMock is Router {
     error MockErrorCode();
 
-    constructor(IVault vault, IWETH weth) Router(vault, weth) {}
+    constructor(IVault vault, IWETH weth, IPermit2 permit2) Router(vault, weth, permit2) {}
 
     function getSingleInputArrayAndTokenIndex(
         address pool,

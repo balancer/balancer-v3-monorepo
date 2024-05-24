@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -149,7 +149,7 @@ contract WeightedMathTest is Test {
         uint256[] memory roundedUpBalances = new uint256[](2);
         uint256[] memory roundedDownBalances = new uint256[](2);
 
-        for (uint256 i = 0; i < 2; i++) {
+        for (uint256 i = 0; i < 2; ++i) {
             roundedUpBalances[i] = flipBit ? vars.balances[i] + 1 : vars.balances[i];
             roundedDownBalances[i] = flipBit ? vars.balances[i] - 1 : vars.balances[i];
         }
@@ -191,7 +191,7 @@ contract WeightedMathTest is Test {
 
         uint256 totalBalance;
 
-        for (uint256 i = 0; i < 2; i++) {
+        for (uint256 i = 0; i < 2; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
             amountsOut[i] = balances[i] / 10;
             totalBalance += balances[i];
@@ -211,7 +211,7 @@ contract WeightedMathTest is Test {
         uint256[] memory roundedUpBalances = new uint256[](2);
         uint256[] memory roundedDownBalances = new uint256[](2);
 
-        for (uint256 i = 0; i < 2; i++) {
+        for (uint256 i = 0; i < 2; ++i) {
             roundedUpBalances[i] = flipBit ? balances[i] + 1 : balances[i];
             roundedDownBalances[i] = flipBit ? balances[i] - 1 : balances[i];
         }
@@ -254,7 +254,7 @@ contract WeightedMathTest is Test {
         vars.swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
         uint256 totalBalance;
 
-        for (uint256 i = 0; i < 2; i++) {
+        for (uint256 i = 0; i < 2; ++i) {
             vars.balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
             totalBalance += vars.balances[i];
 
