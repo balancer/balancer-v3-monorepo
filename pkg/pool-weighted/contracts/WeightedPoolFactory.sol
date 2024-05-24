@@ -67,6 +67,7 @@ contract WeightedPoolFactory is BasePoolFactory {
             pool,
             tokens,
             swapFeePercentage,
+            false, // not exempt from protocol fees
             roleAccounts,
             getDefaultPoolHooks(),
             getDefaultLiquidityManagement()
