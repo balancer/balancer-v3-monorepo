@@ -66,11 +66,7 @@ contract HooksTest is BaseVaultTest {
         PoolHooksMock(poolHooksContract).setPoolHookFlags(poolHookFlags);
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IVaultErrors.HookRegisterFailed.selector,
-                poolHooksContract,
-                address(anotherFactory)
-            )
+            abi.encodeWithSelector(IVaultErrors.HookRegisterFailed.selector, poolHooksContract, address(anotherFactory))
         );
         _registerAnotherPool();
     }
