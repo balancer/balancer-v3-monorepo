@@ -54,23 +54,31 @@ contract HooksTest is BaseVaultTest {
         poolHookFlags.shouldCallBeforeSwap = true;
         poolHookFlags.shouldCallAfterSwap = true;
 
-        // Sets all flags as false
         return _createHook(poolHookFlags);
     }
 
-    // TODO register
     function testOnRegisterNotAllowedFactory() public {
-        PoolHookFlags memory poolHookFlags;
-        // any flag, just to trigger hook onRegister
-        poolHookFlags.shouldCallBeforeAddLiquidity = true;
-        PoolHooksMock(poolHooksContract).setPoolHookFlags(poolHookFlags);
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20()
+        );
 
         vm.expectRevert(
             abi.encodeWithSelector(IVaultErrors.HookRegisterFailed.selector, poolHooksContract, address(anotherFactory))
         );
-        _registerAnotherPool();
+        anotherFactory.registerPool(
+            address(anotherPool),
+            tokenConfig,
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+            poolHooksContract,
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: true
+            })
+        );
     }
 
+    // TODO register
     // - can register if hook allows factory
     // - fail to register if hook flag is true but hook contract is address 0
 
@@ -405,21 +413,6 @@ contract HooksTest is BaseVaultTest {
             [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
             bytes("")
-        );
-    }
-
-    //    // utils
-    function _registerAnotherPool() private {
-        anotherFactory.registerPool(
-            address(anotherPool),
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
-            poolHooksContract,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
         );
     }
 }
