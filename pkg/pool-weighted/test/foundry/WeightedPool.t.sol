@@ -16,8 +16,10 @@ import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IM
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
 import { PoolConfigBits } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
+import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
@@ -51,7 +53,7 @@ contract WeightedPoolTest is BaseVaultTest {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
 
         // Allow pools created by `factory` to use poolHooksMock hooks
-        poolHooksContract.allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
         WeightedPool newPool = WeightedPool(
             factory.create(
@@ -61,7 +63,6 @@ contract WeightedPoolTest is BaseVaultTest {
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
                 DEFAULT_SWAP_FEE,
-                PoolConfigBits.wrap(0).toPoolConfig().hooks,
                 poolHooksContract,
                 ZERO_BYTES32
             )
@@ -258,12 +259,11 @@ contract WeightedPoolTest is BaseVaultTest {
             [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             MIN_SWAP_FEE - 1, // Swap fee too low
-            PoolConfigBits.wrap(0).toPoolConfig().hooks,
             poolHooksContract,
             ZERO_BYTES32
         );
 
-        factoryMock.registerTestPool(lowFeeWeightedPool, tokens, IHooks(address(0)), address(0));
+        factoryMock.registerTestPool(lowFeeWeightedPool, tokens, address(0), address(0));
     }
 
     function testSetSwapFeeTooLow() public {

@@ -8,8 +8,10 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+
 import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
 import { PoolConfigBits } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
+import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
@@ -31,7 +33,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         WeightedPoolFactory factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
 
         // Allow pools created by `factory` to use poolHooksMock hooks
-        poolHooksContract.allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
         WeightedPool newPool = WeightedPool(
             factory.create(
@@ -41,7 +43,6 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
                 DEFAULT_SWAP_FEE,
-                PoolConfigBits.wrap(0).toPoolConfig().hooks,
                 poolHooksContract,
                 // NOTE: sends a unique salt
                 bytes32(poolCreationNonce++)

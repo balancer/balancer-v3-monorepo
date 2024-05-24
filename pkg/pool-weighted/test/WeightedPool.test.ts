@@ -165,7 +165,6 @@ describe('WeightedPool', function () {
         WEIGHTS,
         [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
         SWAP_FEE,
-        new Array(9).map(() => false),
         ZERO_ADDRESS,
         ZERO_BYTES32
       );
