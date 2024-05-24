@@ -42,7 +42,6 @@ contract StablePoolFactory is BasePoolFactory {
         TokenConfig[] memory tokens,
         uint256 amplificationParameter,
         uint256 poolCreatorFeePercentage,
-        address poolCreator,
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
         bytes32 salt

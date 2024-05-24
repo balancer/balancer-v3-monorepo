@@ -26,6 +26,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
 
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
         StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days);
+        PoolRoleAccounts memory roleAccounts;
 
         StablePool newPool = StablePool(
             factory.create(
@@ -33,9 +34,8 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
                 "ERC20POOL",
                 vault.buildTokenConfig(tokens.asIERC20()),
                 DEFAULT_AMP_FACTOR,
-                0,
-                address(0),
-                PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+                0, // pool creator fee
+                roleAccounts,
                 0, // zero swap fee
                 ZERO_BYTES32
             )
