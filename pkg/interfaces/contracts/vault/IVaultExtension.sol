@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
+import { IBasePool } from "./IBasePool.sol";
 import "./VaultTypes.sol";
 
 interface IVaultExtension {
@@ -252,11 +253,12 @@ interface IVaultExtension {
     function getProtocolYieldFeePercentage() external view returns (uint256);
 
     /**
-     * @notice Returns the accumulated swap and yield fee in `token` collected by the protocol.
+     * @notice Returns the accumulated swap and yield fee in `token` collected by the protocol for a given pool.
+     * @param pool The address of the pool for which protocol fees have been collected
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
      */
-    function getProtocolFees(address token) external view returns (uint256);
+    function getProtocolFees(address pool, IERC20 token) external view returns (uint256);
 
     /**
      * @notice Fetches the static swap fee percentage for a given pool.
@@ -273,7 +275,7 @@ interface IVaultExtension {
     function getStaticSwapFeeManager(address pool) external view returns (address);
 
     /**
-     * @notice Fetches the creator fee of a pool for a specific token.
+     * @notice Returns the accumulated swap and yield fee in `token` for the given pool, collected for the creator.
      * @param pool The address of the pool whose creator fee is being queried
      * @param token The token in which the creator fee was charged
      * @return poolCreatorFee The creator fee of the pool and token
@@ -286,6 +288,18 @@ interface IVaultExtension {
      * @return poolCreator The address of the creator
      */
     function getPoolCreator(address pool) external returns (address poolCreator);
+
+    /**
+     * @notice Query the current dynamic swap fee of a pool, given a set of swap parameters.
+     * @param pool The pool
+     * @param swapParams The swap parameters used to compute the fee
+     * @return success True if the pool has a dynamic swap fee and it can be successfully computed
+     * @return dynamicSwapFee The dynamic swap fee percentage
+     */
+    function computeDynamicSwapFee(
+        address pool,
+        IBasePool.PoolSwapParams memory swapParams
+    ) external view returns (bool, uint256);
 
     /*******************************************************************************
                                     Recovery Mode
@@ -339,6 +353,10 @@ interface IVaultExtension {
      * @return If true, then queries are disabled
      */
     function isQueryDisabled() external view returns (bool);
+
+    /*******************************************************************************
+                                     Miscellaneous
+    *******************************************************************************/
 
     /**
      * @notice Returns the Vault Admin contract address.

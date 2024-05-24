@@ -30,6 +30,9 @@ contract VaultStorage {
     // Minimum BPT amount minted upon initialization.
     uint256 internal constant _MINIMUM_BPT = 1e6;
 
+    // Minimum given amount to wrap/unwrap, to avoid rounding issues
+    uint256 internal constant _MINIMUM_WRAP_AMOUNT = 1e6;
+
     // Pools can have two, three, or four tokens.
     uint256 internal constant _MIN_TOKENS = 2;
     // This maximum token count is also hard-coded in `PoolConfigLib`.
@@ -44,14 +47,19 @@ contract VaultStorage {
     // Maximum pool swap fee percentage.
     uint256 internal constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
+    // Maximum pause and buffer period durations.
+    uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
+    uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
+
+    // When wrapping/unwrapping an IERC4626, the actual operation can return a different result from convertToAssets
+    // and convertToShares. _MAX_CONVERT_ERROR is the maximum tolerance to convert errors.
+    uint256 internal constant _MAX_CONVERT_ERROR = 2;
+
     // Code extension for Vault.
     IVaultExtension internal immutable _vaultExtension;
 
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfig;
-
-    // Store pool pause managers.
-    mapping(address => address) internal _poolPauseManagers;
 
     // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
     // Last live balances are used for yield fee computation, and since these have rates applied, they are stored
@@ -82,17 +90,14 @@ contract VaultStorage {
      */
     mapping(IERC20 => uint256) internal _reservesOf;
 
-    // Token -> fee: Protocol fees (from both swap and yield) accumulated in the Vault for harvest.
-    mapping(IERC20 => uint256) internal _protocolFees;
+    // Pool -> (Token -> fee): Protocol fees (from both swap and yield) accumulated in the Vault for harvest.
+    mapping(address => mapping(IERC20 => uint256)) internal _protocolFees;
 
     // Pool -> (Token -> fee): pool creator fees (from swap) accumulated in the Vault for harvest.
-    mapping(address => EnumerableMap.IERC20ToUint256Map) internal _poolCreatorFees;
+    mapping(address => mapping(IERC20 => uint256)) internal _poolCreatorFees;
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer internal _authorizer;
-
-    uint256 public constant MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
-    uint256 public constant MAX_BUFFER_PERIOD_DURATION = 90 days;
 
     // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
@@ -131,4 +136,24 @@ contract VaultStorage {
             slot := __tokenDeltas.slot
         }
     }
+
+    // Buffers are a vault internal concept, keyed on the wrapped token address.
+    // There will only ever be one buffer per wrapped token. This also means they are permissionless and
+    // have no registration function. You can always add liquidity to a buffer.
+
+    // A buffer will only ever have two tokens: wrapped and underlying
+    // we pack the wrapped and underlying balance into a single bytes32
+    // wrapped token address -> PackedTokenBalance
+    mapping(IERC20 => bytes32) internal _bufferTokenBalances;
+
+    // The LP balances for buffers. To start, LP balances will not be represented as ERC20 shares.
+    // If we end up with a need to incentivize buffers, we can wrap this in an ERC20 wrapper without
+    // introducing more complexity to the vault.
+    // wrapped token address -> user address -> LP balance
+    mapping(IERC20 => mapping(address => uint256)) internal _bufferLpShares;
+    // total LP shares
+    mapping(IERC20 => uint256) internal _bufferTotalShares;
+
+    // Prevents a malicious ERC4626 from changing the asset after the buffer was initialized.
+    mapping(IERC20 => address) internal _bufferAssets;
 }

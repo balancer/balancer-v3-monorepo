@@ -28,11 +28,49 @@ contract HooksTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
+        config.hooks.shouldCallComputeDynamicSwapFee = true;
         config.hooks.shouldCallBeforeSwap = true;
         config.hooks.shouldCallAfterSwap = true;
         vault.setConfig(address(pool), config);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+    }
+
+    function testOnComputeDynamicSwapFeeHook() public {
+        vm.prank(bob);
+        vm.expectCall(
+            address(pool),
+            abi.encodeWithSelector(
+                IPoolHooks.onComputeDynamicSwapFee.selector,
+                IBasePool.PoolSwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    amountGivenScaled18: defaultAmount,
+                    balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
+                    indexIn: usdcIdx,
+                    indexOut: daiIdx,
+                    router: address(router),
+                    userData: bytes("")
+                })
+            )
+        );
+        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
+    }
+
+    function testOnComputeDynamicSwapFeeHookRevert() public {
+        // should fail
+        PoolMock(pool).setFailComputeDynamicSwapFeeHook(true);
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.DynamicSwapFeeHookFailed.selector));
+        router.swapSingleTokenExactIn(
+            address(pool),
+            usdc,
+            dai,
+            defaultAmount,
+            defaultAmount,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
     }
 
     function testOnBeforeSwapHook() public {
@@ -47,7 +85,7 @@ contract HooksTest is BaseVaultTest {
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
                     indexIn: usdcIdx,
                     indexOut: daiIdx,
-                    sender: address(router),
+                    router: address(router),
                     userData: bytes("")
                 })
             )
@@ -75,6 +113,7 @@ contract HooksTest is BaseVaultTest {
     function testOnAfterSwapHook() public {
         setSwapFeePercentage(swapFeePercentage);
         setProtocolSwapFeePercentage(protocolSwapFeePercentage);
+        PoolMock(pool).setDynamicSwapFeePercentage(swapFeePercentage);
 
         uint256 expectedAmountOut = defaultAmount.mulDown(swapFeePercentage.complement());
         uint256 swapFee = defaultAmount.mulDown(swapFeePercentage);
@@ -93,7 +132,7 @@ contract HooksTest is BaseVaultTest {
                     amountOutScaled18: expectedAmountOut,
                     tokenInBalanceScaled18: defaultAmount * 2,
                     tokenOutBalanceScaled18: defaultAmount - expectedAmountOut - protocolFee,
-                    sender: address(router),
+                    router: address(router),
                     userData: ""
                 }),
                 expectedAmountOut
@@ -146,7 +185,7 @@ contract HooksTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeAddLiquidity.selector,
-                bob,
+                router,
                 AddLiquidityKind.UNBALANCED,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bptAmountRoundDown,
@@ -205,7 +244,7 @@ contract HooksTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolHooks.onBeforeRemoveLiquidity.selector,
-                alice,
+                router,
                 RemoveLiquidityKind.PROPORTIONAL,
                 bptAmount,
                 [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
@@ -249,7 +288,7 @@ contract HooksTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolHooks.onAfterAddLiquidity.selector,
-                bob,
+                router,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bptAmount,
                 [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),
@@ -307,7 +346,7 @@ contract HooksTest is BaseVaultTest {
             address(pool),
             abi.encodeWithSelector(
                 IPoolHooks.onAfterRemoveLiquidity.selector,
-                alice,
+                router,
                 bptAmount,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 [defaultAmount, defaultAmount].toMemoryArray(),

@@ -76,4 +76,9 @@ abstract contract BasePoolHooks is IPoolHooks {
     function onAfterSwap(AfterSwapParams calldata, uint256) external virtual returns (bool) {
         return false;
     }
+
+    /// @inheritdoc IPoolHooks
+    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata) external view virtual returns (bool, uint256) {
+        return (false, 0);
+    }
 }

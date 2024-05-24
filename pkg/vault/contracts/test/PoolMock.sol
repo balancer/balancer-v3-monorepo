@@ -11,6 +11,7 @@ import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPo
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -29,6 +30,7 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     bool public failOnAfterInitialize;
     bool public failOnBeforeInitialize;
+    bool public failComputeDynamicSwapFeeHook;
     bool public failOnBeforeSwapHook;
     bool public failOnAfterSwapHook;
     bool public failOnBeforeAddLiquidity;
@@ -41,12 +43,19 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     bool public changeTokenRateOnBeforeAddLiquidity;
     bool public changeTokenRateOnBeforeRemoveLiquidity;
 
+    bool public changePoolBalancesOnBeforeSwapHook;
+    bool public changePoolBalancesOnBeforeAddLiquidityHook;
+    bool public changePoolBalancesOnBeforeRemoveLiquidityHook;
+
     bool public swapReentrancyHookActive;
     address private _swapHookContract;
     bytes private _swapHookCalldata;
 
     RateProviderMock _rateProvider;
     uint256 private _newTokenRate;
+    uint256 private _dynamicSwapFee;
+    address private _specialSender;
+    uint256[] private _newBalancesRaw;
 
     // Amounts in are multiplied by the multiplier, amounts out are divided by it
     uint256 private _multiplier = FixedPoint.ONE;
@@ -79,6 +88,10 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
     }
 
+    function setSpecialSender(address sender) external {
+        _specialSender = sender;
+    }
+
     function setSwapReentrancyHookActive(bool _swapReentrancyHookActive) external {
         swapReentrancyHookActive = _swapReentrancyHookActive;
     }
@@ -106,6 +119,14 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         _newTokenRate = newTokenRate;
     }
 
+    function setFailComputeDynamicSwapFeeHook(bool fail) external {
+        failComputeDynamicSwapFeeHook = fail;
+    }
+
+    function setDynamicSwapFeePercentage(uint256 dynamicSwapFee) external {
+        _dynamicSwapFee = dynamicSwapFee;
+    }
+
     function setFailOnBeforeSwapHook(bool fail) external {
         failOnBeforeSwapHook = fail;
     }
@@ -118,6 +139,27 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         changeTokenRateOnBeforeSwapHook = changeRate;
         _rateProvider = rateProvider;
         _newTokenRate = newTokenRate;
+    }
+
+    function setChangePoolBalancesOnBeforeSwapHook(bool changeBalances, uint256[] memory newBalancesRaw) external {
+        changePoolBalancesOnBeforeSwapHook = changeBalances;
+        _newBalancesRaw = newBalancesRaw;
+    }
+
+    function setChangePoolBalancesOnBeforeAddLiquidityHook(
+        bool changeBalances,
+        uint256[] memory newBalancesRaw
+    ) external {
+        changePoolBalancesOnBeforeAddLiquidityHook = changeBalances;
+        _newBalancesRaw = newBalancesRaw;
+    }
+
+    function setChangePoolBalancesOnBeforeRemoveLiquidityHook(
+        bool changeBalances,
+        uint256[] memory newBalancesRaw
+    ) external {
+        changePoolBalancesOnBeforeRemoveLiquidityHook = changeBalances;
+        _newBalancesRaw = newBalancesRaw;
     }
 
     function setFailOnAfterSwapHook(bool fail) external {
@@ -176,9 +218,27 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
         return !failOnAfterInitialize;
     }
 
+    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata params) external view returns (bool, uint256) {
+        uint256 finalSwapFee = _dynamicSwapFee;
+
+        if (_specialSender != address(0)) {
+            // Check the sender
+            address swapper = IRouterCommon(params.router).getSender();
+            if (swapper == _specialSender) {
+                finalSwapFee = 0;
+            }
+        }
+
+        return (!failComputeDynamicSwapFeeHook, finalSwapFee);
+    }
+
     function onBeforeSwap(IBasePool.PoolSwapParams calldata) external override returns (bool success) {
         if (changeTokenRateOnBeforeSwapHook) {
             _updateTokenRate();
+        }
+
+        if (changePoolBalancesOnBeforeSwapHook) {
+            _setBalancesInVault();
         }
 
         if (swapReentrancyHookActive) {
@@ -255,6 +315,10 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
             _updateTokenRate();
         }
 
+        if (changePoolBalancesOnBeforeAddLiquidityHook) {
+            _setBalancesInVault();
+        }
+
         return !failOnBeforeAddLiquidity;
     }
 
@@ -268,6 +332,10 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
     ) external override returns (bool) {
         if (changeTokenRateOnBeforeRemoveLiquidity) {
             _updateTokenRate();
+        }
+
+        if (changePoolBalancesOnBeforeRemoveLiquidityHook) {
+            _setBalancesInVault();
         }
 
         return !failOnBeforeRemoveLiquidity;
@@ -325,5 +393,10 @@ contract PoolMock is IBasePool, IPoolHooks, IPoolLiquidity, BalancerPoolToken {
 
     function _updateTokenRate() private {
         _rateProvider.mockRate(_newTokenRate);
+    }
+
+    function _setBalancesInVault() private {
+        IERC20[] memory poolTokens = getVault().getPoolTokens(address(this));
+        IVaultMock(address(getVault())).manualSetPoolTokenBalances(address(this), poolTokens, _newBalancesRaw);
     }
 }

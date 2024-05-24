@@ -63,9 +63,6 @@ interface IVaultErrors {
      */
     error TokensMismatch(address pool, address expectedToken, address actualToken);
 
-    /// @dev Error thrown on registration if the pool does not support interface queries.
-    error PoolMustSupportERC165();
-
     /*******************************************************************************
                                  Transient Accounting
     *******************************************************************************/
@@ -75,6 +72,9 @@ interface IVaultErrors {
 
     /// @dev A user called a Vault function (swap, add/remove liquidity) outside the lock context.
     error VaultIsNotUnlocked();
+
+    /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
+    error DynamicSwapFeeHookFailed();
 
     /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
     error BeforeSwapHookFailed();
@@ -163,6 +163,9 @@ interface IVaultErrors {
 
     /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
     error SwapFeePercentageTooHigh();
+
+    /// @dev Error raised when the sum of the parts (protocol and creator fee) is greater than the whole (swap fee).
+    error ProtocolFeesExceedSwapFee();
 
     /**
      * @dev  Error raised when the swap fee percentage is less than the minimum allowed value.
@@ -271,4 +274,22 @@ interface IVaultErrors {
 
     /// @dev The vault admin was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();
+
+    /// @dev The user is trying to remove more than their allocated shares from the buffer.
+    error NotEnoughBufferShares();
+
+    /// @dev The wrapped token asset does not match the underlying token of the swap path.
+    error WrongWrappedTokenAsset(address token);
+
+    /// @dev The wrappedToken wrap/unwrap function did not deposit/return the expected amount of underlying tokens.
+    error WrongUnderlyingAmount(address wrappedToken);
+
+    /// @dev The wrappedToken wrap/unwrap function did not burn/mint the expected amount of wrapped tokens.
+    error WrongWrappedAmount(address wrappedToken);
+
+    /// @dev The amount given to wrap/unwrap was too small, which can introduce rounding issues.
+    error WrapAmountTooSmall(address wrappedToken);
+
+    /// @dev Vault buffers are paused.
+    error VaultBuffersArePaused();
 }

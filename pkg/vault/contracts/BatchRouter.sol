@@ -12,6 +12,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import {
     TransientEnumerableSet
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
@@ -62,6 +63,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
     )
         external
         payable
+        saveSender
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
         return
@@ -88,7 +90,12 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
+    )
+        external
+        payable
+        saveSender
+        returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
+    {
         return
             abi.decode(
                 _vault.unlock{ value: msg.value }(
@@ -151,16 +158,23 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
             SwapPathExactAmountIn memory path = params.paths[i];
+
             // These two variables shall be updated at the end of each step to be used as inputs of the next one.
             // The initial values are the given token and amount in for the current path.
             uint256 stepExactAmountIn = path.exactAmountIn;
             IERC20 stepTokenIn = path.tokenIn;
 
-            // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses in
-            // a set with unique addresses that can be iterated later on.
-            // For example, if all paths share the same token in, the set will end up with only one entry.
-            _currentSwapTokensIn.add(address(stepTokenIn));
-            _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
+            if (path.steps[0].isBuffer && EVMCallModeHelpers.isStaticCall() == false) {
+                // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
+                _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, false);
+                _settledTokenAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
+            } else {
+                // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses
+                // in a set with unique addresses that can be iterated later on.
+                // For example, if all paths share the same token in, the set will end up with only one entry.
+                _currentSwapTokensIn.add(address(stepTokenIn));
+                _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
+            }
 
             for (uint256 j = 0; j < path.steps.length; ++j) {
                 SwapStepLocals memory stepLocals;
@@ -177,7 +191,33 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
 
                 SwapPathStep memory step = path.steps[j];
 
-                if (address(stepTokenIn) == step.pool) {
+                if (step.isBuffer) {
+                    (, , uint256 amountOut) = _vault.erc4626BufferWrapOrUnwrap(
+                        BufferWrapOrUnwrapParams({
+                            kind: SwapKind.EXACT_IN,
+                            direction: step.pool == address(stepTokenIn)
+                                ? WrappingDirection.UNWRAP
+                                : WrappingDirection.WRAP,
+                            wrappedToken: IERC4626(step.pool),
+                            amountGivenRaw: stepExactAmountIn,
+                            limitRaw: minAmountOut,
+                            userData: params.userData
+                        })
+                    );
+
+                    if (stepLocals.isLastStep) {
+                        // The amount out for the last step of the path should be recorded for the return value, and the
+                        // amount for the token should be sent back to the sender later on.
+                        pathAmountsOut[i] = amountOut;
+                        _currentSwapTokensOut.add(address(step.tokenOut));
+                        _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), amountOut);
+                    } else {
+                        // Input for the next step is output of current step.
+                        stepExactAmountIn = amountOut;
+                        // The token in for the next step is the token out of the current step.
+                        stepTokenIn = step.tokenOut;
+                    }
+                } else if (address(stepTokenIn) == step.pool) {
                     // Token in is BPT: remove liquidity - Single token exact in
 
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
@@ -399,7 +439,39 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     stepTokenIn = path.steps[uint256(j - 1)].tokenOut;
                 }
 
-                if (address(stepTokenIn) == step.pool) {
+                if (step.isBuffer) {
+                    if (stepLocals.isLastStep && !EVMCallModeHelpers.isStaticCall()) {
+                        // The buffer will need this token to wrap/unwrap, so take it from the user in advance
+                        _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
+                    }
+
+                    (, uint256 amountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
+                        BufferWrapOrUnwrapParams({
+                            kind: SwapKind.EXACT_OUT,
+                            direction: step.pool == address(stepTokenIn)
+                                ? WrappingDirection.UNWRAP
+                                : WrappingDirection.WRAP,
+                            wrappedToken: IERC4626(step.pool),
+                            amountGivenRaw: stepExactAmountOut,
+                            limitRaw: stepMaxAmountIn,
+                            userData: params.userData
+                        })
+                    );
+
+                    if (stepLocals.isLastStep) {
+                        pathAmountsIn[i] = amountIn;
+                        // since the token was taken in advance, returns to the user what is left from the
+                        // wrap/unwrap operation
+                        _currentSwapTokensOut.add(address(stepTokenIn));
+                        _currentSwapTokenOutAmounts().tAdd(address(stepTokenIn), path.maxAmountIn - amountIn);
+                        // settledTokenAmounts is used to return the amountsIn at the end of the operation, which
+                        // is only amountIn. The difference between maxAmountIn and amountIn will be paid during
+                        // settle
+                        _settledTokenAmounts().tAdd(address(path.tokenIn), amountIn);
+                    } else {
+                        stepExactAmountOut = amountIn;
+                    }
+                } else if (address(stepTokenIn) == step.pool) {
                     // Token in is BPT: remove liquidity - Single token exact out
 
                     // Remove liquidity is not transient when it comes to BPT, meaning the caller needs to have the
@@ -528,7 +600,11 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
     function querySwapExactIn(
         SwapPathExactAmountIn[] memory paths,
         bytes calldata userData
-    ) external returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) {
+    )
+        external
+        saveSender
+        returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
+    {
         for (uint256 i = 0; i < paths.length; ++i) {
             paths[i].minAmountOut = 0;
         }
@@ -567,7 +643,11 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
     function querySwapExactOut(
         SwapPathExactAmountOut[] memory paths,
         bytes calldata userData
-    ) external returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
+    )
+        external
+        saveSender
+        returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
+    {
         for (uint256 i = 0; i < paths.length; ++i) {
             paths[i].maxAmountIn = _MAX_AMOUNT;
         }
@@ -616,11 +696,15 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
         for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
             address tokenIn = _currentSwapTokensIn.unchecked_at(uint256(i));
             ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts().tGet(tokenIn), wethIsEth);
+            // Erases delta, in case more than one batch router op is called in the same transaction
+            _currentSwapTokenInAmounts().tSet(tokenIn, 0);
         }
 
         for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
             address tokenOut = _currentSwapTokensOut.unchecked_at(uint256(i));
             _sendTokenOut(sender, IERC20(tokenOut), _currentSwapTokenOutAmounts().tGet(tokenOut), wethIsEth);
+            // Erases delta, in case more than one batch router op is called in the same transaction
+            _currentSwapTokenOutAmounts().tSet(tokenOut, 0);
         }
 
         // Return the rest of ETH to sender

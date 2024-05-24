@@ -3,12 +3,14 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IRateProvider } from "./IRateProvider.sol";
 
 /// @dev Represents a pool's hooks.
 struct PoolHooks {
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
+    bool shouldCallComputeDynamicSwapFee;
     bool shouldCallBeforeSwap;
     bool shouldCallAfterSwap;
     bool shouldCallBeforeAddLiquidity;
@@ -35,20 +37,14 @@ struct PoolConfig {
     bool isPoolInitialized;
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
-    bool hasDynamicSwapFee;
 }
 
-/// @dev Represents temporary vars used in a swap operation.
-struct SwapVars {
-    // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
+/// @dev Represents temporary state used in a swap operation.
+struct SwapState {
     uint256 indexIn;
     uint256 indexOut;
     uint256 amountGivenScaled18;
-    uint256 amountCalculatedScaled18;
-    uint256 swapFeeAmountScaled18;
     uint256 swapFeePercentage;
-    uint256 protocolSwapFeeAmountRaw;
-    uint256 creatorSwapFeeAmountRaw;
 }
 
 /**
@@ -59,12 +55,14 @@ struct SwapVars {
  * @param isQueryDisabled If set to true, disables query functionality of the Vault. Can be modified only by
  * governance.
  * @param isVaultPaused If set to true, Swaps and Add/Remove Liquidity operations are halted
+ * @param areBuffersPaused If set to true, the Vault wrap/unwrap primitives associated with buffers will be disabled
  */
 struct VaultState {
     uint256 protocolSwapFeePercentage;
     uint256 protocolYieldFeePercentage;
     bool isQueryDisabled;
     bool isVaultPaused;
+    bool areBuffersPaused;
 }
 
 /**
@@ -100,10 +98,10 @@ struct PoolFunctionPermission {
  * WITH_RATE tokens (e.g., wstETH) require a rate provider. These may be tokens like wstETH, which need to be wrapped
  * because the underlying stETH token is rebasing, and such tokens are unsupported by the Vault. They may also be
  * tokens like sEUR, which track an underlying asset, but are not yield-bearing. Finally, this encompasses
- * yield-bearing ERC4626 tokens, which can be used with ERC4626BufferPools to facilitate swaps without requiring
- * wrapping or unwrapping in most cases. The `paysYieldFees` flag can be used to indicate whether a token is
- * yield-bearing (e.g., waDAI), not yield-bearing (e.g., sEUR), or yield-bearing but exempt from fees (e.g., in
- * certain nested pools, where protocol yield fees are charged elsewhere).
+ * yield-bearing ERC4626 tokens, which can be used to facilitate swaps without requiring wrapping or unwrapping
+ * in most cases. The `paysYieldFees` flag can be used to indicate whether a token is yield-bearing (e.g., waDAI),
+ * not yield-bearing (e.g., sEUR), or yield-bearing but exempt from fees (e.g., in certain nested pools, where
+ * protocol yield fees are charged elsewhere).
  *
  * NB: STANDARD must always be the first enum element, so that newly initialized data structures default to Standard.
  */
@@ -226,6 +224,34 @@ struct RemoveLiquidityParams {
     uint256 maxBptAmountIn;
     uint256[] minAmountsOut;
     RemoveLiquidityKind kind;
+    bytes userData;
+}
+
+/*******************************************************************************
+                                Remove liquidity
+*******************************************************************************/
+
+enum WrappingDirection {
+    WRAP,
+    UNWRAP
+}
+
+/**
+ * @dev Data for a wrap/unwrap operation.
+ * @param kind Type of swap (Exact In or Exact Out)
+ * @param direction Direction of the wrapping operation (Wrap or Unwrap)
+ * @param wrappedToken Wrapped token, compatible with interface ERC4626
+ * @param amountGivenRaw Amount specified for tokenIn or tokenOut (depends on the type of swap and wrapping direction)
+ * @param limitRaw Minimum or maximum amount specified for the other token (depends on the type of swap and wrapping
+ * direction)
+ * @param userData Optional user data
+ */
+struct BufferWrapOrUnwrapParams {
+    SwapKind kind;
+    WrappingDirection direction;
+    IERC4626 wrappedToken;
+    uint256 amountGivenRaw;
+    uint256 limitRaw;
     bytes userData;
 }
 

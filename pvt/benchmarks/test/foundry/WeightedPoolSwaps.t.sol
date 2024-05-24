@@ -49,8 +49,6 @@ contract WeightedPoolSwaps is BaseVaultTest {
         rateProviders.push(new RateProviderMock());
         rateProviders.push(new RateProviderMock());
 
-        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
-
         wsteth.mint(bob, initialFunds);
         dai.mint(bob, initialFunds);
 
