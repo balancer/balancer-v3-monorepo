@@ -282,6 +282,9 @@ interface IVaultErrors {
     /// @dev The vault admin was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();
 
+    /// @dev Quote reverted with a reserved error code.
+    error QuoteResultSpoofed();
+
     /// @dev The user is trying to remove more than their allocated shares from the buffer.
     error NotEnoughBufferShares();
 
