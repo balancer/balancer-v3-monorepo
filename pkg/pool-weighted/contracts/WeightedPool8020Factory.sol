@@ -50,9 +50,7 @@ contract WeightedPool8020Factory is BasePoolFactory {
         uint256[] memory weights = new uint256[](2);
 
         // Tokens must be sorted.
-        (uint256 highWeightTokenIdx, uint256 lowWeightTokenIdx) = highWeightToken > lowWeightToken
-            ? (1, 0)
-            : (0, 1);
+        (uint256 highWeightTokenIdx, uint256 lowWeightTokenIdx) = highWeightToken > lowWeightToken ? (1, 0) : (0, 1);
 
         weights[highWeightTokenIdx] = _EIGHTY;
         weights[lowWeightTokenIdx] = _TWENTY;
