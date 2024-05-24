@@ -330,6 +330,23 @@ interface IVaultExtension {
     function quote(bytes calldata data) external payable returns (bytes memory result);
 
     /**
+     * @notice Performs a callback on msg.sender with arguments provided in `data`.
+     * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
+     * anything else will revert.
+     *
+     * Allows querying any operation on the Vault that has the `withLocker` modifier.
+     *
+     * Allows the external calling of a function via the Vault contract to
+     * access Vault's functions guarded by `withLocker`.
+     * `transient` modifier ensuring balances changes within the Vault are settled.
+     *
+     * This call always reverts, returning the result in the revert reason.
+     *
+     * @param data Contains function signature and args to be passed to the msg.sender
+     */
+    function quoteAndRevert(bytes calldata data) external payable;
+
+    /**
      * @notice Checks if the queries enabled on the Vault.
      * @return If true, then queries are disabled
      */

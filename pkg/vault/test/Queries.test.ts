@@ -3,17 +3,17 @@ import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
 import { Router } from '../typechain-types/contracts/Router';
-import { ERC20PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/ERC20PoolMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { VoidSigner } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
+import { PoolFactoryMock, PoolMock, RouterMock, Vault } from '@balancer-labs/v3-vault/typechain-types';
 import { buildTokenConfig } from './poolSetup';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
-import { Vault, PoolFactoryMock } from '../typechain-types';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import { WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
 import { deployPermit2 } from './Permit2Deployer';
 
@@ -22,9 +22,10 @@ describe('Queries', function () {
   let vault: Vault;
   let router: Router;
   let factory: PoolFactoryMock;
-  let pool: ERC20PoolMock;
+  let pool: PoolMock;
   let DAI: ERC20TestToken;
   let USDC: ERC20TestToken;
+  let WETH: WETHTestToken;
   let zero: VoidSigner;
 
   const DAI_AMOUNT_IN = fp(1000);
@@ -41,7 +42,7 @@ describe('Queries', function () {
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
     vault = await VaultDeployer.deploy();
     const vaultAddress = await vault.getAddress();
-    const WETH = await deploy('v3-solidity-utils/WETHTestToken');
+    WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
     router = await deploy('Router', { args: [vaultAddress, WETH, permit2] });
 
@@ -233,6 +234,58 @@ describe('Queries', function () {
       await expect(
         router.queryRemoveLiquidityCustom.staticCall(pool, BPT_AMOUNT, [DAI_AMOUNT_IN, USDC_AMOUNT_IN], '0xbeef')
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
+    });
+  });
+
+  describe('query and revert', () => {
+    let router: RouterMock;
+
+    sharedBeforeEach('deploy mock router', async () => {
+      router = await deploy('RouterMock', { args: [vault, WETH, permit2] });
+    });
+
+    describe('swap', () => {
+      it('queries a swap exact in correctly', async () => {
+        const amountCalculated = await router
+          .connect(zero)
+          .querySwapSingleTokenExactInAndRevert.staticCall(pool, USDC, DAI, USDC_AMOUNT_IN, '0x');
+        expect(amountCalculated).to.be.eq(DAI_AMOUNT_IN);
+      });
+
+      it('reverts if not a static call (exact in)', async () => {
+        await expect(
+          router.querySwapSingleTokenExactInAndRevert.staticCall(pool, USDC, DAI, USDC_AMOUNT_IN, '0x')
+        ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
+      });
+
+      it('handles query spoofs', async () => {
+        await expect(router.connect(zero).querySpoof.staticCall()).to.be.revertedWithCustomError(
+          vault,
+          'QuoteResultSpoofed'
+        );
+      });
+
+      it('handles custom error codes', async () => {
+        await expect(router.connect(zero).queryRevertErrorCode.staticCall()).to.be.revertedWithCustomError(
+          router,
+          'MockErrorCode'
+        );
+      });
+
+      it('handles legacy errors', async () => {
+        await expect(router.connect(zero).queryRevertLegacy.staticCall()).to.be.revertedWith('Legacy revert reason');
+      });
+
+      it('handles revert with no reason', async () => {
+        await expect(router.connect(zero).queryRevertNoReason.staticCall()).to.be.revertedWithCustomError(
+          router,
+          'ErrorSelectorNotFound'
+        );
+      });
+
+      it('handles panic', async () => {
+        await expect(router.connect(zero).queryRevertPanic.staticCall()).to.be.revertedWithPanic();
+      });
     });
   });
 });
