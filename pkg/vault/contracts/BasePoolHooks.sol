@@ -8,7 +8,8 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import {
     AddLiquidityKind,
     PoolHookFlags,
-    RemoveLiquidityKind
+    RemoveLiquidityKind,
+    TokenConfig
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
@@ -25,7 +26,7 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
     }
 
     /// @inheritdoc IHooks
-    function onRegister(address) external virtual onlyVault returns (bool) {
+    function onRegister(address, TokenConfig[] memory) external virtual onlyVault returns (bool) {
         // By default, deny all factories. This method must be overwritten by the hook contract
         return false;
     }

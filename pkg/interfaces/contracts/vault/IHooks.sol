@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
-import { SwapKind, AddLiquidityKind, PoolHookFlags, RemoveLiquidityKind } from "./VaultTypes.sol";
+import { SwapKind, AddLiquidityKind, PoolHookFlags, RemoveLiquidityKind, TokenConfig } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
 
 /// @notice Interface for pool hooks
@@ -15,12 +15,13 @@ interface IHooks {
     ***************************************************************************/
 
     /**
-     * @notice hook to be executed when pool is registered. It gives to the hook the opportunity to revert the registry
-     * if the factory is not trusted.
+     * @notice hook to be executed when pool is registered. If it returns false, the registry of a pool with the hook
+     * is reverted. Vault address can be accessed with msg.sender.
      * @param factory Address of the pool factory
+     * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @return success True if the hook allowed the registry
      */
-    function onRegister(address factory) external returns (bool);
+    function onRegister(address factory, TokenConfig[] memory tokenConfig) external returns (bool);
 
     /**
      * @notice returns flags informing which hooks are implemented in the contract.

@@ -14,7 +14,7 @@ interface IVaultEvents {
      * @notice A Pool was registered by calling `registerPool`.
      * @param pool The pool being registered
      * @param factory The factory creating the pool
-     * @param tokenConfig The pool's tokens
+     * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param pauseWindowEndTime The pool's pause window end time
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHookFlags Flags indicating which hooks the pool supports
