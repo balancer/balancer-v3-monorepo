@@ -34,15 +34,9 @@ contract PoolSwapManagerTest is BaseVaultTest {
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
 
-        PoolRoleAccounts memory defaultRoleAccounts = PoolRoleAccounts({
-            pauseManager: address(0),
-            swapFeeManager: address(0)
-        });
-
-        PoolRoleAccounts memory adminRoleAccounts = PoolRoleAccounts({
-            pauseManager: address(0),
-            swapFeeManager: admin
-        });
+        PoolRoleAccounts memory defaultRoleAccounts;
+        PoolRoleAccounts memory adminRoleAccounts;
+        adminRoleAccounts.swapFeeManager = admin;
 
         pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
