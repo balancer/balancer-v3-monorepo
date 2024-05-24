@@ -7,12 +7,13 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolHookFlags, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -22,6 +23,7 @@ import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { Router } from "../../../contracts/Router.sol";
+import { PoolConfigBits } from "../../../contracts/lib/PoolConfigLib.sol";
 import { BatchRouter } from "../../../contracts/BatchRouter.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
@@ -64,7 +66,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Pool Factory
     PoolFactoryMock internal factoryMock;
     // Pool Hooks
-    PoolHooksMock internal poolHooksMock;
+    address internal poolHooksContract;
 
     // Default amount to use in tests for user operations.
     uint256 internal defaultAmount = 1e3 * 1e18;
@@ -101,10 +103,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         vm.label(address(router), "router");
         batchRouter = new BatchRouter(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
-        poolHooksMock = new PoolHooksMock(IVault(address(vault)));
-        // Allow pools built with factoryMock to use the poolHooksMock
-        poolHooksMock.allowFactory(address(factoryMock));
-        vm.label(address(poolHooksMock), "pool hooks");
+        poolHooksContract = createHook();
         pool = createPool();
 
         // Approve vault allowances
@@ -176,11 +175,26 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         factoryMock.registerTestPool(
             address(newPool),
             vault.buildTokenConfig(tokens.asIERC20()),
-            poolHooksMock,
+            poolHooksContract,
             address(lp)
         );
 
         return address(newPool);
+    }
+
+    function createHook() internal virtual returns (address) {
+        // Sets all flags as false
+        return _createHook(PoolConfigBits.wrap(0).toPoolConfig().hooks);
+    }
+
+    function _createHook(PoolHookFlags memory poolHookFlags) internal virtual returns (address) {
+        PoolHooksMock newHook = new PoolHooksMock(IVault(address(vault)));
+        // Allow pools built with factoryMock to use the poolHooksMock
+        newHook.allowFactory(address(factoryMock));
+        // Configure pool hook flags
+        newHook.setPoolHookFlags(poolHookFlags);
+        vm.label(address(newHook), "pool hooks");
+        return address(newHook);
     }
 
     function setSwapFeePercentage(uint256 percentage) internal {

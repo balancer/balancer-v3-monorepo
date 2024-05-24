@@ -257,7 +257,7 @@ contract QueryERC4626BufferTest is BaseVaultTest {
 
         PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig, IHooks(address(0)), address(0));
+        factoryMock.registerTestPool(address(newPool), tokenConfig, address(0), address(0));
 
         vm.label(address(newPool), "boosted pool");
         boostedPool = address(newPool);

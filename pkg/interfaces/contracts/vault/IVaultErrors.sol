@@ -36,16 +36,10 @@ interface IVaultErrors {
 
     /**
      * @dev A referenced pool has not been initialized.
-     * @param poolHookContract Address of the hook contract that rejected the factory
+     * @param poolHooksContract Address of the hook contract that rejected the factory
      * @param poolFactory Address of the rejected pool factory
      */
-    error HookRegisterFailed(address poolHookContract, address poolFactory);
-
-    /**
-     * @dev At least one hook flag is true, but a hook contract was not informed.
-     * @param pool The pool to be registered
-     */
-    error NoHookContract(address pool);
+    error HookRegisterFailed(address poolHooksContract, address poolFactory);
 
     /**
      * @dev A token was already registered (i.e., it is a duplicate in the pool).

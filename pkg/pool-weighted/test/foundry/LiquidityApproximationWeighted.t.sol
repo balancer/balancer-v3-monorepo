@@ -31,7 +31,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         WeightedPoolFactory factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
 
         // Allow pools created by `factory` to use poolHooksMock hooks
-        poolHooksMock.allowFactory(address(factory));
+        poolHooksContract.allowFactory(address(factory));
 
         WeightedPool newPool = WeightedPool(
             factory.create(
@@ -42,7 +42,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
                 PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
                 DEFAULT_SWAP_FEE,
                 PoolConfigBits.wrap(0).toPoolConfig().hooks,
-                poolHooksMock,
+                poolHooksContract,
                 // NOTE: sends a unique salt
                 bytes32(poolCreationNonce++)
             )

@@ -61,7 +61,7 @@ contract YieldFeesTest is BaseVaultTest {
                 rateProviders,
                 yieldFeeFlags
             ),
-            poolHooksMock,
+            poolHooksContract,
             address(lp)
         );
 

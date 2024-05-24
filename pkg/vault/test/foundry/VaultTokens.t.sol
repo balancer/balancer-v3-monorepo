@@ -15,6 +15,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -45,7 +46,7 @@ contract VaultTokenTest is BaseVaultTest {
         poolFactory = new PoolFactoryMock(vault, 365 days);
 
         // Allow pools from factory poolFactory to use the hook poolHooksMock
-        poolHooksMock.allowFactory(address(poolFactory));
+        PoolHooksMock(poolHooksContract).allowFactory(address(poolFactory));
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
@@ -129,6 +130,6 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function _registerPool(TokenConfig[] memory tokenConfig) private {
-        poolFactory.registerTestPool(pool, tokenConfig, poolHooksMock, address(0));
+        poolFactory.registerTestPool(pool, tokenConfig, poolHooksContract, address(0));
     }
 }

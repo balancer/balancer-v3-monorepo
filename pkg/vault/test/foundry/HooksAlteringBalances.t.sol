@@ -13,6 +13,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -34,7 +35,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         vault.setConfig(address(pool), config);
 
         // Sets the pool address in the hook, so we can change pool balances inside the hook
-        poolHooksMock.setPool(address(pool));
+        PoolHooksMock(poolHooksContract).setPool(address(pool));
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
@@ -47,7 +48,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksMock, address(lp));
+        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, address(lp));
 
         return address(newPool);
     }
@@ -58,13 +59,13 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         uint256[] memory newBalances = [poolInitAmount / 2, poolInitAmount / 3].toMemoryArray();
 
         // Change balances of the pool on before hook
-        poolHooksMock.setChangePoolBalancesOnBeforeSwapHook(true, newBalances);
+        PoolHooksMock(poolHooksContract).setChangePoolBalancesOnBeforeSwapHook(true, newBalances);
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook
         vm.prank(bob);
         // Check if balances were not changed before onBeforeHook
         vm.expectCall(
-            address(poolHooksMock),
+            address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onBeforeSwap.selector,
                 IBasePool.PoolSwapParams({
@@ -109,12 +110,12 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         uint256[] memory amountsIn = [defaultAmount, defaultAmount].toMemoryArray();
 
         // Change balances of the pool on before hook
-        poolHooksMock.setChangePoolBalancesOnBeforeAddLiquidityHook(true, newBalances);
+        PoolHooksMock(poolHooksContract).setChangePoolBalancesOnBeforeAddLiquidityHook(true, newBalances);
 
         vm.prank(bob);
         // Check if balances were not changed before onBeforeHook
         vm.expectCall(
-            address(poolHooksMock),
+            address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onBeforeAddLiquidity.selector,
                 router,
@@ -160,11 +161,11 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         uint256[] memory newBalances = [2 * balanceAfterLiquidity, 3 * balanceAfterLiquidity].toMemoryArray();
 
         // Change balances of the pool on before hook
-        poolHooksMock.setChangePoolBalancesOnBeforeRemoveLiquidityHook(true, newBalances);
+        PoolHooksMock(poolHooksContract).setChangePoolBalancesOnBeforeRemoveLiquidityHook(true, newBalances);
 
         // Check if balances were not changed before onBeforeHook
         vm.expectCall(
-            address(poolHooksMock),
+            address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onBeforeRemoveLiquidity.selector,
                 router,

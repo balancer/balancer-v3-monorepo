@@ -28,7 +28,7 @@ interface IVaultEvents {
         uint256 pauseWindowEndTime,
         PoolRoleAccounts roleAccounts,
         PoolHookFlags poolHookFlags,
-        IHooks poolHooksContract,
+        address poolHooksContract,
         LiquidityManagement liquidityManagement
     );
 

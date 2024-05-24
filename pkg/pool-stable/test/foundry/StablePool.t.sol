@@ -52,7 +52,7 @@ contract StablePoolTest is BaseVaultTest {
         tokens[1].token = IERC20(usdc);
 
         // Allow pools created by `factory` to use poolHooksMock hooks
-        poolHooksMock.allowFactory(address(factory));
+        poolHooksContract.allowFactory(address(factory));
 
         stablePool = StablePool(
             factory.create(
@@ -63,7 +63,7 @@ contract StablePoolTest is BaseVaultTest {
                 PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
                 DEFAULT_SWAP_FEE,
                 PoolConfigBits.wrap(0).toPoolConfig().hooks,
-                poolHooksMock,
+                poolHooksContract,
                 ZERO_BYTES32
             )
         );

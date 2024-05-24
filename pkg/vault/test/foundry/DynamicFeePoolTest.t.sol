@@ -54,16 +54,16 @@ contract DynamicFeePoolTest is BaseVaultTest {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), label);
         PoolRoleAccounts memory roleAccounts;
-        PoolHookFlags memory poolHookFlags;
 
+        PoolHookFlags memory poolHookFlags;
         poolHookFlags.shouldCallComputeDynamicSwapFee = true;
+        PoolHooksMock(poolHooksContract).setPoolHookFlags(poolHookFlags);
 
         factoryMock.registerPool(
             address(newPool),
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,
-            poolHookFlags,
-            poolHooksMock,
+            poolHooksContract,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
@@ -95,7 +95,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         });
 
         vm.expectCall(
-            address(poolHooksMock),
+            address(poolHooksContract),
             abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams),
             1 // callCount
         );
@@ -132,7 +132,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         });
 
         vm.expectCall(
-            address(poolHooksMock),
+            address(poolHooksContract),
             abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams),
             1 // callCount
         );
@@ -144,8 +144,8 @@ contract DynamicFeePoolTest is BaseVaultTest {
         );
 
         // Set a 100% fee, and bob as 0 swap fee sender.
-        poolHooksMock.setDynamicSwapFeePercentage(FixedPoint.ONE);
-        poolHooksMock.setSpecialSender(bob);
+        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(FixedPoint.ONE);
+        PoolHooksMock(poolHooksContract).setSpecialSender(bob);
 
         uint256 aliceBalanceBefore = usdc.balanceOf(alice);
 
@@ -157,7 +157,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         assertEq(aliceBalanceAfter - aliceBalanceBefore, 0);
 
         // Now set Alice as the special 0-fee sender
-        poolHooksMock.setSpecialSender(alice);
+        PoolHooksMock(poolHooksContract).setSpecialSender(alice);
         aliceBalanceBefore = aliceBalanceAfter;
 
         vm.prank(alice);
@@ -170,7 +170,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
     function testExternalComputeFee() public {
         vm.expectCall(
-            address(poolHooksMock),
+            address(poolHooksContract),
             abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector),
             1 // callCount
         );
@@ -178,7 +178,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         IBasePool.PoolSwapParams memory swapParams;
         uint256 dynamicSwapFeePercentage = 0.01e18;
 
-        poolHooksMock.setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
+        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
 
         (bool success, uint256 actualDynamicSwapFee) = vault.computeDynamicSwapFee(address(pool), swapParams);
 
@@ -188,7 +188,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
     function testSwapChargesFees__Fuzz(uint256 dynamicSwapFeePercentage) public {
         dynamicSwapFeePercentage = bound(dynamicSwapFeePercentage, 0, 1e18);
-        poolHooksMock.setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
+        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
 
         vm.prank(alice);
         uint256 swapAmountOut = router.swapSingleTokenExactIn(
@@ -202,7 +202,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
             bytes("")
         );
 
-        poolHooksMock.setDynamicSwapFeePercentage(0);
+        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(0);
 
         vm.prank(bob);
         uint256 liquidityAmountOut = router.swapSingleTokenExactIn(

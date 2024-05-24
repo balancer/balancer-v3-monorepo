@@ -60,6 +60,10 @@ contract PoolHooksMock is BasePoolHooks {
         return _allowedFactories[factory];
     }
 
+    function setPoolHookFlags(PoolHookFlags memory poolHookFlags) external {
+        _poolHookFlags = poolHookFlags;
+    }
+
     function onBeforeInitialize(uint256[] memory, bytes memory) external override returns (bool) {
         if (changeTokenRateOnBeforeInitialize) {
             _updateTokenRate();

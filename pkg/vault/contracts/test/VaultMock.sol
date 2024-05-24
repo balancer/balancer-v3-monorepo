@@ -86,8 +86,7 @@ contract VaultMock is IVaultMainMock, Vault {
             pool,
             buildTokenConfig(tokens),
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
-            PoolConfigBits.wrap(0).toPoolConfig().hooks,
-            IHooks(address(0)),
+            address(0), // No hook contract
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
@@ -105,8 +104,7 @@ contract VaultMock is IVaultMainMock, Vault {
             pool,
             buildTokenConfig(tokens),
             swapFeePercentage,
-            PoolConfigBits.wrap(0).toPoolConfig().hooks,
-            IHooks(address(0)),
+            address(0), // No hook contract
             PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
         );
     }
@@ -121,8 +119,7 @@ contract VaultMock is IVaultMainMock, Vault {
             pool,
             tokenConfig,
             PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
-            PoolConfigBits.wrap(0).toPoolConfig().hooks,
-            IHooks(address(0)),
+            address(0), // No hook contract
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
@@ -142,8 +139,7 @@ contract VaultMock is IVaultMainMock, Vault {
             buildTokenConfig(tokens),
             timestamp,
             roleAccounts,
-            PoolConfigBits.wrap(0).toPoolConfig().hooks,
-            IHooks(address(0)),
+            address(0), // No hook contract
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,

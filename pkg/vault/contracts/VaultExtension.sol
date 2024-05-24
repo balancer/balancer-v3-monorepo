@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
 import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -127,8 +129,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 swapFeePercentage;
         uint256 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
-        PoolHookFlags poolHookFlags;
-        IHooks poolHooksContract;
+        address poolHooksContract;
         LiquidityManagement liquidityManagement;
     }
 
@@ -139,8 +140,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
-        PoolHookFlags calldata poolHookFlags,
-        IHooks poolHooksContract,
+        address poolHooksContract,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
         _registerPool(
@@ -150,7 +150,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 swapFeePercentage: swapFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
                 roleAccounts: roleAccounts,
-                poolHookFlags: poolHookFlags,
                 poolHooksContract: poolHooksContract,
                 liquidityManagement: liquidityManagement
             })
@@ -175,28 +174,17 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert PoolAlreadyRegistered(pool);
         }
 
-        if (
-            (params.poolHookFlags.shouldCallBeforeInitialize == true ||
-                params.poolHookFlags.shouldCallAfterInitialize == true ||
-                params.poolHookFlags.shouldCallComputeDynamicSwapFee == true ||
-                params.poolHookFlags.shouldCallBeforeSwap == true ||
-                params.poolHookFlags.shouldCallAfterSwap == true ||
-                params.poolHookFlags.shouldCallBeforeAddLiquidity == true ||
-                params.poolHookFlags.shouldCallAfterAddLiquidity == true ||
-                params.poolHookFlags.shouldCallBeforeRemoveLiquidity == true ||
-                params.poolHookFlags.shouldCallAfterRemoveLiquidity == true) &&
-            address(params.poolHooksContract) == address(0)
-        ) {
-            revert NoHookContract(pool);
-        }
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
 
-        // If a hook address was passed, make sure that hook trusts the pool factory
-        if (address(params.poolHooksContract) != address(0)) {
-            if (params.poolHooksContract.onRegister(msg.sender) != true) {
-                revert HookRegisterFailed(address(params.poolHooksContract), msg.sender);
+        if (params.poolHooksContract != address(0)) {
+            // If a hook address was passed, make sure that hook trusts the pool factory
+            if (IHooks(params.poolHooksContract).onRegister(msg.sender) != true) {
+                revert HookRegisterFailed(params.poolHooksContract, msg.sender);
             }
             // Saves the pool hook in the vault
-            _poolHooks[pool] = params.poolHooksContract;
+            _poolHooks[pool] = IHooks(params.poolHooksContract);
+            // Gets the default poolHookFlags from the hook contract and saves in the pool config
+            config.hooks = IHooks(params.poolHooksContract).getPoolHookFlags();
         }
 
         uint256 numTokens = params.tokenConfig.length;
@@ -260,10 +248,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _assignPoolRoles(pool, params.roleAccounts);
 
         // Store config and mark the pool as registered
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-
         config.isPoolRegistered = true;
-        config.hooks = params.poolHookFlags;
         config.liquidityManagement = params.liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime;
@@ -278,7 +263,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.tokenConfig,
             params.pauseWindowEndTime,
             params.roleAccounts,
-            params.poolHookFlags,
+            config.hooks,
             params.poolHooksContract,
             params.liquidityManagement
         );

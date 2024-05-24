@@ -15,6 +15,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 import { Router } from "../../contracts/Router.sol";
 import { VaultMock } from "../../contracts/test/VaultMock.sol";
 
@@ -44,8 +45,8 @@ contract InitializerTest is BaseVaultTest {
         config.hooks.shouldCallAfterInitialize = false;
         vault.setConfig(address(pool), config);
 
-        poolHooksMock.setFailOnBeforeInitializeHook(true);
-        poolHooksMock.setFailOnAfterInitializeHook(true);
+        PoolHooksMock(poolHooksContract).setFailOnBeforeInitializeHook(true);
+        PoolHooksMock(poolHooksContract).setFailOnAfterInitializeHook(true);
 
         vm.prank(bob);
         router.initialize(
@@ -61,7 +62,7 @@ contract InitializerTest is BaseVaultTest {
     function testOnBeforeInitializeHook() public {
         vm.prank(bob);
         vm.expectCall(
-            address(poolHooksMock),
+            address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onBeforeInitialize.selector,
                 [defaultAmount, defaultAmount].toMemoryArray(),
@@ -79,7 +80,7 @@ contract InitializerTest is BaseVaultTest {
     }
 
     function testOnBeforeInitializeHookRevert() public {
-        poolHooksMock.setFailOnBeforeInitializeHook(true);
+        PoolHooksMock(poolHooksContract).setFailOnBeforeInitializeHook(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeInitializeHookFailed.selector));
         router.initialize(
@@ -95,7 +96,7 @@ contract InitializerTest is BaseVaultTest {
     function testOnAfterInitializeHook() public {
         vm.prank(bob);
         vm.expectCall(
-            address(poolHooksMock),
+            address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onAfterInitialize.selector,
                 [defaultAmount, defaultAmount].toMemoryArray(),
@@ -114,7 +115,7 @@ contract InitializerTest is BaseVaultTest {
     }
 
     function testOnAfterInitializeHookRevert() public {
-        poolHooksMock.setFailOnAfterInitializeHook(true);
+        PoolHooksMock(poolHooksContract).setFailOnAfterInitializeHook(true);
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.AfterInitializeHookFailed.selector));
         router.initialize(
