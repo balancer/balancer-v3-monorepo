@@ -94,7 +94,7 @@ contract HooksTest is BaseVaultTest {
                 })
             )
         );
-        snapStart('swapWithOnBeforeSwapHook');
+        snapStart("swapWithOnBeforeSwapHook");
         router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
         snapEnd();
     }
@@ -147,7 +147,7 @@ contract HooksTest is BaseVaultTest {
             )
         );
 
-        snapStart('swapWithOnAfterSwapHook');
+        snapStart("swapWithOnAfterSwapHook");
         router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
         snapEnd();
     }
@@ -203,7 +203,7 @@ contract HooksTest is BaseVaultTest {
                 bytes("")
             )
         );
-        snapStart('joinWithOnBeforeSwapHook');
+        snapStart("joinWithOnBeforeSwapHook");
         router.addLiquidityUnbalanced(
             address(pool),
             [defaultAmount, defaultAmount].toMemoryArray(),
@@ -265,7 +265,7 @@ contract HooksTest is BaseVaultTest {
             )
         );
         vm.prank(alice);
-        snapStart('exitWithOnBeforeSwapHook');
+        snapStart("exitWithOnBeforeSwapHook");
         router.removeLiquidityProportional(
             address(pool),
             bptAmount,
@@ -309,7 +309,7 @@ contract HooksTest is BaseVaultTest {
                 bytes("")
             )
         );
-        snapStart('joinWithOnAfterSwapHook');
+        snapStart("joinWithOnAfterSwapHook");
         router.addLiquidityUnbalanced(
             address(pool),
             [defaultAmount, defaultAmount].toMemoryArray(),
@@ -371,7 +371,7 @@ contract HooksTest is BaseVaultTest {
         );
 
         vm.prank(alice);
-        snapStart('exitWithOnAfterSwapHook');
+        snapStart("exitWithOnAfterSwapHook");
         router.removeLiquidityProportional(
             address(pool),
             bptAmount,
