@@ -43,7 +43,6 @@ contract WeightedPoolFactory is BasePoolFactory {
         TokenConfig[] memory tokens,
         uint256[] memory normalizedWeights,
         uint256 poolCreatorFeePercentage,
-        address poolCreator,
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
         bytes32 salt

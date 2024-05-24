@@ -28,6 +28,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
 
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
         WeightedPoolFactory factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
+        PoolRoleAccounts memory roleAccounts;
 
         WeightedPool newPool = WeightedPool(
             factory.create(
@@ -36,8 +37,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
                 vault.buildTokenConfig(tokens.asIERC20()),
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 0,
-                address(0),
-                PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+                roleAccounts,
                 DEFAULT_SWAP_FEE,
                 // NOTE: sends a unique salt
                 bytes32(poolCreationNonce++)
