@@ -188,7 +188,7 @@ interface IVaultMainMock {
         );
 
     function forceUnlock() external;
-    
+
     function forceLock() external;
 
     function manualRemoveLiquidity(
