@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -66,7 +66,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         vm.expectCall(
             address(poolHooksMock),
             abi.encodeWithSelector(
-                IPoolHooks.onBeforeSwap.selector,
+                IHooks.onBeforeSwap.selector,
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: _swapAmount,
@@ -116,7 +116,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         vm.expectCall(
             address(poolHooksMock),
             abi.encodeWithSelector(
-                IPoolHooks.onBeforeAddLiquidity.selector,
+                IHooks.onBeforeAddLiquidity.selector,
                 router,
                 AddLiquidityKind.CUSTOM,
                 amountsIn,
@@ -166,7 +166,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         vm.expectCall(
             address(poolHooksMock),
             abi.encodeWithSelector(
-                IPoolHooks.onBeforeRemoveLiquidity.selector,
+                IHooks.onBeforeRemoveLiquidity.selector,
                 router,
                 RemoveLiquidityKind.CUSTOM,
                 bptAmount,

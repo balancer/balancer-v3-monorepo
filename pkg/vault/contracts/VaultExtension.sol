@@ -9,7 +9,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
-import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
@@ -126,7 +126,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
         PoolHookFlags poolHookFlags;
-        IPoolHooks poolHooksContract;
+        IHooks poolHooksContract;
         LiquidityManagement liquidityManagement;
     }
 
@@ -138,7 +138,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         PoolHookFlags calldata poolHookFlags,
-        IPoolHooks poolHooksContract,
+        IHooks poolHooksContract,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
         _registerPool(

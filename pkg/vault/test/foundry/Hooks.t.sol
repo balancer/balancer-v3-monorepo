@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -39,12 +39,23 @@ contract HooksTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
+    // TODO register
+    // - cannot register if hook does not allow factory
+    function testOnRegisterNotAllowedFactory() public {
+
+    }
+
+    // - can register if hook allows factory
+    // - fail to register if hook flag is true but hook contract is address 0
+
+    // dynamic fee
+
     function testOnComputeDynamicSwapFeeHook() public {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksMock),
             abi.encodeWithSelector(
-                IPoolHooks.onComputeDynamicSwapFee.selector,
+                IHooks.onComputeDynamicSwapFee.selector,
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
@@ -76,12 +87,14 @@ contract HooksTest is BaseVaultTest {
         );
     }
 
+    // before swap
+
     function testOnBeforeSwapHook() public {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksMock),
             abi.encodeWithSelector(
-                IPoolHooks.onBeforeSwap.selector,
+                IHooks.onBeforeSwap.selector,
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
@@ -113,6 +126,8 @@ contract HooksTest is BaseVaultTest {
         );
     }
 
+    // after swap
+
     function testOnAfterSwapHook() public {
         setSwapFeePercentage(swapFeePercentage);
         setProtocolSwapFeePercentage(protocolSwapFeePercentage);
@@ -126,8 +141,8 @@ contract HooksTest is BaseVaultTest {
         vm.expectCall(
             address(poolHooksMock),
             abi.encodeWithSelector(
-                IPoolHooks.onAfterSwap.selector,
-                IPoolHooks.AfterSwapParams({
+                IHooks.onAfterSwap.selector,
+                IHooks.AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: usdc,
                     tokenOut: dai,
@@ -187,7 +202,7 @@ contract HooksTest is BaseVaultTest {
         vm.expectCall(
             address(poolHooksMock),
             abi.encodeWithSelector(
-                IPoolHooks.onBeforeAddLiquidity.selector,
+                IHooks.onBeforeAddLiquidity.selector,
                 router,
                 AddLiquidityKind.UNBALANCED,
                 [defaultAmount, defaultAmount].toMemoryArray(),
@@ -246,7 +261,7 @@ contract HooksTest is BaseVaultTest {
         vm.expectCall(
             address(poolHooksMock),
             abi.encodeWithSelector(
-                IPoolHooks.onBeforeRemoveLiquidity.selector,
+                IHooks.onBeforeRemoveLiquidity.selector,
                 router,
                 RemoveLiquidityKind.PROPORTIONAL,
                 bptAmount,
@@ -290,7 +305,7 @@ contract HooksTest is BaseVaultTest {
         vm.expectCall(
             address(poolHooksMock),
             abi.encodeWithSelector(
-                IPoolHooks.onAfterAddLiquidity.selector,
+                IHooks.onAfterAddLiquidity.selector,
                 router,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bptAmount,
@@ -348,7 +363,7 @@ contract HooksTest is BaseVaultTest {
         vm.expectCall(
             address(poolHooksMock),
             abi.encodeWithSelector(
-                IPoolHooks.onAfterRemoveLiquidity.selector,
+                IHooks.onAfterRemoveLiquidity.selector,
                 router,
                 bptAmount,
                 [defaultAmount, defaultAmount].toMemoryArray(),
@@ -366,4 +381,9 @@ contract HooksTest is BaseVaultTest {
             bytes("")
         );
     }
+
+//    // utils
+//    function createPoolWithAnotherFactory() {
+//
+//    }
 }

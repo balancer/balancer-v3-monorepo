@@ -7,7 +7,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { LiquidityManagement, PoolHookFlags, PoolRoleAccounts, TokenConfig } from "./VaultTypes.sol";
-import { IPoolHooks } from "./IPoolHooks.sol";
+import { IHooks } from "./IHooks.sol";
 
 interface IVaultEvents {
     /**
@@ -28,7 +28,7 @@ interface IVaultEvents {
         uint256 pauseWindowEndTime,
         PoolRoleAccounts roleAccounts,
         PoolHookFlags poolHookFlags,
-        IPoolHooks poolHooksContract,
+        IHooks poolHooksContract,
         LiquidityManagement liquidityManagement
     );
 

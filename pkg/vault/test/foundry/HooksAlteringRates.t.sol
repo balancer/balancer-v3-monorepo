@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -118,7 +118,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksMock),
-            abi.encodeWithSelector(IPoolHooks.onAfterInitialize.selector, expectedAmounts, bptAmount, "")
+            abi.encodeWithSelector(IHooks.onAfterInitialize.selector, expectedAmounts, bptAmount, "")
         );
 
         router.initialize(
@@ -158,7 +158,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         vm.expectCall(
             address(poolHooksMock),
             abi.encodeWithSelector(
-                IPoolHooks.onAfterAddLiquidity.selector,
+                IHooks.onAfterAddLiquidity.selector,
                 router,
                 expectedAmountsIn,
                 defaultAmount * 2,

@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
@@ -97,7 +97,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         uint256 swapFeePercentage,
         PoolRoleAccounts memory roleAccounts,
         PoolHookFlags memory poolHookFlags,
-        IPoolHooks poolHooksContract,
+        IHooks poolHooksContract,
         LiquidityManagement memory liquidityManagement
     ) internal {
         getVault().registerPool(
@@ -123,8 +123,8 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     /**
      * @notice A common place to retrieve a default PoolHooksContract. Currently set to an empty contract.
      */
-    function getDefaultPoolHooksContract() public pure returns (IPoolHooks) {
-        return IPoolHooks(address(0));
+    function getDefaultPoolHooksContract() public pure returns (IHooks) {
+        return IHooks(address(0));
     }
 
     /**

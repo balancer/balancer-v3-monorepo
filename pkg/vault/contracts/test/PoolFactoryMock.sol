@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -24,7 +24,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
     function registerTestPool(
         address pool,
         TokenConfig[] memory tokenConfig,
-        IPoolHooks poolHooksContract,
+        IHooks poolHooksContract,
         address poolCreator
     ) external {
         _vault.registerPool(
@@ -49,7 +49,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         uint256 swapFee,
         uint256 pauseWindowDuration,
         PoolRoleAccounts memory roleAccounts,
-        IPoolHooks poolHooksContract
+        IHooks poolHooksContract
     ) external {
         _vault.registerPool(
             pool,
@@ -72,7 +72,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         TokenConfig[] memory tokenConfig,
         PoolRoleAccounts memory roleAccounts,
         PoolHookFlags calldata poolHookFlags,
-        IPoolHooks poolHooksContract,
+        IHooks poolHooksContract,
         LiquidityManagement calldata liquidityManagement
     ) external {
         _vault.registerPool(
@@ -92,7 +92,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
         PoolHookFlags calldata poolHookFlags,
-        IPoolHooks poolHooksContract,
+        IHooks poolHooksContract,
         LiquidityManagement calldata liquidityManagement
     ) external {
         _vault.registerPool(
@@ -114,7 +114,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         uint256 timestamp,
         PoolRoleAccounts memory roleAccounts,
         PoolHookFlags calldata poolHookFlags,
-        IPoolHooks poolHooksContract,
+        IHooks poolHooksContract,
         LiquidityManagement calldata liquidityManagement
     ) external {
         _vault.registerPool(

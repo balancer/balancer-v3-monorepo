@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
-import { IPoolHooks } from "./IPoolHooks.sol";
+import { IHooks } from "./IHooks.sol";
 import { IBasePool } from "./IBasePool.sol";
 import "./VaultTypes.sol";
 
@@ -81,7 +81,7 @@ interface IVaultExtension {
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         PoolHookFlags calldata poolHookFlags,
-        IPoolHooks poolHooksContract,
+        IHooks poolHooksContract,
         LiquidityManagement calldata liquidityManagement
     ) external;
 

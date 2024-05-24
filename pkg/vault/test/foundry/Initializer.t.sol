@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -63,7 +63,7 @@ contract InitializerTest is BaseVaultTest {
         vm.expectCall(
             address(poolHooksMock),
             abi.encodeWithSelector(
-                IPoolHooks.onBeforeInitialize.selector,
+                IHooks.onBeforeInitialize.selector,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bytes("0xff")
             )
@@ -97,7 +97,7 @@ contract InitializerTest is BaseVaultTest {
         vm.expectCall(
             address(poolHooksMock),
             abi.encodeWithSelector(
-                IPoolHooks.onAfterInitialize.selector,
+                IHooks.onAfterInitialize.selector,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 2 * defaultAmount - MIN_BPT,
                 bytes("0xff")

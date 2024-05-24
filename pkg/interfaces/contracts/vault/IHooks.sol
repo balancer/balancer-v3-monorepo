@@ -9,7 +9,7 @@ import { SwapKind, AddLiquidityKind, RemoveLiquidityKind } from "./VaultTypes.so
 import { IBasePool } from "./IBasePool.sol";
 
 /// @notice Interface for pool hooks
-interface IPoolHooks {
+interface IHooks {
     /***************************************************************************
                                    Register
     ***************************************************************************/
