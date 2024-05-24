@@ -105,19 +105,19 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     }
 
     /// @inheritdoc IProtocolFeeCollector
-    function getGlobalProtocolSwapFeePercentage() public view returns (uint256) {
+    function getGlobalProtocolSwapFeePercentage() external view returns (uint256) {
         return _protocolSwapFeePercentage;
     }
 
     /// @inheritdoc IProtocolFeeCollector
-    function getGlobalProtocolYieldFeePercentage() public view returns (uint256) {
+    function getGlobalProtocolYieldFeePercentage() external view returns (uint256) {
         return _protocolYieldFeePercentage;
     }
 
     /// @inheritdoc IProtocolFeeCollector
     function setGlobalProtocolSwapFeePercentage(
         uint256 newProtocolSwapFeePercentage
-    ) external authenticate withValidSwapFee(newProtocolSwapFeePercentage) {
+    ) external withValidSwapFee(newProtocolSwapFeePercentage) authenticate {
         _protocolSwapFeePercentage = newProtocolSwapFeePercentage;
 
         emit GlobalProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
@@ -126,7 +126,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     /// @inheritdoc IProtocolFeeCollector
     function setGlobalProtocolYieldFeePercentage(
         uint256 newProtocolYieldFeePercentage
-    ) external authenticate withValidYieldFee(newProtocolYieldFeePercentage) {
+    ) external withValidYieldFee(newProtocolYieldFeePercentage) authenticate {
         _protocolYieldFeePercentage = newProtocolYieldFeePercentage;
 
         emit GlobalProtocolSwapFeePercentageChanged(newProtocolYieldFeePercentage);
@@ -136,7 +136,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     function setProtocolSwapFeePercentage(
         address pool,
         uint256 newProtocolSwapFeePercentage
-    ) external authenticate withValidSwapFee(newProtocolSwapFeePercentage) withLatestFees(pool) {
+    ) external withValidSwapFee(newProtocolSwapFeePercentage) withLatestFees(pool) authenticate {
         (, uint256 poolCreatorFeePercentage) = getVault().getPoolCreatorInfo(pool);
 
         // Update the aggregate swap fee value in the Vault (PoolConfig).
@@ -153,7 +153,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     function setProtocolYieldFeePercentage(
         address pool,
         uint256 newProtocolYieldFeePercentage
-    ) external authenticate withValidYieldFee(newProtocolYieldFeePercentage) withLatestFees(pool) {
+    ) external withValidYieldFee(newProtocolYieldFeePercentage) withLatestFees(pool) authenticate {
         (, uint256 poolCreatorFeePercentage) = getVault().getPoolCreatorInfo(pool);
 
         // Update the aggregate yield fee value in the Vault (PoolConfig).
@@ -312,8 +312,8 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     /// @inheritdoc IProtocolFeeCollector
     function registerPool(address pool) public onlyVault {
         // Set local storage of the actual percentages for the pool (default to global).
-        _poolProtocolSwapFeePercentages[pool] = getGlobalProtocolSwapFeePercentage();
-        _poolProtocolYieldFeePercentages[pool] = getGlobalProtocolYieldFeePercentage();
+        _poolProtocolSwapFeePercentages[pool] = _protocolSwapFeePercentage;
+        _poolProtocolYieldFeePercentages[pool] = _protocolYieldFeePercentage;
     }
 
     /// @inheritdoc IProtocolFeeCollector

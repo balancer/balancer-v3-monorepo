@@ -61,7 +61,7 @@ interface IVaultAdmin {
     function getPoolTokenRates(address pool) external view returns (uint256[] memory);
 
     /**
-     * @notice Retrieve the pool creator account and fee ratio.
+     * @notice Retrieve the pool creator account and fee percentage.
      * @param pool The pool
      * @return poolCreator The address of the pool creator
      * @return poolCreatorFeePercentage The percentage of net protocol fees allocated to the pool creator
