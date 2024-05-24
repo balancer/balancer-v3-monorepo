@@ -59,15 +59,6 @@ contract HooksTest is BaseVaultTest {
     }
 
     // TODO register
-    function testOnRegisterWithFalseHookFlags() public {
-        // disables all hooks by setting flags to false
-        PoolHookFlags memory poolHookFlags;
-        PoolHooksMock(poolHooksContract).setPoolHookFlags(poolHookFlags);
-
-        // should not fail, since hooks are false
-        _registerAnotherPool();
-    }
-
     function testOnRegisterNotAllowedFactory() public {
         PoolHookFlags memory poolHookFlags;
         // any flag, just to trigger hook onRegister
@@ -77,7 +68,7 @@ contract HooksTest is BaseVaultTest {
         vm.expectRevert(
             abi.encodeWithSelector(
                 IVaultErrors.HookRegisterFailed.selector,
-                address(poolHooksContract),
+                poolHooksContract,
                 address(anotherFactory)
             )
         );

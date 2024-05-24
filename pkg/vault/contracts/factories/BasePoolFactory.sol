@@ -111,18 +111,10 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     }
 
     /**
-     * @notice Convenience function for constructing a PoolHookFlags object.
-     * @dev Users can call this to create a structure with all false arguments, then set the ones they need to true.
+     * @notice A common place to retrieve a default hooks contract. Currently set to an empty contract.
      */
-    function getDefaultPoolHookFlags() public pure returns (PoolHookFlags memory poolHookFlags) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
-    /**
-     * @notice A common place to retrieve a default PoolHooksContract. Currently set to an empty contract.
-     */
-    function getDefaultPoolHooksContract() public pure returns (IHooks) {
-        return IHooks(address(0));
+    function getDefaultPoolHooksContract() public pure returns (address) {
+        return address(0);
     }
 
     /**

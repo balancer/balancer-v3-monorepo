@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -35,7 +34,6 @@ contract StablePoolFactory is BasePoolFactory {
      * @param amplificationParameter The starting Amplification Parameter
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
-     * @param poolHookFlags Flags indicating which hooks the pool supports
      * @param poolHooksContract Contract that implements the hooks for the pool
      * @param salt The salt value that will be passed to create3 deployment
      */
@@ -46,8 +44,7 @@ contract StablePoolFactory is BasePoolFactory {
         uint256 amplificationParameter,
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
-        PoolHookFlags memory poolHookFlags,
-        IHooks poolHooksContract,
+        address poolHooksContract,
         bytes32 salt
     ) external returns (address pool) {
         pool = _create(
@@ -67,7 +64,6 @@ contract StablePoolFactory is BasePoolFactory {
             tokens,
             swapFeePercentage,
             roleAccounts,
-            poolHookFlags,
             poolHooksContract,
             getDefaultLiquidityManagement()
         );

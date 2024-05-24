@@ -71,7 +71,6 @@ describe('StablePool', () => {
       200n,
       [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
       0, // swap fee
-      new Array(9).map(() => false),
       ZERO_ADDRESS,
       TypesConverter.toBytes32(bn(numTokens))
     );

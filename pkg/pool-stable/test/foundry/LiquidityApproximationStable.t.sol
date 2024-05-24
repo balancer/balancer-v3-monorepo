@@ -10,6 +10,7 @@ import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/V
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { PoolConfigBits } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
+import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry/LiquidityApproximation.t.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
@@ -29,7 +30,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
         StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days);
 
         // Allow pools created by `factory` to use poolHooksMock hooks
-        poolHooksContract.allowFactory(address(factory));
+        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
         StablePool newPool = StablePool(
             factory.create(
@@ -39,7 +40,6 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
                 DEFAULT_AMP_FACTOR,
                 PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
                 0, // zero swap fee
-                PoolConfigBits.wrap(0).toPoolConfig().hooks,
                 poolHooksContract,
                 ZERO_BYTES32
             )
