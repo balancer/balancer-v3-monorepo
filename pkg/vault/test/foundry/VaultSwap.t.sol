@@ -476,8 +476,6 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(daiBeforeSwap, dai.balanceOf(address(this)), "DAI balance changed");
     }
 
-    // TODO snap swap with hooks
-
     /// Utils
 
     function assertSwap(function() returns (uint256, uint256) testFunc, SwapKind kind) internal {
