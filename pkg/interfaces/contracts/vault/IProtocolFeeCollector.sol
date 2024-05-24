@@ -39,13 +39,6 @@ interface IProtocolFeeCollector {
     event ProtocolYieldFeePercentageChanged(address indexed pool, uint256 yieldFeePercentage);
 
     /**
-     * @notice Emitted when the pool creator fee percentage is updated.
-     * @param pool The pool whose creator fee will be changed
-     * @param poolCreatorFeePercentage The updated pool creator fee percentage
-     */
-    event PoolCreatorFeePercentageChanged(address indexed pool, uint256 poolCreatorFeePercentage);
-
-    /**
      * @notice Logs the collection of protocol swap fees in a specific token and amount.
      * @dev Note that since charging protocol fees (i.e., distributing tokens between pool and fee balances) occurs
      * in the Vault, but fee collection happens in the ProtocolFeeCollector, the swap fees reported here may encompass
