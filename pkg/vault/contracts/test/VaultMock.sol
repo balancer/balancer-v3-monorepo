@@ -485,4 +485,12 @@ contract VaultMock is IVaultMainMock, Vault {
     {
         return _addLiquidity(poolData, params, maxAmountsInScaled18, vaultState);
     }
+
+    function forceUnlock() public {
+        _isUnlocked().tstore(true);
+    }
+
+    function forceLock() public {
+        _isUnlocked().tstore(false);
+    }
 }

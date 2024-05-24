@@ -180,4 +180,8 @@ interface IVaultMainMock {
             uint256 bptAmountOut,
             bytes memory returnData
         );
+
+    function forceUnlock() external;
+    
+    function forceLock() external;
 }
