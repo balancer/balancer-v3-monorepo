@@ -40,16 +40,12 @@ struct PoolConfig {
     bool isPoolInRecoveryMode;
 }
 
-/// @dev Represents temporary vars used in a swap operation.
-struct SwapVars {
-    // Inline the shared struct fields vs. nesting, trading off verbosity for gas/memory/bytecode savings.
+/// @dev Represents temporary state used in a swap operation.
+struct SwapState {
     uint256 indexIn;
     uint256 indexOut;
     uint256 amountGivenScaled18;
-    uint256 amountCalculatedScaled18;
     uint256 swapFeePercentage;
-    uint256 swapFeeAmountScaled18;
-    uint256 aggregateSwapFeeAmountRaw;
 }
 
 /**
@@ -69,10 +65,12 @@ struct VaultState {
  * @dev Represents the accounts holding certain roles for a given pool. This is passed in on pool registration.
  * @param pauseManager Account empowered to pause/unpause the pool (or 0 to delegate to governance)
  * @param swapFeeManager Account empowered to set static swap fees for a pool (or 0 to delegate to goverance)
+ * @param poolCreator Account empowered to set the pool creator fee percentage
  */
 struct PoolRoleAccounts {
     address pauseManager;
     address swapFeeManager;
+    address poolCreator;
 }
 
 /**
@@ -123,13 +121,6 @@ struct TokenConfig {
     TokenType tokenType;
     IRateProvider rateProvider;
     bool paysYieldFees;
-}
-
-struct PoolFeeConfig {
-    uint256 poolSwapFeePercentage;
-    uint256 protocolSwapFeePercentage;
-    uint256 poolCreatorFeePercentage;
-    address poolCreator;
 }
 
 struct PoolData {

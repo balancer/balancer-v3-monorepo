@@ -27,6 +27,7 @@ import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultStorage } from "./VaultStorage.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
+import { PoolDataLib } from "./lib/PoolDataLib.sol";
 
 /**
  * @dev Storage layout for Vault. This contract has no code except for common utilities in the inheritance chain
@@ -42,6 +43,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
+    using PoolDataLib for PoolData;
 
     /*******************************************************************************
                               Transient Accounting
@@ -261,7 +263,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @dev Packs and sets the raw and live balances of a Pool's tokens to the current values in poolData.balancesRaw
      * and poolData.liveBalances in the same storage slot.
      */
-    function _setPoolBalances(address pool, PoolData memory poolData) internal {
+    function _writePoolBalancesToStorage(address pool, PoolData memory poolData) internal {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < poolData.balancesRaw.length; ++i) {
@@ -297,66 +299,18 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
     }
 
-    function _getPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        mapping(IERC20 => TokenConfig) storage poolTokenConfig = _poolTokenConfig[pool];
-
-        uint256 numTokens = poolTokenBalances.length();
-        poolData.poolConfig = _poolConfig[pool].toPoolConfig();
-
-        poolData.tokenConfig = new TokenConfig[](numTokens);
-        poolData.balancesRaw = new uint256[](numTokens);
-        poolData.balancesLiveScaled18 = new uint256[](numTokens);
-        poolData.decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolData.poolConfig, numTokens);
-        poolData.tokenRates = new uint256[](numTokens);
-        bytes32 packedBalance;
-        IERC20 token;
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            (token, packedBalance) = poolTokenBalances.unchecked_at(i);
-            poolData.tokenConfig[i] = poolTokenConfig[token];
-            _updateTokenRate(poolData, i);
-            _updateRawAndLiveTokenBalancesInPoolData(poolData, packedBalance.getBalanceRaw(), roundingDirection, i);
-        }
+    function _loadPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
+        return PoolDataLib.load(_poolTokenBalances[pool], _poolConfig[pool], _poolTokenConfig[pool], roundingDirection);
     }
 
     /**
-     * @dev Preconditions: tokenConfig must be current in `poolData`. Side effects: mutates tokenRates in `poolData`.
+     * @dev Computes the pending yield fees for both the protocol and creator, without changing any state.
+     * No side-effects
      */
-    function _updateTokenRatesInPoolData(PoolData memory poolData) internal view {
-        uint256 numTokens = poolData.tokenConfig.length;
-
-        // Initialize arrays to store tokens based on the number of tokens in the pool.
-        poolData.tokenRates = new uint256[](numTokens);
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            _updateTokenRate(poolData, i);
-        }
-    }
-
-    function _updateTokenRate(PoolData memory poolData, uint256 index) internal view {
-        TokenType tokenType = poolData.tokenConfig[index].tokenType;
-
-        if (tokenType == TokenType.STANDARD) {
-            poolData.tokenRates[index] = FixedPoint.ONE;
-        } else if (tokenType == TokenType.WITH_RATE) {
-            poolData.tokenRates[index] = poolData.tokenConfig[index].rateProvider.getRate();
-        } else {
-            revert InvalidTokenConfiguration();
-        }
-    }
-
-    /**
-     * @dev Get poolData and compute protocol yield fees due, without changing any state.
-     * Returns poolData with both raw and live balances updated to reflect the fees.
-     */
-    function _getPoolDataAndYieldFees(
+    function _computePendingYieldFees(
         address pool,
-        Rounding roundingDirection
-    ) internal view returns (PoolData memory poolData, uint256[] memory aggregateYieldFeeAmountsRaw) {
-        // Initialize poolData with base information for subsequent calculations.
-        poolData = _getPoolData(pool, roundingDirection);
-
+        PoolData memory poolData
+    ) internal view returns (uint256[] memory aggregateYieldFeeAmountsRaw) {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
         uint256 numTokens = poolBalances.length();
 
@@ -380,24 +334,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
             // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
             if (poolSubjectToYieldFees && tokenSubjectToYieldFees) {
-                uint256 aggregateYieldFeeAmountRaw = _computeYieldFeesDue(
+                aggregateYieldFeeAmountsRaw[i] = _computeYieldFeesDue(
                     poolData,
                     poolBalances.unchecked_valueAt(i).getBalanceDerived(),
                     i,
                     poolData.poolConfig.aggregateProtocolYieldFeePercentage
                 );
-
-                if (aggregateYieldFeeAmountRaw > 0) {
-                    aggregateYieldFeeAmountsRaw[i] = aggregateYieldFeeAmountRaw;
-
-                    // Adjust raw and live balances.
-                    _updateRawAndLiveTokenBalancesInPoolData(
-                        poolData,
-                        poolData.balancesRaw[i] - aggregateYieldFeeAmountsRaw[i],
-                        roundingDirection,
-                        i
-                    );
-                }
             }
         }
     }
@@ -406,19 +348,28 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
      * This function modifies protocol fees and balance storage. Since it modifies storage and makes external
      * calls, it must be nonReentrant.
+     * Side effects: updates `_protocolFees`, `_poolCreatorFees` and _poolTokenBalances storage (and emits events).
      */
-    function _computePoolDataUpdatingBalancesAndFees(
+    function _loadPoolDataUpdatingBalancesAndFees(
         address pool,
         Rounding roundingDirection
     ) internal nonReentrant returns (PoolData memory poolData) {
-        uint256[] memory aggregateYieldFeeAmountsRaw;
+        // Initialize poolData with base information for subsequent calculations.
+        poolData = _loadPoolData(pool, roundingDirection);
 
-        (poolData, aggregateYieldFeeAmountsRaw) = _getPoolDataAndYieldFees(pool, roundingDirection);
+        uint256[] memory aggregateYieldFeeAmountsRaw = _computePendingYieldFees(pool, poolData);
+
         uint256 numTokens = aggregateYieldFeeAmountsRaw.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             if (aggregateYieldFeeAmountsRaw[i] > 0) {
                 IERC20 token = poolData.tokenConfig[i].token;
+
+                poolData.updateRawAndLiveBalance(
+                    i,
+                    poolData.balancesRaw[i] - aggregateYieldFeeAmountsRaw[i],
+                    roundingDirection
+                );
 
                 // Both Swap and Yield fees are stored together in a PackedTokenBalance.
                 // We have designated "Derived" the derived half for Yield fee storage.
@@ -429,8 +380,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             }
         }
 
-        // Update raw and last live pool balances, as computed by `_getPoolDataAndYieldFees`
-        _setPoolBalances(pool, poolData);
+        // Update raw and last live pool balances, as computed by `_loadPoolDataAndYieldFees`
+        _writePoolBalancesToStorage(pool, poolData);
     }
 
     function _computeYieldFeesDue(
@@ -472,7 +423,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         uint256 newRawBalance,
         Rounding roundingDirection,
         uint256 tokenIndex
-    ) internal pure {
+    ) internal pure returns (uint256) {
         poolData.balancesRaw[tokenIndex] = newRawBalance;
 
         function(uint256, uint256, uint256) internal pure returns (uint256) _upOrDown = roundingDirection ==
@@ -485,6 +436,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             poolData.decimalScalingFactors[tokenIndex],
             poolData.tokenRates[tokenIndex]
         );
+
+        return _upOrDown(newRawBalance, poolData.decimalScalingFactors[tokenIndex], poolData.tokenRates[tokenIndex]);
     }
 
     function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
@@ -504,6 +457,22 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         _poolConfig[pool] = config.fromPoolConfig();
 
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
+    }
+
+    function _setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) internal virtual {
+        if (poolCreatorFeePercentage > FixedPoint.ONE) {
+            revert PoolCreatorFeePercentageTooHigh();
+        }
+
+        _poolCreatorFeePercentages[pool] = poolCreatorFeePercentage;
+
+        // Need to update aggregate percentages.
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        (config.aggregateProtocolSwapFeePercentage, config.aggregateProtocolYieldFeePercentage) = _protocolFeeCollector
+            .computeAggregatePercentages(pool, poolCreatorFeePercentage);
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
     }
 
     /*******************************************************************************

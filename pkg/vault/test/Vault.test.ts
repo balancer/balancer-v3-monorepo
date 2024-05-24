@@ -141,8 +141,10 @@ describe('Vault', function () {
         pool: poolBAddress,
         factory: await vault.getPoolFactoryMock(),
         tokenConfig,
+        swapFeePercentage: 0, // pool and creator fees
+        poolCreatorFeePercentage: 0,
         pauseWindowEndTime: pauseWindowEndTime.toString(),
-        roleAccounts: [ANY_ADDRESS, ZERO_ADDRESS],
+        roleAccounts: [ANY_ADDRESS, ZERO_ADDRESS, ANY_ADDRESS],
         poolHooks: [false, false, false, false, false, false, false, false, false],
         liquidityManagement: [false, true, true],
       };
@@ -150,11 +152,14 @@ describe('Vault', function () {
       const roleAccounts: PoolRoleAccountsStruct = {
         pauseManager: ANY_ADDRESS,
         swapFeeManager: ZERO_ADDRESS,
+        poolCreator: ANY_ADDRESS,
       };
 
       // Use expectEvent here to prevent errors with structs of arrays with hardhat matchers.
       const tx = await vault.manualRegisterPoolAtTimestamp(poolB, poolBTokens, pauseWindowEndTime, roleAccounts);
-      expectEvent.inReceipt(await tx.wait(), 'PoolRegistered', expectedArgs);
+      const receipt = await tx.wait();
+
+      expectEvent.inReceipt(receipt, 'PoolRegistered', expectedArgs);
     });
 
     it('registering a pool with a swap fee emits an event', async () => {

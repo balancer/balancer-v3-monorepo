@@ -29,7 +29,15 @@ import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
 import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
+import { PoolDataLib } from "../lib/PoolDataLib.sol";
 import { BufferPackedTokenBalance } from "../lib/BufferPackedBalance.sol";
+
+struct SwapInternalStateLocals {
+    SwapParams params;
+    SwapState swapState;
+    PoolData poolData;
+    VaultState vaultState;
+}
 
 contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -39,6 +47,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using VaultStateLib for VaultState;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
+    using PoolDataLib for PoolData;
     using BufferPackedTokenBalance for bytes32;
 
     PoolFactoryMock private immutable _poolFactoryMock;
@@ -80,7 +89,7 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolFactoryMock.registerPool(
             pool,
             buildTokenConfig(tokens),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -113,7 +122,7 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolFactoryMock.registerPool(
             pool,
             tokenConfig,
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0) }),
+            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -219,7 +228,7 @@ contract VaultMock is IVaultMainMock, Vault {
             PoolConfig memory poolConfig
         )
     {
-        PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
         return (poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors, poolData.poolConfig);
     }
 
@@ -298,7 +307,7 @@ contract VaultMock is IVaultMainMock, Vault {
         address pool,
         Rounding roundingDirection
     ) external returns (PoolData memory) {
-        return _computePoolDataUpdatingBalancesAndFees(pool, roundingDirection);
+        return _loadPoolDataUpdatingBalancesAndFees(pool, roundingDirection);
     }
 
     function updateLiveTokenBalanceInPoolData(
@@ -334,7 +343,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function getCurrentLiveBalances(address pool) external view returns (uint256[] memory currentLiveBalances) {
-        PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
 
         return poolData.balancesLiveScaled18;
     }
@@ -386,22 +395,23 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualInternalSwap(
         SwapParams memory params,
-        SwapVars memory vars,
+        SwapState memory state,
         PoolData memory poolData
     )
         external
         returns (
-            uint256 amountCalculated,
+            uint256 amountCalculatedRaw,
+            uint256 amountCalculatedScaled18,
             uint256 amountIn,
             uint256 amountOut,
             SwapParams memory,
-            SwapVars memory,
+            SwapState memory,
             PoolData memory
         )
     {
-        (amountCalculated, amountIn, amountOut) = _swap(params, vars, poolData);
+        (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData);
 
-        return (amountCalculated, amountIn, amountOut, params, vars, poolData);
+        return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut, params, state, poolData);
     }
 
     // Don't want to make `getProtocolSwapFees` public just for tests.
@@ -436,10 +446,10 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualBuildPoolSwapParams(
         SwapParams memory params,
-        SwapVars memory vars,
+        SwapState memory state,
         PoolData memory poolData
     ) external view returns (IBasePool.PoolSwapParams memory) {
-        return _buildPoolSwapParams(params, vars, poolData);
+        return _buildPoolSwapParams(params, state, poolData);
     }
 
     function manualComputeAndChargeProtocolSwapFees(
@@ -448,7 +458,7 @@ contract VaultMock is IVaultMainMock, Vault {
         address pool,
         IERC20 token,
         uint256 index
-    ) external returns (uint256 aggregateSwapFeeAmountRaw) {
+    ) external returns (uint256 totalFeesRaw) {
         return _computeAndChargeProtocolSwapFees(poolData, swapFeeAmountScaled18, pool, token, index);
     }
 
@@ -457,7 +467,7 @@ contract VaultMock is IVaultMainMock, Vault {
         PoolData memory poolData,
         Rounding roundingDirection
     ) external view returns (PoolData memory) {
-        _updatePoolDataLiveBalancesAndRates(pool, poolData, roundingDirection);
+        poolData.reloadBalancesAndRates(_poolTokenBalances[pool], roundingDirection);
 
         return poolData;
     }

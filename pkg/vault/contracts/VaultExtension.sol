@@ -31,12 +31,14 @@ import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzepp
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
+import { PoolDataLib } from "./lib/PoolDataLib.sol";
 
 /**
  * @dev Bytecode extension for Vault.
@@ -61,6 +63,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
+    using PoolDataLib for PoolData;
 
     IVault private immutable _vault;
     IVaultAdmin private immutable _vaultAdmin;
@@ -122,7 +125,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
-        PoolFeeConfig feeConfig;
+        uint256 swapFeePercentage;
+        uint256 poolCreatorFeePercentage;
         uint256 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
         PoolHooks poolHooks;
@@ -133,7 +137,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function registerPool(
         address pool,
         TokenConfig[] memory tokenConfig,
-        PoolFeeConfig memory feeConfig,
+        uint256 swapFeePercentage,
+        uint256 poolCreatorFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
@@ -143,7 +148,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             pool,
             PoolRegistrationParams({
                 tokenConfig: tokenConfig,
-                feeConfig: feeConfig,
+                swapFeePercentage: swapFeePercentage,
+                poolCreatorFeePercentage: poolCreatorFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
                 roleAccounts: roleAccounts,
                 poolHooks: poolHooks,
@@ -230,6 +236,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Make pool role assignments. A zero address means default to the authorizer.
         _assignPoolRoles(pool, params.roleAccounts);
 
+        if (_poolRoleAccounts[pool].poolCreator == address(0) && params.poolCreatorFeePercentage > 0) {
+            revert InvalidFeeConfiguration();
+        }
+
         // Store config and mark the pool as registered
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
 
@@ -238,18 +248,20 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         config.liquidityManagement = params.liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime;
-        (config.aggregateProtocolSwapFeePercentage, config.aggregateProtocolYieldFeePercentage) = _protocolFeeCollector
-            .registerPoolFeeConfig(pool, params.feeConfig);
+        // Initialize the pool-specific protocol fee values to the current global defaults.
+        _protocolFeeCollector.registerPool(pool);
         _poolConfig[pool] = config.fromPoolConfig();
 
-        _setStaticSwapFeePercentage(pool, params.feeConfig.poolSwapFeePercentage);
+        _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
+        _setPoolCreatorFeePercentage(pool, params.poolCreatorFeePercentage);
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
         emit PoolRegistered(
             pool,
             msg.sender,
             params.tokenConfig,
-            params.feeConfig,
+            params.swapFeePercentage,
+            params.poolCreatorFeePercentage,
             params.pauseWindowEndTime,
             params.roleAccounts,
             params.poolHooks,
@@ -280,6 +292,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 onlyOwner: true
             });
         }
+
+        if (roleAccounts.poolCreator != address(0)) {
+            bytes32 poolCreatorFeeAction = vaultAdmin.getActionId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
+
+            roleAssignments[poolCreatorFeeAction] = PoolFunctionPermission({
+                account: roleAccounts.poolCreator,
+                onlyOwner: true
+            });
+        }
     }
 
     /// @inheritdoc IVaultExtension
@@ -293,7 +314,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     ) external onlyWhenUnlocked withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
         _ensureUnpausedAndGetVaultState(pool);
 
-        PoolData memory poolData = _computePoolDataUpdatingBalancesAndFees(pool, Rounding.ROUND_DOWN);
+        // Balances are zero until after initialize is callled, so there is no need to charge pending yield fee here.
+        PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
 
         if (poolData.poolConfig.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);
@@ -315,7 +337,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
 
             // The before hook is reentrant, and could have changed token rates.
-            _updateTokenRatesInPoolData(poolData);
+            // Updating balances here is unnecessary since they're 0, but we do not special case before init
+            // for the sake of bytecode size.
+            poolData.reloadBalancesAndRates(_poolTokenBalances[pool], Rounding.ROUND_DOWN);
 
             // Also update exactAmountsInScaled18, in case the underlying rates changed.
             exactAmountsInScaled18 = exactAmountsIn.copyToScaled18ApplyRateRoundDownArray(
@@ -418,7 +442,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         withRegisteredPool(pool)
         returns (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors)
     {
-        PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
         return (poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors);
     }
 

@@ -161,6 +161,12 @@ interface IVaultErrors {
     /// @dev Error raised when the sum of the parts (aggregate protocol fee) is greater than the whole (swap fee).
     error ProtocolFeesExceedSwapFee();
 
+    /// @dev Error raised when the pool creator fee percentage exceeds the maximum allowed value.
+    error PoolCreatorFeePercentageTooHigh();
+
+    /// @dev The fee percentages are inconsistent (e.g., there is a creator fee, with no creator).
+    error InvalidFeeConfiguration();
+
     /**
      * @dev  Error raised when the swap fee percentage is less than the minimum allowed value.
      * The Vault itself does not impose a universal minimum. Rather, it asks each pool whether

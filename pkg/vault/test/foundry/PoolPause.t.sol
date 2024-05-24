@@ -36,15 +36,9 @@ contract PoolPauseTest is BaseVaultTest {
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
 
-        PoolRoleAccounts memory defaultRoleAccounts = PoolRoleAccounts({
-            pauseManager: address(0),
-            swapFeeManager: address(0)
-        });
-
-        PoolRoleAccounts memory adminRoleAccounts = PoolRoleAccounts({
-            pauseManager: admin,
-            swapFeeManager: address(0)
-        });
+        PoolRoleAccounts memory defaultRoleAccounts;
+        PoolRoleAccounts memory adminRoleAccounts;
+        adminRoleAccounts.pauseManager = admin;
 
         pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 

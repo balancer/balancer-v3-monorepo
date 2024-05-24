@@ -15,7 +15,8 @@ interface IVaultEvents {
      * @param pool The pool being registered
      * @param factory The factory creating the pool
      * @param tokenConfig The pool's tokens
-     * @param feeConfig The fees associated with this pool (swap, protocol, creator)
+     * @param swapFeePercentage The static swap fee of the pool
+     * @param poolCreatorFeePercentage The pool creator fee percentage of the pool
      * @param pauseWindowEndTime The pool's pause window end time
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHooks Flags indicating which hooks the pool supports
@@ -25,7 +26,8 @@ interface IVaultEvents {
         address indexed pool,
         address indexed factory,
         TokenConfig[] tokenConfig,
-        PoolFeeConfig feeConfig,
+        uint256 swapFeePercentage,
+        uint256 poolCreatorFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts roleAccounts,
         PoolHooks poolHooks,
@@ -114,6 +116,12 @@ interface IVaultEvents {
      * @param swapFeePercentage The new swap fee percentage for the pool
      */
     event SwapFeePercentageChanged(address indexed pool, uint256 swapFeePercentage);
+
+    /**
+     * @notice Emitted when the pool creator fee percentage of a pool is updated.
+     * @param poolCreatorFeePercentage The new pool creator fee percentage for the pool
+     */
+    event PoolCreatorFeePercentageChanged(address indexed pool, uint256 poolCreatorFeePercentage);
 
     /**
      * @dev Recovery mode has been enabled or disabled for a pool.

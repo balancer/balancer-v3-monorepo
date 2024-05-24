@@ -42,7 +42,6 @@ contract StablePoolFactory is BasePoolFactory {
         TokenConfig[] memory tokens,
         uint256 amplificationParameter,
         uint256 poolCreatorFeePercentage,
-        address poolCreator,
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
         bytes32 salt
@@ -62,12 +61,8 @@ contract StablePoolFactory is BasePoolFactory {
         _registerPoolWithVault(
             pool,
             tokens,
-            PoolFeeConfig({
-                poolSwapFeePercentage: swapFeePercentage,
-                protocolSwapFeePercentage: getVault().getProtocolFeeCollector().getGlobalProtocolSwapFeePercentage(),
-                poolCreatorFeePercentage: poolCreatorFeePercentage,
-                poolCreator: poolCreator
-            }),
+            swapFeePercentage,
+            poolCreatorFeePercentage,
             roleAccounts,
             getDefaultPoolHooks(),
             getDefaultLiquidityManagement()

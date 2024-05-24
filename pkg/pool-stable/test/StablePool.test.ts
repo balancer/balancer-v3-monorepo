@@ -70,8 +70,7 @@ describe('StablePool', () => {
       tokenConfig,
       200n,
       0,
-      ZERO_ADDRESS,
-      [ZERO_ADDRESS, ZERO_ADDRESS],
+      [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
       0, // swap fee
       TypesConverter.toBytes32(bn(numTokens))
     );

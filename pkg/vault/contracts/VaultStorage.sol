@@ -85,6 +85,9 @@ contract VaultStorage {
     // It's arbitrary which is which: we define raw=swap; derived=yield
     mapping(address => mapping(IERC20 => bytes32)) internal _protocolFees;
 
+    // Pool-specific creator fee percentage.
+    mapping(address => uint256) internal _poolCreatorFeePercentages;
+
     /**
      * @dev Represents the total reserve of each ERC20 token. It should be always equal to `token.balanceOf(vault)`,
      * except during `unlock`.
