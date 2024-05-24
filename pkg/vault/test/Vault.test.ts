@@ -141,8 +141,7 @@ describe('Vault', function () {
         pool: poolBAddress,
         factory: await vault.getPoolFactoryMock(),
         tokenConfig,
-        swapFeePercentage: 0, // pool and creator fees
-        poolCreatorFeePercentage: 0,
+        swapFeePercentage: 0,
         pauseWindowEndTime: pauseWindowEndTime.toString(),
         roleAccounts: [ANY_ADDRESS, ZERO_ADDRESS, ANY_ADDRESS],
         poolHooks: [false, false, false, false, false, false, false, false, false],

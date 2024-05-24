@@ -67,7 +67,6 @@ interface IVaultExtension {
      * @param pool The address of the pool being registered
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param swapFeePercentage The initial static swap fee percentage of the pool
-     * @param poolCreatorFeePercentage The initial pool creator fee percentage, if there is a pool creator role
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHooks Flags indicating which hooks the pool supports
@@ -77,7 +76,6 @@ interface IVaultExtension {
         address pool,
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
-        uint256 poolCreatorFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         PoolHooks calldata poolHooks,
@@ -330,6 +328,23 @@ interface IVaultExtension {
      * @return result Resulting data from the call
      */
     function quote(bytes calldata data) external payable returns (bytes memory result);
+
+    /**
+     * @notice Performs a callback on msg.sender with arguments provided in `data`.
+     * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
+     * anything else will revert.
+     *
+     * Allows querying any operation on the Vault that has the `withLocker` modifier.
+     *
+     * Allows the external calling of a function via the Vault contract to
+     * access Vault's functions guarded by `withLocker`.
+     * `transient` modifier ensuring balances changes within the Vault are settled.
+     *
+     * This call always reverts, returning the result in the revert reason.
+     *
+     * @param data Contains function signature and args to be passed to the msg.sender
+     */
+    function quoteAndRevert(bytes calldata data) external payable;
 
     /**
      * @notice Checks if the queries enabled on the Vault.

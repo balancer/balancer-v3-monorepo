@@ -36,28 +36,27 @@ contract WeightedPool8020Factory is BasePoolFactory {
     function create(
         TokenConfig memory highWeightTokenConfig,
         TokenConfig memory lowWeightTokenConfig,
-        uint256 poolCreatorFeePercentage,
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage
     ) external returns (address pool) {
+        if (roleAccounts.poolCreator != address(0)) {
+            revert StandardPoolWithCreator();
+        }
+
         IERC20 highWeightToken = highWeightTokenConfig.token;
         IERC20 lowWeightToken = lowWeightTokenConfig.token;
 
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         uint256[] memory weights = new uint256[](2);
 
-        {
-            // Tokens must be sorted.
-            (uint256 highWeightTokenIdx, uint256 lowWeightTokenIdx) = highWeightToken > lowWeightToken
-                ? (1, 0)
-                : (0, 1);
+        // Tokens must be sorted.
+        (uint256 highWeightTokenIdx, uint256 lowWeightTokenIdx) = highWeightToken > lowWeightToken ? (1, 0) : (0, 1);
 
-            weights[highWeightTokenIdx] = _EIGHTY;
-            weights[lowWeightTokenIdx] = _TWENTY;
+        weights[highWeightTokenIdx] = _EIGHTY;
+        weights[lowWeightTokenIdx] = _TWENTY;
 
-            tokenConfig[highWeightTokenIdx] = highWeightTokenConfig;
-            tokenConfig[lowWeightTokenIdx] = lowWeightTokenConfig;
-        }
+        tokenConfig[highWeightTokenIdx] = highWeightTokenConfig;
+        tokenConfig[lowWeightTokenIdx] = lowWeightTokenConfig;
 
         string memory highWeightTokenSymbol = IERC20Metadata(address(highWeightToken)).symbol();
         string memory lowWeightTokenSymbol = IERC20Metadata(address(lowWeightToken)).symbol();
@@ -79,7 +78,6 @@ contract WeightedPool8020Factory is BasePoolFactory {
             pool,
             tokenConfig,
             swapFeePercentage,
-            poolCreatorFeePercentage,
             roleAccounts,
             getDefaultPoolHooks(),
             getDefaultLiquidityManagement()

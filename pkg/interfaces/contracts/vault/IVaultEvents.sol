@@ -16,7 +16,6 @@ interface IVaultEvents {
      * @param factory The factory creating the pool
      * @param tokenConfig The pool's tokens
      * @param swapFeePercentage The static swap fee of the pool
-     * @param poolCreatorFeePercentage The pool creator fee percentage of the pool
      * @param pauseWindowEndTime The pool's pause window end time
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHooks Flags indicating which hooks the pool supports
@@ -27,7 +26,6 @@ interface IVaultEvents {
         address indexed factory,
         TokenConfig[] tokenConfig,
         uint256 swapFeePercentage,
-        uint256 poolCreatorFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts roleAccounts,
         PoolHooks poolHooks,

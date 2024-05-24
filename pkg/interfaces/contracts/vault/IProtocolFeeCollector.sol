@@ -112,14 +112,6 @@ interface IProtocolFeeCollector {
     ) external view returns (uint256 aggregateFeePercentage);
 
     /**
-     * @notice Add pool-specific entries to the protocol swap and yield percentages.
-     * @dev It will initialize the pool to the global protocol fee percentage values. `computeAggregatePercentages`
-     * should be called after registration, to get the aggregate percentages for the PoolConfig.
-     * @param pool The pool being registered
-     */
-    function registerPool(address pool) external;
-
-    /**
      * @notice Compute and return the aggregate percentage.
      * @dev This can be called after initialization (e.g., when the pool creator fee is updated), and uses the existing
      * protocol fee percentages for the pool.
@@ -132,7 +124,45 @@ interface IProtocolFeeCollector {
     function computeAggregatePercentages(
         address pool,
         uint256 poolCreatorFeePercentage
-    ) external view returns (uint256, uint256);
+    ) external view returns (uint256 aggregateProtocolSwapFeePercentage, uint256 aggregateProtocolYieldFeePercentage);
+
+    /**
+     * @notice Returns the collected protocol fee amount of each pool token.
+     * @dev Includes both swap and yield protocol fees. Since this forces fee collection, this all might be very
+     * expensive if there are uncollected or aggregated fees.
+     *
+     * @param pool The pool on which fees were collected
+     * @param feeAmounts The amount that can be withdrawn; array corresponds to the token array
+     */
+    function getCollectedProtocolFeeAmounts(address pool) external returns (uint256[] memory feeAmounts);
+
+    /**
+     * @notice Returns the collected pool creator fee amount of each pool token.
+     * @dev Includes both swap and yield pool creator fees. Since this forces fee collection, this all might be very
+     * expensive if there are uncollected or aggregated fees.
+     *
+     * @param pool The pool on which fees were collected
+     * @param feeAmounts The amount that can be withdrawn; array corresponds to the token array
+     */
+    function getCollectedPoolCreatorFeeAmounts(address pool) external returns (uint256[] memory feeAmounts);
+
+    /***************************************************************************
+                                Permissioned Functions
+    ***************************************************************************/
+
+    /**
+     * @notice Add pool-specific entries to the protocol swap and yield percentages.
+     * @dev This must be called from the Vault during pool registration. It will initialize the pool to the global
+     * protocol fee percentage values, and return the initial aggregate protocol fee percentages, based on an
+     * initial pool creator fee of 0.
+     *
+     * @param pool The pool being registered
+     * @return aggregateProtocolSwapFeePercentage The initial aggregate protocol swap fee percentage
+     * @return aggregateProtocolYieldFeePercentage The initial aggregate protocol yield fee percentage
+     */
+    function registerPool(
+        address pool
+    ) external returns (uint256 aggregateProtocolSwapFeePercentage, uint256 aggregateProtocolYieldFeePercentage);
 
     /**
      * @notice Called by the Vault when protocol swap fees are collected.
@@ -157,28 +187,6 @@ interface IProtocolFeeCollector {
      * @param amount The amount of the token collected in fees
      */
     function receiveProtocolYieldFees(address pool, IERC20 token, uint256 amount) external;
-
-    /**
-     * @notice Returns the collected protocol fee amount of each pool token.
-     * @dev Includes both swap and yield protocol fees. Since this forces fee collection, this all might be very
-     * expensive if there are uncollected or aggregated fees.
-     *
-     * @param pool The pool on which fees were collected
-     * @param feeAmounts The amount that can be withdrawn; array corresponds to the token array
-     */
-    function getCollectedProtocolFeeAmounts(address pool) external returns (uint256[] memory feeAmounts);
-
-    /**
-     * @notice Returns the collected pool creator fee amount of each pool token.
-     * @dev Includes both swap and yield pool creator fees. Since this forces fee collection, this all might be very
-     * expensive if there are uncollected or aggregated fees.
-     *
-     * @param pool The pool on which fees were collected
-     * @param feeAmounts The amount that can be withdrawn; array corresponds to the token array
-     */
-    function getCollectedPoolCreatorFeeAmounts(address pool) external returns (uint256[] memory feeAmounts);
-
-    // Permissioned functions
 
     /**
      * @notice Set the global protocol swap fee percentage, used by standard pools.

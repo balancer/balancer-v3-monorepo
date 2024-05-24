@@ -42,11 +42,14 @@ contract WeightedPoolFactory is BasePoolFactory {
         string memory symbol,
         TokenConfig[] memory tokens,
         uint256[] memory normalizedWeights,
-        uint256 poolCreatorFeePercentage,
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
         bytes32 salt
     ) external returns (address pool) {
+        if (roleAccounts.poolCreator != address(0)) {
+            revert StandardPoolWithCreator();
+        }
+
         pool = _create(
             abi.encode(
                 WeightedPool.NewPoolParams({
@@ -64,7 +67,6 @@ contract WeightedPoolFactory is BasePoolFactory {
             pool,
             tokens,
             swapFeePercentage,
-            poolCreatorFeePercentage,
             roleAccounts,
             getDefaultPoolHooks(),
             getDefaultLiquidityManagement()

@@ -291,9 +291,21 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
         _ensureUnpausedAndGetVaultState(pool);
 
+        if (poolCreatorFeePercentage > FixedPoint.ONE) {
+            revert PoolCreatorFeePercentageTooHigh();
+        }
+
         collectProtocolFees(pool);
 
-        _setPoolCreatorFeePercentage(pool, poolCreatorFeePercentage);
+        _poolCreatorFeePercentages[pool] = poolCreatorFeePercentage;
+
+        // Need to update aggregate percentages.
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        (config.aggregateProtocolSwapFeePercentage, config.aggregateProtocolYieldFeePercentage) = _protocolFeeCollector
+            .computeAggregatePercentages(pool, poolCreatorFeePercentage);
+        _poolConfig[pool] = config.fromPoolConfig();
+
+        emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
