@@ -39,7 +39,7 @@ interface IVaultErrors {
      * @param poolHookContract Address of the hook contract that rejected the factory
      * @param poolFactory Address of the rejected pool factory
      */
-    error PoolHookRejectedFactory(address poolHookContract, address poolFactory);
+    error HookRegisterFailed(address poolHookContract, address poolFactory);
 
     /**
      * @dev At least one hook flag is true, but a hook contract was not informed.
