@@ -239,15 +239,16 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
 
     /// @inheritdoc IProtocolFeeCollector
     function registerPool(
-        address pool
+        address pool,
+        bool protocolFeeExempt
     )
         public
         onlyVault
         returns (uint256 aggregateProtocolSwapFeePercentage, uint256 aggregateProtocolYieldFeePercentage)
     {
         // Set local storage of the actual percentages for the pool (default to global).
-        aggregateProtocolSwapFeePercentage = _protocolSwapFeePercentage;
-        aggregateProtocolYieldFeePercentage = _protocolYieldFeePercentage;
+        aggregateProtocolSwapFeePercentage = protocolFeeExempt ? 0 : _protocolSwapFeePercentage;
+        aggregateProtocolYieldFeePercentage = protocolFeeExempt ? 0 : _protocolYieldFeePercentage;
 
         _poolProtocolSwapFeePercentages[pool] = aggregateProtocolSwapFeePercentage;
         _poolProtocolYieldFeePercentages[pool] = aggregateProtocolYieldFeePercentage;
