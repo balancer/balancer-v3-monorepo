@@ -128,23 +128,48 @@ interface IProtocolFeeCollector {
 
     /**
      * @notice Returns the collected protocol fee amount of each pool token.
-     * @dev Includes both swap and yield protocol fees. Since this forces fee collection, this all might be very
-     * expensive if there are uncollected or aggregated fees.
+     * @dev Includes both swap and yield protocol fees. Unless `collectProtocolFees` is called in the same transaction,
+     * there may be uncollected fees left in the Vault. Amounts include both swap and yield fees.
      *
      * @param pool The pool on which fees were collected
-     * @param feeAmounts The amount that can be withdrawn; array corresponds to the token array
+     * @param feeAmounts The total amounts that have been collected; array corresponds to the token array
      */
-    function getCollectedProtocolFeeAmounts(address pool) external returns (uint256[] memory feeAmounts);
+    function getTotalCollectedProtocolFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
 
     /**
-     * @notice Returns the collected pool creator fee amount of each pool token.
-     * @dev Includes both swap and yield pool creator fees. Since this forces fee collection, this all might be very
-     * expensive if there are uncollected or aggregated fees.
+     * @notice Returns the amount of each pool token allocated to the protocol for withdrawal.
+     * @dev Includes both swap and yield fees. Unless `collectProtocolFees` and `allocateProtocolFees` are called in
+     * the same transaction, there might be uncollected fees left in the Vault, or collected fees in this contract
+     * that have not yet been allocated to the protocol.
      *
      * @param pool The pool on which fees were collected
-     * @param feeAmounts The amount that can be withdrawn; array corresponds to the token array
+     * @param feeAmounts The total amounts of each pool token that are available for withdrawal by governance
      */
-    function getCollectedPoolCreatorFeeAmounts(address pool) external returns (uint256[] memory feeAmounts);
+    function getTotalProtocolFeeAmountsToWithdraw(address pool) external view returns (uint256[] memory feeAmounts);
+
+    /**
+     * @notice Returns the amount of each pool token allocated to the pool creator for withdrawal.
+     * @dev Includes both swap and yield fees. Unless `collectProtocolFees` and `allocateProtocolFees` are called in
+     * the same transaction, there might be uncollected fees left in the Vault, or collected fees in this contract
+     * that have not yet been allocated to pool creator.
+     *
+     * @param pool The pool on which fees were collected
+     * @param feeAmounts The total amounts of each pool token that are available for withdrawal by the pool creator
+     */
+    function getTotalPoolCreatorFeeAmountsToWithdraw(address pool) external view returns (uint256[] memory feeAmounts);
+
+    /**
+     * @notice Force collection of protocol fees from the Vault, ensuring that the balances reflect the current state.
+     * @param pool The pool to collect fees from
+     */
+    function collectProtocolFees(address pool) external;
+
+    /**
+     * @notice Disaggregate and allocate collected prototol fees to the protocol and pool creator.
+     * @dev After this, collected balances will be zero, as they've been moved to "ToWithdraw" balances.
+     * @param pool The pool with collected fees to allocate
+     */
+    function allocateProtocolFees(address pool) external;
 
     /***************************************************************************
                                 Permissioned Functions
