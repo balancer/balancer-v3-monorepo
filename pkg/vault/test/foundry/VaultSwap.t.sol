@@ -409,9 +409,7 @@ contract VaultSwapTest is BaseVaultTest {
         );
 
         IProtocolFeeCollector feeCollector = vault.getProtocolFeeCollector();
-        feeCollector.collectProtocolFees(pool);
-        feeCollector.allocateProtocolFees(pool);
-
+        vault.collectProtocolFees(pool);
         uint256[] memory feeAmounts = feeCollector.getTotalCollectedProtocolFeeAmounts(pool);
 
         authorizer.grantRole(
@@ -422,7 +420,7 @@ contract VaultSwapTest is BaseVaultTest {
         feeCollector.withdrawProtocolFees(pool, address(admin));
 
         // protocol fees are zero
-        assertEq(0, feeAmounts[0], "Protocol fees are not zero");
+        assertEq(0, feeAmounts[usdcIdx], "Protocol fees are not zero");
 
         // alice received protocol fees
         assertEq(dai.balanceOf(admin) - defaultBalance, (protocolSwapFee), "Protocol fees not collected");
