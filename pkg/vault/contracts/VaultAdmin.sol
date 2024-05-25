@@ -347,11 +347,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _updateAggregateFeePercentage(pool, false, newAggregateYieldFeePercentage);
     }
 
-    function _updateAggregateFeePercentage(
-        address pool,
-        bool isSwapFee,
-        uint256 newAggregateFeePercentage
-    ) private {
+    function _updateAggregateFeePercentage(address pool, bool isSwapFee, uint256 newAggregateFeePercentage) private {
         if (msg.sender != address(_protocolFeeCollector)) {
             revert SenderNotAllowed();
         }

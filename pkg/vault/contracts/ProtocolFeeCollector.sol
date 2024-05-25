@@ -197,7 +197,12 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         _receiveProtocolFees(pool, false, poolCreatorFeePercentage, yieldFeeAmounts);
     }
 
-    function _receiveProtocolFees(address pool, bool isSwapFee, uint256 poolCreatorFeePercentage, uint256[] memory feeAmounts) private {
+    function _receiveProtocolFees(
+        address pool,
+        bool isSwapFee,
+        uint256 poolCreatorFeePercentage,
+        uint256[] memory feeAmounts
+    ) private {
         // There are two cases when we don't need to split fees (in which case we can save gas and avoid rounding
         // errors by skipping calculations) if either the protocol or pool creator fee percentage is zero.
 
@@ -218,7 +223,8 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
 
                 token.safeTransferFrom(address(getVault()), address(this), feeAmounts[i]);
 
-                // It should be easier for off-chain processes to handle two events than parse the type out of a single event.
+                // It should be easier for off-chain processes to handle two events, rather than parsing the type
+                // out of a single event.
                 if (isSwapFee) {
                     emit ProtocolSwapFeeCollected(pool, token, feeAmounts[i]);
                 } else {
