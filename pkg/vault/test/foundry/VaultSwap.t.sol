@@ -409,16 +409,17 @@ contract VaultSwapTest is BaseVaultTest {
         );
 
         IProtocolFeeCollector feeCollector = vault.getProtocolFeeCollector();
+        feeCollector.collectProtocolFees(pool);
+        feeCollector.allocateProtocolFees(pool);
+
+        uint256[] memory feeAmounts = feeCollector.getTotalCollectedProtocolFeeAmounts(pool);
+
         authorizer.grantRole(
             IAuthentication(address(feeCollector)).getActionId(IProtocolFeeCollector.withdrawProtocolFees.selector),
             admin
         );
         vm.prank(admin);
         feeCollector.withdrawProtocolFees(pool, address(admin));
-
-        IERC20[] memory feeTokens = new IERC20[](2);
-        feeTokens[0] = dai;
-        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedProtocolFeeAmounts(pool);
 
         // protocol fees are zero
         assertEq(0, feeAmounts[0], "Protocol fees are not zero");
