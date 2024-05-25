@@ -371,7 +371,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                     roundingDirection
                 );
 
-                _protocolYieldFees[pool][token] += aggregateYieldFeeAmountsRaw[i];
+                _totalProtocolYieldFees[pool][token] += aggregateYieldFeeAmountsRaw[i];
             }
         }
 

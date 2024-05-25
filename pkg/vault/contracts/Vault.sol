@@ -955,7 +955,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /**
      * @dev Preconditions: poolConfig, decimalScalingFactors, tokenRates in `poolData`.
-     * Side effects: updates `_protocolSwapFees` storage.
+     * Side effects: updates `_totalProtocolSwapFees` storage.
      * Note that this computes the aggregate total of the protocol fees and stores it, without emitting any events.
      * Splitting the fees and event emission occur during fee collection.
      *
@@ -998,7 +998,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     poolData.tokenRates[index]
                 );
 
-                _protocolSwapFees[pool][token] += totalFeesRaw;
+                _totalProtocolSwapFees[pool][token] += totalFeesRaw;
             }
         }
     }

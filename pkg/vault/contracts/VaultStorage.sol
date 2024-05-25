@@ -80,10 +80,10 @@ contract VaultStorage {
     mapping(IERC20 => int256) private __tokenDeltas;
 
     // Pool -> (Token -> fee): aggregate protocol swap fees accumulated in the Vault for harvest.
-    mapping(address => mapping(IERC20 => uint256)) internal _protocolSwapFees;
+    mapping(address => mapping(IERC20 => uint256)) internal _totalProtocolSwapFees;
 
     // Pool -> (Token -> fee): aggregate protocol yield fees accumulated in the Vault for harvest.
-    mapping(address => mapping(IERC20 => uint256)) internal _protocolYieldFees;
+    mapping(address => mapping(IERC20 => uint256)) internal _totalProtocolYieldFees;
 
     // Pool-specific creator fee percentage.
     mapping(address => uint256) internal _poolCreatorFeePercentages;
