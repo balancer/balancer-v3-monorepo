@@ -37,9 +37,9 @@ library PoolConfigLib {
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
 
     uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
-    uint256 public constant PROTOCOL_SWAP_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
-    uint256 public constant PROTOCOL_YIELD_FEE_OFFSET = PROTOCOL_SWAP_FEE_OFFSET + FEE_BITLENGTH;
-    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = PROTOCOL_YIELD_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET = AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
 
@@ -71,11 +71,15 @@ library PoolConfigLib {
     }
 
     function getAggregateProtocolSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
-        return PoolConfigBits.unwrap(config).decodeUint(PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
+        return
+            PoolConfigBits.unwrap(config).decodeUint(AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
+            FEE_SCALING_FACTOR;
     }
 
     function getAggregateProtocolYieldFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
-        return PoolConfigBits.unwrap(config).decodeUint(PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
+        return
+            PoolConfigBits.unwrap(config).decodeUint(AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH) *
+            FEE_SCALING_FACTOR;
     }
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint256) {
@@ -198,12 +202,12 @@ library PoolConfigLib {
                 .insertUint(config.staticSwapFeePercentage / FEE_SCALING_FACTOR, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH)
                 .insertUint(
                     config.aggregateProtocolSwapFeePercentage / FEE_SCALING_FACTOR,
-                    PROTOCOL_SWAP_FEE_OFFSET,
+                    AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET,
                     FEE_BITLENGTH
                 )
                 .insertUint(
                     config.aggregateProtocolYieldFeePercentage / FEE_SCALING_FACTOR,
-                    PROTOCOL_YIELD_FEE_OFFSET,
+                    AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET,
                     FEE_BITLENGTH
                 );
         }
@@ -261,10 +265,14 @@ library PoolConfigLib {
                 isPoolInRecoveryMode: rawConfig.decodeBool(POOL_RECOVERY_MODE_OFFSET),
                 staticSwapFeePercentage: rawConfig.decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
                     FEE_SCALING_FACTOR,
-                aggregateProtocolSwapFeePercentage: rawConfig.decodeUint(PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
-                    FEE_SCALING_FACTOR,
-                aggregateProtocolYieldFeePercentage: rawConfig.decodeUint(PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH) *
-                    FEE_SCALING_FACTOR,
+                aggregateProtocolSwapFeePercentage: rawConfig.decodeUint(
+                    AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET,
+                    FEE_BITLENGTH
+                ) * FEE_SCALING_FACTOR,
+                aggregateProtocolYieldFeePercentage: rawConfig.decodeUint(
+                    AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET,
+                    FEE_BITLENGTH
+                ) * FEE_SCALING_FACTOR,
                 tokenDecimalDiffs: rawConfig.decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH),
                 pauseWindowEndTime: rawConfig.decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH),
                 hooks: PoolHooks({
