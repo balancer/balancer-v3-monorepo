@@ -120,16 +120,6 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     }
 
     /// @inheritdoc IProtocolFeeCollector
-    function getAggregateSwapFeePercentage(uint256 poolCreatorFeePercentage) public view returns (uint256) {
-        return _getAggregateFeePercentage(_protocolSwapFeePercentage, poolCreatorFeePercentage);
-    }
-
-    /// @inheritdoc IProtocolFeeCollector
-    function getAggregateYieldFeePercentage(uint256 poolCreatorFeePercentage) public view returns (uint256) {
-        return _getAggregateFeePercentage(_protocolYieldFeePercentage, poolCreatorFeePercentage);
-    }
-
-    /// @inheritdoc IProtocolFeeCollector
     function computeAggregatePercentages(
         address pool,
         uint256 poolCreatorFeePercentage

@@ -94,24 +94,6 @@ interface IProtocolFeeCollector {
     function getGlobalProtocolYieldFeePercentage() external view returns (uint256);
 
     /**
-     * @notice Compute the aggregate percentage from the given pool creator fee percentage and global swap fee.
-     * @param poolCreatorFeePercentage The pool creator portion - can be 0-100%, and is applied to both swap and yield
-     * @return aggregateSwapFeePercentage The total percentage to be collected at the Vault
-     */
-    function getAggregateSwapFeePercentage(
-        uint256 poolCreatorFeePercentage
-    ) external view returns (uint256 aggregateSwapFeePercentage);
-
-    /**
-     * @notice Compute the aggregate percentage from the given pool creator fee percentage and global yield fee.
-     * @param poolCreatorFeePercentage The pool creator portion - can be 0-100%, and is applied to both swap and yield
-     * @return aggregateYieldFeePercentage The total percentage to be collected at the Vault
-     */
-    function getAggregateYieldFeePercentage(
-        uint256 poolCreatorFeePercentage
-    ) external view returns (uint256 aggregateYieldFeePercentage);
-
-    /**
      * @notice Compute and return the aggregate percentage.
      * @dev This can be called after initialization (e.g., when the pool creator fee is updated), and uses the existing
      * protocol fee percentages for the pool.
