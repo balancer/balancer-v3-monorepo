@@ -94,11 +94,9 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 liveBalanceBeforeRaw;
         uint256 liveBalanceAfterRaw;
         uint256 expectedProtocolFee;
-        uint256 expectedCreatorFee;
     }
 
-    //TODO Fix
-    function skipTestNoYieldFeesIfExempt__Fuzz(
+    function testNoYieldFeesIfExempt__Fuzz(
         uint256 wstethRate,
         uint256 daiRate,
         uint256 protocolYieldFeePercentage,
@@ -154,10 +152,6 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 actualProtocolFee = vault.manualGetTotalProtocolYieldFees(pool, wsteth);
         assertTrue(actualProtocolFee > 0, "wstETH did not collect any protocol fees");
 
-        // There should be creator fees on non-exempt wsteth
-        //uint256 actualCreatorFee = vault.getPoolCreatorFees(pool, wsteth);
-        //assertTrue(actualCreatorFee > 0, "wstETH did not collect any creator fees");
-
         // How much should the fee be?
         // Tricky, because the diff already has the fee subtracted. Need to add it back in
         YieldTestLocals memory vars;
@@ -167,17 +161,11 @@ contract YieldFeesTest is BaseVaultTest {
             wstethRate
         );
         vars.liveBalanceBeforeRaw = vars.liveBalanceAfterRaw + actualProtocolFee;
-        vars.expectedProtocolFee = vars.liveBalanceBeforeRaw.mulDown(protocolYieldFeePercentage);
-        vars.expectedCreatorFee = (vars.liveBalanceBeforeRaw - (vars.expectedProtocolFee + vars.expectedCreatorFee))
-            .mulDown(creatorYieldFeePercentage);
-
-        assertApproxEqAbs(
-            actualProtocolFee,
-            vars.expectedProtocolFee + vars.expectedCreatorFee,
-            1e3,
-            "Wrong protocol fee"
+        vars.expectedProtocolFee = vars.liveBalanceBeforeRaw.mulDown(
+            _getAggregateFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage)
         );
-        //TODO assertApproxEqAbs(actualCreatorFee, vars.expectedCreatorFee, 1e3, "Wrong creator fee");
+
+        assertApproxEqAbs(actualProtocolFee, vars.expectedProtocolFee, 1e3, "Wrong protocol fee");
     }
 
     function testUpdateLiveTokenBalanceInPoolData__Fuzz(
@@ -210,15 +198,15 @@ contract YieldFeesTest is BaseVaultTest {
         }
     }
 
-    // TODO Fix
-    /*
-    function skipTestComputeYieldFeesDue__Fuzz(
+    function testComputeYieldFeesDue__Fuzz(
         uint256 balanceRaw,
         uint8 decimals,
         uint256 tokenRate,
         uint256 lastLiveBalance,
         uint256 yieldFeePercentage
     ) public {
+        uint256 _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 20e16; // 20%
+
         balanceRaw = bound(balanceRaw, 0, 2 ** 120);
         decimals = uint8(bound(uint256(decimals), 2, 18));
         tokenRate = bound(tokenRate, 0, 100_000e18);
@@ -229,7 +217,7 @@ contract YieldFeesTest is BaseVaultTest {
         PoolData memory poolData = _simplePoolData(balanceRaw, decimalScalingFactor, tokenRate);
         uint256 liveBalance = poolData.balancesLiveScaled18[0];
 
-        (uint256 protocolYieldFeesRaw, ) = vault.computeYieldFeesDue(poolData, lastLiveBalance, 0, yieldFeePercentage);
+        uint256 protocolYieldFeesRaw = vault.computeYieldFeesDue(poolData, lastLiveBalance, 0, yieldFeePercentage);
         if (liveBalance <= lastLiveBalance) {
             assertEq(protocolYieldFeesRaw, 0, "Yield fees are not 0 with decreasing live balance");
         } else {
@@ -241,10 +229,9 @@ contract YieldFeesTest is BaseVaultTest {
                 "Wrong protocol yield fees"
             );
         }
-    }*/
+    }
 
-    // TODO Fix
-    function skipTestYieldFeesOnSwap__Fuzz(
+    function testYieldFeesOnSwap__Fuzz(
         uint256 wstethRate,
         uint256 daiRate,
         uint256 yieldFeePercentage,
