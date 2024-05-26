@@ -148,10 +148,10 @@ contract YieldFeesTest is BaseVaultTest {
         }
 
         // Should be no protocol fees on dai, since it is yield fee exempt
-        assertEq(vault.manualGetProtocolYieldFees(pool, dai), 0, "Protocol fees on exempt dai are not 0");
+        assertEq(vault.manualGetTotalProtocolYieldFees(pool, dai), 0, "Protocol fees on exempt dai are not 0");
 
         // There should be fees on non-exempt wsteth
-        uint256 actualProtocolFee = vault.manualGetProtocolYieldFees(pool, wsteth);
+        uint256 actualProtocolFee = vault.manualGetTotalProtocolYieldFees(pool, wsteth);
         assertTrue(actualProtocolFee > 0, "wstETH did not collect any protocol fees");
 
         // There should be creator fees on non-exempt wsteth
@@ -294,8 +294,8 @@ contract YieldFeesTest is BaseVaultTest {
 
         initPool();
 
-        require(vault.manualGetProtocolYieldFees(pool, dai) == 0, "Initial protocol fees for DAI not 0");
-        require(vault.manualGetProtocolYieldFees(pool, wsteth) == 0, "Initial protocol fees for wstETH not 0");
+        require(vault.manualGetTotalProtocolYieldFees(pool, dai) == 0, "Initial protocol fees for DAI not 0");
+        require(vault.manualGetTotalProtocolYieldFees(pool, wsteth) == 0, "Initial protocol fees for wstETH not 0");
 
         uint256 aggregateYieldFeePercentage = _getAggregateFeePercentage(
             protocolYieldFeePercentage,
@@ -324,11 +324,11 @@ contract YieldFeesTest is BaseVaultTest {
         // Then, the protocol takes its cut out of the 9x difference.
 
         assertEq(
-            vault.manualGetProtocolYieldFees(pool, wsteth),
+            vault.manualGetTotalProtocolYieldFees(pool, wsteth),
             ((poolInitAmount * 9) / 10).mulDown(aggregateYieldFeePercentage),
             "Yield fees for wstETH is not the expected one"
         );
-        assertEq(vault.manualGetProtocolYieldFees(pool, dai), 0, "Yield fees for exempt dai are not 0");
+        assertEq(vault.manualGetTotalProtocolYieldFees(pool, dai), 0, "Yield fees for exempt dai are not 0");
     }
 
     function verifyLiveBalances(

@@ -6,11 +6,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
 
-enum ProtocolFeeType {
-    SWAP,
-    YIELD
-}
-
 interface IProtocolFeeCollector {
     /**
      * @notice Emitted when the protocol swap fee percentage is updated.
@@ -99,19 +94,6 @@ interface IProtocolFeeCollector {
     function getGlobalProtocolYieldFeePercentage() external view returns (uint256);
 
     /**
-     * @notice Compute the aggregate percentage from the given pool creator fee percentage,
-     * using the global protocol fee percentages.
-     *
-     * @param feeType Whether this is a swap or yield fee (determines the protocol fee percentage)
-     * @param poolCreatorFeePercentage The pool creator portion - can be 0-100%, and is applied to both swap and yield
-     * @return aggregateFeePercentage The total percentage to be collected at the Vault
-     */
-    function getAggregateFeePercentage(
-        ProtocolFeeType feeType,
-        uint256 poolCreatorFeePercentage
-    ) external view returns (uint256 aggregateFeePercentage);
-
-    /**
      * @notice Compute and return the aggregate percentage.
      * @dev This can be called after initialization (e.g., when the pool creator fee is updated), and uses the existing
      * protocol fee percentages for the pool.
@@ -127,24 +109,20 @@ interface IProtocolFeeCollector {
     ) external view returns (uint256 aggregateProtocolSwapFeePercentage, uint256 aggregateProtocolYieldFeePercentage);
 
     /**
-     * @notice Returns the collected protocol fee amount of each pool token.
-     * @dev Includes both swap and yield protocol fees. Since this forces fee collection, this all might be very
-     * expensive if there are uncollected or aggregated fees.
-     *
+     * @notice Returns the amount of each pool token allocated to the protocol for withdrawal.
+     * @dev Includes both swap and yield fees.
      * @param pool The pool on which fees were collected
-     * @param feeAmounts The amount that can be withdrawn; array corresponds to the token array
+     * @param feeAmounts The total amounts of each pool token that are available for withdrawal by governance
      */
-    function getCollectedProtocolFeeAmounts(address pool) external returns (uint256[] memory feeAmounts);
+    function getTotalCollectedProtocolFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
 
     /**
-     * @notice Returns the collected pool creator fee amount of each pool token.
-     * @dev Includes both swap and yield pool creator fees. Since this forces fee collection, this all might be very
-     * expensive if there are uncollected or aggregated fees.
-     *
+     * @notice Returns the amount of each pool token allocated to the pool creator for withdrawal.
+     * @dev Includes both swap and yield fees.
      * @param pool The pool on which fees were collected
-     * @param feeAmounts The amount that can be withdrawn; array corresponds to the token array
+     * @param feeAmounts The total amounts of each pool token that are available for withdrawal by the pool creator
      */
-    function getCollectedPoolCreatorFeeAmounts(address pool) external returns (uint256[] memory feeAmounts);
+    function getTotalCollectedPoolCreatorFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
 
     /***************************************************************************
                                 Permissioned Functions
@@ -167,28 +145,20 @@ interface IProtocolFeeCollector {
     ) external returns (uint256 aggregateProtocolSwapFeePercentage, uint256 aggregateProtocolYieldFeePercentage);
 
     /**
-     * @notice Called by the Vault when protocol swap fees are collected.
+     * @notice Called by the Vault when protocol swap or yield fees are collected.
      * @dev This must be called from the Vault, during permissionless collection. Note that since charging protocol
      * fees (i.e., distributing tokens between pool and fee balances) occurs in the Vault, but fee collection
      * happens in the ProtocolFeeCollector, the swap fees reported here may encompass multiple operations.
      *
-     * @param pool The pool on which the swap fee was charged
-     * @param token The token in which the swap fee was charged
-     * @param amount The amount of the token collected in fees
+     * @param pool The pool on which the swap fees were charged
+     * @param swapFeeAmounts An array parallel to the pool tokens, with the amount of swap fees collected in each token
+     * @param yieldFeeAmounts An array parallel to the pool tokens, with the amount of swap fees collected in each token
      */
-    function receiveProtocolSwapFees(address pool, IERC20 token, uint256 amount) external;
-
-    /**
-     * @notice Called by the Vault when protocol swap fees are collected.
-     * @dev This must be called from the Vault, during permissionless collection. Note that since charging protocol
-     * fees (i.e., distributing tokens between pool and fee balances) occurs in the Vault, but fee collection
-     * happens in the ProtocolFeeCollector, the swap fees reported here may encompass multiple operations.
-     *
-     * @param pool The pool on which the yield fee was charged
-     * @param token The token in which the yield fee was charged
-     * @param amount The amount of the token collected in fees
-     */
-    function receiveProtocolYieldFees(address pool, IERC20 token, uint256 amount) external;
+    function receiveProtocolFees(
+        address pool,
+        uint256[] memory swapFeeAmounts,
+        uint256[] memory yieldFeeAmounts
+    ) external;
 
     /**
      * @notice Set the global protocol swap fee percentage, used by standard pools.

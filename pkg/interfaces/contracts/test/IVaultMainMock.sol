@@ -147,13 +147,13 @@ interface IVaultMainMock {
             PoolData memory
         );
 
-    function manualGetProtocolSwapFees(address pool, IERC20 token) external view returns (uint256);
+    function manualGetTotalProtocolSwapFees(address pool, IERC20 token) external view returns (uint256);
 
-    function manualGetProtocolYieldFees(address pool, IERC20 token) external view returns (uint256);
+    function manualGetTotalProtocolYieldFees(address pool, IERC20 token) external view returns (uint256);
 
-    function manualSetProtocolSwapFees(address pool, IERC20 token, uint256 value) external;
+    function manualSetTotalProtocolSwapFees(address pool, IERC20 token, uint256 value) external;
 
-    function manualSetProtocolYieldFees(address pool, IERC20 token, uint256 value) external;
+    function manualSetTotalProtocolYieldFees(address pool, IERC20 token, uint256 value) external;
 
     function manualSetAggregateProtocolSwapFeePercentage(address pool, uint256 value) external;
 
@@ -165,7 +165,7 @@ interface IVaultMainMock {
         PoolData memory poolData
     ) external view returns (IBasePool.PoolSwapParams memory);
 
-    function manualComputeAndChargeProtocolSwapFees(
+    function manualComputeAndChargeAggregateProtocolSwapFees(
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         address pool,

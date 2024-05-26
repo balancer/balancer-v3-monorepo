@@ -256,12 +256,12 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         // Protocol + creator fees are charged
         assertEq(
             protocolSwapFees[daiIdx] + poolCreatorFees[daiIdx],
-            vault.manualGetProtocolSwapFees(pool, dai),
+            vault.manualGetTotalProtocolSwapFees(pool, dai),
             "Protocol's fee amount is wrong"
         );
         assertEq(
             protocolSwapFees[usdcIdx] + poolCreatorFees[usdcIdx],
-            vault.manualGetProtocolSwapFees(pool, usdc),
+            vault.manualGetTotalProtocolSwapFees(pool, usdc),
             "Protocol's fee amount is wrong"
         );
 
@@ -332,7 +332,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         IERC20[] memory feeTokens = new IERC20[](2);
         feeTokens[0] = dai;
         feeTokens[1] = usdc;
-        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedProtocolFeeAmounts(pool);
+        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getTotalCollectedProtocolFeeAmounts(pool);
 
         // Protocols fees are charged
         //assertEq(protocolSwapFees[daiIdx], vault.getProtocolFees(daiIdx), "Protocol's DAI fee amount is wrong");

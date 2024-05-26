@@ -14,10 +14,7 @@ import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHo
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import {
-    IProtocolFeeCollector,
-    ProtocolFeeType
-} from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
+import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
@@ -61,6 +58,13 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @dev Functions with this modifier can only be delegate-called by the vault.
     modifier onlyVault() {
         _vault.ensureVaultDelegateCall();
+        _;
+    }
+
+    modifier onlyProtocolFeeCollector() {
+        if (msg.sender != address(_protocolFeeCollector)) {
+            revert SenderNotAllowed();
+        }
         _;
     }
 
@@ -310,49 +314,53 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function collectProtocolFees(address pool) public nonReentrant onlyVault {
-        _collectProtocolFeesInternal(pool, ProtocolFeeType.SWAP);
-        _collectProtocolFeesInternal(pool, ProtocolFeeType.YIELD);
-    }
-
-    function _collectProtocolFeesInternal(address pool, ProtocolFeeType feeType) private {
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
-        bool isSwapFee = feeType == ProtocolFeeType.SWAP;
+        address feeCollector = address(_protocolFeeCollector);
+        uint256 numTokens = poolTokens.length;
+
+        uint256[] memory totalSwapFees = new uint256[](numTokens);
+        uint256[] memory totalYieldFees = new uint256[](numTokens);
 
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             IERC20 token = poolTokens[i];
 
-            uint256 totalFees = isSwapFee ? _protocolSwapFees[pool][token] : _protocolYieldFees[pool][token];
-            if (totalFees > 0) {
-                // The ProtocolFeeCollector will pull tokens from the Vault.
-                token.approve(address(_protocolFeeCollector), totalFees);
+            totalSwapFees[i] = _totalProtocolSwapFees[pool][token];
+            totalYieldFees[i] = _totalProtocolYieldFees[pool][token];
 
-                if (isSwapFee) {
-                    _protocolSwapFees[pool][token] = 0;
-                    _protocolFeeCollector.receiveProtocolSwapFees(pool, token, totalFees);
-                } else {
-                    _protocolYieldFees[pool][token] = 0;
-                    _protocolFeeCollector.receiveProtocolYieldFees(pool, token, totalFees);
+            if (totalSwapFees[i] > 0 || totalYieldFees[i] > 0) {
+                // The ProtocolFeeCollector will pull tokens from the Vault.
+                token.approve(feeCollector, totalSwapFees[i] + totalYieldFees[i]);
+
+                if (totalSwapFees[i] > 0) {
+                    _totalProtocolSwapFees[pool][token] = 0;
+                }
+
+                if (totalYieldFees[i] > 0) {
+                    _totalProtocolYieldFees[pool][token] = 0;
                 }
             }
         }
+
+        _protocolFeeCollector.receiveProtocolFees(pool, totalSwapFees, totalYieldFees);
     }
 
     /// @inheritdoc IVaultAdmin
-    function updateAggregateFeePercentage(
+    function updateAggregateSwapFeePercentage(
         address pool,
-        ProtocolFeeType feeType,
-        uint256 newAggregateFeePercentage
-    ) external {
-        if (msg.sender != address(_protocolFeeCollector)) {
-            revert SenderNotAllowed();
-        }
-
+        uint256 newAggregateSwapFeePercentage
+    ) external onlyProtocolFeeCollector {
         PoolConfig memory config = _poolConfig[pool].toPoolConfig();
-        if (feeType == ProtocolFeeType.SWAP) {
-            config.aggregateProtocolSwapFeePercentage = newAggregateFeePercentage;
-        } else {
-            config.aggregateProtocolYieldFeePercentage = newAggregateFeePercentage;
-        }
+        config.aggregateProtocolSwapFeePercentage = newAggregateSwapFeePercentage;
+        _poolConfig[pool] = config.fromPoolConfig();
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function updateAggregateYieldFeePercentage(
+        address pool,
+        uint256 newAggregateYieldFeePercentage
+    ) external onlyProtocolFeeCollector {
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+        config.aggregateProtocolYieldFeePercentage = newAggregateYieldFeePercentage;
         _poolConfig[pool] = config.fromPoolConfig();
     }
 
