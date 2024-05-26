@@ -336,7 +336,7 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 daiRate,
         bool roundUp
     ) internal returns (uint256[] memory liveBalances) {
-        PoolData memory data = vault.computePoolDataUpdatingBalancesAndFees(
+        PoolData memory data = vault.loadPoolDataUpdatingBalancesAndYieldFees(
             address(pool),
             roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN
         );
