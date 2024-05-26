@@ -184,8 +184,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // as filling in poolData in memory. Since the swap hooks are reentrant and could do anything, including
         // change these balances, we cannot defer settlement until `_swap`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
-        // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_totalProtocolFees` in storage.
         PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_DOWN);
 
         // State is fully populated here, and shall not be modified at a lower level.
@@ -342,7 +341,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      *
      * Preconditions: complete `SwapParams`, `SwapState`, and `PoolData`.
      * Side effects: mutates balancesRaw and balancesLiveScaled18 in `poolData`.
-     * Updates `_protocolFees`, and `_poolTokenBalances` in storage.
+     * Updates `_totalProtocolFees`, and `_poolTokenBalances` in storage.
      * Emits Swap event.
      */
     function _swap(
@@ -501,7 +500,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // as filling in poolData in memory. Since the add liquidity hooks are reentrant and could do anything,
         // including change these balances, we cannot defer settlement until `_addLiquidity`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, and `_protocolFees`
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, and `_totalProtocolFees`
         // in storage.
         PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_UP);
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.maxAmountsIn.length);
@@ -737,7 +736,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // as filling in poolData in memory. Since the swap hooks are reentrant and could do anything, including
         // change these balances, we cannot defer settlement until `_removeLiquidity`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances` and `_protocolFees`
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances` and `_totalProtocolFees`
         // in storage.
         PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_DOWN);
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.minAmountsOut.length);
@@ -955,7 +954,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /**
      * @dev Preconditions: poolConfig, decimalScalingFactors, tokenRates in `poolData`.
-     * Side effects: updates `_protocolFees` storage.
+     * Side effects: updates `_totalProtocolFees` storage.
      * Note that this computes the aggregate total of the protocol fees and stores it, without emitting any events.
      * Splitting the fees and event emission occur during fee collection.
      * Should only be called in a non-reentrant context.
