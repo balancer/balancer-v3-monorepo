@@ -215,8 +215,13 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         uint256 protocolFeePercentage = feeType == ProtocolFeeType.SWAP
             ? _poolProtocolSwapFeePercentages[pool]
             : _poolProtocolYieldFeePercentages[pool];
+        uint256 aggregateFeePercentage;
 
         bool needToSplitFees = poolCreatorFeePercentage > 0 && protocolFeePercentage > 0;
+        if (needToSplitFees) {
+            // Calculate once, outside the loop.
+            aggregateFeePercentage = _getAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage);
+        }
 
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -234,11 +239,6 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
                 }
 
                 if (needToSplitFees) {
-                    uint256 aggregateFeePercentage = _getAggregateFeePercentage(
-                        protocolFeePercentage,
-                        poolCreatorFeePercentage
-                    );
-
                     uint256 totalVolume = feeAmounts[i].divUp(aggregateFeePercentage);
                     uint256 protocolPortion = totalVolume.mulUp(protocolFeePercentage);
 
