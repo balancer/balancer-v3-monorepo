@@ -4,7 +4,7 @@
 
 // Taken from https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/ce497cb05ca05bb9aa2b86ec1d99e6454e7ab2e9/contracts/utils/StorageSlot.sol.
 
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.26;
 
 /**
  * @dev Library for reading and writing primitive types to specific storage slots.

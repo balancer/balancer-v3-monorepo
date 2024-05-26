@@ -15,7 +15,7 @@ type SolcConfig = {
 
 export const compilers: [SolcConfig] = [
   {
-    version: '0.8.24',
+    version: '0.8.26',
     settings: {
       viaIR: true,
       evmVersion: 'cancun',
@@ -43,12 +43,12 @@ const contractSettings: ContractSettings = {
     viaIR: true,
   },
   '@balancer-labs/v3-vault/contracts/Vault.sol': {
-    version: '0.8.24',
+    version: '0.8.26',
     runs: 500,
     viaIR: true,
   },
   '@balancer-labs/v3-vault/contracts/VaultExtension.sol': {
-    version: '0.8.24',
+    version: '0.8.26',
     runs: 500,
     viaIR: true,
   },

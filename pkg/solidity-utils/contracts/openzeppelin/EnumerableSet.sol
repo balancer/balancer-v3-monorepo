@@ -5,7 +5,7 @@
 // runtime costs.
 // The `unchecked_at` function was also added, which allows for more gas efficient data reads in some scenarios.
 
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.26;
 
 /**
  * @dev Library for managing sets of primitve types.

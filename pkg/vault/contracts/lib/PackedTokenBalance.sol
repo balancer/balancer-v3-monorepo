@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.26;
 
 /**
  * @notice This library represents a data structure for packing a token's current raw and derived balances. A derived

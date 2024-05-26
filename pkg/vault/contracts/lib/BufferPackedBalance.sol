@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.26;
 
 library BufferPackedTokenBalance {
     // The 'base' portion of the balance is stored in the least significant 128 bits of a 256 bit word, while the

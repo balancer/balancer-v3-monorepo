@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.26;
 
 import { PackedTokenBalance } from "./PackedTokenBalance.sol";
 import { PoolConfigBits, PoolConfigLib } from "./PoolConfigLib.sol";
