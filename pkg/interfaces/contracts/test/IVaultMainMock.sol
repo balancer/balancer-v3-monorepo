@@ -165,7 +165,7 @@ interface IVaultMainMock {
         PoolData memory poolData
     ) external view returns (IBasePool.PoolSwapParams memory);
 
-    function manualComputeAndChargeProtocolSwapFees(
+    function manualComputeAndChargeAggregateProtocolSwapFees(
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         address pool,

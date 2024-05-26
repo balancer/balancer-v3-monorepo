@@ -453,14 +453,14 @@ contract VaultMock is IVaultMainMock, Vault {
         return _buildPoolSwapParams(params, state, poolData);
     }
 
-    function manualComputeAndChargeProtocolSwapFees(
+    function manualComputeAndChargeAggregateProtocolSwapFees(
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         address pool,
         IERC20 token,
         uint256 index
     ) external returns (uint256 totalFeesRaw) {
-        return _computeAndChargeProtocolSwapFees(poolData, swapFeeAmountScaled18, pool, token, index);
+        return _computeAndChargeAggregateProtocolSwapFees(poolData, swapFeeAmountScaled18, pool, token, index);
     }
 
     function manualUpdatePoolDataLiveBalancesAndRates(

@@ -143,6 +143,17 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         }
     }
 
+    /**
+     * Note that pool creator fees are calculated based on creatorAndLpFees, and not in totalFees.
+     * See example below:
+     *
+     * tokenOutAmount = 10000; poolSwapFeePct = 10%; protocolFeePct = 40%; creatorFeePct = 60%
+     * totalFees = tokenOutAmount * poolSwapFeePct = 10000 * 10% = 1000
+     * protocolFees = totalFees * protocolFeePct = 1000 * 40% = 400
+     * creatorAndLpFees = totalFees - protocolFees = 1000 - 400 = 600
+     * creatorFees = creatorAndLpFees * creatorFeePct = 600 * 60% = 360
+     * lpFees (will stay in the pool) = creatorAndLpFees - creatorFees = 600 - 360 = 240
+     */
     function _getAggregateFeePercentage(
         uint256 protocolFeePercentage,
         uint256 poolCreatorFeePercentage
