@@ -979,19 +979,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolData.poolConfig.aggregateProtocolSwapFeePercentage
             );
 
-            if (aggregateSwapFeeAmountScaled18 > 0) {
-                // Ensure we can never charge more than the total swap fee.
-                if (aggregateSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
-                    revert ProtocolFeesExceedSwapFee();
-                }
-
-                totalFeesRaw = aggregateSwapFeeAmountScaled18.toRawUndoRateRoundDown(
-                    poolData.decimalScalingFactors[index],
-                    poolData.tokenRates[index]
-                );
-
-                _totalProtocolSwapFees[pool][token] += totalFeesRaw;
+            // Ensure we can never charge more than the total swap fee.
+            if (aggregateSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
+                revert ProtocolFeesExceedSwapFee();
             }
+
+            totalFeesRaw = aggregateSwapFeeAmountScaled18.toRawUndoRateRoundDown(
+                poolData.decimalScalingFactors[index],
+                poolData.tokenRates[index]
+            );
+
+            _totalProtocolSwapFees[pool][token] += totalFeesRaw;
         }
     }
 
