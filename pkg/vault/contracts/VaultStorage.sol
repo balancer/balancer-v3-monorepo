@@ -83,7 +83,7 @@ contract VaultStorage {
     // Pool -> (Token -> fee): aggregate protocol swap/yield fees accumulated in the Vault for harvest.
     // Reusing PackedTokenBalance to save bytecode (despite differing semantics).
     // It's arbitrary which is which: we define raw=swap; derived=yield
-    mapping(address => mapping(IERC20 => bytes32)) internal _protocolFees;
+    mapping(address => mapping(IERC20 => bytes32)) internal _totalProtocolFees;
 
     // Pool-specific creator fee percentage.
     mapping(address => uint256) internal _poolCreatorFeePercentages;

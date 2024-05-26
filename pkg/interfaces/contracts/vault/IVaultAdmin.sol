@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import { IProtocolFeeCollector, ProtocolFeeType } from "./IProtocolFeeCollector.sol";
+import { IProtocolFeeCollector } from "./IProtocolFeeCollector.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IVault } from "./IVault.sol";
 
@@ -146,14 +146,17 @@ interface IVaultAdmin {
      * @notice Update an aggregate fee percentage if governance is overriding a protocol fee for a specific pool.
      * @dev Can only be called by the current protocol fee collector.
      * @param pool The pool whose fee will be updated
-     * @param feeType The type of fee to update: Swap or Yield
-     * @param newAggregateFeePercentage The new aggregate percentage, as calculated by the Protocol Fee Collector
+     * @param newAggregateSwapFeePercentage The new aggregate swap fee percentage
      */
-    function updateAggregateFeePercentage(
-        address pool,
-        ProtocolFeeType feeType,
-        uint256 newAggregateFeePercentage
-    ) external;
+    function updateAggregateSwapFeePercentage(address pool, uint256 newAggregateSwapFeePercentage) external;
+
+    /**
+     * @notice Update an aggregate fee percentage if governance is overriding a protocol fee for a specific pool.
+     * @dev Can only be called by the current protocol fee collector.
+     * @param pool The pool whose fee will be updated
+     * @param newAggregateYieldFeePercentage The new aggregate percentage
+     */
+    function updateAggregateYieldFeePercentage(address pool, uint256 newAggregateYieldFeePercentage) external;
 
     /**
      * @notice Sets a new Protocol Fee Collector for the Vault.

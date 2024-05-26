@@ -409,6 +409,9 @@ contract VaultSwapTest is BaseVaultTest {
         );
 
         IProtocolFeeCollector feeCollector = vault.getProtocolFeeCollector();
+        vault.collectProtocolFees(pool);
+        uint256[] memory feeAmounts = feeCollector.getTotalCollectedProtocolFeeAmounts(pool);
+
         authorizer.grantRole(
             IAuthentication(address(feeCollector)).getActionId(IProtocolFeeCollector.withdrawProtocolFees.selector),
             admin
@@ -416,15 +419,11 @@ contract VaultSwapTest is BaseVaultTest {
         vm.prank(admin);
         feeCollector.withdrawProtocolFees(pool, address(admin));
 
-        IERC20[] memory feeTokens = new IERC20[](2);
-        feeTokens[0] = dai;
-        uint256[] memory feeAmounts = vault.getProtocolFeeCollector().getCollectedProtocolFeeAmounts(pool);
-
         // protocol fees are zero
-        assertEq(0, feeAmounts[0], "Protocol fees are not zero");
+        assertEq(0, feeAmounts[usdcIdx], "Protocol fees are not zero");
 
         // alice received protocol fees
-        assertEq(dai.balanceOf(admin) - defaultBalance, (protocolSwapFee), "Protocol fees not collected");
+        assertEq(dai.balanceOf(admin) - defaultBalance, protocolSwapFee, "Protocol fees not collected");
     }
 
     function reentrancyHook() public {
@@ -512,7 +511,7 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(balances[usdcIdx], 2 * defaultAmount + usdcFee - usdcProtocolFee, "Swap: Pool's [1] balance is wrong");
 
         // protocol fees are accrued
-        uint256 actualFee = vault.manualGetProtocolSwapFees(pool, kind == SwapKind.EXACT_OUT ? usdc : dai);
+        uint256 actualFee = vault.manualGetTotalProtocolSwapFees(pool, kind == SwapKind.EXACT_OUT ? usdc : dai);
         assertEq(protocolFee, actualFee, "Swap: Protocol's fee amount is wrong");
 
         // vault are adjusted balances

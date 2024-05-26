@@ -521,13 +521,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     // and yield fee amounts, arbitrarily assigning "Raw" to Swap and "Derived" to Yield.
 
     /// @inheritdoc IVaultExtension
-    function getProtocolSwapFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
-        return _protocolFees[pool][token].getBalanceRaw();
+    function getTotalProtocolSwapFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
+        return _totalProtocolFees[pool][token].getBalanceRaw();
     }
 
     /// @inheritdoc IVaultExtension
-    function getProtocolYieldFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
-        return _protocolFees[pool][token].getBalanceDerived();
+    function getTotalProtocolYieldFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
+        return _totalProtocolFees[pool][token].getBalanceDerived();
     }
 
     /// @inheritdoc IVaultExtension

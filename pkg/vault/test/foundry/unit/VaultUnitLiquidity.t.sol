@@ -892,7 +892,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         PoolData memory poolData_ = poolData;
         uint256 protocolSwapFeePercentage = poolData.poolConfig.aggregateProtocolSwapFeePercentage;
         for (uint256 i = 0; i < poolData.tokenConfig.length; i++) {
-            // check _computeAndChargeProtocolSwapFees
+            // check _computeAndChargeAggregateProtocolSwapFees
             uint256 protocolSwapFeeAmountRaw = _checkProtocolFeeResult(
                 poolData_,
                 i,

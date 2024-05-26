@@ -180,13 +180,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert CannotSwapSameToken();
         }
 
-        // `_loadPoolDataUpdatingBalancesAndFees` is non-reentrant, as it updates storage as well
+        // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the swap hooks are reentrant and could do anything, including
         // change these balances, we cannot defer settlement until `_swap`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_protocolFees`,
         // `_poolCreatorFees` in storage. May emit ProtocolYieldFeeCharged and PoolCreatorYieldFeeCharged events.
-        PoolData memory poolData = _loadPoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_DOWN);
 
         // State is fully populated here, and shall not be modified at a lower level.
         SwapState memory state = _loadSwapState(params, poolData);
@@ -419,7 +419,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Note that protocol fee storage is updated before balance storage, as the final raw balances need to take
         // the fees into account.
-        uint256 totalFeesRaw = _computeAndChargeProtocolSwapFees(
+        uint256 totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
             poolData,
             locals.swapFeeAmountScaled18,
             params.pool,
@@ -497,13 +497,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _ensureUnpausedAndGetVaultState(params.pool);
 
-        // `_loadPoolDataUpdatingBalancesAndFees` is non-reentrant, as it updates storage as well
+        // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the add liquidity hooks are reentrant and could do anything,
         // including change these balances, we cannot defer settlement until `_addLiquidity`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, and `_protocolFees`
         // in storage.
-        PoolData memory poolData = _loadPoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_UP);
+        PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_UP);
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.maxAmountsIn.length);
 
         // Amounts are entering pool math, so round down.
@@ -679,7 +679,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 _takeDebt(token, amountInRaw);
 
                 // 4) Compute and charge protocol and creator fees.
-                locals.totalFeesRaw = _computeAndChargeProtocolSwapFees(
+                locals.totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
                     poolData,
                     swapFeeAmountsScaled18[i],
                     params.pool,
@@ -733,13 +733,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
 
-        // `_loadPoolDataUpdatingBalancesAndFees` is non-reentrant, as it updates storage as well
+        // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the swap hooks are reentrant and could do anything, including
         // change these balances, we cannot defer settlement until `_removeLiquidity`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances` and `_protocolFees`
         // in storage.
-        PoolData memory poolData = _loadPoolDataUpdatingBalancesAndFees(params.pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_DOWN);
         InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.minAmountsOut.length);
 
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.
@@ -909,7 +909,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 _supplyCredit(token, amountOutRaw);
 
                 // 4) Compute and charge protocol and creator fees.
-                locals.totalFeesRaw = _computeAndChargeProtocolSwapFees(
+                locals.totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
                     poolData,
                     swapFeeAmountsScaled18[i],
                     params.pool,
@@ -958,19 +958,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * Side effects: updates `_protocolFees` storage.
      * Note that this computes the aggregate total of the protocol fees and stores it, without emitting any events.
      * Splitting the fees and event emission occur during fee collection.
-     *
      * Should only be called in a non-reentrant context.
-     * IMPORTANT: creator fees are calculated based on creatorAndLpFees, and not in totalFees. See example below
-     * Example:
-     * tokenOutAmount = 10000; poolSwapFeePerc = 10%; protocolFeePerc = 40%; creatorFeePerc = 60%
-     * totalFees = tokenOutAmount * poolSwapFeePerc = 10000 * 10% = 1000
-     * protocolFees = totalFees * protocolFeePerc = 1000 * 40% = 400
-     * creatorAndLpFees = totalFees - protocolFees = 1000 - 400 = 600
-     * creatorFees = creatorAndLpFees * creatorFeePerc = 600 * 60% = 360
-     * lpFees (will stay in the pool) = creatorAndLpFees - creatorFees = 600 - 360 = 240
+     *
      * @return totalFeesRaw Sum of protocol and pool creator fees raw
      */
-    function _computeAndChargeProtocolSwapFees(
+    function _computeAndChargeAggregateProtocolSwapFees(
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         address pool,
@@ -987,24 +979,22 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolData.poolConfig.aggregateProtocolSwapFeePercentage
             );
 
-            if (aggregateSwapFeeAmountScaled18 > 0) {
-                // Ensure we can never charge more than the total swap fee.
-                if (aggregateSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
-                    revert ProtocolFeesExceedSwapFee();
-                }
-
-                totalFeesRaw = aggregateSwapFeeAmountScaled18.toRawUndoRateRoundDown(
-                    poolData.decimalScalingFactors[index],
-                    poolData.tokenRates[index]
-                );
-
-                // Both Swap and Yield fees are stored together in a PackedTokenBalance.
-                // We have designated "Raw" the derived half for Swap fee storage.
-                bytes32 currentPackedBalance = _protocolFees[pool][token];
-                _protocolFees[pool][token] = currentPackedBalance.setBalanceRaw(
-                    currentPackedBalance.getBalanceRaw() + totalFeesRaw
-                );
+            // Ensure we can never charge more than the total swap fee.
+            if (aggregateSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
+                revert ProtocolFeesExceedSwapFee();
             }
+
+            totalFeesRaw = aggregateSwapFeeAmountScaled18.toRawUndoRateRoundDown(
+                poolData.decimalScalingFactors[index],
+                poolData.tokenRates[index]
+            );
+
+            // Both Swap and Yield fees are stored together in a PackedTokenBalance.
+            // We have designated "Raw" the derived half for Swap fee storage.
+            bytes32 currentPackedBalance = _totalProtocolFees[pool][token];
+            _totalProtocolFees[pool][token] = currentPackedBalance.setBalanceRaw(
+                currentPackedBalance.getBalanceRaw() + totalFeesRaw
+            );
         }
     }
 
