@@ -186,6 +186,11 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         _poolProtocolYieldFeePercentages[pool] = aggregateProtocolYieldFeePercentage;
     }
 
+    enum ProtocolFeeType {
+        SWAP,
+        YIELD
+    }
+
     /// @inheritdoc IProtocolFeeCollector
     function receiveProtocolFees(
         address pool,
@@ -194,20 +199,20 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     ) external onlyVault {
         (, uint256 poolCreatorFeePercentage) = getVault().getPoolCreatorInfo(pool);
 
-        _receiveProtocolFees(pool, true, poolCreatorFeePercentage, swapFeeAmounts);
-        _receiveProtocolFees(pool, false, poolCreatorFeePercentage, yieldFeeAmounts);
+        _receiveProtocolFees(pool, ProtocolFeeType.SWAP, poolCreatorFeePercentage, swapFeeAmounts);
+        _receiveProtocolFees(pool, ProtocolFeeType.YIELD, poolCreatorFeePercentage, yieldFeeAmounts);
     }
 
     function _receiveProtocolFees(
         address pool,
-        bool isSwapFee,
+        ProtocolFeeType feeType,
         uint256 poolCreatorFeePercentage,
         uint256[] memory feeAmounts
     ) private {
         // There are two cases when we don't need to split fees (in which case we can save gas and avoid rounding
         // errors by skipping calculations) if either the protocol or pool creator fee percentage is zero.
 
-        uint256 protocolFeePercentage = isSwapFee
+        uint256 protocolFeePercentage = feeType == ProtocolFeeType.SWAP
             ? _poolProtocolSwapFeePercentages[pool]
             : _poolProtocolYieldFeePercentages[pool];
 
@@ -226,7 +231,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
 
                 // It should be easier for off-chain processes to handle two events, rather than parsing the type
                 // out of a single event.
-                if (isSwapFee) {
+                if (feeType == ProtocolFeeType.SWAP) {
                     emit ProtocolSwapFeeCollected(pool, token, feeAmounts[i]);
                 } else {
                     emit ProtocolYieldFeeCollected(pool, token, feeAmounts[i]);

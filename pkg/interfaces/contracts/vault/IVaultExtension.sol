@@ -255,7 +255,7 @@ interface IVaultExtension {
      * @return The total amount of fees accumulated in the specified token
      */
     function getTotalProtocolYieldFees(address pool, IERC20 token) external view returns (uint256);
-    
+
     /**
      * @notice Fetches the static swap fee percentage for a given pool.
      * @param pool The address of the pool whose static swap fee percentage is being queried

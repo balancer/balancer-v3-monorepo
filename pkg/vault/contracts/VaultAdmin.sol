@@ -61,6 +61,13 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _;
     }
 
+    modifier onlyProtocolFeeCollector() {
+        if (msg.sender != address(_protocolFeeCollector)) {
+            revert SenderNotAllowed();
+        }
+        _;
+    }
+
     constructor(
         IVault mainVault,
         uint256 pauseWindowDuration,
@@ -338,26 +345,22 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function updateAggregateSwapFeePercentage(address pool, uint256 newAggregateSwapFeePercentage) external {
-        _updateAggregateFeePercentage(pool, true, newAggregateSwapFeePercentage);
+    function updateAggregateSwapFeePercentage(
+        address pool,
+        uint256 newAggregateSwapFeePercentage
+    ) external onlyProtocolFeeCollector {
+        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+        config.aggregateProtocolSwapFeePercentage = newAggregateSwapFeePercentage;
+        _poolConfig[pool] = config.fromPoolConfig();
     }
 
     /// @inheritdoc IVaultAdmin
-    function updateAggregateYieldFeePercentage(address pool, uint256 newAggregateYieldFeePercentage) external {
-        _updateAggregateFeePercentage(pool, false, newAggregateYieldFeePercentage);
-    }
-
-    function _updateAggregateFeePercentage(address pool, bool isSwapFee, uint256 newAggregateFeePercentage) private {
-        if (msg.sender != address(_protocolFeeCollector)) {
-            revert SenderNotAllowed();
-        }
-
+    function updateAggregateYieldFeePercentage(
+        address pool,
+        uint256 newAggregateYieldFeePercentage
+    ) external onlyProtocolFeeCollector {
         PoolConfig memory config = _poolConfig[pool].toPoolConfig();
-        if (isSwapFee) {
-            config.aggregateProtocolSwapFeePercentage = newAggregateFeePercentage;
-        } else {
-            config.aggregateProtocolYieldFeePercentage = newAggregateFeePercentage;
-        }
+        config.aggregateProtocolYieldFeePercentage = newAggregateYieldFeePercentage;
         _poolConfig[pool] = config.fromPoolConfig();
     }
 

@@ -152,7 +152,11 @@ interface IProtocolFeeCollector {
      * @param swapFeeAmounts An array parallel to the pool tokens, with the amount of swap fees collected in each token
      * @param yieldFeeAmounts An array parallel to the pool tokens, with the amount of swap fees collected in each token
      */
-    function receiveProtocolFees(address pool, uint256[] memory swapFeeAmounts, uint256[] memory yieldFeeAmounts) external;
+    function receiveProtocolFees(
+        address pool,
+        uint256[] memory swapFeeAmounts,
+        uint256[] memory yieldFeeAmounts
+    ) external;
 
     /**
      * @notice Set the global protocol swap fee percentage, used by standard pools.

@@ -148,10 +148,7 @@ interface IVaultAdmin {
      * @param pool The pool whose fee will be updated
      * @param newAggregateSwapFeePercentage The new aggregate swap fee percentage
      */
-    function updateAggregateSwapFeePercentage(
-        address pool,
-        uint256 newAggregateSwapFeePercentage
-    ) external;
+    function updateAggregateSwapFeePercentage(address pool, uint256 newAggregateSwapFeePercentage) external;
 
     /**
      * @notice Update an aggregate fee percentage if governance is overriding a protocol fee for a specific pool.
@@ -159,10 +156,7 @@ interface IVaultAdmin {
      * @param pool The pool whose fee will be updated
      * @param newAggregateYieldFeePercentage The new aggregate percentage
      */
-    function updateAggregateYieldFeePercentage(
-        address pool,
-        uint256 newAggregateYieldFeePercentage
-    ) external;
+    function updateAggregateYieldFeePercentage(address pool, uint256 newAggregateYieldFeePercentage) external;
 
     /**
      * @notice Sets a new Protocol Fee Collector for the Vault.
