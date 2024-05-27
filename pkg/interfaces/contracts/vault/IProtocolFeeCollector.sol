@@ -124,6 +124,24 @@ interface IProtocolFeeCollector {
      */
     function getTotalCollectedPoolCreatorFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
 
+    /**
+     * @notice Override the protocol swap fee percentage for a specific pool.
+     * @dev This is a permissionless call, and will set the pool's fee to the current global fee, if it is different
+     * from the current value, and the fee is not controlled by governance (i.e., has never been overridden).
+     *
+     * @param pool The pool we are setting the protocol swap fee on
+     */
+    function updateProtocolSwapFeePercentage(address pool) external;
+
+    /**
+     * @notice Override the protocol yield fee percentage for a specific pool.
+     * @dev This is a permissionless call, and will set the pool's fee to the current global fee, if it is different
+     * from the current value, and the fee is not controlled by governance (i.e., has never been overridden).
+     *
+     * @param pool The pool we are setting the protocol yield fee on
+     */
+    function updateProtocolYieldFeePercentage(address pool) external;
+
     /***************************************************************************
                                 Permissioned Functions
     ***************************************************************************/
