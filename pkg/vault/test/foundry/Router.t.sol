@@ -65,20 +65,20 @@ contract RouterTest is BaseVaultTest {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
-        // creator used to be lp
         factoryMock.registerTestPool(
             address(newPool),
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20())
+            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
+            lp
         );
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
         wethPool = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPool), "wethPool");
 
-        // creator used to be lp
         factoryMock.registerTestPool(
             address(wethPool),
-            vault.buildTokenConfig([address(dai), address(weth)].toMemoryArray().asIERC20())
+            vault.buildTokenConfig([address(dai), address(weth)].toMemoryArray().asIERC20()),
+            lp
         );
 
         (daiIdxWethPool, wethIdx) = getSortedIndexes(address(dai), address(weth));
@@ -92,10 +92,10 @@ contract RouterTest is BaseVaultTest {
         wethPoolNoInit = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPoolNoInit), "wethPoolNoInit");
 
-        // creator used to be lp
         factoryMock.registerTestPool(
             address(wethPoolNoInit),
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20())
+            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
+            lp
         );
 
         return address(newPool);
