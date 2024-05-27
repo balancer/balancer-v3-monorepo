@@ -48,6 +48,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
+            false,
             roleAccounts,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
