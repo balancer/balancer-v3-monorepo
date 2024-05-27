@@ -238,8 +238,17 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         aggregateProtocolSwapFeePercentage = protocolFeeExempt ? 0 : _protocolSwapFeePercentage;
         aggregateProtocolYieldFeePercentage = protocolFeeExempt ? 0 : _protocolYieldFeePercentage;
 
-        // `isOverride` defaults to false. Unless the fee is set by governance through a permissioned call, this pool
-        // can be updated to the current global percentage permissionlessly.
+        // `isOverride` is true if the pool is protocol fee exempt; otherwise, default to false.
+        // If exempt, this pool cannot be updated to the current global percentage permissionlessly.
+        _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
+            feePercentage: uint64(aggregateProtocolSwapFeePercentage),
+            isOverride: protocolFeeExempt
+        });
+        _poolProtocolYieldFeePercentages[pool] = PoolFeeConfig({
+            feePercentage: uint64(aggregateProtocolYieldFeePercentage),
+            isOverride: protocolFeeExempt
+        });
+
         _poolProtocolSwapFeePercentages[pool].feePercentage = uint64(aggregateProtocolSwapFeePercentage);
         _poolProtocolYieldFeePercentages[pool].feePercentage = uint64(aggregateProtocolYieldFeePercentage);
     }
