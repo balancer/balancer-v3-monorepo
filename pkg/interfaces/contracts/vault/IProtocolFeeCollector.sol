@@ -151,8 +151,8 @@ interface IProtocolFeeCollector {
      * happens in the ProtocolFeeCollector, the swap fees reported here may encompass multiple operations.
      *
      * @param pool The pool on which the swap fees were charged
-     * @param swapFeeAmounts An array parallel to the pool tokens, with the amount of swap fees collected in each token
-     * @param yieldFeeAmounts An array parallel to the pool tokens, with the amount of swap fees collected in each token
+     * @param swapFeeAmounts An array parallel to the pool tokens, with the swap fees collected in each token
+     * @param yieldFeeAmounts An array parallel to the pool tokens, with the yield fees collected in each token
      */
     function receiveProtocolFees(
         address pool,

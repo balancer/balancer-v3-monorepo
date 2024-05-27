@@ -41,10 +41,10 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
 
         address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
-        // creator is lp
         factoryMock.registerTestPool(
             newPool,
-            vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders)
+            vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
+            lp
         );
 
         return newPool;
@@ -150,7 +150,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             bytes("")
         );
 
-        PoolData memory balances = vault.computePoolDataUpdatingBalancesAndFees(address(pool), Rounding.ROUND_DOWN);
+        PoolData memory balances = vault.loadPoolDataUpdatingBalancesAndYieldFees(address(pool), Rounding.ROUND_DOWN);
         uint256 bptAmountIn = defaultAmount * 2;
 
         vm.expectCall(
@@ -177,7 +177,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             bytes("")
         );
 
-        PoolData memory balances = vault.computePoolDataUpdatingBalancesAndFees(address(pool), Rounding.ROUND_DOWN);
+        PoolData memory balances = vault.loadPoolDataUpdatingBalancesAndYieldFees(address(pool), Rounding.ROUND_DOWN);
         uint256[] memory expectedAmountsOutRaw = new uint256[](2);
 
         expectedAmountsOutRaw[wstethIdx] = FixedPoint.mulDown(defaultAmount, mockRate);

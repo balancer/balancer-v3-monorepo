@@ -54,14 +54,8 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         _;
     }
 
-    // Force collection and disaggregation (e.g., before changing protocol fee percentages)
-    modifier withLatestFees(address pool) {
-        getVault().collectProtocolFees(pool);
-        _;
-    }
-
     // Ensure that the caller is the pool creator.
-    modifier fromPoolCreator(address pool) {
+    modifier onlyPoolCreator(address pool) {
         _ensureCallerIsPoolCreator(pool);
         _;
     }
@@ -77,6 +71,12 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         if (newYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
             revert ProtocolYieldFeePercentageTooHigh();
         }
+        _;
+    }
+
+    // Force collection and disaggregation (e.g., before changing protocol fee percentages)
+    modifier withLatestFees(address pool) {
+        getVault().collectProtocolFees(pool);
         _;
     }
 
@@ -216,12 +216,13 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         uint256 protocolFeePercentage = feeType == ProtocolFeeType.SWAP
             ? _poolProtocolSwapFeePercentages[pool]
             : _poolProtocolYieldFeePercentages[pool];
+        uint256 aggregateFeePercentage;
 
         bool needToSplitFees = poolCreatorFeePercentage > 0 && protocolFeePercentage > 0;
-
-        // If one of the percentages is zero, the aggregate will simply equal the other one,
-        // so it can be used directly if we don't need to split fees.
-        uint256 aggregateFeePercentage = _getAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage);
+        if (needToSplitFees) {
+            // Calculate once, outside the loop.
+            aggregateFeePercentage = _getAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage);
+        }
 
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -326,7 +327,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     }
 
     /// @inheritdoc IProtocolFeeCollector
-    function withdrawPoolCreatorFees(address pool, address recipient) external fromPoolCreator(pool) {
+    function withdrawPoolCreatorFees(address pool, address recipient) external onlyPoolCreator(pool) {
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
 
         for (uint256 i = 0; i < numTokens; ++i) {

@@ -44,8 +44,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
-        // creator is lp
-        factoryMock.registerTestPool(address(newPool), tokenConfig);
+        factoryMock.registerTestPool(address(newPool), tokenConfig, lp);
 
         return address(newPool);
     }

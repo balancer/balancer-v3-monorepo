@@ -348,9 +348,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
      * This function modifies protocol fees and balance storage. Since it modifies storage and makes external
      * calls, it must be nonReentrant.
-     * Side effects: updates `_protocolFees`, `_poolCreatorFees` and _poolTokenBalances storage (and emits events).
+     * Side effects: updates `_totalProtocolFees` and `_poolTokenBalances` in storage.
      */
-    function _loadPoolDataUpdatingBalancesAndFees(
+    function _loadPoolDataUpdatingBalancesAndYieldFees(
         address pool,
         Rounding roundingDirection
     ) internal nonReentrant returns (PoolData memory poolData) {
@@ -371,7 +371,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                     roundingDirection
                 );
 
-                _totalProtocolYieldFees[pool][token] += aggregateYieldFeeAmountsRaw[i];
+                // Both Swap and Yield fees are stored together in a PackedTokenBalance.
+                // We have designated "Derived" the derived half for Yield fee storage.
+                bytes32 currentPackedBalance = _totalProtocolFees[pool][token];
+                _totalProtocolFees[pool][token] = currentPackedBalance.setBalanceDerived(
+                    currentPackedBalance.getBalanceDerived() + aggregateYieldFeeAmountsRaw[i]
+                );
             }
         }
 

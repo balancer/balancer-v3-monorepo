@@ -519,9 +519,18 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                                         Fees
     *******************************************************************************/
 
+    // Swap and Yield fees are both stored using the PackedTokenBalance library, which is usually used for
+    // balances that are related (e.g., raw and live). In this case, it holds two uncorrelated values: swap
+    // and yield fee amounts, arbitrarily assigning "Raw" to Swap and "Derived" to Yield.
+
     /// @inheritdoc IVaultExtension
     function getTotalProtocolSwapFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
-        return _totalProtocolSwapFees[pool][token];
+        return _totalProtocolFees[pool][token].getBalanceRaw();
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getTotalProtocolYieldFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
+        return _totalProtocolFees[pool][token].getBalanceDerived();
     }
 
     /// @inheritdoc IVaultExtension
@@ -534,11 +543,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function getStaticSwapFeeManager(address pool) external view withRegisteredPool(pool) onlyVault returns (address) {
         return _poolRoleAccounts[pool].swapFeeManager;
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getTotalProtocolYieldFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
-        return _totalProtocolYieldFees[pool][token];
     }
 
     /*******************************************************************************

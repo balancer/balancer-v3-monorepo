@@ -306,11 +306,11 @@ contract VaultMock is IVaultMainMock, Vault {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function computePoolDataUpdatingBalancesAndFees(
+    function loadPoolDataUpdatingBalancesAndYieldFees(
         address pool,
         Rounding roundingDirection
     ) external returns (PoolData memory) {
-        return _loadPoolDataUpdatingBalancesAndFees(pool, roundingDirection);
+        return _loadPoolDataUpdatingBalancesAndYieldFees(pool, roundingDirection);
     }
 
     function updateLiveTokenBalanceInPoolData(
@@ -418,19 +418,19 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualGetTotalProtocolSwapFees(address pool, IERC20 token) external view returns (uint256) {
-        return _totalProtocolSwapFees[pool][token];
+        return _totalProtocolFees[pool][token].getBalanceRaw();
     }
 
     function manualGetTotalProtocolYieldFees(address pool, IERC20 token) external view returns (uint256) {
-        return _totalProtocolYieldFees[pool][token];
+        return _totalProtocolFees[pool][token].getBalanceDerived();
     }
 
     function manualSetTotalProtocolSwapFees(address pool, IERC20 token, uint256 value) external {
-        _totalProtocolSwapFees[pool][token] = value;
+        _totalProtocolFees[pool][token] = _totalProtocolFees[pool][token].setBalanceRaw(value);
     }
 
     function manualSetTotalProtocolYieldFees(address pool, IERC20 token, uint256 value) external {
-        _totalProtocolYieldFees[pool][token] = value;
+        _totalProtocolFees[pool][token] = _totalProtocolFees[pool][token].setBalanceDerived(value);
     }
 
     function manualSetAggregateProtocolSwapFeePercentage(address pool, uint256 value) external {

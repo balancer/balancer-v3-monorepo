@@ -68,9 +68,9 @@ contract VaultUnitLiquidityTest is BaseTest {
         uint256[] memory initialBalances = new uint256[](tokens.length);
         vault.manualSetPoolTokenBalances(pool, tokens, initialBalances);
 
-        /* TODO for (uint256 i = 0; i < tokens.length; i++) {
-            vault.manualSetPoolCreatorFees(pool, tokens[i], 0);
-        }*/
+        for (uint256 i = 0; i < tokens.length; i++) {
+            vault.manualSetTotalProtocolSwapFees(pool, tokens[i], 0);
+        }
     }
 
     // #region AddLiquidity tests
@@ -937,12 +937,11 @@ contract VaultUnitLiquidityTest is BaseTest {
             poolData.decimalScalingFactors[tokenIndex],
             poolData.tokenRates[tokenIndex]
         );
-        /* TODO assertEq(
-            vault.getProtocolFees(pool, poolData.tokenConfig[tokenIndex].token),
+        assertEq(
+            vault.getTotalProtocolSwapFees(pool, poolData.tokenConfig[tokenIndex].token),
             protocolSwapFeeAmountRaw,
             "Unexpected protocol fees"
         );
-        assertEq(vault.getPoolCreatorFees(pool_, poolData.tokenConfig[tokenIndex].token), 0, "Unexpected creator fees");*/
     }
 
     function _checkSetPoolBalancesResult(

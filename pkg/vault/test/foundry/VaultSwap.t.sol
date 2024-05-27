@@ -423,7 +423,7 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(0, feeAmounts[usdcIdx], "Protocol fees are not zero");
 
         // alice received protocol fees
-        assertEq(dai.balanceOf(admin) - defaultBalance, (protocolSwapFee), "Protocol fees not collected");
+        assertEq(dai.balanceOf(admin) - defaultBalance, protocolSwapFee, "Protocol fees not collected");
     }
 
     function reentrancyHook() public {

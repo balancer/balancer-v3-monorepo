@@ -154,7 +154,7 @@ interface IVaultAdmin {
      * @notice Update an aggregate fee percentage if governance is overriding a protocol fee for a specific pool.
      * @dev Can only be called by the current protocol fee collector.
      * @param pool The pool whose fee will be updated
-     * @param newAggregateYieldFeePercentage The new aggregate percentage
+     * @param newAggregateYieldFeePercentage The new aggregate yield fee percentage
      */
     function updateAggregateYieldFeePercentage(address pool, uint256 newAggregateYieldFeePercentage) external;
 
