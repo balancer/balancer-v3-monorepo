@@ -53,7 +53,9 @@ contract HooksTest is BaseVaultTest {
                 })
             )
         );
+        snapStart("swapWithOnComputeDynamicSwapFeeHook");
         router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
+        snapEnd();
     }
 
     function testOnComputeDynamicSwapFeeHookRevert() public {
