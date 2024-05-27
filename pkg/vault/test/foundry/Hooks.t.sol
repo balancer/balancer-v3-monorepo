@@ -51,16 +51,12 @@ contract HooksTest is BaseVaultTest {
         vm.label(address(anotherPool), "pool 3 tokens");
     }
 
-    // dynamic fee
-
     function createHook() internal override returns (address) {
         PoolHookFlags memory poolHookFlags;
-        poolHookFlags.shouldCallComputeDynamicSwapFee = true;
-        poolHookFlags.shouldCallBeforeSwap = true;
-        poolHookFlags.shouldCallAfterSwap = true;
-
         return _createHook(poolHookFlags);
     }
+
+    // onRegister
 
     function testOnRegisterNotAllowedFactory() public {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
@@ -123,7 +119,7 @@ contract HooksTest is BaseVaultTest {
     // dynamic fee
 
     function testOnComputeDynamicSwapFeeHook() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolHookFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
         poolHookFlags.shouldCallComputeDynamicSwapFee = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -149,7 +145,7 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnComputeDynamicSwapFeeHookRevert() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolHookFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
         poolHookFlags.shouldCallComputeDynamicSwapFee = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -172,7 +168,7 @@ contract HooksTest is BaseVaultTest {
     // before swap
 
     function testOnBeforeSwapHook() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolHookFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
         poolHookFlags.shouldCallBeforeSwap = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -198,7 +194,7 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnBeforeSwapHookRevert() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolHookFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
         poolHookFlags.shouldCallBeforeSwap = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -221,7 +217,7 @@ contract HooksTest is BaseVaultTest {
     // after swap
 
     function testOnAfterSwapHook() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolHookFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
         poolHookFlags.shouldCallAfterSwap = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -259,7 +255,7 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnAfterSwapHookRevert() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolHookFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
         poolHookFlags.shouldCallAfterSwap = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -296,7 +292,7 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnBeforeAddLiquidityHook() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolHookFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
         poolHookFlags.shouldCallBeforeAddLiquidity = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -349,7 +345,7 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnBeforeRemoveLiquidityHook() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolHookFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
         poolHookFlags.shouldCallBeforeRemoveLiquidity = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -403,7 +399,7 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnAfterAddLiquidityHook() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolHookFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
         poolHookFlags.shouldCallAfterAddLiquidity = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -455,7 +451,7 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnAfterRemoveLiquidityHook() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolHookFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
         poolHookFlags.shouldCallAfterRemoveLiquidity = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -492,7 +488,7 @@ contract HooksTest is BaseVaultTest {
         snapEnd();
     }
 
-    function _setPoolHooksConfig(PoolHooks memory poolHookFlags) private {
+    function _setPoolHooksConfig(PoolHookFlags memory poolHookFlags) private {
         PoolConfig memory config = vault.getPoolConfig(address(pool));
         config.hooks = poolHookFlags;
         vault.setConfig(address(pool), config);
