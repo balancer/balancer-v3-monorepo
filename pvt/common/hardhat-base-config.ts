@@ -9,9 +9,16 @@ type SolcConfig = {
     optimizer: {
       enabled: boolean;
       runs?: number;
+      details: {
+        yulDetails: {
+          optimizerSteps: string;
+        };
+      };
     };
   };
 };
+
+const optimizerSteps = 'dhfoDgvulfnTUtnIf [ xa[r]EscLM cCTUtTOntnfDIul Lcul Vcul [j] Tpeul xa[rul] xa[r]cL gvif CTUca[r]LSsTFOtfDnca[r]Iulc ] jmul[jul] VcTOcul jmul : fDnTOcmu';
 
 export const compilers: [SolcConfig] = [
   {
@@ -22,6 +29,11 @@ export const compilers: [SolcConfig] = [
       optimizer: {
         enabled: true,
         runs: 9999,
+        details: {
+          yulDetails: {
+            optimizerSteps,
+          },
+        },
       },
     },
   },
@@ -83,6 +95,11 @@ export const overrides = (packageName: string): Record<string, SolcConfig> => {
         optimizer: {
           enabled: true,
           runs: contractSettings[contract].runs,
+          details: {
+            yulDetails: {
+              optimizerSteps,
+            },
+          },
         },
       },
     };
