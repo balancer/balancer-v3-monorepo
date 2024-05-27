@@ -168,7 +168,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), label);
 
-        // creator is lp
+        // creator used to be lp
         factoryMock.registerTestPool(address(newPool), vault.buildTokenConfig(tokens.asIERC20()));
 
         return address(newPool);
