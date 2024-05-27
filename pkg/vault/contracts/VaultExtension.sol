@@ -450,7 +450,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getBptRate(address pool) external view withRegisteredPool(pool) returns (uint256 rate) {
-        PoolData memory poolData = _getPoolData(pool, Rounding.ROUND_DOWN);
+        PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
         uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18);
 
         return invariant.divDown(_totalSupply(pool));
