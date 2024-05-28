@@ -304,6 +304,46 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /**
+     * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
+     * This function modifies protocol fees and balance storage. Since it modifies storage and makes external
+     * calls, it must be nonReentrant.
+     * Side effects: updates `_totalProtocolFees` and `_poolTokenBalances` in storage.
+     */
+    function _loadPoolDataUpdatingBalancesAndYieldFees(
+        address pool,
+        Rounding roundingDirection
+    ) internal nonReentrant returns (PoolData memory poolData) {
+        // Initialize poolData with base information for subsequent calculations.
+        poolData = _loadPoolData(pool, roundingDirection);
+
+        uint256[] memory aggregateYieldFeeAmountsRaw = _computePendingYieldFees(pool, poolData);
+
+        uint256 numTokens = aggregateYieldFeeAmountsRaw.length;
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            if (aggregateYieldFeeAmountsRaw[i] > 0) {
+                IERC20 token = poolData.tokenConfig[i].token;
+
+                poolData.updateRawAndLiveBalance(
+                    i,
+                    poolData.balancesRaw[i] - aggregateYieldFeeAmountsRaw[i],
+                    roundingDirection
+                );
+
+                // Both Swap and Yield fees are stored together in a PackedTokenBalance.
+                // We have designated "Derived" the derived half for Yield fee storage.
+                bytes32 currentPackedBalance = _totalProtocolFees[pool][token];
+                _totalProtocolFees[pool][token] = currentPackedBalance.setBalanceDerived(
+                    currentPackedBalance.getBalanceDerived() + aggregateYieldFeeAmountsRaw[i]
+                );
+            }
+        }
+
+        // Update raw and last live pool balances, as computed by `_loadPoolDataAndYieldFees`
+        _writePoolBalancesToStorage(pool, poolData);
+    }
+
+    /**
      * @dev Computes the pending yield fees for both the protocol and creator, without changing any state.
      * No side-effects
      */
@@ -342,46 +382,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 );
             }
         }
-    }
-
-    /**
-     * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
-     * This function modifies protocol fees and balance storage. Since it modifies storage and makes external
-     * calls, it must be nonReentrant.
-     * Side effects: updates `_totalProtocolFees` and `_poolTokenBalances` in storage.
-     */
-    function _loadPoolDataUpdatingBalancesAndYieldFees(
-        address pool,
-        Rounding roundingDirection
-    ) internal nonReentrant returns (PoolData memory poolData) {
-        // Initialize poolData with base information for subsequent calculations.
-        poolData = _loadPoolData(pool, roundingDirection);
-
-        uint256[] memory aggregateYieldFeeAmountsRaw = _computePendingYieldFees(pool, poolData);
-
-        uint256 numTokens = aggregateYieldFeeAmountsRaw.length;
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            if (aggregateYieldFeeAmountsRaw[i] > 0) {
-                IERC20 token = poolData.tokenConfig[i].token;
-
-                poolData.updateRawAndLiveBalance(
-                    i,
-                    poolData.balancesRaw[i] - aggregateYieldFeeAmountsRaw[i],
-                    roundingDirection
-                );
-
-                // Both Swap and Yield fees are stored together in a PackedTokenBalance.
-                // We have designated "Derived" the derived half for Yield fee storage.
-                bytes32 currentPackedBalance = _totalProtocolFees[pool][token];
-                _totalProtocolFees[pool][token] = currentPackedBalance.setBalanceDerived(
-                    currentPackedBalance.getBalanceDerived() + aggregateYieldFeeAmountsRaw[i]
-                );
-            }
-        }
-
-        // Update raw and last live pool balances, as computed by `_loadPoolDataAndYieldFees`
-        _writePoolBalancesToStorage(pool, poolData);
     }
 
     function _computeYieldFeesDue(
