@@ -172,7 +172,7 @@ library HooksConfigLib {
         AddLiquidityParams memory params,
         PoolData memory poolData
     ) internal {
-        if (config.shouldCallAfterAddLiquidity) {
+        if (config.shouldCallAfterAddLiquidity == false) {
             return;
         }
 
@@ -196,7 +196,7 @@ library HooksConfigLib {
         RemoveLiquidityParams memory params,
         PoolData memory poolData
     ) internal returns (bool) {
-        if (config.shouldCallBeforeRemoveLiquidity) {
+        if (config.shouldCallBeforeRemoveLiquidity == false) {
             return false;
         }
 

@@ -70,6 +70,7 @@ contract PoolHooksMock is BasePoolHooks {
 
     function setHooksConfig(HooksConfig memory hooksConfig) external {
         _hooksConfig = hooksConfig;
+        _hooksConfig.hooksContract = address(this);
     }
 
     function onBeforeInitialize(uint256[] memory, bytes memory) external override returns (bool) {
