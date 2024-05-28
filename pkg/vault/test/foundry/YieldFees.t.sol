@@ -106,8 +106,10 @@ contract YieldFeesTest is BaseVaultTest {
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
 
-        protocolYieldFeePercentage = bound(protocolYieldFeePercentage, 1e16, 20e16);
-        poolCreatorFeePercentage = bound(poolCreatorFeePercentage, 0, 1e18);
+        (protocolYieldFeePercentage, poolCreatorFeePercentage) = _initializeFees(
+            protocolYieldFeePercentage,
+            poolCreatorFeePercentage
+        );
 
         pool = createPool();
         wstETHRateProvider.mockRate(wstethRate);
@@ -235,8 +237,10 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 protocolYieldFeePercentage,
         uint256 poolCreatorFeePercentage
     ) public {
-        protocolYieldFeePercentage = bound(protocolYieldFeePercentage, 0, 20e16);
-        poolCreatorFeePercentage = bound(poolCreatorFeePercentage, 0, 1e18);
+        (protocolYieldFeePercentage, poolCreatorFeePercentage) = _initializeFees(
+            protocolYieldFeePercentage,
+            poolCreatorFeePercentage
+        );
 
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
@@ -360,5 +364,19 @@ contract YieldFeesTest is BaseVaultTest {
         poolData.tokenRates[0] = tokenRate;
         uint256 liveBalance = balanceRaw.mulDown(decimalScalingFactor).mulDown(tokenRate);
         poolData.balancesLiveScaled18[0] = liveBalance;
+    }
+
+    function _initializeFees(
+        uint256 protocolFeePercentage,
+        uint256 creatorFeePercentage
+    ) private returns (uint256 finalProtocolFeePercentage, uint256 finalCreatorFeePercentage) {
+        // Fees are stored as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%) in vaultConfig and poolConfig
+        // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
+
+        // yield fee 0.000001-20%
+        finalProtocolFeePercentage = bound(protocolFeePercentage, 1, 2e6) * FEE_SCALING_FACTOR;
+
+        // creator yield fees 1-100%
+        finalCreatorFeePercentage = bound(creatorFeePercentage, 1, 1e7) * FEE_SCALING_FACTOR;
     }
 }
