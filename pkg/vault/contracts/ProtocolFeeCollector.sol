@@ -22,7 +22,10 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     using SafeERC20 for IERC20;
 
     /**
-     * @dev Instead of storing only the fee in the mapping, store the fee (in 64-bits, to pack into one slot).
+     * @dev Instead of storing only the fee in the mapping, also store a flag to indicate whether the fee has been
+     * set by governance through a permissioned call. (The fee is stored in 64-bits, so that the struct fits
+     * within a single slot.)
+     *
      * We know the percentage is an 18-decimal FP value, which only takes 60 bits, so it's guaranteed to fit,
      * and we can do simple casts to truncate the high bits without needed SafeCast.
      *
