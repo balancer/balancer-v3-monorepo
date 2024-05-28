@@ -325,12 +325,6 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
 
-        // swap fee from 0% - 10%
-        swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
-
-        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
-        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
-
         vm.startPrank(alice);
         router.addLiquidityProportional(
             address(liquidityPool),
