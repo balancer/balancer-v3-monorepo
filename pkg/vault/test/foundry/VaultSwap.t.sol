@@ -447,9 +447,9 @@ contract VaultSwapTest is BaseVaultTest {
 
     function testReentrancySwap() public {
         // Enable before swap
-        PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.hooks.shouldCallBeforeSwap = true;
-        vault.setConfig(address(pool), config);
+        HooksConfig memory config = vault.getHooksConfig(address(pool));
+        config.shouldCallBeforeSwap = true;
+        vault.setHooksConfig(address(pool), config);
 
         // Enable reentrancy hook
         PoolHooksMock(poolHooksContract).setSwapReentrancyHookActive(true);

@@ -108,7 +108,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.prank(alice);
         // Perform a swap in the pool
-        uint256 swapAmountOut = router.swapSingleTokenExactIn(
+        router.swapSingleTokenExactIn(
             address(pool),
             dai,
             usdc,

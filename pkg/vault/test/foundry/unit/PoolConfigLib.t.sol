@@ -23,23 +23,14 @@ contract PoolConfigLibTest is Test {
 
     mapping(uint256 => bool) usedBits;
 
-    // 16 flags + 2 * 24 bit fee + 24 bit token diffs + 32 bit timestamp = 120 total bits used.
-    uint256 private constant BITS_IN_USE = 120;
+    // 7 flags + 2 * 24 bit fee + 24 bit token diffs + 32 bit timestamp = 111 total bits used.
+    uint256 private constant BITS_IN_USE = 111;
 
     // #region PoolConfigBits
     function testOffsets() public {
         _checkBit(PoolConfigLib.POOL_REGISTERED_OFFSET);
         _checkBit(PoolConfigLib.POOL_INITIALIZED_OFFSET);
         _checkBit(PoolConfigLib.POOL_PAUSED_OFFSET);
-        _checkBit(PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET);
-        _checkBit(PoolConfigLib.BEFORE_SWAP_OFFSET);
-        _checkBit(PoolConfigLib.AFTER_SWAP_OFFSET);
-        _checkBit(PoolConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET);
-        _checkBit(PoolConfigLib.AFTER_ADD_LIQUIDITY_OFFSET);
-        _checkBit(PoolConfigLib.BEFORE_REMOVE_LIQUIDITY_OFFSET);
-        _checkBit(PoolConfigLib.AFTER_REMOVE_LIQUIDITY_OFFSET);
-        _checkBit(PoolConfigLib.BEFORE_INITIALIZE_OFFSET);
-        _checkBit(PoolConfigLib.AFTER_INITIALIZE_OFFSET);
         _checkBit(PoolConfigLib.POOL_RECOVERY_MODE_OFFSET);
         _checkBit(PoolConfigLib.UNBALANCED_LIQUIDITY_OFFSET);
         _checkBit(PoolConfigLib.ADD_LIQUIDITY_CUSTOM_OFFSET);
@@ -69,83 +60,6 @@ contract PoolConfigLibTest is Test {
         assertTrue(
             PoolConfigBits.wrap(bytes32(0).insertBool(true, PoolConfigLib.POOL_PAUSED_OFFSET)).isPoolPaused(),
             "isPoolPaused is false"
-        );
-    }
-
-    function testShouldCallComputeDynamicSwapFee() public {
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET))
-                .shouldCallComputeDynamicSwapFee(),
-            "shouldCallComputeDynamicSwapFee is false"
-        );
-    }
-
-    function testShouldCallBeforeSwap() public {
-        assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_SWAP_OFFSET)).shouldCallBeforeSwap(),
-            "shouldCallBeforeSwap is false"
-        );
-    }
-
-    function testShouldCallAfterSwap() public {
-        assertTrue(
-            PoolConfigBits.wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_SWAP_OFFSET)).shouldCallAfterSwap(),
-            "shouldCallAfterSwap is false"
-        );
-    }
-
-    function testShouldCallBeforeAddLiquidity() public {
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET))
-                .shouldCallBeforeAddLiquidity(),
-            "shouldCallBeforeAddLiquidity is false"
-        );
-    }
-
-    function testShouldCallAfterAddLiquidity() public {
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_ADD_LIQUIDITY_OFFSET))
-                .shouldCallAfterAddLiquidity(),
-            "shouldCallAfterAddLiquidity is false"
-        );
-    }
-
-    function testShouldCallBeforeRemoveLiquidity() public {
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_REMOVE_LIQUIDITY_OFFSET))
-                .shouldCallBeforeRemoveLiquidity(),
-            "shouldCallBeforeRemoveLiquidity is false"
-        );
-    }
-
-    function testShouldCallAfterRemoveLiquidity() public {
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_REMOVE_LIQUIDITY_OFFSET))
-                .shouldCallAfterRemoveLiquidity(),
-            "shouldCallAfterRemoveLiquidity is false"
-        );
-    }
-
-    function testShouldCallBeforeInitialize() public {
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_INITIALIZE_OFFSET))
-                .shouldCallBeforeInitialize(),
-            "shouldCallBeforeInitialize is false"
-        );
-    }
-
-    function testShouldCallAfterInitialize() public {
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_INITIALIZE_OFFSET))
-                .shouldCallAfterInitialize(),
-            "shouldCallAfterInitialize is false"
         );
     }
 
@@ -292,15 +206,6 @@ contract PoolConfigLibTest is Test {
         assertFalse(configBits.isPoolRegistered(), "isPoolRegistered is true");
         assertFalse(configBits.isPoolInitialized(), "isPoolInitialized is true");
         assertFalse(configBits.isPoolPaused(), "isPoolPaused is true");
-        assertFalse(configBits.shouldCallComputeDynamicSwapFee(), "shouldCallComputeDynamicSwapFee is true");
-        assertFalse(configBits.shouldCallBeforeSwap(), "shouldCallBeforeSwap is true");
-        assertFalse(configBits.shouldCallAfterSwap(), "shouldCallAfterSwap is true");
-        assertFalse(configBits.shouldCallBeforeAddLiquidity(), "shouldCallBeforeAddLiquidity is true");
-        assertFalse(configBits.shouldCallAfterAddLiquidity(), "shouldCallAfterAddLiquidity is true");
-        assertFalse(configBits.shouldCallBeforeRemoveLiquidity(), "shouldCallBeforeRemoveLiquidity is true");
-        assertFalse(configBits.shouldCallAfterRemoveLiquidity(), "shouldCallAfterRemoveLiquidity is true");
-        assertFalse(configBits.shouldCallBeforeInitialize(), "shouldCallBeforeInitialize is true");
-        assertFalse(configBits.shouldCallAfterInitialize(), "shouldCallAfterInitialize is true");
         assertFalse(configBits.isPoolInRecoveryMode(), "isPoolInRecoveryMode is true");
 
         // NOTE: assertFalse is here because supportsUnbalancedLiquidity reverse value
@@ -396,88 +301,6 @@ contract PoolConfigLibTest is Test {
                 .pauseWindowEndTime,
             MAX_UINT32_VALUE,
             "pauseWindowEndTime mismatch (testToPoolConfig)"
-        );
-
-        // check .hooks
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_INITIALIZE_OFFSET))
-                .toPoolConfig()
-                .hooks
-                .shouldCallBeforeInitialize,
-            "shouldCallBeforeInitialize mismatch (testToPoolConfig)"
-        );
-
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_INITIALIZE_OFFSET))
-                .toPoolConfig()
-                .hooks
-                .shouldCallAfterInitialize,
-            "shouldCallAfterInitialize mismatch (testToPoolConfig)"
-        );
-
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET))
-                .toPoolConfig()
-                .hooks
-                .shouldCallBeforeAddLiquidity,
-            "shouldCallBeforeAddLiquidity mismatch (testToPoolConfig)"
-        );
-
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_ADD_LIQUIDITY_OFFSET))
-                .toPoolConfig()
-                .hooks
-                .shouldCallAfterAddLiquidity,
-            "shouldCallAfterAddLiquidity mismatch (testToPoolConfig)"
-        );
-
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_REMOVE_LIQUIDITY_OFFSET))
-                .toPoolConfig()
-                .hooks
-                .shouldCallBeforeRemoveLiquidity,
-            "shouldCallBeforeRemoveLiquidity mismatch (testToPoolConfig)"
-        );
-
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_REMOVE_LIQUIDITY_OFFSET))
-                .toPoolConfig()
-                .hooks
-                .shouldCallAfterRemoveLiquidity,
-            "shouldCallAfterRemoveLiquidity mismatch (testToPoolConfig)"
-        );
-
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET))
-                .toPoolConfig()
-                .hooks
-                .shouldCallComputeDynamicSwapFee,
-            "shouldCallComputeDynamicSwapFee mismatch (testToPoolConfig)"
-        );
-
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.BEFORE_SWAP_OFFSET))
-                .toPoolConfig()
-                .hooks
-                .shouldCallBeforeSwap,
-            "shouldCallBeforeSwap mismatch (testToPoolConfig)"
-        );
-
-        assertTrue(
-            PoolConfigBits
-                .wrap(bytes32(0).insertBool(true, PoolConfigLib.AFTER_SWAP_OFFSET))
-                .toPoolConfig()
-                .hooks
-                .shouldCallAfterSwap,
-            "shouldCallAfterSwap mismatch (testToPoolConfig)"
         );
 
         // check .liquidityManagement
@@ -576,79 +399,6 @@ contract PoolConfigLibTest is Test {
             PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
             bytes32(0).insertUint(MAX_UINT32_VALUE, PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH),
             "pauseWindowEndTime mismatch (testFromPoolConfig)"
-        );
-
-        // check .hooks
-        config = _createEmptyConfig();
-        config.hooks.shouldCallBeforeInitialize = true;
-        assertEq(
-            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
-            bytes32(0).insertBool(true, PoolConfigLib.BEFORE_INITIALIZE_OFFSET),
-            "shouldCallBeforeInitialize mismatch (testFromPoolConfig)"
-        );
-
-        config = _createEmptyConfig();
-        config.hooks.shouldCallAfterInitialize = true;
-        assertEq(
-            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
-            bytes32(0).insertBool(true, PoolConfigLib.AFTER_INITIALIZE_OFFSET),
-            "shouldCallAfterInitialize mismatch (testFromPoolConfig)"
-        );
-
-        config = _createEmptyConfig();
-        config.hooks.shouldCallBeforeAddLiquidity = true;
-        assertEq(
-            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
-            bytes32(0).insertBool(true, PoolConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET),
-            "shouldCallBeforeAddLiquidity mismatch (testFromPoolConfig)"
-        );
-
-        config = _createEmptyConfig();
-        config.hooks.shouldCallAfterAddLiquidity = true;
-        assertEq(
-            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
-            bytes32(0).insertBool(true, PoolConfigLib.AFTER_ADD_LIQUIDITY_OFFSET),
-            "shouldCallAfterAddLiquidity mismatch (testFromPoolConfig)"
-        );
-
-        config = _createEmptyConfig();
-        config.hooks.shouldCallBeforeRemoveLiquidity = true;
-        assertEq(
-            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
-            bytes32(0).insertBool(true, PoolConfigLib.BEFORE_REMOVE_LIQUIDITY_OFFSET),
-            "shouldCallBeforeRemoveLiquidity mismatch (testFromPoolConfig)"
-        );
-
-        config = _createEmptyConfig();
-        config.hooks.shouldCallAfterRemoveLiquidity = true;
-        assertEq(
-            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
-            bytes32(0).insertBool(true, PoolConfigLib.AFTER_REMOVE_LIQUIDITY_OFFSET),
-            "shouldCallAfterRemoveLiquidity mismatch (testFromPoolConfig)"
-        );
-
-        config = _createEmptyConfig();
-        config.hooks.shouldCallComputeDynamicSwapFee = true;
-        assertEq(
-            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
-            bytes32(0).insertBool(true, PoolConfigLib.DYNAMIC_SWAP_FEE_OFFSET),
-            "shouldCallComputeDynamicSwapFee mismatch (testFromPoolConfig)"
-        );
-
-        config = _createEmptyConfig();
-        config.hooks.shouldCallBeforeSwap = true;
-        assertEq(
-            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
-            bytes32(0).insertBool(true, PoolConfigLib.BEFORE_SWAP_OFFSET),
-            "shouldCallBeforeSwap mismatch (testFromPoolConfig)"
-        );
-
-        config = _createEmptyConfig();
-        config.hooks.shouldCallAfterSwap = true;
-        assertEq(
-            PoolConfigBits.unwrap(PoolConfigLib.fromPoolConfig(config)),
-            bytes32(0).insertBool(true, PoolConfigLib.AFTER_SWAP_OFFSET),
-            "shouldCallAfterSwap mismatch (testFromPoolConfig)"
         );
 
         // check .liquidityManagement

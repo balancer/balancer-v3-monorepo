@@ -66,10 +66,10 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 poolCreatorFeePercentage = 5e17;
 
         (
-            SwapParams memory params,
+            ,
             SwapState memory state,
             PoolData memory poolData,
-            VaultState memory vaultState
+
         ) = _makeParams(
                 SwapKind.EXACT_IN,
                 defaultAmountGivenRaw,
@@ -416,8 +416,7 @@ contract VaultUnitSwapTest is BaseTest {
             expectedCreatorFeeAmountRaw,
             params,
             swapState,
-            poolData,
-            vaultState
+            poolData
         );
     }
 
@@ -509,8 +508,7 @@ contract VaultUnitSwapTest is BaseTest {
             expectedCreatorFeeAmountRaw,
             params,
             swapState,
-            poolData,
-            vaultState
+            poolData
         );
     }
 
@@ -521,8 +519,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 expectedCreatorFeeAmountRaw,
         SwapParams memory params,
         SwapState memory state,
-        PoolData memory poolData,
-        VaultState memory vaultState
+        PoolData memory poolData
     ) internal {
         uint256 totalFees = expectedProtocolFeeAmountRaw + expectedCreatorFeeAmountRaw;
         uint256 feesOnAmountOut = params.kind == SwapKind.EXACT_IN ? totalFees : 0;
@@ -599,7 +596,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 expectedIndexOut,
         uint256 expectedSwapFeePercentage,
         uint256 expectedAmountGivenScaled18
-    ) internal {
+    ) internal pure {
         assertEq(swapState.indexIn, expectedIndexIn, "index in changed");
         assertEq(swapState.indexOut, expectedIndexOut, "index out changed");
         assertEq(swapState.swapFeePercentage, expectedSwapFeePercentage, "swap fee percentage changed");

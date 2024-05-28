@@ -89,7 +89,7 @@ library HooksConfigLib {
     function onComputeDynamicSwapFee(
         HooksConfig memory config,
         IBasePool.PoolSwapParams memory swapParams
-    ) internal returns (bool, uint256) {
+    ) internal view returns (bool, uint256) {
         if (config.shouldCallComputeDynamicSwapFee == false) {
             return (false, 0);
         }

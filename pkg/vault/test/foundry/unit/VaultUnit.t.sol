@@ -109,7 +109,6 @@ contract VaultUnitTest is BaseTest {
         vault.manualSetPoolCreatorFees(pool, dai, initVault);
 
         uint256 swapFeeAmountScaled18 = 1e18;
-        uint256 swapFeeAmountRaw = 1e18;
         uint256 protocolSwapFeePercentage = 5e16;
         uint256 creatorFeePercentage = 5e16;
 

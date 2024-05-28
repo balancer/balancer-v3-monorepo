@@ -125,7 +125,7 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, swapAmount);
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN);
     }
 
     function testBoostedPoolSwapWithoutBufferExactOut() public {
@@ -135,7 +135,7 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, swapAmount);
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT);
     }
 
     function _buildExactInPaths(
@@ -187,8 +187,7 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         address[] memory tokens,
         uint256[] memory amounts,
         uint256 expectedDelta,
-        SwapKind kind,
-        uint256 bufferExpectedDelta
+        SwapKind kind
     ) private {
         assertEq(paths.length, 1, "Incorrect output array length");
 
