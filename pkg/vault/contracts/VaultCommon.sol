@@ -400,15 +400,16 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         if (currentLiveBalance > lastLiveBalance) {
             unchecked {
                 // Magnitudes checked above, so it's safe to do unchecked math here.
-                uint256 liveBalanceDiffScaled18 = currentLiveBalance - lastLiveBalance;
-                uint256 liveBalanceDiffRaw = liveBalanceDiffScaled18.toRawUndoRateRoundDown(
-                    poolData.decimalScalingFactors[tokenIndex],
-                    poolData.tokenRates[tokenIndex]
+                uint256 aggregateYieldFeeAmountScaled18 = (currentLiveBalance - lastLiveBalance).mulUp(
+                    aggregateYieldFeePercentage
                 );
 
                 // A pool is subject to yield fees if poolSubjectToYieldFees is true, meaning that
                 // `protocolYieldFeePercentage > 0`. So, we don't need to check this again in here, saving some gas.
-                aggregateYieldFeeAmountRaw = liveBalanceDiffRaw.mulUp(aggregateYieldFeePercentage);
+                aggregateYieldFeeAmountRaw = aggregateYieldFeeAmountScaled18.toRawUndoRateRoundDown(
+                    poolData.decimalScalingFactors[tokenIndex],
+                    poolData.tokenRates[tokenIndex]
+                );
             }
         }
     }

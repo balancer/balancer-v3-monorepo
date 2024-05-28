@@ -221,8 +221,8 @@ contract YieldFeesTest is BaseVaultTest {
         } else {
             assertEq(
                 protocolYieldFeesRaw,
-                (liveBalance - lastLiveBalance).divDown(decimalScalingFactor.mulDown(tokenRate)).mulUp(
-                    yieldFeePercentage
+                (liveBalance - lastLiveBalance).mulUp(yieldFeePercentage).divDown(
+                    decimalScalingFactor.mulDown(tokenRate)
                 ),
                 "Wrong protocol yield fees"
             );
