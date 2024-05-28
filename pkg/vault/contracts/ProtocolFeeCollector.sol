@@ -115,14 +115,14 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     }
 
     /// @inheritdoc IProtocolFeeCollector
-    function getProtocolSwapFeePercentage(address pool) external view returns (uint256, bool) {
+    function getPoolProtocolSwapFeeInfo(address pool) external view returns (uint256, bool) {
         PoolFeeConfig memory config = _poolProtocolSwapFeePercentages[pool];
 
         return (config.feePercentage, config.isOverride);
     }
 
     /// @inheritdoc IProtocolFeeCollector
-    function getProtocolYieldFeePercentage(address pool) external view returns (uint256, bool) {
+    function getPoolProtocolYieldFeeInfo(address pool) external view returns (uint256, bool) {
         PoolFeeConfig memory config = _poolProtocolYieldFeePercentages[pool];
 
         return (config.feePercentage, config.isOverride);

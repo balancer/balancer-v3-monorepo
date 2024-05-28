@@ -96,7 +96,7 @@ interface IProtocolFeeCollector {
      * @return protocolSwapFeePercentage The global protocol swap fee percentage
      * @return isOverride True if the protocol fee has been overridden
      */
-    function getProtocolSwapFeePercentage(address pool) external view returns (uint256, bool);
+    function getPoolProtocolSwapFeeInfo(address pool) external view returns (uint256, bool);
 
     /**
      * @notice Getter for the current protocol yield fee for a given pool.
@@ -104,7 +104,7 @@ interface IProtocolFeeCollector {
      * @return protocolYieldFeePercentage The global protocol yield fee percentage
      * @return isOverride True if the protocol fee has been overridden
      */
-    function getProtocolYieldFeePercentage(address pool) external view returns (uint256, bool);
+    function getPoolProtocolYieldFeeInfo(address pool) external view returns (uint256, bool);
 
     /**
      * @notice Compute and return the aggregate percentage.
