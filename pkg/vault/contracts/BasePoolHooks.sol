@@ -7,7 +7,7 @@ import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol"
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import {
     AddLiquidityKind,
-    PoolHookFlags,
+    HooksConfig,
     RemoveLiquidityKind,
     TokenConfig
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -19,7 +19,7 @@ import { VaultGuard } from "./VaultGuard.sol";
  * and only override what they need.
  */
 abstract contract BasePoolHooks is IHooks, VaultGuard {
-    PoolHookFlags internal _poolHookFlags;
+    HooksConfig internal _hooksConfig;
 
     constructor(IVault vault) VaultGuard(vault) {
         // solhint-disable-previous-line no-empty-blocks
@@ -32,8 +32,8 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
     }
 
     /// @inheritdoc IHooks
-    function getPoolHookFlags() external virtual returns (PoolHookFlags memory) {
-        return _poolHookFlags;
+    function getHooksConfig() external virtual returns (HooksConfig memory) {
+        return _hooksConfig;
     }
 
     /// @inheritdoc IHooks

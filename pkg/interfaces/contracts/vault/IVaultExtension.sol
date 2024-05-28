@@ -148,6 +148,13 @@ interface IVaultExtension {
      */
     function getPoolConfig(address pool) external view returns (PoolConfig memory);
 
+    /**
+     * @notice Gets the hooks configuration parameters of a pool.
+     * @param pool Address of the pool
+     * @return Hooks configuration
+     */
+    function getHooksConfig(address pool) external view returns (HooksConfig memory);
+
     /*******************************************************************************
                                     Pool Tokens
     *******************************************************************************/

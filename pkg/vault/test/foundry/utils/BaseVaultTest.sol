@@ -13,7 +13,7 @@ import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMo
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { PoolHookFlags, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { HooksConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -23,7 +23,7 @@ import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { Router } from "../../../contracts/Router.sol";
-import { PoolConfigBits } from "../../../contracts/lib/PoolConfigLib.sol";
+import { HooksConfigBits } from "../../../contracts/lib/HooksConfigLib.sol";
 import { BatchRouter } from "../../../contracts/BatchRouter.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
@@ -184,15 +184,16 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     function createHook() internal virtual returns (address) {
         // Sets all flags as false
-        return _createHook(PoolConfigBits.wrap(0).toPoolConfig().hooks);
+        return _createHook(HooksConfigBits.wrap(0).toHooksConfig());
     }
 
-    function _createHook(PoolHookFlags memory poolHookFlags) internal virtual returns (address) {
+    function _createHook(HooksConfig memory hooksConfig) internal virtual returns (address) {
         PoolHooksMock newHook = new PoolHooksMock(IVault(address(vault)));
+        hooksConfig.hooksContract = address(newHook);
         // Allow pools built with factoryMock to use the poolHooksMock
         newHook.allowFactory(address(factoryMock));
         // Configure pool hook flags
-        newHook.setPoolHookFlags(poolHookFlags);
+        newHook.setHooksConfig(hooksConfig);
         vm.label(address(newHook), "pool hooks");
         return address(newHook);
     }

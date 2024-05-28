@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
-import { LiquidityManagement, PoolHookFlags, PoolRoleAccounts, TokenConfig } from "./VaultTypes.sol";
+import { LiquidityManagement, HooksConfig, PoolRoleAccounts, TokenConfig } from "./VaultTypes.sol";
 import { IHooks } from "./IHooks.sol";
 
 interface IVaultEvents {
@@ -17,8 +17,7 @@ interface IVaultEvents {
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param pauseWindowEndTime The pool's pause window end time
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
-     * @param poolHookFlags Flags indicating which hooks the pool supports
-     * @param poolHooksContract Contract that implements the hooks for the pool
+     * @param hooksConfig Flags indicating which hooks the pool supports and address of hooks contract
      * @param liquidityManagement Supported liquidity management hook flags
      */
     event PoolRegistered(
@@ -27,8 +26,7 @@ interface IVaultEvents {
         TokenConfig[] tokenConfig,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts roleAccounts,
-        PoolHookFlags poolHookFlags,
-        address poolHooksContract,
+        HooksConfig hooksConfig,
         LiquidityManagement liquidityManagement
     );
 

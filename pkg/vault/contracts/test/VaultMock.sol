@@ -25,6 +25,7 @@ import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/tes
 
 import { VaultStateLib } from "../lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
+import { HooksConfigLib } from "../lib/HooksConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
@@ -44,6 +45,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using ScalingHelpers for uint256;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
+    using HooksConfigLib for HooksConfig;
     using VaultStateLib for VaultState;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
@@ -76,6 +78,10 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function setConfig(address pool, PoolConfig calldata config) external {
         _poolConfig[pool] = config.fromPoolConfig();
+    }
+
+    function setHooksConfig(address pool, HooksConfig calldata config) external {
+        _hooksConfig[pool] = config.fromHooksConfig();
     }
 
     // Used for testing pool registration, which is ordinarily done in the pool factory.

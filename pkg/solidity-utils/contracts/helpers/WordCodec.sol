@@ -58,13 +58,17 @@ library WordCodec {
         }
     }
 
+    /**
+     * @dev Inserts an address (160 bits), shifted by an offset, into a 256 bit word,
+     * replacing the old value. Returns the new word.
+     */
     function insertAddress(
         bytes32 word,
-        uint256 value,
+        address value,
         uint256 offset
     ) internal pure returns (bytes32 result) {
         uint256 addressBitLength = 160;
-        _validateEncodingParams(value, offset, addressBitLength);
+        _validateEncodingParams(uint256(uint160(value)), offset, addressBitLength);
         // Equivalent to:
         // uint256 mask = (1 << bitLength) - 1;
         // bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));

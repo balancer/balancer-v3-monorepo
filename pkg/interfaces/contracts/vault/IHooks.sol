@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
-import { SwapKind, AddLiquidityKind, PoolHookFlags, RemoveLiquidityKind, TokenConfig } from "./VaultTypes.sol";
+import { SwapKind, AddLiquidityKind, HooksConfig, RemoveLiquidityKind, TokenConfig } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
 
 /// @notice Interface for pool hooks
@@ -26,9 +26,9 @@ interface IHooks {
 
     /**
      * @notice returns flags informing which hooks are implemented in the contract.
-     * @return poolHookFlags Flags indicating which hooks the contract supports
+     * @return hooksConfig Flags indicating which hooks the contract supports and the address of the hook contract
      */
-    function getPoolHookFlags() external returns (PoolHookFlags memory poolHookFlags);
+    function getHooksConfig() external returns (HooksConfig memory hooksConfig);
 
     /***************************************************************************
                                    Initialize

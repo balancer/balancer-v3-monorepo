@@ -21,6 +21,7 @@ import {
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
+import { HooksConfigBits } from "./lib/HooksConfigLib.sol";
 
 // solhint-disable max-states-count
 
@@ -63,7 +64,7 @@ contract VaultStorage {
     mapping(address => PoolConfigBits) internal _poolConfig;
 
     // Registry of pool hooks.
-    mapping(address => IHooks) internal _poolHooks;
+    mapping(address => HooksConfigBits) internal _hooksConfig;
 
     // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
     // Last live balances are used for yield fee computation, and since these have rates applied, they are stored
