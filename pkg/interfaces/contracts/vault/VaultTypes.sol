@@ -6,28 +6,14 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IRateProvider } from "./IRateProvider.sol";
 
-/// @dev Represents a pool's hooks.
-struct PoolHookFlags {
-    bool shouldCallBeforeInitialize;
-    bool shouldCallAfterInitialize;
-    bool shouldCallComputeDynamicSwapFee;
-    bool shouldCallBeforeSwap;
-    bool shouldCallAfterSwap;
-    bool shouldCallBeforeAddLiquidity;
-    bool shouldCallAfterAddLiquidity;
-    bool shouldCallBeforeRemoveLiquidity;
-    bool shouldCallAfterRemoveLiquidity;
-}
-
 struct LiquidityManagement {
     bool disableUnbalancedLiquidity;
     bool enableAddLiquidityCustom;
     bool enableRemoveLiquidityCustom;
 }
 
-/// @dev Represents a pool's configuration, including hooks.
+/// @dev Represents a pool's configuration (hooks configuration are separated in another struct).
 struct PoolConfig {
-    PoolHookFlags hooks;
     LiquidityManagement liquidityManagement;
     uint256 staticSwapFeePercentage;
     uint256 poolCreatorFeePercentage;
@@ -37,6 +23,20 @@ struct PoolConfig {
     bool isPoolInitialized;
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
+}
+
+/// @dev Represents a hook contract configuration for a pool.
+struct HooksConfig {
+    bool shouldCallBeforeInitialize;
+    bool shouldCallAfterInitialize;
+    bool shouldCallComputeDynamicSwapFee;
+    bool shouldCallBeforeSwap;
+    bool shouldCallAfterSwap;
+    bool shouldCallBeforeAddLiquidity;
+    bool shouldCallAfterAddLiquidity;
+    bool shouldCallBeforeRemoveLiquidity;
+    bool shouldCallAfterRemoveLiquidity;
+    address hooksContract;
 }
 
 /// @dev Represents temporary state used in a swap operation.

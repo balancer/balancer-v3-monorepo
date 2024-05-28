@@ -132,6 +132,15 @@ library WordCodec {
         }
     }
 
+    /// @dev Decodes and returns an address (160 bits), shifted by an offset, from a 256 bit word.
+    function decodeAddress(bytes32 word, uint256 offset) internal pure returns (address result) {
+        // Equivalent to:
+        // result = address(word >> offset) & ((1 << bitLength) - 1);
+        assembly {
+            result := and(shr(offset, word), sub(shl(160, 1), 1))
+        }
+    }
+
     /***************************************************************************
                                     Special Cases
     ***************************************************************************/
