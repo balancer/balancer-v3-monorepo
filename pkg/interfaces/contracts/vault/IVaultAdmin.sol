@@ -123,6 +123,9 @@ interface IVaultAdmin {
 
     /**
      * @notice Assigns a new static swap fee percentage to the specified pool.
+     * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
+     * MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
+     *
      * @param pool The address of the pool for which the static swap fee will be changed
      * @param swapFeePercentage The new swap fee percentage to apply to the pool
      */
@@ -146,7 +149,7 @@ interface IVaultAdmin {
      * @notice Update an aggregate swap fee percentage.
      * @dev Can only be called by the current protocol fee collector. Called when governance overrides a protocol fee
      * for a specific pool, or to permissionlessly update a pool to a changed global protocol fee value (if the pool's
-     * fee has not previously been set by governance).
+     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE.
      *
      * @param pool The pool whose fee will be updated
      * @param newAggregateSwapFeePercentage The new aggregate swap fee percentage
@@ -157,7 +160,7 @@ interface IVaultAdmin {
      * @notice Update an aggregate yield fee percentage.
      * @dev Can only be called by the current protocol fee collector. Called when governance overrides a protocol fee
      * for a specific pool, or to permissionlessly update a pool to a changed global protocol fee value (if the pool's
-     * fee has not previously been set by governance).
+     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE.
      *
      * @param pool The pool whose fee will be updated
      * @param newAggregateYieldFeePercentage The new aggregate yield fee percentage

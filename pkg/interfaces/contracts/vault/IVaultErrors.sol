@@ -158,8 +158,12 @@ interface IVaultErrors {
     /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
     error SwapFeePercentageTooHigh();
 
-    /// @dev Error raised when the sum of the parts (aggregate protocol fee) is greater than the whole (swap fee).
-    error ProtocolFeesExceedSwapFee();
+    /**
+     * @dev Error raised when the sum of the parts (aggregate protocol swap or yield fee)
+     * is greater than the whole (total swap or yield fee). Also validated when the protocol fee
+     * collector updates aggregate fee percentages in the Vault.
+     */
+    error ProtocolFeesExceedTotalCollected();
 
     /**
      * @dev  Error raised when the swap fee percentage is less than the minimum allowed value.

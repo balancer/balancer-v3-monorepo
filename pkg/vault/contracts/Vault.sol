@@ -980,7 +980,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Ensure we can never charge more than the total swap fee.
             if (aggregateSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
-                revert ProtocolFeesExceedSwapFee();
+                revert ProtocolFeesExceedTotalCollected();
             }
 
             totalFeesRaw = aggregateSwapFeeAmountScaled18.toRawUndoRateRoundDown(

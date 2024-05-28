@@ -68,6 +68,13 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _;
     }
 
+    modifier withValidPercentage(uint256 aggregatePercentage) {
+        if (aggregatePercentage > FixedPoint.ONE) {
+            revert ProtocolFeesExceedTotalCollected();
+        }
+        _;
+    }
+
     constructor(
         IVault mainVault,
         uint256 pauseWindowDuration,
@@ -274,11 +281,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                                         Fees
     *******************************************************************************/
 
-    /**
-     * @inheritdoc IVaultAdmin
-     * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
-     * MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
-     */
+    /// @inheritdoc IVaultAdmin
     function setStaticSwapFeePercentage(
         address pool,
         uint256 swapFeePercentage
@@ -341,7 +344,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function updateAggregateSwapFeePercentage(
         address pool,
         uint256 newAggregateSwapFeePercentage
-    ) external onlyProtocolFeeCollector {
+    ) external withValidPercentage(newAggregateSwapFeePercentage) onlyProtocolFeeCollector {
         PoolConfig memory config = _poolConfig[pool].toPoolConfig();
         config.aggregateProtocolSwapFeePercentage = newAggregateSwapFeePercentage;
         _poolConfig[pool] = config.fromPoolConfig();
@@ -351,7 +354,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function updateAggregateYieldFeePercentage(
         address pool,
         uint256 newAggregateYieldFeePercentage
-    ) external onlyProtocolFeeCollector {
+    ) external withValidPercentage(newAggregateYieldFeePercentage) onlyProtocolFeeCollector {
         PoolConfig memory config = _poolConfig[pool].toPoolConfig();
         config.aggregateProtocolYieldFeePercentage = newAggregateYieldFeePercentage;
         _poolConfig[pool] = config.fromPoolConfig();
