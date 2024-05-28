@@ -11,6 +11,7 @@ import { VaultFactory } from "../../../contracts/VaultFactory.sol";
 import { VaultAdminMock } from "../../../contracts/test/VaultAdminMock.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
+import { ProtocolFeeCollectorMock } from "../../../contracts/test/ProtocolFeeCollectorMock.sol";
 import { ProtocolFeeCollector } from "../../../contracts/ProtocolFeeCollector.sol";
 
 library VaultMockDeployer {
@@ -20,7 +21,7 @@ library VaultMockDeployer {
         vault = VaultMock(payable(CREATE3.getDeployed(salt)));
         VaultAdminMock vaultAdmin = new VaultAdminMock(IVault(address(vault)), 90 days, 30 days);
         VaultExtensionMock vaultExtension = new VaultExtensionMock(IVault(address(vault)), vaultAdmin);
-        ProtocolFeeCollector protocolFeeCollector = new ProtocolFeeCollector(IVault(address(vault)));
+        ProtocolFeeCollector protocolFeeCollector = new ProtocolFeeCollectorMock(IVault(address(vault)));
 
         _create(abi.encode(vaultExtension, authorizer, protocolFeeCollector), salt);
         return vault;

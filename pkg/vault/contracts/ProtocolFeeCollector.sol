@@ -115,6 +115,20 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     }
 
     /// @inheritdoc IProtocolFeeCollector
+    function getPoolProtocolSwapFeeInfo(address pool) external view returns (uint256, bool) {
+        PoolFeeConfig memory config = _poolProtocolSwapFeePercentages[pool];
+
+        return (config.feePercentage, config.isOverride);
+    }
+
+    /// @inheritdoc IProtocolFeeCollector
+    function getPoolProtocolYieldFeeInfo(address pool) external view returns (uint256, bool) {
+        PoolFeeConfig memory config = _poolProtocolYieldFeePercentages[pool];
+
+        return (config.feePercentage, config.isOverride);
+    }
+
+    /// @inheritdoc IProtocolFeeCollector
     function getTotalCollectedProtocolFeeAmounts(address pool) public view returns (uint256[] memory feeAmounts) {
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
 
@@ -146,7 +160,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         );
     }
 
-    function _ensureCallerIsPoolCreator(address pool) private view {
+    function _ensureCallerIsPoolCreator(address pool) internal view {
         (address poolCreator, ) = getVault().getPoolCreatorInfo(pool);
 
         if (poolCreator == address(0)) {
@@ -172,11 +186,11 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     function _getAggregateFeePercentage(
         uint256 protocolFeePercentage,
         uint256 poolCreatorFeePercentage
-    ) private pure returns (uint256) {
+    ) internal pure returns (uint256) {
         return protocolFeePercentage + protocolFeePercentage.complement().mulDown(poolCreatorFeePercentage);
     }
 
-    function _getPoolTokensAndCount(address pool) private view returns (IERC20[] memory tokens, uint256 numTokens) {
+    function _getPoolTokensAndCount(address pool) internal view returns (IERC20[] memory tokens, uint256 numTokens) {
         tokens = getVault().getPoolTokens(pool);
         numTokens = tokens.length;
     }

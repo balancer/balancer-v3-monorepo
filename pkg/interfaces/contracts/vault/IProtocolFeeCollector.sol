@@ -69,9 +69,6 @@ interface IProtocolFeeCollector {
      */
     error ProtocolYieldFeePercentageTooHigh();
 
-    /// @dev Error raised when the pool creator fee percentage exceeds the maximum allowed value.
-    error PoolCreatorFeePercentageTooHigh();
-
     /// @dev Error raised if there is no pool creator on a withdrawal attempt from the given pool.
     error PoolCreatorNotRegistered(address pool);
 
@@ -92,6 +89,22 @@ interface IProtocolFeeCollector {
      * @return protocolYieldFeePercentage The global protocol yield fee percentage
      */
     function getGlobalProtocolYieldFeePercentage() external view returns (uint256);
+
+    /**
+     * @notice Getter for the current protocol swap fee for a given pool.
+     * @param pool The pool
+     * @return protocolSwapFeePercentage The global protocol swap fee percentage
+     * @return isOverride True if the protocol fee has been overridden
+     */
+    function getPoolProtocolSwapFeeInfo(address pool) external view returns (uint256, bool);
+
+    /**
+     * @notice Getter for the current protocol yield fee for a given pool.
+     * @param pool The pool
+     * @return protocolYieldFeePercentage The global protocol yield fee percentage
+     * @return isOverride True if the protocol fee has been overridden
+     */
+    function getPoolProtocolYieldFeeInfo(address pool) external view returns (uint256, bool);
 
     /**
      * @notice Compute and return the aggregate percentage.
