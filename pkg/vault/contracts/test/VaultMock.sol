@@ -417,20 +417,20 @@ contract VaultMock is IVaultMainMock, Vault {
         return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut, params, state, poolData);
     }
 
-    function manualGetTotalProtocolSwapFees(address pool, IERC20 token) external view returns (uint256) {
-        return _totalProtocolFees[pool][token].getBalanceRaw();
+    function manualGetAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view returns (uint256) {
+        return _aggregateProtocolFeeAmounts[pool][token].getBalanceRaw();
     }
 
-    function manualGetTotalProtocolYieldFees(address pool, IERC20 token) external view returns (uint256) {
-        return _totalProtocolFees[pool][token].getBalanceDerived();
+    function manualGetAggregateProtocolYieldFeeAmount(address pool, IERC20 token) external view returns (uint256) {
+        return _aggregateProtocolFeeAmounts[pool][token].getBalanceDerived();
     }
 
-    function manualSetTotalProtocolSwapFees(address pool, IERC20 token, uint256 value) external {
-        _totalProtocolFees[pool][token] = _totalProtocolFees[pool][token].setBalanceRaw(value);
+    function manualSetAggregateProtocolSwapFeeAmount(address pool, IERC20 token, uint256 value) external {
+        _aggregateProtocolFeeAmounts[pool][token] = _aggregateProtocolFeeAmounts[pool][token].setBalanceRaw(value);
     }
 
-    function manualSetTotalProtocolYieldFees(address pool, IERC20 token, uint256 value) external {
-        _totalProtocolFees[pool][token] = _totalProtocolFees[pool][token].setBalanceDerived(value);
+    function manualSetAggregateProtocolYieldFeeAmount(address pool, IERC20 token, uint256 value) external {
+        _aggregateProtocolFeeAmounts[pool][token] = _aggregateProtocolFeeAmounts[pool][token].setBalanceDerived(value);
     }
 
     function manualSetAggregateProtocolSwapFeePercentage(address pool, uint256 value) external {

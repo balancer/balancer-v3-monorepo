@@ -61,11 +61,11 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
 
     // Pool -> (Token -> fee): Disaggregated protocol fees (from swap and yield), available for withdrawal
     // by governance.
-    mapping(address => mapping(IERC20 => uint256)) internal _totalProtocolFeesCollected;
+    mapping(address => mapping(IERC20 => uint256)) internal _aggregateProtocolFeeAmounts;
 
     // Pool -> (Token -> fee): Disaggregated pool creator fees (from swap and yield), available for withdrawal by
     // the pool creator.
-    mapping(address => mapping(IERC20 => uint256)) internal _totalPoolCreatorFeesCollected;
+    mapping(address => mapping(IERC20 => uint256)) internal _aggregatePoolCreatorFeeAmounts;
 
     modifier onlyVault() {
         if (msg.sender != address(getVault())) {
@@ -134,22 +134,22 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     }
 
     /// @inheritdoc IProtocolFeeCollector
-    function getTotalCollectedProtocolFeeAmounts(address pool) public view returns (uint256[] memory feeAmounts) {
+    function getAggregateProtocolFeeAmounts(address pool) public view returns (uint256[] memory feeAmounts) {
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
 
         feeAmounts = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
-            feeAmounts[i] = _totalProtocolFeesCollected[pool][poolTokens[i]];
+            feeAmounts[i] = _aggregateProtocolFeeAmounts[pool][poolTokens[i]];
         }
     }
 
     /// @inheritdoc IProtocolFeeCollector
-    function getTotalCollectedPoolCreatorFeeAmounts(address pool) public view returns (uint256[] memory feeAmounts) {
+    function getAggregatePoolCreatorFeeAmounts(address pool) public view returns (uint256[] memory feeAmounts) {
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
 
         feeAmounts = new uint256[](numTokens);
         for (uint256 i = 0; i < numTokens; ++i) {
-            feeAmounts[i] = _totalPoolCreatorFeesCollected[pool][poolTokens[i]];
+            feeAmounts[i] = _aggregatePoolCreatorFeeAmounts[pool][poolTokens[i]];
         }
     }
 
@@ -302,14 +302,14 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
                     uint256 totalVolume = feeAmounts[i].divUp(aggregateFeePercentage);
                     uint256 protocolPortion = totalVolume.mulUp(protocolFeePercentage);
 
-                    _totalProtocolFeesCollected[pool][token] += protocolPortion;
-                    _totalPoolCreatorFeesCollected[pool][token] += feeAmounts[i] - protocolPortion;
+                    _aggregateProtocolFeeAmounts[pool][token] += protocolPortion;
+                    _aggregatePoolCreatorFeeAmounts[pool][token] += feeAmounts[i] - protocolPortion;
                 } else {
                     // If we don't need to split, one of them must be zero.
                     if (poolCreatorFeePercentage == 0) {
-                        _totalProtocolFeesCollected[pool][token] += feeAmounts[i];
+                        _aggregateProtocolFeeAmounts[pool][token] += feeAmounts[i];
                     } else {
-                        _totalPoolCreatorFeesCollected[pool][token] += feeAmounts[i];
+                        _aggregatePoolCreatorFeeAmounts[pool][token] += feeAmounts[i];
                     }
                 }
             }
@@ -361,9 +361,9 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         for (uint256 i = 0; i < numTokens; ++i) {
             IERC20 token = poolTokens[i];
 
-            uint256 amountToWithdraw = _totalProtocolFeesCollected[pool][token];
+            uint256 amountToWithdraw = _aggregateProtocolFeeAmounts[pool][token];
             if (amountToWithdraw > 0) {
-                _totalProtocolFeesCollected[pool][token] = 0;
+                _aggregateProtocolFeeAmounts[pool][token] = 0;
                 token.safeTransfer(recipient, amountToWithdraw);
             }
         }
@@ -376,9 +376,9 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         for (uint256 i = 0; i < numTokens; ++i) {
             IERC20 token = poolTokens[i];
 
-            uint256 amountToWithdraw = _totalPoolCreatorFeesCollected[pool][token];
+            uint256 amountToWithdraw = _aggregatePoolCreatorFeeAmounts[pool][token];
             if (amountToWithdraw > 0) {
-                _totalPoolCreatorFeesCollected[pool][token] = 0;
+                _aggregatePoolCreatorFeeAmounts[pool][token] = 0;
                 token.safeTransfer(recipient, amountToWithdraw);
             }
         }

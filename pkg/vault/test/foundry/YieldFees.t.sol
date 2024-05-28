@@ -145,10 +145,10 @@ contract YieldFeesTest is BaseVaultTest {
         }
 
         // Should be no protocol fees on dai, since it is yield fee exempt
-        assertEq(vault.manualGetTotalProtocolYieldFees(pool, dai), 0, "Protocol fees on exempt dai are not 0");
+        assertEq(vault.manualGetAggregateProtocolYieldFeeAmount(pool, dai), 0, "Protocol fees on exempt dai are not 0");
 
         // There should be fees on non-exempt wsteth
-        uint256 actualProtocolFee = vault.manualGetTotalProtocolYieldFees(pool, wsteth);
+        uint256 actualProtocolFee = vault.manualGetAggregateProtocolYieldFeeAmount(pool, wsteth);
         assertTrue(actualProtocolFee > 0, "wstETH did not collect any protocol fees");
 
         // How much should the fee be?
@@ -272,8 +272,11 @@ contract YieldFeesTest is BaseVaultTest {
 
         initPool();
 
-        require(vault.manualGetTotalProtocolYieldFees(pool, dai) == 0, "Initial protocol fees for DAI not 0");
-        require(vault.manualGetTotalProtocolYieldFees(pool, wsteth) == 0, "Initial protocol fees for wstETH not 0");
+        require(vault.manualGetAggregateProtocolYieldFeeAmount(pool, dai) == 0, "Initial protocol fees for DAI not 0");
+        require(
+            vault.manualGetAggregateProtocolYieldFeeAmount(pool, wsteth) == 0,
+            "Initial protocol fees for wstETH not 0"
+        );
 
         uint256 aggregateYieldFeePercentage = _getAggregateFeePercentage(
             protocolYieldFeePercentage,
@@ -302,12 +305,12 @@ contract YieldFeesTest is BaseVaultTest {
         // Then, the protocol takes its cut out of the 9x difference.
 
         assertApproxEqAbs(
-            vault.manualGetTotalProtocolYieldFees(pool, wsteth),
+            vault.manualGetAggregateProtocolYieldFeeAmount(pool, wsteth),
             ((poolInitAmount * 9) / 10).mulDown(aggregateYieldFeePercentage),
             1e14, //TODO - why is this so high?
             "Yield fees for wstETH is not the expected one"
         );
-        assertEq(vault.manualGetTotalProtocolYieldFees(pool, dai), 0, "Yield fees for exempt dai are not 0");
+        assertEq(vault.manualGetAggregateProtocolYieldFeeAmount(pool, dai), 0, "Yield fees for exempt dai are not 0");
     }
 
     function verifyLiveBalances(

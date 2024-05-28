@@ -48,8 +48,8 @@ contract VaultUnitSwapTest is BaseTest {
         swapTokens = [dai, usdc];
         vault.manualSetPoolTokenBalances(pool, swapTokens, initialBalances);
 
-        vault.manualSetTotalProtocolSwapFees(pool, swapTokens[0], 0);
-        vault.manualSetTotalProtocolSwapFees(pool, swapTokens[1], 0);
+        vault.manualSetAggregateProtocolSwapFeeAmount(pool, swapTokens[0], 0);
+        vault.manualSetAggregateProtocolSwapFeeAmount(pool, swapTokens[1], 0);
     }
 
     function testMakeParams() public {
@@ -370,12 +370,12 @@ contract VaultUnitSwapTest is BaseTest {
         );
 
         assertEq(
-            vault.getTotalProtocolSwapFees(pool, swapTokens[swapState.indexOut]),
+            vault.getAggregateProtocolSwapFeeAmount(pool, swapTokens[swapState.indexOut]),
             expectedProtocolFeeAmountRaw,
             "Unexpected protocol fees in storage"
         );
         assertEq(
-            vault.getTotalProtocolSwapFees(pool, swapTokens[swapState.indexIn]),
+            vault.getAggregateProtocolSwapFeeAmount(pool, swapTokens[swapState.indexIn]),
             0,
             "Unexpected non-zero protocol fees in storage"
         );
@@ -436,12 +436,12 @@ contract VaultUnitSwapTest is BaseTest {
         );
 
         assertEq(
-            vault.getTotalProtocolSwapFees(pool, swapTokens[swapState.indexIn]),
+            vault.getAggregateProtocolSwapFeeAmount(pool, swapTokens[swapState.indexIn]),
             expectedProtocolFeeAmountRaw,
             "Unexpected protocol fees in storage"
         );
         assertEq(
-            vault.getTotalProtocolSwapFees(pool, swapTokens[swapState.indexOut]),
+            vault.getAggregateProtocolSwapFeeAmount(pool, swapTokens[swapState.indexOut]),
             0,
             "Unexpected non-zero protocol fees in storage"
         );

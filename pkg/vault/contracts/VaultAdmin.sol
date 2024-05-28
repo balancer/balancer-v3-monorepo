@@ -327,13 +327,13 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             IERC20 token = poolTokens[i];
 
-            (totalSwapFees[i], totalYieldFees[i]) = _totalProtocolFees[pool][token].fromPackedBalance();
+            (totalSwapFees[i], totalYieldFees[i]) = _aggregateProtocolFeeAmounts[pool][token].fromPackedBalance();
 
             if (totalSwapFees[i] > 0 || totalYieldFees[i] > 0) {
                 // The ProtocolFeeCollector will pull tokens from the Vault.
                 token.approve(feeCollector, totalSwapFees[i] + totalYieldFees[i]);
 
-                _totalProtocolFees[pool][token] = 0;
+                _aggregateProtocolFeeAmounts[pool][token] = 0;
             }
         }
 
