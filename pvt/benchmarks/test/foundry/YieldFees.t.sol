@@ -63,7 +63,6 @@ contract YieldFeesTest is BaseVaultTest {
         yieldFeeFlags[1] = true;
 
         PoolRoleAccounts memory poolRoleAccounts;
-        poolRoleAccounts.poolCreator = address(lp);
 
         weightedPoolWithRate = WeightedPool(
             factory.create(
@@ -170,7 +169,8 @@ contract YieldFeesTest is BaseVaultTest {
     ) private {
         _initializePoolAndRateProviders(wstethRate, daiRate);
 
-        vault.setAggregateProtocolYieldFeePercentage(
+        vault.manualSetAggregateProtocolYieldFeePercentage(
+            pool,
             _getAggregateFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage)
         );
 
