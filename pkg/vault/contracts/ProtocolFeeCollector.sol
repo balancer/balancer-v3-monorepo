@@ -45,10 +45,10 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     uint256 internal constant _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 20e16; // 20%
 
     // Global protocol swap fee.
-    uint256 private _protocolSwapFeePercentage;
+    uint256 private _globalProtocolSwapFeePercentage;
 
     // Global protocol yield fee.
-    uint256 private _protocolYieldFeePercentage;
+    uint256 private _globalProtocolYieldFeePercentage;
 
     // Store the pool-specific swap fee percentages (the Vault's poolConfig stores the aggregate percentage).
     mapping(address => PoolFeeConfig) internal _poolProtocolSwapFeePercentages;
@@ -108,12 +108,12 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
 
     /// @inheritdoc IProtocolFeeCollector
     function getGlobalProtocolSwapFeePercentage() external view returns (uint256) {
-        return _protocolSwapFeePercentage;
+        return _globalProtocolSwapFeePercentage;
     }
 
     /// @inheritdoc IProtocolFeeCollector
     function getGlobalProtocolYieldFeePercentage() external view returns (uint256) {
-        return _protocolYieldFeePercentage;
+        return _globalProtocolYieldFeePercentage;
     }
 
     /// @inheritdoc IProtocolFeeCollector
@@ -200,7 +200,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     /// @inheritdoc IProtocolFeeCollector
     function updateProtocolSwapFeePercentage(address pool) external withLatestFees(pool) {
         PoolFeeConfig memory feeConfig = _poolProtocolSwapFeePercentages[pool];
-        uint256 globalProtocolSwapFee = _protocolSwapFeePercentage;
+        uint256 globalProtocolSwapFee = _globalProtocolSwapFeePercentage;
 
         if (feeConfig.isOverride == false && globalProtocolSwapFee != feeConfig.feePercentage) {
             (, uint256 poolCreatorFeePercentage) = getVault().getPoolCreatorInfo(pool);
@@ -212,7 +212,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     /// @inheritdoc IProtocolFeeCollector
     function updateProtocolYieldFeePercentage(address pool) external withLatestFees(pool) {
         PoolFeeConfig memory feeConfig = _poolProtocolYieldFeePercentages[pool];
-        uint256 globalProtocolYieldFee = _protocolYieldFeePercentage;
+        uint256 globalProtocolYieldFee = _globalProtocolYieldFeePercentage;
 
         if (feeConfig.isOverride == false && globalProtocolYieldFee != feeConfig.feePercentage) {
             (, uint256 poolCreatorFeePercentage) = getVault().getPoolCreatorInfo(pool);
@@ -234,8 +234,8 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         returns (uint256 aggregateProtocolSwapFeePercentage, uint256 aggregateProtocolYieldFeePercentage)
     {
         // Set local storage of the actual percentages for the pool (default to global).
-        aggregateProtocolSwapFeePercentage = _protocolSwapFeePercentage;
-        aggregateProtocolYieldFeePercentage = _protocolYieldFeePercentage;
+        aggregateProtocolSwapFeePercentage = _globalProtocolSwapFeePercentage;
+        aggregateProtocolYieldFeePercentage = _globalProtocolYieldFeePercentage;
 
         // `isOverride` defaults to false. Unless the fee is set by governance through a permissioned call, this pool
         // can be updated to the current global percentage permissionlessly.
@@ -317,7 +317,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     function setGlobalProtocolSwapFeePercentage(
         uint256 newProtocolSwapFeePercentage
     ) external withValidSwapFee(newProtocolSwapFeePercentage) authenticate {
-        _protocolSwapFeePercentage = newProtocolSwapFeePercentage;
+        _globalProtocolSwapFeePercentage = newProtocolSwapFeePercentage;
 
         emit GlobalProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
     }
@@ -326,7 +326,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     function setGlobalProtocolYieldFeePercentage(
         uint256 newProtocolYieldFeePercentage
     ) external withValidYieldFee(newProtocolYieldFeePercentage) authenticate {
-        _protocolYieldFeePercentage = newProtocolYieldFeePercentage;
+        _globalProtocolYieldFeePercentage = newProtocolYieldFeePercentage;
 
         emit GlobalProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
     }
