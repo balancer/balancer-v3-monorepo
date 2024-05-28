@@ -108,16 +108,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.prank(alice);
         // Perform a swap in the pool
-        router.swapSingleTokenExactIn(
-            address(pool),
-            dai,
-            usdc,
-            defaultAmount,
-            0,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        router.swapSingleTokenExactIn(address(pool), dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
     }
 
     function testSwapCallsComputeFeeWithSender() public {

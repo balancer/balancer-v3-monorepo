@@ -65,19 +65,14 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 protocolFeePercentage = 20e16;
         uint256 poolCreatorFeePercentage = 5e17;
 
-        (
-            ,
-            SwapState memory state,
-            PoolData memory poolData,
-
-        ) = _makeParams(
-                SwapKind.EXACT_IN,
-                defaultAmountGivenRaw,
-                limitRaw,
-                swapFeePercentage,
-                protocolFeePercentage,
-                poolCreatorFeePercentage
-            );
+        (, SwapState memory state, PoolData memory poolData, ) = _makeParams(
+            SwapKind.EXACT_IN,
+            defaultAmountGivenRaw,
+            limitRaw,
+            swapFeePercentage,
+            protocolFeePercentage,
+            poolCreatorFeePercentage
+        );
 
         assertEq(state.indexIn, 0, "Incorrect index in");
         assertEq(state.indexOut, 1, "Incorrect index out");
