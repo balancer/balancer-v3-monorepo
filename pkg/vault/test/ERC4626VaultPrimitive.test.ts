@@ -15,7 +15,11 @@ import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConv
 import { currentTimestamp, MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { ERC20TestToken, ERC4626TestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
-import { PoolConfigStructOutput, VaultMock } from '../typechain-types/contracts/test/VaultMock';
+import {
+  HooksConfigStructOutput,
+  PoolConfigStructOutput,
+  VaultMock,
+} from '../typechain-types/contracts/test/VaultMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
@@ -160,17 +164,19 @@ describe('ERC4626VaultPrimitive', function () {
       expect(paused).to.be.false;
 
       expect(poolConfig.pauseWindowEndTime).to.gt(currentTime);
-      expect(poolConfig.hooks.shouldCallBeforeInitialize).to.be.false;
-      expect(poolConfig.hooks.shouldCallAfterInitialize).to.be.false;
-      expect(poolConfig.hooks.shouldCallBeforeAddLiquidity).to.be.false;
-      expect(poolConfig.hooks.shouldCallAfterAddLiquidity).to.be.false;
-      expect(poolConfig.hooks.shouldCallBeforeRemoveLiquidity).to.be.false;
-      expect(poolConfig.hooks.shouldCallAfterRemoveLiquidity).to.be.false;
-      expect(poolConfig.hooks.shouldCallBeforeSwap).to.be.false;
-      expect(poolConfig.hooks.shouldCallAfterSwap).to.be.false;
       expect(poolConfig.liquidityManagement.disableUnbalancedLiquidity).to.be.false;
       expect(poolConfig.liquidityManagement.enableAddLiquidityCustom).to.be.true;
       expect(poolConfig.liquidityManagement.enableRemoveLiquidityCustom).to.be.true;
+
+      const hooksConfig: HooksConfigStructOutput = await vault.getHooksConfig(pool);
+      expect(hooksConfig.shouldCallBeforeInitialize).to.be.false;
+      expect(hooksConfig.shouldCallAfterInitialize).to.be.false;
+      expect(hooksConfig.shouldCallBeforeAddLiquidity).to.be.false;
+      expect(hooksConfig.shouldCallAfterAddLiquidity).to.be.false;
+      expect(hooksConfig.shouldCallBeforeRemoveLiquidity).to.be.false;
+      expect(hooksConfig.shouldCallAfterRemoveLiquidity).to.be.false;
+      expect(hooksConfig.shouldCallBeforeSwap).to.be.false;
+      expect(hooksConfig.shouldCallAfterSwap).to.be.false;
     });
   });
 
