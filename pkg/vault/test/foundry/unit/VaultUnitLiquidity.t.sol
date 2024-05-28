@@ -68,7 +68,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         vault.manualSetPoolTokenBalances(pool, tokens, initialBalances);
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            vault.manualSetTotalProtocolSwapFees(pool, tokens[i], 0);
+            vault.manualSetAggregateProtocolSwapFeeAmount(pool, tokens[i], 0);
         }
     }
 
@@ -937,7 +937,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             poolData.tokenRates[tokenIndex]
         );
         assertEq(
-            vault.getTotalProtocolSwapFees(pool, poolData.tokenConfig[tokenIndex].token),
+            vault.getAggregateProtocolSwapFeeAmount(pool, poolData.tokenConfig[tokenIndex].token),
             protocolSwapFeeAmountRaw,
             "Unexpected protocol fees"
         );

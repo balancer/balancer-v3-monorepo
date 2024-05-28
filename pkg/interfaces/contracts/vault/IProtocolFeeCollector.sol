@@ -127,7 +127,7 @@ interface IProtocolFeeCollector {
      * @param pool The pool on which fees were collected
      * @param feeAmounts The total amounts of each token that are available for withdrawal, in token registration order
      */
-    function getTotalCollectedProtocolFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
+    function getAggregateProtocolFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
 
     /**
      * @notice Returns the amount of each pool token allocated to the pool creator for withdrawal.
@@ -135,7 +135,7 @@ interface IProtocolFeeCollector {
      * @param pool The pool on which fees were collected
      * @param feeAmounts The total amounts of each token that are available for withdrawal, in token registration order
      */
-    function getTotalCollectedPoolCreatorFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
+    function getAggregatePoolCreatorFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
 
     /**
      * @notice Override the protocol swap fee percentage for a specific pool.

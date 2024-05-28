@@ -68,7 +68,7 @@ contract VaultUnitTest is BaseTest {
 
     function testComputeAndChargeAggregateProtocolSwapFees() public {
         uint256 tokenIndex = 0;
-        vault.manualSetTotalProtocolSwapFees(pool, dai, 0);
+        vault.manualSetAggregateProtocolSwapFeeAmount(pool, dai, 0);
 
         uint256 swapFeeAmountScaled18 = 1e18;
         uint256 protocolSwapFeePercentage = 10e16;
@@ -93,7 +93,7 @@ contract VaultUnitTest is BaseTest {
         // No creator fees, so protocol fees is equal to the total
         assertEq(totalFeesRaw, expectedSwapFeeAmountRaw, "Unexpected totalFeesRaw");
         assertEq(
-            vault.getTotalProtocolSwapFees(pool, dai),
+            vault.getAggregateProtocolSwapFeeAmount(pool, dai),
             expectedSwapFeeAmountRaw,
             "Unexpected protocol fees in storage"
         );
@@ -106,7 +106,7 @@ contract VaultUnitTest is BaseTest {
         uint256 totalFeesRaw = vault.manualComputeAndChargeAggregateProtocolSwapFees(poolData, 1e18, pool, dai, 0);
 
         assertEq(totalFeesRaw, 0, "Unexpected totalFeesRaw");
-        assertEq(vault.getTotalProtocolSwapFees(pool, dai), 0, "Unexpected protocol fees in storage");
+        assertEq(vault.getAggregateProtocolSwapFeeAmount(pool, dai), 0, "Unexpected protocol fees in storage");
     }
 
     function testManualUpdatePoolDataLiveBalancesAndRates() public {
