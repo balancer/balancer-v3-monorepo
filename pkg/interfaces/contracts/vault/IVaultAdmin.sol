@@ -143,16 +143,22 @@ interface IVaultAdmin {
     function collectProtocolFees(address pool) external;
 
     /**
-     * @notice Update an aggregate fee percentage if governance is overriding a protocol fee for a specific pool.
-     * @dev Can only be called by the current protocol fee collector.
+     * @notice Update an aggregate swap fee percentage.
+     * @dev Can only be called by the current protocol fee collector. Called when governance overrides a protocol fee
+     * for a specific pool, or to permissionlessly update a pool to a changed global protocol fee value (if the pool's
+     * fee has not previously been set by governance).
+     *
      * @param pool The pool whose fee will be updated
      * @param newAggregateSwapFeePercentage The new aggregate swap fee percentage
      */
     function updateAggregateSwapFeePercentage(address pool, uint256 newAggregateSwapFeePercentage) external;
 
     /**
-     * @notice Update an aggregate fee percentage if governance is overriding a protocol fee for a specific pool.
-     * @dev Can only be called by the current protocol fee collector.
+     * @notice Update an aggregate yield fee percentage.
+     * @dev Can only be called by the current protocol fee collector. Called when governance overrides a protocol fee
+     * for a specific pool, or to permissionlessly update a pool to a changed global protocol fee value (if the pool's
+     * fee has not previously been set by governance).
+     *
      * @param pool The pool whose fee will be updated
      * @param newAggregateYieldFeePercentage The new aggregate yield fee percentage
      */

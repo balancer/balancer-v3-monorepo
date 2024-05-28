@@ -568,6 +568,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
     }
 
+    /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
+    struct LiquidityLocals {
+        uint256 numTokens;
+        uint256 totalFeesRaw;
+        uint256 tokenIndex;
+    }
+
     /**
      * @dev Calls the appropriate pool hook and calculates the required inputs and outputs for the operation
      * considering the given kind, and updates the vault's internal accounting. This includes:
@@ -707,13 +714,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // 8) Off-chain events
         emit PoolBalanceChanged(params.pool, params.to, amountsInRaw.unsafeCastToInt256(true));
-    }
-
-    /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
-    struct LiquidityLocals {
-        uint256 numTokens;
-        uint256 totalFeesRaw;
-        uint256 tokenIndex;
     }
 
     /// @inheritdoc IVaultMain

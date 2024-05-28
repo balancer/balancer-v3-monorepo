@@ -125,7 +125,7 @@ interface IProtocolFeeCollector {
      * @notice Returns the amount of each pool token allocated to the protocol for withdrawal.
      * @dev Includes both swap and yield fees.
      * @param pool The pool on which fees were collected
-     * @param feeAmounts The total amounts of each pool token that are available for withdrawal by governance
+     * @param feeAmounts The total amounts of each token that are available for withdrawal, in token registration order
      */
     function getTotalCollectedProtocolFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
 
@@ -133,7 +133,7 @@ interface IProtocolFeeCollector {
      * @notice Returns the amount of each pool token allocated to the pool creator for withdrawal.
      * @dev Includes both swap and yield fees.
      * @param pool The pool on which fees were collected
-     * @param feeAmounts The total amounts of each pool token that are available for withdrawal by the pool creator
+     * @param feeAmounts The total amounts of each token that are available for withdrawal, in token registration order
      */
     function getTotalCollectedPoolCreatorFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
 
