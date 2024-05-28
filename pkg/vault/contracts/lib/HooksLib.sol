@@ -73,93 +73,31 @@ library HooksLib {
 
         // Stack too deep.
         {
-            configBits = configBits
-                .insertBool(config.isPoolRegistered, POOL_REGISTERED_OFFSET)
-                .insertBool(config.isPoolInitialized, POOL_INITIALIZED_OFFSET)
-                .insertBool(config.isPoolPaused, POOL_PAUSED_OFFSET)
-                .insertBool(config.isPoolInRecoveryMode, POOL_RECOVERY_MODE_OFFSET);
-        }
-
-        {
-            configBits = configBits.insertBool(config.hooks.shouldCallBeforeSwap, BEFORE_SWAP_OFFSET).insertBool(
-                config.hooks.shouldCallAfterSwap,
+            configBits = configBits.insertBool(config.shouldCallBeforeSwap, BEFORE_SWAP_OFFSET).insertBool(
+                config.shouldCallAfterSwap,
                 AFTER_SWAP_OFFSET
-            );
+            ).insertAddress(config.hooksContract, HOOKS_CONTRACT_OFFSET);
         }
 
         {
             configBits = configBits
-                .insertBool(config.hooks.shouldCallBeforeAddLiquidity, BEFORE_ADD_LIQUIDITY_OFFSET)
-                .insertBool(config.hooks.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
-                .insertBool(config.hooks.shouldCallBeforeRemoveLiquidity, BEFORE_REMOVE_LIQUIDITY_OFFSET)
-                .insertBool(config.hooks.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET);
+                .insertBool(config.shouldCallBeforeAddLiquidity, BEFORE_ADD_LIQUIDITY_OFFSET)
+                .insertBool(config.shouldCallAfterAddLiquidity, AFTER_ADD_LIQUIDITY_OFFSET)
+                .insertBool(config.shouldCallBeforeRemoveLiquidity, BEFORE_REMOVE_LIQUIDITY_OFFSET)
+                .insertBool(config.shouldCallAfterRemoveLiquidity, AFTER_REMOVE_LIQUIDITY_OFFSET);
         }
 
         {
             configBits = configBits
-                .insertBool(config.hooks.shouldCallBeforeInitialize, BEFORE_INITIALIZE_OFFSET)
-                .insertBool(config.hooks.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET)
-                .insertBool(config.hooks.shouldCallComputeDynamicSwapFee, DYNAMIC_SWAP_FEE_OFFSET);
+                .insertBool(config.shouldCallBeforeInitialize, BEFORE_INITIALIZE_OFFSET)
+                .insertBool(config.shouldCallAfterInitialize, AFTER_INITIALIZE_OFFSET)
+                .insertBool(config.shouldCallComputeDynamicSwapFee, DYNAMIC_SWAP_FEE_OFFSET);
         }
 
-        {
-            configBits = configBits
-                .insertBool(config.liquidityManagement.disableUnbalancedLiquidity, UNBALANCED_LIQUIDITY_OFFSET)
-                .insertBool(config.liquidityManagement.enableAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET)
-                .insertBool(config.liquidityManagement.enableRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET);
-        }
-        {
-            configBits = configBits
-                .insertUint(config.staticSwapFeePercentage / FEE_SCALING_FACTOR, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH)
-                .insertUint(
-                config.poolCreatorFeePercentage / FEE_SCALING_FACTOR,
-                POOL_CREATOR_FEE_OFFSET,
-                FEE_BITLENGTH
-            );
-        }
-
-        return
-            HooksBits.wrap(
-            configBits
-            .insertUint(
-                config.tokenDecimalDiffs,
-                DECIMAL_SCALING_FACTORS_OFFSET,
-                _TOKEN_DECIMAL_DIFFS_BITLENGTH
-            )
-            .insertUint(config.pauseWindowEndTime, PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH)
-        );
+        return HooksBits.wrap(configBits);
     }
 
-    // Convert from an array of decimal differences, to the encoded 24 bit value (only uses bottom 20 bits).
-    function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint256) {
-        bytes32 value;
-
-        for (uint256 i = 0; i < tokenDecimalDiffs.length; ++i) {
-            value = value.insertUint(tokenDecimalDiffs[i], i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
-        }
-
-        return uint256(value);
-    }
-
-    function getDecimalScalingFactors(
-        Hooks memory config,
-        uint256 numTokens
-    ) internal pure returns (uint256[] memory) {
-        uint256[] memory scalingFactors = new uint256[](numTokens);
-
-        bytes32 tokenDecimalDiffs = bytes32(uint256(config.tokenDecimalDiffs));
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            uint256 decimalDiff = tokenDecimalDiffs.decodeUint(i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
-
-            // This is equivalent to `10**(18+decimalsDifference)` but this form optimizes for 18 decimal tokens.
-            scalingFactors[i] = FixedPoint.ONE * 10 ** decimalDiff;
-        }
-
-        return scalingFactors;
-    }
-
-    function toHooks(HooksBits config) internal pure returns (HooksConfig memory) {
+    function toHooksConfig(HooksBits config) internal pure returns (HooksConfig memory) {
         bytes32 rawConfig = HooksBits.unwrap(config);
 
         // Calling the functions (in addition to costing more gas), causes an obscure form of stack error (Yul errors).
@@ -174,8 +112,7 @@ library HooksLib {
                 shouldCallComputeDynamicSwapFee: rawConfig.decodeBool(DYNAMIC_SWAP_FEE_OFFSET),
                 shouldCallBeforeSwap: rawConfig.decodeBool(BEFORE_SWAP_OFFSET),
                 shouldCallAfterSwap: rawConfig.decodeBool(AFTER_SWAP_OFFSET),
-                liquidityManagement: rawConfig.decodeAddress(AFTER_SWAP_OFFSET)
-        })
+                hooksContract: rawConfig.decodeAddress(HOOKS_CONTRACT_OFFSET)
         });
     }
 }
