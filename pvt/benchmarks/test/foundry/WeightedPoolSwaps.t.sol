@@ -44,7 +44,10 @@ contract WeightedPoolSwaps is BaseVaultTest {
         IAuthentication feeCollectorAuth = IAuthentication(address(feeCollector));
 
         // Set protocol fee
-        authorizer.grantRole(feeCollectorAuth.getActionId(IProtocolFeeCollector.setGlobalProtocolSwapFeePercentage.selector), alice);
+        authorizer.grantRole(
+            feeCollectorAuth.getActionId(IProtocolFeeCollector.setGlobalProtocolSwapFeePercentage.selector),
+            alice
+        );
         vm.prank(alice);
         feeCollector.setGlobalProtocolSwapFeePercentage(50e16); // 50%
     }
