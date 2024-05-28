@@ -83,7 +83,7 @@ library HooksConfigLib {
      *
      * @param config The decoded hooks configuration
      * @param amountCalculatedScaled18 The amount calculated by the vault's onSwap function
-     * @param swapParams The swap parameters
+     * @param params The swap parameters
      * @param state Temporary state used in swap operations
      * @param poolData Struct containing balance and token information of the pool
      */
