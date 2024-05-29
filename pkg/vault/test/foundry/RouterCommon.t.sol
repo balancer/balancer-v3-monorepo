@@ -3,7 +3,6 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "forge-std/console.sol";
 
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
