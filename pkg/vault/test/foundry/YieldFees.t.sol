@@ -164,8 +164,7 @@ contract YieldFeesTest is BaseVaultTest {
             _getAggregateFeePercentage(protocolYieldFeePercentage, poolCreatorFeePercentage)
         );
 
-        //TODO Why such a huge delta?
-        assertApproxEqAbs(actualProtocolFee, vars.expectedProtocolFee, 1e14, "Wrong protocol fee");
+        assertApproxEqAbs(actualProtocolFee, vars.expectedProtocolFee, 1e3, "Wrong protocol fee");
     }
 
     function testUpdateLiveTokenBalanceInPoolData__Fuzz(
@@ -307,7 +306,7 @@ contract YieldFeesTest is BaseVaultTest {
         assertApproxEqAbs(
             vault.manualGetAggregateProtocolYieldFeeAmount(pool, wsteth),
             ((poolInitAmount * 9) / 10).mulDown(aggregateYieldFeePercentage),
-            1e14, //TODO - why is this so high?
+            1e3,
             "Yield fees for wstETH is not the expected one"
         );
         assertEq(vault.manualGetAggregateProtocolYieldFeeAmount(pool, dai), 0, "Yield fees for exempt dai are not 0");
