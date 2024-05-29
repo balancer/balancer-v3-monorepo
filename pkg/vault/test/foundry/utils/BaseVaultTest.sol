@@ -11,8 +11,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -207,6 +206,9 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         uint256 protocolFeePercentage,
         uint256 creatorFeePercentage
     ) internal pure returns (uint256) {
-        return protocolFeePercentage + protocolFeePercentage.complement().mulDown(creatorFeePercentage);
+        // Address precision issues with 24-bit fees.
+        return
+            ((protocolFeePercentage + protocolFeePercentage.complement().mulDown(creatorFeePercentage)) /
+                FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
     }
 }
