@@ -246,9 +246,9 @@ describe('Vault', function () {
       const [paused, pauseWindowEndTime, bufferPeriodEndTime] = await timedVault.getVaultPausedState();
 
       expect(paused).to.be.false;
-      // We subtract 2 because the timestamp is set when the extension is deployed.
-      // Each contract deployment pushes the timestamp by 1, and the main Vault is deployed right after the extension
-      // and the vault admin.
+      // We subtract 3 because the timestamp is set when the extension is deployed.
+      // Each contract deployment pushes the timestamp by 1, and the main Vault is deployed right after the extension,
+      // vault admin, and protocol fee collector.
       expect(pauseWindowEndTime).to.equal(await fromNow(PAUSE_WINDOW_DURATION - 3));
       expect(bufferPeriodEndTime).to.equal((await fromNow(PAUSE_WINDOW_DURATION - 3)) + bn(BUFFER_PERIOD_DURATION));
 
