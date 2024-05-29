@@ -81,7 +81,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function setHooksConfig(address pool, HooksConfig calldata config) external {
-        _hooksConfig[pool] = config.fromHooksConfig();
+        _hooksConfig[pool] = config;
     }
 
     // Used for testing pool registration, which is ordinarily done in the pool factory.

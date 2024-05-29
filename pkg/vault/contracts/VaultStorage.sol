@@ -9,7 +9,11 @@ import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultT
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
-import { PoolFunctionPermission, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    HooksConfig,
+    PoolFunctionPermission,
+    PoolRoleAccounts
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
@@ -21,7 +25,6 @@ import {
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
-import { HooksConfigBits } from "./lib/HooksConfigLib.sol";
 
 // solhint-disable max-states-count
 
@@ -64,7 +67,7 @@ contract VaultStorage {
     mapping(address => PoolConfigBits) internal _poolConfig;
 
     // Registry of pool hooks.
-    mapping(address => HooksConfigBits) internal _hooksConfig;
+    mapping(address => HooksConfig) internal _hooksConfig;
 
     // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
     // Last live balances are used for yield fee computation, and since these have rates applied, they are stored

@@ -36,7 +36,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
-import { HooksConfigBits, HooksConfigLib } from "./lib/HooksConfigLib.sol";
+import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
@@ -60,7 +60,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
-    using HooksConfigLib for HooksConfigBits;
+    using HooksConfigLib for HooksConfig;
     using HooksConfigLib for HooksConfig;
     using InputHelpers for uint256;
     using ScalingHelpers for *;
@@ -185,7 +185,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
 
             // Gets the default HooksConfig from the hook contract and saves in the vault state
-            _hooksConfig[pool] = IHooks(params.poolHooksContract).getHooksConfig().fromHooksConfig();
+            _hooksConfig[pool] = IHooks(params.poolHooksContract).getHooksConfig();
         }
 
         uint256 numTokens = params.tokenConfig.length;
@@ -265,7 +265,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.tokenConfig,
             params.pauseWindowEndTime,
             params.roleAccounts,
-            _hooksConfig[pool].toHooksConfig(),
+            _hooksConfig[pool],
             params.liquidityManagement
         );
     }
@@ -314,7 +314,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         bytes memory userData
     ) external onlyWhenUnlocked withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
         _ensureUnpausedAndGetVaultState(pool);
-        HooksConfigBits hooksConfig = _hooksConfig[pool];
+        HooksConfig memory hooksConfig = _hooksConfig[pool];
 
         // Balances are zero until after initialize is callled, so there is no need to charge pending yield fee here.
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
@@ -426,7 +426,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function getHooksConfig(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (HooksConfig memory) {
-        return _hooksConfig[pool].toHooksConfig();
+        return _hooksConfig[pool];
     }
 
     /// @inheritdoc IVaultExtension
