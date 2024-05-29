@@ -39,7 +39,7 @@ interface IVaultErrors {
      * @param poolHooksContract Address of the hook contract that rejected the factory
      * @param poolFactory Address of the rejected pool factory
      */
-    error HookRegisterFailed(address poolHooksContract, address poolFactory);
+    error HookRegistrationFailed(address poolHooksContract, address poolFactory);
 
     /**
      * @dev A token was already registered (i.e., it is a duplicate in the pool).
