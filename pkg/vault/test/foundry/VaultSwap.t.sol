@@ -515,7 +515,7 @@ contract VaultSwapTest is BaseVaultTest {
             pool,
             kind == SwapKind.EXACT_OUT ? usdc : dai
         );
-        assertEq(protocolFee, actualFee, "Swap: Protocol's fee amount is wrong");
+        assertEq(protocolFee, actualFee, "Swap: Aggregate fee amount is wrong");
 
         // vault are adjusted balances
         assertEq(dai.balanceOf(address(vault)), daiFee, "Swap: Vault's DAI balance is wrong");
