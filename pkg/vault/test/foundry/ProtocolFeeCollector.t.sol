@@ -249,6 +249,10 @@ contract ProtocolFeeCollectorTest is BaseVaultTest {
         (feePercentage, isOverride) = feeCollector.getPoolProtocolYieldFeeInfo(pool);
         assertEq(feePercentage, 0, "Pool protocol yield fee != 0");
         assertFalse(isOverride, "Pool protocol yield fee is an override");
+
+        // Check that pool config has the right value
+        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
+        assertEq(poolConfig.aggregateProtocolSwapFeePercentage, CUSTOM_PROTOCOL_SWAP_FEE);
     }
 
     function testSettingPoolProtocolSwapFeeTooHigh() public {
@@ -300,6 +304,10 @@ contract ProtocolFeeCollectorTest is BaseVaultTest {
         (feePercentage, isOverride) = feeCollector.getPoolProtocolSwapFeeInfo(pool);
         assertEq(feePercentage, 0, "Pool protocol swap fee != 0");
         assertFalse(isOverride, "Pool protocol swap fee is an override");
+
+        // Check that pool config has the right value
+        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
+        assertEq(poolConfig.aggregateProtocolYieldFeePercentage, CUSTOM_PROTOCOL_YIELD_FEE);
     }
 
     function testSettingPoolProtocolYieldFeeTooHigh() public {
@@ -484,6 +492,16 @@ contract ProtocolFeeCollectorTest is BaseVaultTest {
         vm.prank(lp);
         vault.setPoolCreatorFeePercentage(pool, POOL_CREATOR_FEE);
 
+        // Check that the aggregate percentages are set in the pool config
+        uint256 expectedSwapFeePercentage = MAX_PROTOCOL_SWAP_FEE +
+            MAX_PROTOCOL_SWAP_FEE.complement().mulDown(POOL_CREATOR_FEE);
+        uint256 expectedYieldFeePercentage = MAX_PROTOCOL_YIELD_FEE +
+            MAX_PROTOCOL_YIELD_FEE.complement().mulDown(POOL_CREATOR_FEE);
+
+        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
+        assertEq(poolConfig.aggregateProtocolSwapFeePercentage, expectedSwapFeePercentage);
+        assertEq(poolConfig.aggregateProtocolYieldFeePercentage, expectedYieldFeePercentage);
+
         vault.manualSetAggregateProtocolSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
         vault.manualSetAggregateProtocolYieldFeeAmount(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);
 
@@ -562,7 +580,11 @@ contract ProtocolFeeCollectorTest is BaseVaultTest {
         uint256 expectedCreatorFeeDAI = PROTOCOL_SWAP_FEE_AMOUNT - expectedProtocolFeeDAI;
 
         assertEq(expectedProtocolFeeDAI, protocolFeeAmounts[daiIdx], "Wrong disaggregated DAI protocol fee amount");
-        assertEq(expectedCreatorFeeDAI, poolCreatorFeeAmounts[daiIdx], "Wrong disaggregated DAI protocol fee amount");
+        assertEq(
+            expectedCreatorFeeDAI,
+            poolCreatorFeeAmounts[daiIdx],
+            "Wrong disaggregated DAI pool creator fee amount"
+        );
 
         uint256 expectedProtocolFeeUSDC = PROTOCOL_YIELD_FEE_AMOUNT.divUp(aggregateProtocolYieldFeePercentage).mulUp(
             MAX_PROTOCOL_YIELD_FEE
@@ -573,7 +595,7 @@ contract ProtocolFeeCollectorTest is BaseVaultTest {
         assertEq(
             expectedCreatorFeeUSDC,
             poolCreatorFeeAmounts[usdcIdx],
-            "Wrong disaggregated USDC protocol fee amount"
+            "Wrong disaggregated USDC pool creator fee amount"
         );
 
         // Now all that's left is to withdraw them.
