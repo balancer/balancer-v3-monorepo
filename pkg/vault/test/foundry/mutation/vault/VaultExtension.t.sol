@@ -125,8 +125,8 @@ contract VaultExtensionMutationTest is BaseVaultTest {
             [x] onlyVault
     */
     function testAllowanceWhenNotVault() public {
-        vm.expectRevert();
-        vaultExtension.allowance(address(dai), address(0), address(1));
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.allowance(address(dai), address(1), address(2));
     }
 
     /*

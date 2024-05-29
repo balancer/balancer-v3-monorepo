@@ -20,8 +20,6 @@ contract VaultAdminMutationTest is BaseVaultTest {
     */
     using ArrayHelpers for *;
 
-    IVaultAdmin internal vaultAdmin = IVaultAdmin(address(vaultExtension));
-
     function setUp() public virtual override {
         BaseVaultTest.setUp();
     }
