@@ -49,6 +49,7 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
         return getVault().getPoolTokens(address(this));
     }
 
+    /// @inheritdoc IBasePool
     function computeBalance(
         uint256[] memory balances,
         uint256 tokenInIndex,

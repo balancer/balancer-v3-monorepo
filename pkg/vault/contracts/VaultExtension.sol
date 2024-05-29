@@ -32,6 +32,7 @@ import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzepp
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -54,6 +55,7 @@ import { PoolDataLib } from "./lib/PoolDataLib.sol";
 contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using Address for *;
     using ArrayHelpers for uint256[];
+    using FixedPoint for uint256;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
@@ -450,6 +452,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         IBasePool.PoolSwapParams memory swapParams
     ) external view withRegisteredPool(pool) returns (bool success, uint256 dynamicSwapFee) {
         return _hooksConfig[pool].toHooksConfig().onComputeDynamicSwapFee(swapParams);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getBptRate(address pool) external view withRegisteredPool(pool) returns (uint256 rate) {
+        PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
+        uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18);
+
+        return invariant.divDown(_totalSupply(pool));
     }
 
     /*******************************************************************************

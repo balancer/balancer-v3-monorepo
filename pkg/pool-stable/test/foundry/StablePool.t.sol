@@ -14,6 +14,8 @@ import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/V
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
+import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
 import { PoolConfigBits } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
@@ -26,6 +28,7 @@ import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
 contract StablePoolTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     StablePoolFactory factory;
 
@@ -218,6 +221,31 @@ contract StablePoolTest is BaseVaultTest {
 
         assertEq(balances[daiIdx], TOKEN_AMOUNT + TOKEN_AMOUNT_IN, "Pool: Wrong DAI balance");
         assertEq(balances[usdcIdx], TOKEN_AMOUNT - amountCalculated, "Pool: Wrong USDC balance");
+    }
+
+    function testGetBptRate() public {
+        uint256 totalSupply = bptAmountOut + MIN_BPT;
+        uint256 stableInvariant = StableMath.computeInvariant(
+            DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
+            [TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray()
+        );
+        uint256 expectedRate = stableInvariant.divDown(totalSupply);
+        uint256 actualRate = IRateProvider(address(pool)).getRate();
+        assertEq(actualRate, expectedRate, "Wrong rate");
+
+        uint256[] memory amountsIn = [TOKEN_AMOUNT, 0].toMemoryArray();
+        vm.prank(bob);
+        uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
+
+        totalSupply += addLiquidityBptAmountOut;
+        stableInvariant = StableMath.computeInvariant(
+            DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
+            [2 * TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray()
+        );
+
+        expectedRate = stableInvariant.divDown(totalSupply);
+        actualRate = IRateProvider(address(pool)).getRate();
+        assertEq(actualRate, expectedRate, "Wrong rate after addLiquidity");
     }
 
     function less(uint256 amount, uint256 base) internal pure returns (uint256) {
