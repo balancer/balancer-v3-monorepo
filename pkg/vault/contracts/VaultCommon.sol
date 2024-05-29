@@ -192,7 +192,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev Lowest level routine that plucks only the minimum necessary parts from storage.
     function _getPoolPausedState(address pool) internal view returns (bool, uint256) {
-        (bool pauseBit, uint256 pauseWindowEndTime) = PoolConfigLib.getPoolPausedState(_poolConfig[pool]);
+        (bool pauseBit, uint256 pauseWindowEndTime) = PoolConfigLib.getPoolPausedState(_poolState[pool]);
 
         // Use the Vault's buffer period.
         // solhint-disable-next-line not-rely-on-time
@@ -240,7 +240,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev See `isPoolRegistered`
     function _isPoolRegistered(address pool) internal view returns (bool) {
-        return _poolConfig[pool].isPoolRegistered();
+        return _poolFlags[pool].isPoolRegistered;
     }
 
     /// @dev Reverts unless `pool` corresponds to an initialized Pool.
@@ -252,7 +252,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev See `isPoolInitialized`
     function _isPoolInitialized(address pool) internal view returns (bool) {
-        return _poolConfig[pool].isPoolInitialized();
+        return _poolFlags[pool].isPoolInitialized;
     }
 
     /*******************************************************************************
@@ -300,7 +300,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     function _loadPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
-        return PoolDataLib.load(_poolTokenBalances[pool], _poolConfig[pool], _poolTokenConfig[pool], roundingDirection);
+        poolData = PoolDataLib.load(_poolTokenBalances[pool], _poolState[pool], _poolTokenConfig[pool], roundingDirection);
+        poolData.poolFlags = _poolFlags[pool];
     }
 
     /**
@@ -476,9 +477,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             }
         }
 
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolState[pool]);
         config.staticSwapFeePercentage = swapFeePercentage;
-        _poolConfig[pool] = config.fromPoolConfig();
+        _poolState[pool] = config.fromPoolConfig();
 
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
@@ -512,6 +513,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @return True if the pool is initialized, false otherwise
      */
     function _isPoolInRecoveryMode(address pool) internal view returns (bool) {
-        return _poolConfig[pool].isPoolInRecoveryMode();
+        return _poolFlags[pool].isPoolInRecoveryMode;
     }
 }

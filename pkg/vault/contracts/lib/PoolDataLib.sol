@@ -2,21 +2,17 @@
 
 pragma solidity ^0.8.24;
 
-import { PackedTokenBalance } from "./PackedTokenBalance.sol";
-import { PoolConfigBits, PoolConfigLib } from "./PoolConfigLib.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {
-    PoolData,
-    Rounding,
-    TokenType,
-    PoolConfig,
-    TokenConfig
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { PackedTokenBalance } from "./PackedTokenBalance.sol";
+import { PoolConfigBits, PoolConfigLib } from "./PoolConfigLib.sol";
 
 library PoolDataLib {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -29,8 +25,7 @@ library PoolDataLib {
         Rounding roundingDirection
     ) internal view returns (PoolData memory poolData) {
         uint256 numTokens = poolTokenBalances.length();
-        poolData.poolConfig = PoolConfigLib.toPoolConfig(poolConfig);
-
+        poolData.poolState = PoolConfigLib.toPoolConfig(poolConfig);
         poolData.tokenConfig = new TokenConfig[](numTokens);
         poolData.balancesRaw = new uint256[](numTokens);
         poolData.balancesLiveScaled18 = new uint256[](numTokens);

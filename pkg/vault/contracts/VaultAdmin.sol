@@ -406,9 +406,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
      */
     function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
         // Update poolConfig
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.isPoolInRecoveryMode = recoveryMode;
-        _poolConfig[pool] = config.fromPoolConfig();
+        PoolFlags flags = _poolFlags[pool];
+        flags.isPoolInRecoveryMode = recoveryMode;
+        _poolFlags[pool] = flags;
 
         if (recoveryMode == false) {
             _writePoolBalancesToStorage(pool, _loadPoolData(pool, Rounding.ROUND_DOWN));

@@ -6,7 +6,43 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IRateProvider } from "./IRateProvider.sol";
 
-/// @dev Represents a pool's hooks.
+struct PoolFlags {
+    // State flags
+    bool isPoolRegistered;
+    bool isPoolInitialized;
+    bool isPoolInRecoveryMode;
+    // Hooks
+    bool shouldCallBeforeInitialize;
+    bool shouldCallAfterInitialize;
+    bool shouldCallComputeDynamicSwapFee;
+    bool shouldCallBeforeSwap;
+    bool shouldCallAfterSwap;
+    bool shouldCallBeforeAddLiquidity;
+    bool shouldCallAfterAddLiquidity;
+    bool shouldCallBeforeRemoveLiquidity;
+    bool shouldCallAfterRemoveLiquidity;
+    // Liquidity Management
+    bool disableUnbalancedLiquidity;
+    bool enableAddLiquidityCustom;
+    bool enableRemoveLiquidityCustom;
+}
+
+/// @dev Represents a pool's configuration.
+struct PoolState {
+    bool isPoolPaused; // Include this one because it's used with pauseWindowEndTime
+    uint256 staticSwapFeePercentage;
+    uint256 poolCreatorFeePercentage;
+    uint256 tokenDecimalDiffs;
+    uint256 pauseWindowEndTime;
+}
+
+/// @dev Structs commonly used together, grouped for convenience.
+struct PoolConfig {
+    PoolFlags poolFlags;
+    PoolState poolState;
+}
+
+/// @dev Logical grouping of flags only used for events
 struct PoolHooks {
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
@@ -19,24 +55,11 @@ struct PoolHooks {
     bool shouldCallAfterRemoveLiquidity;
 }
 
+/// @dev Logical grouping of flags only used for events
 struct LiquidityManagement {
     bool disableUnbalancedLiquidity;
     bool enableAddLiquidityCustom;
     bool enableRemoveLiquidityCustom;
-}
-
-/// @dev Represents a pool's configuration, including hooks.
-struct PoolConfig {
-    PoolHooks hooks;
-    LiquidityManagement liquidityManagement;
-    uint256 staticSwapFeePercentage;
-    uint256 poolCreatorFeePercentage;
-    uint256 tokenDecimalDiffs;
-    uint256 pauseWindowEndTime;
-    bool isPoolRegistered;
-    bool isPoolInitialized;
-    bool isPoolPaused;
-    bool isPoolInRecoveryMode;
 }
 
 /// @dev Represents temporary state used in a swap operation.
@@ -128,7 +151,8 @@ struct TokenConfig {
 }
 
 struct PoolData {
-    PoolConfig poolConfig;
+    PoolFlags poolFlags;
+    PoolState poolState;
     TokenConfig[] tokenConfig;
     uint256[] balancesRaw;
     uint256[] balancesLiveScaled18;
