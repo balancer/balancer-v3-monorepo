@@ -54,6 +54,7 @@ contract GetBptRateTest is BaseVaultTest {
                 weights,
                 PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
                 swapFeePercentage,
+                address(0),
                 ZERO_BYTES32
             )
         );
