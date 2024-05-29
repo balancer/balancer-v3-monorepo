@@ -54,6 +54,7 @@ import { PoolDataLib } from "./lib/PoolDataLib.sol";
 contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using Address for *;
     using ArrayHelpers for uint256[];
+    using FixedPoint for uint256;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
@@ -449,6 +450,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         if (shouldCallDynamicSwapFee) {
             (success, dynamicSwapFee) = IPoolHooks(pool).onComputeDynamicSwapFee(swapParams);
         }
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getBptRate(address pool) external view withRegisteredPool(pool) returns (uint256 rate) {
+        PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
+        uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18);
+
+        return invariant.divDown(_totalSupply(pool));
     }
 
     /*******************************************************************************
