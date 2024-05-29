@@ -147,6 +147,13 @@ interface IVaultExtension {
      */
     function getPoolConfig(address pool) external view returns (PoolConfig memory);
 
+    /**
+     * @notice Gets the current bpt rate of a pool, by dividing the current invariant by the total supply of BPT.
+     * @param pool Address of the pool
+     * @return rate BPT rate
+     */
+    function getBptRate(address pool) external view returns (uint256 rate);
+
     /*******************************************************************************
                                     Pool Tokens
     *******************************************************************************/

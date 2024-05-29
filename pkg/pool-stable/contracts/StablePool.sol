@@ -6,16 +6,13 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { BasePoolAuthentication } from "@balancer-labs/v3-vault/contracts/BasePoolAuthentication.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { AmplificationDataLib, AmplificationDataBits, AmplificationData } from "./lib/AmplificationDataLib.sol";
 
