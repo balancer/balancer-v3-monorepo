@@ -34,20 +34,22 @@ library HooksConfigLib {
      * @dev Check if dynamic swap fee hook should be called and call it. Throws an error if the hook contract fails to
      * execute the hook.
      *
-     * @param config The decoded hooks configuration
+     * @param config The encoded hooks configuration
      * @param swapParams The swap parameters used to calculate the fee
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      * @return swapFeePercentage the calculated swap fee percentage. 0 if hook is disabled
      */
     function onComputeDynamicSwapFee(
-        HooksConfig memory config,
+        HooksConfigBits config,
         IBasePool.PoolSwapParams memory swapParams
     ) internal view returns (bool, uint256) {
-        if (config.shouldCallComputeDynamicSwapFee == false) {
+        if (shouldCallComputeDynamicSwapFee(config) == false) {
             return (false, 0);
         }
 
-        (bool success, uint256 swapFeePercentage) = IHooks(config.hooksContract).onComputeDynamicSwapFee(swapParams);
+        (bool success, uint256 swapFeePercentage) = IHooks(getHooksContract(config)).onComputeDynamicSwapFee(
+            swapParams
+        );
 
         if (success == false) {
             revert IVaultErrors.DynamicSwapFeeHookFailed();
@@ -59,19 +61,16 @@ library HooksConfigLib {
      * @dev Check if before swap hook should be called and call it. Throws an error if the hook contract fails to
      * execute the hook.
      *
-     * @param config The decoded hooks configuration
+     * @param config The encoded hooks configuration
      * @param swapParams The swap parameters used in the hook
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
-    function onBeforeSwap(
-        HooksConfig memory config,
-        IBasePool.PoolSwapParams memory swapParams
-    ) internal returns (bool) {
-        if (config.shouldCallBeforeSwap == false) {
+    function onBeforeSwap(HooksConfigBits config, IBasePool.PoolSwapParams memory swapParams) internal returns (bool) {
+        if (shouldCallBeforeSwap(config) == false) {
             return false;
         }
 
-        if (IHooks(config.hooksContract).onBeforeSwap(swapParams) == false) {
+        if (IHooks(getHooksContract(config)).onBeforeSwap(swapParams) == false) {
             revert IVaultErrors.BeforeSwapHookFailed();
         }
         return true;
@@ -81,20 +80,20 @@ library HooksConfigLib {
      * @dev Check if after swap hook should be called and call it. Throws an error if the hook contract fails to
      * execute the hook.
      *
-     * @param config The decoded hooks configuration
+     * @param config The encoded hooks configuration
      * @param amountCalculatedScaled18 The amount calculated by the vault's onSwap function
      * @param params The swap parameters
      * @param state Temporary state used in swap operations
      * @param poolData Struct containing balance and token information of the pool
      */
     function onAfterSwap(
-        HooksConfig memory config,
+        HooksConfigBits config,
         uint256 amountCalculatedScaled18,
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
     ) internal {
-        if (config.shouldCallAfterSwap == false) {
+        if (shouldCallAfterSwap(config) == false) {
             return;
         }
 
@@ -103,7 +102,7 @@ library HooksConfigLib {
             ? (state.amountGivenScaled18, amountCalculatedScaled18)
             : (amountCalculatedScaled18, state.amountGivenScaled18);
         if (
-            IHooks(config.hooksContract).onAfterSwap(
+            IHooks(getHooksContract(config)).onAfterSwap(
                 IHooks.AfterSwapParams({
                     kind: params.kind,
                     tokenIn: params.tokenIn,
@@ -126,24 +125,24 @@ library HooksConfigLib {
      * @dev Check if before add liquidity hook should be called and call it. Throws an error if the hook contract fails
      * to execute the hook.
      *
-     * @param config The decoded hooks configuration
+     * @param config The encoded hooks configuration
      * @param maxAmountsInScaled18 An array with maximum amounts for each input token of the add liquidity operation
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
     function onBeforeAddLiquidity(
-        HooksConfig memory config,
+        HooksConfigBits config,
         uint256[] memory maxAmountsInScaled18,
         AddLiquidityParams memory params,
         PoolData memory poolData
     ) internal returns (bool) {
-        if (config.shouldCallBeforeAddLiquidity == false) {
+        if (shouldCallBeforeAddLiquidity(config) == false) {
             return false;
         }
 
         if (
-            IHooks(config.hooksContract).onBeforeAddLiquidity(
+            IHooks(getHooksContract(config)).onBeforeAddLiquidity(
                 msg.sender,
                 params.kind,
                 maxAmountsInScaled18,
@@ -161,25 +160,25 @@ library HooksConfigLib {
      * @dev Check if after add liquidity hook should be called and call it. Throws an error if the hook contract fails
      * to execute the hook.
      *
-     * @param config The decoded hooks configuration
+     * @param config The encoded hooks configuration
      * @param amountsInScaled18 An array with amounts for each input token of the add liquidity operation
      * @param bptAmountOut The BPT amount a user will receive after add liquidity operation succeeds
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
      */
     function onAfterAddLiquidity(
-        HooksConfig memory config,
+        HooksConfigBits config,
         uint256[] memory amountsInScaled18,
         uint256 bptAmountOut,
         AddLiquidityParams memory params,
         PoolData memory poolData
     ) internal {
-        if (config.shouldCallAfterAddLiquidity == false) {
+        if (shouldCallAfterAddLiquidity(config) == false) {
             return;
         }
 
         if (
-            IHooks(config.hooksContract).onAfterAddLiquidity(
+            IHooks(getHooksContract(config)).onAfterAddLiquidity(
                 msg.sender,
                 amountsInScaled18,
                 bptAmountOut,
@@ -195,7 +194,7 @@ library HooksConfigLib {
      * @dev Check if before remove liquidity hook should be called and call it. Throws an error if the hook contract
      * fails to execute the hook.
      *
-     * @param config The decoded hooks configuration
+     * @param config The encoded hooks configuration
      * @param minAmountsOutScaled18 An array with minimum amounts for each output token of the remove liquidity
      * operation
      * @param params The remove liquidity parameters
@@ -203,17 +202,17 @@ library HooksConfigLib {
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
     function onBeforeRemoveLiquidity(
-        HooksConfig memory config,
+        HooksConfigBits config,
         uint256[] memory minAmountsOutScaled18,
         RemoveLiquidityParams memory params,
         PoolData memory poolData
     ) internal returns (bool) {
-        if (config.shouldCallBeforeRemoveLiquidity == false) {
+        if (shouldCallBeforeRemoveLiquidity(config) == false) {
             return false;
         }
 
         if (
-            IHooks(config.hooksContract).onBeforeRemoveLiquidity(
+            IHooks(getHooksContract(config)).onBeforeRemoveLiquidity(
                 msg.sender,
                 params.kind,
                 params.maxBptAmountIn,
@@ -231,25 +230,25 @@ library HooksConfigLib {
      * @dev Check if after remove liquidity hook should be called and call it. Throws an error if the hook contract
      * fails to execute the hook.
      *
-     * @param config The decoded hooks configuration
+     * @param config The encoded hooks configuration
      * @param amountsOutScaled18 An array with amounts for each output token of the remove liquidity operation
      * @param bptAmountIn The BPT amount a user will need burn to remove the liquidity of the pool
      * @param params The remove liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
      */
     function onAfterRemoveLiquidity(
-        HooksConfig memory config,
+        HooksConfigBits config,
         uint256[] memory amountsOutScaled18,
         uint256 bptAmountIn,
         RemoveLiquidityParams memory params,
         PoolData memory poolData
     ) internal {
-        if (config.shouldCallAfterRemoveLiquidity == false) {
+        if (shouldCallAfterRemoveLiquidity(config) == false) {
             return;
         }
 
         if (
-            IHooks(config.hooksContract).onAfterRemoveLiquidity(
+            IHooks(getHooksContract(config)).onAfterRemoveLiquidity(
                 msg.sender,
                 bptAmountIn,
                 amountsOutScaled18,
@@ -265,21 +264,21 @@ library HooksConfigLib {
      * @dev Check if before initialization hook should be called and call it. Throws an error if the hook contract
      * fails to execute the hook.
      *
-     * @param config The decoded hooks configuration
+     * @param config The encoded hooks configuration
      * @param exactAmountsInScaled18 An array with the initial liquidity of the pool
      * @param userData Additional (optional) data required for adding initial liquidity
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
     function onBeforeInitialize(
-        HooksConfig memory config,
+        HooksConfigBits config,
         uint256[] memory exactAmountsInScaled18,
         bytes memory userData
     ) internal returns (bool) {
-        if (config.shouldCallBeforeInitialize == false) {
+        if (shouldCallBeforeInitialize(config) == false) {
             return false;
         }
 
-        if (IHooks(config.hooksContract).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
+        if (IHooks(getHooksContract(config)).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
             revert IVaultErrors.BeforeInitializeHookFailed();
         }
         return true;
@@ -289,22 +288,24 @@ library HooksConfigLib {
      * @dev Check if after initialization hook should be called and call it. Throws an error if the hook contract
      * fails to execute the hook.
      *
-     * @param config The decoded hooks configuration
+     * @param config The encoded hooks configuration
      * @param exactAmountsInScaled18 An array with the initial liquidity of the pool
      * @param bptAmountOut The BPT amount a user will receive after initialization operation succeeds
      * @param userData Additional (optional) data required for adding initial liquidity
      */
     function onAfterInitialize(
-        HooksConfig memory config,
+        HooksConfigBits config,
         uint256[] memory exactAmountsInScaled18,
         uint256 bptAmountOut,
         bytes memory userData
     ) internal {
-        if (config.shouldCallAfterInitialize == false) {
+        if (shouldCallAfterInitialize(config) == false) {
             return;
         }
 
-        if (IHooks(config.hooksContract).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
+        if (
+            IHooks(getHooksContract(config)).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false
+        ) {
             revert IVaultErrors.AfterInitializeHookFailed();
         }
     }

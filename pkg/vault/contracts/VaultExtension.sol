@@ -36,7 +36,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
-import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
+import { HooksConfigBits, HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
@@ -60,6 +60,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
+    using HooksConfigLib for HooksConfigBits;
     using HooksConfigLib for HooksConfig;
     using InputHelpers for uint256;
     using ScalingHelpers for *;
@@ -313,7 +314,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         bytes memory userData
     ) external onlyWhenUnlocked withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
         _ensureUnpausedAndGetVaultState(pool);
-        HooksConfig memory hooksConfig = _hooksConfig[pool].toHooksConfig();
+        HooksConfigBits hooksConfig = _hooksConfig[pool];
 
         // Balances are zero until after initialize is callled, so there is no need to charge pending yield fee here.
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
@@ -451,7 +452,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool,
         IBasePool.PoolSwapParams memory swapParams
     ) external view withRegisteredPool(pool) returns (bool success, uint256 dynamicSwapFee) {
-        return _hooksConfig[pool].toHooksConfig().onComputeDynamicSwapFee(swapParams);
+        return _hooksConfig[pool].onComputeDynamicSwapFee(swapParams);
     }
 
     /// @inheritdoc IVaultExtension

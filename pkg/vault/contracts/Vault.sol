@@ -48,7 +48,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using Address for *;
     using SafeERC20 for IERC20;
     using PoolConfigLib for PoolConfig;
-    using HooksConfigLib for HooksConfig;
+    using HooksConfigLib for HooksConfigBits;
     using ScalingHelpers for *;
     using VaultStateLib for VaultStateBits;
     using BufferPackedTokenBalance for bytes32;
@@ -167,7 +167,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
-        HooksConfig memory hooksConfig = _hooksConfig[params.pool].toHooksConfig();
+        HooksConfigBits hooksConfig = _hooksConfig[params.pool];
 
         if (params.amountGivenRaw == 0) {
             revert AmountGivenZero();
@@ -474,7 +474,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
 
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
-        HooksConfig memory hooksConfig = _hooksConfig[params.pool].toHooksConfig();
+        HooksConfigBits hooksConfig = _hooksConfig[params.pool];
 
         // `_loadPoolDataUpdatingBalancesAndFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the add liquidity hooks are reentrant and could do anything,
@@ -686,7 +686,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // bptIn = supply * (1 - ratio), so lower ratio = more bptIn, favoring the pool.
 
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
-        HooksConfig memory hooksConfig = _hooksConfig[params.pool].toHooksConfig();
+        HooksConfigBits hooksConfig = _hooksConfig[params.pool];
 
         // `_loadPoolDataUpdatingBalancesAndFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the swap hooks are reentrant and could do anything, including
