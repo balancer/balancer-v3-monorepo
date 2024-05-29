@@ -25,7 +25,7 @@ interface IHooks {
     function onRegister(address factory, address pool, TokenConfig[] memory tokenConfig) external returns (bool);
 
     /**
-     * @notice returns flags informing which hooks are implemented in the contract.
+     * @notice Returns flags informing which hooks are implemented in the contract.
      * @return hooksConfig Flags indicating which hooks the contract supports and the address of the hook contract
      */
     function getHooksConfig() external returns (HooksConfig memory hooksConfig);
