@@ -8,7 +8,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-// @notice Config type to store entire configuration of the pool
+// @notice Config type to store the PoolState portion of the pool configuration (the part that is packed).
 type PoolConfigBits is bytes32;
 
 using PoolConfigLib for PoolConfigBits global;
@@ -22,7 +22,7 @@ library PoolConfigLib {
     uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = POOL_CREATOR_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
-    uint8 public constant POOL_PAUSED_OFFSET = PAUSE_WINDOW_END_TIME_OFFSET + _TIMESTAMP_BITLENGTH;
+    uint256 public constant POOL_PAUSED_OFFSET = PAUSE_WINDOW_END_TIME_OFFSET + _TIMESTAMP_BITLENGTH;
 
     // Uses a uint24 (3 bytes): least significant 20 bits to store the values, and a 4-bit pad.
     // This maximum token count is also hard-coded in the Vault.
@@ -50,7 +50,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_PAUSED_OFFSET);
     }
 
-    function fromPoolConfig(PoolConfig memory config) internal pure returns (PoolConfigBits) {
+    function fromPoolState(PoolState memory config) internal pure returns (PoolConfigBits) {
         return
             PoolConfigBits.wrap(
                 bytes32(0)
@@ -86,7 +86,7 @@ library PoolConfigLib {
     }
 
     function getDecimalScalingFactors(
-        PoolConfig memory config,
+        PoolState memory config,
         uint256 numTokens
     ) internal pure returns (uint256[] memory) {
         uint256[] memory scalingFactors = new uint256[](numTokens);
@@ -103,12 +103,12 @@ library PoolConfigLib {
         return scalingFactors;
     }
 
-    function toPoolConfig(PoolConfigBits config) internal pure returns (PoolConfig memory) {
+    function toPoolState(PoolConfigBits config) internal pure returns (PoolState memory) {
         bytes32 rawConfig = PoolConfigBits.unwrap(config);
 
         // Calling the functions (in addition to costing more gas), causes an obscure form of stack error (Yul errors).
         return
-            PoolConfig({
+            PoolState({
                 staticSwapFeePercentage: rawConfig.decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
                     FEE_SCALING_FACTOR,
                 poolCreatorFeePercentage: rawConfig.decodeUint(POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH) *

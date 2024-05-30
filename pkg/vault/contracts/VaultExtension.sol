@@ -236,14 +236,30 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _assignPoolRoles(pool, params.roleAccounts);
 
         // Store config and mark the pool as registered
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        PoolFlags memory flags;
+        PoolState memory config;
 
-        config.isPoolRegistered = true;
-        config.hooks = params.poolHooks;
-        config.liquidityManagement = params.liquidityManagement;
+        flags.isPoolRegistered = true;
+        flags.shouldCallBeforeInitialize = params.poolHooks.shouldCallBeforeInitialize;
+        flags.shouldCallAfterInitialize = params.poolHooks.shouldCallAfterInitialize;
+        flags.shouldCallComputeDynamicSwapFee = params.poolHooks.shouldCallComputeDynamicSwapFee;
+        flags.shouldCallBeforeSwap = params.poolHooks.shouldCallBeforeSwap;
+        flags.shouldCallAfterSwap = params.poolHooks.shouldCallAfterSwap;
+        flags.shouldCallBeforeAddLiquidity = params.poolHooks.shouldCallBeforeAddLiquidity;
+        flags.shouldCallAfterAddLiquidity = params.poolHooks.shouldCallAfterAddLiquidity;
+        flags.shouldCallBeforeRemoveLiquidity = params.poolHooks.shouldCallBeforeRemoveLiquidity;
+        flags.shouldCallAfterRemoveLiquidity = params.poolHooks.shouldCallAfterRemoveLiquidity;
+
+        flags.disableUnbalancedLiquidity = params.liquidityManagement.disableUnbalancedLiquidity;
+        flags.enableAddLiquidityCustom = params.liquidityManagement.enableAddLiquidityCustom;
+        flags.enableRemoveLiquidityCustom = params.liquidityManagement.enableRemoveLiquidityCustom;
+
+        _poolFlags[pool] = flags;
+
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime;
-        _poolConfig[pool] = config.fromPoolConfig();
+
+        _poolState[pool] = config.fromPoolState();
 
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
 
@@ -379,8 +395,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         emit PoolBalanceChanged(pool, to, exactAmountsIn.unsafeCastToInt256(true));
 
         // Store config and mark the pool as initialized
-        poolData.poolConfig.isPoolInitialized = true;
-        _poolConfig[pool] = poolData.poolConfig.fromPoolConfig();
+        poolData.poolFlags.isPoolInitialized = true;
+        _poolFlags[pool] = poolData.poolFlags;
 
         // Pass scaled balances to the pool
         bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18);
@@ -415,7 +431,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getPoolConfig(address pool) external view withRegisteredPool(pool) onlyVault returns (PoolConfig memory) {
-        return _poolConfig[pool].toPoolConfig();
+        return PoolConfig({
+            poolFlags: _poolFlags[pool],
+            poolState: _poolState[pool].toPoolState()
+        });            
     }
 
     /// @inheritdoc IVaultExtension
@@ -441,7 +460,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool,
         IBasePool.PoolSwapParams memory swapParams
     ) external view withRegisteredPool(pool) returns (bool success, uint256 dynamicSwapFee) {
-        bool shouldCallDynamicSwapFee = _poolConfig[pool].shouldCallComputeDynamicSwapFee();
+        bool shouldCallDynamicSwapFee = _poolFlags[pool].shouldCallComputeDynamicSwapFee;
 
         if (shouldCallDynamicSwapFee) {
             (success, dynamicSwapFee) = IPoolHooks(pool).onComputeDynamicSwapFee(swapParams);
@@ -540,7 +559,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function getStaticSwapFeePercentage(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
-        return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
+        return PoolConfigLib.toPoolConfig(_poolState[pool]).staticSwapFeePercentage;
     }
 
     /// @inheritdoc IVaultExtension

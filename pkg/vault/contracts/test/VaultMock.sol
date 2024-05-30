@@ -190,7 +190,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetPoolConfig(address pool, PoolConfig memory poolConfig) public {
-        _poolConfig[pool] = poolConfig.fromPoolConfig();
+        _poolState[pool] = poolConfig.fromPoolState();
     }
 
     function manualSetPoolTokenConfig(address pool, IERC20[] memory tokens, TokenConfig[] memory tokenConfig) public {
@@ -295,10 +295,10 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory) {
-        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+        PoolState memory state = _poolState[pool].toPoolState();
         IERC20[] memory tokens = _getPoolTokens(pool);
 
-        return PoolConfigLib.getDecimalScalingFactors(config, tokens.length);
+        return PoolConfigLib.getDecimalScalingFactors(state, tokens.length);
     }
 
     function recoveryModeExit(address pool) external view onlyInRecoveryMode(pool) {

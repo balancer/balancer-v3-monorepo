@@ -25,11 +25,11 @@ library PoolDataLib {
         Rounding roundingDirection
     ) internal view returns (PoolData memory poolData) {
         uint256 numTokens = poolTokenBalances.length();
-        poolData.poolState = PoolConfigLib.toPoolConfig(poolConfig);
+        poolData.poolState = PoolConfigLib.toPoolState(poolConfig);
         poolData.tokenConfig = new TokenConfig[](numTokens);
         poolData.balancesRaw = new uint256[](numTokens);
         poolData.balancesLiveScaled18 = new uint256[](numTokens);
-        poolData.decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolData.poolConfig, numTokens);
+        poolData.decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolData.poolState, numTokens);
         poolData.tokenRates = new uint256[](numTokens);
         bytes32 packedBalance;
         IERC20 token;

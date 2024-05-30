@@ -229,22 +229,22 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     function _setPoolPaused(address pool, bool pausing) internal {
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        (bool currentlyPaused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
 
-        if (_isPoolPaused(pool)) {
+        if (currentlyPaused) {
             if (pausing) {
                 // Already paused, and we're trying to pause it again.
                 revert PoolPaused(pool);
             }
 
             // The pool can always be unpaused while it's paused.
-            // When the buffer period expires, `_isPoolPaused` will return false, so we would be in the outside
+            // When the buffer period expires, `currentlyPaused` will be false, so we would be in the outside
             // else clause, where trying to unpause will revert unconditionally.
         } else {
             if (pausing) {
                 // Not already paused; we can pause within the window.
                 // solhint-disable-next-line not-rely-on-time
-                if (block.timestamp >= config.pauseWindowEndTime) {
+                if (block.timestamp >= pauseWindowEndTime) {
                     revert PoolPauseWindowExpired(pool);
                 }
             } else {
@@ -253,9 +253,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             }
         }
 
-        // Update poolConfig.
-        config.isPoolPaused = pausing;
-        _poolConfig[pool] = config.fromPoolConfig();
+        PoolFlags memory flags = _poolFlags[pool];
+        flags.isPoolPaused = pausing;
+        _poolFlags[pool] = flags;
 
         emit PoolPausedStateChanged(pool, pausing);
     }
@@ -321,9 +321,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             revert PoolCreatorFeePercentageTooHigh();
         }
 
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolState[pool]);
         config.poolCreatorFeePercentage = poolCreatorFeePercentage;
-        _poolConfig[pool] = config.fromPoolConfig();
+        _poolState[pool] = config.fromPoolConfig();
 
         emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
     }

@@ -300,7 +300,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     function _loadPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
-        poolData = PoolDataLib.load(_poolTokenBalances[pool], _poolState[pool], _poolTokenConfig[pool], roundingDirection);
+        poolData = PoolDataLib.load(
+            _poolTokenBalances[pool],
+            _poolState[pool],
+            _poolTokenConfig[pool],
+            roundingDirection
+        );
         poolData.poolFlags = _poolFlags[pool];
     }
 
@@ -319,9 +324,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         dueProtocolYieldFees = new uint256[](numTokens);
         dueCreatorYieldFees = new uint256[](numTokens);
 
-        bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
+        bool poolSubjectToYieldFees = poolData.poolFlags.isPoolInitialized &&
             yieldFeePercentage > 0 &&
-            poolData.poolConfig.isPoolInRecoveryMode == false;
+            poolData.poolFlags.isPoolInRecoveryMode == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             TokenConfig memory tokenConfig = poolData.tokenConfig[i];
@@ -429,9 +434,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 // `protocolYieldFeePercentage > 0`. So, we don't need to check this again in here, saving some gas.
                 protocolFeeAmountRaw = liveBalanceDiffRaw.mulUp(protocolYieldFeePercentage);
 
-                if (poolData.poolConfig.poolCreatorFeePercentage > 0) {
+                if (poolData.poolState.poolCreatorFeePercentage > 0) {
                     creatorFeeAmountRaw = (liveBalanceDiffRaw - protocolFeeAmountRaw).mulUp(
-                        poolData.poolConfig.poolCreatorFeePercentage
+                        poolData.poolState.poolCreatorFeePercentage
                     );
                 }
             }
