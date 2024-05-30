@@ -56,12 +56,7 @@ describe('Queries', function () {
 
     factory = await deploy('PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
 
-    await factory.registerTestPool(
-      pool,
-      buildTokenConfig([await DAI.getAddress(), await USDC.getAddress()].sort()),
-      ZERO_ADDRESS,
-      ZERO_ADDRESS
-    );
+    await factory.registerTestPool(pool, buildTokenConfig([await DAI.getAddress(), await USDC.getAddress()].sort()));
 
     await USDC.mint(alice, 2n * USDC_AMOUNT_IN);
     await DAI.mint(alice, 2n * DAI_AMOUNT_IN);

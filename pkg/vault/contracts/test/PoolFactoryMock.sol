@@ -21,10 +21,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault = vault;
     }
 
-    function registerTestPool(
-        address pool,
-        TokenConfig[] memory tokenConfig
-    ) external {
+    function registerTestPool(address pool, TokenConfig[] memory tokenConfig) external {
         PoolRoleAccounts memory roleAccounts;
 
         _vault.registerPool(
@@ -42,11 +39,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         );
     }
 
-    function registerTestPool(
-        address pool,
-        TokenConfig[] memory tokenConfig,
-        address poolHooksContract
-    ) external {
+    function registerTestPool(address pool, TokenConfig[] memory tokenConfig, address poolHooksContract) external {
         PoolRoleAccounts memory roleAccounts;
 
         _vault.registerPool(
@@ -64,7 +57,12 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         );
     }
 
-    function registerTestPool(address pool, TokenConfig[] memory tokenConfig, address poolHooksContract, address poolCreator) external {
+    function registerTestPool(
+        address pool,
+        TokenConfig[] memory tokenConfig,
+        address poolHooksContract,
+        address poolCreator
+    ) external {
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = poolCreator;
 

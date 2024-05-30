@@ -64,7 +64,11 @@ contract HooksTest is BaseVaultTest {
         );
 
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultErrors.HookRegistrationFailed.selector, poolHooksContract, address(anotherFactory))
+            abi.encodeWithSelector(
+                IVaultErrors.HookRegistrationFailed.selector,
+                poolHooksContract,
+                address(anotherFactory)
+            )
         );
         anotherFactory.registerPool(
             address(anotherPool),
@@ -101,7 +105,11 @@ contract HooksTest is BaseVaultTest {
         );
 
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultErrors.HookRegistrationFailed.selector, poolHooksContract, address(anotherFactory))
+            abi.encodeWithSelector(
+                IVaultErrors.HookRegistrationFailed.selector,
+                poolHooksContract,
+                address(anotherFactory)
+            )
         );
         anotherFactory.registerPool(
             address(anotherPool),

@@ -45,7 +45,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             newPool,
             vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
             poolHooksContract,
-            address(lp)
+            lp
         );
 
         return newPool;

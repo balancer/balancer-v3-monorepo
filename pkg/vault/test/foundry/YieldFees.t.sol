@@ -64,7 +64,7 @@ contract YieldFeesTest is BaseVaultTest {
                 yieldFeeFlags
             ),
             poolHooksContract,
-            address(lp)
+            lp
         );
 
         vm.label(address(newPool), "pool");

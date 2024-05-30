@@ -792,6 +792,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             uint256[] memory amountsInRaw,
             uint256[] memory amountsInScaled18,
             uint256 bptAmountOut,
+
         ) = vault.manualAddLiquidity(poolData, params.addLiquidityParams, params.maxAmountsInScaled18);
 
         assertEq(bptAmountOut, params.expectedBPTAmountOut, "Unexpected BPT amount out");

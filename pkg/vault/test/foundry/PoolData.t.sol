@@ -42,7 +42,7 @@ contract PoolDataTest is BaseVaultTest {
             newPool,
             vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20(), rateProviders),
             poolHooksContract,
-            address(lp)
+            lp
         );
 
         return newPool;
