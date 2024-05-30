@@ -45,6 +45,10 @@ contract StablePoolFactory is BasePoolFactory {
         uint256 swapFeePercentage,
         bytes32 salt
     ) external returns (address pool) {
+        if (roleAccounts.poolCreator != address(0)) {
+            revert StandardPoolWithCreator();
+        }
+
         pool = _create(
             abi.encode(
                 StablePool.NewPoolParams({

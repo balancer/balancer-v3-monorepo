@@ -136,7 +136,10 @@ contract HooksTest is BaseVaultTest {
         _setPoolHooksConfig(poolHookFlags);
 
         setSwapFeePercentage(swapFeePercentage);
-        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
+        vault.manualSetAggregateProtocolSwapFeePercentage(
+            pool,
+            _getAggregateFeePercentage(protocolSwapFeePercentage, 0)
+        );
         PoolMock(pool).setDynamicSwapFeePercentage(swapFeePercentage);
 
         uint256 expectedAmountOut = defaultAmount.mulDown(swapFeePercentage.complement());

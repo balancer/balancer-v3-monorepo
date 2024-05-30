@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -61,19 +63,11 @@ contract YieldFeesTest is BaseVaultTest {
                 rateProviders,
                 yieldFeeFlags
             ),
-            address(lp)
+            lp
         );
 
         vm.label(address(newPool), "pool");
         return address(newPool);
-    }
-
-    function setProtocolYieldFeePercentage(uint256 yieldFeePercentage) internal {
-        bytes32 setFeeRole = vault.getActionId(IVaultAdmin.setProtocolYieldFeePercentage.selector);
-        authorizer.grantRole(setFeeRole, alice);
-
-        vm.prank(alice);
-        vault.setProtocolYieldFeePercentage(yieldFeePercentage);
     }
 
     function testPoolDataAfterInitialization__Fuzz(bool roundUp) public {
@@ -100,24 +94,21 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 liveBalanceBeforeRaw;
         uint256 liveBalanceAfterRaw;
         uint256 expectedProtocolFee;
-        uint256 expectedCreatorFee;
     }
 
     function testNoYieldFeesIfExempt__Fuzz(
         uint256 wstethRate,
         uint256 daiRate,
         uint256 protocolYieldFeePercentage,
-        uint256 creatorYieldFeePercentage,
+        uint256 poolCreatorFeePercentage,
         bool roundUp
     ) public {
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
 
-        (protocolYieldFeePercentage, creatorYieldFeePercentage) = _initializeFees(
+        (protocolYieldFeePercentage, poolCreatorFeePercentage) = _initializeFees(
             protocolYieldFeePercentage,
-            creatorYieldFeePercentage,
-            0,
-            0
+            poolCreatorFeePercentage
         );
 
         pool = createPool();
@@ -126,13 +117,14 @@ contract YieldFeesTest is BaseVaultTest {
 
         initPool();
 
-        uint256[] memory originalLiveBalances = verifyLiveBalances(wstethRate, daiRate, roundUp);
-
+        uint256 aggregateYieldFeePercentage = _getAggregateFeePercentage(
+            protocolYieldFeePercentage,
+            poolCreatorFeePercentage
+        );
         // Set non-zero yield fee
-        setProtocolYieldFeePercentage(protocolYieldFeePercentage);
-        // lp is the pool creator, the only user who can change the pool creator fee percentage
-        vm.prank(lp);
-        vault.setPoolCreatorFeePercentage(address(pool), creatorYieldFeePercentage);
+        vault.manualSetAggregateProtocolYieldFeePercentage(pool, aggregateYieldFeePercentage);
+
+        uint256[] memory originalLiveBalances = verifyLiveBalances(wstethRate, daiRate, roundUp);
 
         // Now raise both rates
         uint256 rateDelta = 0.2e18;
@@ -153,35 +145,26 @@ contract YieldFeesTest is BaseVaultTest {
         }
 
         // Should be no protocol fees on dai, since it is yield fee exempt
-        assertEq(vault.getProtocolFees(pool, dai), 0, "Protocol fees on exempt dai are not 0");
-        // Should be no creator fees on dai, since it is yield fee exempt
-        assertEq(vault.getPoolCreatorFees(pool, dai), 0, "Creator fees on exempt dai are not 0");
+        assertEq(vault.manualGetAggregateProtocolYieldFeeAmount(pool, dai), 0, "Protocol fees on exempt dai are not 0");
 
-        uint256[] memory scalingFactors = PoolMock(pool).getDecimalScalingFactors();
-
-        // There should be protocol fees on non-exempt wsteth
-        uint256 actualProtocolFee = vault.getProtocolFees(pool, wsteth);
+        // There should be fees on non-exempt wsteth
+        uint256 actualProtocolFee = vault.manualGetAggregateProtocolYieldFeeAmount(pool, wsteth);
         assertTrue(actualProtocolFee > 0, "wstETH did not collect any protocol fees");
-
-        // There should be creator fees on non-exempt wsteth
-        uint256 actualCreatorFee = vault.getPoolCreatorFees(pool, wsteth);
-        assertTrue(actualCreatorFee > 0, "wstETH did not collect any creator fees");
 
         // How much should the fee be?
         // Tricky, because the diff already has the fee subtracted. Need to add it back in
         YieldTestLocals memory vars;
+        uint256[] memory scalingFactors = PoolMock(pool).getDecimalScalingFactors();
         vars.liveBalanceAfterRaw = liveBalanceDeltas[wstethIdx].toRawUndoRateRoundDown(
             scalingFactors[wstethIdx],
             wstethRate
         );
-        vars.liveBalanceBeforeRaw = vars.liveBalanceAfterRaw + actualProtocolFee + actualCreatorFee;
-        vars.expectedProtocolFee = vars.liveBalanceBeforeRaw.mulDown(protocolYieldFeePercentage);
-        vars.expectedCreatorFee = (vars.liveBalanceBeforeRaw - vars.expectedProtocolFee).mulDown(
-            creatorYieldFeePercentage
+        vars.liveBalanceBeforeRaw = vars.liveBalanceAfterRaw + actualProtocolFee;
+        vars.expectedProtocolFee = vars.liveBalanceBeforeRaw.mulDown(
+            _getAggregateFeePercentage(protocolYieldFeePercentage, poolCreatorFeePercentage)
         );
 
         assertApproxEqAbs(actualProtocolFee, vars.expectedProtocolFee, 1e3, "Wrong protocol fee");
-        assertApproxEqAbs(actualCreatorFee, vars.expectedCreatorFee, 1e3, "Wrong creator fee");
     }
 
     function testUpdateLiveTokenBalanceInPoolData__Fuzz(
@@ -221,6 +204,8 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 lastLiveBalance,
         uint256 yieldFeePercentage
     ) public {
+        uint256 _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 20e16; // 20%
+
         balanceRaw = bound(balanceRaw, 0, 2 ** 120);
         decimals = uint8(bound(uint256(decimals), 2, 18));
         tokenRate = bound(tokenRate, 0, 100_000e18);
@@ -231,14 +216,14 @@ contract YieldFeesTest is BaseVaultTest {
         PoolData memory poolData = _simplePoolData(balanceRaw, decimalScalingFactor, tokenRate);
         uint256 liveBalance = poolData.balancesLiveScaled18[0];
 
-        (uint256 protocolYieldFeesRaw, ) = vault.computeYieldFeesDue(poolData, lastLiveBalance, 0, yieldFeePercentage);
+        uint256 protocolYieldFeesRaw = vault.computeYieldFeesDue(poolData, lastLiveBalance, 0, yieldFeePercentage);
         if (liveBalance <= lastLiveBalance) {
             assertEq(protocolYieldFeesRaw, 0, "Yield fees are not 0 with decreasing live balance");
         } else {
             assertEq(
                 protocolYieldFeesRaw,
-                (liveBalance - lastLiveBalance).divDown(decimalScalingFactor.mulDown(tokenRate)).mulUp(
-                    yieldFeePercentage
+                (liveBalance - lastLiveBalance).mulUp(yieldFeePercentage).divDown(
+                    decimalScalingFactor.mulDown(tokenRate)
                 ),
                 "Wrong protocol yield fees"
             );
@@ -248,45 +233,36 @@ contract YieldFeesTest is BaseVaultTest {
     function testYieldFeesOnSwap__Fuzz(
         uint256 wstethRate,
         uint256 daiRate,
-        uint256 yieldFeePercentage,
-        uint256 creatorYieldFeePercentage
+        uint256 protocolYieldFeePercentage,
+        uint256 poolCreatorFeePercentage
     ) public {
-        (yieldFeePercentage, creatorYieldFeePercentage) = _initializeFees(
-            yieldFeePercentage,
-            creatorYieldFeePercentage,
-            0,
-            0
+        (protocolYieldFeePercentage, poolCreatorFeePercentage) = _initializeFees(
+            protocolYieldFeePercentage,
+            poolCreatorFeePercentage
         );
 
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
 
-        _testYieldFeesOnSwap(wstethRate, daiRate, yieldFeePercentage, creatorYieldFeePercentage, false);
+        _testYieldFeesOnSwap(wstethRate, daiRate, protocolYieldFeePercentage, poolCreatorFeePercentage, false);
     }
 
     function testYieldFeesOnSwap() public {
-        uint256 yieldFeePercentage;
-        uint256 creatorYieldFeePercentage;
-
         // yield fee 20% and creator yield fees 100%
-        (yieldFeePercentage, creatorYieldFeePercentage) = _initializeFees(
-            yieldFeePercentage,
-            creatorYieldFeePercentage,
-            2e6,
-            1e7
-        );
+        uint256 protocolYieldFeePercentage = 20e16;
+        uint256 poolCreatorFeePercentage = 1e18;
 
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
-        _testYieldFeesOnSwap(wstethRate, daiRate, yieldFeePercentage, creatorYieldFeePercentage, true);
+        _testYieldFeesOnSwap(wstethRate, daiRate, protocolYieldFeePercentage, poolCreatorFeePercentage, true);
     }
 
     function _testYieldFeesOnSwap(
         uint256 wstethRate,
         uint256 daiRate,
         uint256 protocolYieldFeePercentage,
-        uint256 creatorYieldFeePercentage,
+        uint256 poolCreatorFeePercentage,
         bool shouldSnap
     ) private {
         pool = createPool();
@@ -295,13 +271,18 @@ contract YieldFeesTest is BaseVaultTest {
 
         initPool();
 
-        require(vault.getProtocolFees(pool, dai) == 0, "Initial protocol fees for DAI not 0");
-        require(vault.getProtocolFees(pool, wsteth) == 0, "Initial protocol fees for wstETH not 0");
+        require(vault.manualGetAggregateProtocolYieldFeeAmount(pool, dai) == 0, "Initial protocol fees for DAI not 0");
+        require(
+            vault.manualGetAggregateProtocolYieldFeeAmount(pool, wsteth) == 0,
+            "Initial protocol fees for wstETH not 0"
+        );
 
-        setProtocolYieldFeePercentage(protocolYieldFeePercentage);
-        // lp is the pool creator, the only user who can change the pool creator fee percentage
-        vm.prank(lp);
-        vault.setPoolCreatorFeePercentage(address(pool), creatorYieldFeePercentage);
+        uint256 aggregateYieldFeePercentage = _getAggregateFeePercentage(
+            protocolYieldFeePercentage,
+            poolCreatorFeePercentage
+        );
+
+        vault.manualSetAggregateProtocolYieldFeePercentage(pool, aggregateYieldFeePercentage);
 
         // Pump the rates 10 times
         wstethRate *= 10;
@@ -320,24 +301,15 @@ contract YieldFeesTest is BaseVaultTest {
         }
 
         // No matter what the rates are, the value of wsteth grows from 1x to 10x.
-        // Then, the protocol takes its cut out of the 9x difference (live balance diff).
-        uint256 liveBalanceDiffRaw = (poolInitAmount * 9) / 10;
+        // Then, the protocol takes its cut out of the 9x difference.
 
-        uint256 expectedProtocolFees = liveBalanceDiffRaw.mulDown(protocolYieldFeePercentage);
         assertApproxEqAbs(
-            vault.getProtocolFees(pool, wsteth),
-            expectedProtocolFees,
-            10, // rounding issues
-            "Wrong protocol yield fees for wstETH"
+            vault.manualGetAggregateProtocolYieldFeeAmount(pool, wsteth),
+            ((poolInitAmount * 9) / 10).mulDown(aggregateYieldFeePercentage),
+            1e3,
+            "Yield fees for wstETH is not the expected one"
         );
-        uint256 expectedYieldFees = (liveBalanceDiffRaw - expectedProtocolFees).mulDown(creatorYieldFeePercentage);
-        assertApproxEqAbs(
-            vault.getPoolCreatorFees(pool, wsteth),
-            expectedYieldFees,
-            10, // rounding issues
-            "Wrong creator yield fees for wstETH"
-        );
-        assertEq(vault.getProtocolFees(pool, dai), 0, "Yield fees for exempt dai are not 0");
+        assertEq(vault.manualGetAggregateProtocolYieldFeeAmount(pool, dai), 0, "Yield fees for exempt dai are not 0");
     }
 
     function verifyLiveBalances(
@@ -345,7 +317,7 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 daiRate,
         bool roundUp
     ) internal returns (uint256[] memory liveBalances) {
-        PoolData memory data = vault.computePoolDataUpdatingBalancesAndFees(
+        PoolData memory data = vault.loadPoolDataUpdatingBalancesAndYieldFees(
             address(pool),
             roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN
         );
@@ -397,26 +369,16 @@ contract YieldFeesTest is BaseVaultTest {
     }
 
     function _initializeFees(
-        uint256 yieldFeePercentage,
-        uint256 creatorYieldFeePercentage,
-        uint256 fixedYieldFee,
-        uint256 fixedCreatorFee
-    ) private returns (uint256 finalYieldFeePercentage, uint256 finalCreatorFeePercentage) {
+        uint256 protocolFeePercentage,
+        uint256 creatorFeePercentage
+    ) private returns (uint256 finalProtocolFeePercentage, uint256 finalCreatorFeePercentage) {
         // Fees are stored as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%) in vaultConfig and poolConfig
         // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
 
-        if (fixedYieldFee > 0) {
-            finalYieldFeePercentage = fixedYieldFee * FEE_SCALING_FACTOR;
-        } else {
-            // yield fee 0.000001-20%
-            finalYieldFeePercentage = bound(yieldFeePercentage, 1, 2e6) * FEE_SCALING_FACTOR;
-        }
+        // yield fee 0.000001-20%
+        finalProtocolFeePercentage = bound(protocolFeePercentage, 1, 2e6) * FEE_SCALING_FACTOR;
 
-        if (fixedCreatorFee > 0) {
-            finalCreatorFeePercentage = fixedCreatorFee * FEE_SCALING_FACTOR;
-        } else {
-            // creator yield fees 1-100%
-            finalCreatorFeePercentage = bound(creatorYieldFeePercentage, 1, 1e7) * FEE_SCALING_FACTOR;
-        }
+        // creator yield fees 1-100%
+        finalCreatorFeePercentage = bound(creatorFeePercentage, 1, 1e7) * FEE_SCALING_FACTOR;
     }
 }

@@ -20,13 +20,34 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault = vault;
     }
 
-    function registerTestPool(address pool, TokenConfig[] memory tokenConfig, address poolCreator) external {
+    function registerTestPool(address pool, TokenConfig[] memory tokenConfig) external {
+        PoolRoleAccounts memory roleAccounts;
+
         _vault.registerPool(
             pool,
             tokenConfig,
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: poolCreator }),
+            roleAccounts,
+            PoolConfigBits.wrap(0).toPoolConfig().hooks,
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: true
+            })
+        );
+    }
+
+    function registerTestPool(address pool, TokenConfig[] memory tokenConfig, address poolCreator) external {
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = poolCreator;
+
+        _vault.registerPool(
+            pool,
+            tokenConfig,
+            DEFAULT_SWAP_FEE,
+            getNewPoolPauseWindowEndTime(),
+            roleAccounts,
             PoolConfigBits.wrap(0).toPoolConfig().hooks,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -83,12 +104,14 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         PoolHooks calldata poolHooks,
         LiquidityManagement calldata liquidityManagement
     ) external {
+        PoolRoleAccounts memory roleAccounts;
+
         _vault.registerPool(
             pool,
             tokenConfig,
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+            roleAccounts,
             poolHooks,
             liquidityManagement
         );

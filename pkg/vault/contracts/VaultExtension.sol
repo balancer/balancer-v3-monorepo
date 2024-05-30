@@ -32,6 +32,7 @@ import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzepp
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -53,6 +54,7 @@ import { PoolDataLib } from "./lib/PoolDataLib.sol";
 contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using Address for *;
     using ArrayHelpers for uint256[];
+    using FixedPoint for uint256;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
@@ -241,13 +243,18 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         config.liquidityManagement = params.liquidityManagement;
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime;
+        // Initialize the pool-specific protocol fee values to the current global defaults.
+        (config.aggregateProtocolSwapFeePercentage, config.aggregateProtocolYieldFeePercentage) = _protocolFeeCollector
+            .registerPool(pool);
         _poolConfig[pool] = _poolConfig[pool].fromPoolConfig(
             config,
             PoolConfigLib.REGISTERED_FLAG |
                 PoolConfigLib.HOOKS_FLAG |
                 PoolConfigLib.LIQUIDITY_FLAG |
                 PoolConfigLib.TOKEN_DECIMALS_FLAG |
-                PoolConfigLib.PAUSE_WINDOW_FLAG
+                PoolConfigLib.PAUSE_WINDOW_FLAG |
+                PoolConfigLib.PROTOCOL_SWAP_FEE_FLAG |
+                PoolConfigLib.PROTOCOL_YIELD_FEE_FLAG
         );
 
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
@@ -257,6 +264,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             pool,
             msg.sender,
             params.tokenConfig,
+            params.swapFeePercentage,
             params.pauseWindowEndTime,
             params.roleAccounts,
             params.poolHooks,
@@ -289,9 +297,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
 
         if (roleAccounts.poolCreator != address(0)) {
-            bytes32 creatorFeeAction = vaultAdmin.getActionId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
+            bytes32 poolCreatorFeeAction = vaultAdmin.getActionId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
 
-            roleAssignments[creatorFeeAction] = PoolFunctionPermission({
+            roleAssignments[poolCreatorFeeAction] = PoolFunctionPermission({
                 account: roleAccounts.poolCreator,
                 onlyOwner: true
             });
@@ -453,6 +461,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
     }
 
+    /// @inheritdoc IVaultExtension
+    function getBptRate(address pool) external view withRegisteredPool(pool) returns (uint256 rate) {
+        PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
+        uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18);
+
+        return invariant.divDown(_totalSupply(pool));
+    }
+
     /*******************************************************************************
                                     Pool Tokens
     *******************************************************************************/
@@ -525,19 +541,18 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                                         Fees
     *******************************************************************************/
 
+    // Swap and Yield fees are both stored using the PackedTokenBalance library, which is usually used for
+    // balances that are related (e.g., raw and live). In this case, it holds two uncorrelated values: swap
+    // and yield fee amounts, arbitrarily assigning "Raw" to Swap and "Derived" to Yield.
+
     /// @inheritdoc IVaultExtension
-    function getProtocolSwapFeePercentage() external view onlyVault returns (uint256) {
-        return _vaultState.getProtocolSwapFeePercentage();
+    function getAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view onlyVault returns (uint256) {
+        return _aggregateProtocolFeeAmounts[pool][token].getBalanceRaw();
     }
 
     /// @inheritdoc IVaultExtension
-    function getProtocolYieldFeePercentage() external view onlyVault returns (uint256) {
-        return _vaultState.getProtocolYieldFeePercentage();
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getProtocolFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
-        return _protocolFees[pool][token];
+    function getAggregateProtocolYieldFeeAmount(address pool, IERC20 token) external view onlyVault returns (uint256) {
+        return _aggregateProtocolFeeAmounts[pool][token].getBalanceDerived();
     }
 
     /// @inheritdoc IVaultExtension
@@ -550,16 +565,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function getStaticSwapFeeManager(address pool) external view withRegisteredPool(pool) onlyVault returns (address) {
         return _poolRoleAccounts[pool].swapFeeManager;
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getPoolCreatorFees(address pool, IERC20 token) external view returns (uint256) {
-        return _poolCreatorFees[pool][token];
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getPoolCreator(address pool) external view returns (address poolCreator) {
-        return _poolRoleAccounts[pool].poolCreator;
     }
 
     /*******************************************************************************

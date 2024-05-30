@@ -37,8 +37,9 @@ library PoolConfigLib {
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
 
     uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
-    uint256 public constant POOL_CREATOR_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
-    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = POOL_CREATOR_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET = AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
 
@@ -55,11 +56,12 @@ library PoolConfigLib {
     uint16 public constant PAUSED_FLAG = 1 << 2;
     uint16 public constant RECOVERY_MODE_FLAG = 1 << 3;
     uint16 public constant STATIC_SWAP_FEE_FLAG = 1 << 4;
-    uint16 public constant POOL_CREATOR_FEE_FLAG = 1 << 5;
-    uint16 public constant TOKEN_DECIMALS_FLAG = 1 << 6;
-    uint16 public constant PAUSE_WINDOW_FLAG = 1 << 7;
-    uint16 public constant HOOKS_FLAG = 1 << 8;
-    uint16 public constant LIQUIDITY_FLAG = 1 << 9;
+    uint16 public constant PROTOCOL_SWAP_FEE_FLAG = 1 << 5;
+    uint16 public constant PROTOCOL_YIELD_FEE_FLAG = 1 << 6;
+    uint16 public constant TOKEN_DECIMALS_FLAG = 1 << 7;
+    uint16 public constant PAUSE_WINDOW_FLAG = 1 << 8;
+    uint16 public constant HOOKS_FLAG = 1 << 9;
+    uint16 public constant LIQUIDITY_FLAG = 1 << 10;
 
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
@@ -81,8 +83,16 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
-    function getPoolCreatorFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
-        return PoolConfigBits.unwrap(config).decodeUint(POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
+    function getAggregateProtocolSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
+        return
+            PoolConfigBits.unwrap(config).decodeUint(AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
+            FEE_SCALING_FACTOR;
+    }
+
+    function getAggregateProtocolYieldFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
+        return
+            PoolConfigBits.unwrap(config).decodeUint(AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH) *
+            FEE_SCALING_FACTOR;
     }
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint256) {
@@ -208,10 +218,17 @@ library PoolConfigLib {
                 FEE_BITLENGTH
             );
         }
-        if (cherryPicks & POOL_CREATOR_FEE_FLAG != 0) {
+        if (cherryPicks & PROTOCOL_SWAP_FEE_FLAG != 0) {
             poolConfig = poolConfig.insertUint(
-                config.poolCreatorFeePercentage / FEE_SCALING_FACTOR,
-                POOL_CREATOR_FEE_OFFSET,
+                config.aggregateProtocolSwapFeePercentage / FEE_SCALING_FACTOR,
+                AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET,
+                FEE_BITLENGTH
+            );
+        }
+        if (cherryPicks & PROTOCOL_YIELD_FEE_FLAG != 0) {
+            poolConfig = poolConfig.insertUint(
+                config.aggregateProtocolYieldFeePercentage / FEE_SCALING_FACTOR,
+                AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET,
                 FEE_BITLENGTH
             );
         }
@@ -298,8 +315,13 @@ library PoolConfigLib {
             configBits = configBits
                 .insertUint(config.staticSwapFeePercentage / FEE_SCALING_FACTOR, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH)
                 .insertUint(
-                    config.poolCreatorFeePercentage / FEE_SCALING_FACTOR,
-                    POOL_CREATOR_FEE_OFFSET,
+                    config.aggregateProtocolSwapFeePercentage / FEE_SCALING_FACTOR,
+                    AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET,
+                    FEE_BITLENGTH
+                )
+                .insertUint(
+                    config.aggregateProtocolYieldFeePercentage / FEE_SCALING_FACTOR,
+                    AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET,
                     FEE_BITLENGTH
                 );
         }
@@ -381,9 +403,14 @@ library PoolConfigLib {
                 rawConfig.decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
                 FEE_SCALING_FACTOR;
         }
-        if (cherryPicks & POOL_CREATOR_FEE_FLAG != 0) {
-            poolConfig.poolCreatorFeePercentage =
-                rawConfig.decodeUint(POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH) *
+        if (cherryPicks & PROTOCOL_SWAP_FEE_FLAG != 0) {
+            poolConfig.aggregateProtocolSwapFeePercentage =
+                rawConfig.decodeUint(AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
+                FEE_SCALING_FACTOR;
+        }
+        if (cherryPicks & PROTOCOL_YIELD_FEE_FLAG != 0) {
+            poolConfig.aggregateProtocolYieldFeePercentage =
+                rawConfig.decodeUint(AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH) *
                 FEE_SCALING_FACTOR;
         }
         if (cherryPicks & TOKEN_DECIMALS_FLAG != 0) {
@@ -426,8 +453,14 @@ library PoolConfigLib {
                 isPoolInRecoveryMode: rawConfig.decodeBool(POOL_RECOVERY_MODE_OFFSET),
                 staticSwapFeePercentage: rawConfig.decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) *
                     FEE_SCALING_FACTOR,
-                poolCreatorFeePercentage: rawConfig.decodeUint(POOL_CREATOR_FEE_OFFSET, FEE_BITLENGTH) *
-                    FEE_SCALING_FACTOR,
+                aggregateProtocolSwapFeePercentage: rawConfig.decodeUint(
+                    AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET,
+                    FEE_BITLENGTH
+                ) * FEE_SCALING_FACTOR,
+                aggregateProtocolYieldFeePercentage: rawConfig.decodeUint(
+                    AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET,
+                    FEE_BITLENGTH
+                ) * FEE_SCALING_FACTOR,
                 tokenDecimalDiffs: rawConfig.decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH),
                 pauseWindowEndTime: rawConfig.decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH),
                 hooks: PoolHooks({
