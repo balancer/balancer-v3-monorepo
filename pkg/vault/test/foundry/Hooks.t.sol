@@ -56,6 +56,8 @@ contract HooksTest is BaseVaultTest {
     // onRegister
 
     function testOnRegisterNotAllowedFactory() public {
+        PoolRoleAccounts memory roleAccounts;
+
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
@@ -71,7 +73,7 @@ contract HooksTest is BaseVaultTest {
         anotherFactory.registerPool(
             address(anotherPool),
             tokenConfig,
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+            roleAccounts,
             poolHooksContract,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -82,6 +84,8 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnRegisterAllowedFactory() public {
+        PoolRoleAccounts memory roleAccounts;
+
         // Should succeed, since factory is allowed in the poolHooksContract
         PoolHooksMock(poolHooksContract).allowFactory(address(anotherFactory));
 
@@ -102,7 +106,7 @@ contract HooksTest is BaseVaultTest {
         anotherFactory.registerPool(
             address(anotherPool),
             tokenConfig,
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+            roleAccounts,
             poolHooksContract,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
