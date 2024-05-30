@@ -33,7 +33,7 @@ contract HooksTest is BaseVaultTest {
     // dynamic fee
 
     function testOnComputeDynamicSwapFeeHook() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).poolFlags;
         poolHookFlags.shouldCallComputeDynamicSwapFee = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -59,7 +59,7 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnComputeDynamicSwapFeeHookRevert() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).poolFlags;
         poolHookFlags.shouldCallComputeDynamicSwapFee = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -82,7 +82,7 @@ contract HooksTest is BaseVaultTest {
     // before swap
 
     function testOnBeforeSwapHook() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).poolFlags;
         poolHookFlags.shouldCallBeforeSwap = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -108,7 +108,7 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnBeforeSwapHookRevert() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).poolFlags;
         poolHookFlags.shouldCallBeforeSwap = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -131,7 +131,7 @@ contract HooksTest is BaseVaultTest {
     // after swap
 
     function testOnAfterSwapHook() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).poolFlags;
         poolHookFlags.shouldCallAfterSwap = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -172,7 +172,7 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnAfterSwapHookRevert() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).poolFlags;
         poolHookFlags.shouldCallAfterSwap = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -209,7 +209,7 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnBeforeAddLiquidityHook() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).poolFlags;
         poolHookFlags.shouldCallBeforeAddLiquidity = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -262,7 +262,7 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnBeforeRemoveLiquidityHook() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).poolFlags;
         poolHookFlags.shouldCallBeforeRemoveLiquidity = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -316,7 +316,7 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnAfterAddLiquidityHook() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).poolFlags;
         poolHookFlags.shouldCallAfterAddLiquidity = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -368,7 +368,7 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnAfterRemoveLiquidityHook() public {
-        PoolHooks memory poolHookFlags = vault.getPoolConfig(address(pool)).hooks;
+        PoolFlags memory poolHookFlags = vault.getPoolConfig(address(pool)).poolFlags;
         poolHookFlags.shouldCallAfterRemoveLiquidity = true;
         _setPoolHooksConfig(poolHookFlags);
 
@@ -405,9 +405,9 @@ contract HooksTest is BaseVaultTest {
         snapEnd();
     }
 
-    function _setPoolHooksConfig(PoolHooks memory poolHookFlags) private {
+    function _setPoolHooksConfig(PoolFlags memory poolHookFlags) private {
         PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.hooks = poolHookFlags;
+        config.poolFlags = poolHookFlags;
         vault.setConfig(address(pool), config);
     }
 }

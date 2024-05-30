@@ -30,7 +30,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         _swapAmount = poolInitAmount / 100;
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.hooks.shouldCallBeforeSwap = true;
+        config.poolFlags.shouldCallBeforeSwap = true;
         vault.setConfig(address(pool), config);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
@@ -97,7 +97,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
 
     function testOnBeforeAddLiquidityHookAltersBalances() public {
         PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.hooks.shouldCallBeforeAddLiquidity = true;
+        config.poolFlags.shouldCallBeforeAddLiquidity = true;
         vault.setConfig(address(pool), config);
 
         uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
@@ -140,7 +140,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
 
     function testOnBeforeRemoveLiquidityHookAlterBalance() public {
         PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.hooks.shouldCallBeforeRemoveLiquidity = true;
+        config.poolFlags.shouldCallBeforeRemoveLiquidity = true;
         vault.setConfig(address(pool), config);
 
         uint256[] memory amountsOut = [defaultAmount, defaultAmount].toMemoryArray();

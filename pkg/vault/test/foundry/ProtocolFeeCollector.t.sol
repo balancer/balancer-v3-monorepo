@@ -176,12 +176,12 @@ contract ProtocolFeeCollectorTest is BaseVaultTest {
         // Aggregate percentage with no creator fee should just be the global fee percentages
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
         assertEq(
-            poolConfig.aggregateProtocolSwapFeePercentage,
+            poolConfig.poolState.aggregateProtocolSwapFeePercentage,
             MAX_PROTOCOL_SWAP_FEE,
             "Pool aggregate swap fee != MAX"
         );
         assertEq(
-            poolConfig.aggregateProtocolYieldFeePercentage,
+            poolConfig.poolState.aggregateProtocolYieldFeePercentage,
             MAX_PROTOCOL_YIELD_FEE,
             "Pool aggregate yield fee != MAX"
         );
@@ -218,9 +218,13 @@ contract ProtocolFeeCollectorTest is BaseVaultTest {
         );
 
         poolConfig = vault.getPoolConfig(pool);
-        assertEq(poolConfig.aggregateProtocolSwapFeePercentage, expectedAggregateSwapFee, "Wrong aggregate swap fee");
         assertEq(
-            poolConfig.aggregateProtocolYieldFeePercentage,
+            poolConfig.poolState.aggregateProtocolSwapFeePercentage,
+            expectedAggregateSwapFee,
+            "Wrong aggregate swap fee"
+        );
+        assertEq(
+            poolConfig.poolState.aggregateProtocolYieldFeePercentage,
             expectedAggregateYieldFee,
             "Wrong aggregate yield fee"
         );
@@ -252,7 +256,7 @@ contract ProtocolFeeCollectorTest is BaseVaultTest {
 
         // Check that pool config has the right value
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
-        assertEq(poolConfig.aggregateProtocolSwapFeePercentage, CUSTOM_PROTOCOL_SWAP_FEE);
+        assertEq(poolConfig.poolState.aggregateProtocolSwapFeePercentage, CUSTOM_PROTOCOL_SWAP_FEE);
     }
 
     function testSettingPoolProtocolSwapFeeTooHigh() public {
@@ -307,7 +311,7 @@ contract ProtocolFeeCollectorTest is BaseVaultTest {
 
         // Check that pool config has the right value
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
-        assertEq(poolConfig.aggregateProtocolYieldFeePercentage, CUSTOM_PROTOCOL_YIELD_FEE);
+        assertEq(poolConfig.poolState.aggregateProtocolYieldFeePercentage, CUSTOM_PROTOCOL_YIELD_FEE);
     }
 
     function testSettingPoolProtocolYieldFeeTooHigh() public {
@@ -499,8 +503,8 @@ contract ProtocolFeeCollectorTest is BaseVaultTest {
             MAX_PROTOCOL_YIELD_FEE.complement().mulDown(POOL_CREATOR_FEE);
 
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
-        assertEq(poolConfig.aggregateProtocolSwapFeePercentage, expectedSwapFeePercentage);
-        assertEq(poolConfig.aggregateProtocolYieldFeePercentage, expectedYieldFeePercentage);
+        assertEq(poolConfig.poolState.aggregateProtocolSwapFeePercentage, expectedSwapFeePercentage);
+        assertEq(poolConfig.poolState.aggregateProtocolYieldFeePercentage, expectedYieldFeePercentage);
 
         vault.manualSetAggregateProtocolSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
         vault.manualSetAggregateProtocolYieldFeeAmount(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);

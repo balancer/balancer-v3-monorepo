@@ -18,7 +18,7 @@ import { PoolConfigLib, PoolConfigBits } from "../../../contracts/lib/PoolConfig
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 contract VaultCommonBasicFunctionsTest is BaseVaultTest {
-    using PoolConfigLib for PoolConfig;
+    using PoolConfigLib for PoolState;
     using SafeCast for *;
     using ArrayHelpers for *;
 
@@ -99,8 +99,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         );
         assertEq(decimalScalingFactors.length, 0, "should have no decimalScalingFactors");
         assertEq(
-            PoolConfigBits.unwrap(poolConfig.fromPoolConfig()),
-            PoolConfigBits.unwrap(emptyPoolConfig.fromPoolConfig()),
+            PoolConfigBits.unwrap(poolConfig.poolState.fromPoolState()),
+            PoolConfigBits.unwrap(emptyPoolConfig.poolState.fromPoolState()),
             "poolConfig should match empty pool config"
         );
     }
@@ -124,7 +124,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         tokenDecimalDiffs[0] = 12;
         tokenDecimalDiffs[1] = 10;
         tokenDecimalDiffs[2] = 0;
-        originalPoolConfig.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
+        originalPoolConfig.poolState.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         vault.manualSetPoolConfig(pool, originalPoolConfig);
 
         (, , uint256[] memory decimalScalingFactors, PoolConfig memory newPoolConfig) = vault.internalGetPoolTokenInfo(
@@ -143,8 +143,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             );
         }
         assertEq(
-            PoolConfigBits.unwrap(newPoolConfig.fromPoolConfig()),
-            PoolConfigBits.unwrap(originalPoolConfig.fromPoolConfig()),
+            PoolConfigBits.unwrap(newPoolConfig.poolState.fromPoolState()),
+            PoolConfigBits.unwrap(originalPoolConfig.poolState.fromPoolState()),
             "original and new poolConfigs should be the same"
         );
     }
@@ -182,7 +182,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         tokenDecimalDiffs[0] = decimalDiff1;
         tokenDecimalDiffs[1] = decimalDiff2;
         tokenDecimalDiffs[2] = decimalDiff3;
-        originalPoolConfig.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
+        originalPoolConfig.poolState.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         vault.manualSetPoolConfig(pool, originalPoolConfig);
 
         (
@@ -231,8 +231,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         }
 
         assertEq(
-            PoolConfigBits.unwrap(newPoolConfig.fromPoolConfig()),
-            PoolConfigBits.unwrap(originalPoolConfig.fromPoolConfig()),
+            PoolConfigBits.unwrap(newPoolConfig.poolState.fromPoolState()),
+            PoolConfigBits.unwrap(originalPoolConfig.poolState.fromPoolState()),
             "original and new poolConfigs should be the same"
         );
     }

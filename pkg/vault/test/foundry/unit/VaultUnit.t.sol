@@ -76,7 +76,7 @@ contract VaultUnitTest is BaseTest {
         PoolData memory poolData;
         poolData.decimalScalingFactors = decimalScalingFactors;
         poolData.tokenRates = tokenRates;
-        poolData.poolConfig.aggregateProtocolSwapFeePercentage = protocolSwapFeePercentage;
+        poolData.poolState.aggregateProtocolSwapFeePercentage = protocolSwapFeePercentage;
 
         uint256 expectedSwapFeeAmountRaw = swapFeeAmountScaled18
             .mulUp(protocolSwapFeePercentage)
@@ -101,7 +101,7 @@ contract VaultUnitTest is BaseTest {
 
     function testComputeAndChargeAggregateProtocolSwapFeeIfPoolIsInRecoveryMode() public {
         PoolData memory poolData;
-        poolData.poolConfig.isPoolInRecoveryMode = true;
+        poolData.poolFlags.isPoolInRecoveryMode = true;
 
         uint256 totalFeesRaw = vault.manualComputeAndChargeAggregateProtocolSwapFees(poolData, 1e18, pool, dai, 0);
 
