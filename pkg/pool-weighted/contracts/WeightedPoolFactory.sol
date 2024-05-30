@@ -21,7 +21,7 @@ contract WeightedPoolFactory is BasePoolFactory {
 
     constructor(
         IVault vault,
-        uint256 pauseWindowDuration
+        uint32 pauseWindowDuration
     ) BasePoolFactory(vault, pauseWindowDuration, type(WeightedPool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }

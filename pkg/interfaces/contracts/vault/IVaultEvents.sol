@@ -24,7 +24,7 @@ interface IVaultEvents {
         address indexed pool,
         address indexed factory,
         TokenConfig[] tokenConfig,
-        uint256 pauseWindowEndTime,
+        uint32 pauseWindowEndTime,
         PoolRoleAccounts roleAccounts,
         HooksConfig hooksConfig,
         LiquidityManagement liquidityManagement

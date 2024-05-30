@@ -19,10 +19,13 @@ import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/Va
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 
+import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
+
 contract VaultUnitTest is BaseTest {
     using ArrayHelpers for *;
     using ScalingHelpers for *;
     using FixedPoint for *;
+    using PoolConfigLib for PoolConfig;
 
     IVaultMock internal vault;
 
@@ -114,7 +117,7 @@ contract VaultUnitTest is BaseTest {
 
         PoolData memory poolData;
         poolData.decimalScalingFactors = decimalScalingFactors;
-        poolData.poolConfig.poolCreatorFeePercentage = creatorFeePercentage;
+        poolData.poolConfig.setPoolCreatorFeePercentage(creatorFeePercentage);
         poolData.tokenRates = tokenRates;
 
         uint256 expectedSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(protocolSwapFeePercentage);

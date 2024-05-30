@@ -7,10 +7,13 @@ import "forge-std/Test.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
+
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultLiquidityWithFeesTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using PoolConfigLib for PoolConfig;
 
     uint64 poolCreatorFeePercentage = 5e17; // 50%
 
@@ -36,8 +39,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         PoolConfig memory config = vault.getPoolConfig(address(pool));
 
-        assertEq(config.staticSwapFeePercentage, swapFeePercentage);
-        assertEq(config.poolCreatorFeePercentage, poolCreatorFeePercentage);
+        assertEq(config.getStaticSwapFeePercentage(), swapFeePercentage);
+        assertEq(config.getPoolCreatorFeePercentage(), poolCreatorFeePercentage);
         assertEq(vault.getProtocolSwapFeePercentage(), protocolSwapFeePercentage);
     }
 

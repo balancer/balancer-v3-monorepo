@@ -131,7 +131,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
         uint256 swapFeePercentage;
-        uint256 pauseWindowEndTime;
+        uint32 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
         address poolHooksContract;
         LiquidityManagement liquidityManagement;
@@ -142,7 +142,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool,
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
-        uint256 pauseWindowEndTime,
+        uint32 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         address poolHooksContract,
         LiquidityManagement calldata liquidityManagement
@@ -249,12 +249,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _assignPoolRoles(pool, params.roleAccounts);
 
         // Store config and mark the pool as registered
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        PoolConfig memory config = _poolConfig[pool];
         config.isPoolRegistered = true;
-        config.liquidityManagement = params.liquidityManagement;
+
+        config.disableUnbalancedLiquidity = params.liquidityManagement.disableUnbalancedLiquidity;
+        config.enableAddLiquidityCustom = params.liquidityManagement.enableAddLiquidityCustom;
+        config.enableRemoveLiquidityCustom = params.liquidityManagement.enableRemoveLiquidityCustom;
+
         config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         config.pauseWindowEndTime = params.pauseWindowEndTime;
-        _poolConfig[pool] = config.fromPoolConfig();
+        _poolConfig[pool] = config;
 
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
 
@@ -384,7 +388,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Store config and mark the pool as initialized
         poolData.poolConfig.isPoolInitialized = true;
-        _poolConfig[pool] = poolData.poolConfig.fromPoolConfig();
+        _poolConfig[pool] = poolData.poolConfig;
 
         // Pass scaled balances to the pool
         bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18);
@@ -419,7 +423,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getPoolConfig(address pool) external view withRegisteredPool(pool) onlyVault returns (PoolConfig memory) {
-        return _poolConfig[pool].toPoolConfig();
+        return _poolConfig[pool];
     }
 
     /// @inheritdoc IVaultExtension
@@ -513,8 +517,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function getPoolPausedState(
         address pool
-    ) external view withRegisteredPool(pool) onlyVault returns (bool, uint256, uint256, address) {
-        (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
+    ) external view withRegisteredPool(pool) onlyVault returns (bool, uint32, uint32, address) {
+        (bool paused, uint32 pauseWindowEndTime) = _getPoolPausedState(pool);
 
         return (
             paused,
@@ -547,7 +551,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function getStaticSwapFeePercentage(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
-        return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
+        return _poolConfig[pool].getStaticSwapFeePercentage();
     }
 
     /// @inheritdoc IVaultExtension

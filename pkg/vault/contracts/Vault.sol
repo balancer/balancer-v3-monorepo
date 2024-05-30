@@ -32,7 +32,7 @@ import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
-import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
+import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { HooksConfigBits, HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
@@ -252,7 +252,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
         state.amountGivenScaled18 = _computeAmountGivenScaled18(indexIn, indexOut, params, poolData);
-        state.swapFeePercentage = poolData.poolConfig.staticSwapFeePercentage;
+        state.swapFeePercentage = poolData.poolConfig.getStaticSwapFeePercentage();
     }
 
     function _buildPoolSwapParams(
@@ -575,7 +575,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 poolData.balancesLiveScaled18,
                 maxAmountsInScaled18,
                 _totalSupply(params.pool),
-                poolData.poolConfig.staticSwapFeePercentage,
+                poolData.poolConfig.getStaticSwapFeePercentage(),
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
@@ -591,7 +591,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     locals.tokenIndex,
                     bptAmountOut,
                     _totalSupply(params.pool),
-                    poolData.poolConfig.staticSwapFeePercentage,
+                    poolData.poolConfig.getStaticSwapFeePercentage(),
                     IBasePool(params.pool).computeBalance
                 );
         } else if (params.kind == AddLiquidityKind.CUSTOM) {
@@ -786,7 +786,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     locals.tokenIndex,
                     bptAmountIn,
                     _totalSupply(params.pool),
-                    poolData.poolConfig.staticSwapFeePercentage,
+                    poolData.poolConfig.getStaticSwapFeePercentage(),
                     IBasePool(params.pool).computeBalance
                 );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
@@ -799,7 +799,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 locals.tokenIndex,
                 amountsOutScaled18[locals.tokenIndex],
                 _totalSupply(params.pool),
-                poolData.poolConfig.staticSwapFeePercentage,
+                poolData.poolConfig.getStaticSwapFeePercentage(),
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
@@ -931,9 +931,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 emit ProtocolSwapFeeCharged(pool, address(token), protocolSwapFeeAmountRaw);
             }
 
-            if (poolData.poolConfig.poolCreatorFeePercentage > 0) {
+            uint256 poolCreatorFeePercentage = poolData.poolConfig.getPoolCreatorFeePercentage();
+            if (poolCreatorFeePercentage > 0) {
                 creatorSwapFeeAmountScaled18 = (swapFeeAmountScaled18 - protocolSwapFeeAmountScaled18).mulUp(
-                    poolData.poolConfig.poolCreatorFeePercentage
+                    poolCreatorFeePercentage
                 );
                 creatorSwapFeeAmountRaw = creatorSwapFeeAmountScaled18.toRawUndoRateRoundDown(
                     poolData.decimalScalingFactors[index],

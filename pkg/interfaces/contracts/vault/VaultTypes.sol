@@ -14,11 +14,14 @@ struct LiquidityManagement {
 
 /// @dev Represents a pool's configuration (hooks configuration are separated in another struct).
 struct PoolConfig {
-    LiquidityManagement liquidityManagement;
-    uint256 staticSwapFeePercentage;
-    uint256 poolCreatorFeePercentage;
-    uint256 tokenDecimalDiffs;
-    uint256 pauseWindowEndTime;
+    uint24 staticSwapFeePercentageUnscaled;
+    uint24 poolCreatorFeePercentageUnscaled;
+    uint24 tokenDecimalDiffs;
+    uint32 pauseWindowEndTime;
+    // NOTE: Duplicated parameters from LiquidityManagement because parameters are packed in one slot.
+    bool disableUnbalancedLiquidity;
+    bool enableAddLiquidityCustom;
+    bool enableRemoveLiquidityCustom;
     bool isPoolRegistered;
     bool isPoolInitialized;
     bool isPoolPaused;

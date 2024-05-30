@@ -23,7 +23,7 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
-import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
+import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultStorage } from "./VaultStorage.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
@@ -191,12 +191,16 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /// @dev Lowest level routine that plucks only the minimum necessary parts from storage.
-    function _getPoolPausedState(address pool) internal view returns (bool, uint256) {
-        (bool pauseBit, uint256 pauseWindowEndTime) = PoolConfigLib.getPoolPausedState(_poolConfig[pool]);
+    function _getPoolPausedState(address pool) internal view returns (bool, uint32) {
+        PoolConfig memory poolConfig = _poolConfig[pool];
 
+        uint32 pauseWindowEndTime = poolConfig.pauseWindowEndTime;
         // Use the Vault's buffer period.
         // solhint-disable-next-line not-rely-on-time
-        return (pauseBit && block.timestamp <= pauseWindowEndTime + _vaultBufferPeriodDuration, pauseWindowEndTime);
+        return (
+            poolConfig.isPoolPaused && uint32(block.timestamp) <= pauseWindowEndTime + _vaultBufferPeriodDuration,
+            pauseWindowEndTime
+        );
     }
 
     /*******************************************************************************
@@ -240,7 +244,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev See `isPoolRegistered`
     function _isPoolRegistered(address pool) internal view returns (bool) {
-        return _poolConfig[pool].isPoolRegistered();
+        return _poolConfig[pool].isPoolRegistered;
     }
 
     /// @dev Reverts unless `pool` corresponds to an initialized Pool.
@@ -252,7 +256,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev See `isPoolInitialized`
     function _isPoolInitialized(address pool) internal view returns (bool) {
-        return _poolConfig[pool].isPoolInitialized();
+        return _poolConfig[pool].isPoolInitialized;
     }
 
     /*******************************************************************************
@@ -428,10 +432,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                 // `protocolYieldFeePercentage > 0`. So, we don't need to check this again in here, saving some gas.
                 protocolFeeAmountRaw = liveBalanceDiffRaw.mulUp(protocolYieldFeePercentage);
 
-                if (poolData.poolConfig.poolCreatorFeePercentage > 0) {
-                    creatorFeeAmountRaw = (liveBalanceDiffRaw - protocolFeeAmountRaw).mulUp(
-                        poolData.poolConfig.poolCreatorFeePercentage
-                    );
+                uint256 poolCreatorFeePercentage = poolData.poolConfig.getPoolCreatorFeePercentage();
+                if (poolCreatorFeePercentage > 0) {
+                    creatorFeeAmountRaw = (liveBalanceDiffRaw - protocolFeeAmountRaw).mulUp(poolCreatorFeePercentage);
                 }
             }
         }
@@ -476,9 +479,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             }
         }
 
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.staticSwapFeePercentage = swapFeePercentage;
-        _poolConfig[pool] = config.fromPoolConfig();
+        PoolConfig memory config = _poolConfig[pool];
+        config.setStaticSwapFeePercentage(swapFeePercentage);
+        _poolConfig[pool] = config;
 
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
@@ -512,6 +515,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @return True if the pool is initialized, false otherwise
      */
     function _isPoolInRecoveryMode(address pool) internal view returns (bool) {
-        return _poolConfig[pool].isPoolInRecoveryMode();
+        return _poolConfig[pool].isPoolInRecoveryMode;
     }
 }

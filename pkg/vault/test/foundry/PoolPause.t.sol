@@ -16,7 +16,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { FactoryWidePauseWindow } from "../../contracts/factories/FactoryWidePauseWindow.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
-import { PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
+import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -110,13 +110,6 @@ contract PoolPauseTest is BaseVaultTest {
             "Wrong original pause window end time a year later"
         );
         assertEq(factory.getNewPoolPauseWindowEndTime(), 0, "New pool pause window end time non-zero");
-    }
-
-    function testInvalidDuration() public {
-        uint256 maxDuration = type(uint32).max - block.timestamp;
-
-        vm.expectRevert(FactoryWidePauseWindow.PoolPauseWindowDurationOverflow.selector);
-        new PoolFactoryMock(vault, maxDuration + 1);
     }
 
     function testHasPauseManager() public {

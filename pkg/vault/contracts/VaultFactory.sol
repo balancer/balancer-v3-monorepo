@@ -29,8 +29,8 @@ contract VaultFactory is Authentication {
     bool public isDisabled;
 
     IAuthorizer private immutable _authorizer;
-    uint256 private immutable _pauseWindowDuration;
-    uint256 private immutable _bufferPeriodDuration;
+    uint32 private immutable _pauseWindowDuration;
+    uint32 private immutable _bufferPeriodDuration;
     address private immutable _deployer;
 
     bytes private _creationCode;
@@ -39,8 +39,8 @@ contract VaultFactory is Authentication {
 
     constructor(
         IAuthorizer authorizer,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
+        uint32 pauseWindowDuration,
+        uint32 bufferPeriodDuration
     ) Authentication(bytes32(uint256(uint160(address(this))))) {
         _deployer = msg.sender;
         _creationCode = type(Vault).creationCode;

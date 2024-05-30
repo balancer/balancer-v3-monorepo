@@ -25,11 +25,14 @@ import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMo
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
 
+import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
+
 contract VaultUnitLiquidityTest is BaseTest {
     using ArrayHelpers for *;
     using ScalingHelpers for *;
     using FixedPoint for *;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using PoolConfigLib for PoolConfig;
 
     // #region Test structs
 
@@ -207,7 +210,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             bptAmountOut
         );
 
-        poolData.poolConfig.liquidityManagement.enableAddLiquidityCustom = true;
+        poolData.poolConfig.enableAddLiquidityCustom = true;
 
         uint256[] memory expectedAmountsInScaled18 = new uint256[](tokens.length);
         uint256[] memory expectSwapFeeAmountsScaled18 = new uint256[](tokens.length);
@@ -251,7 +254,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             1e18
         );
 
-        poolData.poolConfig.liquidityManagement.enableAddLiquidityCustom = true;
+        poolData.poolConfig.enableAddLiquidityCustom = true;
 
         uint256 bptAmountOut = 0;
         vm.mockCall(
@@ -283,7 +286,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             1e18
         );
 
-        poolData.poolConfig.liquidityManagement.enableAddLiquidityCustom = true;
+        poolData.poolConfig.enableAddLiquidityCustom = true;
 
         uint256[] memory expectedAmountsInScaled18 = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -324,7 +327,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             1e18
         );
 
-        poolData.poolConfig.liquidityManagement.disableUnbalancedLiquidity = true;
+        poolData.poolConfig.disableUnbalancedLiquidity = true;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         vault.manualAddLiquidity(poolData, params, maxAmountsInScaled18, vaultState);
@@ -340,7 +343,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             1e18
         );
 
-        poolData.poolConfig.liquidityManagement.disableUnbalancedLiquidity = true;
+        poolData.poolConfig.disableUnbalancedLiquidity = true;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         vault.manualAddLiquidity(poolData, params, maxAmountsInScaled18, vaultState);
@@ -519,7 +522,7 @@ contract VaultUnitLiquidityTest is BaseTest {
 
     function testRemoveLiquidityCustom() public {
         PoolData memory poolData = _makeDefaultParams();
-        poolData.poolConfig.liquidityManagement.enableRemoveLiquidityCustom = true;
+        poolData.poolConfig.enableRemoveLiquidityCustom = true;
 
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
             poolData,
@@ -572,7 +575,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             1e18,
             0
         );
-        poolData.poolConfig.liquidityManagement.enableRemoveLiquidityCustom = true;
+        poolData.poolConfig.enableRemoveLiquidityCustom = true;
 
         uint256 bptAmountIn = params.maxBptAmountIn + 1;
 
@@ -606,7 +609,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             type(uint256).max,
             defaultMinAmountOut
         );
-        poolData.poolConfig.liquidityManagement.enableRemoveLiquidityCustom = true;
+        poolData.poolConfig.enableRemoveLiquidityCustom = true;
 
         uint256 bptAmountIn = 1e18;
         uint256[] memory amountsOutScaled18 = new uint256[](tokens.length);
@@ -648,7 +651,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             type(uint256).max,
             1
         );
-        poolData.poolConfig.liquidityManagement.disableUnbalancedLiquidity = true;
+        poolData.poolConfig.disableUnbalancedLiquidity = true;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18, vaultState);
@@ -664,7 +667,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             type(uint256).max,
             1
         );
-        poolData.poolConfig.liquidityManagement.disableUnbalancedLiquidity = true;
+        poolData.poolConfig.disableUnbalancedLiquidity = true;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18, vaultState);
@@ -738,7 +741,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function _makeDefaultParams() internal returns (PoolData memory poolData) {
-        poolData.poolConfig.staticSwapFeePercentage = swapFeePercentage;
+        poolData.poolConfig.setStaticSwapFeePercentage(swapFeePercentage);
 
         poolData.balancesLiveScaled18 = new uint256[](tokens.length);
         poolData.balancesRaw = new uint256[](tokens.length);
