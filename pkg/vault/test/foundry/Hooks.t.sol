@@ -64,6 +64,7 @@ contract HooksTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IVaultErrors.HookRegistrationFailed.selector,
                 poolHooksContract,
+                address(anotherPool),
                 address(anotherFactory)
             )
         );
