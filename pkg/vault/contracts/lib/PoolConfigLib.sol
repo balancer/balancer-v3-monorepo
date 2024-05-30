@@ -18,8 +18,7 @@ library PoolConfigLib {
 
     // Bit offsets for pool config
     uint8 public constant STATIC_SWAP_FEE_OFFSET = 0;
-    uint256 public constant POOL_CREATOR_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
-    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = POOL_CREATOR_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
     uint256 public constant AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET = PAUSE_WINDOW_END_TIME_OFFSET + _TIMESTAMP_BITLENGTH;
@@ -61,20 +60,22 @@ library PoolConfigLib {
     }
 
     function fromPoolState(PoolState memory config) internal pure returns (PoolConfigBits) {
+        bytes32 configBits = bytes32(0);
+
+        {
+            configBits = configBits
+                .insertBool(config.isPoolPaused, POOL_PAUSED_OFFSET)
+                .insertUint(config.staticSwapFeePercentage / FEE_SCALING_FACTOR, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH)
+                .insertUint(
+                    config.aggregateProtocolSwapFeePercentage / FEE_SCALING_FACTOR,
+                    AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET,
+                    FEE_BITLENGTH
+                );
+        }
+
         return
             PoolConfigBits.wrap(
-                bytes32(0)
-                    .insertBool(config.isPoolPaused, POOL_PAUSED_OFFSET)
-                    .insertUint(
-                        config.staticSwapFeePercentage / FEE_SCALING_FACTOR,
-                        STATIC_SWAP_FEE_OFFSET,
-                        FEE_BITLENGTH
-                    )
-                    .insertUint(
-                        config.aggregateProtocolSwapFeePercentage / FEE_SCALING_FACTOR,
-                        AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET,
-                        FEE_BITLENGTH
-                    )
+                configBits
                     .insertUint(
                         config.aggregateProtocolYieldFeePercentage / FEE_SCALING_FACTOR,
                         AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET,

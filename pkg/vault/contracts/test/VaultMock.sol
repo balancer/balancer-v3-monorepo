@@ -78,8 +78,9 @@ contract VaultMock is IVaultMainMock, Vault {
         _mint(token, to, amount);
     }
 
-    function setConfig(address pool, PoolState calldata config) external {
-        _poolState[pool] = config.fromPoolState();
+    function setConfig(address pool, PoolConfig calldata config) external {
+        _poolState[pool] = config.poolState.fromPoolState();
+        _poolFlags[pool] = config.poolFlags;
     }
 
     // Used for testing pool registration, which is ordinarily done in the pool factory.
@@ -201,8 +202,9 @@ contract VaultMock is IVaultMainMock, Vault {
         _vaultState = vaultState.fromVaultState();
     }
 
-    function manualSetPoolConfig(address pool, PoolState memory poolConfig) public {
-        _poolState[pool] = poolConfig.fromPoolState();
+    function manualSetPoolConfig(address pool, PoolConfig memory poolConfig) public {
+        _poolState[pool] = poolConfig.poolState.fromPoolState();
+        _poolFlags[pool] = poolConfig.poolFlags;
     }
 
     function manualSetPoolTokenConfig(address pool, IERC20[] memory tokens, TokenConfig[] memory tokenConfig) public {
