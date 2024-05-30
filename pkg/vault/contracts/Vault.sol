@@ -219,7 +219,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountCalculatedScaled18;
         (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, vaultState);
 
-        hooksConfig.onAfterSwap(amountCalculatedScaled18, params, state, poolData);
+        hooksConfig.onAfterSwap(amountCalculatedScaled18, msg.sender, params, state, poolData);
     }
 
     function _loadSwapState(
@@ -498,7 +498,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        if (hooksConfig.onBeforeAddLiquidity(maxAmountsInScaled18, params, poolData)) {
+        if (hooksConfig.onBeforeAddLiquidity(maxAmountsInScaled18, msg.sender, params, poolData)) {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
@@ -525,7 +525,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vaultState
         );
 
-        hooksConfig.onAfterAddLiquidity(amountsInScaled18, bptAmountOut, params, poolData);
+        hooksConfig.onAfterAddLiquidity(amountsInScaled18, bptAmountOut, msg.sender, params, poolData);
     }
 
     /**
@@ -709,7 +709,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        if (hooksConfig.onBeforeRemoveLiquidity(minAmountsOutScaled18, params, poolData) == true) {
+        if (hooksConfig.onBeforeRemoveLiquidity(minAmountsOutScaled18, msg.sender, params, poolData) == true) {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
@@ -734,7 +734,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vaultState
         );
 
-        hooksConfig.onAfterRemoveLiquidity(amountsOutScaled18, bptAmountIn, params, poolData);
+        hooksConfig.onAfterRemoveLiquidity(amountsOutScaled18, bptAmountIn, msg.sender, params, poolData);
     }
 
     /**

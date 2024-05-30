@@ -35,7 +35,7 @@ interface IVaultErrors {
     error PoolNotInitialized(address pool);
 
     /**
-     * @dev A referenced pool has not been initialized.
+     * @dev A referenced pool has not been registered.
      * @param poolHooksContract Address of the hook contract that rejected the factory
      * @param poolFactory Address of the rejected pool factory
      */
