@@ -74,9 +74,9 @@ describe('BatchSwap', function () {
       args: [vaultAddress, 'Pool C', 'POOLC'],
     });
 
-    factory.registerTestPool(poolA, buildTokenConfig(poolATokens));
-    factory.registerTestPool(poolB, buildTokenConfig(poolBTokens));
-    factory.registerTestPool(poolC, buildTokenConfig(poolCTokens));
+    await factory.registerTestPool(poolA, buildTokenConfig(poolATokens));
+    await factory.registerTestPool(poolB, buildTokenConfig(poolBTokens));
+    await factory.registerTestPool(poolC, buildTokenConfig(poolCTokens));
   });
 
   sharedBeforeEach('nested pools', async () => {
@@ -95,9 +95,9 @@ describe('BatchSwap', function () {
       args: [vaultAddress, 'Pool B-C', 'POOL-BC'],
     });
 
-    factory.registerTestPool(poolAB, buildTokenConfig(poolABTokens));
-    factory.registerTestPool(poolAC, buildTokenConfig(poolACTokens));
-    factory.registerTestPool(poolBC, buildTokenConfig(poolBCTokens));
+    await factory.registerTestPool(poolAB, buildTokenConfig(poolABTokens));
+    await factory.registerTestPool(poolAC, buildTokenConfig(poolACTokens));
+    await factory.registerTestPool(poolBC, buildTokenConfig(poolBCTokens));
   });
 
   sharedBeforeEach('allowances', async () => {

@@ -74,12 +74,13 @@ contract WeightedPool8020Factory is BasePoolFactory {
             _calculateSalt(highWeightToken, lowWeightToken)
         );
 
+        // Using empty pool hooks for standard 80/20 pool
         _registerPoolWithVault(
             pool,
             tokenConfig,
             swapFeePercentage,
             roleAccounts,
-            getDefaultPoolHooks(),
+            getDefaultPoolHooksContract(),
             getDefaultLiquidityManagement()
         );
     }

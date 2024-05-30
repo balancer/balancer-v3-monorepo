@@ -17,6 +17,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -455,13 +456,16 @@ contract VaultSwapTest is BaseVaultTest {
 
     function testReentrancySwap() public {
         // Enable before swap
-        PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.hooks.shouldCallBeforeSwap = true;
-        vault.setConfig(address(pool), config);
+        HooksConfig memory config = vault.getHooksConfig(address(pool));
+        config.shouldCallBeforeSwap = true;
+        vault.setHooksConfig(address(pool), config);
 
         // Enable reentrancy hook
-        PoolMock(pool).setSwapReentrancyHookActive(true);
-        PoolMock(pool).setSwapReentrancyHook(address(this), abi.encodeWithSelector(this.reentrancyHook.selector));
+        PoolHooksMock(poolHooksContract).setSwapReentrancyHookActive(true);
+        PoolHooksMock(poolHooksContract).setSwapReentrancyHook(
+            address(this),
+            abi.encodeWithSelector(this.reentrancyHook.selector)
+        );
 
         uint256 usdcBeforeSwap = usdc.balanceOf(address(this));
         uint256 daiBeforeSwap = dai.balanceOf(address(this));

@@ -2,26 +2,46 @@
 
 pragma solidity ^0.8.24;
 
-import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { AddLiquidityKind, RemoveLiquidityKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { VaultGuard } from "./VaultGuard.sol";
 
 /**
- * @dev Pools that only implement a subset of callbacks can inherit from here instead of IPoolHooks,
+ * @dev Pools that only implement a subset of callbacks can inherit from here instead of IHooks,
  * and only override what they need.
  */
-abstract contract BasePoolHooks is IPoolHooks {
-    /// @inheritdoc IPoolHooks
-    function onBeforeInitialize(uint256[] memory, bytes memory) external virtual returns (bool) {
+abstract contract BasePoolHooks is IHooks, VaultGuard {
+    HooksConfig internal _hooksConfig;
+
+    constructor(IVault vault) VaultGuard(vault) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    /// @inheritdoc IHooks
+    function onRegister(address, address, TokenConfig[] memory) external virtual onlyVault returns (bool) {
+        // By default, deny all factories. This method must be overwritten by the hook contract
         return false;
     }
 
-    /// @inheritdoc IPoolHooks
-    function onAfterInitialize(uint256[] memory, uint256, bytes memory) external virtual returns (bool) {
+    /// @inheritdoc IHooks
+    function getHooksConfig() external virtual returns (HooksConfig memory) {
+        return _hooksConfig;
+    }
+
+    /// @inheritdoc IHooks
+    function onBeforeInitialize(uint256[] memory, bytes memory) external virtual onlyVault returns (bool) {
         return false;
     }
 
-    /// @inheritdoc IPoolHooks
+    /// @inheritdoc IHooks
+    function onAfterInitialize(uint256[] memory, uint256, bytes memory) external virtual onlyVault returns (bool) {
+        return false;
+    }
+
+    /// @inheritdoc IHooks
     function onBeforeAddLiquidity(
         address,
         AddLiquidityKind,
@@ -29,22 +49,22 @@ abstract contract BasePoolHooks is IPoolHooks {
         uint256,
         uint256[] memory,
         bytes memory
-    ) external virtual returns (bool) {
+    ) external virtual onlyVault returns (bool) {
         return false;
     }
 
-    /// @inheritdoc IPoolHooks
+    /// @inheritdoc IHooks
     function onAfterAddLiquidity(
         address,
         uint256[] memory,
         uint256,
         uint256[] memory,
         bytes memory
-    ) external virtual returns (bool) {
+    ) external virtual onlyVault returns (bool) {
         return false;
     }
 
-    /// @inheritdoc IPoolHooks
+    /// @inheritdoc IHooks
     function onBeforeRemoveLiquidity(
         address,
         RemoveLiquidityKind,
@@ -52,33 +72,35 @@ abstract contract BasePoolHooks is IPoolHooks {
         uint256[] memory,
         uint256[] memory,
         bytes memory
-    ) external virtual returns (bool) {
+    ) external virtual onlyVault returns (bool) {
         return false;
     }
 
-    /// @inheritdoc IPoolHooks
+    /// @inheritdoc IHooks
     function onAfterRemoveLiquidity(
         address,
         uint256,
         uint256[] memory,
         uint256[] memory,
         bytes memory
-    ) external virtual returns (bool) {
+    ) external virtual onlyVault returns (bool) {
         return false;
     }
 
-    /// @inheritdoc IPoolHooks
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata) external virtual returns (bool) {
+    /// @inheritdoc IHooks
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata) external virtual onlyVault returns (bool) {
         return false;
     }
 
-    /// @inheritdoc IPoolHooks
-    function onAfterSwap(AfterSwapParams calldata, uint256) external virtual returns (bool) {
+    /// @inheritdoc IHooks
+    function onAfterSwap(AfterSwapParams calldata, uint256) external virtual onlyVault returns (bool) {
         return false;
     }
 
-    /// @inheritdoc IPoolHooks
-    function onComputeDynamicSwapFee(IBasePool.PoolSwapParams calldata) external view virtual returns (bool, uint256) {
+    /// @inheritdoc IHooks
+    function onComputeDynamicSwapFee(
+        IBasePool.PoolSwapParams calldata
+    ) external view virtual onlyVault returns (bool, uint256) {
         return (false, 0);
     }
 }

@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
+import { IHooks } from "./IHooks.sol";
 import { IBasePool } from "./IBasePool.sol";
 import "./VaultTypes.sol";
 
@@ -69,7 +70,7 @@ interface IVaultExtension {
      * @param swapFeePercentage The initial static swap fee percentage of the pool
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
-     * @param poolHooks Flags indicating which hooks the pool supports
+     * @param poolHooksContract Contract that implements the hooks for the pool
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
     function registerPool(
@@ -78,7 +79,7 @@ interface IVaultExtension {
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
-        PoolHooks calldata poolHooks,
+        address poolHooksContract,
         LiquidityManagement calldata liquidityManagement
     ) external;
 
@@ -146,6 +147,13 @@ interface IVaultExtension {
      * @return Pool configuration
      */
     function getPoolConfig(address pool) external view returns (PoolConfig memory);
+
+    /**
+     * @notice Gets the hooks configuration parameters of a pool.
+     * @param pool Address of the pool
+     * @return Hooks configuration
+     */
+    function getHooksConfig(address pool) external view returns (HooksConfig memory);
 
     /**
      * @notice Gets the current bpt rate of a pool, by dividing the current invariant by the total supply of BPT.

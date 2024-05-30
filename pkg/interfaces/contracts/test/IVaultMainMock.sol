@@ -15,6 +15,8 @@ interface IVaultMainMock {
 
     function setConfig(address pool, PoolConfig calldata config) external;
 
+    function setHooksConfig(address pool, HooksConfig calldata config) external;
+
     function manualRegisterPool(address pool, IERC20[] memory tokens) external;
 
     function manualRegisterPoolWithSwapFee(address pool, IERC20[] memory tokens, uint256 swapFeePercentage) external;
