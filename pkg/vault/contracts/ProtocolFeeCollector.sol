@@ -45,7 +45,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
     uint256 internal constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
     // Maximum protocol yield fee percentage.
-    uint256 internal constant _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 20e16; // 20%
+    uint256 internal constant _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 50e16; // 50%
 
     // Global protocol swap fee.
     uint256 private _globalProtocolSwapFeePercentage;
