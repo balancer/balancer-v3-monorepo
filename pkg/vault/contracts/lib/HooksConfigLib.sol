@@ -16,6 +16,7 @@ type HooksConfigBits is bytes32;
 using HooksConfigLib for HooksConfigBits global;
 
 library HooksConfigLib {
+    using HooksConfigLib for HooksConfigBits;
     using WordCodec for bytes32;
 
     // Bit offsets for pool config
@@ -43,7 +44,7 @@ library HooksConfigLib {
         HooksConfigBits config,
         IBasePool.PoolSwapParams memory swapParams
     ) internal view returns (bool, uint256) {
-        if (shouldCallComputeDynamicSwapFee(config) == false) {
+        if (config.shouldCallComputeDynamicSwapFee() == false) {
             return (false, 0);
         }
 
@@ -66,7 +67,7 @@ library HooksConfigLib {
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
     function onBeforeSwap(HooksConfigBits config, IBasePool.PoolSwapParams memory swapParams) internal returns (bool) {
-        if (shouldCallBeforeSwap(config) == false) {
+        if (config.shouldCallBeforeSwap() == false) {
             return false;
         }
 
@@ -89,11 +90,12 @@ library HooksConfigLib {
     function onAfterSwap(
         HooksConfigBits config,
         uint256 amountCalculatedScaled18,
+        address router,
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
     ) internal {
-        if (shouldCallAfterSwap(config) == false) {
+        if (config.shouldCallAfterSwap() == false) {
             return;
         }
 
@@ -111,7 +113,7 @@ library HooksConfigLib {
                     amountOutScaled18: amountOutScaled18,
                     tokenInBalanceScaled18: poolData.balancesLiveScaled18[state.indexIn],
                     tokenOutBalanceScaled18: poolData.balancesLiveScaled18[state.indexOut],
-                    router: msg.sender,
+                    router: router,
                     userData: params.userData
                 }),
                 amountCalculatedScaled18
@@ -134,16 +136,17 @@ library HooksConfigLib {
     function onBeforeAddLiquidity(
         HooksConfigBits config,
         uint256[] memory maxAmountsInScaled18,
+        address router,
         AddLiquidityParams memory params,
         PoolData memory poolData
     ) internal returns (bool) {
-        if (shouldCallBeforeAddLiquidity(config) == false) {
+        if (config.shouldCallBeforeAddLiquidity() == false) {
             return false;
         }
 
         if (
             IHooks(getHooksContract(config)).onBeforeAddLiquidity(
-                msg.sender,
+                router,
                 params.kind,
                 maxAmountsInScaled18,
                 params.minBptAmountOut,
@@ -170,16 +173,17 @@ library HooksConfigLib {
         HooksConfigBits config,
         uint256[] memory amountsInScaled18,
         uint256 bptAmountOut,
+        address router,
         AddLiquidityParams memory params,
         PoolData memory poolData
     ) internal {
-        if (shouldCallAfterAddLiquidity(config) == false) {
+        if (config.shouldCallAfterAddLiquidity() == false) {
             return;
         }
 
         if (
             IHooks(getHooksContract(config)).onAfterAddLiquidity(
-                msg.sender,
+                router,
                 amountsInScaled18,
                 bptAmountOut,
                 poolData.balancesLiveScaled18,
@@ -204,16 +208,17 @@ library HooksConfigLib {
     function onBeforeRemoveLiquidity(
         HooksConfigBits config,
         uint256[] memory minAmountsOutScaled18,
+        address router,
         RemoveLiquidityParams memory params,
         PoolData memory poolData
     ) internal returns (bool) {
-        if (shouldCallBeforeRemoveLiquidity(config) == false) {
+        if (config.shouldCallBeforeRemoveLiquidity() == false) {
             return false;
         }
 
         if (
             IHooks(getHooksContract(config)).onBeforeRemoveLiquidity(
-                msg.sender,
+                router,
                 params.kind,
                 params.maxBptAmountIn,
                 minAmountsOutScaled18,
@@ -240,16 +245,17 @@ library HooksConfigLib {
         HooksConfigBits config,
         uint256[] memory amountsOutScaled18,
         uint256 bptAmountIn,
+        address router,
         RemoveLiquidityParams memory params,
         PoolData memory poolData
     ) internal {
-        if (shouldCallAfterRemoveLiquidity(config) == false) {
+        if (config.shouldCallAfterRemoveLiquidity() == false) {
             return;
         }
 
         if (
             IHooks(getHooksContract(config)).onAfterRemoveLiquidity(
-                msg.sender,
+                router,
                 bptAmountIn,
                 amountsOutScaled18,
                 poolData.balancesLiveScaled18,
@@ -274,7 +280,7 @@ library HooksConfigLib {
         uint256[] memory exactAmountsInScaled18,
         bytes memory userData
     ) internal returns (bool) {
-        if (shouldCallBeforeInitialize(config) == false) {
+        if (config.shouldCallBeforeInitialize() == false) {
             return false;
         }
 
@@ -299,7 +305,7 @@ library HooksConfigLib {
         uint256 bptAmountOut,
         bytes memory userData
     ) internal {
-        if (shouldCallAfterInitialize(config) == false) {
+        if (config.shouldCallAfterInitialize() == false) {
             return;
         }
 

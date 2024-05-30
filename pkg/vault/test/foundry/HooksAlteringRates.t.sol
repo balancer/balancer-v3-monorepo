@@ -49,7 +49,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, address(lp));
+        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
 
         return address(newPool);
     }
@@ -97,7 +97,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "new-pool");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, address(lp));
+        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
 
         HooksConfig memory config = vault.getHooksConfig(address(newPool));
         config.shouldCallBeforeInitialize = true;

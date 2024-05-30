@@ -8,13 +8,14 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -49,6 +50,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using VaultExtensionsLib for IVault;
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
+    using FixedPoint for uint256;
     using VaultStateLib for VaultStateBits;
 
     IVault private immutable _vault;
@@ -56,6 +58,20 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @dev Functions with this modifier can only be delegate-called by the vault.
     modifier onlyVault() {
         _vault.ensureVaultDelegateCall();
+        _;
+    }
+
+    modifier onlyProtocolFeeCollector() {
+        if (msg.sender != address(_protocolFeeCollector)) {
+            revert SenderNotAllowed();
+        }
+        _;
+    }
+
+    modifier withValidPercentage(uint256 aggregatePercentage) {
+        if (aggregatePercentage > FixedPoint.ONE) {
+            revert ProtocolFeesExceedTotalCollected();
+        }
         _;
     }
 
@@ -85,6 +101,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                               Constants and immutables
     *******************************************************************************/
 
+    /// @inheritdoc IVaultAdmin
     function vault() external view returns (IVault) {
         return _vault;
     }
@@ -265,32 +282,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
-    function setProtocolSwapFeePercentage(uint256 newProtocolSwapFeePercentage) external authenticate onlyVault {
-        if (newProtocolSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
-            revert ProtocolSwapFeePercentageTooHigh();
-        }
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.protocolSwapFeePercentage = newProtocolSwapFeePercentage;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
-        emit ProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
-    }
-
-    /// @inheritdoc IVaultAdmin
-    function setProtocolYieldFeePercentage(uint256 newProtocolYieldFeePercentage) external authenticate onlyVault {
-        if (newProtocolYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
-            revert ProtocolYieldFeePercentageTooHigh();
-        }
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.protocolYieldFeePercentage = newProtocolYieldFeePercentage;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
-        emit ProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
-    }
-
-    /**
-     * @inheritdoc IVaultAdmin
-     * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
-     * MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
-     */
     function setStaticSwapFeePercentage(
         address pool,
         uint256 swapFeePercentage
@@ -300,68 +291,92 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
-    /**
-     * @inheritdoc IVaultAdmin
-     * @dev This can only be executed by the pool creator and is disabled if the pool is paused.
-     * The creator fee must be <= 100%. It's the percentage of creatorAndLpFees that will be accrued by the creator
-     * of the pool. For more details, check comment of vault's _computeAndChargeProtocolAndCreatorSwapFees function
-     * Emits the poolCreatorFeePercentageChanged event.
-     */
+    /// @inheritdoc IVaultAdmin
     function setPoolCreatorFeePercentage(
         address pool,
         uint256 poolCreatorFeePercentage
     ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
-        // Saving bits by not implementing a new modifier
         _ensureUnpausedAndGetVaultState(pool);
-        _setPoolCreatorFeePercentage(pool, poolCreatorFeePercentage);
-    }
 
-    function _setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) internal virtual {
         if (poolCreatorFeePercentage > FixedPoint.ONE) {
             revert PoolCreatorFeePercentageTooHigh();
         }
 
+        collectProtocolFees(pool);
+
+        _poolCreatorFeePercentages[pool] = poolCreatorFeePercentage;
+
+        // Need to update aggregate percentages.
         PoolConfig memory config = _poolConfig[pool];
-        config.setPoolCreatorFeePercentage(poolCreatorFeePercentage);
+        (
+            uint256 aggregateProtocolSwapFeePercentage,
+            uint256 aggregateProtocolYieldFeePercentage
+        ) = _protocolFeeCollector.computeAggregatePercentages(pool, poolCreatorFeePercentage);
+
+        config.setAggregateProtocolSwapFeePercentage(aggregateProtocolSwapFeePercentage);
+        config.setAggregateProtocolYieldFeePercentage(aggregateProtocolYieldFeePercentage);
         _poolConfig[pool] = config;
 
         emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectProtocolFees(address pool) external authenticate nonReentrant onlyVault {
-        IERC20[] memory tokens = _getPoolTokens(pool);
+    function collectProtocolFees(address pool) public nonReentrant onlyVault {
+        IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
+        address feeCollector = address(_protocolFeeCollector);
+        uint256 numTokens = poolTokens.length;
 
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-            uint256 amount = _protocolFees[pool][token];
+        uint256[] memory totalSwapFees = new uint256[](numTokens);
+        uint256[] memory totalYieldFees = new uint256[](numTokens);
 
-            if (amount > 0) {
-                // set fees to zero for the token
-                _protocolFees[pool][token] = 0;
+        for (uint256 i = 0; i < poolTokens.length; ++i) {
+            IERC20 token = poolTokens[i];
 
-                token.safeTransfer(msg.sender, amount);
-                emit ProtocolFeeCollected(pool, token, amount);
+            (totalSwapFees[i], totalYieldFees[i]) = _aggregateProtocolFeeAmounts[pool][token].fromPackedBalance();
+
+            if (totalSwapFees[i] > 0 || totalYieldFees[i] > 0) {
+                // The ProtocolFeeCollector will pull tokens from the Vault.
+                token.approve(feeCollector, totalSwapFees[i] + totalYieldFees[i]);
+
+                _aggregateProtocolFeeAmounts[pool][token] = 0;
             }
         }
+
+        _protocolFeeCollector.receiveProtocolFees(pool, totalSwapFees, totalYieldFees);
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectPoolCreatorFees(address pool) external nonReentrant onlyVault {
-        IERC20[] memory tokens = _getPoolTokens(pool);
+    function updateAggregateSwapFeePercentage(
+        address pool,
+        uint256 newAggregateSwapFeePercentage
+    ) external withValidPercentage(newAggregateSwapFeePercentage) onlyProtocolFeeCollector {
+        PoolConfig memory config = _poolConfig[pool];
+        config.setAggregateProtocolSwapFeePercentage(newAggregateSwapFeePercentage);
+        _poolConfig[pool] = config;
+    }
 
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
-            uint256 amount = _poolCreatorFees[pool][token];
+    /// @inheritdoc IVaultAdmin
+    function updateAggregateYieldFeePercentage(
+        address pool,
+        uint256 newAggregateYieldFeePercentage
+    ) external withValidPercentage(newAggregateYieldFeePercentage) onlyProtocolFeeCollector {
+        PoolConfig memory config = _poolConfig[pool];
+        config.setAggregateProtocolYieldFeePercentage(newAggregateYieldFeePercentage);
+        _poolConfig[pool] = config;
+    }
 
-            if (amount > 0) {
-                // set fees to zero for the token
-                _poolCreatorFees[pool][token] = 0;
+    /// @inheritdoc IVaultAdmin
+    function getPoolCreatorInfo(address pool) external view returns (address, uint256) {
+        return (_poolRoleAccounts[pool].poolCreator, _poolCreatorFeePercentages[pool]);
+    }
 
-                token.safeTransfer(_poolRoleAccounts[pool].poolCreator, amount);
-                emit PoolCreatorFeeCollected(pool, token, amount);
-            }
-        }
+    /// @inheritdoc IVaultAdmin
+    function setProtocolFeeCollector(
+        IProtocolFeeCollector newProtocolFeeCollector
+    ) external onlyVault nonReentrant authenticate {
+        _protocolFeeCollector = newProtocolFeeCollector;
+
+        emit ProtocolFeeCollectorChanged(newProtocolFeeCollector);
     }
 
     /*******************************************************************************

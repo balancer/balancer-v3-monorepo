@@ -21,7 +21,7 @@ contract StablePoolFactory is BasePoolFactory {
 
     constructor(
         IVault vault,
-        uint256 pauseWindowDuration
+        uint32 pauseWindowDuration
     ) BasePoolFactory(vault, pauseWindowDuration, type(StablePool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -47,6 +47,10 @@ contract StablePoolFactory is BasePoolFactory {
         address poolHooksContract,
         bytes32 salt
     ) external returns (address pool) {
+        if (roleAccounts.poolCreator != address(0)) {
+            revert StandardPoolWithCreator();
+        }
+
         pool = _create(
             abi.encode(
                 StablePool.NewPoolParams({

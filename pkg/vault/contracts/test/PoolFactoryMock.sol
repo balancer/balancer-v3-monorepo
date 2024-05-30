@@ -20,18 +20,57 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault = vault;
     }
 
+    function registerTestPool(address pool, TokenConfig[] memory tokenConfig) external {
+        PoolRoleAccounts memory roleAccounts;
+
+        _vault.registerPool(
+            pool,
+            tokenConfig,
+            DEFAULT_SWAP_FEE,
+            getNewPoolPauseWindowEndTime(),
+            roleAccounts,
+            address(0), // No hook contract
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: true
+            })
+        );
+    }
+
+    function registerTestPool(address pool, TokenConfig[] memory tokenConfig, address poolHooksContract) external {
+        PoolRoleAccounts memory roleAccounts;
+
+        _vault.registerPool(
+            pool,
+            tokenConfig,
+            DEFAULT_SWAP_FEE,
+            getNewPoolPauseWindowEndTime(),
+            roleAccounts,
+            poolHooksContract,
+            LiquidityManagement({
+                disableUnbalancedLiquidity: false,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: true
+            })
+        );
+    }
+
     function registerTestPool(
         address pool,
         TokenConfig[] memory tokenConfig,
         address poolHooksContract,
         address poolCreator
     ) external {
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = poolCreator;
+
         _vault.registerPool(
             pool,
             tokenConfig,
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: poolCreator }),
+            roleAccounts,
             poolHooksContract,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -89,12 +128,14 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         address poolHooksContract,
         LiquidityManagement calldata liquidityManagement
     ) external {
+        PoolRoleAccounts memory roleAccounts;
+
         _vault.registerPool(
             pool,
             tokenConfig,
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+            roleAccounts,
             poolHooksContract,
             liquidityManagement
         );

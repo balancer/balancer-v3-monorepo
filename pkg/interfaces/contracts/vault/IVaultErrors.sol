@@ -35,11 +35,12 @@ interface IVaultErrors {
     error PoolNotInitialized(address pool);
 
     /**
-     * @dev A referenced pool has not been initialized.
-     * @param poolHooksContract Address of the hook contract that rejected the factory
-     * @param poolFactory Address of the rejected pool factory
+     * @dev A hook contract rejected a pool on registration.
+     * @param poolHooksContract Address of the hook contract that rejected the pool registration
+     * @param pool Address of the rejected pool
+     * @param poolFactory Address of the pool factory
      */
-    error HookRegisterFailed(address poolHooksContract, address poolFactory);
+    error HookRegistrationFailed(address poolHooksContract, address pool, address poolFactory);
 
     /**
      * @dev A token was already registered (i.e., it is a duplicate in the pool).
@@ -162,17 +163,15 @@ interface IVaultErrors {
                                      Fees
     *******************************************************************************/
 
-    /// @dev Error raised when the protocol swap fee percentage exceeds the maximum allowed value.
-    error ProtocolSwapFeePercentageTooHigh();
-
-    /// @dev Error raised when the protocol yield fee percentage exceeds the maximum allowed value.
-    error ProtocolYieldFeePercentageTooHigh();
-
     /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
     error SwapFeePercentageTooHigh();
 
-    /// @dev Error raised when the sum of the parts (protocol and creator fee) is greater than the whole (swap fee).
-    error ProtocolFeesExceedSwapFee();
+    /**
+     * @dev Error raised when the sum of the parts (aggregate protocol swap or yield fee)
+     * is greater than the whole (total swap or yield fee). Also validated when the protocol fee
+     * collector updates aggregate fee percentages in the Vault.
+     */
+    error ProtocolFeesExceedTotalCollected();
 
     /**
      * @dev  Error raised when the swap fee percentage is less than the minimum allowed value.
@@ -278,6 +277,9 @@ interface IVaultErrors {
 
     /// @dev The vault extension was configured with an incorrect Vault address.
     error WrongVaultExtensionDeployment();
+
+    /// @dev The protocol fee collector was configured with an incorrect Vault address.
+    error WrongProtocolFeeCollectorDeployment();
 
     /// @dev The vault admin was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();

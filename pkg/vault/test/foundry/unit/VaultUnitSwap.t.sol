@@ -5,13 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    SwapParams,
-    SwapState,
-    PoolData,
-    SwapKind,
-    VaultState
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { SwapParams, SwapState, PoolData, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -28,7 +22,6 @@ struct TestStateLocals {
     SwapParams params;
     SwapState swapState;
     PoolData poolData;
-    VaultState vaultState;
 }
 
 contract VaultUnitSwapTest is BaseTest {
@@ -58,8 +51,8 @@ contract VaultUnitSwapTest is BaseTest {
         swapTokens = [dai, usdc];
         vault.manualSetPoolTokenBalances(pool, swapTokens, initialBalances);
 
-        vault.manualSetPoolCreatorFees(pool, swapTokens[0], 0);
-        vault.manualSetPoolCreatorFees(pool, swapTokens[1], 0);
+        vault.manualSetAggregateProtocolSwapFeeAmount(pool, swapTokens[0], 0);
+        vault.manualSetAggregateProtocolSwapFeeAmount(pool, swapTokens[1], 0);
     }
 
     function testMakeParams() public {
@@ -68,7 +61,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 protocolFeePercentage = 20e16;
         uint256 poolCreatorFeePercentage = 5e17;
 
-        (, SwapState memory state, PoolData memory poolData, ) = _makeParams(
+        (SwapParams memory params, SwapState memory state, PoolData memory poolData) = _makeParams(
             SwapKind.EXACT_IN,
             defaultAmountGivenRaw,
             limitRaw,
@@ -92,7 +85,7 @@ contract VaultUnitSwapTest is BaseTest {
 
     function testSwapExactInWithZeroFee() public {
         TestStateLocals memory locals;
-        (locals.params, locals.swapState, locals.poolData, locals.vaultState) = _makeParams(
+        (locals.params, locals.swapState, locals.poolData) = _makeParams(
             SwapKind.EXACT_IN,
             defaultAmountGivenRaw,
             0,
@@ -121,14 +114,20 @@ contract VaultUnitSwapTest is BaseTest {
             amountOut,
             locals.params,
             locals.swapState,
-            locals.poolData,
-            locals.vaultState
+            locals.poolData
         );
+    }
+
+    function _getAggregateFeePercentage(
+        uint256 protocolFeePercentage,
+        uint256 creatorFeePercentage
+    ) internal pure returns (uint256) {
+        return protocolFeePercentage + protocolFeePercentage.complement().mulDown(creatorFeePercentage);
     }
 
     function testSwapExactInWithFee() public {
         TestStateLocals memory locals;
-        (locals.params, locals.swapState, locals.poolData, locals.vaultState) = _makeParams(
+        (locals.params, locals.swapState, locals.poolData) = _makeParams(
             SwapKind.EXACT_IN,
             defaultAmountGivenRaw,
             0,
@@ -157,20 +156,21 @@ contract VaultUnitSwapTest is BaseTest {
             amountOut,
             locals.params,
             locals.swapState,
-            locals.poolData,
-            locals.vaultState
+            locals.poolData
         );
     }
 
     function testSwapExactInSwapLimitRevert() public {
         uint256 swapLimit = mockedPoolAmountCalculatedScaled18 - 1;
 
-        (
-            SwapParams memory params,
-            SwapState memory state,
-            PoolData memory poolData,
-            VaultState memory vaultState
-        ) = _makeParams(SwapKind.EXACT_IN, defaultAmountGivenRaw, swapLimit, 0, 0, 0);
+        (SwapParams memory params, SwapState memory state, PoolData memory poolData) = _makeParams(
+            SwapKind.EXACT_IN,
+            defaultAmountGivenRaw,
+            swapLimit,
+            0,
+            0,
+            0
+        );
 
         uint256 amount = mockedPoolAmountCalculatedScaled18.toRawUndoRateRoundDown(
             poolData.decimalScalingFactors[state.indexOut],
@@ -180,16 +180,18 @@ contract VaultUnitSwapTest is BaseTest {
         _mockOnSwap(mockedPoolAmountCalculatedScaled18, params, state, poolData);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, amount, swapLimit));
-        vault.manualInternalSwap(params, state, poolData, vaultState);
+        vault.manualInternalSwap(params, state, poolData);
     }
 
     function testSwapExactOutSwapLimitRevert() public {
-        (
-            SwapParams memory params,
-            SwapState memory state,
-            PoolData memory poolData,
-            VaultState memory vaultState
-        ) = _makeParams(SwapKind.EXACT_OUT, defaultAmountGivenRaw, 0, 0, 0, 0);
+        (SwapParams memory params, SwapState memory state, PoolData memory poolData) = _makeParams(
+            SwapKind.EXACT_OUT,
+            defaultAmountGivenRaw,
+            0,
+            0,
+            0,
+            0
+        );
 
         uint256 amount = mockedPoolAmountCalculatedScaled18.toRawUndoRateRoundDown(
             poolData.decimalScalingFactors[state.indexIn],
@@ -199,12 +201,12 @@ contract VaultUnitSwapTest is BaseTest {
         _mockOnSwap(mockedPoolAmountCalculatedScaled18, params, state, poolData);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, amount, 0));
-        vault.manualInternalSwap(params, state, poolData, vaultState);
+        vault.manualInternalSwap(params, state, poolData);
     }
 
     function testSwapExactOutWithZeroFee() public {
         TestStateLocals memory locals;
-        (locals.params, locals.swapState, locals.poolData, locals.vaultState) = _makeParams(
+        (locals.params, locals.swapState, locals.poolData) = _makeParams(
             SwapKind.EXACT_OUT,
             defaultAmountGivenRaw,
             mockedPoolAmountCalculatedScaled18,
@@ -234,8 +236,7 @@ contract VaultUnitSwapTest is BaseTest {
             amountOut,
             locals.params,
             locals.swapState,
-            locals.poolData,
-            locals.vaultState
+            locals.poolData
         );
     }
 
@@ -246,7 +247,7 @@ contract VaultUnitSwapTest is BaseTest {
 
             uint256 amountCalculatedWithFee = mockedPoolAmountCalculatedScaled18 + swapFeeAmount;
             // This sets the protocol swap fee percentage to the same as the swap fee percentage
-            (locals.params, locals.swapState, locals.poolData, locals.vaultState) = _makeParams(
+            (locals.params, locals.swapState, locals.poolData) = _makeParams(
                 SwapKind.EXACT_OUT,
                 defaultAmountGivenRaw,
                 amountCalculatedWithFee,
@@ -275,8 +276,7 @@ contract VaultUnitSwapTest is BaseTest {
             amountOut,
             locals.params,
             locals.swapState,
-            locals.poolData,
-            locals.vaultState
+            locals.poolData
         );
     }
 
@@ -288,15 +288,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 swapFeePercentage,
         uint256 protocolFeePercentage,
         uint256 poolCreatorFeePercentage
-    )
-        internal
-        returns (
-            SwapParams memory params,
-            SwapState memory swapState,
-            PoolData memory poolData,
-            VaultState memory vaultState
-        )
-    {
+    ) internal returns (SwapParams memory params, SwapState memory swapState, PoolData memory poolData) {
         params = SwapParams({
             kind: kind,
             pool: pool,
@@ -320,8 +312,9 @@ contract VaultUnitSwapTest is BaseTest {
         poolData.balancesRaw = initialBalances;
 
         poolData.poolConfig.setStaticSwapFeePercentage(swapFeePercentage);
-        vaultState.protocolSwapFeePercentage = protocolFeePercentage;
-        poolData.poolConfig.setPoolCreatorFeePercentage(poolCreatorFeePercentage);
+        poolData.poolConfig.setAggregateProtocolSwapFeePercentage(
+            _getAggregateFeePercentage(swapFeePercentage, poolCreatorFeePercentage)
+        );
 
         poolData.balancesLiveScaled18 = new uint256[](initialBalances.length);
     }
@@ -334,8 +327,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 amountOut,
         SwapParams memory params,
         SwapState memory swapState,
-        PoolData memory poolData,
-        VaultState memory vaultState
+        PoolData memory poolData
     ) internal {
         // Check swap state
         assertEq(swapState.indexIn, 0, "Unexpected index in");
@@ -371,7 +363,7 @@ contract VaultUnitSwapTest is BaseTest {
 
         // Expected fees
         uint256 expectedProtocolSwapFeeAmountScaled18 = expectedSwapFeeAmountScaled18.mulUp(
-            vaultState.protocolSwapFeePercentage
+            poolData.poolConfig.getAggregateProtocolSwapFeePercentage()
         );
 
         uint256 expectedProtocolFeeAmountRaw = expectedProtocolSwapFeeAmountScaled18.toRawUndoRateRoundDown(
@@ -379,43 +371,18 @@ contract VaultUnitSwapTest is BaseTest {
             poolData.tokenRates[swapState.indexOut]
         );
 
-        uint256 expectedCreatorFeeAmountRaw = (expectedSwapFeeAmountScaled18 - expectedProtocolSwapFeeAmountScaled18)
-            .mulUp(poolData.poolConfig.getPoolCreatorFeePercentage())
-            .toRawUndoRateRoundDown(
-                poolData.decimalScalingFactors[swapState.indexOut],
-                poolData.tokenRates[swapState.indexOut]
-            );
-
         assertEq(
-            vault.getProtocolFees(pool, swapTokens[swapState.indexOut]),
+            vault.getAggregateProtocolSwapFeeAmount(pool, swapTokens[swapState.indexOut]),
             expectedProtocolFeeAmountRaw,
             "Unexpected protocol fees in storage"
         );
         assertEq(
-            vault.getPoolCreatorFees(pool, swapTokens[swapState.indexOut]),
-            expectedCreatorFeeAmountRaw,
-            "Unexpected creator fees in storage"
-        );
-        assertEq(
-            vault.getProtocolFees(pool, swapTokens[swapState.indexIn]),
+            vault.getAggregateProtocolSwapFeeAmount(pool, swapTokens[swapState.indexIn]),
             0,
             "Unexpected non-zero protocol fees in storage"
         );
-        assertEq(
-            vault.getPoolCreatorFees(pool, swapTokens[swapState.indexIn]),
-            0,
-            "Unexpected non-zero creator fees in storage"
-        );
 
-        _checkCommonSwapResult(
-            amountIn,
-            amountOut,
-            expectedProtocolFeeAmountRaw,
-            expectedCreatorFeeAmountRaw,
-            params,
-            swapState,
-            poolData
-        );
+        _checkCommonSwapResult(amountIn, amountOut, expectedProtocolFeeAmountRaw, params, swapState, poolData);
     }
 
     function _checkSwapExactOutResult(
@@ -426,8 +393,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 amountOut,
         SwapParams memory params,
         SwapState memory swapState,
-        PoolData memory poolData,
-        VaultState memory vaultState
+        PoolData memory poolData
     ) internal {
         // Check swap state
         assertEq(swapState.indexIn, 0, "Unexpected index in");
@@ -463,7 +429,7 @@ contract VaultUnitSwapTest is BaseTest {
 
         // Expected fees
         uint256 expectedProtocolFeeAmountScaled18 = expectedSwapFeeAmountScaled18.mulUp(
-            vaultState.protocolSwapFeePercentage
+            poolData.poolConfig.getAggregateProtocolSwapFeePercentage()
         );
 
         uint256 expectedProtocolFeeAmountRaw = expectedProtocolFeeAmountScaled18.toRawUndoRateRoundDown(
@@ -471,55 +437,28 @@ contract VaultUnitSwapTest is BaseTest {
             poolData.tokenRates[swapState.indexIn]
         );
 
-        uint256 expectedCreatorFeeAmountRaw = (expectedSwapFeeAmountScaled18 - expectedProtocolFeeAmountScaled18)
-            .mulUp(poolData.poolConfig.getPoolCreatorFeePercentage())
-            .toRawUndoRateRoundDown(
-                poolData.decimalScalingFactors[swapState.indexIn],
-                poolData.tokenRates[swapState.indexIn]
-            );
-
         assertEq(
-            vault.getProtocolFees(pool, swapTokens[swapState.indexIn]),
+            vault.getAggregateProtocolSwapFeeAmount(pool, swapTokens[swapState.indexIn]),
             expectedProtocolFeeAmountRaw,
             "Unexpected protocol fees in storage"
         );
         assertEq(
-            vault.getPoolCreatorFees(pool, swapTokens[swapState.indexIn]),
-            expectedCreatorFeeAmountRaw,
-            "Unexpected creator fees in storage"
-        );
-        assertEq(
-            vault.getProtocolFees(pool, swapTokens[swapState.indexOut]),
+            vault.getAggregateProtocolSwapFeeAmount(pool, swapTokens[swapState.indexOut]),
             0,
             "Unexpected non-zero protocol fees in storage"
         );
-        assertEq(
-            vault.getPoolCreatorFees(pool, swapTokens[swapState.indexOut]),
-            0,
-            "Unexpected non-zero creator fees in storage"
-        );
 
-        _checkCommonSwapResult(
-            amountIn,
-            amountOut,
-            expectedProtocolFeeAmountRaw,
-            expectedCreatorFeeAmountRaw,
-            params,
-            swapState,
-            poolData
-        );
+        _checkCommonSwapResult(amountIn, amountOut, expectedProtocolFeeAmountRaw, params, swapState, poolData);
     }
 
     function _checkCommonSwapResult(
         uint256 amountIn,
         uint256 amountOut,
-        uint256 expectedProtocolFeeAmountRaw,
-        uint256 expectedCreatorFeeAmountRaw,
+        uint256 totalFees,
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
     ) internal {
-        uint256 totalFees = expectedProtocolFeeAmountRaw + expectedCreatorFeeAmountRaw;
         uint256 feesOnAmountOut = params.kind == SwapKind.EXACT_IN ? totalFees : 0;
         uint256 feesOnAmountIn = params.kind == SwapKind.EXACT_IN ? 0 : totalFees;
 
@@ -641,9 +580,8 @@ contract VaultUnitSwapTest is BaseTest {
             amountOut,
             locals.params,
             locals.swapState,
-            locals.poolData,
-            locals.vaultState
-        ) = vault.manualInternalSwap(locals.params, locals.swapState, locals.poolData, locals.vaultState);
+            locals.poolData
+        ) = vault.manualInternalSwap(locals.params, locals.swapState, locals.poolData);
         return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut);
     }
     // #endregion

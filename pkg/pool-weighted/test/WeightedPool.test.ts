@@ -30,8 +30,6 @@ import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/in
 import { TokenConfig } from '@balancer-labs/v3-helpers/src/models/types/types';
 
 describe('WeightedPool', function () {
-  const MAX_PROTOCOL_SWAP_FEE = fp(0.5);
-  const MAX_PROTOCOL_YIELD_FEE = fp(0.2);
   const POOL_SWAP_FEE = fp(0.01);
 
   const TOKEN_AMOUNT = fp(100);
@@ -80,7 +78,11 @@ describe('WeightedPool', function () {
       args: [vault, 'Pool', 'POOL'],
     });
 
+<<<<<<< HEAD
     await factory.registerTestPool(pool, buildTokenConfig(poolTokens), ZERO_ADDRESS, ZERO_ADDRESS);
+=======
+    await factory.registerTestPool(pool, buildTokenConfig(poolTokens));
+>>>>>>> main
   });
 
   describe('initialization', () => {
@@ -192,19 +194,13 @@ describe('WeightedPool', function () {
     });
 
     sharedBeforeEach('grant permission', async () => {
-      const setSwapFeeAction = await actionId(vault, 'setProtocolSwapFeePercentage');
-      const setYieldFeeAction = await actionId(vault, 'setProtocolYieldFeePercentage');
       const setPoolSwapFeeAction = await actionId(vault, 'setStaticSwapFeePercentage');
 
       const authorizerAddress = await vault.getAuthorizer();
       const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
 
-      await authorizer.grantRole(setSwapFeeAction, bob.address);
-      await authorizer.grantRole(setYieldFeeAction, bob.address);
       await authorizer.grantRole(setPoolSwapFeeAction, bob.address);
 
-      await vault.connect(bob).setProtocolSwapFeePercentage(MAX_PROTOCOL_SWAP_FEE);
-      await vault.connect(bob).setProtocolYieldFeePercentage(MAX_PROTOCOL_YIELD_FEE);
       await vault.connect(bob).setStaticSwapFeePercentage(realPoolAddress, POOL_SWAP_FEE);
     });
 
@@ -214,26 +210,7 @@ describe('WeightedPool', function () {
       expect(poolConfig.isPoolRegistered).to.be.true;
       expect(poolConfig.isPoolInitialized).to.be.true;
 
-      expect(await vault.getProtocolSwapFeePercentage()).to.eq(MAX_PROTOCOL_SWAP_FEE);
-      expect(await vault.getProtocolYieldFeePercentage()).to.eq(MAX_PROTOCOL_YIELD_FEE);
       expect(await vault.getStaticSwapFeePercentage(realPoolAddress)).to.eq(POOL_SWAP_FEE);
-    });
-
-    it('emits protocol swap fee event on swap', async () => {
-      await expect(
-        await router
-          .connect(bob)
-          .swapSingleTokenExactIn(
-            realPoolAddress,
-            tokenAAddress,
-            tokenBAddress,
-            SWAP_AMOUNT,
-            0,
-            MAX_UINT256,
-            false,
-            '0x'
-          )
-      ).to.emit(vault, 'ProtocolSwapFeeCharged');
     });
   });
 });

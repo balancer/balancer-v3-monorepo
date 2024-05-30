@@ -29,7 +29,6 @@ contract HooksTest is BaseVaultTest {
     // Another factory and pool to test hook onRegister
     PoolFactoryMock internal anotherFactory;
     address internal anotherPool;
-    address internal poolWith3Tokens;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -46,8 +45,6 @@ contract HooksTest is BaseVaultTest {
         vm.label(address(anotherFactory), "another factory");
         anotherPool = address(new PoolMock(IVault(address(vault)), "Another Pool", "ANOTHER"));
         vm.label(address(anotherPool), "another pool");
-        poolWith3Tokens = address(new PoolMock(IVault(address(vault)), "Pool 3 Tokens", "POOL3T"));
-        vm.label(address(anotherPool), "pool 3 tokens");
     }
 
     function createHook() internal override returns (address) {
@@ -58,17 +55,24 @@ contract HooksTest is BaseVaultTest {
     // onRegister
 
     function testOnRegisterNotAllowedFactory() public {
+        PoolRoleAccounts memory roleAccounts;
+
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
 
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultErrors.HookRegisterFailed.selector, poolHooksContract, address(anotherFactory))
+            abi.encodeWithSelector(
+                IVaultErrors.HookRegistrationFailed.selector,
+                poolHooksContract,
+                address(anotherPool),
+                address(anotherFactory)
+            )
         );
         anotherFactory.registerPool(
             address(anotherPool),
             tokenConfig,
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+            roleAccounts,
             poolHooksContract,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -79,33 +83,29 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnRegisterAllowedFactory() public {
+        PoolRoleAccounts memory roleAccounts;
+
         // Should succeed, since factory is allowed in the poolHooksContract
         PoolHooksMock(poolHooksContract).allowFactory(address(anotherFactory));
-        anotherFactory.registerPool(
-            address(anotherPool),
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
-            poolHooksContract,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
-        );
-    }
 
-    function testOnRegisterWrongTokenConfig() public {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
-            [address(dai), address(usdc), address(weth)].toMemoryArray().asIERC20()
+            [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
 
-        vm.expectRevert(
-            abi.encodeWithSelector(IVaultErrors.HookRegisterFailed.selector, poolHooksContract, address(anotherFactory))
+        vm.expectCall(
+            address(poolHooksContract),
+            abi.encodeWithSelector(
+                IHooks.onRegister.selector,
+                address(anotherFactory),
+                address(anotherPool),
+                tokenConfig
+            )
         );
+
         anotherFactory.registerPool(
             address(anotherPool),
             tokenConfig,
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+            roleAccounts,
             poolHooksContract,
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
@@ -221,7 +221,10 @@ contract HooksTest is BaseVaultTest {
         vault.setHooksConfig(address(pool), hooksConfig);
 
         setSwapFeePercentage(swapFeePercentage);
-        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
+        vault.manualSetAggregateProtocolSwapFeePercentage(
+            pool,
+            _getAggregateFeePercentage(protocolSwapFeePercentage, 0)
+        );
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(swapFeePercentage);
 
         uint256 expectedAmountOut = defaultAmount.mulDown(swapFeePercentage.complement());

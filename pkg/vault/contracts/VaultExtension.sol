@@ -178,14 +178,17 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert PoolAlreadyRegistered(pool);
         }
 
+        HooksConfig memory hooksConfig;
+
         if (params.poolHooksContract != address(0)) {
             // If a hook address was passed, make sure that hook trusts the pool factory
-            if (IHooks(params.poolHooksContract).onRegister(msg.sender, pool, params.tokenConfig) != true) {
-                revert HookRegisterFailed(params.poolHooksContract, msg.sender);
+            if (IHooks(params.poolHooksContract).onRegister(msg.sender, pool, params.tokenConfig) == false) {
+                revert HookRegistrationFailed(params.poolHooksContract, pool, msg.sender);
             }
 
             // Gets the default HooksConfig from the hook contract and saves in the vault state
-            _hooksConfig[pool] = IHooks(params.poolHooksContract).getHooksConfig().fromHooksConfig();
+            hooksConfig = IHooks(params.poolHooksContract).getHooksConfig();
+            _hooksConfig[pool] = hooksConfig.fromHooksConfig();
         }
 
         uint256 numTokens = params.tokenConfig.length;
@@ -249,16 +252,27 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _assignPoolRoles(pool, params.roleAccounts);
 
         // Store config and mark the pool as registered
-        PoolConfig memory config = _poolConfig[pool];
-        config.isPoolRegistered = true;
+        {
+            PoolConfig memory config = _poolConfig[pool];
+            config.isPoolRegistered = true;
 
-        config.disableUnbalancedLiquidity = params.liquidityManagement.disableUnbalancedLiquidity;
-        config.enableAddLiquidityCustom = params.liquidityManagement.enableAddLiquidityCustom;
-        config.enableRemoveLiquidityCustom = params.liquidityManagement.enableRemoveLiquidityCustom;
+            config.disableUnbalancedLiquidity = params.liquidityManagement.disableUnbalancedLiquidity;
+            config.enableAddLiquidityCustom = params.liquidityManagement.enableAddLiquidityCustom;
+            config.enableRemoveLiquidityCustom = params.liquidityManagement.enableRemoveLiquidityCustom;
 
-        config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
-        config.pauseWindowEndTime = params.pauseWindowEndTime;
-        _poolConfig[pool] = config;
+            config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
+            config.pauseWindowEndTime = params.pauseWindowEndTime;
+
+            // Initialize the pool-specific protocol fee values to the current global defaults.
+            (
+                uint256 aggregateProtocolSwapFeePercentage,
+                uint256 aggregateProtocolYieldFeePercentage
+            ) = _protocolFeeCollector.registerPool(pool);
+            config.setAggregateProtocolSwapFeePercentage(aggregateProtocolSwapFeePercentage);
+            config.setAggregateProtocolYieldFeePercentage(aggregateProtocolYieldFeePercentage);
+
+            _poolConfig[pool] = config;
+        }
 
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
 
@@ -267,9 +281,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             pool,
             msg.sender,
             params.tokenConfig,
+            params.swapFeePercentage,
             params.pauseWindowEndTime,
             params.roleAccounts,
-            _hooksConfig[pool].toHooksConfig(),
+            hooksConfig,
             params.liquidityManagement
         );
     }
@@ -299,9 +314,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
 
         if (roleAccounts.poolCreator != address(0)) {
-            bytes32 creatorFeeAction = vaultAdmin.getActionId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
+            bytes32 poolCreatorFeeAction = vaultAdmin.getActionId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
 
-            roleAssignments[creatorFeeAction] = PoolFunctionPermission({
+            roleAssignments[poolCreatorFeeAction] = PoolFunctionPermission({
                 account: roleAccounts.poolCreator,
                 onlyOwner: true
             });
@@ -532,19 +547,18 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                                         Fees
     *******************************************************************************/
 
+    // Swap and Yield fees are both stored using the PackedTokenBalance library, which is usually used for
+    // balances that are related (e.g., raw and live). In this case, it holds two uncorrelated values: swap
+    // and yield fee amounts, arbitrarily assigning "Raw" to Swap and "Derived" to Yield.
+
     /// @inheritdoc IVaultExtension
-    function getProtocolSwapFeePercentage() external view onlyVault returns (uint256) {
-        return _vaultState.getProtocolSwapFeePercentage();
+    function getAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view onlyVault returns (uint256) {
+        return _aggregateProtocolFeeAmounts[pool][token].getBalanceRaw();
     }
 
     /// @inheritdoc IVaultExtension
-    function getProtocolYieldFeePercentage() external view onlyVault returns (uint256) {
-        return _vaultState.getProtocolYieldFeePercentage();
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getProtocolFees(address pool, IERC20 token) external view onlyVault returns (uint256) {
-        return _protocolFees[pool][token];
+    function getAggregateProtocolYieldFeeAmount(address pool, IERC20 token) external view onlyVault returns (uint256) {
+        return _aggregateProtocolFeeAmounts[pool][token].getBalanceDerived();
     }
 
     /// @inheritdoc IVaultExtension
@@ -557,16 +571,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function getStaticSwapFeeManager(address pool) external view withRegisteredPool(pool) onlyVault returns (address) {
         return _poolRoleAccounts[pool].swapFeeManager;
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getPoolCreatorFees(address pool, IERC20 token) external view returns (uint256) {
-        return _poolCreatorFees[pool][token];
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getPoolCreator(address pool) external view returns (address poolCreator) {
-        return _poolRoleAccounts[pool].poolCreator;
     }
 
     /*******************************************************************************

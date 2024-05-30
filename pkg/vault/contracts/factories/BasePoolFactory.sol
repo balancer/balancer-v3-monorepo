@@ -34,6 +34,9 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     // Store the creationCode of the contract to be deployed by create3.
     bytes private _creationCode;
 
+    /// @dev A pool creator was specified for a pool from a Balancer core pool type.
+    error StandardPoolWithCreator();
+
     constructor(
         IVault vault,
         uint32 pauseWindowDuration,
@@ -111,7 +114,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     }
 
     /**
-     * @notice A common place to retrieve a default hooks contract. Currently set to an empty contract.
+     * @notice A common place to retrieve a default hooks contract. Currently set to address(0) (i.e. no hooks).
      */
     function getDefaultPoolHooksContract() public pure returns (address) {
         return address(0);
