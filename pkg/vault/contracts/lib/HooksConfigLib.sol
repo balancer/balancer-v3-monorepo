@@ -10,8 +10,6 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-// @notice Config type to store entire configuration of the pool
-
 library HooksConfigLib {
     /**
      * @dev Check if dynamic swap fee hook should be called and call it. Throws an error if the hook contract fails to
