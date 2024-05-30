@@ -427,7 +427,7 @@ describe('Vault', function () {
       const expectedDecimalDiffs = expectedDecimals.map((d) => bn(18) - d);
 
       const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(poolA);
-      const actualDecimalDiffs = decodeDecimalDiffs(Number(poolConfig.tokenDecimalDiffs), poolATokens.length);
+      const actualDecimalDiffs = decodeDecimalDiffs(Number(poolConfig.poolState.tokenDecimalDiffs), poolATokens.length);
 
       expect(actualDecimalDiffs).to.deep.equal(expectedDecimalDiffs);
     });

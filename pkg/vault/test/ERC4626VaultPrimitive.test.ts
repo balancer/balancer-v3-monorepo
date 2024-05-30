@@ -140,8 +140,8 @@ describe('ERC4626VaultPrimitive', function () {
     it('registers the pool', async () => {
       const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
 
-      expect(poolConfig.isPoolRegistered).to.be.true;
-      expect(poolConfig.isPoolInitialized).to.be.false;
+      expect(poolConfig.poolFlags.isPoolRegistered).to.be.true;
+      expect(poolConfig.poolFlags.isPoolInitialized).to.be.false;
     });
 
     it('has the correct tokens', async () => {
@@ -157,18 +157,18 @@ describe('ERC4626VaultPrimitive', function () {
       const [paused] = await vault.getPoolPausedState(pool);
       expect(paused).to.be.false;
 
-      expect(poolConfig.pauseWindowEndTime).to.gt(currentTime);
-      expect(poolConfig.hooks.shouldCallBeforeInitialize).to.be.false;
-      expect(poolConfig.hooks.shouldCallAfterInitialize).to.be.false;
-      expect(poolConfig.hooks.shouldCallBeforeAddLiquidity).to.be.false;
-      expect(poolConfig.hooks.shouldCallAfterAddLiquidity).to.be.false;
-      expect(poolConfig.hooks.shouldCallBeforeRemoveLiquidity).to.be.false;
-      expect(poolConfig.hooks.shouldCallAfterRemoveLiquidity).to.be.false;
-      expect(poolConfig.hooks.shouldCallBeforeSwap).to.be.false;
-      expect(poolConfig.hooks.shouldCallAfterSwap).to.be.false;
-      expect(poolConfig.liquidityManagement.disableUnbalancedLiquidity).to.be.false;
-      expect(poolConfig.liquidityManagement.enableAddLiquidityCustom).to.be.true;
-      expect(poolConfig.liquidityManagement.enableRemoveLiquidityCustom).to.be.true;
+      expect(poolConfig.poolState.pauseWindowEndTime).to.gt(currentTime);
+      expect(poolConfig.poolFlags.shouldCallBeforeInitialize).to.be.false;
+      expect(poolConfig.poolFlags.shouldCallAfterInitialize).to.be.false;
+      expect(poolConfig.poolFlags.shouldCallBeforeAddLiquidity).to.be.false;
+      expect(poolConfig.poolFlags.shouldCallAfterAddLiquidity).to.be.false;
+      expect(poolConfig.poolFlags.shouldCallBeforeRemoveLiquidity).to.be.false;
+      expect(poolConfig.poolFlags.shouldCallAfterRemoveLiquidity).to.be.false;
+      expect(poolConfig.poolFlags.shouldCallBeforeSwap).to.be.false;
+      expect(poolConfig.poolFlags.shouldCallAfterSwap).to.be.false;
+      expect(poolConfig.poolFlags.disableUnbalancedLiquidity).to.be.false;
+      expect(poolConfig.poolFlags.enableAddLiquidityCustom).to.be.true;
+      expect(poolConfig.poolFlags.enableRemoveLiquidityCustom).to.be.true;
     });
   });
 
@@ -201,8 +201,8 @@ describe('ERC4626VaultPrimitive', function () {
 
       const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
 
-      expect(poolConfig.isPoolRegistered).to.be.true;
-      expect(poolConfig.isPoolInitialized).to.be.true;
+      expect(poolConfig.poolFlags.isPoolRegistered).to.be.true;
+      expect(poolConfig.poolFlags.isPoolInitialized).to.be.true;
 
       expect(await pool.balanceOf(lp)).to.eq(TOKEN_AMOUNT * 2n - MIN_BPT);
       expect(await wDAI.balanceOf(lp)).to.eq(0);
