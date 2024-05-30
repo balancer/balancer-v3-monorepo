@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/console.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
@@ -197,17 +195,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         PoolConfig memory poolConfig = _poolConfig[pool];
 
         uint32 pauseWindowEndTime = poolConfig.pauseWindowEndTime;
-
-        console.log("isPoolPaused", poolConfig.isPoolPaused);
-        console.log("pauseWindowEndTime", pauseWindowEndTime);
-        console.log("block.timestamp", uint32(block.timestamp));
-        console.log("pauseWindowEndTime + _vaultBufferPeriodDuration", pauseWindowEndTime + _vaultBufferPeriodDuration);
-        console.log("_vaultBufferPeriodEndTime", _vaultBufferPeriodEndTime);
-        console.log(
-            "uint32(block.timestamp) <= pauseWindowEndTime + _vaultBufferPeriodDuration",
-            uint32(block.timestamp) <= pauseWindowEndTime + _vaultBufferPeriodDuration
-        );
-        console.log("---------------------------");
 
         // Use the Vault's buffer period.
         // solhint-disable-next-line not-rely-on-time

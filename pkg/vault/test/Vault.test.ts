@@ -285,11 +285,7 @@ describe('Vault', function () {
           args: [vault, 'Pool C', 'POOLC'],
         });
 
-<<<<<<< HEAD
-        await factory.registerTestPool(poolC, buildTokenConfig(poolATokens, rateProviders), ZERO_ADDRESS, ZERO_ADDRESS);
-=======
         await factory.registerTestPool(poolC, buildTokenConfig(poolATokens, rateProviders));
->>>>>>> main
       });
 
       it('has rate providers', async () => {
@@ -322,11 +318,7 @@ describe('Vault', function () {
         });
         poolAddress = await pool.getAddress();
 
-<<<<<<< HEAD
-        await factory.registerTestPool(poolAddress, buildTokenConfig(poolATokens), ZERO_ADDRESS, ZERO_ADDRESS);
-=======
         await factory.registerTestPool(poolAddress, buildTokenConfig(poolATokens));
->>>>>>> main
       });
 
       it('Pools are temporarily pausable', async () => {
