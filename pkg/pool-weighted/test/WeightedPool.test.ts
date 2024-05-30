@@ -78,11 +78,7 @@ describe('WeightedPool', function () {
       args: [vault, 'Pool', 'POOL'],
     });
 
-<<<<<<< HEAD
-    await factory.registerTestPool(pool, buildTokenConfig(poolTokens), ZERO_ADDRESS, ZERO_ADDRESS);
-=======
     await factory.registerTestPool(pool, buildTokenConfig(poolTokens));
->>>>>>> main
   });
 
   describe('initialization', () => {

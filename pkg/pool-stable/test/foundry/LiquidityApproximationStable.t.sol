@@ -33,9 +33,6 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        // Allow pools created by `factory` to use poolHooksMock hooks
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
-
         StablePool newPool = StablePool(
             factory.create(
                 "ERC20 Pool",
