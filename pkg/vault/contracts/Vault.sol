@@ -34,7 +34,7 @@ import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzepp
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
-import { HooksConfigBits, HooksConfigLib } from "./lib/HooksConfigLib.sol";
+import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
 import { BufferPackedTokenBalance } from "./lib/BufferPackedBalance.sol";
@@ -49,7 +49,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using Address for *;
     using SafeERC20 for IERC20;
     using PoolConfigLib for PoolConfig;
-    using HooksConfigLib for HooksConfigBits;
+    using HooksConfigLib for HooksConfig;
     using ScalingHelpers for *;
     using VaultStateLib for VaultStateBits;
     using BufferPackedTokenBalance for bytes32;
@@ -173,7 +173,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
         _ensureUnpausedAndGetVaultState(params.pool);
-        HooksConfigBits hooksConfig = _hooksConfig[params.pool];
+        HooksConfig memory hooksConfig = _hooksConfig[params.pool];
 
         if (params.amountGivenRaw == 0) {
             revert AmountGivenZero();
@@ -467,7 +467,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
 
         _ensureUnpausedAndGetVaultState(params.pool);
-        HooksConfigBits hooksConfig = _hooksConfig[params.pool];
+        HooksConfig memory hooksConfig = _hooksConfig[params.pool];
 
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the add liquidity hooks are reentrant and could do anything,
@@ -679,7 +679,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // bptIn = supply * (1 - ratio), so lower ratio = more bptIn, favoring the pool.
 
         VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
-        HooksConfigBits hooksConfig = _hooksConfig[params.pool];
+        HooksConfig memory hooksConfig = _hooksConfig[params.pool];
 
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the swap hooks are reentrant and could do anything, including
