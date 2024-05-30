@@ -182,7 +182,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         if (params.poolHooksContract != address(0)) {
             // If a hook address was passed, make sure that hook trusts the pool factory
-            if (IHooks(params.poolHooksContract).onRegister(msg.sender, pool, params.tokenConfig) != true) {
+            if (IHooks(params.poolHooksContract).onRegister(msg.sender, pool, params.tokenConfig) == false) {
                 revert HookRegistrationFailed(params.poolHooksContract, msg.sender);
             }
 
