@@ -86,8 +86,8 @@ describe('WeightedPool', function () {
       it('is registered, but not initialized on deployment', async () => {
         const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
 
-        expect(poolConfig.isPoolRegistered).to.be.true;
-        expect(poolConfig.isPoolInitialized).to.be.false;
+        expect(poolConfig.poolFlags.isPoolRegistered).to.be.true;
+        expect(poolConfig.poolFlags.isPoolInitialized).to.be.false;
       });
     });
 
@@ -115,9 +115,9 @@ describe('WeightedPool', function () {
       it('is registered and initialized', async () => {
         const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
 
-        expect(poolConfig.isPoolRegistered).to.be.true;
-        expect(poolConfig.isPoolInitialized).to.be.true;
-        expect(poolConfig.isPoolPaused).to.be.false;
+        expect(poolConfig.poolFlags.isPoolRegistered).to.be.true;
+        expect(poolConfig.poolFlags.isPoolInitialized).to.be.true;
+        expect(poolConfig.poolState.isPoolPaused).to.be.false;
       });
 
       it('has the correct pool tokens and balances', async () => {
@@ -202,8 +202,8 @@ describe('WeightedPool', function () {
     it('pool and protocol fee preconditions', async () => {
       const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(realPool);
 
-      expect(poolConfig.isPoolRegistered).to.be.true;
-      expect(poolConfig.isPoolInitialized).to.be.true;
+      expect(poolConfig.poolFlags.isPoolRegistered).to.be.true;
+      expect(poolConfig.poolFlags.isPoolInitialized).to.be.true;
 
       expect(await vault.getStaticSwapFeePercentage(realPoolAddress)).to.eq(POOL_SWAP_FEE);
     });

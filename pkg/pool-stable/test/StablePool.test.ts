@@ -99,8 +99,8 @@ describe('StablePool', () => {
 
           const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
 
-          expect(poolConfig.isPoolRegistered).to.be.true;
-          expect(poolConfig.isPoolInitialized).to.be.false;
+          expect(poolConfig.poolFlags.isPoolRegistered).to.be.true;
+          expect(poolConfig.poolFlags.isPoolInitialized).to.be.false;
         });
       });
 
@@ -121,9 +121,9 @@ describe('StablePool', () => {
         it('is registered and initialized', async () => {
           const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
 
-          expect(poolConfig.isPoolRegistered).to.be.true;
-          expect(poolConfig.isPoolInitialized).to.be.true;
-          expect(poolConfig.isPoolPaused).to.be.false;
+          expect(poolConfig.poolFlags.isPoolRegistered).to.be.true;
+          expect(poolConfig.poolFlags.isPoolInitialized).to.be.true;
+          expect(poolConfig.poolState.isPoolPaused).to.be.false;
         });
 
         it('has the correct pool tokens and balances', async () => {
