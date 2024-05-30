@@ -30,7 +30,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
             roleAccounts,
-            address(0), // if poolHooksContract was not informed, assume it's 0x0
+            address(0), // No hook contract
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,

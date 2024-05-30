@@ -61,7 +61,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
     using HooksConfigLib for HooksConfig;
-    using HooksConfigLib for HooksConfig;
     using InputHelpers for uint256;
     using ScalingHelpers for *;
     using VaultExtensionsLib for IVault;
@@ -182,8 +181,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         if (params.poolHooksContract != address(0)) {
             // If a hook address was passed, make sure that hook trusts the pool factory
-            if (IHooks(params.poolHooksContract).onRegister(msg.sender, pool, params.tokenConfig) != true) {
-                revert HookRegistrationFailed(params.poolHooksContract, msg.sender);
+            if (IHooks(params.poolHooksContract).onRegister(msg.sender, pool, params.tokenConfig) == false) {
+                revert HookRegistrationFailed(params.poolHooksContract, pool, msg.sender);
             }
 
             // Gets the default HooksConfig from the hook contract and saves in the vault state

@@ -205,14 +205,14 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 lastLiveBalance,
         uint256 yieldFeePercentage
     ) public {
-        uint256 _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 20e16; // 20%
+        uint256 MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 50e16; // 50%
 
         balanceRaw = bound(balanceRaw, 0, 2 ** 120);
         decimals = uint8(bound(uint256(decimals), 2, 18));
         tokenRate = bound(tokenRate, 0, 100_000e18);
         uint256 decimalScalingFactor = getDecimalScalingFactor(decimals);
         lastLiveBalance = bound(lastLiveBalance, 0, 2 ** 128);
-        yieldFeePercentage = bound(yieldFeePercentage, 0, _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE);
+        yieldFeePercentage = bound(yieldFeePercentage, 0, MAX_PROTOCOL_YIELD_FEE_PERCENTAGE);
 
         PoolData memory poolData = _simplePoolData(balanceRaw, decimalScalingFactor, tokenRate);
         uint256 liveBalance = poolData.balancesLiveScaled18[0];
