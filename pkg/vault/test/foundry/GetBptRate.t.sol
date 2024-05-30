@@ -34,6 +34,8 @@ contract GetBptRateTest is BaseVaultTest {
     }
 
     function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
+        PoolRoleAccounts memory roleAccounts;
+
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
         weights = [uint256(0.50e18), uint256(0.50e18)].toMemoryArray();
 
@@ -52,7 +54,7 @@ contract GetBptRateTest is BaseVaultTest {
                 "ERC20POOL",
                 vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
                 weights,
-                PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+                roleAccounts,
                 swapFeePercentage,
                 address(0), // No hook contract
                 ZERO_BYTES32
