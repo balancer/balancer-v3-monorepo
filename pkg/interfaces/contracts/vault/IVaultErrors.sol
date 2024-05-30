@@ -36,7 +36,7 @@ interface IVaultErrors {
 
     /**
      * @dev A referenced pool has not been registered.
-     * @param poolHooksContract Address of the hook contract that rejected the factory
+     * @param poolHooksContract Address of the hook contract that rejected the pool registration
      * @param poolFactory Address of the rejected pool factory
      */
     error HookRegistrationFailed(address poolHooksContract, address poolFactory);
