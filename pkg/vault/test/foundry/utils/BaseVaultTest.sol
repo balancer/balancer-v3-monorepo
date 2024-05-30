@@ -24,7 +24,6 @@ import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { Router } from "../../../contracts/Router.sol";
-import { HooksConfigBits } from "../../../contracts/lib/HooksConfigLib.sol";
 import { BatchRouter } from "../../../contracts/BatchRouter.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
@@ -186,7 +185,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     function createHook() internal virtual returns (address) {
         // Sets all flags as false
-        return _createHook(HooksConfigBits.wrap(0).toHooksConfig());
+        HooksConfig memory hooksConfig;
+        return _createHook(hooksConfig);
     }
 
     function _createHook(HooksConfig memory hooksConfig) internal virtual returns (address) {
