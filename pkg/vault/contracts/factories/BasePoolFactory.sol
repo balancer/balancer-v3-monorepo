@@ -34,6 +34,9 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     // Store the creationCode of the contract to be deployed by create3.
     bytes private _creationCode;
 
+    /// @dev A pool creator was specified for a pool from a Balancer core pool type.
+    error StandardPoolWithCreator();
+
     constructor(
         IVault vault,
         uint256 pauseWindowDuration,

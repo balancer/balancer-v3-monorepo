@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IRateProvider } from "./IRateProvider.sol";
+import { IProtocolFeeCollector } from "./IProtocolFeeCollector.sol";
 import "./VaultTypes.sol";
 
 interface IVaultMain {
@@ -140,6 +141,13 @@ interface IVaultMain {
 
     /**
      * @notice Returns the Vault Extension address.
+     * @return Address of the VaultExtension
      */
     function getVaultExtension() external view returns (address);
+
+    /**
+     * @notice Returns the Protocol Fee Collector address.
+     * @return Address of the ProtocolFeeCollector
+     */
+    function getProtocolFeeCollector() external view returns (IProtocolFeeCollector);
 }
