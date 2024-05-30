@@ -63,7 +63,6 @@ contract YieldFeesTest is BaseVaultTest {
         yieldFeeFlags[1] = true;
 
         PoolRoleAccounts memory poolRoleAccounts;
-        poolRoleAccounts.poolCreator = address(lp);
 
         weightedPoolWithRate = WeightedPool(
             factory.create(
@@ -83,14 +82,6 @@ contract YieldFeesTest is BaseVaultTest {
 
         vm.label(address(weightedPoolWithRate), "weightedPoolWithRate");
         return address(weightedPoolWithRate);
-    }
-
-    function setProtocolYieldFeePercentage(uint256 yieldFeePercentage) internal {
-        bytes32 setFeeRole = vault.getActionId(IVaultAdmin.setProtocolYieldFeePercentage.selector);
-        authorizer.grantRole(setFeeRole, alice);
-
-        vm.prank(alice);
-        vault.setProtocolYieldFeePercentage(yieldFeePercentage);
     }
 
     function testSwapWithoutYieldFeesSnapshot() public {
@@ -178,10 +169,10 @@ contract YieldFeesTest is BaseVaultTest {
     ) private {
         _initializePoolAndRateProviders(wstethRate, daiRate);
 
-        setProtocolYieldFeePercentage(protocolYieldFeePercentage);
-        // lp is the pool creator, the only user who can change the pool creator fee percentage
-        vm.prank(lp);
-        vault.setPoolCreatorFeePercentage(address(pool), creatorYieldFeePercentage);
+        vault.manualSetAggregateProtocolYieldFeePercentage(
+            pool,
+            _getAggregateFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage)
+        );
 
         // Warm-up storage slots (using a different pool)
         // Pump the original rates [pumpRate / 2] times

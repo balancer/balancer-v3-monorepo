@@ -26,7 +26,7 @@ library HooksConfigLib {
         HooksConfig memory config,
         IBasePool.PoolSwapParams memory swapParams
     ) internal view returns (bool, uint256) {
-        if (!config.shouldCallComputeDynamicSwapFee) {
+        if (config.shouldCallComputeDynamicSwapFee == false) {
             return (false, 0);
         }
 
@@ -50,7 +50,7 @@ library HooksConfigLib {
         HooksConfig memory config,
         IBasePool.PoolSwapParams memory swapParams
     ) internal returns (bool) {
-        if (!config.shouldCallBeforeSwap) {
+        if (config.shouldCallBeforeSwap == false) {
             return false;
         }
 
@@ -73,11 +73,12 @@ library HooksConfigLib {
     function onAfterSwap(
         HooksConfig memory config,
         uint256 amountCalculatedScaled18,
+        address router,
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
     ) internal {
-        if (!config.shouldCallAfterSwap) {
+        if (config.shouldCallAfterSwap == false) {
             return;
         }
 
@@ -95,7 +96,7 @@ library HooksConfigLib {
                     amountOutScaled18: amountOutScaled18,
                     tokenInBalanceScaled18: poolData.balancesLiveScaled18[state.indexIn],
                     tokenOutBalanceScaled18: poolData.balancesLiveScaled18[state.indexOut],
-                    router: msg.sender,
+                    router: router,
                     userData: params.userData
                 }),
                 amountCalculatedScaled18
@@ -118,16 +119,17 @@ library HooksConfigLib {
     function onBeforeAddLiquidity(
         HooksConfig memory config,
         uint256[] memory maxAmountsInScaled18,
+        address router,
         AddLiquidityParams memory params,
         PoolData memory poolData
     ) internal returns (bool) {
-        if (!config.shouldCallBeforeAddLiquidity) {
+        if (config.shouldCallBeforeAddLiquidity == false) {
             return false;
         }
 
         if (
             IHooks(config.hooksContract).onBeforeAddLiquidity(
-                msg.sender,
+                router,
                 params.kind,
                 maxAmountsInScaled18,
                 params.minBptAmountOut,
@@ -154,16 +156,17 @@ library HooksConfigLib {
         HooksConfig memory config,
         uint256[] memory amountsInScaled18,
         uint256 bptAmountOut,
+        address router,
         AddLiquidityParams memory params,
         PoolData memory poolData
     ) internal {
-        if (!config.shouldCallAfterAddLiquidity) {
+        if (config.shouldCallAfterAddLiquidity == false) {
             return;
         }
 
         if (
             IHooks(config.hooksContract).onAfterAddLiquidity(
-                msg.sender,
+                router,
                 amountsInScaled18,
                 bptAmountOut,
                 poolData.balancesLiveScaled18,
@@ -188,16 +191,17 @@ library HooksConfigLib {
     function onBeforeRemoveLiquidity(
         HooksConfig memory config,
         uint256[] memory minAmountsOutScaled18,
+        address router,
         RemoveLiquidityParams memory params,
         PoolData memory poolData
     ) internal returns (bool) {
-        if (!config.shouldCallBeforeRemoveLiquidity) {
+        if (config.shouldCallBeforeRemoveLiquidity == false) {
             return false;
         }
 
         if (
             IHooks(config.hooksContract).onBeforeRemoveLiquidity(
-                msg.sender,
+                router,
                 params.kind,
                 params.maxBptAmountIn,
                 minAmountsOutScaled18,
@@ -224,16 +228,17 @@ library HooksConfigLib {
         HooksConfig memory config,
         uint256[] memory amountsOutScaled18,
         uint256 bptAmountIn,
+        address router,
         RemoveLiquidityParams memory params,
         PoolData memory poolData
     ) internal {
-        if (!config.shouldCallAfterRemoveLiquidity) {
+        if (config.shouldCallAfterRemoveLiquidity == false) {
             return;
         }
 
         if (
             IHooks(config.hooksContract).onAfterRemoveLiquidity(
-                msg.sender,
+                router,
                 bptAmountIn,
                 amountsOutScaled18,
                 poolData.balancesLiveScaled18,
@@ -258,7 +263,7 @@ library HooksConfigLib {
         uint256[] memory exactAmountsInScaled18,
         bytes memory userData
     ) internal returns (bool) {
-        if (!config.shouldCallBeforeInitialize) {
+        if (config.shouldCallBeforeInitialize == false) {
             return false;
         }
 
@@ -283,7 +288,7 @@ library HooksConfigLib {
         uint256 bptAmountOut,
         bytes memory userData
     ) internal {
-        if (!config.shouldCallAfterInitialize) {
+        if (config.shouldCallAfterInitialize == false) {
             return;
         }
 

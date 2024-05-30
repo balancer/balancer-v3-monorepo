@@ -9,6 +9,7 @@ import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultT
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
 import {
     HooksConfig,
     PoolFunctionPermission,
@@ -25,6 +26,7 @@ import {
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
+import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 
 // solhint-disable max-states-count
 
@@ -42,12 +44,6 @@ contract VaultStorage {
     uint256 internal constant _MIN_TOKENS = 2;
     // This maximum token count is also hard-coded in `PoolConfigLib`.
     uint256 internal constant _MAX_TOKENS = 4;
-
-    // Maximum protocol swap fee percentage. 1e18 corresponds to a 100% fee.
-    uint256 internal constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
-
-    // Maximum protocol yield fee percentage.
-    uint256 internal constant _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 20e16; // 20%
 
     // Maximum pool swap fee percentage.
     uint256 internal constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
@@ -81,8 +77,8 @@ contract VaultStorage {
     bool private __isUnlocked;
 
     /**
-     * @notice The total number of nonzero deltas over all active + completed lockers.
-     * @dev It is non-zero only during `lock` calls.
+     * @notice The total number of nonzero deltas.
+     * @dev It is non-zero only during `unlock` calls.
      */
     uint256 private __nonzeroDeltaCount;
 
@@ -92,17 +88,19 @@ contract VaultStorage {
      */
     mapping(IERC20 => int256) private __tokenDeltas;
 
+    // Pool -> (Token -> fee): aggregate protocol swap/yield fees accumulated in the Vault for harvest.
+    // Reusing PackedTokenBalance to save bytecode (despite differing semantics).
+    // It's arbitrary which is which: we define raw=swap; derived=yield
+    mapping(address => mapping(IERC20 => bytes32)) internal _aggregateProtocolFeeAmounts;
+
+    // Pool-specific creator fee percentage.
+    mapping(address => uint256) internal _poolCreatorFeePercentages;
+
     /**
-     * @notice Represents the total reserve of each ERC20 token.
-     * @dev It should be always equal to `token.balanceOf(vault)`, except during `lock`.
+     * @dev Represents the total reserve of each ERC20 token. It should be always equal to `token.balanceOf(vault)`,
+     * except during `unlock`.
      */
     mapping(IERC20 => uint256) internal _reservesOf;
-
-    // Pool -> (Token -> fee): Protocol fees (from both swap and yield) accumulated in the Vault for harvest.
-    mapping(address => mapping(IERC20 => uint256)) internal _protocolFees;
-
-    // Pool -> (Token -> fee): pool creator fees (from swap) accumulated in the Vault for harvest.
-    mapping(address => mapping(IERC20 => uint256)) internal _poolCreatorFees;
 
     // Upgradeable contract in charge of setting permissions.
     IAuthorizer internal _authorizer;
@@ -124,26 +122,8 @@ contract VaultStorage {
     // pool -> PoolRoleAccounts (accounts assigned to specific roles; e.g., pauseManager).
     mapping(address => PoolRoleAccounts) internal _poolRoleAccounts;
 
-    function _isUnlocked() internal pure returns (StorageSlot.BooleanSlotType slot) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            slot := __isUnlocked.slot
-        }
-    }
-
-    function _nonzeroDeltaCount() internal pure returns (StorageSlot.Uint256SlotType slot) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            slot := __nonzeroDeltaCount.slot
-        }
-    }
-
-    function _tokenDeltas() internal pure returns (TokenDeltaMappingSlotType slot) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            slot := __tokenDeltas.slot
-        }
-    }
+    // Contract that receives protocol swap and yield fees
+    IProtocolFeeCollector internal _protocolFeeCollector;
 
     // Buffers are a vault internal concept, keyed on the wrapped token address.
     // There will only ever be one buffer per wrapped token. This also means they are permissionless and
@@ -164,4 +144,24 @@ contract VaultStorage {
 
     // Prevents a malicious ERC4626 from changing the asset after the buffer was initialized.
     mapping(IERC20 => address) internal _bufferAssets;
+
+    // solhint-disable no-inline-assembly
+
+    function _isUnlocked() internal pure returns (StorageSlot.BooleanSlotType slot) {
+        assembly {
+            slot := __isUnlocked.slot
+        }
+    }
+
+    function _nonzeroDeltaCount() internal pure returns (StorageSlot.Uint256SlotType slot) {
+        assembly {
+            slot := __nonzeroDeltaCount.slot
+        }
+    }
+
+    function _tokenDeltas() internal pure returns (TokenDeltaMappingSlotType slot) {
+        assembly {
+            slot := __tokenDeltas.slot
+        }
+    }
 }

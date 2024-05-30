@@ -56,6 +56,8 @@ contract WeightedPoolTest is BaseVaultTest {
 
     function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
+        PoolRoleAccounts memory roleAccounts;
+
         weights = [uint256(0.50e18), uint256(0.50e18)].toMemoryArray();
 
         // Allow pools created by `factory` to use poolHooksMock hooks
@@ -67,7 +69,7 @@ contract WeightedPoolTest is BaseVaultTest {
                 "ERC20POOL",
                 vault.buildTokenConfig(tokens.asIERC20()),
                 weights,
-                PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+                roleAccounts,
                 DEFAULT_SWAP_FEE,
                 poolHooksContract,
                 ZERO_BYTES32
@@ -274,6 +276,7 @@ contract WeightedPoolTest is BaseVaultTest {
 
     function testFailSwapFeeTooLow() public {
         TokenConfig[] memory tokens = new TokenConfig[](2);
+        PoolRoleAccounts memory roleAccounts;
         tokens[0].token = IERC20(dai);
         tokens[1].token = IERC20(usdc);
 
@@ -282,7 +285,7 @@ contract WeightedPoolTest is BaseVaultTest {
             "ERC20POOL",
             tokens,
             [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+            roleAccounts,
             MIN_SWAP_FEE - 1, // Swap fee too low
             poolHooksContract,
             ZERO_BYTES32

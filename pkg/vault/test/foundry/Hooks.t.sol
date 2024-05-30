@@ -64,7 +64,11 @@ contract HooksTest is BaseVaultTest {
         );
 
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultErrors.HookRegisterFailed.selector, poolHooksContract, address(anotherFactory))
+            abi.encodeWithSelector(
+                IVaultErrors.HookRegistrationFailed.selector,
+                poolHooksContract,
+                address(anotherFactory)
+            )
         );
         anotherFactory.registerPool(
             address(anotherPool),
@@ -101,7 +105,11 @@ contract HooksTest is BaseVaultTest {
         );
 
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultErrors.HookRegisterFailed.selector, poolHooksContract, address(anotherFactory))
+            abi.encodeWithSelector(
+                IVaultErrors.HookRegistrationFailed.selector,
+                poolHooksContract,
+                address(anotherFactory)
+            )
         );
         anotherFactory.registerPool(
             address(anotherPool),
@@ -222,7 +230,10 @@ contract HooksTest is BaseVaultTest {
         vault.setHooksConfig(address(pool), hooksConfig);
 
         setSwapFeePercentage(swapFeePercentage);
-        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
+        vault.manualSetAggregateProtocolSwapFeePercentage(
+            pool,
+            _getAggregateFeePercentage(protocolSwapFeePercentage, 0)
+        );
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(swapFeePercentage);
 
         uint256 expectedAmountOut = defaultAmount.mulDown(swapFeePercentage.complement());

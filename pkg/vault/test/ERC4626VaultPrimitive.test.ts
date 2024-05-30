@@ -14,7 +14,7 @@ import {
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import { currentTimestamp, MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { ERC20TestToken, ERC4626TestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
-import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
 import {
   HooksConfigStructOutput,
   PoolConfigStructOutput,
@@ -111,9 +111,7 @@ describe('ERC4626VaultPrimitive', function () {
     rateProviders[boostedPoolTokens.indexOf(await wDAI.getAddress())] = await rpwDAI.getAddress();
     rateProviders[boostedPoolTokens.indexOf(await wUSDC.getAddress())] = await rpwUSDC.getAddress();
 
-    await factory
-      .connect(lp)
-      .registerTestPool(pool, buildTokenConfig(boostedPoolTokens, rateProviders), ZERO_ADDRESS, ZERO_ADDRESS);
+    await factory.connect(lp).registerTestPool(pool, buildTokenConfig(boostedPoolTokens, rateProviders));
 
     return (await deployedAt('PoolMock', await pool.getAddress())) as unknown as PoolMock;
   }

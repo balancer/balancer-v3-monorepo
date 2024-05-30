@@ -25,7 +25,6 @@
 //     // 9 flags + 160 bit address = 169 total bits used.
 //     uint256 private constant BITS_IN_USE = 169;
 
-//     // #region HooksConfigBits
 //     function testOffsets() public {
 //         _checkBit(HooksConfigLib.DYNAMIC_SWAP_FEE_OFFSET);
 //         _checkBit(HooksConfigLib.BEFORE_SWAP_OFFSET);
@@ -133,9 +132,6 @@
 //         assertEq(configBits.getHooksContract(), address(0), "hooks contract address isn't zero");
 //     }
 
-//     // #endregion
-
-//     // #region HooksConfig
 //     function test public {
 //         assertEq(
 //             HooksConfigBits
@@ -334,10 +330,9 @@
 //         assertEq(bytes32(0), configBytes32);
 //     }
 
-//     // #endregion
-
-//     // #region private
-//     function _createEmptyConfig() private pure returns (HooksConfig memory) {}
+//    function _createEmptyConfig() private pure returns (HooksConfig memory config) {
+//        return config;
+//    }
 
 //     function _checkBits(uint256 startBit, uint256 size) private {
 //         uint256 endBit = startBit + size;
@@ -350,5 +345,4 @@
 //         assertEq(usedBits[bitNumber], false, "Bit already used");
 //         usedBits[bitNumber] = true;
 //     }
-//     // #endregion
 // }

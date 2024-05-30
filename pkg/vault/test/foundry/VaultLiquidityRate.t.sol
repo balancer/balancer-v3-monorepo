@@ -45,7 +45,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             newPool,
             vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
             poolHooksContract,
-            address(lp)
+            lp
         );
 
         return newPool;
@@ -151,7 +151,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             bytes("")
         );
 
-        PoolData memory balances = vault.computePoolDataUpdatingBalancesAndFees(address(pool), Rounding.ROUND_DOWN);
+        PoolData memory balances = vault.loadPoolDataUpdatingBalancesAndYieldFees(address(pool), Rounding.ROUND_DOWN);
         uint256 bptAmountIn = defaultAmount * 2;
 
         vm.expectCall(
@@ -178,7 +178,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             bytes("")
         );
 
-        PoolData memory balances = vault.computePoolDataUpdatingBalancesAndFees(address(pool), Rounding.ROUND_DOWN);
+        PoolData memory balances = vault.loadPoolDataUpdatingBalancesAndYieldFees(address(pool), Rounding.ROUND_DOWN);
         uint256[] memory expectedAmountsOutRaw = new uint256[](2);
 
         expectedAmountsOutRaw[wstethIdx] = FixedPoint.mulDown(defaultAmount, mockRate);

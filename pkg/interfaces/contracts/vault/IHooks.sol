@@ -15,17 +15,18 @@ interface IHooks {
     ***************************************************************************/
 
     /**
-     * @notice hook to be executed when pool is registered. If it returns false, the registry of a pool with the hook
-     * is reverted. Vault address can be accessed with msg.sender.
+     * @notice Hook to be executed when pool is registered. If it returns false, the registration
+     * is reverted.
+     * @dev Vault address can be accessed with msg.sender.
      * @param factory Address of the pool factory
      * @param pool Address of the pool
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
-     * @return success True if the hook allowed the registry
+     * @return success True if the hook allowed the registration, false otherwise
      */
     function onRegister(address factory, address pool, TokenConfig[] memory tokenConfig) external returns (bool);
 
     /**
-     * @notice returns flags informing which hooks are implemented in the contract.
+     * @notice Returns flags informing which hooks are implemented in the contract.
      * @return hooksConfig Flags indicating which hooks the contract supports and the address of the hook contract
      */
     function getHooksConfig() external returns (HooksConfig memory hooksConfig);
