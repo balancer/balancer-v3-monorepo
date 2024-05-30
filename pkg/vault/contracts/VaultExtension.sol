@@ -187,7 +187,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
 
             // Gets the default HooksConfig from the hook contract and saves in the vault state
-            _hooksConfig[pool] = IHooks(params.poolHooksContract).getHooksConfig();
+            // Storing into hooksConfig first avoids stack-too-deep
+            hooksConfig = IHooks(params.poolHooksContract).getHooksConfig();
+            _hooksConfig[pool] = hooksConfig;
         }
 
         uint256 numTokens = params.tokenConfig.length;
@@ -271,7 +273,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.swapFeePercentage,
             params.pauseWindowEndTime,
             params.roleAccounts,
-            _hooksConfig[pool],
+            hooksConfig,
             params.liquidityManagement
         );
     }
