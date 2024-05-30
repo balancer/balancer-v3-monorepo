@@ -178,6 +178,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert PoolAlreadyRegistered(pool);
         }
 
+        HooksConfig memory hooksConfig;
+
         if (params.poolHooksContract != address(0)) {
             // If a hook address was passed, make sure that hook trusts the pool factory
             if (IHooks(params.poolHooksContract).onRegister(msg.sender, pool, params.tokenConfig) != true) {
@@ -185,7 +187,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
 
             // Gets the default HooksConfig from the hook contract and saves in the vault state
-            _hooksConfig[pool] = IHooks(params.poolHooksContract).getHooksConfig().fromHooksConfig();
+            hooksConfig = IHooks(params.poolHooksContract).getHooksConfig();
+            _hooksConfig[pool] = hooksConfig.fromHooksConfig();
         }
 
         uint256 numTokens = params.tokenConfig.length;
@@ -269,7 +272,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.swapFeePercentage,
             params.pauseWindowEndTime,
             params.roleAccounts,
-            _hooksConfig[pool].toHooksConfig(),
+            hooksConfig,
             params.liquidityManagement
         );
     }
