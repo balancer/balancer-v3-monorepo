@@ -60,6 +60,7 @@ contract StablePoolTest is BaseVaultTest {
     function createPool() internal override returns (address) {
         factory = new StablePoolFactory(IVault(address(vault)), 365 days);
         TokenConfig[] memory tokens = new TokenConfig[](2);
+        PoolRoleAccounts memory roleAccounts;
         tokens[0].token = IERC20(dai);
         tokens[1].token = IERC20(usdc);
 
@@ -69,7 +70,7 @@ contract StablePoolTest is BaseVaultTest {
                 "ERC20POOL",
                 inputHelpersMock.sortTokenConfig(tokens),
                 DEFAULT_AMP_FACTOR,
-                PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
+                roleAccounts,
                 DEFAULT_SWAP_FEE,
                 ZERO_BYTES32
             )

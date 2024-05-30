@@ -7,6 +7,8 @@ import "forge-std/Test.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -38,10 +40,16 @@ contract WeightedPoolSwaps is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
+        IProtocolFeeCollector feeCollector = vault.getProtocolFeeCollector();
+        IAuthentication feeCollectorAuth = IAuthentication(address(feeCollector));
+
         // Set protocol fee
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setProtocolSwapFeePercentage.selector), alice);
+        authorizer.grantRole(
+            feeCollectorAuth.getActionId(IProtocolFeeCollector.setGlobalProtocolSwapFeePercentage.selector),
+            alice
+        );
         vm.prank(alice);
-        vault.setProtocolSwapFeePercentage(50e16); // 50%
+        feeCollector.setGlobalProtocolSwapFeePercentage(50e16); // 50%
     }
 
     function createPool() internal override returns (address) {
