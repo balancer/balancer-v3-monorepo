@@ -302,8 +302,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             revert PoolCreatorFeePercentageTooHigh();
         }
 
-        collectProtocolFees(pool);
-
         _poolCreatorFeePercentages[pool] = poolCreatorFeePercentage;
 
         // Need to update aggregate percentages.
@@ -312,10 +310,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             uint256 aggregateProtocolSwapFeePercentage,
             uint256 aggregateProtocolYieldFeePercentage
         ) = _protocolFeeController.computeAggregatePercentages(pool, poolCreatorFeePercentage);
-
         config.setAggregateProtocolSwapFeePercentage(aggregateProtocolSwapFeePercentage);
         config.setAggregateProtocolYieldFeePercentage(aggregateProtocolYieldFeePercentage);
         _poolConfig[pool] = config;
+
+        collectProtocolFees(pool);
 
         emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
     }
