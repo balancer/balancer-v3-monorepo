@@ -314,6 +314,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         config.setAggregateProtocolYieldFeePercentage(aggregateProtocolYieldFeePercentage);
         _poolConfig[pool] = config;
 
+        // NOTE: If you move this line to upper, it will create a stack too deep error.
         collectProtocolFees(pool);
 
         emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
