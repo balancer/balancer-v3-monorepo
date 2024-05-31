@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
-import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -409,16 +409,16 @@ contract VaultSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        IProtocolFeeCollector feeCollector = vault.getProtocolFeeCollector();
+        IProtocolFeeController feeController = vault.getProtocolFeeController();
         vault.collectProtocolFees(pool);
-        uint256[] memory feeAmounts = feeCollector.getAggregateProtocolFeeAmounts(pool);
+        uint256[] memory feeAmounts = feeController.getAggregateProtocolFeeAmounts(pool);
 
         authorizer.grantRole(
-            IAuthentication(address(feeCollector)).getActionId(IProtocolFeeCollector.withdrawProtocolFees.selector),
+            IAuthentication(address(feeController)).getActionId(IProtocolFeeController.withdrawProtocolFees.selector),
             admin
         );
         vm.prank(admin);
-        feeCollector.withdrawProtocolFees(pool, address(admin));
+        feeController.withdrawProtocolFees(pool, address(admin));
 
         // protocol fees are zero
         assertEq(0, feeAmounts[usdcIdx], "Protocol fees are not zero");
