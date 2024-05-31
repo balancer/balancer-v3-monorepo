@@ -265,7 +265,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         state.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         state.pauseWindowEndTime = params.pauseWindowEndTime;
         // Initialize the pool-specific protocol fee values to the current global defaults.
-        (state.aggregateProtocolSwapFeePercentage, state.aggregateProtocolYieldFeePercentage) = _protocolFeeCollector
+        (state.aggregateProtocolSwapFeePercentage, state.aggregateProtocolYieldFeePercentage) = _protocolFeeController
             .registerPool(pool);
         _poolState[pool] = state.fromPoolState();
 
