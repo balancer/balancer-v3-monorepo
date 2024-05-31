@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
@@ -17,7 +17,7 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication, ReentrancyGuardTransient {
+contract ProtocolFeeController is IProtocolFeeController, SingletonAuthentication, ReentrancyGuardTransient {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
@@ -104,36 +104,36 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function vault() external view returns (IVault) {
         return getVault();
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function getGlobalProtocolSwapFeePercentage() external view returns (uint256) {
         return _globalProtocolSwapFeePercentage;
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function getGlobalProtocolYieldFeePercentage() external view returns (uint256) {
         return _globalProtocolYieldFeePercentage;
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function getPoolProtocolSwapFeeInfo(address pool) external view returns (uint256, bool) {
         PoolFeeConfig memory config = _poolProtocolSwapFeePercentages[pool];
 
         return (config.feePercentage, config.isOverride);
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function getPoolProtocolYieldFeeInfo(address pool) external view returns (uint256, bool) {
         PoolFeeConfig memory config = _poolProtocolYieldFeePercentages[pool];
 
         return (config.feePercentage, config.isOverride);
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function getAggregateProtocolFeeAmounts(address pool) public view returns (uint256[] memory feeAmounts) {
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
 
@@ -143,7 +143,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         }
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function getAggregatePoolCreatorFeeAmounts(address pool) public view returns (uint256[] memory feeAmounts) {
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
 
@@ -153,7 +153,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         }
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function computeAggregatePercentages(
         address pool,
         uint256 poolCreatorFeePercentage
@@ -200,7 +200,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         numTokens = tokens.length;
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function updateProtocolSwapFeePercentage(address pool) external withLatestFees(pool) {
         PoolFeeConfig memory feeConfig = _poolProtocolSwapFeePercentages[pool];
         uint256 globalProtocolSwapFee = _globalProtocolSwapFeePercentage;
@@ -212,7 +212,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         }
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function updateProtocolYieldFeePercentage(address pool) external withLatestFees(pool) {
         PoolFeeConfig memory feeConfig = _poolProtocolYieldFeePercentages[pool];
         uint256 globalProtocolYieldFee = _globalProtocolYieldFeePercentage;
@@ -228,7 +228,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
                                 Permissioned Functions
     ***************************************************************************/
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function registerPool(
         address pool
     )
@@ -251,7 +251,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         YIELD
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function receiveProtocolFees(
         address pool,
         uint256[] memory swapFeeAmounts,
@@ -316,7 +316,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         }
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function setGlobalProtocolSwapFeePercentage(
         uint256 newProtocolSwapFeePercentage
     ) external withValidSwapFee(newProtocolSwapFeePercentage) authenticate {
@@ -325,7 +325,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         emit GlobalProtocolSwapFeePercentageChanged(newProtocolSwapFeePercentage);
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function setGlobalProtocolYieldFeePercentage(
         uint256 newProtocolYieldFeePercentage
     ) external withValidYieldFee(newProtocolYieldFeePercentage) authenticate {
@@ -334,7 +334,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         emit GlobalProtocolYieldFeePercentageChanged(newProtocolYieldFeePercentage);
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function setProtocolSwapFeePercentage(
         address pool,
         uint256 newProtocolSwapFeePercentage
@@ -344,7 +344,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         _updatePoolSwapFeePercentage(pool, newProtocolSwapFeePercentage, poolCreatorFeePercentage, true);
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function setProtocolYieldFeePercentage(
         address pool,
         uint256 newProtocolYieldFeePercentage
@@ -354,7 +354,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         _updatePoolYieldFeePercentage(pool, newProtocolYieldFeePercentage, poolCreatorFeePercentage, true);
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function withdrawProtocolFees(address pool, address recipient) external authenticate {
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
 
@@ -369,7 +369,7 @@ contract ProtocolFeeCollector is IProtocolFeeCollector, SingletonAuthentication,
         }
     }
 
-    /// @inheritdoc IProtocolFeeCollector
+    /// @inheritdoc IProtocolFeeController
     function withdrawPoolCreatorFees(address pool, address recipient) external onlyPoolCreator(pool) {
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
 

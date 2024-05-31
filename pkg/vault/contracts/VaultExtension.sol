@@ -267,7 +267,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             (
                 uint256 aggregateProtocolSwapFeePercentage,
                 uint256 aggregateProtocolYieldFeePercentage
-            ) = _protocolFeeCollector.registerPool(pool);
+            ) = _protocolFeeController.registerPool(pool);
             config.setAggregateProtocolSwapFeePercentage(aggregateProtocolSwapFeePercentage);
             config.setAggregateProtocolYieldFeePercentage(aggregateProtocolYieldFeePercentage);
 

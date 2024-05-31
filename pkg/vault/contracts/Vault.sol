@@ -18,7 +18,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -57,17 +57,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using StorageSlot for *;
     using PoolDataLib for PoolData;
 
-    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer, IProtocolFeeCollector protocolFeeCollector) {
+    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer, IProtocolFeeController protocolFeeController) {
         if (address(vaultExtension.vault()) != address(this)) {
             revert WrongVaultExtensionDeployment();
         }
 
-        if (address(protocolFeeCollector.vault()) != address(this)) {
-            revert WrongProtocolFeeCollectorDeployment();
+        if (address(protocolFeeController.vault()) != address(this)) {
+            revert WrongProtocolFeeControllerDeployment();
         }
 
         _vaultExtension = vaultExtension;
-        _protocolFeeCollector = protocolFeeCollector;
+        _protocolFeeController = protocolFeeController;
 
         _vaultPauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
         _vaultBufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
@@ -922,8 +922,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function getProtocolFeeCollector() external view returns (IProtocolFeeCollector) {
-        return _protocolFeeCollector;
+    function getProtocolFeeController() external view returns (IProtocolFeeController) {
+        return _protocolFeeController;
     }
 
     /*******************************************************************************

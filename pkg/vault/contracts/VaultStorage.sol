@@ -9,7 +9,7 @@ import { TokenConfig, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
-import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
@@ -118,7 +118,7 @@ contract VaultStorage {
     mapping(address => PoolRoleAccounts) internal _poolRoleAccounts;
 
     // Contract that receives protocol swap and yield fees
-    IProtocolFeeCollector internal _protocolFeeCollector;
+    IProtocolFeeController internal _protocolFeeController;
 
     // Buffers are a vault internal concept, keyed on the wrapped token address.
     // There will only ever be one buffer per wrapped token. This also means they are permissionless and
