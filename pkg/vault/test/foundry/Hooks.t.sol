@@ -131,6 +131,7 @@ contract HooksTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
+                    amountGivenRaw: defaultAmount,
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
                     indexIn: usdcIdx,
                     indexOut: daiIdx,
@@ -180,6 +181,7 @@ contract HooksTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
+                    amountGivenRaw: defaultAmount,
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
                     indexIn: usdcIdx,
                     indexOut: daiIdx,
@@ -248,6 +250,7 @@ contract HooksTest is BaseVaultTest {
                     router: address(router),
                     userData: ""
                 }),
+                expectedAmountOut,
                 expectedAmountOut
             )
         );
@@ -413,6 +416,7 @@ contract HooksTest is BaseVaultTest {
                 IHooks.onAfterAddLiquidity.selector,
                 router,
                 [defaultAmount, defaultAmount].toMemoryArray(),
+                [defaultAmount, defaultAmount].toMemoryArray(),
                 bptAmount,
                 [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),
                 bytes("")
@@ -473,6 +477,7 @@ contract HooksTest is BaseVaultTest {
                 IHooks.onAfterRemoveLiquidity.selector,
                 router,
                 bptAmount,
+                [defaultAmount, defaultAmount].toMemoryArray(),
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bytes("")

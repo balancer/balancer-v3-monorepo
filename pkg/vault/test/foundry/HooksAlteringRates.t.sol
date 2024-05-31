@@ -73,6 +73,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: rateAdjustedAmount,
+                    amountGivenRaw: defaultAmount,
                     balancesScaled18: expectedBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
@@ -143,7 +144,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
-        // Unbalanced add sets amounts to maxAmounts. We can't intercept `_addLliquidity`, but can verify
+        // Unbalanced add sets amounts to maxAmounts. We can't intercept `_addLiquidity`, but can verify
         // maxAmounts are updated by inspecting the amountsIn.
 
         uint256[] memory expectedAmountsIn = new uint256[](2);
@@ -162,6 +163,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
                 IHooks.onAfterAddLiquidity.selector,
                 router,
                 expectedAmountsIn,
+                [defaultAmount, defaultAmount].toMemoryArray(),
                 defaultAmount * 2,
                 expectedBalances,
                 bytes("")

@@ -551,6 +551,7 @@ contract VaultUnitSwapTest is BaseTest {
                 IBasePool.PoolSwapParams({
                     kind: params.kind,
                     amountGivenScaled18: state.amountGivenScaled18,
+                    amountGivenRaw: params.amountGivenRaw,
                     balancesScaled18: poolData.balancesLiveScaled18,
                     indexIn: state.indexIn,
                     indexOut: state.indexOut,
