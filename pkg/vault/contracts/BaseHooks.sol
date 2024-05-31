@@ -14,8 +14,6 @@ import { VaultGuard } from "./VaultGuard.sol";
  * and only override what they need.
  */
 abstract contract BaseHooks is IHooks, VaultGuard {
-    HooksConfig internal _hooksConfig;
-
     constructor(IVault vault) VaultGuard(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -27,9 +25,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
     }
 
     /// @inheritdoc IHooks
-    function getHooksConfig() external virtual returns (HooksConfig memory) {
-        return _hooksConfig;
-    }
+    function getHooksConfig() external virtual returns (HooksConfig memory);
 
     /// @inheritdoc IHooks
     function onBeforeInitialize(uint256[] memory, bytes memory) external virtual onlyVault returns (bool) {
