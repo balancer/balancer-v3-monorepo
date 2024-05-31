@@ -259,7 +259,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         config.pauseWindowEndTime = params.pauseWindowEndTime;
         // Initialize the pool-specific protocol fee values to the current global defaults.
         (config.aggregateProtocolSwapFeePercentage, config.aggregateProtocolYieldFeePercentage) = _protocolFeeCollector
-            .registerPool(pool);
+            .registerPool(pool, params.roleAccounts.poolCreator);
         _poolConfig[pool] = config.fromPoolConfig();
 
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
@@ -297,15 +297,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
             roleAssignments[swapFeeAction] = PoolFunctionPermission({
                 account: roleAccounts.swapFeeManager,
-                onlyOwner: true
-            });
-        }
-
-        if (roleAccounts.poolCreator != address(0)) {
-            bytes32 poolCreatorFeeAction = vaultAdmin.getActionId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
-
-            roleAssignments[poolCreatorFeeAction] = PoolFunctionPermission({
-                account: roleAccounts.poolCreator,
                 onlyOwner: true
             });
         }
