@@ -83,18 +83,21 @@ interface IHooks {
      * @notice Optional hook to be executed after adding liquidity.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param amountsInScaled18 Actual amounts of tokens added, in the same order as the tokens registered in the pool
+     * @param amountsInRaw Actual amounts of tokens added, in the same order as the tokens registered in the pool
      * @param bptAmountOut Amount of pool tokens minted
      * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
      * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
+     * @return updatedAmountsInRaw New amounts in, modified by the hook
      */
     function onAfterAddLiquidity(
         address router,
         uint256[] memory amountsInScaled18,
+        uint256[] memory amountsInRaw,
         uint256 bptAmountOut,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) external returns (bool success);
+    ) external returns (bool success, uint256[] memory updatedAmountsInRaw);
 
     /***************************************************************************
                                  Remove Liquidity
@@ -124,17 +127,20 @@ interface IHooks {
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param bptAmountIn Amount of pool tokens to burn
      * @param amountsOutScaled18 Amount of tokens to receive, in the same order as the tokens registered in the pool
+     * @param amountsOutRaw Amount of tokens to receive, in the same order as the tokens registered in the pool
      * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
      * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
+     * @return updatedAmountsOutRaw New amounts out, modified by the hook
      */
     function onAfterRemoveLiquidity(
         address router,
         uint256 bptAmountIn,
         uint256[] memory amountsOutScaled18,
+        uint256[] memory amountsOutRaw,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) external returns (bool success);
+    ) external returns (bool success, uint256[] memory updatedAmountsOutRaw);
 
     /***************************************************************************
                                     Swap
@@ -170,8 +176,11 @@ interface IHooks {
      *
      * @param params Swap parameters (see IBasePool.PoolSwapParams for struct definition)
      * @return success True if the pool wishes to proceed with settlement
+     * @return updatedAmountGivenRaw New amount given, modified by the hook
      */
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external returns (bool success);
+    function onBeforeSwap(
+        IBasePool.PoolSwapParams calldata params
+    ) external returns (bool success, uint256 updatedAmountGivenRaw);
 
     /**
      * @notice Called after a swap to give the Pool an opportunity to perform actions.
@@ -179,12 +188,15 @@ interface IHooks {
      *
      * @param params Swap parameters (see above for struct definition)
      * @param amountCalculatedScaled18 Token amount calculated by the swap
+     * @param amountCalculatedRaw Token amount calculated by the swap
      * @return success True if the pool wishes to proceed with settlement
+     * @return updatedAmountCalculatedRaw New amount calculated, modified by the hook
      */
     function onAfterSwap(
         AfterSwapParams calldata params,
-        uint256 amountCalculatedScaled18
-    ) external returns (bool success);
+        uint256 amountCalculatedScaled18,
+        uint256 amountCalculatedRaw
+    ) external returns (bool success, uint256 updatedAmountCalculatedRaw);
 
     /**
      * @notice Called before `onBeforeSwap` if the pool has dynamic fees.

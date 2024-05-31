@@ -196,7 +196,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
 
-        if (hooksConfig.onBeforeSwap(swapParams) == true) {
+        // HooksConfigLib returns the original amountGivenRaw if the hook fails to execute, or the hook new
+        // amountGivenRaw otherwise
+        (state.onBeforeSwapSuccess, params.amountGivenRaw) = hooksConfig.onBeforeSwap(swapParams);
+
+        if (state.onBeforeSwapSuccess == true) {
             // The call to `onBeforeSwap` could potentially update token rates and balances.
             // We update `poolData.tokenRates`, `poolData.rawBalances` and `poolData.balancesLiveScaled18`
             // to ensure the `onSwap` and `onComputeDynamicSwapFee` are called with the current values.
@@ -223,7 +227,24 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountCalculatedScaled18;
         (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, swapParams);
 
-        hooksConfig.onAfterSwap(amountCalculatedScaled18, msg.sender, params, state, poolData);
+        // HooksConfigLib returns the original amountCalculated if the hook fails to execute, or the hook new
+        // amountCalculated otherwise
+        (state.onAfterSwapSuccess, amountCalculated) = hooksConfig.onAfterSwap(
+            amountCalculatedScaled18,
+            amountCalculated,
+            msg.sender,
+            params,
+            state,
+            poolData
+        );
+
+        if (state.onAfterSwapSuccess) {
+            if (params.kind == SwapKind.EXACT_IN) {
+                amountOut = amountCalculated;
+            } else {
+                amountIn = amountCalculated;
+            }
+        }
     }
 
     function _loadSwapState(
@@ -268,6 +289,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             IBasePool.PoolSwapParams({
                 kind: params.kind,
                 amountGivenScaled18: state.amountGivenScaled18,
+                amountGivenRaw: params.amountGivenRaw,
                 balancesScaled18: poolData.balancesLiveScaled18,
                 indexIn: state.indexIn,
                 indexOut: state.indexOut,
@@ -516,7 +538,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             maxAmountsInScaled18
         );
 
-        hooksConfig.onAfterAddLiquidity(amountsInScaled18, bptAmountOut, msg.sender, params, poolData);
+        // HooksConfigLib returns the original amountsIn if the hook fails to execute, or the hook new amountsIn
+        // otherwise
+        (, amountsIn) = hooksConfig.onAfterAddLiquidity(
+            amountsInScaled18,
+            amountsIn,
+            bptAmountOut,
+            msg.sender,
+            params,
+            poolData
+        );
     }
 
     /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
@@ -726,7 +757,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vaultState
         );
 
-        hooksConfig.onAfterRemoveLiquidity(amountsOutScaled18, bptAmountIn, msg.sender, params, poolData);
+        // HooksConfigLib returns the original amountsOut if the hook fails to execute, or the hook new amountsOut
+        // otherwise
+        (, amountsOut) = hooksConfig.onAfterRemoveLiquidity(
+            amountsOutScaled18,
+            amountsOut,
+            bptAmountIn,
+            msg.sender,
+            params,
+            poolData
+        );
     }
 
     /**

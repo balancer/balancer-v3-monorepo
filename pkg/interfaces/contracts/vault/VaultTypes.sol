@@ -46,6 +46,8 @@ struct SwapState {
     uint256 indexOut;
     uint256 amountGivenScaled18;
     uint256 swapFeePercentage;
+    bool onBeforeSwapSuccess;
+    bool onAfterSwapSuccess;
 }
 
 /**

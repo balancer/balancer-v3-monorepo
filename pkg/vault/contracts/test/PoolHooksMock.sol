@@ -109,7 +109,7 @@ contract PoolHooksMock is BaseHooks {
         return (!failOnComputeDynamicSwapFeeHook, finalSwapFee);
     }
 
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata) external override returns (bool success) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata) external override returns (bool success, uint updatedAmountGivenRaw) {
         if (changeTokenRateOnBeforeSwapHook) {
             _updateTokenRate();
         }
@@ -125,13 +125,14 @@ contract PoolHooksMock is BaseHooks {
             Address.functionCall(_swapHookContract, _swapHookCalldata);
         }
 
-        return !failOnBeforeSwapHook;
+        return (!failOnBeforeSwapHook, updatedAmountGivenRaw);
     }
 
     function onAfterSwap(
         IHooks.AfterSwapParams calldata params,
-        uint256 amountCalculatedScaled18
-    ) external view override returns (bool success) {
+        uint256 amountCalculatedScaled18,
+        uint256 amountCalculatedRaw
+    ) external view override returns (bool success, uint256 updatedAmountCalculatedRaw) {
         // check that actual pool balances match
         (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory scalingFactors) = _vault
             .getPoolTokenInfo(_pool);
@@ -143,30 +144,30 @@ contract PoolHooksMock is BaseHooks {
         for (uint256 i = 0; i < tokenConfig.length; ++i) {
             if (tokenConfig[i].token == params.tokenIn) {
                 if (params.tokenInBalanceScaled18 != currentLiveBalances[i]) {
-                    return false;
+                    return (false, updatedAmountCalculatedRaw);
                 }
                 uint256 expectedTokenInBalanceRaw = params.tokenInBalanceScaled18.toRawUndoRateRoundDown(
                     scalingFactors[i],
                     rates[i]
                 );
                 if (expectedTokenInBalanceRaw != balancesRaw[i]) {
-                    return false;
+                    return (false, updatedAmountCalculatedRaw);
                 }
             } else if (tokenConfig[i].token == params.tokenOut) {
                 if (params.tokenOutBalanceScaled18 != currentLiveBalances[i]) {
-                    return false;
+                    return (false, updatedAmountCalculatedRaw);
                 }
                 uint256 expectedTokenOutBalanceRaw = params.tokenOutBalanceScaled18.toRawUndoRateRoundDown(
                     scalingFactors[i],
                     rates[i]
                 );
                 if (expectedTokenOutBalanceRaw != balancesRaw[i]) {
-                    return false;
+                    return (false, updatedAmountCalculatedRaw);
                 }
             }
         }
 
-        return amountCalculatedScaled18 > 0 && !failOnAfterSwapHook;
+        return (amountCalculatedScaled18 > 0 && !failOnAfterSwapHook, updatedAmountCalculatedRaw);
     }
 
     // Liquidity lifecycle hooks
@@ -212,21 +213,23 @@ contract PoolHooksMock is BaseHooks {
     function onAfterAddLiquidity(
         address,
         uint256[] memory,
+        uint256[] memory amountsInRaw,
         uint256,
         uint256[] memory,
         bytes memory
-    ) external view override returns (bool) {
-        return !failOnAfterAddLiquidity;
+    ) external view override returns (bool, uint256[] memory) {
+        return (!failOnAfterAddLiquidity, amountsInRaw);
     }
 
     function onAfterRemoveLiquidity(
         address,
         uint256,
         uint256[] memory,
+        uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) external view override returns (bool) {
-        return !failOnAfterRemoveLiquidity;
+    ) external view override returns (bool, uint256[] memory) {
+        return (!failOnAfterRemoveLiquidity, amountsOutRaw);
     }
 
     /***********************************************************
