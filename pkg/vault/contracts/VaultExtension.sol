@@ -548,8 +548,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function getStaticSwapFeeManager(address pool) external view withRegisteredPool(pool) onlyVault returns (address) {
-        return _poolRoleAccounts[pool].swapFeeManager;
+    function getPoolRoleAccounts(
+        address pool
+    ) external view withRegisteredPool(pool) onlyVault returns (PoolRoleAccounts memory) {
+        return _poolRoleAccounts[pool];
     }
 
     /*******************************************************************************
