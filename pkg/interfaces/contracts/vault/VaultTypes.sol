@@ -19,14 +19,14 @@ struct PoolConfig {
     uint24 aggregateProtocolYieldFeePercentageUnscaled;
     uint24 tokenDecimalDiffs;
     uint32 pauseWindowEndTime;
-    // NOTE: Duplicated parameters from LiquidityManagement because parameters are packed in one slot.
-    bool disableUnbalancedLiquidity;
-    bool enableAddLiquidityCustom;
-    bool enableRemoveLiquidityCustom;
     bool isPoolRegistered;
     bool isPoolInitialized;
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
+    // NOTE: Duplicated parameters from LiquidityManagement because parameters are packed in one slot.
+    bool disableUnbalancedLiquidity;
+    bool enableAddLiquidityCustom;
+    bool enableRemoveLiquidityCustom;
 }
 
 /// @dev Represents a hook contract configuration for a pool.
