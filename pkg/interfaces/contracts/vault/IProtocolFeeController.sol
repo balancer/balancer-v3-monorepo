@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
 
-interface IProtocolFeeCollector {
+interface IProtocolFeeController {
     /**
      * @notice Emitted when the protocol swap fee percentage is updated.
      * @param swapFeePercentage The updated protocol swap fee percentage
@@ -36,7 +36,7 @@ interface IProtocolFeeCollector {
     /**
      * @notice Logs the collection of protocol swap fees in a specific token and amount.
      * @dev Note that since charging protocol fees (i.e., distributing tokens between pool and fee balances) occurs
-     * in the Vault, but fee collection happens in the ProtocolFeeCollector, the swap fees reported here may encompass
+     * in the Vault, but fee collection happens in the ProtocolFeeController, the swap fees reported here may encompass
      * multiple operations.
      *
      * @param pool The pool on which the swap fee was charged
@@ -48,7 +48,7 @@ interface IProtocolFeeCollector {
     /**
      * @notice Logs the collection of protocol yield fees in a specific token and amount.
      * @dev Note that since charging protocol fees (i.e., distributing tokens between pool and fee balances) occurs
-     * in the Vault, but fee collection happens in the ProtocolFeeCollector, the yield fees reported here may encompass
+     * in the Vault, but fee collection happens in the ProtocolFeeController, the yield fees reported here may encompass
      * multiple operations.
      *
      * @param pool The pool on which the yield fee was charged
@@ -179,7 +179,7 @@ interface IProtocolFeeCollector {
      * @notice Called by the Vault when protocol swap or yield fees are collected.
      * @dev This must be called from the Vault, during permissionless collection. Note that since charging protocol
      * fees (i.e., distributing tokens between pool and fee balances) occurs in the Vault, but fee collection
-     * happens in the ProtocolFeeCollector, the swap fees reported here may encompass multiple operations.
+     * happens in the ProtocolFeeController, the swap fees reported here may encompass multiple operations.
      *
      * @param pool The pool on which the swap fees were charged
      * @param swapFeeAmounts An array parallel to the pool tokens, with the swap fees collected in each token

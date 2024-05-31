@@ -169,7 +169,7 @@ interface IVaultErrors {
     /**
      * @dev Error raised when the sum of the parts (aggregate protocol swap or yield fee)
      * is greater than the whole (total swap or yield fee). Also validated when the protocol fee
-     * collector updates aggregate fee percentages in the Vault.
+     * controller updates aggregate fee percentages in the Vault.
      */
     error ProtocolFeesExceedTotalCollected();
 
@@ -278,8 +278,8 @@ interface IVaultErrors {
     /// @dev The vault extension was configured with an incorrect Vault address.
     error WrongVaultExtensionDeployment();
 
-    /// @dev The protocol fee collector was configured with an incorrect Vault address.
-    error WrongProtocolFeeCollectorDeployment();
+    /// @dev The protocol fee controller was configured with an incorrect Vault address.
+    error WrongProtocolFeeControllerDeployment();
 
     /// @dev The vault admin was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();

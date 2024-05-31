@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -21,7 +21,7 @@ contract ProtocolFeeExemptionTest is BaseVaultTest {
     uint256 internal GLOBAL_SWAP_FEE = 50e16;
     uint256 internal GLOBAL_YIELD_FEE = 20e16;
 
-    IProtocolFeeCollector internal feeCollector;
+    IProtocolFeeController internal feeController;
     PoolRoleAccounts internal roleAccounts;
 
     uint256 daiIdx;
@@ -32,28 +32,28 @@ contract ProtocolFeeExemptionTest is BaseVaultTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
-        feeCollector = vault.getProtocolFeeCollector();
-        IAuthentication feeCollectorAuth = IAuthentication(address(feeCollector));
+        feeController = vault.getProtocolFeeController();
+        IAuthentication feeControllerAuth = IAuthentication(address(feeController));
 
         // Set default protocol fees
         authorizer.grantRole(
-            feeCollectorAuth.getActionId(IProtocolFeeCollector.setGlobalProtocolSwapFeePercentage.selector),
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
             alice
         );
         authorizer.grantRole(
-            feeCollectorAuth.getActionId(IProtocolFeeCollector.setGlobalProtocolYieldFeePercentage.selector),
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolYieldFeePercentage.selector),
             alice
         );
 
         vm.startPrank(alice);
-        feeCollector.setGlobalProtocolSwapFeePercentage(GLOBAL_SWAP_FEE);
-        feeCollector.setGlobalProtocolYieldFeePercentage(GLOBAL_YIELD_FEE);
+        feeController.setGlobalProtocolSwapFeePercentage(GLOBAL_SWAP_FEE);
+        feeController.setGlobalProtocolYieldFeePercentage(GLOBAL_YIELD_FEE);
         vm.stopPrank();
     }
 
     function testPrerequisites() public {
-        assertEq(feeCollector.getGlobalProtocolSwapFeePercentage(), GLOBAL_SWAP_FEE);
-        assertEq(feeCollector.getGlobalProtocolYieldFeePercentage(), GLOBAL_YIELD_FEE);
+        assertEq(feeController.getGlobalProtocolSwapFeePercentage(), GLOBAL_SWAP_FEE);
+        assertEq(feeController.getGlobalProtocolYieldFeePercentage(), GLOBAL_YIELD_FEE);
     }
 
     function testProtocolFeesWithoutExemption() public {

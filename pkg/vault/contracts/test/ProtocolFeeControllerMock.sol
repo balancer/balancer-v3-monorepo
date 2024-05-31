@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.24;
 
-import "../ProtocolFeeCollector.sol";
+import "../ProtocolFeeController.sol";
 
-contract ProtocolFeeCollectorMock is ProtocolFeeCollector {
-    constructor(IVault vault_) ProtocolFeeCollector(vault_) {
+contract ProtocolFeeControllerMock is ProtocolFeeController {
+    constructor(IVault vault_) ProtocolFeeController(vault_) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
