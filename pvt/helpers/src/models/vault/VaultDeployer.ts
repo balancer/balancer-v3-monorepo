@@ -6,7 +6,7 @@ import { VaultDeploymentInputParams, VaultDeploymentParams } from './types';
 
 import TypesConverter from '../types/TypesConverter';
 import {
-  ProtocolFeeCollector,
+  ProtocolFeeController,
   Vault,
   VaultAdmin,
   VaultAdminMock,
@@ -46,13 +46,13 @@ async function deployReal(deployment: VaultDeploymentParams, authorizer: BaseCon
     from: admin,
   });
 
-  const protocolFeeCollector: ProtocolFeeCollector = await contract.deploy('v3-vault/ProtocolFeeCollector', {
+  const protocolFeeController: ProtocolFeeController = await contract.deploy('v3-vault/ProtocolFeeController', {
     args: [futureVaultAddress],
     from: admin,
   });
 
   return await contract.deploy('v3-vault/Vault', {
-    args: [vaultExtension, authorizer, protocolFeeCollector],
+    args: [vaultExtension, authorizer, protocolFeeController],
     from: admin,
   });
 }
@@ -72,13 +72,13 @@ async function deployMocked(deployment: VaultDeploymentParams, authorizer: BaseC
     from: admin,
   });
 
-  const protocolFeeCollector: ProtocolFeeCollector = await contract.deploy('v3-vault/ProtocolFeeCollector', {
+  const protocolFeeController: ProtocolFeeController = await contract.deploy('v3-vault/ProtocolFeeController', {
     args: [futureVaultAddress],
     from: admin,
   });
 
   return await contract.deploy('v3-vault/VaultMock', {
-    args: [vaultExtension, authorizer, protocolFeeCollector],
+    args: [vaultExtension, authorizer, protocolFeeController],
     from: admin,
   });
 }

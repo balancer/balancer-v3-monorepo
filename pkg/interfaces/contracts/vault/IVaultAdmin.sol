@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import { IProtocolFeeCollector } from "./IProtocolFeeCollector.sol";
+import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IVault } from "./IVault.sol";
 
@@ -125,14 +125,14 @@ interface IVaultAdmin {
 
     /**
      * @notice Collects accumulated protocol swap and yield fees for the specified pool.
-     * @dev Fees are sent to the ProtocolFeeCollector address.
+     * @dev Fees are sent to the ProtocolFeeController address.
      * @param pool The pool on which all protocol fees should be collected
      */
     function collectProtocolFees(address pool) external;
 
     /**
      * @notice Update an aggregate swap fee percentage.
-     * @dev Can only be called by the current protocol fee collector. Called when governance overrides a protocol fee
+     * @dev Can only be called by the current protocol fee controller. Called when governance overrides a protocol fee
      * for a specific pool, or to permissionlessly update a pool to a changed global protocol fee value (if the pool's
      * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE.
      *
@@ -143,7 +143,7 @@ interface IVaultAdmin {
 
     /**
      * @notice Update an aggregate yield fee percentage.
-     * @dev Can only be called by the current protocol fee collector. Called when governance overrides a protocol fee
+     * @dev Can only be called by the current protocol fee controller. Called when governance overrides a protocol fee
      * for a specific pool, or to permissionlessly update a pool to a changed global protocol fee value (if the pool's
      * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE.
      *
@@ -153,11 +153,11 @@ interface IVaultAdmin {
     function updateAggregateYieldFeePercentage(address pool, uint256 newAggregateYieldFeePercentage) external;
 
     /**
-     * @notice Sets a new Protocol Fee Collector for the Vault.
+     * @notice Sets a new Protocol Fee Controller for the Vault.
      * @dev This is a permissioned call.
-     * Emits a `ProtocolFeeCollectorChanged` event.
+     * Emits a `ProtocolFeeControllerChanged` event.
      */
-    function setProtocolFeeCollector(IProtocolFeeCollector newProtocolFeeCollector) external;
+    function setProtocolFeeController(IProtocolFeeController newProtocolFeeController) external;
 
     /*******************************************************************************
                                     Recovery Mode

@@ -8,7 +8,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { LiquidityManagement, HooksConfig, PoolRoleAccounts, TokenConfig } from "./VaultTypes.sol";
 import { IHooks } from "./IHooks.sol";
-import { IProtocolFeeCollector } from "./IProtocolFeeCollector.sol";
+import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import "./VaultTypes.sol";
 
 interface IVaultEvents {
@@ -131,8 +131,8 @@ interface IVaultEvents {
     event AuthorizerChanged(IAuthorizer indexed newAuthorizer);
 
     /**
-     * @notice A new protocol fee collector is set by `setProtocolFeeCollector`.
-     * @param newProtocolFeeCollector The address of the new protocol fee collector
+     * @notice A new protocol fee controller is set by `setProtocolFeeController`.
+     * @param newProtocolFeeController The address of the new protocol fee controller
      */
-    event ProtocolFeeCollectorChanged(IProtocolFeeCollector indexed newProtocolFeeCollector);
+    event ProtocolFeeControllerChanged(IProtocolFeeController indexed newProtocolFeeController);
 }
