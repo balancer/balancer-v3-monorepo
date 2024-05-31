@@ -35,9 +35,6 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        // Allow pools created by `factory` to use poolHooksMock hooks
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
-
         WeightedPool newPool = WeightedPool(
             factory.create(
                 "ERC20 Pool",
