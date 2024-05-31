@@ -96,12 +96,20 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.prank(admin);
         feeController.setGlobalProtocolYieldFeePercentage(LOW_PROTOCOL_YIELD_FEE);
 
-        assertEq(feeController.getGlobalProtocolYieldFeePercentage(), LOW_PROTOCOL_YIELD_FEE, "Global yield fee != LOW");
+        assertEq(
+            feeController.getGlobalProtocolYieldFeePercentage(),
+            LOW_PROTOCOL_YIELD_FEE,
+            "Global yield fee != LOW"
+        );
 
         vm.prank(admin);
         feeController.setGlobalProtocolYieldFeePercentage(MAX_PROTOCOL_YIELD_FEE);
 
-        assertEq(feeController.getGlobalProtocolYieldFeePercentage(), MAX_PROTOCOL_YIELD_FEE, "Global yield fee != MAX");
+        assertEq(
+            feeController.getGlobalProtocolYieldFeePercentage(),
+            MAX_PROTOCOL_YIELD_FEE,
+            "Global yield fee != MAX"
+        );
     }
 
     function testSetGlobalProtocolSwapFeePercentagePermissioned() public {
@@ -620,7 +628,10 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         uint256 creatorBalanceUSDCBefore = usdc.balanceOf(lp);
 
         // Governance can withdraw.
-        authorizer.grantRole(feeControllerAuth.getActionId(IProtocolFeeController.withdrawProtocolFees.selector), admin);
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.withdrawProtocolFees.selector),
+            admin
+        );
         vm.prank(admin);
         feeController.withdrawProtocolFees(pool, admin);
 
