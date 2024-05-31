@@ -34,10 +34,16 @@ interface IProtocolFeeController {
     event ProtocolYieldFeePercentageChanged(address indexed pool, uint256 yieldFeePercentage);
 
     /**
-     * @notice Emitted when the pool creator fee percentage of a pool is updated.
-     * @param poolCreatorFeePercentage The new pool creator fee percentage for the pool
+     * @notice Emitted when the pool creator swap fee percentage of a pool is updated.
+     * @param poolCreatorSwapFeePercentage The new pool creator swap fee percentage for the pool
      */
-    event PoolCreatorFeePercentageChanged(address indexed pool, uint256 poolCreatorFeePercentage);
+    event PoolCreatorSwapFeePercentageChanged(address indexed pool, uint256 poolCreatorSwapFeePercentage);
+
+    /**
+     * @notice Emitted when the pool creator yield fee percentage of a pool is updated.
+     * @param poolCreatorYieldFeePercentage The new pool creator yield fee percentage for the pool
+     */
+    event PoolCreatorYieldFeePercentageChanged(address indexed pool, uint256 poolCreatorYieldFeePercentage);
 
     /**
      * @notice Logs the collection of protocol swap fees in a specific token and amount.
@@ -81,7 +87,7 @@ interface IProtocolFeeController {
     /// @dev Error raised if the wrong account attempts to withdraw pool creator fees.
     error CallerIsNotPoolCreator(address caller);
 
-    /// @dev Error raised when the pool creator fee percentage exceeds the maximum allowed value.
+    /// @dev Error raised when the pool creator swap or yield fee percentage exceeds the maximum allowed value.
     error PoolCreatorFeePercentageTooHigh();
 
     /// @dev Returns the main Vault address.
@@ -117,17 +123,19 @@ interface IProtocolFeeController {
 
     /**
      * @notice Compute and return the aggregate percentage.
-     * @dev This can be called after initialization (e.g., when the pool creator fee is updated), and uses the existing
+     * @dev This can be called after initialization (e.g., when a pool creator fee is updated), and uses the existing
      * protocol fee percentages for the pool.
      *
      * @param pool The pool being registered
-     * @param poolCreatorFeePercentage The creator fee percentage for the pool
+     * @param poolCreatorSwapFeePercentage The creator swap fee percentage for the pool
+     * @param poolCreatorYieldFeePercentage The creator yield fee percentage for the pool
      * @return aggregateProtocolSwapFeePercentage The aggregate swap fee percentage (protocol and creator fees)
      * @return aggregateProtocolYieldFeePercentage The aggregate swap fee percentage (protocol and creator fees)
      */
     function computeAggregatePercentages(
         address pool,
-        uint256 poolCreatorFeePercentage
+        uint256 poolCreatorSwapFeePercentage,
+        uint256 poolCreatorYieldFeePercentage
     ) external view returns (uint256 aggregateProtocolSwapFeePercentage, uint256 aggregateProtocolYieldFeePercentage);
 
     /**
@@ -227,11 +235,18 @@ interface IProtocolFeeController {
     function setProtocolYieldFeePercentage(address pool, uint256 newProtocolYieldFeePercentage) external;
 
     /**
-     * @notice Assigns a new pool creator fee percentage to the specified pool.
+     * @notice Assigns a new pool creator swap fee percentage to the specified pool.
      * @param pool The address of the pool for which the pool creator fee will be changed
-     * @param poolCreatorFeePercentage The new pool creator fee percentage to apply to the pool
+     * @param poolCreatorSwapFeePercentage The new pool creator swap fee percentage to apply to the pool
      */
-    function setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) external;
+    function setPoolCreatorSwapFeePercentage(address pool, uint256 poolCreatorSwapFeePercentage) external;
+
+    /**
+     * @notice Assigns a new pool creator yield fee percentage to the specified pool.
+     * @param pool The address of the pool for which the pool creator fee will be changed
+     * @param poolCreatorYieldFeePercentage The new pool creator yield fee percentage to apply to the pool
+     */
+    function setPoolCreatorYieldFeePercentage(address pool, uint256 poolCreatorYieldFeePercentage) external;
 
     /**
      * @notice Withdraw collected protocol fees for a given pool.

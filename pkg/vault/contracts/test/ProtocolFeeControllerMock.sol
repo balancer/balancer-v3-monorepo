@@ -22,7 +22,7 @@ contract ProtocolFeeControllerMock is ProtocolFeeController {
 
     function getPoolCreatorInfo(
         address pool
-    ) external view returns (address poolCreator, uint256 creatorFeePercentage) {
-        return (_poolCreators[pool], _poolCreatorFeePercentages[pool]);
+    ) external view returns (address poolCreator, uint256 creatorSwapFeePercentage, uint256 creatorYieldFeePercentage) {
+        return (_poolCreators[pool], _poolCreatorSwapFeePercentages[pool], _poolCreatorYieldFeePercentages[pool]);
     }
 }
