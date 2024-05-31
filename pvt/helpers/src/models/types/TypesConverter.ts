@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { BigNumberish } from 'ethers';
+import { BaseContract, BigNumberish } from 'ethers';
 import { ZERO_ADDRESS } from '../../constants';
 import { Account } from './types';
 import {
@@ -15,6 +15,8 @@ import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 import { VaultDeploymentInputParams, VaultDeploymentParams } from '../vault/types';
 import { IVault, IVault__factory, Vault, VaultMock } from '@balancer-labs/v3-vault/typechain-types';
 import { IVaultMock, IVaultMock__factory } from '@balancer-labs/v3-interfaces/typechain-types';
+import { IAuthentication } from '@balancer-labs/v3-solidity-utils/typechain-types';
+import { IAuthentication__factory } from '@balancer-labs/v3-pool-weighted/typechain-types';
 
 export function computeDecimalsFromIndex(i: number): number {
   // Produces repeating series (0..18)
@@ -36,6 +38,16 @@ export default {
 
   async toIVaultMock(vault: VaultMock): Promise<IVaultMock> {
     return IVaultMock__factory.connect(await vault.getAddress(), vault.runner);
+  },
+
+  async toIAuthentication(contract: BaseContract): Promise<IAuthentication> {
+    try {
+      contract.getFunction('getActionId');
+    } catch (error) {
+      const address = await contract.getAddress();
+      throw Error(`Contract ${address} is not IAuthentication`);
+    }
+    return IAuthentication__factory.connect(await contract.getAddress(), contract.runner);
   },
 
   /***
