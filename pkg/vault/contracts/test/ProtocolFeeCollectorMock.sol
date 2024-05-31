@@ -19,4 +19,10 @@ contract ProtocolFeeCollectorMock is ProtocolFeeCollector {
     function getPoolTokensAndCount(address pool) external view returns (IERC20[] memory tokens, uint256 numTokens) {
         return _getPoolTokensAndCount(pool);
     }
+
+    function getPoolCreatorInfo(
+        address pool
+    ) external view returns (address poolCreator, uint256 creatorFeePercentage) {
+        return (_poolCreators[pool], _poolCreatorFeePercentages[pool]);
+    }
 }

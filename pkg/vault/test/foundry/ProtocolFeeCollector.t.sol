@@ -187,20 +187,25 @@ contract ProtocolFeeCollectorTest is BaseVaultTest {
         );
 
         // Setting the creator fee is a permissioned call.
-        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.setPoolCreatorFeePercentage(pool, POOL_CREATOR_FEE);
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeCollector.CallerIsNotPoolCreator.selector, alice));
+        vm.prank(alice);
+        feeCollector.setPoolCreatorFeePercentage(pool, POOL_CREATOR_FEE);
 
         // Governance cannot override it.
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setPoolCreatorFeePercentage.selector), bob);
-        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        authorizer.grantRole(
+            feeCollectorAuth.getActionId(IProtocolFeeCollector.setPoolCreatorFeePercentage.selector),
+            bob
+        );
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeCollector.CallerIsNotPoolCreator.selector, bob));
         vm.prank(bob);
-        vault.setPoolCreatorFeePercentage(pool, 0);
+        feeCollector.setPoolCreatorFeePercentage(pool, 0);
 
         // Now set the pool creator fee (only creator).
         vm.prank(lp);
-        vault.setPoolCreatorFeePercentage(pool, POOL_CREATOR_FEE);
+        feeCollector.setPoolCreatorFeePercentage(pool, POOL_CREATOR_FEE);
 
-        (address poolCreator, uint256 poolCreatorFee) = vault.getPoolCreatorInfo(pool);
+        (address poolCreator, uint256 poolCreatorFee) = ProtocolFeeCollectorMock(address(feeCollector))
+            .getPoolCreatorInfo(pool);
         assertEq(poolCreator, lp, "Pool creator != lp");
         assertEq(poolCreatorFee, POOL_CREATOR_FEE, "Wrong Pool Creator fee");
 
@@ -490,7 +495,7 @@ contract ProtocolFeeCollectorTest is BaseVaultTest {
 
         // Set a creator fee percentage (before there are any fees), so they will be disaggregated upon collection.
         vm.prank(lp);
-        vault.setPoolCreatorFeePercentage(pool, POOL_CREATOR_FEE);
+        feeCollector.setPoolCreatorFeePercentage(pool, POOL_CREATOR_FEE);
 
         // Check that the aggregate percentages are set in the pool config
         uint256 expectedSwapFeePercentage = MAX_PROTOCOL_SWAP_FEE +
