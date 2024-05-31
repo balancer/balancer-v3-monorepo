@@ -356,7 +356,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         vm.startPrank(bob);
         // simulate the same outcome with a pure swap
-        uint256 amountOut = router.swapSingleTokenExactIn(
+        router.swapSingleTokenExactIn(
             address(swapPool),
             dai,
             usdc,
@@ -468,7 +468,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         vm.startPrank(bob);
         // simulate the same outcome with a pure swap
-        uint256 amountOut = router.swapSingleTokenExactIn(
+        router.swapSingleTokenExactIn(
             address(swapPool),
             dai,
             usdc,
@@ -722,7 +722,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertEq(PoolMock(liquidityPool).balanceOf(bob), 0, "Bob should have 0 BPT");
     }
 
-    function assertLiquidityOperation(uint256 amountOut, uint256 swapFeePercentage, bool addLiquidity) internal {
+    function assertLiquidityOperation(uint256 amountOut, uint256 swapFeePercentage, bool addLiquidity) internal view {
         // See @notice
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
 
