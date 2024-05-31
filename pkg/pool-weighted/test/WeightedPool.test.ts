@@ -140,6 +140,9 @@ describe('WeightedPool', function () {
   });
 
   describe('protocol fee events on swap', () => {
+    const FACTORY_VERSION = 'Weighted Factory v1';
+    const POOL_VERSION = 'Weighted Pool v1';
+
     const WEIGHTS = [fp(0.5), fp(0.5)];
     const REAL_POOL_INITIAL_BALANCES = [TOKEN_AMOUNT, TOKEN_AMOUNT];
     const SWAP_AMOUNT = fp(20);
@@ -151,7 +154,9 @@ describe('WeightedPool', function () {
     let realPoolAddress: string;
 
     sharedBeforeEach('create and initialize pool', async () => {
-      factory = await deploy('WeightedPoolFactory', { args: [await vault.getAddress(), MONTH * 12] });
+      factory = await deploy('WeightedPoolFactory', {
+        args: [await vault.getAddress(), MONTH * 12, FACTORY_VERSION, POOL_VERSION],
+      });
       const realPoolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
 
       const tokenConfig: TokenConfig[] = buildTokenConfig(realPoolTokens);
@@ -198,6 +203,12 @@ describe('WeightedPool', function () {
       await authorizer.grantRole(setPoolSwapFeeAction, bob.address);
 
       await vault.connect(bob).setStaticSwapFeePercentage(realPoolAddress, POOL_SWAP_FEE);
+    });
+
+    it('should have correct versions', async () => {
+      expect(await factory.version()).to.eq(FACTORY_VERSION);
+      expect(await factory.getPoolVersion()).to.eq(POOL_VERSION);
+      expect(await realPool.version()).to.eq(POOL_VERSION);
     });
 
     it('pool and protocol fee preconditions', async () => {
