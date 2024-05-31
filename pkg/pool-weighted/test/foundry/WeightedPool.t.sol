@@ -7,17 +7,22 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { TokenConfig, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMinimumSwapFee.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
+import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
+import { PoolConfigBits } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
+import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
@@ -54,6 +59,10 @@ contract WeightedPoolTest is BaseVaultTest {
         PoolRoleAccounts memory roleAccounts;
 
         weights = [uint256(0.50e18), uint256(0.50e18)].toMemoryArray();
+
+        // Allow pools created by `factory` to use poolHooksMock hooks
+        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+
         WeightedPool newPool = WeightedPool(
             factory.create(
                 "ERC20 Pool",
@@ -62,6 +71,7 @@ contract WeightedPoolTest is BaseVaultTest {
                 weights,
                 roleAccounts,
                 DEFAULT_SWAP_FEE,
+                poolHooksContract,
                 ZERO_BYTES32
             )
         );
@@ -277,6 +287,7 @@ contract WeightedPoolTest is BaseVaultTest {
             [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
             roleAccounts,
             MIN_SWAP_FEE - 1, // Swap fee too low
+            poolHooksContract,
             ZERO_BYTES32
         );
 

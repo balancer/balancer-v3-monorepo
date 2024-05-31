@@ -6,11 +6,13 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import {
     SingletonAuthentication
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FactoryWidePauseWindow } from "./FactoryWidePauseWindow.sol";
 
@@ -98,7 +100,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         uint256 swapFeePercentage,
         bool protocolFeeExempt,
         PoolRoleAccounts memory roleAccounts,
-        PoolHooks memory poolHooks,
+        address poolHooksContract,
         LiquidityManagement memory liquidityManagement
     ) internal {
         getVault().registerPool(
@@ -108,17 +110,16 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
             getNewPoolPauseWindowEndTime(),
             protocolFeeExempt,
             roleAccounts,
-            poolHooks,
+            poolHooksContract,
             liquidityManagement
         );
     }
 
     /**
-     * @notice Convenience function for constructing a PoolHooks object.
-     * @dev Users can call this to create a structure with all false arguments, then set the ones they need to true.
+     * @notice A common place to retrieve a default hooks contract. Currently set to address(0) (i.e. no hooks).
      */
-    function getDefaultPoolHooks() public pure returns (PoolHooks memory poolHooks) {
-        // solhint-disable-previous-line no-empty-blocks
+    function getDefaultPoolHooksContract() public pure returns (address) {
+        return address(0);
     }
 
     /**

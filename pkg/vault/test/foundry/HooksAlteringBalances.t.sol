@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -13,6 +13,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -29,9 +30,12 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
 
         _swapAmount = poolInitAmount / 100;
 
-        PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.hooks.shouldCallBeforeSwap = true;
-        vault.setConfig(address(pool), config);
+        HooksConfig memory config = vault.getHooksConfig(address(pool));
+        config.shouldCallBeforeSwap = true;
+        vault.setHooksConfig(address(pool), config);
+
+        // Sets the pool address in the hook, so we can change pool balances inside the hook
+        PoolHooksMock(poolHooksContract).setPool(address(pool));
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
@@ -44,7 +48,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig, lp);
+        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
 
         return address(newPool);
     }
@@ -55,15 +59,15 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         uint256[] memory newBalances = [poolInitAmount / 2, poolInitAmount / 3].toMemoryArray();
 
         // Change balances of the pool on before hook
-        PoolMock(pool).setChangePoolBalancesOnBeforeSwapHook(true, newBalances);
+        PoolHooksMock(poolHooksContract).setChangePoolBalancesOnBeforeSwapHook(true, newBalances);
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook
         vm.prank(bob);
         // Check if balances were not changed before onBeforeHook
         vm.expectCall(
-            address(pool),
+            address(poolHooksContract),
             abi.encodeWithSelector(
-                IPoolHooks.onBeforeSwap.selector,
+                IHooks.onBeforeSwap.selector,
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: _swapAmount,
@@ -96,9 +100,9 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
     }
 
     function testOnBeforeAddLiquidityHookAltersBalances() public {
-        PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.hooks.shouldCallBeforeAddLiquidity = true;
-        vault.setConfig(address(pool), config);
+        HooksConfig memory config = vault.getHooksConfig(address(pool));
+        config.shouldCallBeforeAddLiquidity = true;
+        vault.setHooksConfig(address(pool), config);
 
         uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
         // newBalances are raw and scaled18, because rate is 1 and decimals are 18
@@ -106,14 +110,14 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         uint256[] memory amountsIn = [defaultAmount, defaultAmount].toMemoryArray();
 
         // Change balances of the pool on before hook
-        PoolMock(pool).setChangePoolBalancesOnBeforeAddLiquidityHook(true, newBalances);
+        PoolHooksMock(poolHooksContract).setChangePoolBalancesOnBeforeAddLiquidityHook(true, newBalances);
 
         vm.prank(bob);
         // Check if balances were not changed before onBeforeHook
         vm.expectCall(
-            address(pool),
+            address(poolHooksContract),
             abi.encodeWithSelector(
-                IPoolHooks.onBeforeAddLiquidity.selector,
+                IHooks.onBeforeAddLiquidity.selector,
                 router,
                 AddLiquidityKind.CUSTOM,
                 amountsIn,
@@ -139,9 +143,9 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
     }
 
     function testOnBeforeRemoveLiquidityHookAlterBalance() public {
-        PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.hooks.shouldCallBeforeRemoveLiquidity = true;
-        vault.setConfig(address(pool), config);
+        HooksConfig memory config = vault.getHooksConfig(address(pool));
+        config.shouldCallBeforeRemoveLiquidity = true;
+        vault.setHooksConfig(address(pool), config);
 
         uint256[] memory amountsOut = [defaultAmount, defaultAmount].toMemoryArray();
 
@@ -157,13 +161,13 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         uint256[] memory newBalances = [2 * balanceAfterLiquidity, 3 * balanceAfterLiquidity].toMemoryArray();
 
         // Change balances of the pool on before hook
-        PoolMock(pool).setChangePoolBalancesOnBeforeRemoveLiquidityHook(true, newBalances);
+        PoolHooksMock(poolHooksContract).setChangePoolBalancesOnBeforeRemoveLiquidityHook(true, newBalances);
 
         // Check if balances were not changed before onBeforeHook
         vm.expectCall(
-            address(pool),
+            address(poolHooksContract),
             abi.encodeWithSelector(
-                IPoolHooks.onBeforeRemoveLiquidity.selector,
+                IHooks.onBeforeRemoveLiquidity.selector,
                 router,
                 RemoveLiquidityKind.CUSTOM,
                 bptAmount,

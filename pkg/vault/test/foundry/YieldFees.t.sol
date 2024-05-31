@@ -63,6 +63,7 @@ contract YieldFeesTest is BaseVaultTest {
                 rateProviders,
                 yieldFeeFlags
             ),
+            poolHooksContract,
             lp
         );
 

@@ -62,7 +62,7 @@ contract ProtocolFeeExemptionTest is BaseVaultTest {
         tokenConfig[usdcIdx].token = IERC20(usdc);
 
         pool = address(new PoolMock(IVault(address(vault)), "Non-Exempt Pool", "NOTEXEMPT"));
-        factoryMock.registerGeneralTestPool(address(pool), tokenConfig, 0, 365 days, false, roleAccounts);
+        factoryMock.registerGeneralTestPool(address(pool), tokenConfig, 0, 365 days, false, roleAccounts, address(0));
 
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
 
@@ -76,7 +76,7 @@ contract ProtocolFeeExemptionTest is BaseVaultTest {
         tokenConfig[usdcIdx].token = IERC20(usdc);
 
         pool = address(new PoolMock(IVault(address(vault)), "Exempt Pool", "EXEMPT"));
-        factoryMock.registerGeneralTestPool(address(pool), tokenConfig, 0, 365 days, true, roleAccounts);
+        factoryMock.registerGeneralTestPool(address(pool), tokenConfig, 0, 365 days, true, roleAccounts, address(0));
 
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
 
