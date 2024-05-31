@@ -16,9 +16,9 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { RateProviderMock } from "./RateProviderMock.sol";
-import { BasePoolHooks } from "../BasePoolHooks.sol";
+import { BaseHooks } from "../BaseHooks.sol";
 
-contract PoolHooksMock is BasePoolHooks {
+contract PoolHooksMock is BaseHooks {
     // using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
@@ -54,7 +54,7 @@ contract PoolHooksMock is BasePoolHooks {
 
     mapping(address => bool) private _allowedFactories;
 
-    constructor(IVault vault) BasePoolHooks(vault) {}
+    constructor(IVault vault) BaseHooks(vault) {}
 
     function onRegister(
         address factory,

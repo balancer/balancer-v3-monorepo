@@ -13,7 +13,7 @@ import { VaultGuard } from "./VaultGuard.sol";
  * @dev Pools that only implement a subset of callbacks can inherit from here instead of IHooks,
  * and only override what they need.
  */
-abstract contract BasePoolHooks is IHooks, VaultGuard {
+abstract contract BaseHooks is IHooks, VaultGuard {
     HooksConfig internal _hooksConfig;
 
     constructor(IVault vault) VaultGuard(vault) {
