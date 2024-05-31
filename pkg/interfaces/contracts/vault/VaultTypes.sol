@@ -11,16 +11,6 @@ struct PoolFlags {
     bool isPoolRegistered;
     bool isPoolInitialized;
     bool isPoolInRecoveryMode;
-    // Hooks
-    bool shouldCallBeforeInitialize;
-    bool shouldCallAfterInitialize;
-    bool shouldCallComputeDynamicSwapFee;
-    bool shouldCallBeforeSwap;
-    bool shouldCallAfterSwap;
-    bool shouldCallBeforeAddLiquidity;
-    bool shouldCallAfterAddLiquidity;
-    bool shouldCallBeforeRemoveLiquidity;
-    bool shouldCallAfterRemoveLiquidity;
     // Liquidity Management
     bool disableUnbalancedLiquidity;
     bool enableAddLiquidityCustom;
@@ -44,7 +34,14 @@ struct PoolConfig {
 }
 
 /// @dev Logical grouping of flags only used for events
-struct PoolHooks {
+struct LiquidityManagement {
+    bool disableUnbalancedLiquidity;
+    bool enableAddLiquidityCustom;
+    bool enableRemoveLiquidityCustom;
+}
+
+/// @dev Represents a hook contract configuration for a pool.
+struct HooksConfig {
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
     bool shouldCallComputeDynamicSwapFee;
@@ -54,13 +51,7 @@ struct PoolHooks {
     bool shouldCallAfterAddLiquidity;
     bool shouldCallBeforeRemoveLiquidity;
     bool shouldCallAfterRemoveLiquidity;
-}
-
-/// @dev Logical grouping of flags only used for events
-struct LiquidityManagement {
-    bool disableUnbalancedLiquidity;
-    bool enableAddLiquidityCustom;
-    bool enableRemoveLiquidityCustom;
+    address hooksContract;
 }
 
 /// @dev Represents temporary state used in a swap operation.

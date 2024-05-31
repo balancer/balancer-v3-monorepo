@@ -792,7 +792,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             uint256[] memory amountsInRaw,
             uint256[] memory amountsInScaled18,
             uint256 bptAmountOut,
-            bytes memory returnData
+
         ) = vault.manualAddLiquidity(poolData, params.addLiquidityParams, params.maxAmountsInScaled18);
 
         assertEq(bptAmountOut, params.expectedBPTAmountOut, "Unexpected BPT amount out");
@@ -863,7 +863,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             uint256 bptAmountIn,
             uint256[] memory amountsOutRaw,
             uint256[] memory amountsOutScaled18,
-            bytes memory returnData
+
         ) = vault.manualRemoveLiquidity(
                 poolData,
                 params.removeLiquidityParams,
@@ -882,9 +882,6 @@ contract VaultUnitLiquidityTest is BaseTest {
             0,
             "Token burned with unexpected amount"
         );
-
-        uint256[] memory storagePoolBalances = vault.getRawBalances(params.removeLiquidityParams.pool);
-        uint256[] memory storageLastLiveBalances = vault.getLastLiveBalances(params.removeLiquidityParams.pool);
 
         // NOTE: stack too deep fix
         TestRemoveLiquidityParams memory params_ = params;

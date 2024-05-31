@@ -25,8 +25,8 @@ contract ProtocolFeeCollectorTest is BaseVaultTest {
     uint256 internal constant MAX_PROTOCOL_SWAP_FEE = 50e16;
 
     uint256 internal constant LOW_PROTOCOL_YIELD_FEE = 10e16;
-    uint256 internal constant CUSTOM_PROTOCOL_YIELD_FEE = 15e16;
-    uint256 internal constant MAX_PROTOCOL_YIELD_FEE = 20e16;
+    uint256 internal constant CUSTOM_PROTOCOL_YIELD_FEE = 40e16;
+    uint256 internal constant MAX_PROTOCOL_YIELD_FEE = 50e16;
 
     uint256 internal constant POOL_CREATOR_FEE = 50e16;
 

@@ -163,6 +163,7 @@ describe('WeightedPool', function () {
         WEIGHTS,
         [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
         SWAP_FEE,
+        ZERO_ADDRESS,
         ZERO_BYTES32
       );
       const receipt = await tx.wait();

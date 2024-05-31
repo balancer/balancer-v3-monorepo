@@ -71,6 +71,7 @@ describe('StablePool', () => {
       200n,
       [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
       0, // swap fee
+      ZERO_ADDRESS,
       TypesConverter.toBytes32(bn(numTokens))
     );
     const receipt = await tx.wait();

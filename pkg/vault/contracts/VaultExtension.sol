@@ -9,7 +9,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
-import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
@@ -36,6 +36,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
+import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
@@ -59,6 +60,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolState;
+    using HooksConfigLib for HooksConfig;
     using InputHelpers for uint256;
     using ScalingHelpers for *;
     using VaultExtensionsLib for IVault;
@@ -130,7 +132,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 swapFeePercentage;
         uint256 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
-        PoolHooks poolHooks;
+        address poolHooksContract;
         LiquidityManagement liquidityManagement;
     }
 
@@ -141,7 +143,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
-        PoolHooks calldata poolHooks,
+        address poolHooksContract,
         LiquidityManagement calldata liquidityManagement
     ) external nonReentrant whenVaultNotPaused onlyVault {
         _registerPool(
@@ -151,7 +153,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 swapFeePercentage: swapFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
                 roleAccounts: roleAccounts,
-                poolHooks: poolHooks,
+                poolHooksContract: poolHooksContract,
                 liquidityManagement: liquidityManagement
             })
         );
@@ -173,6 +175,20 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Ensure the pool isn't already registered
         if (_isPoolRegistered(pool)) {
             revert PoolAlreadyRegistered(pool);
+        }
+
+        HooksConfig memory hooksConfig;
+
+        if (params.poolHooksContract != address(0)) {
+            // If a hook address was passed, make sure that hook trusts the pool factory
+            if (IHooks(params.poolHooksContract).onRegister(msg.sender, pool, params.tokenConfig) == false) {
+                revert HookRegistrationFailed(params.poolHooksContract, pool, msg.sender);
+            }
+
+            // Gets the default HooksConfig from the hook contract and saves in the vault state
+            // Storing into hooksConfig first avoids stack-too-deep
+            hooksConfig = IHooks(params.poolHooksContract).getHooksConfig();
+            _hooksConfig[pool] = hooksConfig;
         }
 
         uint256 numTokens = params.tokenConfig.length;
@@ -240,16 +256,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         PoolState memory state;
 
         flags.isPoolRegistered = true;
-        flags.shouldCallBeforeInitialize = params.poolHooks.shouldCallBeforeInitialize;
-        flags.shouldCallAfterInitialize = params.poolHooks.shouldCallAfterInitialize;
-        flags.shouldCallComputeDynamicSwapFee = params.poolHooks.shouldCallComputeDynamicSwapFee;
-        flags.shouldCallBeforeSwap = params.poolHooks.shouldCallBeforeSwap;
-        flags.shouldCallAfterSwap = params.poolHooks.shouldCallAfterSwap;
-        flags.shouldCallBeforeAddLiquidity = params.poolHooks.shouldCallBeforeAddLiquidity;
-        flags.shouldCallAfterAddLiquidity = params.poolHooks.shouldCallAfterAddLiquidity;
-        flags.shouldCallBeforeRemoveLiquidity = params.poolHooks.shouldCallBeforeRemoveLiquidity;
-        flags.shouldCallAfterRemoveLiquidity = params.poolHooks.shouldCallAfterRemoveLiquidity;
-
         flags.disableUnbalancedLiquidity = params.liquidityManagement.disableUnbalancedLiquidity;
         flags.enableAddLiquidityCustom = params.liquidityManagement.enableAddLiquidityCustom;
         flags.enableRemoveLiquidityCustom = params.liquidityManagement.enableRemoveLiquidityCustom;
@@ -273,7 +279,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.swapFeePercentage,
             params.pauseWindowEndTime,
             params.roleAccounts,
-            params.poolHooks,
+            hooksConfig,
             params.liquidityManagement
         );
     }
@@ -322,6 +328,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         bytes memory userData
     ) external onlyWhenUnlocked withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
         _ensureUnpausedAndGetVaultState(pool);
+        HooksConfig memory hooksConfig = _hooksConfig[pool];
 
         // Balances are zero until after initialize is callled, so there is no need to charge pending yield fee here.
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
@@ -340,11 +347,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        if (poolData.poolFlags.shouldCallBeforeInitialize) {
-            if (IPoolHooks(pool).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
-                revert BeforeInitializeHookFailed();
-            }
-
+        if (hooksConfig.onBeforeInitialize(exactAmountsInScaled18, userData) == true) {
             // The before hook is reentrant, and could have changed token rates.
             // Updating balances here is unnecessary since they're 0, but we do not special case before init
             // for the sake of bytecode size.
@@ -359,11 +362,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         bptAmountOut = _initialize(pool, to, poolData, tokens, exactAmountsIn, exactAmountsInScaled18, minBptAmountOut);
 
-        if (poolData.poolFlags.shouldCallAfterInitialize) {
-            if (IPoolHooks(pool).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
-                revert AfterInitializeHookFailed();
-            }
-        }
+        hooksConfig.onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData);
     }
 
     function _initialize(
@@ -438,6 +437,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
+    function getHooksConfig(
+        address pool
+    ) external view withRegisteredPool(pool) onlyVault returns (HooksConfig memory) {
+        return _hooksConfig[pool];
+    }
+
+    /// @inheritdoc IVaultExtension
     function getPoolTokens(address pool) external view withRegisteredPool(pool) onlyVault returns (IERC20[] memory) {
         return _getPoolTokens(pool);
     }
@@ -460,11 +466,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool,
         IBasePool.PoolSwapParams memory swapParams
     ) external view withRegisteredPool(pool) returns (bool success, uint256 dynamicSwapFee) {
-        bool shouldCallDynamicSwapFee = _poolFlags[pool].shouldCallComputeDynamicSwapFee;
-
-        if (shouldCallDynamicSwapFee) {
-            (success, dynamicSwapFee) = IPoolHooks(pool).onComputeDynamicSwapFee(swapParams);
-        }
+        return _hooksConfig[pool].onComputeDynamicSwapFee(swapParams);
     }
 
     /// @inheritdoc IVaultExtension

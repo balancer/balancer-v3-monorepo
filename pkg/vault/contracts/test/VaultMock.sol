@@ -10,6 +10,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMainMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMainMock.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IProtocolFeeCollector } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeCollector.sol";
@@ -25,6 +26,7 @@ import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/tes
 
 import { VaultStateLib } from "../lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
+import { HooksConfigLib } from "../lib/HooksConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
@@ -44,6 +46,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using ScalingHelpers for uint256;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolState;
+    using HooksConfigLib for HooksConfig;
     using VaultStateLib for VaultState;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
@@ -83,18 +86,21 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolFlags[pool] = config.poolFlags;
     }
 
+    function setHooksConfig(address pool, HooksConfig calldata config) external {
+        _hooksConfig[pool] = config;
+    }
+
     // Used for testing pool registration, which is ordinarily done in the pool factory.
     // The Mock pool has an argument for whether or not to register on deployment. To call register pool
     // separately, deploy it with the registration flag false, then call this function.
     function manualRegisterPool(address pool, IERC20[] memory tokens) external whenVaultNotPaused {
         PoolRoleAccounts memory roleAccounts;
-        PoolHooks memory hooks;
 
         _poolFactoryMock.registerPool(
             pool,
             buildTokenConfig(tokens),
             roleAccounts,
-            hooks,
+            address(0), // No hook contract
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
@@ -108,13 +114,11 @@ contract VaultMock is IVaultMainMock, Vault {
         IERC20[] memory tokens,
         uint256 swapFeePercentage
     ) external whenVaultNotPaused {
-        PoolHooks memory hooks;
-
         _poolFactoryMock.registerPoolWithSwapFee(
             pool,
             buildTokenConfig(tokens),
             swapFeePercentage,
-            hooks,
+            address(0), // No hook contract
             LiquidityManagement({
                 disableUnbalancedLiquidity: true,
                 enableAddLiquidityCustom: true,
@@ -126,7 +130,6 @@ contract VaultMock is IVaultMainMock, Vault {
     function manualRegisterPoolPassThruTokens(address pool, IERC20[] memory tokens) external {
         TokenConfig[] memory tokenConfig = new TokenConfig[](tokens.length);
         PoolRoleAccounts memory roleAccounts;
-        PoolHooks memory hooks;
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
@@ -136,7 +139,7 @@ contract VaultMock is IVaultMainMock, Vault {
             pool,
             tokenConfig,
             roleAccounts,
-            hooks,
+            address(0), // No hook contract
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
@@ -151,14 +154,12 @@ contract VaultMock is IVaultMainMock, Vault {
         uint256 timestamp,
         PoolRoleAccounts memory roleAccounts
     ) external whenVaultNotPaused {
-        PoolHooks memory hooks;
-
         _poolFactoryMock.registerPoolAtTimestamp(
             pool,
             buildTokenConfig(tokens),
             timestamp,
             roleAccounts,
-            hooks,
+            address(0), // No hook contract
             LiquidityManagement({
                 disableUnbalancedLiquidity: false,
                 enableAddLiquidityCustom: true,
