@@ -46,7 +46,7 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
  */
 contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using PackedTokenBalance for bytes32;
-    using PoolConfigLib for PoolConfig;
+    using PoolConfigLib for PoolConfigBits;
     using VaultExtensionsLib for IVault;
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
@@ -246,7 +246,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     function _setPoolPaused(address pool, bool pausing) internal {
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        PoolConfigBits memory config = _poolConfig[pool];
 
         if (_isPoolPaused(pool)) {
             if (pausing) {
@@ -261,7 +261,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             if (pausing) {
                 // Not already paused; we can pause within the window.
                 // solhint-disable-next-line not-rely-on-time
-                if (block.timestamp >= config.pauseWindowEndTime) {
+                if (block.timestamp >= config.getPauseWindowEndTime()) {
                     revert PoolPauseWindowExpired(pool);
                 }
             } else {
@@ -271,8 +271,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         }
 
         // Update poolConfig.
-        config.isPoolPaused = pausing;
-        _poolConfig[pool] = config.fromPoolConfig();
+        config.setPoolPaused(pausing);
+        _poolConfig[pool] = config;
 
         emit PoolPausedStateChanged(pool, pausing);
     }
@@ -321,9 +321,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         address pool,
         uint256 newAggregateSwapFeePercentage
     ) external withValidPercentage(newAggregateSwapFeePercentage) onlyProtocolFeeController {
-        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
-        config.aggregateProtocolSwapFeePercentage = newAggregateSwapFeePercentage;
-        _poolConfig[pool] = config.fromPoolConfig();
+        PoolConfigBits memory config = _poolConfig[pool];
+        config.setAggregateProtocolSwapFeePercentage(newAggregateSwapFeePercentage);
+        _poolConfig[pool] = config;
     }
 
     /// @inheritdoc IVaultAdmin
@@ -331,9 +331,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         address pool,
         uint256 newAggregateYieldFeePercentage
     ) external withValidPercentage(newAggregateYieldFeePercentage) onlyProtocolFeeController {
-        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
-        config.aggregateProtocolYieldFeePercentage = newAggregateYieldFeePercentage;
-        _poolConfig[pool] = config.fromPoolConfig();
+        PoolConfigBits memory config = _poolConfig[pool];
+        config.setAggregateProtocolYieldFeePercentage(newAggregateYieldFeePercentage);
+        _poolConfig[pool] = config;
     }
 
     /// @inheritdoc IVaultAdmin
@@ -387,9 +387,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
      */
     function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
         // Update poolConfig
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.isPoolInRecoveryMode = recoveryMode;
-        _poolConfig[pool] = config.fromPoolConfig();
+        PoolConfigBits memory config = _poolConfig[pool];
+        config.setPoolInRecoveryMode(recoveryMode);
+        _poolConfig[pool] = config;
 
         if (recoveryMode == false) {
             _writePoolBalancesToStorage(pool, _loadPoolData(pool, Rounding.ROUND_DOWN));

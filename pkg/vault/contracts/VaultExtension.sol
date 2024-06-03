@@ -59,7 +59,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
-    using PoolConfigLib for PoolConfig;
+    using PoolConfigLib for PoolConfigBits;
     using HooksConfigLib for HooksConfig;
     using InputHelpers for uint256;
     using ScalingHelpers for *;
@@ -270,15 +270,24 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _assignPoolRoles(pool, params.roleAccounts);
 
         // Store config and mark the pool as registered
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.isPoolRegistered = true;
-        config.liquidityManagement = params.liquidityManagement;
-        config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
-        config.pauseWindowEndTime = params.pauseWindowEndTime;
-        // Initialize the pool-specific protocol fee values to the current global defaults.
-        (config.aggregateProtocolSwapFeePercentage, config.aggregateProtocolYieldFeePercentage) = _protocolFeeController
-            .registerPool(pool, params.roleAccounts.poolCreator);
-        _poolConfig[pool] = config.fromPoolConfig();
+        {
+            PoolConfigBits memory config = _poolConfig[pool];
+            config.setPoolRegistered(true);
+            config.setDisableUnbalancedLiquidity(params.liquidityManagement.disableUnbalancedLiquidity);
+            config.setAddLiquidityCustom(params.liquidityManagement.enableAddLiquidityCustom);
+            config.setRemoveLiquidityCustom(params.liquidityManagement.enableRemoveLiquidityCustom);
+            config.setTokenDecimalDiffs(PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs));
+            config.setPauseWindowEndTime(params.pauseWindowEndTime);
+            // Initialize the pool-specific protocol fee values to the current global defaults.
+            (
+                uint256 aggregateProtocolSwapFeePercentage,
+                uint256 aggregateProtocolYieldFeePercentage
+            ) = _protocolFeeController.registerPool(pool, params.roleAccounts.poolCreator);
+            config.setAggregateProtocolSwapFeePercentage(aggregateProtocolSwapFeePercentage);
+            config.setAggregateProtocolYieldFeePercentage(aggregateProtocolYieldFeePercentage);
+
+            _poolConfig[pool] = config;
+        }
 
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
 
@@ -335,7 +344,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Balances are zero until after initialize is callled, so there is no need to charge pending yield fee here.
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
 
-        if (poolData.poolConfig.isPoolInitialized) {
+        if (poolData.poolConfig.isPoolInitialized()) {
             revert PoolAlreadyInitialized(pool);
         }
         uint256 numTokens = poolData.tokenConfig.length;
@@ -399,8 +408,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         emit PoolBalanceChanged(pool, to, exactAmountsIn.unsafeCastToInt256(true));
 
         // Store config and mark the pool as initialized
-        poolData.poolConfig.isPoolInitialized = true;
-        _poolConfig[pool] = poolData.poolConfig.fromPoolConfig();
+        poolData.poolConfig.setPoolInitialized(true);
+        _poolConfig[pool] = poolData.poolConfig;
 
         // Pass scaled balances to the pool
         bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18);
@@ -562,7 +571,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function getStaticSwapFeePercentage(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
-        return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
+        PoolConfigBits memory config = _poolConfig[pool];
+        return config.getStaticSwapFeePercentage();
     }
 
     /// @inheritdoc IVaultExtension

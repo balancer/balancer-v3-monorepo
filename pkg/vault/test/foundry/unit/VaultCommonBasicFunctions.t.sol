@@ -99,8 +99,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         );
         assertEq(decimalScalingFactors.length, 0, "should have no decimalScalingFactors");
         assertEq(
-            PoolConfigBits.unwrap(poolConfig.fromPoolConfig()),
-            PoolConfigBits.unwrap(emptyPoolConfig.fromPoolConfig()),
+            poolConfig.fromPoolConfig().bits,
+            emptyPoolConfig.fromPoolConfig().bits,
             "poolConfig should match empty pool config"
         );
     }
@@ -143,8 +143,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             );
         }
         assertEq(
-            PoolConfigBits.unwrap(newPoolConfig.fromPoolConfig()),
-            PoolConfigBits.unwrap(originalPoolConfig.fromPoolConfig()),
+            newPoolConfig.fromPoolConfig().bits,
+            originalPoolConfig.fromPoolConfig().bits,
             "original and new poolConfigs should be the same"
         );
     }
@@ -231,8 +231,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         }
 
         assertEq(
-            PoolConfigBits.unwrap(newPoolConfig.fromPoolConfig()),
-            PoolConfigBits.unwrap(originalPoolConfig.fromPoolConfig()),
+            newPoolConfig.fromPoolConfig().bits,
+            originalPoolConfig.fromPoolConfig().bits,
             "original and new poolConfigs should be the same"
         );
     }

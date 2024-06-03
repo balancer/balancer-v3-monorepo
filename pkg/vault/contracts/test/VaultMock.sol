@@ -45,7 +45,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using ScalingHelpers for uint256;
     using PackedTokenBalance for bytes32;
-    using PoolConfigLib for PoolConfig;
+    using PoolConfigLib for *;
     using HooksConfigLib for HooksConfig;
     using VaultStateLib for VaultState;
     using TransientStorageHelpers for *;
@@ -118,7 +118,11 @@ contract VaultMock is IVaultMainMock, Vault {
             buildTokenConfig(tokens),
             swapFeePercentage,
             address(0), // No hook contract
-            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
+            LiquidityManagement({
+                disableUnbalancedLiquidity: true,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: true
+            })
         );
     }
 
@@ -167,21 +171,21 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) public {
-        PoolConfig memory poolConfig = _poolConfig[pool].toPoolConfig();
-        poolConfig.isPoolInitialized = isPoolInitialized;
-        _poolConfig[pool] = poolConfig.fromPoolConfig();
+        PoolConfigBits memory poolConfig = _poolConfig[pool];
+        poolConfig.setPoolInitialized(isPoolInitialized);
+        _poolConfig[pool] = poolConfig;
     }
 
     function manualSetPoolPauseWindowEndTime(address pool, uint256 pauseWindowEndTime) public {
-        PoolConfig memory poolConfig = _poolConfig[pool].toPoolConfig();
-        poolConfig.pauseWindowEndTime = pauseWindowEndTime;
-        _poolConfig[pool] = poolConfig.fromPoolConfig();
+        PoolConfigBits memory poolConfig = _poolConfig[pool];
+        poolConfig.setPauseWindowEndTime(pauseWindowEndTime);
+        _poolConfig[pool] = poolConfig;
     }
 
     function manualSetPoolPaused(address pool, bool isPoolPaused) public {
-        PoolConfig memory poolConfig = _poolConfig[pool].toPoolConfig();
-        poolConfig.isPoolPaused = isPoolPaused;
-        _poolConfig[pool] = poolConfig.fromPoolConfig();
+        PoolConfigBits memory poolConfig = _poolConfig[pool];
+        poolConfig.setPoolPaused(isPoolPaused);
+        _poolConfig[pool] = poolConfig;
     }
 
     function manualSetVaultPaused(bool isVaultPaused) public {
@@ -239,7 +243,12 @@ contract VaultMock is IVaultMainMock, Vault {
         )
     {
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
-        return (poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors, poolData.poolConfig);
+        return (
+            poolData.tokenConfig,
+            poolData.balancesRaw,
+            poolData.decimalScalingFactors,
+            poolData.poolConfig.toPoolConfig()
+        );
     }
 
     function buildTokenConfig(IERC20[] memory tokens) public view returns (TokenConfig[] memory tokenConfig) {
@@ -303,7 +312,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory) {
-        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
+        PoolConfigBits memory config = _poolConfig[pool];
         IERC20[] memory tokens = _getPoolTokens(pool);
 
         return PoolConfigLib.getDecimalScalingFactors(config, tokens.length);
@@ -448,15 +457,15 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetAggregateProtocolSwapFeePercentage(address pool, uint256 value) external {
-        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
-        config.aggregateProtocolSwapFeePercentage = value;
-        _poolConfig[pool] = config.fromPoolConfig();
+        PoolConfigBits memory poolConfig = _poolConfig[pool];
+        poolConfig.setAggregateProtocolSwapFeePercentage(value);
+        _poolConfig[pool] = poolConfig;
     }
 
     function manualSetAggregateProtocolYieldFeePercentage(address pool, uint256 value) external {
-        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
-        config.aggregateProtocolYieldFeePercentage = value;
-        _poolConfig[pool] = config.fromPoolConfig();
+        PoolConfigBits memory poolConfig = _poolConfig[pool];
+        poolConfig.setAggregateProtocolYieldFeePercentage(value);
+        _poolConfig[pool] = poolConfig;
     }
 
     function manualBuildPoolSwapParams(

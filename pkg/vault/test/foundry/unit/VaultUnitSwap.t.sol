@@ -10,11 +10,13 @@ import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/Va
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolConfig, PoolConfigBits } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
+import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
 
 struct TestStateLocals {
     SwapParams params;
@@ -26,6 +28,7 @@ contract VaultUnitSwapTest is BaseTest {
     using ArrayHelpers for *;
     using ScalingHelpers for *;
     using FixedPoint for *;
+    using PoolConfigLib for PoolConfigBits;
 
     IVaultMock internal vault;
     address pool = address(0x1234);
@@ -308,10 +311,9 @@ contract VaultUnitSwapTest is BaseTest {
         poolData.tokenRates = tokenRates;
         poolData.balancesRaw = initialBalances;
 
-        poolData.poolConfig.staticSwapFeePercentage = swapFeePercentage;
-        poolData.poolConfig.aggregateProtocolSwapFeePercentage = _getAggregateFeePercentage(
-            swapFeePercentage,
-            poolCreatorFeePercentage
+        poolData.poolConfig.setStaticSwapFeePercentage(swapFeePercentage);
+        poolData.poolConfig.setAggregateProtocolSwapFeePercentage(
+            _getAggregateFeePercentage(swapFeePercentage, poolCreatorFeePercentage)
         );
 
         poolData.balancesLiveScaled18 = new uint256[](initialBalances.length);
@@ -332,7 +334,7 @@ contract VaultUnitSwapTest is BaseTest {
         assertEq(swapState.indexOut, 1, "Unexpected index out");
         assertEq(
             swapState.swapFeePercentage,
-            poolData.poolConfig.staticSwapFeePercentage,
+            poolData.poolConfig.getStaticSwapFeePercentage(),
             "Unexpected swapFeePercentage"
         );
         assertEq(
@@ -345,7 +347,7 @@ contract VaultUnitSwapTest is BaseTest {
         );
 
         uint256 expectedSwapFeeAmountScaled18 = mockedPoolAmountCalculatedScaled18.mulUp(
-            poolData.poolConfig.staticSwapFeePercentage
+            poolData.poolConfig.getStaticSwapFeePercentage()
         );
 
         uint256 expectedAmountCalculatedScaled18 = mockedPoolAmountCalculatedScaled18 - expectedSwapFeeAmountScaled18;
@@ -361,7 +363,7 @@ contract VaultUnitSwapTest is BaseTest {
 
         // Expected fees
         uint256 expectedProtocolSwapFeeAmountScaled18 = expectedSwapFeeAmountScaled18.mulUp(
-            poolData.poolConfig.aggregateProtocolSwapFeePercentage
+            poolData.poolConfig.getAggregateProtocolSwapFeePercentage()
         );
 
         uint256 expectedProtocolFeeAmountRaw = expectedProtocolSwapFeeAmountScaled18.toRawUndoRateRoundDown(
@@ -398,7 +400,7 @@ contract VaultUnitSwapTest is BaseTest {
         assertEq(swapState.indexOut, 1, "Unexpected index out");
         assertEq(
             swapState.swapFeePercentage,
-            poolData.poolConfig.staticSwapFeePercentage,
+            poolData.poolConfig.getStaticSwapFeePercentage(),
             "Unexpected swapFeePercentage"
         );
         assertEq(
@@ -411,7 +413,7 @@ contract VaultUnitSwapTest is BaseTest {
         );
 
         uint256 expectedSwapFeeAmountScaled18 = mockedPoolAmountCalculatedScaled18.mulDown(
-            poolData.poolConfig.staticSwapFeePercentage
+            poolData.poolConfig.getStaticSwapFeePercentage()
         );
 
         uint256 expectedAmountCalculatedScaled18 = mockedPoolAmountCalculatedScaled18 + expectedSwapFeeAmountScaled18;
@@ -427,7 +429,7 @@ contract VaultUnitSwapTest is BaseTest {
 
         // Expected fees
         uint256 expectedProtocolFeeAmountScaled18 = expectedSwapFeeAmountScaled18.mulUp(
-            poolData.poolConfig.aggregateProtocolSwapFeePercentage
+            poolData.poolConfig.getAggregateProtocolSwapFeePercentage()
         );
 
         uint256 expectedProtocolFeeAmountRaw = expectedProtocolFeeAmountScaled18.toRawUndoRateRoundDown(
