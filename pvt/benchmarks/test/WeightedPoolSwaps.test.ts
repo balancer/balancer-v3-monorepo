@@ -29,7 +29,7 @@ import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
-import { IVault, ProtocolFeeCollector } from '@balancer-labs/v3-vault/typechain-types';
+import { IVault, ProtocolFeeController } from '@balancer-labs/v3-vault/typechain-types';
 import { WeightedPool, WeightedPoolFactory } from '@balancer-labs/v3-pool-weighted/typechain-types';
 import { ERC20WithRateTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { PoolRoleAccountsStruct } from '@balancer-labs/v3-vault/typechain-types/contracts/Vault';
@@ -47,7 +47,7 @@ describe('WeightedPool Gas Benchmark', function () {
 
   let permit2: IPermit2;
   let vault: IVault;
-  let feeCollector: ProtocolFeeCollector;
+  let feeCollector: ProtocolFeeController;
   let standardPool: WeightedPool, yieldPool: WeightedPool;
   let pool: WeightedPool; // Pool under test
   let router: Router;
@@ -75,9 +75,9 @@ describe('WeightedPool Gas Benchmark', function () {
   sharedBeforeEach('deploy vault, router, tokens', async function () {
     vault = await TypesConverter.toIVault(await VaultDeployer.deploy());
     feeCollector = (await deployedAt(
-      'v3-vault/ProtocolFeeCollector',
-      await vault.getProtocolFeeCollector()
-    )) as unknown as ProtocolFeeCollector;
+      'v3-vault/ProtocolFeeController',
+      await vault.getProtocolFeeController()
+    )) as unknown as ProtocolFeeController;
     const WETH = await deploy('v3-solidity-utils/WETHTestToken');
     permit2 = await deployPermit2();
     router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2] });
@@ -119,7 +119,9 @@ describe('WeightedPool Gas Benchmark', function () {
   });
 
   sharedBeforeEach('deploy weighted pool factory', async () => {
-    factory = await deploy('v3-pool-weighted/WeightedPoolFactory', { args: [await vault.getAddress(), MONTH * 12] });
+    factory = await deploy('v3-pool-weighted/WeightedPoolFactory', {
+      args: [await vault.getAddress(), MONTH * 12, '', ''],
+    });
   });
 
   sharedBeforeEach('deploy standard pool', async () => {
@@ -138,6 +140,7 @@ describe('WeightedPool Gas Benchmark', function () {
       WEIGHTS,
       poolRoleAccounts,
       SWAP_FEE,
+      ZERO_ADDRESS,
       ZERO_BYTES32
     );
     const receipt = await tx.wait();
@@ -164,6 +167,7 @@ describe('WeightedPool Gas Benchmark', function () {
       WEIGHTS,
       poolRoleAccounts,
       SWAP_FEE,
+      ZERO_ADDRESS,
       ONES_BYTES32
     );
     const receipt = await tx.wait();
