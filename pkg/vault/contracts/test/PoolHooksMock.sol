@@ -54,6 +54,8 @@ contract PoolHooksMock is BasePoolHooks {
 
     mapping(address => bool) private _allowedFactories;
 
+    HooksConfig private _hooksConfig;
+
     constructor(IVault vault) BasePoolHooks(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
