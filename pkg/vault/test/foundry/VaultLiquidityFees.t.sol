@@ -332,7 +332,6 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         IERC20[] memory feeTokens = new IERC20[](2);
         feeTokens[0] = dai;
         feeTokens[1] = usdc;
-        uint256[] memory feeAmounts = vault.getProtocolFeeController().getAggregateProtocolFeeAmounts(pool);
 
         // Pool creator fees are charged if protocol fees are charged.
         if (protocolSwapFees[0] > 0) {

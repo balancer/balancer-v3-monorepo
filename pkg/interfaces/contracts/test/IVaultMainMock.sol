@@ -15,7 +15,7 @@ interface IVaultMainMock {
 
     function setConfig(address pool, PoolConfig calldata config) external;
 
-    function setHooksConfig(ddress pool, HooksConfig calldata config) external;
+    function setHooksConfig(address pool, HooksConfig calldata config) external;
 
     function manualRegisterPool(address pool, IERC20[] memory tokens) external;
 
@@ -153,22 +153,9 @@ interface IVaultMainMock {
     function manualReentrancySwap(
         SwapParams memory params,
         SwapState memory state,
-        PoolData memory poolData,
-        VaultState memory vaultState
+        PoolData memory poolData
     )
-        external
-        returns (
-            uint256 amountCalculatedRaw,
-            uint256 amountCalculatedScaled18,
-            uint256 amountIn,
-            uint256 amountOut,
-            SwapParams memory,
-            SwapState memory,
-            PoolData memory,
-            VaultState memory
-        );
-
-    function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external;
+        external;
 
     function manualGetAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
@@ -215,21 +202,12 @@ interface IVaultMainMock {
             uint256 bptAmountOut,
             bytes memory returnData
         );
-        
+
     function manualReentrancyAddLiquidity(
         PoolData memory poolData,
         AddLiquidityParams memory params,
-        uint256[] memory maxAmountsInScaled18,
-        VaultState memory vaultState
-    )
-        external
-        returns (
-            PoolData memory updatedPoolData,
-            uint256[] memory amountsInRaw,
-            uint256[] memory amountsInScaled18,
-            uint256 bptAmountOut,
-            bytes memory returnData
-        );
+        uint256[] memory maxAmountsInScaled18
+    ) external;
 
     function forceUnlock() external;
 
@@ -256,14 +234,7 @@ interface IVaultMainMock {
         uint256[] memory minAmountsOutScaled18,
         VaultState memory vaultState
     )
-        external
-        returns (
-            PoolData memory updatedPoolData,
-            uint256 bptAmountIn,
-            uint256[] memory amountsOutRaw,
-            uint256[] memory amountsOutScaled18,
-            bytes memory returnData
-        );
+        external;
 
     function manualUpdateReservesAfterWrapping(
         IERC20 underlyingToken,

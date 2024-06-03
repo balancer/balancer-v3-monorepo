@@ -129,12 +129,11 @@ contract VaultMutationTest is BaseVaultTest {
         (
             SwapParams memory params,
             SwapState memory state,
-            PoolData memory poolData,
-            VaultState memory vaultState
-        ) = _makeParams(SwapKind.EXACT_OUT, defaultAmountGivenRaw, 0, 0, 0, 0);
+            PoolData memory poolData
+        ) = _makeParams(SwapKind.EXACT_OUT, defaultAmountGivenRaw, 0, 0);
 
         vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
-        vault.manualReentrancySwap(params, state, poolData, vaultState);
+        vault.manualReentrancySwap(params, state, poolData);
     }
 
     function testAddLiquidityReentrancy() public {
@@ -157,9 +156,6 @@ contract VaultMutationTest is BaseVaultTest {
             expectedBPTAmountOut: params1.minBptAmountOut
         });
 
-        VaultState memory vaultState;
-        vaultState.protocolSwapFeePercentage = swapFeePercentage;
-
         uint256[] memory expectedAmountsInRaw = new uint256[](params.expectedAmountsInScaled18.length);
         for (uint256 i = 0; i < expectedAmountsInRaw.length; i++) {
             expectedAmountsInRaw[i] = params.expectedAmountsInScaled18[i].toRawUndoRateRoundUp(
@@ -169,22 +165,17 @@ contract VaultMutationTest is BaseVaultTest {
         }
 
         vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
-        (
-            PoolData memory updatedPoolData,
-            uint256[] memory amountsInRaw,
-            uint256[] memory amountsInScaled18,
-            uint256 bptAmountOut,
-            bytes memory returnData
-        ) = vault.manualReentrancyAddLiquidity(
-                poolData,
-                params.addLiquidityParams,
-                params.maxAmountsInScaled18,
-                vaultState
-            );
+       vault.manualReentrancyAddLiquidity(
+            poolData,
+            params.addLiquidityParams,
+            params.maxAmountsInScaled18
+        );
     }
 
     function testRemoveLiquidityReentrancy() public {
         PoolData memory poolData = _makeDefaultParams();
+        VaultState memory vaultState;
+
         (RemoveLiquidityParams memory params1, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
             poolData,
             RemoveLiquidityKind.PROPORTIONAL,
@@ -204,9 +195,6 @@ contract VaultMutationTest is BaseVaultTest {
             expectedBPTAmountIn: params1.maxBptAmountIn
         });
 
-        VaultState memory vaultState;
-        vaultState.protocolSwapFeePercentage = 1e16;
-
         uint256[] memory expectedAmountsOutRaw = new uint256[](params.expectedAmountsOutScaled18.length);
         for (uint256 i = 0; i < expectedAmountsOutRaw.length; i++) {
             expectedAmountsOutRaw[i] = params.expectedAmountsOutScaled18[i].toRawUndoRateRoundDown(
@@ -219,18 +207,12 @@ contract VaultMutationTest is BaseVaultTest {
         vault.approve(params.removeLiquidityParams.from, address(this), params.expectedBPTAmountIn);
 
         vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
-        (
-            PoolData memory updatedPoolData,
-            uint256 bptAmountIn,
-            uint256[] memory amountsOutRaw,
-            uint256[] memory amountsOutScaled18,
-            bytes memory returnData
-        ) = vault.manualReentrancyRemoveLiquidity(
-                poolData,
-                params.removeLiquidityParams,
-                params.minAmountsOutScaled18,
-                vaultState
-            );
+        vault.manualReentrancyRemoveLiquidity(
+            poolData,
+            params.removeLiquidityParams,
+            params.minAmountsOutScaled18,
+            vaultState
+        );
     }
 
     /*
@@ -241,16 +223,14 @@ contract VaultMutationTest is BaseVaultTest {
         SwapKind kind,
         uint256 amountGivenRaw,
         uint256 limitRaw,
-        uint256 swapFeePercentage,
-        uint256 protocolFeePercentage,
-        uint256 poolCreatorFeePercentage
+        uint256 swapFeePercentage
     )
         internal
+        view
         returns (
             SwapParams memory params,
             SwapState memory swapState,
-            PoolData memory poolData,
-            VaultState memory vaultState
+            PoolData memory poolData
         )
     {
         params = SwapParams({
@@ -276,13 +256,11 @@ contract VaultMutationTest is BaseVaultTest {
         poolData.balancesRaw = initialBalances;
 
         poolData.poolConfig.staticSwapFeePercentage = swapFeePercentage;
-        vaultState.protocolSwapFeePercentage = protocolFeePercentage;
-        poolData.poolConfig.poolCreatorFeePercentage = poolCreatorFeePercentage;
 
         poolData.balancesLiveScaled18 = new uint256[](initialBalances.length);
     }
 
-    function _makeDefaultParams() internal returns (PoolData memory poolData) {
+    function _makeDefaultParams() internal view returns (PoolData memory poolData) {
         poolData.poolConfig.staticSwapFeePercentage = swapFeePercentage;
 
         poolData.balancesLiveScaled18 = new uint256[](tokens.length);
@@ -309,7 +287,7 @@ contract VaultMutationTest is BaseVaultTest {
         PoolData memory poolData,
         AddLiquidityKind kind,
         uint256 minBptAmountOut
-    ) internal returns (AddLiquidityParams memory params, uint256[] memory maxAmountsInScaled18) {
+    ) internal view returns (AddLiquidityParams memory params, uint256[] memory maxAmountsInScaled18) {
         params = AddLiquidityParams({
             pool: pool,
             to: address(this),
@@ -334,7 +312,7 @@ contract VaultMutationTest is BaseVaultTest {
         RemoveLiquidityKind kind,
         uint256 maxBptAmountIn,
         uint256 defaultMinAmountOut
-    ) internal returns (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) {
+    ) internal view returns (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) {
         params = RemoveLiquidityParams({
             pool: pool,
             from: address(this),

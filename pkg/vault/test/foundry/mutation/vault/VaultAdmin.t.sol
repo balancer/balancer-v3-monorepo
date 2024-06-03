@@ -130,36 +130,6 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     /*
-      setProtocolSwapFeePercentage
-        [x] authenticate
-        [x] onlyVault
-    */
-    function testSetProtocolSwapFeePercentageWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
-        vault.setProtocolSwapFeePercentage(1);
-    }
-
-    function testSetProtocolSwapFeePercentageWhenNotVault() public {
-        vm.expectRevert();
-        vaultAdmin.setProtocolSwapFeePercentage(1);
-    }
-
-    /*
-      setProtocolYieldFeePercentage
-        [x] authenticate
-        [x] onlyVault
-    */
-    function testSetProtocolYieldFeePercentageWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
-        vault.setProtocolYieldFeePercentage(1);
-    }
-
-    function testSetProtocolYieldFeePercentageWhenNotVault() public {
-        vm.expectRevert();
-        vaultAdmin.setProtocolYieldFeePercentage(1);
-    }
-
-    /*
       setStaticSwapFeePercentage
         [x] withRegisteredPool
         [x] onlyVault
@@ -203,28 +173,12 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     /*
       collectProtocolFees
-        [x] authenticate
         [] nonReentrant
         [x] onlyVault
     */
-    function testCollectProtocolFeesWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
-        vault.collectProtocolFees(pool);
-    }
-
     function testCollectProtocolFeesWhenNotVault() public {
         vm.expectRevert();
         vaultAdmin.collectProtocolFees(pool);
-    }
-
-    /*
-      collectPoolCreatorFees
-        [] nonReentrant
-        [x] onlyVault
-    */
-    function testCollectPoolCreatorFees() public {
-        vm.expectRevert();
-        vaultAdmin.collectPoolCreatorFees(pool);
     }
 
     /*

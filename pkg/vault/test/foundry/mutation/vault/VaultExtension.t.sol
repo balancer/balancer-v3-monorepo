@@ -175,33 +175,6 @@ contract VaultExtensionMutationTest is BaseVaultTest {
     }
 
     /*
-        getProtocolSwapFeePercentage
-            [x] onlyVault
-    */
-    function testGetProtocolSwapFeePercentageWhenNotVault() public {
-        vm.expectRevert();
-        vaultExtension.getProtocolSwapFeePercentage();
-    }
-
-    /*
-        getProtocolYieldFeePercentage
-            [x] onlyVault
-    */
-    function testGetProtocolYieldFreePercentageWhenNotVault() public {
-        vm.expectRevert();
-        vaultExtension.getProtocolYieldFeePercentage();
-    }
-
-    /*
-        getProtocolFees
-            [x] onlyVault
-    */
-    function testGetProtocolFeesWhenNotVault() public {
-        vm.expectRevert();
-        vaultExtension.getProtocolFees(pool, dai);
-    }
-
-    /*
         getStaticSwapFeePercentage
             [x] onlyVault
     */
