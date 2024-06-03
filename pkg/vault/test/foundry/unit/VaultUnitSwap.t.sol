@@ -531,7 +531,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 expectedIndexOut,
         uint256 expectedSwapFeePercentage,
         uint256 expectedAmountGivenScaled18
-    ) internal pure {
+    ) internal {
         assertEq(swapState.indexIn, expectedIndexIn, "index in changed");
         assertEq(swapState.indexOut, expectedIndexOut, "index out changed");
         assertEq(swapState.swapFeePercentage, expectedSwapFeePercentage, "swap fee percentage changed");

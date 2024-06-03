@@ -877,6 +877,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
     }
 
+    function sync(IERC20[] memory tokens) external {
+        uint256 length = tokens.length;
+
+        for(uint8 i = 0; i < length; ++i) {
+            _reservesOf[tokens[i]] = tokens[i].balanceOf(address(this));        
+        }
+    }
     /**
      * @dev Preconditions: poolConfig, decimalScalingFactors, tokenRates in `poolData`.
      * Side effects: updates `_aggregateProtocolFeeAmounts` storage.

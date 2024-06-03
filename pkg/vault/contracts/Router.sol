@@ -117,6 +117,11 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bool wethIsEth,
         bytes memory userData
     ) external payable saveSender returns (uint256[] memory amountsIn) {
+        
+        IERC20[] memory tokens = IBasePool(pool).getPoolTokens();
+
+        _vault.sync(tokens);
+
         (amountsIn, , ) = abi.decode(
             _vault.unlock{ value: msg.value }(
                 abi.encodeWithSelector(

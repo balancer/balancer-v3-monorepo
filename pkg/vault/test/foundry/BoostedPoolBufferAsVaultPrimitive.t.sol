@@ -59,6 +59,14 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
         initializeBuffers();
         initializeBoostedPool();
+
+        // Dos Atack
+        deal(address(waDAI), address(this), 1, false);
+        waDAI.transfer(address(vault), 1);
+
+        IERC20[] memory syncIn = [address(waDAI)].toMemoryArray().asIERC20();
+        //syncIn[0] = IERC20(waDAI);
+        vault.sync(syncIn);
     }
 
     function initializeBuffers() private {
