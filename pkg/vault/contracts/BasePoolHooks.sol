@@ -19,7 +19,7 @@ import { VaultGuard } from "./VaultGuard.sol";
  * @dev Pools that only implement a subset of callbacks can inherit from here instead of IHooks,
  * and only override what they need.
  */
-abstract contract BaseHooks is IHooks, VaultGuard {
+abstract contract BasePoolHooks is IHooks, VaultGuard {
     constructor(IVault vault) VaultGuard(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
