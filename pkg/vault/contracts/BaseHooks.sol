@@ -8,6 +8,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import {
     AddLiquidityKind,
     HooksConfig,
+    LiquidityManagement,
     RemoveLiquidityKind,
     TokenConfig
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
