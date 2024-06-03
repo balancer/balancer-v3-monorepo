@@ -149,6 +149,24 @@ interface IVaultMainMock {
             VaultState memory
         );
 
+    function manualReentrancySwap(
+        SwapParams memory params,
+        SwapState memory state,
+        PoolData memory poolData,
+        VaultState memory vaultState
+    )
+        external
+        returns (
+            uint256 amountCalculatedRaw,
+            uint256 amountCalculatedScaled18,
+            uint256 amountIn,
+            uint256 amountOut,
+            SwapParams memory,
+            SwapState memory,
+            PoolData memory,
+            VaultState memory
+        );
+
     function manualSetPoolCreatorFees(address pool, IERC20 token, uint256 value) external;
 
     function manualBuildPoolSwapParams(
@@ -186,12 +204,42 @@ interface IVaultMainMock {
             uint256 bptAmountOut,
             bytes memory returnData
         );
+        
+    function manualReentrancyAddLiquidity(
+        PoolData memory poolData,
+        AddLiquidityParams memory params,
+        uint256[] memory maxAmountsInScaled18,
+        VaultState memory vaultState
+    )
+        external
+        returns (
+            PoolData memory updatedPoolData,
+            uint256[] memory amountsInRaw,
+            uint256[] memory amountsInScaled18,
+            uint256 bptAmountOut,
+            bytes memory returnData
+        );
 
     function forceUnlock() external;
 
     function forceLock() external;
 
     function manualRemoveLiquidity(
+        PoolData memory poolData,
+        RemoveLiquidityParams memory params,
+        uint256[] memory minAmountsOutScaled18,
+        VaultState memory vaultState
+    )
+        external
+        returns (
+            PoolData memory updatedPoolData,
+            uint256 bptAmountIn,
+            uint256[] memory amountsOutRaw,
+            uint256[] memory amountsOutScaled18,
+            bytes memory returnData
+        );
+
+    function manualReentrancyRemoveLiquidity(
         PoolData memory poolData,
         RemoveLiquidityParams memory params,
         uint256[] memory minAmountsOutScaled18,

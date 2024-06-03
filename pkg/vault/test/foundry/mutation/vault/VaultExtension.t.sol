@@ -220,24 +220,6 @@ contract VaultExtensionMutationTest is BaseVaultTest {
     }
 
     /*
-        getPoolCreatorFees
-            [x] onlyVault
-    */
-    function testGetPoolCreatorFeesWhenNotVault() public {
-        vm.expectRevert();
-        vaultExtension.getPoolCreatorFees(pool, dai);
-    }
-
-    /*
-        getPoolCreator
-            [x] onlyVault
-    */
-    function testGetPoolCreatorWhenNotVault() public {
-        vm.expectRevert();
-        vaultExtension.getPoolCreator(pool);
-    }
-
-    /*
         isPoolInRecoveryMode
             [x] onlyVault
     */

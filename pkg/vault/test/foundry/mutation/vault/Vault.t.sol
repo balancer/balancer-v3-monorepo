@@ -8,10 +8,15 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
+import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import {
     AddLiquidityParams,
     AddLiquidityKind,
@@ -23,11 +28,41 @@ import {
 
 contract VaultMutationTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using ScalingHelpers for *;
+
+    struct TestAddLiquidityParams {
+        AddLiquidityParams addLiquidityParams;
+        uint256[] expectedAmountsInScaled18;
+        uint256[] maxAmountsInScaled18;
+        uint256[] expectSwapFeeAmountsScaled18;
+        uint256 expectedBPTAmountOut;
+    }
+
+    struct TestRemoveLiquidityParams {
+        RemoveLiquidityParams removeLiquidityParams;
+        uint256[] expectedAmountsOutScaled18;
+        uint256[] minAmountsOutScaled18;
+        uint256[] expectSwapFeeAmountsScaled18;
+        uint256 expectedBPTAmountIn;
+    }
+
+    uint256 immutable defaultAmountGivenRaw = 1e18;
+
+    IERC20[] swapTokens;
+    uint256[] initialBalances = [uint256(10e18), 10e18];
+    uint256[] decimalScalingFactors = [uint256(1e18), 1e18];
+    uint256[] tokenRates = [uint256(1e18), 2e18];
+    uint256 initTotalSupply = 1000e18;
+
+    address internal constant ZERO_ADDRESS = address(0x00);
 
     uint256[] internal amountsIn = [poolInitAmount, poolInitAmount].toMemoryArray();
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+        swapTokens = [dai, usdc];
+
+        vault.mintERC20(pool, address(this), initTotalSupply);
     }
 
     /*
@@ -88,5 +123,234 @@ contract VaultMutationTest is BaseVaultTest {
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultIsNotUnlocked.selector));
         vault.removeLiquidity(params);
+    }
+
+    function testSwapReentrancy() public {
+        (
+            SwapParams memory params,
+            SwapState memory state,
+            PoolData memory poolData,
+            VaultState memory vaultState
+        ) = _makeParams(SwapKind.EXACT_OUT, defaultAmountGivenRaw, 0, 0, 0, 0);
+
+        vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
+        vault.manualReentrancySwap(params, state, poolData, vaultState);
+    }
+
+    function testAddLiquidityReentrancy() public {
+        PoolData memory poolData = _makeDefaultParams();
+        (AddLiquidityParams memory params1, uint256[] memory maxAmountsInScaled18) = _makeAddLiquidityParams(
+            poolData,
+            AddLiquidityKind.PROPORTIONAL,
+            1e18
+        );
+
+        TestAddLiquidityParams memory params = TestAddLiquidityParams({
+            addLiquidityParams: params1,
+            expectedAmountsInScaled18: BasePoolMath.computeProportionalAmountsIn(
+                poolData.balancesLiveScaled18,
+                vault.totalSupply(params1.pool),
+                params1.minBptAmountOut
+            ),
+            maxAmountsInScaled18: maxAmountsInScaled18,
+            expectSwapFeeAmountsScaled18: new uint256[](tokens.length),
+            expectedBPTAmountOut: params1.minBptAmountOut
+        });
+
+        VaultState memory vaultState;
+        vaultState.protocolSwapFeePercentage = swapFeePercentage;
+
+        uint256[] memory expectedAmountsInRaw = new uint256[](params.expectedAmountsInScaled18.length);
+        for (uint256 i = 0; i < expectedAmountsInRaw.length; i++) {
+            expectedAmountsInRaw[i] = params.expectedAmountsInScaled18[i].toRawUndoRateRoundUp(
+                poolData.decimalScalingFactors[i],
+                poolData.tokenRates[i]
+            );
+        }
+
+        vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
+        (
+            PoolData memory updatedPoolData,
+            uint256[] memory amountsInRaw,
+            uint256[] memory amountsInScaled18,
+            uint256 bptAmountOut,
+            bytes memory returnData
+        ) = vault.manualReentrancyAddLiquidity(
+                poolData,
+                params.addLiquidityParams,
+                params.maxAmountsInScaled18,
+                vaultState
+            );
+    }
+
+    function testRemoveLiquidityReentrancy() public {
+        PoolData memory poolData = _makeDefaultParams();
+        (RemoveLiquidityParams memory params1, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
+            poolData,
+            RemoveLiquidityKind.PROPORTIONAL,
+            1e18,
+            1
+        );
+
+        TestRemoveLiquidityParams memory params = TestRemoveLiquidityParams({
+            removeLiquidityParams: params1,
+            expectedAmountsOutScaled18: BasePoolMath.computeProportionalAmountsOut(
+                poolData.balancesLiveScaled18,
+                vault.totalSupply(params1.pool),
+                params1.maxBptAmountIn
+            ),
+            minAmountsOutScaled18: minAmountsOutScaled18,
+            expectSwapFeeAmountsScaled18: new uint256[](tokens.length),
+            expectedBPTAmountIn: params1.maxBptAmountIn
+        });
+
+        VaultState memory vaultState;
+        vaultState.protocolSwapFeePercentage = 1e16;
+
+        uint256[] memory expectedAmountsOutRaw = new uint256[](params.expectedAmountsOutScaled18.length);
+        for (uint256 i = 0; i < expectedAmountsOutRaw.length; i++) {
+            expectedAmountsOutRaw[i] = params.expectedAmountsOutScaled18[i].toRawUndoRateRoundDown(
+                poolData.decimalScalingFactors[i],
+                poolData.tokenRates[i]
+            );
+        }
+
+        vm.prank(pool);
+        vault.approve(params.removeLiquidityParams.from, address(this), params.expectedBPTAmountIn);
+
+        vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
+        (
+            PoolData memory updatedPoolData,
+            uint256 bptAmountIn,
+            uint256[] memory amountsOutRaw,
+            uint256[] memory amountsOutScaled18,
+            bytes memory returnData
+        ) = vault.manualReentrancyRemoveLiquidity(
+                poolData,
+                params.removeLiquidityParams,
+                params.minAmountsOutScaled18,
+                vaultState
+            );
+    }
+
+    /*
+        Helper functions
+    */
+
+    function _makeParams(
+        SwapKind kind,
+        uint256 amountGivenRaw,
+        uint256 limitRaw,
+        uint256 swapFeePercentage,
+        uint256 protocolFeePercentage,
+        uint256 poolCreatorFeePercentage
+    )
+        internal
+        returns (
+            SwapParams memory params,
+            SwapState memory swapState,
+            PoolData memory poolData,
+            VaultState memory vaultState
+        )
+    {
+        params = SwapParams({
+            kind: kind,
+            pool: pool,
+            tokenIn: swapTokens[0],
+            tokenOut: swapTokens[1],
+            amountGivenRaw: amountGivenRaw,
+            limitRaw: limitRaw,
+            userData: new bytes(0)
+        });
+
+        swapState.indexIn = 0;
+        swapState.indexOut = 1;
+        swapState.swapFeePercentage = swapFeePercentage;
+        swapState.amountGivenScaled18 = amountGivenRaw.toScaled18ApplyRateRoundDown(
+            decimalScalingFactors[kind == SwapKind.EXACT_IN ? swapState.indexIn : swapState.indexOut],
+            tokenRates[kind == SwapKind.EXACT_IN ? swapState.indexIn : swapState.indexOut]
+        );
+
+        poolData.decimalScalingFactors = decimalScalingFactors;
+        poolData.tokenRates = tokenRates;
+        poolData.balancesRaw = initialBalances;
+
+        poolData.poolConfig.staticSwapFeePercentage = swapFeePercentage;
+        vaultState.protocolSwapFeePercentage = protocolFeePercentage;
+        poolData.poolConfig.poolCreatorFeePercentage = poolCreatorFeePercentage;
+
+        poolData.balancesLiveScaled18 = new uint256[](initialBalances.length);
+    }
+
+    function _makeDefaultParams() internal returns (PoolData memory poolData) {
+        poolData.poolConfig.staticSwapFeePercentage = swapFeePercentage;
+
+        poolData.balancesLiveScaled18 = new uint256[](tokens.length);
+        poolData.balancesRaw = new uint256[](tokens.length);
+
+        poolData.tokenConfig = new TokenConfig[](tokens.length);
+        poolData.decimalScalingFactors = new uint256[](tokens.length);
+        poolData.tokenRates = new uint256[](tokens.length);
+
+        for (uint256 i = 0; i < poolData.tokenConfig.length; i++) {
+            poolData.tokenConfig[i].token = tokens[i];
+            poolData.decimalScalingFactors[i] = 1e18;
+            poolData.tokenRates[i] = 1e18 * (i + 1);
+
+            poolData.balancesLiveScaled18[i] = 1000e18;
+            poolData.balancesRaw[i] = poolData.balancesLiveScaled18[i].toRawUndoRateRoundDown(
+                poolData.decimalScalingFactors[i],
+                poolData.tokenRates[i]
+            );
+        }
+    }
+
+    function _makeAddLiquidityParams(
+        PoolData memory poolData,
+        AddLiquidityKind kind,
+        uint256 minBptAmountOut
+    ) internal returns (AddLiquidityParams memory params, uint256[] memory maxAmountsInScaled18) {
+        params = AddLiquidityParams({
+            pool: pool,
+            to: address(this),
+            kind: kind,
+            maxAmountsIn: new uint256[](tokens.length),
+            minBptAmountOut: minBptAmountOut,
+            userData: new bytes(0)
+        });
+
+        maxAmountsInScaled18 = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            maxAmountsInScaled18[i] = 1e18;
+            params.maxAmountsIn[i] = maxAmountsInScaled18[i].toRawUndoRateRoundUp(
+                poolData.decimalScalingFactors[i],
+                poolData.tokenRates[i]
+            );
+        }
+    }
+
+    function _makeRemoveLiquidityParams(
+        PoolData memory poolData,
+        RemoveLiquidityKind kind,
+        uint256 maxBptAmountIn,
+        uint256 defaultMinAmountOut
+    ) internal returns (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) {
+        params = RemoveLiquidityParams({
+            pool: pool,
+            from: address(this),
+            maxBptAmountIn: maxBptAmountIn,
+            minAmountsOut: new uint256[](tokens.length),
+            kind: kind,
+            userData: new bytes(0)
+        });
+
+        minAmountsOutScaled18 = new uint256[](tokens.length);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            minAmountsOutScaled18[i] = defaultMinAmountOut;
+            params.minAmountsOut[i] = minAmountsOutScaled18[i].toRawUndoRateRoundUp(
+                poolData.decimalScalingFactors[i],
+                poolData.tokenRates[i]
+            );
+        }
     }
 }
