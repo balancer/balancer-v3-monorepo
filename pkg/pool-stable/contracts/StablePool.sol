@@ -3,11 +3,13 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IMaximumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMaximumSwapFee.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { BasePoolAuthentication } from "@balancer-labs/v3-vault/contracts/BasePoolAuthentication.sol";
@@ -18,7 +20,7 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
 import { AmplificationDataLib, AmplificationDataBits, AmplificationData } from "./lib/AmplificationDataLib.sol";
 
 /// @notice Basic Stable Pool.
-contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Version {
+contract StablePool is IBasePool, IMaximumSwapFee, BalancerPoolToken, BasePoolAuthentication, Version {
     using AmplificationDataLib for AmplificationData;
     using FixedPoint for uint256;
     using SafeCast for *;
@@ -34,6 +36,8 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
     // rapidly: for example, by doubling the value every day it can increase by a factor of 8 over three days (2^3).
     uint256 private constant _MIN_UPDATE_TIME = 1 days;
     uint256 private constant _MAX_AMP_UPDATE_DAILY_RATE = 2;
+
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 0.1e18; // 10%
 
     /// @dev Store amplification state.
     AmplificationDataBits private _amplificationState;
@@ -278,5 +282,15 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
         data.endTime = endTime.toUint64();
 
         _amplificationState = data.fromAmpData();
+    }
+
+    /// @inheritdoc ERC165
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IMaximumSwapFee).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    /// @inheritdoc IMaximumSwapFee
+    function getMaximumSwapFeePercentage() external pure returns (uint256) {
+        return _MAX_SWAP_FEE_PERCENTAGE;
     }
 }
