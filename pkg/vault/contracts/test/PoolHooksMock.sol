@@ -42,6 +42,7 @@ contract PoolHooksMock is BasePoolHooks {
     bool public changePoolBalancesOnBeforeRemoveLiquidityHook;
 
     uint256 public onBeforeSwapAmountToUpdate;
+    uint256 public onAfterSwapAmountToUpdate;
 
     bool public swapReentrancyHookActive;
     address private _swapHookContract;
@@ -108,11 +109,10 @@ contract PoolHooksMock is BasePoolHooks {
         return (!failOnComputeDynamicSwapFeeHook, finalSwapFee);
     }
 
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external override returns (bool success, uint256 updatedAmountGivenRaw) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external override returns (bool success, uint256) {
+        uint256 updatedAmountGivenRaw = params.amountGivenRaw;
         if (onBeforeSwapAmountToUpdate > 0) {
             updatedAmountGivenRaw = params.amountGivenRaw + onBeforeSwapAmountToUpdate;
-        } else {
-            updatedAmountGivenRaw = params.amountGivenRaw;
         }
 
         if (changeTokenRateOnBeforeSwapHook) {
@@ -137,7 +137,7 @@ contract PoolHooksMock is BasePoolHooks {
         IHooks.AfterSwapParams calldata params,
         uint256 amountCalculatedScaled18,
         uint256 amountCalculatedRaw
-    ) external view override returns (bool success, uint256) {
+    ) external override returns (bool, uint256) {
         // check that actual pool balances match
         (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory scalingFactors) = _vault
             .getPoolTokenInfo(_pool);
@@ -172,7 +172,13 @@ contract PoolHooksMock is BasePoolHooks {
             }
         }
 
-        return (amountCalculatedScaled18 > 0 && !failOnAfterSwapHook, amountCalculatedRaw);
+        uint256 updatedAmountCalculatedRaw = amountCalculatedRaw;
+        if (onAfterSwapAmountToUpdate > 0) {
+            updatedAmountCalculatedRaw = amountCalculatedRaw - onAfterSwapAmountToUpdate;
+            _vault.sendTo(params.tokenOut, address(this), onAfterSwapAmountToUpdate);
+        }
+
+        return (amountCalculatedScaled18 > 0 && !failOnAfterSwapHook, updatedAmountCalculatedRaw);
     }
 
     // Liquidity lifecycle hooks
@@ -365,6 +371,10 @@ contract PoolHooksMock is BasePoolHooks {
 
     function setOnBeforeSwapAmountToUpdate(uint256 newAmountToUpdate) external {
         onBeforeSwapAmountToUpdate = newAmountToUpdate;
+    }
+
+    function setOnAfterSwapAmountToUpdate(uint256 newAmountToUpdate) external {
+        onAfterSwapAmountToUpdate = newAmountToUpdate;
     }
 
     function allowFactory(address factory) external {
