@@ -535,4 +535,12 @@ contract VaultSwapTest is BaseVaultTest {
             assertEq(currentLiveBalances[i], lastLiveBalances[i]);
         }
     }
+
+    function testSetSwapFeeTooHigh() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+
+        vm.expectRevert(IVaultErrors.SwapFeePercentageTooHigh.selector);
+        vault.setStaticSwapFeePercentage(address(pool), FixedPoint.ONE + 1);
+    }
 }
