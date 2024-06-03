@@ -22,6 +22,9 @@ import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
 
 describe('StablePool', () => {
+  const FACTORY_VERSION = 'Stable Factory v1';
+  const POOL_VERSION = 'Stable Pool v1';
+
   const TOKEN_AMOUNT = fp(1000);
 
   let permit2: IPermit2;
@@ -44,7 +47,9 @@ describe('StablePool', () => {
     permit2 = await deployPermit2();
     router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2] });
 
-    factory = await deploy('StablePoolFactory', { args: [await vault.getAddress(), MONTH * 12] });
+    factory = await deploy('StablePoolFactory', {
+      args: [await vault.getAddress(), MONTH * 12, FACTORY_VERSION, POOL_VERSION],
+    });
 
     tokens = await ERC20TokenList.create(4, { sorted: true });
     poolTokens = await tokens.addresses;
@@ -89,6 +94,15 @@ describe('StablePool', () => {
 
       expect(await pool.name()).to.equal('Stable Pool');
       expect(await pool.symbol()).to.equal(`STABLE-${numTokens}`);
+    });
+
+    it('should have correct versions', async () => {
+      expect(await factory.version()).to.eq(FACTORY_VERSION);
+      expect(await factory.getPoolVersion()).to.eq(POOL_VERSION);
+
+      await deployPool(numTokens);
+
+      expect(await pool.version()).to.eq(POOL_VERSION);
     });
 
     describe(`initialization with ${numTokens} tokens`, () => {
