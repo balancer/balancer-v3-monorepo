@@ -424,22 +424,14 @@ contract VaultMock is IVaultMainMock, Vault {
         return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut, params, state, poolData);
     }
 
-
     function manualReentrancySwap(
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
-    )
-        external
-        nonReentrant
-    {
-        _swap(
-            params,
-            state,
-            poolData
-        );
+    ) external nonReentrant {
+        _swap(params, state, poolData);
     }
-    
+
     function manualGetAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view returns (uint256) {
         return _aggregateProtocolFeeAmounts[pool][token].getBalanceRaw();
     }
@@ -523,15 +515,8 @@ contract VaultMock is IVaultMainMock, Vault {
         PoolData memory poolData,
         AddLiquidityParams memory params,
         uint256[] memory maxAmountsInScaled18
-    )
-        external
-        nonReentrant
-    {
-        _addLiquidity(
-            poolData,
-            params,
-            maxAmountsInScaled18
-        );
+    ) external nonReentrant {
+        _addLiquidity(poolData, params, maxAmountsInScaled18);
     }
 
     function manualRemoveLiquidity(
@@ -564,16 +549,8 @@ contract VaultMock is IVaultMainMock, Vault {
         RemoveLiquidityParams memory params,
         uint256[] memory minAmountsOutScaled18,
         VaultState memory vaultState
-    )
-        external
-        nonReentrant
-    {
-        _removeLiquidity(
-            poolData,
-            params,
-            minAmountsOutScaled18,
-            vaultState
-        );
+    ) external nonReentrant {
+        _removeLiquidity(poolData, params, minAmountsOutScaled18, vaultState);
     }
 
     function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256) {

@@ -126,11 +126,12 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testSwapReentrancy() public {
-        (
-            SwapParams memory params,
-            SwapState memory state,
-            PoolData memory poolData
-        ) = _makeParams(SwapKind.EXACT_OUT, defaultAmountGivenRaw, 0, 0);
+        (SwapParams memory params, SwapState memory state, PoolData memory poolData) = _makeParams(
+            SwapKind.EXACT_OUT,
+            defaultAmountGivenRaw,
+            0,
+            0
+        );
 
         vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
         vault.manualReentrancySwap(params, state, poolData);
@@ -165,11 +166,7 @@ contract VaultMutationTest is BaseVaultTest {
         }
 
         vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
-       vault.manualReentrancyAddLiquidity(
-            poolData,
-            params.addLiquidityParams,
-            params.maxAmountsInScaled18
-        );
+        vault.manualReentrancyAddLiquidity(poolData, params.addLiquidityParams, params.maxAmountsInScaled18);
     }
 
     function testRemoveLiquidityReentrancy() public {
@@ -224,15 +221,7 @@ contract VaultMutationTest is BaseVaultTest {
         uint256 amountGivenRaw,
         uint256 limitRaw,
         uint256 swapFeePercentage
-    )
-        internal
-        view
-        returns (
-            SwapParams memory params,
-            SwapState memory swapState,
-            PoolData memory poolData
-        )
-    {
+    ) internal view returns (SwapParams memory params, SwapState memory swapState, PoolData memory poolData) {
         params = SwapParams({
             kind: kind,
             pool: pool,
