@@ -149,13 +149,7 @@ interface IVaultMainMock {
             PoolData memory
         );
 
-
-    function manualReentrancySwap(
-        SwapParams memory params,
-        SwapState memory state,
-        PoolData memory poolData
-    )
-        external;
+    function manualReentrancySwap(SwapParams memory params, SwapState memory state, PoolData memory poolData) external;
 
     function manualGetAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
@@ -233,8 +227,7 @@ interface IVaultMainMock {
         RemoveLiquidityParams memory params,
         uint256[] memory minAmountsOutScaled18,
         VaultState memory vaultState
-    )
-        external;
+    ) external;
 
     function manualUpdateReservesAfterWrapping(
         IERC20 underlyingToken,
