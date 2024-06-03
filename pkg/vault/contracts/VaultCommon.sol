@@ -316,51 +316,17 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         // Initialize poolData with base information for subsequent calculations.
         poolData = _loadPoolData(pool, roundingDirection);
 
-        uint256[] memory aggregateYieldFeeAmountsRaw = _computePendingYieldFees(pool, poolData);
+        // uint256[] memory aggregateYieldFeeAmountsRaw = _computePendingYieldFees(pool, poolData);
 
-        uint256 numTokens = aggregateYieldFeeAmountsRaw.length;
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            if (aggregateYieldFeeAmountsRaw[i] > 0) {
-                IERC20 token = poolData.tokenConfig[i].token;
-
-                poolData.updateRawAndLiveBalance(
-                    i,
-                    poolData.balancesRaw[i] - aggregateYieldFeeAmountsRaw[i],
-                    roundingDirection
-                );
-
-                // Both Swap and Yield fees are stored together in a PackedTokenBalance.
-                // We have designated "Derived" the derived half for Yield fee storage.
-                bytes32 currentPackedBalance = _aggregateProtocolFeeAmounts[pool][token];
-                _aggregateProtocolFeeAmounts[pool][token] = currentPackedBalance.setBalanceDerived(
-                    currentPackedBalance.getBalanceDerived() + aggregateYieldFeeAmountsRaw[i]
-                );
-            }
-        }
-
-        // Update raw and last live pool balances, as computed by `_loadPoolDataAndYieldFees`
-        _writePoolBalancesToStorage(pool, poolData);
-    }
-
-    /**
-     * @dev Computes the pending yield fees for both the protocol and creator, without changing any state.
-     * No side-effects
-     */
-    function _computePendingYieldFees(
-        address pool,
-        PoolData memory poolData
-    ) internal view returns (uint256[] memory aggregateYieldFeeAmountsRaw) {
+        uint256 numTokens = poolData.balancesLiveScaled18.length;
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
-        uint256 numTokens = poolBalances.length();
-
-        aggregateYieldFeeAmountsRaw = new uint256[](numTokens);
 
         bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
             poolData.poolConfig.aggregateProtocolYieldFeePercentage > 0 &&
             poolData.poolConfig.isPoolInRecoveryMode == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
+            uint256 aggregateYieldFeeAmountRaw = 0;
             TokenConfig memory tokenConfig = poolData.tokenConfig[i];
 
             // poolData already has live balances computed from raw balances according to the token rates and the
@@ -374,11 +340,33 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
             // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
             if (poolSubjectToYieldFees && tokenSubjectToYieldFees) {
-                aggregateYieldFeeAmountsRaw[i] = _computeYieldFeesDue(
+                aggregateYieldFeeAmountRaw = _computeYieldFeesDue(
                     poolData,
                     poolBalances.unchecked_valueAt(i).getBalanceDerived(),
                     i,
                     poolData.poolConfig.aggregateProtocolYieldFeePercentage
+                );
+            }
+
+            if (aggregateYieldFeeAmountRaw > 0) {
+                IERC20 token = poolData.tokenConfig[i].token;
+
+                poolData.updateRawAndLiveBalance(
+                    i,
+                    poolData.balancesRaw[i] - aggregateYieldFeeAmountRaw,
+                    roundingDirection
+                );
+
+                // Both Swap and Yield fees are stored together in a PackedTokenBalance.
+                // We have designated "Derived" the derived half for Yield fee storage.
+                bytes32 packedProtocolFeeAmounts = _aggregateProtocolFeeAmounts[pool][token];
+                _aggregateProtocolFeeAmounts[pool][token] = packedProtocolFeeAmounts.setBalanceDerived(
+                    packedProtocolFeeAmounts.getBalanceDerived() + aggregateYieldFeeAmountRaw
+                );
+
+                poolBalances.unchecked_setAt(
+                    i,
+                    PackedTokenBalance.toPackedBalance(poolData.balancesRaw[i], poolData.balancesLiveScaled18[i])
                 );
             }
         }
