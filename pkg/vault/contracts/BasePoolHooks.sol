@@ -5,7 +5,13 @@ pragma solidity ^0.8.24;
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    AddLiquidityKind,
+    HooksConfig,
+    LiquidityManagement,
+    RemoveLiquidityKind,
+    TokenConfig
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
 
@@ -14,8 +20,6 @@ import { VaultGuard } from "./VaultGuard.sol";
  * and only override what they need.
  */
 abstract contract BasePoolHooks is IHooks, VaultGuard {
-    HooksConfig internal _hooksConfig;
-
     constructor(IVault vault) VaultGuard(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -32,9 +36,7 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
     }
 
     /// @inheritdoc IHooks
-    function getHooksConfig() external virtual returns (HooksConfig memory) {
-        return _hooksConfig;
-    }
+    function getHooksConfig() external virtual returns (HooksConfig memory);
 
     /// @inheritdoc IHooks
     function onBeforeInitialize(uint256[] memory, bytes memory) external virtual onlyVault returns (bool) {
