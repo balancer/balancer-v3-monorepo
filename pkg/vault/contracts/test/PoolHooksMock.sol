@@ -41,6 +41,8 @@ contract PoolHooksMock is BasePoolHooks {
     bool public changePoolBalancesOnBeforeAddLiquidityHook;
     bool public changePoolBalancesOnBeforeRemoveLiquidityHook;
 
+    uint256 public onBeforeSwapAmountToUpdate;
+
     bool public swapReentrancyHookActive;
     address private _swapHookContract;
     bytes private _swapHookCalldata;
@@ -106,7 +108,13 @@ contract PoolHooksMock is BasePoolHooks {
         return (!failOnComputeDynamicSwapFeeHook, finalSwapFee);
     }
 
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external override returns (bool success, uint256) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external override returns (bool success, uint256 updatedAmountGivenRaw) {
+        if (onBeforeSwapAmountToUpdate > 0) {
+            updatedAmountGivenRaw = params.amountGivenRaw + onBeforeSwapAmountToUpdate;
+        } else {
+            updatedAmountGivenRaw = params.amountGivenRaw;
+        }
+
         if (changeTokenRateOnBeforeSwapHook) {
             _updateTokenRate();
         }
@@ -122,7 +130,7 @@ contract PoolHooksMock is BasePoolHooks {
             Address.functionCall(_swapHookContract, _swapHookCalldata);
         }
 
-        return (!failOnBeforeSwapHook, params.amountGivenRaw);
+        return (!failOnBeforeSwapHook, updatedAmountGivenRaw);
     }
 
     function onAfterSwap(
@@ -353,6 +361,10 @@ contract PoolHooksMock is BasePoolHooks {
 
     function setPool(address pool) external {
         _pool = pool;
+    }
+
+    function setOnBeforeSwapAmountToUpdate(uint256 newAmountToUpdate) external {
+        onBeforeSwapAmountToUpdate = newAmountToUpdate;
     }
 
     function allowFactory(address factory) external {
