@@ -72,7 +72,7 @@ contract PoolHooksMock is BaseHooks {
         return _allowedFactories[factory];
     }
 
-    function getHooksConfig() external override returns (HooksConfig memory) {
+    function getHooksConfig() external view override returns (HooksConfig memory) {
         return _hooksConfig;
     }
 
