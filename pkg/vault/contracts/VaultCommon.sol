@@ -448,14 +448,17 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             if (swapFeePercentage > IMaximumSwapFee(pool).getMaximumSwapFeePercentage()) {
                 revert SwapFeePercentageTooHigh();
             }
-        } else if (swapFeePercentage > FixedPoint.ONE) {
-            revert SwapFeePercentageTooHigh();
         }
 
         if (IERC165(pool).supportsInterface(type(IMinimumSwapFee).interfaceId)) {
             if (swapFeePercentage < IMinimumSwapFee(pool).getMinimumSwapFeePercentage()) {
                 revert SwapFeePercentageTooLow();
             }
+        }
+
+        // Still has to be valid, regardless of what the pool defines.
+        if (swapFeePercentage > FixedPoint.ONE) {
+            revert SwapFeePercentageTooHigh();
         }
 
         PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
