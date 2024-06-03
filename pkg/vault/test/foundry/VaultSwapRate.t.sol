@@ -45,7 +45,8 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         factoryMock.registerTestPool(
             newPool,
             vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
-            address(lp)
+            poolHooksContract,
+            lp
         );
 
         return newPool;

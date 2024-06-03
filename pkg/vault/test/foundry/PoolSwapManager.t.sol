@@ -34,33 +34,46 @@ contract PoolSwapManagerTest is BaseVaultTest {
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
 
-        PoolRoleAccounts memory defaultRoleAccounts = PoolRoleAccounts({
-            pauseManager: address(0),
-            swapFeeManager: address(0),
-            poolCreator: address(0)
-        });
-
-        PoolRoleAccounts memory adminRoleAccounts = PoolRoleAccounts({
-            pauseManager: address(0),
-            swapFeeManager: admin,
-            poolCreator: address(0)
-        });
+        PoolRoleAccounts memory defaultRoleAccounts;
+        PoolRoleAccounts memory adminRoleAccounts;
+        adminRoleAccounts.swapFeeManager = admin;
 
         pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
         // Make admin the swap fee manager.
-        factoryMock.registerGeneralTestPool(address(pool), tokenConfig, 0, 365 days, adminRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(pool),
+            tokenConfig,
+            0,
+            365 days,
+            adminRoleAccounts,
+            poolHooksContract
+        );
 
         unmanagedPool = new PoolMock(IVault(address(vault)), "Unmanaged Pool", "UNMANAGED");
 
         // Pass zero for the swap fee manager.
-        factoryMock.registerGeneralTestPool(address(unmanagedPool), tokenConfig, 0, 365 days, defaultRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(unmanagedPool),
+            tokenConfig,
+            0,
+            365 days,
+            defaultRoleAccounts,
+            poolHooksContract
+        );
 
         // Pass zero for the swap fee manager.
         otherPool = new PoolMock(IVault(address(vault)), "Other Pool", "OTHER");
 
         // Pass zero for the swap fee manager.
-        factoryMock.registerGeneralTestPool(address(otherPool), tokenConfig, 0, 365 days, defaultRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(otherPool),
+            tokenConfig,
+            0,
+            365 days,
+            defaultRoleAccounts,
+            poolHooksContract
+        );
 
         factory = new PoolFactoryMock(IVault(address(vault)), 365 days);
     }

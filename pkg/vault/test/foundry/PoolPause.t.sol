@@ -36,34 +36,54 @@ contract PoolPauseTest is BaseVaultTest {
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
 
-        PoolRoleAccounts memory defaultRoleAccounts = PoolRoleAccounts({
-            pauseManager: address(0),
-            swapFeeManager: address(0),
-            poolCreator: address(0)
-        });
-
-        PoolRoleAccounts memory adminRoleAccounts = PoolRoleAccounts({
-            pauseManager: admin,
-            swapFeeManager: address(0),
-            poolCreator: address(0)
-        });
+        PoolRoleAccounts memory defaultRoleAccounts;
+        PoolRoleAccounts memory adminRoleAccounts;
+        adminRoleAccounts.pauseManager = admin;
 
         pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
-        factoryMock.registerGeneralTestPool(address(pool), tokenConfig, 0, 365 days, adminRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(pool),
+            tokenConfig,
+            0,
+            365 days,
+            adminRoleAccounts,
+            poolHooksContract
+        );
 
         // Pass zero for the pause manager
         unmanagedPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
-        factoryMock.registerGeneralTestPool(address(unmanagedPool), tokenConfig, 0, 365 days, defaultRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(unmanagedPool),
+            tokenConfig,
+            0,
+            365 days,
+            defaultRoleAccounts,
+            poolHooksContract
+        );
 
         permissionlessPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
-        factoryMock.registerGeneralTestPool(address(permissionlessPool), tokenConfig, 0, 0, defaultRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(permissionlessPool),
+            tokenConfig,
+            0,
+            0,
+            defaultRoleAccounts,
+            poolHooksContract
+        );
 
         infinityPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
-        factoryMock.registerGeneralTestPool(address(infinityPool), tokenConfig, 0, 10000 days, defaultRoleAccounts);
+        factoryMock.registerGeneralTestPool(
+            address(infinityPool),
+            tokenConfig,
+            0,
+            10000 days,
+            defaultRoleAccounts,
+            poolHooksContract
+        );
 
         factory = new PoolFactoryMock(IVault(address(vault)), 365 days);
     }

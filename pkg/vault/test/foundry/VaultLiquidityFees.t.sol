@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -22,9 +24,10 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         setSwapFeePercentage(swapFeePercentage);
-        setProtocolSwapFeePercentage(protocolSwapFeePercentage);
-        vm.prank(lp);
-        vault.setPoolCreatorFeePercentage(address(pool), poolCreatorFeePercentage);
+        vault.manualSetAggregateProtocolSwapFeePercentage(
+            pool,
+            _getAggregateFeePercentage(protocolSwapFeePercentage, poolCreatorFeePercentage)
+        );
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
@@ -37,8 +40,10 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         PoolConfig memory config = vault.getPoolConfig(address(pool));
 
         assertEq(config.staticSwapFeePercentage, swapFeePercentage);
-        assertEq(config.poolCreatorFeePercentage, poolCreatorFeePercentage);
-        assertEq(vault.getProtocolSwapFeePercentage(), protocolSwapFeePercentage);
+        assertEq(
+            config.aggregateProtocolSwapFeePercentage,
+            _getAggregateFeePercentage(protocolSwapFeePercentage, poolCreatorFeePercentage)
+        );
     }
 
     /// Add
@@ -248,21 +253,16 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             "Add - Pool balance: token 1"
         );
 
-        // Protocols fees are charged
-        assertEq(protocolSwapFees[daiIdx], vault.getProtocolFees(pool, dai), "Protocol's fee amount is wrong");
-        assertEq(protocolSwapFees[usdcIdx], vault.getProtocolFees(pool, usdc), "Protocol's fee amount is wrong");
-
-        assertApproxEqAbs(
-            poolCreatorFees[daiIdx],
-            vault.getPoolCreatorFees(pool, dai),
-            1,
-            "Pool creator's fee amount is wrong"
+        // Protocol + creator fees are charged
+        assertEq(
+            protocolSwapFees[daiIdx] + poolCreatorFees[daiIdx],
+            vault.manualGetAggregateProtocolSwapFeeAmount(pool, dai),
+            "Aggregate fee amount is wrong"
         );
-        assertApproxEqAbs(
-            poolCreatorFees[usdcIdx],
-            vault.getPoolCreatorFees(pool, usdc),
-            1,
-            "Pool creator's fee amount is wrong"
+        assertEq(
+            protocolSwapFees[usdcIdx] + poolCreatorFees[usdcIdx],
+            vault.manualGetAggregateProtocolSwapFeeAmount(pool, usdc),
+            "Aggregate fee amount is wrong"
         );
 
         // Pool creator fees are charged if protocol fees are charged.
@@ -329,12 +329,10 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             "Remove - Pool balance: token 1"
         );
 
-        // Protocols fees are charged
-        assertEq(protocolSwapFees[daiIdx], vault.getProtocolFees(pool, dai), "Protocol's DAI fee amount is wrong");
-        assertEq(protocolSwapFees[usdcIdx], vault.getProtocolFees(pool, usdc), "Protocol's USDC fee amount is wrong");
-
-        assertEq(poolCreatorFees[daiIdx], vault.getPoolCreatorFees(pool, dai), "Pool creator's fee amount is wrong");
-        assertEq(poolCreatorFees[usdcIdx], vault.getPoolCreatorFees(pool, usdc), "Pool creator's fee amount is wrong");
+        IERC20[] memory feeTokens = new IERC20[](2);
+        feeTokens[0] = dai;
+        feeTokens[1] = usdc;
+        uint256[] memory feeAmounts = vault.getProtocolFeeController().getAggregateProtocolFeeAmounts(pool);
 
         // Pool creator fees are charged if protocol fees are charged.
         if (protocolSwapFees[0] > 0) {

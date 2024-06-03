@@ -68,7 +68,7 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
 
         PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig, address(0));
+        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract);
 
         vm.label(address(newPool), "boosted pool");
         boostedPool = address(newPool);
@@ -125,7 +125,7 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN, swapAmount);
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN);
     }
 
     function testBoostedPoolSwapWithoutBufferExactOut() public {
@@ -135,7 +135,7 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT, swapAmount);
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, swapAmount, SwapKind.EXACT_OUT);
     }
 
     function _buildExactInPaths(
@@ -144,7 +144,6 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
 
-        // TODO check comment "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
         // Since this is exact in, swaps will be executed in the order given.
         // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the boosted pool,
         // and finally post-swap the waUSDC through the USDC buffer to calculate the USDC amount out.
@@ -167,7 +166,6 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountOut[](1);
 
-        // TODO check comment "Transparent" USDC for DAI swap with boosted pool, which holds only wrapped tokens.
         // Since this is exact out, swaps will be executed in reverse order (though we submit in logical order).
         // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the boosted pool,
         // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
@@ -189,8 +187,7 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         address[] memory tokens,
         uint256[] memory amounts,
         uint256 expectedDelta,
-        SwapKind kind,
-        uint256 bufferExpectedDelta
+        SwapKind kind
     ) private {
         assertEq(paths.length, 1, "Incorrect output array length");
 

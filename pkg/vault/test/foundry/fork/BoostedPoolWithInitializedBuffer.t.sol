@@ -96,7 +96,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
         PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig, address(0));
+        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract);
 
         vm.label(address(newPool), "boosted pool");
         boostedPool = address(newPool);

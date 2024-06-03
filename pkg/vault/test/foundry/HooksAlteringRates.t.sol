@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IPoolHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolHooks.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -14,6 +14,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -27,9 +28,9 @@ contract HooksAlteringRatesTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.hooks.shouldCallBeforeSwap = true;
-        vault.setConfig(address(pool), config);
+        HooksConfig memory config = vault.getHooksConfig(address(pool));
+        config.shouldCallBeforeSwap = true;
+        vault.setHooksConfig(address(pool), config);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
@@ -48,14 +49,14 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig, address(lp));
+        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
 
         return address(newPool);
     }
 
     function testOnBeforeSwapHookAltersRate() public {
         // Change rate of first token
-        PoolMock(pool).setChangeTokenRateOnBeforeSwapHook(true, rateProvider, 0.5e18);
+        PoolHooksMock(poolHooksContract).setChangeTokenRateOnBeforeSwapHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
@@ -96,15 +97,15 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "new-pool");
 
-        factoryMock.registerTestPool(address(newPool), tokenConfig, address(lp));
+        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
 
-        PoolConfig memory config = vault.getPoolConfig(address(newPool));
-        config.hooks.shouldCallBeforeInitialize = true;
-        config.hooks.shouldCallAfterInitialize = true;
-        vault.setConfig(address(newPool), config);
+        HooksConfig memory config = vault.getHooksConfig(address(newPool));
+        config.shouldCallBeforeInitialize = true;
+        config.shouldCallAfterInitialize = true;
+        vault.setHooksConfig(address(newPool), config);
 
         // Change rate of first token
-        PoolMock(newPool).setChangeTokenRateOnBeforeInitializeHook(true, rateProvider, 0.5e18);
+        PoolHooksMock(poolHooksContract).setChangeTokenRateOnBeforeInitializeHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
@@ -117,8 +118,8 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         // Cannot intercept _initialize, but can check the same values in the AfterInitialize hook
         vm.prank(bob);
         vm.expectCall(
-            address(newPool),
-            abi.encodeWithSelector(IPoolHooks.onAfterInitialize.selector, expectedAmounts, bptAmount, "")
+            address(poolHooksContract),
+            abi.encodeWithSelector(IHooks.onAfterInitialize.selector, expectedAmounts, bptAmount, "")
         );
 
         router.initialize(
@@ -132,13 +133,13 @@ contract HooksAlteringRatesTest is BaseVaultTest {
     }
 
     function testOnBeforeAddLiquidityHookAltersRate() public {
-        PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.hooks.shouldCallBeforeAddLiquidity = true;
-        config.hooks.shouldCallAfterAddLiquidity = true;
-        vault.setConfig(address(pool), config);
+        HooksConfig memory config = vault.getHooksConfig(address(pool));
+        config.shouldCallBeforeAddLiquidity = true;
+        config.shouldCallAfterAddLiquidity = true;
+        vault.setHooksConfig(address(pool), config);
 
         // Change rate of first token
-        PoolMock(pool).setChangeTokenRateOnBeforeAddLiquidityHook(true, rateProvider, 0.5e18);
+        PoolHooksMock(poolHooksContract).setChangeTokenRateOnBeforeAddLiquidityHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
@@ -156,9 +157,9 @@ contract HooksAlteringRatesTest is BaseVaultTest {
 
         vm.prank(bob);
         vm.expectCall(
-            address(pool),
+            address(poolHooksContract),
             abi.encodeWithSelector(
-                IPoolHooks.onAfterAddLiquidity.selector,
+                IHooks.onAfterAddLiquidity.selector,
                 router,
                 expectedAmountsIn,
                 defaultAmount * 2,
@@ -177,12 +178,12 @@ contract HooksAlteringRatesTest is BaseVaultTest {
     }
 
     function testOnBeforeRemoveLiquidityHookAlterRate() public {
-        PoolConfig memory config = vault.getPoolConfig(address(pool));
-        config.hooks.shouldCallBeforeRemoveLiquidity = true;
-        vault.setConfig(address(pool), config);
+        HooksConfig memory config = vault.getHooksConfig(address(pool));
+        config.shouldCallBeforeRemoveLiquidity = true;
+        vault.setHooksConfig(address(pool), config);
 
         // Change rate of first token
-        PoolMock(pool).setChangeTokenRateOnBeforeRemoveLiquidityHook(true, rateProvider, 0.5e18);
+        PoolHooksMock(poolHooksContract).setChangeTokenRateOnBeforeRemoveLiquidityHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 

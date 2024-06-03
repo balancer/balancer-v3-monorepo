@@ -29,7 +29,7 @@ contract PackedTokenBalanceTest is Test {
     }
 
     function testPackedTokenBalanceSetters__Fuzz(bytes32 balance, uint128 newBalanceValue) public {
-        (uint256 recoveredRaw, uint256 recoveredLive) = PackedTokenBalance.fromPackedBalance(balance);
+        (, uint256 recoveredLive) = PackedTokenBalance.fromPackedBalance(balance);
 
         // Set new raw balance (should not change live).
         bytes32 newBalance = balance.setBalanceRaw(newBalanceValue);

@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
+import { IHooks } from "./IHooks.sol";
 import { IBasePool } from "./IBasePool.sol";
 import "./VaultTypes.sol";
 
@@ -66,10 +67,10 @@ interface IVaultExtension {
      *
      * @param pool The address of the pool being registered
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
-     * @param swapFeePercentage Initial value of the swap fee
+     * @param swapFeePercentage The initial static swap fee percentage of the pool
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
-     * @param poolHooks Flags indicating which hooks the pool supports
+     * @param poolHooksContract Contract that implements the hooks for the pool
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
     function registerPool(
@@ -78,7 +79,7 @@ interface IVaultExtension {
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
-        PoolHooks calldata poolHooks,
+        address poolHooksContract,
         LiquidityManagement calldata liquidityManagement
     ) external;
 
@@ -146,6 +147,20 @@ interface IVaultExtension {
      * @return Pool configuration
      */
     function getPoolConfig(address pool) external view returns (PoolConfig memory);
+
+    /**
+     * @notice Gets the hooks configuration parameters of a pool.
+     * @param pool Address of the pool
+     * @return Hooks configuration
+     */
+    function getHooksConfig(address pool) external view returns (HooksConfig memory);
+
+    /**
+     * @notice Gets the current bpt rate of a pool, by dividing the current invariant by the total supply of BPT.
+     * @param pool Address of the pool
+     * @return rate BPT rate
+     */
+    function getBptRate(address pool) external view returns (uint256 rate);
 
     /*******************************************************************************
                                     Pool Tokens
@@ -241,24 +256,20 @@ interface IVaultExtension {
     *******************************************************************************/
 
     /**
-     * @notice Retrieves the current protocol swap fee percentage.
-     * @return The current protocol swap fee percentage
-     */
-    function getProtocolSwapFeePercentage() external view returns (uint256);
-
-    /**
-     * @notice Retrieves the current protocol yield fee percentage.
-     * @return The current protocol yield fee percentage
-     */
-    function getProtocolYieldFeePercentage() external view returns (uint256);
-
-    /**
-     * @notice Returns the accumulated swap and yield fee in `token` collected by the protocol for a given pool.
+     * @notice Returns the accumulated swap fees (including aggregate protocol fees) in `token` collected by the pool.
      * @param pool The address of the pool for which protocol fees have been collected
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
      */
-    function getProtocolFees(address pool, IERC20 token) external view returns (uint256);
+    function getAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view returns (uint256);
+
+    /**
+     * @notice Returns the accumulated yield fees (including aggregate protocol fees) in `token` collected by the pool.
+     * @param pool The address of the pool for which protocol fees have been collected
+     * @param token The address of the token in which fees have been accumulated
+     * @return The total amount of fees accumulated in the specified token
+     */
+    function getAggregateProtocolYieldFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
     /**
      * @notice Fetches the static swap fee percentage for a given pool.
@@ -273,21 +284,6 @@ interface IVaultExtension {
      * @return The current static swap fee manager for the specified pool
      */
     function getStaticSwapFeeManager(address pool) external view returns (address);
-
-    /**
-     * @notice Returns the accumulated swap and yield fee in `token` for the given pool, collected for the creator.
-     * @param pool The address of the pool whose creator fee is being queried
-     * @param token The token in which the creator fee was charged
-     * @return poolCreatorFee The creator fee of the pool and token
-     */
-    function getPoolCreatorFees(address pool, IERC20 token) external returns (uint256 poolCreatorFee);
-
-    /**
-     * @notice Fetches the address of the creator of a pool, who can collect creator fees.
-     * @param pool The address of the pool whose creator is being queried
-     * @return poolCreator The address of the creator
-     */
-    function getPoolCreator(address pool) external returns (address poolCreator);
 
     /**
      * @notice Query the current dynamic swap fee of a pool, given a set of swap parameters.
@@ -347,6 +343,23 @@ interface IVaultExtension {
      * @return result Resulting data from the call
      */
     function quote(bytes calldata data) external payable returns (bytes memory result);
+
+    /**
+     * @notice Performs a callback on msg.sender with arguments provided in `data`.
+     * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
+     * anything else will revert.
+     *
+     * Allows querying any operation on the Vault that has the `withLocker` modifier.
+     *
+     * Allows the external calling of a function via the Vault contract to
+     * access Vault's functions guarded by `withLocker`.
+     * `transient` modifier ensuring balances changes within the Vault are settled.
+     *
+     * This call always reverts, returning the result in the revert reason.
+     *
+     * @param data Contains function signature and args to be passed to the msg.sender
+     */
+    function quoteAndRevert(bytes calldata data) external payable;
 
     /**
      * @notice Checks if the queries enabled on the Vault.

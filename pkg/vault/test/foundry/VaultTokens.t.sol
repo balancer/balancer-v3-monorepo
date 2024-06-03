@@ -15,6 +15,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -43,6 +44,9 @@ contract VaultTokenTest is BaseVaultTest {
         waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 6);
 
         poolFactory = new PoolFactoryMock(vault, 365 days);
+
+        // Allow pools from factory poolFactory to use the hook poolHooksMock
+        PoolHooksMock(poolHooksContract).allowFactory(address(poolFactory));
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
@@ -127,14 +131,8 @@ contract VaultTokenTest is BaseVaultTest {
 
     function _registerPool(TokenConfig[] memory tokenConfig) private {
         LiquidityManagement memory liquidityManagement;
-        PoolHooks memory poolHooks;
+        PoolRoleAccounts memory roleAccounts;
 
-        poolFactory.registerPool(
-            pool,
-            tokenConfig,
-            PoolRoleAccounts({ pauseManager: address(0), swapFeeManager: address(0), poolCreator: address(0) }),
-            poolHooks,
-            liquidityManagement
-        );
+        poolFactory.registerPool(pool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
     }
 }

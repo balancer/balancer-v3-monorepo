@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
+import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IVault } from "./IVault.sol";
 
@@ -58,6 +59,14 @@ interface IVaultAdmin {
      * FixedPoint.ONE (1e18).
      */
     function getPoolTokenRates(address pool) external view returns (uint256[] memory);
+
+    /**
+     * @notice Retrieve the pool creator account and fee percentage.
+     * @param pool The pool
+     * @return poolCreator The address of the pool creator
+     * @return poolCreatorFeePercentage The percentage of net protocol fees allocated to the pool creator
+     */
+    function getPoolCreatorInfo(address pool) external view returns (address, uint256);
 
     /*******************************************************************************
                                     Vault Pausing
@@ -113,19 +122,10 @@ interface IVaultAdmin {
     *******************************************************************************/
 
     /**
-     * @notice Sets a new swap fee percentage for the protocol.
-     * @param newSwapFeePercentage The new swap fee percentage to be set
-     */
-    function setProtocolSwapFeePercentage(uint256 newSwapFeePercentage) external;
-
-    /**
-     * @notice Sets a new yield fee percentage for the protocol.
-     * @param newYieldFeePercentage The new swap fee percentage to be set
-     */
-    function setProtocolYieldFeePercentage(uint256 newYieldFeePercentage) external;
-
-    /**
      * @notice Assigns a new static swap fee percentage to the specified pool.
+     * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
+     * MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
+     *
      * @param pool The address of the pool for which the static swap fee will be changed
      * @param swapFeePercentage The new swap fee percentage to apply to the pool
      */
@@ -139,18 +139,40 @@ interface IVaultAdmin {
     function setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) external;
 
     /**
-     * @notice Collects accumulated protocol fees for the specified pool.
-     * @dev All pool tokens will be collected. Fees are sent to msg.sender.
-     * @param pool The address of the pool on which we are collecting protocol fees
+     * @notice Collects accumulated protocol swap and yield fees for the specified pool.
+     * @dev Fees are sent to the ProtocolFeeController address.
+     * @param pool The pool on which all protocol fees should be collected
      */
     function collectProtocolFees(address pool) external;
 
     /**
-     * @notice Collects accumulated pool creator fees for the specified pool.
-     * @dev All pool tokens will be collected. Fees are sent to the pool creator address.
-     * @param pool The address of the pool on which we are collecting pool creator fees
+     * @notice Update an aggregate swap fee percentage.
+     * @dev Can only be called by the current protocol fee controller. Called when governance overrides a protocol fee
+     * for a specific pool, or to permissionlessly update a pool to a changed global protocol fee value (if the pool's
+     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE.
+     *
+     * @param pool The pool whose fee will be updated
+     * @param newAggregateSwapFeePercentage The new aggregate swap fee percentage
      */
-    function collectPoolCreatorFees(address pool) external;
+    function updateAggregateSwapFeePercentage(address pool, uint256 newAggregateSwapFeePercentage) external;
+
+    /**
+     * @notice Update an aggregate yield fee percentage.
+     * @dev Can only be called by the current protocol fee controller. Called when governance overrides a protocol fee
+     * for a specific pool, or to permissionlessly update a pool to a changed global protocol fee value (if the pool's
+     * fee has not previously been set by governance). Ensures the aggregate percentage <= FixedPoint.ONE.
+     *
+     * @param pool The pool whose fee will be updated
+     * @param newAggregateYieldFeePercentage The new aggregate yield fee percentage
+     */
+    function updateAggregateYieldFeePercentage(address pool, uint256 newAggregateYieldFeePercentage) external;
+
+    /**
+     * @notice Sets a new Protocol Fee Controller for the Vault.
+     * @dev This is a permissioned call.
+     * Emits a `ProtocolFeeControllerChanged` event.
+     */
+    function setProtocolFeeController(IProtocolFeeController newProtocolFeeController) external;
 
     /*******************************************************************************
                                     Recovery Mode
@@ -182,15 +204,16 @@ interface IVaultAdmin {
     *******************************************************************************/
     /**
      * @notice Unpauses native vault buffers globally. When buffers are paused, it's not possible to add liquidity or
-     * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity.
+     * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove
+     * liquidity.
      * @dev This is a permissioned call.
      */
     function unpauseVaultBuffers() external;
 
     /**
      * @notice Pauses native vault buffers globally. When buffers are paused, it's not possible to add liquidity or
-     * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove liquidity.
-     * Currently it's not possible to pause vault buffers individually.
+     * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove
+     * liquidity. Currently it's not possible to pause vault buffers individually.
      * @dev This is a permissioned call.
      */
     function pauseVaultBuffers() external;

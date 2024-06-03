@@ -41,7 +41,8 @@ contract PoolDataTest is BaseVaultTest {
         factoryMock.registerTestPool(
             newPool,
             vault.buildTokenConfig([address(dai), address(wsteth)].toMemoryArray().asIERC20(), rateProviders),
-            address(lp)
+            poolHooksContract,
+            lp
         );
 
         return newPool;
@@ -54,9 +55,9 @@ contract PoolDataTest is BaseVaultTest {
         daiRateProvider.mockRate(daiRate);
         wstETHRateProvider.mockRate(wstETHRate);
 
-        // `computePoolDataUpdatingBalancesAndFees` and `getRawBalances` are functions in VaultMock.
+        // `loadPoolDataUpdatingBalancesAndYieldFees` and `getRawBalances` are functions in VaultMock.
 
-        PoolData memory data = vault.computePoolDataUpdatingBalancesAndFees(
+        PoolData memory data = vault.loadPoolDataUpdatingBalancesAndYieldFees(
             address(pool),
             roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN
         );
