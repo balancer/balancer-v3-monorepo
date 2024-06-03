@@ -55,7 +55,7 @@ contract WeightedPoolTest is BaseVaultTest {
     }
 
     function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
-        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
+        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
         weights = [uint256(0.50e18), uint256(0.50e18)].toMemoryArray();

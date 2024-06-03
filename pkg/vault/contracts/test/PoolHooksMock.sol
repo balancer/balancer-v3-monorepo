@@ -63,12 +63,9 @@ contract PoolHooksMock is BaseHooks {
     function onRegister(
         address factory,
         address,
-        TokenConfig[] memory tokenConfig
+        TokenConfig[] memory,
+        LiquidityManagement calldata
     ) external view override returns (bool) {
-        if (tokenConfig.length != 2) {
-            // we arbitrarily decided to revert registry of pools with more than 2 tokens, for testing purposes only
-            return false;
-        }
         return _allowedFactories[factory];
     }
 

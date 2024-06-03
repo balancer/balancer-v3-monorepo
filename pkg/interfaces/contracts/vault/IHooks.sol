@@ -21,9 +21,15 @@ interface IHooks {
      * @param factory Address of the pool factory
      * @param pool Address of the pool
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
+     * @param liquidityManagement Liquidity management flags with implemented methods
      * @return success True if the hook allowed the registration, false otherwise
      */
-    function onRegister(address factory, address pool, TokenConfig[] memory tokenConfig) external returns (bool);
+    function onRegister(
+        address factory,
+        address pool,
+        TokenConfig[] memory tokenConfig,
+        LiquidityManagement calldata liquidityManagement
+    ) external returns (bool);
 
     /**
      * @notice Returns flags informing which hooks are implemented in the contract.
