@@ -13,11 +13,12 @@ import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoo
 import { BasePoolAuthentication } from "@balancer-labs/v3-vault/contracts/BasePoolAuthentication.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { AmplificationDataLib, AmplificationDataBits, AmplificationData } from "./lib/AmplificationDataLib.sol";
 
 /// @notice Basic Stable Pool.
-contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication {
+contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Version {
     using AmplificationDataLib for AmplificationData;
     using FixedPoint for uint256;
     using SafeCast for *;
@@ -65,12 +66,17 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication {
         string name;
         string symbol;
         uint256 amplificationParameter;
+        string version;
     }
 
     constructor(
         NewPoolParams memory params,
         IVault vault
-    ) BalancerPoolToken(vault, params.name, params.symbol) BasePoolAuthentication(vault, msg.sender) {
+    )
+        BalancerPoolToken(vault, params.name, params.symbol)
+        BasePoolAuthentication(vault, msg.sender)
+        Version(params.version)
+    {
         if (params.amplificationParameter < StableMath.MIN_AMP) {
             revert AmplificationFactorTooLow();
         }
