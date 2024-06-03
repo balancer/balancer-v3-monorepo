@@ -274,6 +274,10 @@ contract WeightedPoolTest is BaseVaultTest {
         assertEq(weightedPool.getMinimumSwapFeePercentage(), MIN_SWAP_FEE, "Minimum swap fee mismatch");
     }
 
+    function testMaximumSwapFee() public {
+        assertEq(weightedPool.getMaximumSwapFeePercentage(), MAX_SWAP_FEE, "Maximum swap fee mismatch");
+    }
+
     function testFailSwapFeeTooLow() public {
         TokenConfig[] memory tokens = new TokenConfig[](2);
         PoolRoleAccounts memory roleAccounts;
@@ -300,5 +304,13 @@ contract WeightedPoolTest is BaseVaultTest {
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapFeePercentageTooLow.selector));
         vault.setStaticSwapFeePercentage(address(pool), MIN_SWAP_FEE - 1);
+    }
+
+    function testSetSwapFeeTooHigh() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+
+        vm.expectRevert(IVaultErrors.SwapFeePercentageTooHigh.selector);
+        vault.setStaticSwapFeePercentage(address(pool), MAX_SWAP_FEE + 1);
     }
 }
