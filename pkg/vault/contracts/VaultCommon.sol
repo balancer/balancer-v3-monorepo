@@ -36,7 +36,7 @@ import { PoolDataLib } from "./lib/PoolDataLib.sol";
 abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, ReentrancyGuardTransient, ERC20MultiToken {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using PackedTokenBalance for bytes32;
-    using PoolConfigLib for PoolConfig;
+    using PoolConfigLib for PoolConfigBits;
     using ScalingHelpers for *;
     using SafeCast for *;
     using FixedPoint for *;
@@ -240,7 +240,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev See `isPoolRegistered`
     function _isPoolRegistered(address pool) internal view returns (bool) {
-        return _poolConfig[pool].isPoolRegistered();
+        PoolConfigBits memory config = _poolConfig[pool];
+        return config.isPoolRegistered();
     }
 
     /// @dev Reverts unless `pool` corresponds to an initialized Pool.
@@ -252,7 +253,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev See `isPoolInitialized`
     function _isPoolInitialized(address pool) internal view returns (bool) {
-        return _poolConfig[pool].isPoolInitialized();
+        PoolConfigBits memory config = _poolConfig[pool];
+        return config.isPoolInitialized();
     }
 
     /*******************************************************************************
@@ -356,9 +358,11 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
         aggregateYieldFeeAmountsRaw = new uint256[](numTokens);
 
-        bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
-            poolData.poolConfig.aggregateProtocolYieldFeePercentage > 0 &&
-            poolData.poolConfig.isPoolInRecoveryMode == false;
+        uint256 aggregateProtocolYieldFeePercentage = poolData.poolConfig.getAggregateProtocolYieldFeePercentage();
+
+        bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized() &&
+            aggregateProtocolYieldFeePercentage > 0 &&
+            poolData.poolConfig.isPoolInRecoveryMode() == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             TokenConfig memory tokenConfig = poolData.tokenConfig[i];
@@ -378,7 +382,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                     poolData,
                     poolBalances.unchecked_valueAt(i).getBalanceDerived(),
                     i,
-                    poolData.poolConfig.aggregateProtocolYieldFeePercentage
+                    aggregateProtocolYieldFeePercentage
                 );
             }
         }
@@ -453,9 +457,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             }
         }
 
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.staticSwapFeePercentage = swapFeePercentage;
-        _poolConfig[pool] = config.fromPoolConfig();
+        PoolConfigBits memory config = _poolConfig[pool];
+        config.setStaticSwapFeePercentage(swapFeePercentage);
+        _poolConfig[pool] = config;
 
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
