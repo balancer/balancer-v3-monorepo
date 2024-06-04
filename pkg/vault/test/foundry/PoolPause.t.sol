@@ -104,6 +104,13 @@ contract PoolPauseTest is BaseVaultTest {
         assertEq(factory.getNewPoolPauseWindowEndTime(), 0, "New pool pause window end time non-zero");
     }
 
+    function testInvalidDuration() public {
+        uint256 maxDuration = type(uint32).max - block.timestamp;
+
+        vm.expectRevert(FactoryWidePauseWindow.PoolPauseWindowDurationOverflow.selector);
+        new PoolFactoryMock(vault, maxDuration + 1);
+    }
+
     function testHasPauseManager() public {
         (, , , address pauseManager) = vault.getPoolPausedState(address(pool));
         assertEq(pauseManager, admin, "Pause manager is not admin");

@@ -256,6 +256,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Make pool role assignments. A zero address means default to the authorizer.
         _assignPoolRoles(pool, params.roleAccounts);
 
+        // NOTE: a new stack scope otherwise of stack-too-deep error using viaIR compilation
         // Store config and mark the pool as registered
         {
             PoolConfig memory config = _poolConfig[pool];

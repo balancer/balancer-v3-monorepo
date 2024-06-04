@@ -16,7 +16,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
 
     IVault private immutable _vault;
 
-    constructor(IVault vault, uint32 pauseWindowDuration) FactoryWidePauseWindow(pauseWindowDuration) {
+    constructor(IVault vault, uint256 pauseWindowDuration) FactoryWidePauseWindow(pauseWindowDuration) {
         _vault = vault;
     }
 

@@ -23,8 +23,8 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
     struct AmplificationState {
         uint64 startValue;
         uint64 endValue;
-        uint64 startTime;
-        uint64 endTime;
+        uint32 startTime;
+        uint32 endTime;
     }
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
@@ -89,7 +89,6 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
         }
 
         uint256 initialAmp = params.amplificationParameter * StableMath.AMP_PRECISION;
-
         _setAmplificationStop(initialAmp);
     }
 
@@ -192,15 +191,15 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
 
         uint64 currentValueUint64 = currentValue.toUint64();
         uint64 endValueUint64 = endValue.toUint64();
-        uint64 startTimeUint64 = block.timestamp.toUint64();
-        uint64 endTimeUint64 = endTime.toUint64();
+        uint32 startTimeUint32 = block.timestamp.toUint32();
+        uint32 endTimeUint32 = endTime.toUint32();
 
         _amplificationState.startValue = currentValueUint64;
         _amplificationState.endValue = endValueUint64;
-        _amplificationState.startTime = startTimeUint64;
-        _amplificationState.endTime = endTimeUint64;
+        _amplificationState.startTime = startTimeUint32;
+        _amplificationState.endTime = endTimeUint32;
 
-        emit AmpUpdateStarted(currentValueUint64, endValueUint64, startTimeUint64, endTimeUint64);
+        emit AmpUpdateStarted(currentValueUint64, endValueUint64, startTimeUint32, endTimeUint64Uint32);
     }
 
     /**
@@ -268,14 +267,14 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
     }
 
     function _setAmplificationStop(uint256 value) internal {
-        uint64 valueUint64 = value.toUint64();
-        _amplificationState.startValue = valueUint64;
-        _amplificationState.endValue = valueUint64;
+        uint64 currentValueUint64 = currentValue.toUint64();
+        _amplificationState.startValue = currentValueUint64;
+        _amplificationState.endValue = currentValueUint64;
 
-        uint64 currentTime = block.timestamp.toUint64();
+        uint32 currentTime = block.timestamp.toUint32();
         _amplificationState.startTime = currentTime;
         _amplificationState.endTime = currentTime;
 
-        emit AmpUpdateStopped(valueUint64);
+        emit AmpUpdateStopped(currentValueUint64);
     }
 }
