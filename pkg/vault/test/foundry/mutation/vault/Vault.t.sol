@@ -65,9 +65,6 @@ contract VaultMutationTest is BaseVaultTest {
         vault.mintERC20(pool, address(this), initTotalSupply);
     }
 
-    /*
-        settle
-    */
     function testSettleWithLockedVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultIsNotUnlocked.selector));
         vault.settle(dai);
