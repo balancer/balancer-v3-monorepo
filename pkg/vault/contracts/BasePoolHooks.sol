@@ -99,7 +99,9 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
         IBasePool.PoolSwapParams calldata swapParams,
         address
     ) external virtual onlyVault returns (bool, uint256) {
-        return (false, swapParams.amountGivenRaw);
+        // true means that onBeforeSwap executed successfully, and returns the same amountGiven that it received
+        // (does not change the swap result)
+        return (true, swapParams.amountGivenRaw);
     }
 
     /// @inheritdoc IHooks
@@ -109,7 +111,9 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
         uint256,
         uint256 amountCalculated
     ) external virtual onlyVault returns (bool, uint256) {
-        return (false, amountCalculated);
+        // true means that onAfterSwap executed successfully, and returns the same amountCalculated that it received
+        // (does not change the swap result)
+        return (true, amountCalculated);
     }
 
     /// @inheritdoc IHooks
