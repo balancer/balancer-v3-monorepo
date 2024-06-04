@@ -82,9 +82,6 @@ contract VaultMutationTest is BaseVaultTest {
         vault.swap(params);
     }
 
-    /*
-        addLiquidity
-    */
     function testAddLiquidityWithLockedVault() public {
         AddLiquidityParams memory params = AddLiquidityParams(
             address(pool),
