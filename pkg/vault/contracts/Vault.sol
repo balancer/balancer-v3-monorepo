@@ -194,7 +194,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // State is fully populated here, and shall not be modified at a lower level.
         SwapState memory state = _loadSwapState(params, poolData);
 
-        if (hooksConfig.onBeforeSwap(_buildPoolSwapParams(params, state, poolData)) == true) {
+        IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
+
+        if (hooksConfig.onBeforeSwap(swapParams) == true) {
             // The call to `onBeforeSwap` could potentially update token rates and balances.
             // We update `poolData.tokenRates`, `poolData.rawBalances` and `poolData.balancesLiveScaled18`
             // to ensure the `onSwap` and `onComputeDynamicSwapFee` are called with the current values.
@@ -202,15 +204,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
             state.amountGivenScaled18 = _computeAmountGivenScaled18(state.indexIn, state.indexOut, params, poolData);
+
+            swapParams = _buildPoolSwapParams(params, state, poolData);
         }
 
         // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
         // as those passed to the main operation.
         // At this point, the static swap fee percentage is loaded in the swap state as the default,
         // to be used unless the pool has a dynamic swap fee.
-        (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = hooksConfig.onComputeDynamicSwapFee(
-            _buildPoolSwapParams(params, state, poolData)
-        );
+        (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = hooksConfig.onComputeDynamicSwapFee(swapParams);
         if (dynamicSwapFeeCalculated) {
             state.swapFeePercentage = dynamicSwapFee;
         }
@@ -219,7 +221,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // The following side-effects are important to note:
         // PoolData balancesRaw and balancesLiveScaled18 are adjusted for swap amounts and fees inside of _swap.
         uint256 amountCalculatedScaled18;
-        (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData);
+        (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, swapParams);
 
         hooksConfig.onAfterSwap(amountCalculatedScaled18, msg.sender, params, state, poolData);
     }
@@ -319,7 +321,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _swap(
         SwapParams memory params,
         SwapState memory state,
-        PoolData memory poolData
+        PoolData memory poolData,
+        IBasePool.PoolSwapParams memory swapParams
     )
         internal
         nonReentrant
@@ -333,7 +336,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapInternalLocals memory locals;
 
         // Perform the swap request hook and compute the new balances for 'token in' and 'token out' after the swap
-        amountCalculatedScaled18 = IBasePool(params.pool).onSwap(_buildPoolSwapParams(params, state, poolData));
+        amountCalculatedScaled18 = IBasePool(params.pool).onSwap(swapParams);
 
         // Note that balances are kept in memory, and are not fully computed until the `setPoolBalances` below.
         // Intervening code cannot read balances from storage, as they are temporarily out-of-sync here. This function

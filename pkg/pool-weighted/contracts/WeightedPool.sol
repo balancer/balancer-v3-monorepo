@@ -15,9 +15,10 @@ import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoo
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 /// @notice Basic Weighted Pool with immutable weights.
-contract WeightedPool is IBasePool, IMinimumSwapFee, BalancerPoolToken {
+contract WeightedPool is IBasePool, IMinimumSwapFee, BalancerPoolToken, Version {
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
 
     uint256 private immutable _totalTokens;
@@ -32,6 +33,7 @@ contract WeightedPool is IBasePool, IMinimumSwapFee, BalancerPoolToken {
         string symbol;
         uint256 numTokens;
         uint256[] normalizedWeights;
+        string version;
     }
 
     /// @dev Indicates that one of the pool tokens' weight is below the minimum allowed.
@@ -40,7 +42,10 @@ contract WeightedPool is IBasePool, IMinimumSwapFee, BalancerPoolToken {
     /// @dev Indicates that the sum of the pool tokens' weights is not FP 1.
     error NormalizedWeightInvariant();
 
-    constructor(NewPoolParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
+    constructor(
+        NewPoolParams memory params,
+        IVault vault
+    ) BalancerPoolToken(vault, params.name, params.symbol) Version(params.version) {
         uint256 numTokens = params.numTokens;
         InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
 
