@@ -100,7 +100,7 @@ interface IHooks {
         uint256 bptAmountOut,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) external returns (bool);
+    ) external returns (bool success);
 
     /***************************************************************************
                                  Remove Liquidity
@@ -140,7 +140,7 @@ interface IHooks {
         uint256[] memory amountsOutScaled18,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) external returns (bool);
+    ) external returns (bool success);
 
     /***************************************************************************
                                     Swap
