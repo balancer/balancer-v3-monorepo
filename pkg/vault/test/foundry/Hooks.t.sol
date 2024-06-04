@@ -189,7 +189,8 @@ contract HooksTest is BaseVaultTest {
                     indexOut: daiIdx,
                     router: address(router),
                     userData: bytes("")
-                })
+                }),
+                address(pool)
             )
         );
         snapStart("swapWithOnBeforeSwapHook");
@@ -252,6 +253,7 @@ contract HooksTest is BaseVaultTest {
                     router: address(router),
                     userData: ""
                 }),
+                address(pool),
                 expectedAmountOut,
                 expectedAmountOut
             )
@@ -418,7 +420,6 @@ contract HooksTest is BaseVaultTest {
                 IHooks.onAfterAddLiquidity.selector,
                 router,
                 [defaultAmount, defaultAmount].toMemoryArray(),
-                [defaultAmount, defaultAmount].toMemoryArray(),
                 bptAmount,
                 [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),
                 bytes("")
@@ -479,7 +480,6 @@ contract HooksTest is BaseVaultTest {
                 IHooks.onAfterRemoveLiquidity.selector,
                 router,
                 bptAmount,
-                [defaultAmount, defaultAmount].toMemoryArray(),
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bytes("")

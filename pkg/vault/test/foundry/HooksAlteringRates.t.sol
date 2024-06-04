@@ -163,7 +163,6 @@ contract HooksAlteringRatesTest is BaseVaultTest {
                 IHooks.onAfterAddLiquidity.selector,
                 router,
                 expectedAmountsIn,
-                [defaultAmount, defaultAmount].toMemoryArray(),
                 defaultAmount * 2,
                 expectedBalances,
                 bytes("")

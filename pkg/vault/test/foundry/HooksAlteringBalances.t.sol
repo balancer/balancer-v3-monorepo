@@ -77,7 +77,8 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
                     indexOut: usdcIdx,
                     router: address(router),
                     userData: bytes("")
-                })
+                }),
+                address(pool)
             )
         );
 
