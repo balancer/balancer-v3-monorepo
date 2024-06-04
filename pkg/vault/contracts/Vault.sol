@@ -421,7 +421,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         // 3) Deltas: debit for token in, credit for token out
+        // If swap is EXACT_IN, the onBeforeSwap hook may have changed the tokenIn amount. The hook settled any fee or
+        // discount applied directly with the vault, so we adjust the amount owed by the user.
         _takeDebt(params.tokenIn, params.kind == SwapKind.EXACT_IN ? state.virtualAmountGivenRaw : amountInRaw);
+        // If swap is EXACT_OUT, the onBeforeSwap hook may have changed the tokenOut amount. The hook settled any fee
+        // or discount applied directly with the vault, so we adjust the amount owed to the user.
         _supplyCredit(params.tokenOut, params.kind == SwapKind.EXACT_OUT ? state.virtualAmountGivenRaw : amountOutRaw);
 
         // 4) Compute and charge protocol and creator fees.
