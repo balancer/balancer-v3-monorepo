@@ -212,9 +212,7 @@ contract VaultMutationTest is BaseVaultTest {
         );
     }
 
-    /*
-        Helper functions
-    */
+    /// Helper functions
 
     function _makeParams(
         SwapKind kind,
