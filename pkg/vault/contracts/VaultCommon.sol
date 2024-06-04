@@ -316,32 +316,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         // Initialize poolData with base information for subsequent calculations.
         poolData = _loadPoolData(pool, roundingDirection);
 
-        uint256 numTokens = poolData.tokenConfig.length;
-
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        mapping(IERC20 => bytes32) storage poolAggregateProtocolFeeAmounts = _aggregateProtocolFeeAmounts[pool];
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            bytes32 packedBalances = poolTokenBalances.unchecked_valueAt(i);
-            IERC20 token = poolData.tokenConfig[i].token;
-            uint256 storedBalanceRaw = packedBalances.getBalanceRaw();
-
-            // poolData has balances updated with yield fees now.
-            // If yield fees are not 0, then the stored balance is greater than the one in memory.
-            if (storedBalanceRaw > poolData.balancesRaw[i]) {
-                // Both Swap and Yield fees are stored together in a PackedTokenBalance.
-                // We have designated "Derived" the derived half for Yield fee storage.
-                bytes32 packedProtocolFeeAmounts = poolAggregateProtocolFeeAmounts[token];
-                poolAggregateProtocolFeeAmounts[token] = packedProtocolFeeAmounts.setBalanceDerived(
-                    packedProtocolFeeAmounts.getBalanceDerived() + (storedBalanceRaw - poolData.balancesRaw[i])
-                );
-            }
-
-            poolTokenBalances.unchecked_setAt(
-                i,
-                PackedTokenBalance.toPackedBalance(poolData.balancesRaw[i], poolData.balancesLiveScaled18[i])
-            );
-        }
+        PoolDataLib.syncPoolBalancesAndFees(poolData, _poolTokenBalances[pool], _aggregateProtocolFeeAmounts[pool]);
     }
 
     /**
