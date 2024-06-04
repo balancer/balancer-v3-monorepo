@@ -28,7 +28,7 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
     function onRegister(
         address,
         address,
-        TokenConfig[] memory,
+        TokenConfigRegistration[] memory,
         LiquidityManagement calldata
     ) external virtual onlyVault returns (bool) {
         // By default, deny all factories. This method must be overwritten by the hook contract

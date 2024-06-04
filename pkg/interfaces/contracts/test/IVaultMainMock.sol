@@ -101,27 +101,27 @@ interface IVaultMainMock {
 
     // Convenience functions for constructing TokenConfig arrays
 
-    function buildTokenConfig(IERC20[] memory tokens) external view returns (TokenConfig[] memory tokenConfig);
+    function buildTokenConfig(IERC20[] memory tokens) external view returns (TokenConfigRegistration[] memory tokenConfig);
 
     /// @dev Infers TokenType (STANDARD or WITH_RATE) from the presence or absence of the rate provider.
     function buildTokenConfig(
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders
-    ) external view returns (TokenConfig[] memory tokenConfig);
+    ) external view returns (TokenConfigRegistration[] memory tokenConfig);
 
     /// @dev Infers TokenType (STANDARD or WITH_RATE) from the presence or absence of the rate provider.
     function buildTokenConfig(
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders,
         bool[] memory yieldFeeFlags
-    ) external view returns (TokenConfig[] memory tokenConfig);
+    ) external view returns (TokenConfigRegistration[] memory tokenConfig);
 
     function buildTokenConfig(
         IERC20[] memory tokens,
         TokenType[] memory tokenTypes,
         IRateProvider[] memory rateProviders,
         bool[] memory yieldFeeFlags
-    ) external view returns (TokenConfig[] memory tokenConfig);
+    ) external view returns (TokenConfigRegistration[] memory tokenConfig);
 
     function accountDelta(IERC20 token, int256 delta) external;
 

@@ -38,6 +38,7 @@ library PoolDataLib {
         poolData.balancesLiveScaled18 = new uint256[](numTokens);
         poolData.decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolData.poolConfig, numTokens);
         poolData.tokenRates = new uint256[](numTokens);
+        poolData.tokens = new IERC20[](numTokens);
 
         bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
             poolData.poolConfig.aggregateProtocolYieldFeePercentage > 0 &&
@@ -46,6 +47,7 @@ library PoolDataLib {
         for (uint256 i = 0; i < numTokens; ++i) {
             (IERC20 token, bytes32 packedBalance) = poolTokenBalances.unchecked_at(i);
             poolData.tokenConfig[i] = poolTokenConfig[token];
+            poolData.tokens[i] = token;
             updateTokenRate(poolData, i);
             updateRawAndLiveBalance(poolData, i, packedBalance.getBalanceRaw(), roundingDirection);
 

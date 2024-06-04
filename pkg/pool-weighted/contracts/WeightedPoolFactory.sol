@@ -52,7 +52,7 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
     function create(
         string memory name,
         string memory symbol,
-        TokenConfig[] memory tokens,
+        TokenConfigRegistration[] memory tokens,
         uint256[] memory normalizedWeights,
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,

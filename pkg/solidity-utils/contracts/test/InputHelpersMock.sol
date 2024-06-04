@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenConfigRegistration } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import "../helpers/InputHelpers.sol";
 
@@ -15,7 +15,7 @@ contract InputHelpersMock {
         InputHelpers.ensureSortedTokens(tokens);
     }
 
-    function sortTokenConfig(TokenConfig[] memory tokenConfig) public pure returns (TokenConfig[] memory) {
+    function sortTokenConfig(TokenConfigRegistration[] memory tokenConfig) public pure returns (TokenConfigRegistration[] memory) {
         for (uint256 i = 0; i < tokenConfig.length - 1; ++i) {
             for (uint256 j = 0; j < tokenConfig.length - i - 1; j++) {
                 if (tokenConfig[j].token > tokenConfig[j + 1].token) {

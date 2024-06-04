@@ -128,7 +128,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     *******************************************************************************/
 
     struct PoolRegistrationParams {
-        TokenConfig[] tokenConfig;
+        TokenConfigRegistration[] tokenConfigRegistration;
         uint256 swapFeePercentage;
         uint256 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
@@ -139,7 +139,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function registerPool(
         address pool,
-        TokenConfig[] memory tokenConfig,
+        TokenConfigRegistration[] memory tokenConfigRegistration,
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
@@ -149,7 +149,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _registerPool(
             pool,
             PoolRegistrationParams({
-                tokenConfig: tokenConfig,
+                tokenConfigRegistration: tokenConfigRegistration,
                 swapFeePercentage: swapFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
                 roleAccounts: roleAccounts,
@@ -185,7 +185,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 IHooks(params.poolHooksContract).onRegister(
                     msg.sender,
                     pool,
-                    params.tokenConfig,
+                    params.tokenConfigRegistration,
                     params.liquidityManagement
                 ) == false
             ) {
@@ -198,7 +198,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             _hooksConfig[pool] = hooksConfig;
         }
 
-        uint256 numTokens = params.tokenConfig.length;
+        uint256 numTokens = params.tokenConfigRegistration.length;
         if (numTokens < _MIN_TOKENS) {
             revert MinTokens();
         }
@@ -213,7 +213,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         IERC20 previousToken;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            TokenConfig memory tokenData = params.tokenConfig[i];
+            TokenConfigRegistration memory tokenData = params.tokenConfigRegistration[i];
             IERC20 token = tokenData.token;
 
             // Enforce token sorting. (`previousToken` will be the zero address on the first iteration.)
@@ -234,14 +234,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 revert TokenAlreadyRegistered(token);
             }
 
-            bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
-            _poolTokenConfig[pool][token] = tokenData;
+            bool hasRateProvider = tokenData.config.rateProvider != IRateProvider(address(0));
+            _poolTokenConfig[pool][token] = tokenData.config;
 
-            if (tokenData.tokenType == TokenType.STANDARD) {
-                if (hasRateProvider || tokenData.paysYieldFees) {
+            if (tokenData.config.tokenType == TokenType.STANDARD) {
+                if (hasRateProvider || tokenData.config.paysYieldFees) {
                     revert InvalidTokenConfiguration();
                 }
-            } else if (tokenData.tokenType == TokenType.WITH_RATE) {
+            } else if (tokenData.config.tokenType == TokenType.WITH_RATE) {
                 if (hasRateProvider == false) {
                     revert InvalidTokenConfiguration();
                 }
@@ -275,7 +275,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         emit PoolRegistered(
             pool,
             msg.sender,
-            params.tokenConfig,
+            params.tokenConfigRegistration,
             params.swapFeePercentage,
             params.pauseWindowEndTime,
             params.roleAccounts,
@@ -377,7 +377,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < poolData.tokenConfig.length; ++i) {
-            IERC20 actualToken = poolData.tokenConfig[i].token;
+            (IERC20 actualToken, ) = poolBalances.unchecked_at(i);
 
             // Tokens passed into `initialize` are the "expected" tokens.
             if (actualToken != tokens[i]) {
@@ -455,10 +455,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         external
         view
         withRegisteredPool(pool)
-        returns (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors)
+        returns (IERC20[] memory tokens, TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors)
     {
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
-        return (poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors);
+        return (poolData.tokens, poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors);
     }
 
     /// @inheritdoc IVaultExtension

@@ -21,7 +21,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         _vault = vault;
     }
 
-    function registerTestPool(address pool, TokenConfig[] memory tokenConfig) external {
+    function registerTestPool(address pool, TokenConfigRegistration[] memory tokenConfig) external {
         PoolRoleAccounts memory roleAccounts;
 
         _vault.registerPool(
@@ -39,7 +39,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         );
     }
 
-    function registerTestPool(address pool, TokenConfig[] memory tokenConfig, address poolHooksContract) external {
+    function registerTestPool(address pool, TokenConfigRegistration[] memory tokenConfig, address poolHooksContract) external {
         PoolRoleAccounts memory roleAccounts;
 
         _vault.registerPool(
@@ -59,7 +59,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
 
     function registerTestPool(
         address pool,
-        TokenConfig[] memory tokenConfig,
+        TokenConfigRegistration[] memory tokenConfig,
         address poolHooksContract,
         address poolCreator
     ) external {
@@ -83,7 +83,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
 
     function registerGeneralTestPool(
         address pool,
-        TokenConfig[] memory tokenConfig,
+        TokenConfigRegistration[] memory tokenConfig,
         uint256 swapFee,
         uint256 pauseWindowDuration,
         PoolRoleAccounts memory roleAccounts,
@@ -106,7 +106,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
 
     function registerPool(
         address pool,
-        TokenConfig[] memory tokenConfig,
+        TokenConfigRegistration[] memory tokenConfig,
         PoolRoleAccounts memory roleAccounts,
         address poolHooksContract,
         LiquidityManagement calldata liquidityManagement
@@ -124,7 +124,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
 
     function registerPoolWithSwapFee(
         address pool,
-        TokenConfig[] memory tokenConfig,
+        TokenConfigRegistration[] memory tokenConfig,
         uint256 swapFeePercentage,
         address poolHooksContract,
         LiquidityManagement calldata liquidityManagement
@@ -145,7 +145,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
     // For tests; otherwise can't get the exact event arguments.
     function registerPoolAtTimestamp(
         address pool,
-        TokenConfig[] memory tokenConfig,
+        TokenConfigRegistration[] memory tokenConfig,
         uint256 timestamp,
         PoolRoleAccounts memory roleAccounts,
         address poolHooksContract,

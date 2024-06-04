@@ -123,7 +123,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualRegisterPoolPassThruTokens(address pool, IERC20[] memory tokens) external {
-        TokenConfig[] memory tokenConfig = new TokenConfig[](tokens.length);
+        TokenConfigRegistration[] memory tokenConfig = new TokenConfigRegistration[](tokens.length);
         PoolRoleAccounts memory roleAccounts;
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
@@ -242,8 +242,8 @@ contract VaultMock is IVaultMainMock, Vault {
         return (poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors, poolData.poolConfig);
     }
 
-    function buildTokenConfig(IERC20[] memory tokens) public view returns (TokenConfig[] memory tokenConfig) {
-        tokenConfig = new TokenConfig[](tokens.length);
+    function buildTokenConfig(IERC20[] memory tokens) public view returns (TokenConfigRegistration[] memory tokenConfig) {
+        tokenConfig = new TokenConfigRegistration[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
         }
@@ -254,12 +254,12 @@ contract VaultMock is IVaultMainMock, Vault {
     function buildTokenConfig(
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders
-    ) public view returns (TokenConfig[] memory tokenConfig) {
-        tokenConfig = new TokenConfig[](tokens.length);
+    ) public view returns (TokenConfigRegistration[] memory tokenConfig) {
+        tokenConfig = new TokenConfigRegistration[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
-            tokenConfig[i].rateProvider = rateProviders[i];
-            tokenConfig[i].tokenType = rateProviders[i] == IRateProvider(address(0))
+            tokenConfig[i].config.rateProvider = rateProviders[i];
+            tokenConfig[i].config.tokenType = rateProviders[i] == IRateProvider(address(0))
                 ? TokenType.STANDARD
                 : TokenType.WITH_RATE;
         }
@@ -271,15 +271,15 @@ contract VaultMock is IVaultMainMock, Vault {
         IERC20[] memory tokens,
         IRateProvider[] memory rateProviders,
         bool[] memory yieldFeeFlags
-    ) public view returns (TokenConfig[] memory tokenConfig) {
-        tokenConfig = new TokenConfig[](tokens.length);
+    ) public view returns (TokenConfigRegistration[] memory tokenConfig) {
+        tokenConfig = new TokenConfigRegistration[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
-            tokenConfig[i].rateProvider = rateProviders[i];
-            tokenConfig[i].tokenType = rateProviders[i] == IRateProvider(address(0))
+            tokenConfig[i].config.rateProvider = rateProviders[i];
+            tokenConfig[i].config.tokenType = rateProviders[i] == IRateProvider(address(0))
                 ? TokenType.STANDARD
                 : TokenType.WITH_RATE;
-            tokenConfig[i].paysYieldFees = yieldFeeFlags[i];
+            tokenConfig[i].config.paysYieldFees = yieldFeeFlags[i];
         }
 
         tokenConfig = _inputHelpersMock.sortTokenConfig(tokenConfig);
@@ -290,13 +290,13 @@ contract VaultMock is IVaultMainMock, Vault {
         TokenType[] memory tokenTypes,
         IRateProvider[] memory rateProviders,
         bool[] memory yieldFeeFlags
-    ) public view returns (TokenConfig[] memory tokenConfig) {
-        tokenConfig = new TokenConfig[](tokens.length);
+    ) public view returns (TokenConfigRegistration[] memory tokenConfig) {
+        tokenConfig = new TokenConfigRegistration[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
-            tokenConfig[i].tokenType = tokenTypes[i];
-            tokenConfig[i].rateProvider = rateProviders[i];
-            tokenConfig[i].paysYieldFees = yieldFeeFlags[i];
+            tokenConfig[i].config.tokenType = tokenTypes[i];
+            tokenConfig[i].config.rateProvider = rateProviders[i];
+            tokenConfig[i].config.paysYieldFees = yieldFeeFlags[i];
         }
 
         tokenConfig = _inputHelpersMock.sortTokenConfig(tokenConfig);

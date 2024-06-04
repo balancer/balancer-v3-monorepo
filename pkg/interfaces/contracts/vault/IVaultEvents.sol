@@ -26,7 +26,7 @@ interface IVaultEvents {
     event PoolRegistered(
         address indexed pool,
         address indexed factory,
-        TokenConfig[] tokenConfig,
+        TokenConfigRegistration[] tokenConfig,
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts roleAccounts,

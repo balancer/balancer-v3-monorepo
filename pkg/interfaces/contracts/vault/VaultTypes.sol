@@ -117,15 +117,20 @@ enum TokenType {
  * @param paysYieldFees Flag indicating whether yield fees should be charged on this token
  */
 struct TokenConfig {
-    IERC20 token;
     TokenType tokenType;
     IRateProvider rateProvider;
     bool paysYieldFees;
 }
 
+struct TokenConfigRegistration {
+    IERC20 token;
+    TokenConfig config;
+}
+
 struct PoolData {
     PoolConfig poolConfig;
     TokenConfig[] tokenConfig;
+    IERC20[] tokens;
     uint256[] balancesRaw;
     uint256[] balancesLiveScaled18;
     uint256[] tokenRates;

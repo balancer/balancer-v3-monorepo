@@ -96,7 +96,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
 
     function _registerPoolWithVault(
         address pool,
-        TokenConfig[] memory tokens,
+        TokenConfigRegistration[] memory tokens,
         uint256 swapFeePercentage,
         PoolRoleAccounts memory roleAccounts,
         address poolHooksContract,

@@ -625,7 +625,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             {
                 // stack-too-deep (forge)
-                IERC20 token = poolData.tokenConfig[i].token;
+                IERC20 token = poolData.tokens[i];
 
                 // 2) Check limits for raw amounts
                 if (amountInRaw > params.maxAmountsIn[i]) {
@@ -826,7 +826,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             {
                 // stack-too-deep
-                IERC20 token = poolData.tokenConfig[i].token;
+                IERC20 token = poolData.tokens[i];
                 // 2) Check limits for raw amounts
                 if (amountOutRaw < params.minAmountsOut[i]) {
                     revert AmountOutBelowMin(token, amountOutRaw, params.minAmountsOut[i]);

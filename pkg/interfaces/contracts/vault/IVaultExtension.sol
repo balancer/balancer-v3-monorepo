@@ -66,7 +66,7 @@ interface IVaultExtension {
      * authorizer.
      *
      * @param pool The address of the pool being registered
-     * @param tokenConfig An array of descriptors for the tokens the pool will manage
+     * @param tokenConfigRegistration An array of descriptors for the tokens the pool will manage
      * @param swapFeePercentage The initial static swap fee percentage of the pool
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
@@ -75,7 +75,7 @@ interface IVaultExtension {
      */
     function registerPool(
         address pool,
-        TokenConfig[] memory tokenConfig,
+        TokenConfigRegistration[] memory tokenConfigRegistration,
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
@@ -130,6 +130,7 @@ interface IVaultExtension {
 
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
+     * @return tokens Pool tokens
      * @return tokenConfig Pool's token configuration
      * @return balancesRaw Corresponding raw balances of the tokens
      * @return scalingFactors Corresponding scalingFactors of the tokens
@@ -139,7 +140,7 @@ interface IVaultExtension {
     )
         external
         view
-        returns (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory scalingFactors);
+        returns (IERC20[] memory tokens, TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory scalingFactors);
 
     /**
      * @notice Gets the configuration parameters of a pool.

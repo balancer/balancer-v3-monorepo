@@ -45,8 +45,8 @@ contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
      * @param swapFeePercentage Initial swap fee percentage
      */
     function create(
-        TokenConfig memory highWeightTokenConfig,
-        TokenConfig memory lowWeightTokenConfig,
+        TokenConfigRegistration memory highWeightTokenConfig,
+        TokenConfigRegistration memory lowWeightTokenConfig,
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage
     ) external returns (address pool) {
@@ -57,7 +57,7 @@ contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
         IERC20 highWeightToken = highWeightTokenConfig.token;
         IERC20 lowWeightToken = lowWeightTokenConfig.token;
 
-        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        TokenConfigRegistration[] memory tokenConfig = new TokenConfigRegistration[](2);
         uint256[] memory weights = new uint256[](2);
 
         // Tokens must be sorted.

@@ -323,7 +323,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
         for (uint256 i = 0; i < numTokens; ++i) {
             bytes32 packedBalances = poolTokenBalances.unchecked_valueAt(i);
-            IERC20 token = poolData.tokenConfig[i].token;
+            IERC20 token = poolData.tokens[i];
             uint256 storedBalanceRaw = packedBalances.getBalanceRaw();
 
             // poolData has balances updated with yield fees now.

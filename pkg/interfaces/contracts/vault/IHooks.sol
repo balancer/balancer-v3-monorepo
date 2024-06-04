@@ -27,7 +27,7 @@ interface IHooks {
     function onRegister(
         address factory,
         address pool,
-        TokenConfig[] memory tokenConfig,
+        TokenConfigRegistration[] memory tokenConfig,
         LiquidityManagement calldata liquidityManagement
     ) external returns (bool);
 
