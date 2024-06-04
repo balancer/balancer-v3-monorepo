@@ -126,6 +126,7 @@ interface IVaultMain {
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     function sync(IERC20 token) external;
+
     /*******************************************************************************
                                 Authentication
     *******************************************************************************/

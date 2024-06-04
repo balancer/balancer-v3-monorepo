@@ -44,10 +44,10 @@ contract SyncTest is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-        
+
         // Test Dos attack with 1 wei, related: https://github.com/balancer/balancer-v3-monorepo/issues/580
         // TODO: Buffer tests
-        
+
         // Token in always dai
         deal(address(dai), address(this), 1, false);
         dai.transfer(address(vault), 1);
@@ -63,50 +63,25 @@ contract SyncTest is BaseVaultTest {
     function testAddLiquidityProportionalDos() public {
         vm.prank(alice);
 
-        router.addLiquidityProportional(
-            pool,
-            amountsIn,
-            amountsIn[0],
-            false,
-            bytes("")
-        );
+        router.addLiquidityProportional(pool, amountsIn, amountsIn[0], false, bytes(""));
     }
 
     function testAddLiquidityUnbalanced() public {
         vm.prank(alice);
 
-        router.addLiquidityUnbalanced(
-            pool,
-            amountsIn,
-            amountsIn[0],
-            false,
-            bytes("")
-        );
+        router.addLiquidityUnbalanced(pool, amountsIn, amountsIn[0], false, bytes(""));
     }
 
     function testAddLiquiditySingleTokenExactOut() public {
         vm.prank(alice);
 
-        router.addLiquiditySingleTokenExactOut(
-            pool,
-            dai,
-            amountsIn[0],
-            amountsIn[0],
-            false,
-            bytes("")
-        );
+        router.addLiquiditySingleTokenExactOut(pool, dai, amountsIn[0], amountsIn[0], false, bytes(""));
     }
 
     function testAddLiquidityCustomDos() public {
         vm.prank(alice);
 
-        router.addLiquidityCustom(
-            pool,
-            amountsIn,
-            amountsIn[0],
-            false,
-            bytes("")
-        );
+        router.addLiquidityCustom(pool, amountsIn, amountsIn[0], false, bytes(""));
     }
 
     // addLiquidityHook?
@@ -116,14 +91,8 @@ contract SyncTest is BaseVaultTest {
         _addLiquidity();
 
         vm.prank(alice);
-        
-        router.removeLiquidityProportional(
-            pool,
-            (amountsIn[0] + 1) * 2,
-            amountsIn,
-            false,
-            bytes("")
-        );
+
+        router.removeLiquidityProportional(pool, (amountsIn[0] + 1) * 2, amountsIn, false, bytes(""));
     }
 
     function testRemoveLiquiditySingleTokenExactInDos() public {
@@ -131,14 +100,7 @@ contract SyncTest is BaseVaultTest {
 
         vm.prank(alice);
 
-        router.removeLiquiditySingleTokenExactIn(
-            pool,
-            amountsIn[0],
-            usdc,
-            1,
-            false,
-            bytes("")
-        );
+        router.removeLiquiditySingleTokenExactIn(pool, amountsIn[0], usdc, 1, false, bytes(""));
     }
 
     function testRemoveLiquiditySingleTokenExactOut() public {
@@ -146,14 +108,7 @@ contract SyncTest is BaseVaultTest {
 
         vm.prank(alice);
 
-        router.removeLiquiditySingleTokenExactOut(
-            pool, 
-            amountsIn[0],
-            usdc, 
-            1,
-            false,
-            bytes("")
-        );
+        router.removeLiquiditySingleTokenExactOut(pool, amountsIn[0], usdc, 1, false, bytes(""));
     }
 
     function testRemoveLiquidityCustomDos() public {
@@ -161,20 +116,11 @@ contract SyncTest is BaseVaultTest {
 
         vm.prank(alice);
 
-        router.removeLiquidityCustom(
-            pool,
-            amountsIn[0],
-            amountsIn,
-            false,
-            bytes("")
-        );
+        router.removeLiquidityCustom(pool, amountsIn[0], amountsIn, false, bytes(""));
     }
 
     function testRemoveLiquidityRecoveryDos() public {
-        authorizer.grantRole(
-            vault.getActionId(IVaultAdmin.enableRecoveryMode.selector),
-            admin
-        );
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.enableRecoveryMode.selector), admin);
 
         vm.prank(admin);
         vault.enableRecoveryMode(pool);
@@ -200,27 +146,12 @@ contract SyncTest is BaseVaultTest {
         _addLiquidity();
 
         vm.prank(bob);
-        router.swapSingleTokenExactOut(
-            pool,
-            dai,
-            usdc,
-            amountsIn[0],
-            amountsIn[0],
-            block.timestamp,
-            false,
-            bytes("")
-        );
+        router.swapSingleTokenExactOut(pool, dai, usdc, amountsIn[0], amountsIn[0], block.timestamp, false, bytes(""));
     }
 
     function _addLiquidity() internal {
         vm.prank(alice);
 
-        router.addLiquidityProportional(
-            pool,
-            amountsIn,
-            amountsIn[0],
-            false,
-            bytes("")
-        );
+        router.addLiquidityProportional(pool, amountsIn, amountsIn[0], false, bytes(""));
     }
 }
