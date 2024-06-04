@@ -26,8 +26,7 @@ struct PoolConfig {
     bool isPoolInRecoveryMode;
 }
 
-/// @dev Represents a hook contract configuration for a pool.
-struct HooksConfig {
+struct HookFlags {
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
     bool shouldCallComputeDynamicSwapFee;
@@ -37,7 +36,12 @@ struct HooksConfig {
     bool shouldCallAfterAddLiquidity;
     bool shouldCallBeforeRemoveLiquidity;
     bool shouldCallAfterRemoveLiquidity;
+}
+
+/// @dev Represents a hook contract configuration for a pool.
+struct HooksConfig {
     address hooksContract;
+    HookFlags flags;
 }
 
 /// @dev Represents temporary state used in a swap operation.

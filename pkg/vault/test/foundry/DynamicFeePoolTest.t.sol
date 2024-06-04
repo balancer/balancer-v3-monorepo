@@ -55,9 +55,9 @@ contract DynamicFeePoolTest is BaseVaultTest {
         vm.label(address(newPool), label);
         PoolRoleAccounts memory roleAccounts;
 
-        HooksConfig memory hooksConfig;
-        hooksConfig.shouldCallComputeDynamicSwapFee = true;
-        PoolHooksMock(poolHooksContract).setHooksConfig(hooksConfig);
+        HookFlags memory hookFlags;
+        hookFlags.shouldCallComputeDynamicSwapFee = true;
+        PoolHooksMock(poolHooksContract).setHookFlags(hookFlags);
 
         factoryMock.registerPool(
             address(newPool),

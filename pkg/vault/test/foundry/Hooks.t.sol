@@ -48,11 +48,6 @@ contract HooksTest is BaseVaultTest {
         vm.label(address(anotherPool), "another pool");
     }
 
-    function createHook() internal override returns (address) {
-        HooksConfig memory hooksConfig;
-        return _createHook(hooksConfig);
-    }
-
     // onRegister
 
     function testOnRegisterNotAllowedFactory() public {
@@ -122,7 +117,7 @@ contract HooksTest is BaseVaultTest {
 
     function testOnComputeDynamicSwapFeeHook() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallComputeDynamicSwapFee = true;
+        hooksConfig.flags.shouldCallComputeDynamicSwapFee = true;
         vault.setHooksConfig(address(pool), hooksConfig);
 
         vm.prank(bob);
@@ -148,7 +143,7 @@ contract HooksTest is BaseVaultTest {
 
     function testOnComputeDynamicSwapFeeHookRevert() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallComputeDynamicSwapFee = true;
+        hooksConfig.flags.shouldCallComputeDynamicSwapFee = true;
         vault.setHooksConfig(address(pool), hooksConfig);
 
         // should fail
@@ -171,7 +166,7 @@ contract HooksTest is BaseVaultTest {
 
     function testOnBeforeSwapHook() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallBeforeSwap = true;
+        hooksConfig.flags.shouldCallBeforeSwap = true;
         vault.setHooksConfig(address(pool), hooksConfig);
 
         vm.prank(bob);
@@ -197,7 +192,7 @@ contract HooksTest is BaseVaultTest {
 
     function testOnBeforeSwapHookRevert() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallBeforeSwap = true;
+        hooksConfig.flags.shouldCallBeforeSwap = true;
         vault.setHooksConfig(address(pool), hooksConfig);
 
         // should fail
@@ -220,7 +215,7 @@ contract HooksTest is BaseVaultTest {
 
     function testOnAfterSwapHook() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallAfterSwap = true;
+        hooksConfig.flags.shouldCallAfterSwap = true;
         vault.setHooksConfig(address(pool), hooksConfig);
 
         setSwapFeePercentage(swapFeePercentage);
@@ -261,7 +256,7 @@ contract HooksTest is BaseVaultTest {
 
     function testOnAfterSwapHookRevert() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallAfterSwap = true;
+        hooksConfig.flags.shouldCallAfterSwap = true;
         vault.setHooksConfig(address(pool), hooksConfig);
 
         // should fail
@@ -298,7 +293,7 @@ contract HooksTest is BaseVaultTest {
 
     function testOnBeforeAddLiquidityHook() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallBeforeAddLiquidity = true;
+        hooksConfig.flags.shouldCallBeforeAddLiquidity = true;
         vault.setHooksConfig(address(pool), hooksConfig);
 
         vm.prank(bob);
@@ -351,7 +346,7 @@ contract HooksTest is BaseVaultTest {
 
     function testOnBeforeRemoveLiquidityHook() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallBeforeRemoveLiquidity = true;
+        hooksConfig.flags.shouldCallBeforeRemoveLiquidity = true;
         vault.setHooksConfig(address(pool), hooksConfig);
 
         vm.prank(alice);
@@ -405,7 +400,7 @@ contract HooksTest is BaseVaultTest {
 
     function testOnAfterAddLiquidityHook() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallAfterAddLiquidity = true;
+        hooksConfig.flags.shouldCallAfterAddLiquidity = true;
         vault.setHooksConfig(address(pool), hooksConfig);
 
         vm.prank(bob);
@@ -457,7 +452,7 @@ contract HooksTest is BaseVaultTest {
 
     function testOnAfterRemoveLiquidityHook() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallAfterRemoveLiquidity = true;
+        hooksConfig.flags.shouldCallAfterRemoveLiquidity = true;
         vault.setHooksConfig(address(pool), hooksConfig);
 
         vm.prank(alice);

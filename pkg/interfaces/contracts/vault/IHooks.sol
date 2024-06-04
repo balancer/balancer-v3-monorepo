@@ -33,9 +33,9 @@ interface IHooks {
 
     /**
      * @notice Returns flags informing which hooks are implemented in the contract.
-     * @return hooksConfig Flags indicating which hooks the contract supports and the address of the hook contract
+     * @return hookFlags Flags indicating which hooks the contract supports
      */
-    function getHooksConfig() external returns (HooksConfig memory hooksConfig);
+    function getHookFlags() external returns (HookFlags memory hookFlags);
 
     /***************************************************************************
                                    Initialize

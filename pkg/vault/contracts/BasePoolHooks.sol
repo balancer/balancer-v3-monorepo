@@ -7,7 +7,7 @@ import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol"
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import {
     AddLiquidityKind,
-    HooksConfig,
+    HookFlags,
     LiquidityManagement,
     RemoveLiquidityKind,
     TokenConfig
@@ -36,7 +36,7 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
     }
 
     /// @inheritdoc IHooks
-    function getHooksConfig() external virtual returns (HooksConfig memory);
+    function getHookFlags() external virtual returns (HookFlags memory);
 
     /// @inheritdoc IHooks
     function onBeforeInitialize(uint256[] memory, bytes memory) external virtual onlyVault returns (bool) {

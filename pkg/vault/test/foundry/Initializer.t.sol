@@ -30,8 +30,8 @@ contract InitializerTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         HooksConfig memory config = vault.getHooksConfig(address(pool));
-        config.shouldCallBeforeInitialize = true;
-        config.shouldCallAfterInitialize = true;
+        config.flags.shouldCallBeforeInitialize = true;
+        config.flags.shouldCallAfterInitialize = true;
         vault.setHooksConfig(address(pool), config);
 
         standardPoolTokens = InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20());
@@ -41,8 +41,8 @@ contract InitializerTest is BaseVaultTest {
 
     function testNoRevertWithZeroConfig() public {
         HooksConfig memory config = vault.getHooksConfig(address(pool));
-        config.shouldCallBeforeInitialize = false;
-        config.shouldCallAfterInitialize = false;
+        config.flags.shouldCallBeforeInitialize = false;
+        config.flags.shouldCallAfterInitialize = false;
         vault.setHooksConfig(address(pool), config);
 
         PoolHooksMock(poolHooksContract).setFailOnBeforeInitializeHook(true);

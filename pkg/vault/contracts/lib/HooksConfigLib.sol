@@ -24,7 +24,7 @@ library HooksConfigLib {
         HooksConfig memory config,
         IBasePool.PoolSwapParams memory swapParams
     ) internal view returns (bool, uint256) {
-        if (config.shouldCallComputeDynamicSwapFee == false) {
+        if (config.flags.shouldCallComputeDynamicSwapFee == false) {
             return (false, 0);
         }
 
@@ -48,7 +48,7 @@ library HooksConfigLib {
         HooksConfig memory config,
         IBasePool.PoolSwapParams memory swapParams
     ) internal returns (bool) {
-        if (config.shouldCallBeforeSwap == false) {
+        if (config.flags.shouldCallBeforeSwap == false) {
             return false;
         }
 
@@ -76,7 +76,7 @@ library HooksConfigLib {
         SwapState memory state,
         PoolData memory poolData
     ) internal {
-        if (config.shouldCallAfterSwap == false) {
+        if (config.flags.shouldCallAfterSwap == false) {
             return;
         }
 
@@ -121,7 +121,7 @@ library HooksConfigLib {
         AddLiquidityParams memory params,
         PoolData memory poolData
     ) internal returns (bool) {
-        if (config.shouldCallBeforeAddLiquidity == false) {
+        if (config.flags.shouldCallBeforeAddLiquidity == false) {
             return false;
         }
 
@@ -158,7 +158,7 @@ library HooksConfigLib {
         AddLiquidityParams memory params,
         PoolData memory poolData
     ) internal {
-        if (config.shouldCallAfterAddLiquidity == false) {
+        if (config.flags.shouldCallAfterAddLiquidity == false) {
             return;
         }
 
@@ -193,7 +193,7 @@ library HooksConfigLib {
         RemoveLiquidityParams memory params,
         PoolData memory poolData
     ) internal returns (bool) {
-        if (config.shouldCallBeforeRemoveLiquidity == false) {
+        if (config.flags.shouldCallBeforeRemoveLiquidity == false) {
             return false;
         }
 
@@ -230,7 +230,7 @@ library HooksConfigLib {
         RemoveLiquidityParams memory params,
         PoolData memory poolData
     ) internal {
-        if (config.shouldCallAfterRemoveLiquidity == false) {
+        if (config.flags.shouldCallAfterRemoveLiquidity == false) {
             return;
         }
 
@@ -261,7 +261,7 @@ library HooksConfigLib {
         uint256[] memory exactAmountsInScaled18,
         bytes memory userData
     ) internal returns (bool) {
-        if (config.shouldCallBeforeInitialize == false) {
+        if (config.flags.shouldCallBeforeInitialize == false) {
             return false;
         }
 
@@ -286,7 +286,7 @@ library HooksConfigLib {
         uint256 bptAmountOut,
         bytes memory userData
     ) internal {
-        if (config.shouldCallAfterInitialize == false) {
+        if (config.flags.shouldCallAfterInitialize == false) {
             return;
         }
 
