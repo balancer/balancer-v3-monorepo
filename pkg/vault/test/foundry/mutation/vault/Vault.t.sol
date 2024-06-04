@@ -96,9 +96,6 @@ contract VaultMutationTest is BaseVaultTest {
         vault.addLiquidity(params);
     }
 
-    /*
-        removeLiquidity
-    */
     function testRemoveLiquidityWithLockedVault() public {
         RemoveLiquidityParams memory params = RemoveLiquidityParams(
             address(pool),
