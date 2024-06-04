@@ -28,7 +28,6 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
@@ -51,7 +50,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
-    using VaultStateLib for VaultStateBits;
 
     IVault private immutable _vault;
 
@@ -193,9 +191,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             }
         }
 
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.isVaultPaused = pausing;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
+        _vaultState.isVaultPaused = pausing;
 
         emit VaultPausedStateChanged(pausing);
     }
@@ -438,9 +434,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function disableQuery() external authenticate onlyVault {
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.isQueryDisabled = true;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
+        _vaultState.isQueryDisabled = true;
     }
 
     /*******************************************************************************
@@ -448,16 +442,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
     /// @inheritdoc IVaultAdmin
     function unpauseVaultBuffers() external authenticate onlyVault {
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.areBuffersPaused = false;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
+        _vaultState.areBuffersPaused = false;
     }
 
     /// @inheritdoc IVaultAdmin
     function pauseVaultBuffers() external authenticate onlyVault {
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.areBuffersPaused = true;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
+        _vaultState.areBuffersPaused = true;
     }
 
     /// @inheritdoc IVaultAdmin

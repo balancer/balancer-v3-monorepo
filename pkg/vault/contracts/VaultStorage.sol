@@ -20,7 +20,6 @@ import {
     TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
-import { VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 
 // solhint-disable max-states-count
@@ -108,8 +107,8 @@ contract VaultStorage {
     // Stored as a convenience, to avoid calculating it on every operation.
     uint32 internal immutable _vaultBufferPeriodDuration;
 
-    // Bytes32 with protocol fees and paused flags.
-    VaultStateBits internal _vaultState;
+    // protocol fees and paused flags.
+    VaultState internal _vaultState;
 
     // pool -> roleId (corresponding to a particular function) -> PoolFunctionPermission.
     mapping(address => mapping(bytes32 => PoolFunctionPermission)) internal _poolFunctionPermissions;

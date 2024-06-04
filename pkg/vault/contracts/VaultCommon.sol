@@ -22,7 +22,6 @@ import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
-import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultStorage } from "./VaultStorage.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
@@ -40,7 +39,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     using ScalingHelpers for *;
     using SafeCast for *;
     using FixedPoint for *;
-    using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
@@ -150,7 +148,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * struct to be used elsewhere
      */
     function _ensureUnpausedAndGetVaultState(address pool) internal view returns (VaultState memory vaultState) {
-        vaultState = _vaultState.toVaultState();
+        vaultState = _vaultState;
         // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
         // isVaultPaused state again in `_isVaultPaused`.
         // solhint-disable-next-line not-rely-on-time
@@ -166,7 +164,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _isVaultPaused() internal view returns (bool) {
         // solhint-disable-next-line not-rely-on-time
-        return block.timestamp <= _vaultBufferPeriodEndTime && _vaultState.isVaultPaused();
+        return block.timestamp <= _vaultBufferPeriodEndTime && _vaultState.isVaultPaused;
     }
 
     /*******************************************************************************
@@ -215,7 +213,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev Reverts if vault buffers are paused.
     function _ensureVaultBuffersAreNotPaused() internal view {
-        if (_vaultState.areBuffersPaused()) {
+        if (_vaultState.areBuffersPaused) {
             revert VaultBuffersArePaused();
         }
     }
