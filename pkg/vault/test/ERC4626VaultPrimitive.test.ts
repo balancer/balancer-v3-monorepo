@@ -167,14 +167,14 @@ describe('ERC4626VaultPrimitive', function () {
       expect(poolConfig.liquidityManagement.enableRemoveLiquidityCustom).to.be.true;
 
       const hooksConfig: HooksConfigStructOutput = await vault.getHooksConfig(pool);
-      expect(hooksConfig.shouldCallBeforeInitialize).to.be.false;
-      expect(hooksConfig.shouldCallAfterInitialize).to.be.false;
-      expect(hooksConfig.shouldCallBeforeAddLiquidity).to.be.false;
-      expect(hooksConfig.shouldCallAfterAddLiquidity).to.be.false;
-      expect(hooksConfig.shouldCallBeforeRemoveLiquidity).to.be.false;
-      expect(hooksConfig.shouldCallAfterRemoveLiquidity).to.be.false;
-      expect(hooksConfig.shouldCallBeforeSwap).to.be.false;
-      expect(hooksConfig.shouldCallAfterSwap).to.be.false;
+      expect(hooksConfig.flags.shouldCallBeforeInitialize).to.be.false;
+      expect(hooksConfig.flags.shouldCallAfterInitialize).to.be.false;
+      expect(hooksConfig.flags.shouldCallBeforeAddLiquidity).to.be.false;
+      expect(hooksConfig.flags.shouldCallAfterAddLiquidity).to.be.false;
+      expect(hooksConfig.flags.shouldCallBeforeRemoveLiquidity).to.be.false;
+      expect(hooksConfig.flags.shouldCallAfterRemoveLiquidity).to.be.false;
+      expect(hooksConfig.flags.shouldCallBeforeSwap).to.be.false;
+      expect(hooksConfig.flags.shouldCallAfterSwap).to.be.false;
     });
   });
 
