@@ -164,6 +164,8 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
             uint256 stepExactAmountIn = path.exactAmountIn;
             IERC20 stepTokenIn = path.tokenIn;
 
+            _vault.sync(stepTokenIn);
+
             if (path.steps[0].isBuffer && EVMCallModeHelpers.isStaticCall() == false) {
                 // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
                 _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, false);
@@ -438,6 +440,8 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     stepMaxAmountIn = _MAX_AMOUNT;
                     stepTokenIn = path.steps[uint256(j - 1)].tokenOut;
                 }
+
+                _vault.sync(stepTokenIn);
 
                 if (step.isBuffer) {
                     if (stepLocals.isLastStep && !EVMCallModeHelpers.isStaticCall()) {

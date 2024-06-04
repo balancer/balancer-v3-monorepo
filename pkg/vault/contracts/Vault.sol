@@ -878,15 +878,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function sync(IERC20[] memory tokens) external {
-        uint256 length = tokens.length;
-
-        for(uint8 i = 0; i < length;) {
-            _reservesOf[tokens[i]] = tokens[i].balanceOf(address(this));
-            unchecked {
-                ++i;
-            }
-        }
+    function sync(IERC20 token) external {
+        _reservesOf[token] = token.balanceOf(address(this));
     }
 
     /**

@@ -117,11 +117,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bool wethIsEth,
         bytes memory userData
     ) external payable saveSender returns (uint256[] memory amountsIn) {
-        
-        IERC20[] memory tokens = IBasePool(pool).getPoolTokens();
-
-        _vault.sync(tokens);
-
         (amountsIn, , ) = abi.decode(
             _vault.unlock{ value: msg.value }(
                 abi.encodeWithSelector(
@@ -264,8 +259,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         uint256 ethAmountIn;
         for (uint256 i = 0; i < tokens.length; ++i) {
-            IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
+            IERC20 token = tokens[i];
+
+            _vault.sync(token);
 
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
@@ -458,6 +455,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             uint256 amountOut = amountsOut[i];
             IERC20 token = tokens[i];
 
+            _vault.sync(token);
+
             if (amountOut < params.minAmountsOut[i]) {
                 revert ExitBelowMin(amountOut, params.minAmountsOut[i]);
             }
@@ -581,6 +580,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         IERC20 tokenIn = params.tokenIn;
+
+        _vault.sync(tokenIn);
+
         bool wethIsEth = params.wethIsEth;
 
         uint256 ethAmountIn = _takeTokenIn(params.sender, tokenIn, amountIn, wethIsEth);
@@ -659,6 +661,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 amountWrappedRaw,
         address sharesOwner
     ) external nonReentrant onlyVault returns (uint256 issuedShares) {
+        _vault.sync(IERC20(address(wrappedToken)));
+        _vault.sync(IERC20(wrappedToken.asset()));
         issuedShares = _vault.addLiquidityToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, sharesOwner);
         _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlyingRaw, false);
         _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrappedRaw, false);
@@ -698,6 +702,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 sharesToRemove,
         address sharesOwner
     ) external nonReentrant onlyVault returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw) {
+        _vault.sync(IERC20(address(wrappedToken)));
+        _vault.sync(IERC20(wrappedToken.asset()));
         (removedUnderlyingBalanceRaw, removedWrappedBalanceRaw) = _vault.removeLiquidityFromBuffer(
             wrappedToken,
             sharesToRemove,

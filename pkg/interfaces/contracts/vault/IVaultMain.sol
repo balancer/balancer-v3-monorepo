@@ -125,7 +125,7 @@ interface IVaultMain {
         BufferWrapOrUnwrapParams memory params
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
-    function sync(IERC20[] memory tokens) external;
+    function sync(IERC20 token) external;
     /*******************************************************************************
                                 Authentication
     *******************************************************************************/
