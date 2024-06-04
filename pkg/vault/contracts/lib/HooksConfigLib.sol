@@ -166,7 +166,6 @@ library HooksConfigLib {
      * @param bptAmountOut The BPT amount a user will receive after add liquidity operation succeeds
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
-     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
     function onAfterAddLiquidity(
         HooksConfig memory config,
@@ -175,9 +174,9 @@ library HooksConfigLib {
         address router,
         AddLiquidityParams memory params,
         PoolData memory poolData
-    ) internal returns (bool success) {
+    ) internal {
         if (config.shouldCallAfterAddLiquidity == false) {
-            return false;
+            return;
         }
 
         if (
@@ -191,7 +190,6 @@ library HooksConfigLib {
         ) {
             revert IVaultErrors.AfterAddLiquidityHookFailed();
         }
-        return true;
     }
 
     /**
@@ -240,7 +238,6 @@ library HooksConfigLib {
      * @param bptAmountIn The BPT amount a user will need burn to remove the liquidity of the pool
      * @param params The remove liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
-     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
     function onAfterRemoveLiquidity(
         HooksConfig memory config,
@@ -249,9 +246,9 @@ library HooksConfigLib {
         address router,
         RemoveLiquidityParams memory params,
         PoolData memory poolData
-    ) internal returns (bool success) {
+    ) internal {
         if (config.shouldCallAfterRemoveLiquidity == false) {
-            return false;
+            return;
         }
 
         if (
@@ -265,7 +262,6 @@ library HooksConfigLib {
         ) {
             revert IVaultErrors.AfterRemoveLiquidityHookFailed();
         }
-        return true;
     }
 
     /**
