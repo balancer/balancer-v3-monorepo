@@ -118,8 +118,24 @@ contract PoolHooksMock is BasePoolHooks {
 
         uint256 updatedAmountGivenRaw = params.amountGivenRaw;
         if (onBeforeSwapHookFee > 0) {
-            updatedAmountGivenRaw = params.amountGivenRaw - onBeforeSwapHookFee;
-            _vault.sendTo(tokenConfig[params.indexIn].token, address(this), onBeforeSwapHookFee);
+            if(params.kind == SwapKind.EXACT_IN) {
+                updatedAmountGivenRaw = params.amountGivenRaw - onBeforeSwapHookFee;
+                _vault.sendTo(tokenConfig[params.indexIn].token, address(this), onBeforeSwapHookFee);
+            } else {
+                updatedAmountGivenRaw = params.amountGivenRaw + onBeforeSwapHookFee;
+                _vault.sendTo(tokenConfig[params.indexOut].token, address(this), onBeforeSwapHookFee);
+            }
+        }
+        if (onBeforeSwapHookDiscount > 0) {
+            if(params.kind == SwapKind.EXACT_IN) {
+                updatedAmountGivenRaw = params.amountGivenRaw + onBeforeSwapHookDiscount;
+                tokenConfig[params.indexIn].token.transfer(address(_vault), onBeforeSwapHookDiscount);
+                _vault.settle(tokenConfig[params.indexIn].token);
+            } else {
+                updatedAmountGivenRaw = params.amountGivenRaw - onBeforeSwapHookDiscount;
+                tokenConfig[params.indexOut].token.transfer(address(_vault), onBeforeSwapHookDiscount);
+                _vault.settle(tokenConfig[params.indexOut].token);
+            }
         }
 
         if (changeTokenRateOnBeforeSwapHook) {
