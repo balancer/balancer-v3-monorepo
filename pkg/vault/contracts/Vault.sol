@@ -199,10 +199,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // HooksConfigLib returns the original amountGivenRaw if the hook fails to execute, or the hook new
         // amountGivenRaw otherwise
         (state.onBeforeSwapSuccess, state.virtualAmountGivenRaw) = hooksConfig.onBeforeSwap(swapParams, params.pool);
-//        if (state.virtualAmountGivenRaw < params.amountGivenRaw) {
-//            // hook charged fee, so discount from amount given.
-//            params.amountGivenRaw = state.virtualAmountGivenRaw;
-//        }
 
         if (state.onBeforeSwapSuccess == true) {
             // The call to `onBeforeSwap` could potentially update token rates and balances.
