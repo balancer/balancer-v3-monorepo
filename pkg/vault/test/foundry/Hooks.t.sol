@@ -84,6 +84,11 @@ contract HooksTest is BaseVaultTest {
 
     function testOnRegisterAllowedFactory() public {
         PoolRoleAccounts memory roleAccounts;
+        LiquidityManagement memory liquidityManagement = LiquidityManagement({
+            disableUnbalancedLiquidity: false,
+            enableAddLiquidityCustom: false,
+            enableRemoveLiquidityCustom: false
+        });
 
         // Should succeed, since factory is allowed in the poolHooksContract
         PoolHooksMock(poolHooksContract).allowFactory(address(anotherFactory));
@@ -98,7 +103,8 @@ contract HooksTest is BaseVaultTest {
                 IHooks.onRegister.selector,
                 address(anotherFactory),
                 address(anotherPool),
-                tokenConfig
+                tokenConfig,
+                liquidityManagement
             )
         );
 
@@ -107,11 +113,7 @@ contract HooksTest is BaseVaultTest {
             tokenConfig,
             roleAccounts,
             poolHooksContract,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
+            liquidityManagement
         );
     }
 

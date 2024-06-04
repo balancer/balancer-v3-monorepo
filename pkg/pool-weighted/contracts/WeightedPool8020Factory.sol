@@ -5,24 +5,35 @@ pragma solidity ^0.8.24;
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { WeightedPool } from "./WeightedPool.sol";
 
 /**
  * @notice Weighted Pool factory for 80/20 pools.
  */
-contract WeightedPool8020Factory is BasePoolFactory {
+contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
     uint256 private constant _EIGHTY = 8e17; // 80%
     uint256 private constant _TWENTY = 2e17; // 20%
 
+    string private _poolVersion;
+
     constructor(
         IVault vault,
-        uint32 pauseWindowDuration
-    ) BasePoolFactory(vault, pauseWindowDuration, type(WeightedPool).creationCode) {
-        // solhint-disable-previous-line no-empty-blocks
+        uint32 pauseWindowDuration,
+        string memory factoryVersion,
+        string memory poolVersion
+    ) BasePoolFactory(vault, pauseWindowDuration, type(WeightedPool).creationCode) Version(factoryVersion) {
+        _poolVersion = poolVersion;
+    }
+
+    /// @inheritdoc IPoolVersion
+    function getPoolVersion() external view returns (string memory) {
+        return _poolVersion;
     }
 
     /**
@@ -67,7 +78,8 @@ contract WeightedPool8020Factory is BasePoolFactory {
                     name: string.concat("Balancer 80 ", highWeightTokenSymbol, " 20 ", lowWeightTokenSymbol),
                     symbol: string.concat("B-80", highWeightTokenSymbol, "-20", lowWeightTokenSymbol),
                     numTokens: tokenConfig.length,
-                    normalizedWeights: weights
+                    normalizedWeights: weights,
+                    version: _poolVersion
                 }),
                 getVault()
             ),

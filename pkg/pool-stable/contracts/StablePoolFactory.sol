@@ -6,9 +6,11 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { StablePool } from "./StablePool.sol";
 
@@ -16,14 +18,23 @@ import { StablePool } from "./StablePool.sol";
  * @notice General Stable Pool factory
  * @dev This is the most general factory, which allows up to four tokens.
  */
-contract StablePoolFactory is BasePoolFactory {
+contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
     // solhint-disable not-rely-on-time
+
+    string private _poolVersion;
 
     constructor(
         IVault vault,
-        uint32 pauseWindowDuration
-    ) BasePoolFactory(vault, pauseWindowDuration, type(StablePool).creationCode) {
-        // solhint-disable-previous-line no-empty-blocks
+        uint32 pauseWindowDuration,
+        string memory factoryVersion,
+        string memory poolVersion
+    ) BasePoolFactory(vault, pauseWindowDuration, type(StablePool).creationCode) Version(factoryVersion) {
+        _poolVersion = poolVersion;
+    }
+
+    /// @inheritdoc IPoolVersion
+    function getPoolVersion() external view returns (string memory) {
+        return _poolVersion;
     }
 
     /**
@@ -56,7 +67,8 @@ contract StablePoolFactory is BasePoolFactory {
                 StablePool.NewPoolParams({
                     name: name,
                     symbol: symbol,
-                    amplificationParameter: amplificationParameter
+                    amplificationParameter: amplificationParameter,
+                    version: _poolVersion
                 }),
                 getVault()
             ),

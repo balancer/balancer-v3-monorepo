@@ -15,7 +15,7 @@ contract StablePoolFactoryTest is Test {
 
     function setUp() public {
         vault = VaultMockDeployer.deploy();
-        factory = new StablePoolFactory(IVault(address(vault)), 365 days);
+        factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
     }
 
     function testFactoryPausedState() public {

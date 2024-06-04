@@ -51,7 +51,7 @@ contract StablePoolTest is BaseVaultTest {
     }
 
     function createPool() internal override returns (address) {
-        factory = new StablePoolFactory(IVault(address(vault)), 365 days);
+        factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         TokenConfig[] memory tokens = new TokenConfig[](2);
         PoolRoleAccounts memory roleAccounts;
         tokens[0].token = IERC20(dai);

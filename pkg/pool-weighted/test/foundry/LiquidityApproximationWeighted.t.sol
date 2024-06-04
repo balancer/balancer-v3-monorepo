@@ -29,7 +29,12 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     }
 
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        WeightedPoolFactory factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
+        WeightedPoolFactory factory = new WeightedPoolFactory(
+            IVault(address(vault)),
+            365 days,
+            "Factory v1",
+            "Pool v1"
+        );
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks

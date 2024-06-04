@@ -6,9 +6,11 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { WeightedPool } from "./WeightedPool.sol";
 
@@ -16,14 +18,23 @@ import { WeightedPool } from "./WeightedPool.sol";
  * @notice General Weighted Pool factory
  * @dev This is the most general factory, which allows up to four tokens and arbitrary weights.
  */
-contract WeightedPoolFactory is BasePoolFactory {
+contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
     // solhint-disable not-rely-on-time
+
+    string private _poolVersion;
 
     constructor(
         IVault vault,
-        uint32 pauseWindowDuration
-    ) BasePoolFactory(vault, pauseWindowDuration, type(WeightedPool).creationCode) {
-        // solhint-disable-previous-line no-empty-blocks
+        uint32 pauseWindowDuration,
+        string memory factoryVersion,
+        string memory poolVersion
+    ) BasePoolFactory(vault, pauseWindowDuration, type(WeightedPool).creationCode) Version(factoryVersion) {
+        _poolVersion = poolVersion;
+    }
+
+    /// @inheritdoc IPoolVersion
+    function getPoolVersion() external view returns (string memory) {
+        return _poolVersion;
     }
 
     /**
@@ -58,7 +69,8 @@ contract WeightedPoolFactory is BasePoolFactory {
                     name: name,
                     symbol: symbol,
                     numTokens: tokens.length,
-                    normalizedWeights: normalizedWeights
+                    normalizedWeights: normalizedWeights,
+                    version: _poolVersion
                 }),
                 getVault()
             ),
