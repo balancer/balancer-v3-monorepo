@@ -82,35 +82,6 @@ library PoolDataLib {
         }
     }
 
-    function syncPoolBalancesAndFees(
-        PoolData memory poolData,
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
-        mapping(IERC20 => bytes32) storage poolAggregateProtocolFeeAmounts
-    ) internal {
-        uint256 numTokens = poolData.balancesRaw.length;
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            (IERC20 token, bytes32 packedBalances) = poolTokenBalances.unchecked_at(i);
-            uint256 storedBalanceRaw = packedBalances.getBalanceRaw();
-
-            // poolData has balances updated with yield fees now.
-            // If yield fees are not 0, then the stored balance is greater than the one in memory.
-            if (storedBalanceRaw > poolData.balancesRaw[i]) {
-                // Both Swap and Yield fees are stored together in a PackedTokenBalance.
-                // We have designated "Derived" the derived half for Yield fee storage.
-                bytes32 packedProtocolFeeAmounts = poolAggregateProtocolFeeAmounts[token];
-                poolAggregateProtocolFeeAmounts[token] = packedProtocolFeeAmounts.setBalanceDerived(
-                    packedProtocolFeeAmounts.getBalanceDerived() + (storedBalanceRaw - poolData.balancesRaw[i])
-                );
-            }
-
-            poolTokenBalances.unchecked_setAt(
-                i,
-                PackedTokenBalance.toPackedBalance(poolData.balancesRaw[i], poolData.balancesLiveScaled18[i])
-            );
-        }
-    }
-
     /**
      * @dev This is typically called after a reentrant callback (e.g., a "before" liquidity operation callback),
      * to refresh the poolData struct with any balances (or rates) that might have changed.
