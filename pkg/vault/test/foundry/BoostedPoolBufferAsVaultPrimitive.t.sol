@@ -56,6 +56,9 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         vm.label(address(waUSDC), "waUSDC");
 
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
+
+        initializeBuffers();
+        initializeBoostedPool();
     }
 
     function initializeBuffers() private {

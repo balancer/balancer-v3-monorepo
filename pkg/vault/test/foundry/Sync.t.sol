@@ -7,12 +7,13 @@ import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
 
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
+
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -58,8 +59,6 @@ contract SyncTest is BaseVaultTest {
     // LP can unbalance buffer with this amount
     uint256 internal unbalanceDelta = bufferAmount / 2;
 
-
-
     uint256[] internal amountsIn = [poolInitAmount, poolInitAmount].toMemoryArray();
 
     function setUp() public virtual override {
@@ -77,10 +76,7 @@ contract SyncTest is BaseVaultTest {
         _initializeBuffers();
         _initializeBoostedPool();
 
-        authorizer.grantRole(
-            0x78823457cc024a2de284a4154c07b727e52277748dbc1ef973c8ee254462a230,
-            address(router)
-        );
+        authorizer.grantRole(0x78823457cc024a2de284a4154c07b727e52277748dbc1ef973c8ee254462a230, address(router));
         // Test Dos attack with 1 wei, related: https://github.com/balancer/balancer-v3-monorepo/issues/580
         // TODO: Buffer tests
 
@@ -134,7 +130,7 @@ contract SyncTest is BaseVaultTest {
 
         vm.prank(alice);
 
-        router.removeLiquidityProportional(pool, (amountsIn[0] + 1) * 2, amountsIn, false, bytes(""));
+        router.removeLiquidityProportional(pool, 2e21, amountsIn, false, bytes(""));
     }
 
     function testRemoveLiquiditySingleTokenExactInDos() public {
@@ -190,22 +186,26 @@ contract SyncTest is BaseVaultTest {
 
     function testAddLiquidityToBuffer() public {
         vm.prank(lp);
-        router.addLiquidityToBuffer(
-            IERC4626(waDAI),
-            amountsIn[0],
-            amountsIn[0],
-            address(lp)
-        );
+        router.addLiquidityToBuffer(IERC4626(waDAI), amountsIn[0], amountsIn[0], address(lp));
     }
 
     function testRemoveLiquidityFromBuffer() public {
         _addLiquidityToBuffer();
 
         vm.prank(lp);
-        router.removeLiquidityFromBuffer(
-            IERC4626(waDAI),
-            amountsIn[0]
-        );
+        router.removeLiquidityFromBuffer(IERC4626(waDAI), amountsIn[0]);
+    }
+
+    function testSwapExactOut() public {
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(amountsIn[0]);
+        vm.prank(lp);
+        batchRouter.swapExactOut(paths, block.timestamp, false, bytes(""));
+    }
+
+    function testSwapExactInHook() public {
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountsIn[0]);
+        vm.prank(lp);
+        batchRouter.swapExactIn(paths, block.timestamp, false, bytes(""));
     }
 
     function _initializeBuffers() internal {
@@ -290,12 +290,7 @@ contract SyncTest is BaseVaultTest {
 
     function _addLiquidityToBuffer() internal {
         vm.prank(lp);
-        router.addLiquidityToBuffer(
-            IERC4626(waDAI),
-            amountsIn[0],
-            amountsIn[0],
-            address(lp)
-        ); 
+        router.addLiquidityToBuffer(IERC4626(waDAI), amountsIn[0], amountsIn[0], address(lp));
 
         deal(address(dai), address(this), 1, false);
         dai.transfer(address(vault), 1);
@@ -309,5 +304,49 @@ contract SyncTest is BaseVaultTest {
 
         deal(address(waUSDC), address(this), 1, false);
         waUSDC.transfer(address(vault), 1);
+    }
+
+    function _buildExactInPaths(
+        uint256 amount
+    ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
+        paths = new IBatchRouter.SwapPathExactAmountIn[](1);
+
+        // Since this is exact in, swaps will be executed in the order given.
+        // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the boosted pool,
+        // and finally post-swap the waUSDC through the USDC buffer to calculate the USDC amount out.
+        // The only token transfers are DAI in (given) and USDC out (calculated).
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC, isBuffer: false });
+        steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
+
+        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+            tokenIn: dai,
+            steps: steps,
+            exactAmountIn: amount,
+            minAmountOut: amount - 1 // rebalance tests are a wei off
+        });
+    }
+
+    function _buildExactOutPaths(
+        uint256 amount
+    ) private view returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
+        paths = new IBatchRouter.SwapPathExactAmountOut[](1);
+
+        // Since this is exact out, swaps will be executed in reverse order (though we submit in logical order).
+        // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the boosted pool,
+        // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
+        // The only token transfers are DAI in (calculated) and USDC out (given).
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC, isBuffer: false });
+        steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
+
+        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+            tokenIn: dai,
+            steps: steps,
+            maxAmountIn: amount,
+            exactAmountOut: amount
+        });
     }
 }
