@@ -144,7 +144,7 @@ describe('Vault', function () {
         swapFeePercentage: 0,
         pauseWindowEndTime: pauseWindowEndTime.toString(),
         roleAccounts: [ANY_ADDRESS, ZERO_ADDRESS, ANY_ADDRESS],
-        hooksConfig: [false, false, false, false, false, false, false, false, false, ZERO_ADDRESS],
+        hooksConfig: [ZERO_ADDRESS, [false, false, false, false, false, false, false, false, false]],
         liquidityManagement: [false, true, true],
       };
 
