@@ -43,7 +43,8 @@ contract PoolHooksMock is BasePoolHooks {
 
     uint256 public onBeforeSwapHookFee;
     uint256 public onBeforeSwapHookDiscount;
-    uint256 public onAfterSwapAmountToUpdate;
+    uint256 public onAfterSwapHookFee;
+    uint256 public onAfterSwapHookDiscount;
 
     bool public swapReentrancyHookActive;
     address private _swapHookContract;
@@ -118,7 +119,7 @@ contract PoolHooksMock is BasePoolHooks {
 
         uint256 updatedAmountGivenRaw = params.amountGivenRaw;
         if (onBeforeSwapHookFee > 0) {
-            if(params.kind == SwapKind.EXACT_IN) {
+            if (params.kind == SwapKind.EXACT_IN) {
                 updatedAmountGivenRaw = params.amountGivenRaw - onBeforeSwapHookFee;
                 _vault.sendTo(tokenConfig[params.indexIn].token, address(this), onBeforeSwapHookFee);
             } else {
@@ -127,7 +128,7 @@ contract PoolHooksMock is BasePoolHooks {
             }
         }
         if (onBeforeSwapHookDiscount > 0) {
-            if(params.kind == SwapKind.EXACT_IN) {
+            if (params.kind == SwapKind.EXACT_IN) {
                 updatedAmountGivenRaw = params.amountGivenRaw + onBeforeSwapHookDiscount;
                 tokenConfig[params.indexIn].token.transfer(address(_vault), onBeforeSwapHookDiscount);
                 _vault.settle(tokenConfig[params.indexIn].token);
@@ -197,9 +198,25 @@ contract PoolHooksMock is BasePoolHooks {
         }
 
         uint256 updatedAmountCalculatedRaw = amountCalculatedRaw;
-        if (onAfterSwapAmountToUpdate > 0) {
-            updatedAmountCalculatedRaw = amountCalculatedRaw - onAfterSwapAmountToUpdate;
-            _vault.sendTo(params.tokenOut, address(this), onAfterSwapAmountToUpdate);
+        if (onAfterSwapHookFee > 0) {
+            if (params.kind == SwapKind.EXACT_IN) {
+                updatedAmountCalculatedRaw = amountCalculatedRaw - onAfterSwapHookFee;
+                _vault.sendTo(params.tokenOut, address(this), onAfterSwapHookFee);
+            } else {
+                updatedAmountCalculatedRaw = amountCalculatedRaw + onAfterSwapHookFee;
+                _vault.sendTo(params.tokenIn, address(this), onAfterSwapHookFee);
+            }
+        }
+        if (onAfterSwapHookDiscount > 0) {
+            if (params.kind == SwapKind.EXACT_IN) {
+                updatedAmountCalculatedRaw = amountCalculatedRaw + onAfterSwapHookDiscount;
+                params.tokenOut.transfer(address(_vault), onAfterSwapHookDiscount);
+                _vault.settle(params.tokenOut);
+            } else {
+                updatedAmountCalculatedRaw = amountCalculatedRaw - onAfterSwapHookDiscount;
+                params.tokenIn.transfer(address(_vault), onAfterSwapHookDiscount);
+                _vault.settle(params.tokenIn);
+            }
         }
 
         return (amountCalculatedScaled18 > 0 && !failOnAfterSwapHook, updatedAmountCalculatedRaw);
@@ -399,8 +416,12 @@ contract PoolHooksMock is BasePoolHooks {
         onBeforeSwapHookDiscount = hookDiscountAmount;
     }
 
-    function setOnAfterSwapAmountToUpdate(uint256 newAmountToUpdate) external {
-        onAfterSwapAmountToUpdate = newAmountToUpdate;
+    function setOnAfterSwapHookFee(uint256 hookFeeAmount) external {
+        onAfterSwapHookFee = hookFeeAmount;
+    }
+
+    function setOnAfterSwapHookDiscount(uint256 hookDiscountAmount) external {
+        onAfterSwapHookDiscount = hookDiscountAmount;
     }
 
     function allowFactory(address factory) external {

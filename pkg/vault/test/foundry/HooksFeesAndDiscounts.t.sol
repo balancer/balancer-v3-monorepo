@@ -219,7 +219,16 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
             )
         );
 
-        router.swapSingleTokenExactOut(address(pool), dai, usdc, _swapAmount, MAX_UINT256, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactOut(
+            address(pool),
+            dai,
+            usdc,
+            _swapAmount,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
 
         uint256 daiAfterBob = dai.balanceOf(address(bob));
         uint256 usdcAfterBob = usdc.balanceOf(address(bob));
@@ -285,7 +294,16 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
             )
         );
 
-        router.swapSingleTokenExactOut(address(pool), dai, usdc, _swapAmount, MAX_UINT256, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactOut(
+            address(pool),
+            dai,
+            usdc,
+            _swapAmount,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
 
         uint256 daiAfterBob = dai.balanceOf(address(bob));
         uint256 usdcAfterBob = usdc.balanceOf(address(bob));
@@ -296,52 +314,223 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
         assertEq(usdcBeforeHook - usdcAfterHook, hookDiscount, "Hook DAI balance is wrong");
     }
 
-    //    function testAlterAmountsOnAfterSwap() public {
-    //        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-    //        hooksConfig.shouldCallAfterSwap = true;
-    //        vault.setHooksConfig(address(pool), hooksConfig);
-    //
-    //        uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
-    //
-    //        uint256 amountToUpdate = 1e3;
-    //        PoolHooksMock(poolHooksContract).setOnAfterSwapAmountToUpdate(amountToUpdate);
-    //
-    //        uint256 expectedAmountOut = _swapAmount - amountToUpdate;
-    //
-    //        uint256 usdcBeforeBob = usdc.balanceOf(address(bob));
-    //        uint256 usdcBeforeHook = usdc.balanceOf(address(poolHooksContract));
-    //
-    //        // Check that the swap gets updated balances that reflect the updated balance in the before hook
-    //        vm.prank(bob);
-    //        // Check if balances were not changed before onBeforeHook
-    //        vm.expectCall(
-    //            address(poolHooksContract),
-    //            abi.encodeWithSelector(
-    //                IHooks.onAfterSwap.selector,
-    //                IHooks.AfterSwapParams({
-    //                    kind: SwapKind.EXACT_IN,
-    //                    tokenIn: dai,
-    //                    tokenOut: usdc,
-    //                    amountInScaled18: _swapAmount,
-    //                    amountOutScaled18: _swapAmount,
-    //                    tokenInBalanceScaled18: poolInitAmount + _swapAmount,
-    //                    tokenOutBalanceScaled18: poolInitAmount - _swapAmount,
-    //                    router: address(router),
-    //                    userData: ""
-    //                }),
-    //                _swapAmount,
-    //                _swapAmount
-    //            )
-    //        );
-    //
-    //        router.swapSingleTokenExactIn(address(pool), dai, usdc, _swapAmount, 0, MAX_UINT256, false, bytes(""));
-    //
-    //        uint256 usdcAfterBob = usdc.balanceOf(address(bob));
-    //        uint256 usdcAfterHook = usdc.balanceOf(address(poolHooksContract));
-    //
-    //        assertEq(usdcAfterBob - usdcBeforeBob, _swapAmount - amountToUpdate, "Bob USDC balance is wrong");
-    //        assertEq(usdcAfterHook - usdcBeforeHook, amountToUpdate, "Hook USDC balance is wrong");
-    //    }
+    function testOnAfterSwapHookFeeExactIn() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        hooksConfig.shouldCallAfterSwap = true;
+        vault.setHooksConfig(address(pool), hooksConfig);
+
+        uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
+
+        uint256 hookFee = 1e3;
+        PoolHooksMock(poolHooksContract).setOnAfterSwapHookFee(hookFee);
+
+        uint256 daiBeforeBob = dai.balanceOf(address(bob));
+        uint256 usdcBeforeBob = usdc.balanceOf(address(bob));
+        uint256 usdcBeforeHook = usdc.balanceOf(address(poolHooksContract));
+
+        // Check that the swap gets updated balances that reflect the updated balance in the before hook
+        vm.prank(bob);
+        // Check if balances were not changed before onBeforeHook
+        vm.expectCall(
+            address(poolHooksContract),
+            abi.encodeWithSelector(
+                IHooks.onAfterSwap.selector,
+                IHooks.AfterSwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    tokenIn: dai,
+                    tokenOut: usdc,
+                    amountInScaled18: _swapAmount,
+                    amountOutScaled18: _swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount + _swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount - _swapAmount,
+                    router: address(router),
+                    userData: ""
+                }),
+                address(pool),
+                _swapAmount,
+                _swapAmount
+            )
+        );
+
+        router.swapSingleTokenExactIn(address(pool), dai, usdc, _swapAmount, 0, MAX_UINT256, false, bytes(""));
+
+        uint256 daiAfterBob = dai.balanceOf(address(bob));
+        uint256 usdcAfterBob = usdc.balanceOf(address(bob));
+        uint256 usdcAfterHook = usdc.balanceOf(address(poolHooksContract));
+
+        assertEq(daiBeforeBob - daiAfterBob, _swapAmount, "Bob DAI balance is wrong");
+        assertEq(usdcAfterBob - usdcBeforeBob, _swapAmount - hookFee, "Bob USDC balance is wrong");
+        assertEq(usdcAfterHook - usdcBeforeHook, hookFee, "Hook USDC balance is wrong");
+    }
+
+    function testOnAfterSwapHookDiscountExactIn() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        hooksConfig.shouldCallAfterSwap = true;
+        vault.setHooksConfig(address(pool), hooksConfig);
+
+        uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
+
+        uint256 hookDiscount = 1e3;
+        PoolHooksMock(poolHooksContract).setOnAfterSwapHookDiscount(hookDiscount);
+
+        // Hook needs to pay the discount to the pool. Since it's exact in, the discount is paid in tokenOut amount.
+        usdc.mint(address(poolHooksContract), hookDiscount);
+
+        uint256 daiBeforeBob = dai.balanceOf(address(bob));
+        uint256 usdcBeforeBob = usdc.balanceOf(address(bob));
+        uint256 usdcBeforeHook = usdc.balanceOf(address(poolHooksContract));
+
+        // Check that the swap gets updated balances that reflect the updated balance in the before hook
+        vm.prank(bob);
+        // Check if balances were not changed before onBeforeHook
+        vm.expectCall(
+            address(poolHooksContract),
+            abi.encodeWithSelector(
+                IHooks.onAfterSwap.selector,
+                IHooks.AfterSwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    tokenIn: dai,
+                    tokenOut: usdc,
+                    amountInScaled18: _swapAmount,
+                    amountOutScaled18: _swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount + _swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount - _swapAmount,
+                    router: address(router),
+                    userData: ""
+                }),
+                address(pool),
+                _swapAmount,
+                _swapAmount
+            )
+        );
+
+        router.swapSingleTokenExactIn(address(pool), dai, usdc, _swapAmount, 0, MAX_UINT256, false, bytes(""));
+
+        uint256 daiAfterBob = dai.balanceOf(address(bob));
+        uint256 usdcAfterBob = usdc.balanceOf(address(bob));
+        uint256 usdcAfterHook = usdc.balanceOf(address(poolHooksContract));
+
+        assertEq(daiBeforeBob - daiAfterBob, _swapAmount, "Bob DAI balance is wrong");
+        assertEq(usdcAfterBob - usdcBeforeBob, _swapAmount + hookDiscount, "Bob USDC balance is wrong");
+        assertEq(usdcBeforeHook - usdcAfterHook, hookDiscount, "Hook USDC balance is wrong");
+    }
+
+    function testOnAfterSwapHookFeeExactOut() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        hooksConfig.shouldCallAfterSwap = true;
+        vault.setHooksConfig(address(pool), hooksConfig);
+
+        uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
+
+        uint256 hookFee = 1e3;
+        PoolHooksMock(poolHooksContract).setOnAfterSwapHookFee(hookFee);
+
+        uint256 daiBeforeBob = dai.balanceOf(address(bob));
+        uint256 usdcBeforeBob = usdc.balanceOf(address(bob));
+        uint256 daiBeforeHook = dai.balanceOf(address(poolHooksContract));
+
+        // Check that the swap gets updated balances that reflect the updated balance in the before hook
+        vm.prank(bob);
+        // Check if balances were not changed before onBeforeHook
+        vm.expectCall(
+            address(poolHooksContract),
+            abi.encodeWithSelector(
+                IHooks.onAfterSwap.selector,
+                IHooks.AfterSwapParams({
+                    kind: SwapKind.EXACT_OUT,
+                    tokenIn: dai,
+                    tokenOut: usdc,
+                    amountInScaled18: _swapAmount,
+                    amountOutScaled18: _swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount + _swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount - _swapAmount,
+                    router: address(router),
+                    userData: ""
+                }),
+                address(pool),
+                _swapAmount,
+                _swapAmount
+            )
+        );
+
+        router.swapSingleTokenExactOut(
+            address(pool),
+            dai,
+            usdc,
+            _swapAmount,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        uint256 daiAfterBob = dai.balanceOf(address(bob));
+        uint256 usdcAfterBob = usdc.balanceOf(address(bob));
+        uint256 daiAfterHook = dai.balanceOf(address(poolHooksContract));
+
+        assertEq(daiBeforeBob - daiAfterBob, _swapAmount + hookFee, "Bob DAI balance is wrong");
+        assertEq(usdcAfterBob - usdcBeforeBob, _swapAmount, "Bob USDC balance is wrong");
+        assertEq(daiAfterHook - daiBeforeHook, hookFee, "Hook DAI balance is wrong");
+    }
+
+    function testOnAfterSwapHookDiscountExactOut() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        hooksConfig.shouldCallAfterSwap = true;
+        vault.setHooksConfig(address(pool), hooksConfig);
+
+        uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
+
+        uint256 hookDiscount = 1e3;
+        PoolHooksMock(poolHooksContract).setOnAfterSwapHookDiscount(hookDiscount);
+
+        // Hook needs to pay the discount to the pool. Since it's exact out, the discount is paid in tokenIn amount.
+        dai.mint(address(poolHooksContract), hookDiscount);
+
+        uint256 daiBeforeBob = dai.balanceOf(address(bob));
+        uint256 usdcBeforeBob = usdc.balanceOf(address(bob));
+        uint256 daiBeforeHook = dai.balanceOf(address(poolHooksContract));
+
+        // Check that the swap gets updated balances that reflect the updated balance in the before hook
+        vm.prank(bob);
+        // Check if balances were not changed before onBeforeHook
+        vm.expectCall(
+            address(poolHooksContract),
+            abi.encodeWithSelector(
+                IHooks.onAfterSwap.selector,
+                IHooks.AfterSwapParams({
+                    kind: SwapKind.EXACT_OUT,
+                    tokenIn: dai,
+                    tokenOut: usdc,
+                    amountInScaled18: _swapAmount,
+                    amountOutScaled18: _swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount + _swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount - _swapAmount,
+                    router: address(router),
+                    userData: ""
+                }),
+                address(pool),
+                _swapAmount,
+                _swapAmount
+            )
+        );
+
+        router.swapSingleTokenExactOut(
+            address(pool),
+            dai,
+            usdc,
+            _swapAmount,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        uint256 daiAfterBob = dai.balanceOf(address(bob));
+        uint256 usdcAfterBob = usdc.balanceOf(address(bob));
+        uint256 daiAfterHook = dai.balanceOf(address(poolHooksContract));
+
+        assertEq(daiBeforeBob - daiAfterBob, _swapAmount - hookDiscount, "Bob DAI balance is wrong");
+        assertEq(usdcAfterBob - usdcBeforeBob, _swapAmount, "Bob USDC balance is wrong");
+        assertEq(daiBeforeHook - daiAfterHook, hookDiscount, "Hook DAI balance is wrong");
+    }
 }
-// Alter amounts onAfterAddLiquidity
-// Alter amounts onAfterRemoveLiquidity
