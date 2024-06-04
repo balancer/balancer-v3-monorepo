@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
-import { IAuthentication } from "../solidity-utils/helpers/IAuthentication.sol";
 import { IVault } from "../vault/IVault.sol";
 import { IVaultEvents } from "../vault/IVaultEvents.sol";
 import { IVaultMainMock } from "./IVaultMainMock.sol";
@@ -12,6 +11,6 @@ import { IVaultExtensionMock } from "./IVaultExtensionMock.sol";
 import { IVaultAdminMock } from "./IVaultAdminMock.sol";
 
 /// @dev One-fits-all solution for hardhat tests. Use the typechain type for errors, events and functions.
-interface IVaultMock is IVault, IVaultMainMock, IVaultExtensionMock, IVaultAdminMock, IERC20Errors, IAuthentication {
+interface IVaultMock is IVault, IVaultMainMock, IVaultExtensionMock, IVaultAdminMock, IERC20Errors {
     // solhint-disable-previous-line no-empty-blocks
 }
