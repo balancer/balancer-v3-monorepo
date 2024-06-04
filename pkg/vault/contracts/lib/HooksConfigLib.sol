@@ -52,12 +52,15 @@ library HooksConfigLib {
         address pool
     ) internal returns (bool success, uint256 updatedAmountGivenRaw) {
         if (config.shouldCallBeforeSwap == false) {
+            // Hook contract does not implement onBeforeSwap, so success is false (hook was not executed) and do not
+            // change amountGivenRaw (no deltas)
             return (false, swapParams.amountGivenRaw);
         }
 
         (success, updatedAmountGivenRaw) = IHooks(config.hooksContract).onBeforeSwap(swapParams, pool);
 
         if (success == false) {
+            // Hook contract implements onBeforeSwap, but it has failed, so reverts the transaction.
             revert IVaultErrors.BeforeSwapHookFailed();
         }
     }
@@ -85,6 +88,8 @@ library HooksConfigLib {
         PoolData memory poolData
     ) internal returns (bool success, uint256 updatedAmountCalculatedRaw) {
         if (config.shouldCallAfterSwap == false) {
+            // Hook contract does not implement onAfterSwap, so success is false (hook was not executed) and do not
+            // change amountCalculatedRaw (no deltas)
             return (false, amountCalculatedRaw);
         }
 
@@ -111,6 +116,7 @@ library HooksConfigLib {
         );
 
         if (success == false) {
+            // Hook contract implements onAfterSwap, but it has failed, so reverts the transaction.
             revert IVaultErrors.AfterSwapHookFailed();
         }
     }
