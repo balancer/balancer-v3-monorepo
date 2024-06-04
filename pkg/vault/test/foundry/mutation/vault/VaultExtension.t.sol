@@ -14,9 +14,6 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
 
 contract VaultExtensionMutationTest is BaseVaultTest {
-    /*
-      TODO: Check onlyVault errors
-    */
     function setUp() public virtual override {
         BaseVaultTest.setUp();
     }
