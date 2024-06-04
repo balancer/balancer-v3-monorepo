@@ -70,9 +70,6 @@ contract VaultMutationTest is BaseVaultTest {
         vault.settle(dai);
     }
 
-    /*
-        sendTo
-    */
     function testSendToWithLockedVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultIsNotUnlocked.selector));
         vault.sendTo(dai, address(0), 1);
