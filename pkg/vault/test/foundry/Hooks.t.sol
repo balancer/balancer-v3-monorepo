@@ -49,8 +49,8 @@ contract HooksTest is BaseVaultTest {
     }
 
     function createHook() internal override returns (address) {
-        HooksConfig memory hooksConfig;
-        return _createHook(hooksConfig);
+        IHooks.HookFlags memory hookFlags;
+        return _createHook(hookFlags);
     }
 
     // onRegister
