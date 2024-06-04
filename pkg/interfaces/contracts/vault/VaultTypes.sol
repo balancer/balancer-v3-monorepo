@@ -12,6 +12,11 @@ struct LiquidityManagement {
     bool enableRemoveLiquidityCustom;
 }
 
+// @notice Config type to store entire configuration of the pool
+struct PoolConfigBits {
+    bytes32 bits;
+}
+
 /// @dev Represents a pool's configuration (hooks configuration are separated in another struct).
 struct PoolConfig {
     LiquidityManagement liquidityManagement;
@@ -124,7 +129,7 @@ struct TokenConfig {
 }
 
 struct PoolData {
-    PoolConfig poolConfig;
+    PoolConfigBits poolConfig;
     TokenConfig[] tokenConfig;
     uint256[] balancesRaw;
     uint256[] balancesLiveScaled18;
