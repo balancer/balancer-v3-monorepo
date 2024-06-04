@@ -41,7 +41,8 @@ contract PoolHooksMock is BasePoolHooks {
     bool public changePoolBalancesOnBeforeAddLiquidityHook;
     bool public changePoolBalancesOnBeforeRemoveLiquidityHook;
 
-    uint256 public onBeforeSwapAmountToUpdate;
+    uint256 public onBeforeSwapHookFee;
+    uint256 public onBeforeSwapHookDiscount;
     uint256 public onAfterSwapAmountToUpdate;
 
     bool public swapReentrancyHookActive;
@@ -109,10 +110,16 @@ contract PoolHooksMock is BasePoolHooks {
         return (!failOnComputeDynamicSwapFeeHook, finalSwapFee);
     }
 
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata params) external override returns (bool success, uint256) {
+    function onBeforeSwap(
+        IBasePool.PoolSwapParams calldata params,
+        address pool
+    ) external override returns (bool success, uint256) {
+        (TokenConfig[] memory tokenConfig, , ) = _vault.getPoolTokenInfo(pool);
+
         uint256 updatedAmountGivenRaw = params.amountGivenRaw;
-        if (onBeforeSwapAmountToUpdate > 0) {
-            updatedAmountGivenRaw = params.amountGivenRaw + onBeforeSwapAmountToUpdate;
+        if (onBeforeSwapHookFee > 0) {
+            updatedAmountGivenRaw = params.amountGivenRaw - onBeforeSwapHookFee;
+            _vault.sendTo(tokenConfig[params.indexIn].token, address(this), onBeforeSwapHookFee);
         }
 
         if (changeTokenRateOnBeforeSwapHook) {
@@ -135,6 +142,7 @@ contract PoolHooksMock is BasePoolHooks {
 
     function onAfterSwap(
         IHooks.AfterSwapParams calldata params,
+        address pool,
         uint256 amountCalculatedScaled18,
         uint256 amountCalculatedRaw
     ) external override returns (bool, uint256) {
@@ -224,23 +232,21 @@ contract PoolHooksMock is BasePoolHooks {
     function onAfterAddLiquidity(
         address,
         uint256[] memory,
-        uint256[] memory amountsInRaw,
         uint256,
         uint256[] memory,
         bytes memory
-    ) external view override returns (bool, uint256[] memory) {
-        return (!failOnAfterAddLiquidity, amountsInRaw);
+    ) external view override returns (bool) {
+        return !failOnAfterAddLiquidity;
     }
 
     function onAfterRemoveLiquidity(
         address,
         uint256,
         uint256[] memory,
-        uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) external view override returns (bool, uint256[] memory) {
-        return (!failOnAfterRemoveLiquidity, amountsOutRaw);
+    ) external view override returns (bool) {
+        return !failOnAfterRemoveLiquidity;
     }
 
     /***********************************************************
@@ -369,8 +375,12 @@ contract PoolHooksMock is BasePoolHooks {
         _pool = pool;
     }
 
-    function setOnBeforeSwapAmountToUpdate(uint256 newAmountToUpdate) external {
-        onBeforeSwapAmountToUpdate = newAmountToUpdate;
+    function setOnBeforeSwapHookFee(uint256 hookFeeAmount) external {
+        onBeforeSwapHookFee = hookFeeAmount;
+    }
+
+    function setOnBeforeSwapHookDiscount(uint256 hookDiscountAmount) external {
+        onBeforeSwapHookDiscount = hookDiscountAmount;
     }
 
     function setOnAfterSwapAmountToUpdate(uint256 newAmountToUpdate) external {
