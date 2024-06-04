@@ -16,6 +16,7 @@ import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/I
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
@@ -40,11 +41,46 @@ import {
 contract SyncTest is BaseVaultTest {
     using ArrayHelpers for *;
 
+    ERC4626TestToken internal waDAI;
+    ERC4626TestToken internal waUSDC;
+
+    uint256 internal waDaiIdx;
+    uint256 internal waUsdcIdx;
+
+    address internal boostedPool;
+
+    // The boosted pool will have 100x the liquidity of the buffer
+    uint256 internal boostedPoolAmount = 10e6 * 1e18;
+    uint256 internal bufferAmount = boostedPoolAmount / 100;
+    uint256 internal tooLargeSwapAmount = boostedPoolAmount / 2;
+    // We will swap with 10% of the buffer
+    uint256 internal swapAmount = bufferAmount / 10;
+    // LP can unbalance buffer with this amount
+    uint256 internal unbalanceDelta = bufferAmount / 2;
+
+
+
     uint256[] internal amountsIn = [poolInitAmount, poolInitAmount].toMemoryArray();
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
+        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
+        vm.label(address(waDAI), "waDAI");
+
+        // "USDC" is deliberately 18 decimals to test one thing at a time.
+        waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
+        vm.label(address(waUSDC), "waUSDC");
+
+        (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
+
+        _initializeBuffers();
+        _initializeBoostedPool();
+
+        authorizer.grantRole(
+            0x78823457cc024a2de284a4154c07b727e52277748dbc1ef973c8ee254462a230,
+            address(router)
+        );
         // Test Dos attack with 1 wei, related: https://github.com/balancer/balancer-v3-monorepo/issues/580
         // TODO: Buffer tests
 
@@ -55,6 +91,12 @@ contract SyncTest is BaseVaultTest {
         // Token out always usdc
         deal(address(usdc), address(this), 1, false);
         usdc.transfer(address(usdc), 1);
+
+        deal(address(waDAI), address(this), 1, false);
+        waDAI.transfer(address(vault), 1);
+
+        deal(address(waUSDC), address(this), 1, false);
+        waUSDC.transfer(address(vault), 1);
     }
 
     /*
@@ -132,9 +174,6 @@ contract SyncTest is BaseVaultTest {
         router.removeLiquidityRecovery(pool, amountsIn[0]);
     }
 
-    // removeLiquidityHook
-    // removeLiquidityRecoveryHook
-
     function testSwapSingleTokenExactIn() public {
         _addLiquidity();
 
@@ -149,9 +188,126 @@ contract SyncTest is BaseVaultTest {
         router.swapSingleTokenExactOut(pool, dai, usdc, amountsIn[0], amountsIn[0], block.timestamp, false, bytes(""));
     }
 
+    function testAddLiquidityToBuffer() public {
+        vm.prank(lp);
+        router.addLiquidityToBuffer(
+            IERC4626(waDAI),
+            amountsIn[0],
+            amountsIn[0],
+            address(lp)
+        );
+    }
+
+    function testRemoveLiquidityFromBuffer() public {
+        _addLiquidityToBuffer();
+
+        vm.prank(lp);
+        router.removeLiquidityFromBuffer(
+            IERC4626(waDAI),
+            amountsIn[0]
+        );
+    }
+
+    function _initializeBuffers() internal {
+        // Create and fund buffer pools
+        vm.startPrank(lp);
+        dai.mint(address(lp), 2 * bufferAmount);
+        dai.approve(address(waDAI), 2 * bufferAmount);
+        waDAI.deposit(2 * bufferAmount, address(lp));
+
+        usdc.mint(address(lp), 2 * bufferAmount);
+        usdc.approve(address(waUSDC), 2 * bufferAmount);
+        waUSDC.deposit(2 * bufferAmount, address(lp));
+        vm.stopPrank();
+
+        vm.startPrank(lp);
+        waDAI.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
+        waUSDC.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
+
+        router.addLiquidityToBuffer(waDAI, bufferAmount, bufferAmount, address(lp));
+        router.addLiquidityToBuffer(waUSDC, bufferAmount, bufferAmount, address(lp));
+        vm.stopPrank();
+    }
+
+    function _initializeBoostedPool() internal {
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[waDaiIdx].token = IERC20(waDAI);
+        tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
+        tokenConfig[0].tokenType = TokenType.WITH_RATE;
+        tokenConfig[1].tokenType = TokenType.WITH_RATE;
+        tokenConfig[waDaiIdx].rateProvider = IRateProvider(address(waDAI));
+        tokenConfig[waUsdcIdx].rateProvider = IRateProvider(address(waUSDC));
+
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
+
+        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract);
+
+        vm.label(address(newPool), "boosted pool");
+        boostedPool = address(newPool);
+
+        vm.startPrank(bob);
+        waDAI.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
+        waUSDC.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
+
+        dai.mint(address(bob), boostedPoolAmount);
+        dai.approve(address(waDAI), boostedPoolAmount);
+        waDAI.deposit(boostedPoolAmount, address(bob));
+
+        usdc.mint(address(bob), boostedPoolAmount);
+        usdc.approve(address(waUSDC), boostedPoolAmount);
+        waUSDC.deposit(boostedPoolAmount, address(bob));
+
+        _initPool(boostedPool, [boostedPoolAmount, boostedPoolAmount].toMemoryArray(), boostedPoolAmount * 2 - MIN_BPT);
+        vm.stopPrank();
+    }
+
     function _addLiquidity() internal {
         vm.prank(alice);
 
         router.addLiquidityProportional(pool, amountsIn, amountsIn[0], false, bytes(""));
+
+        deal(address(dai), address(this), 1, false);
+        dai.transfer(address(vault), 1);
+
+        // Token out always usdc
+        deal(address(usdc), address(this), 1, false);
+        usdc.transfer(address(usdc), 1);
+
+        deal(address(waDAI), address(this), 1, false);
+        waDAI.transfer(address(vault), 1);
+
+        deal(address(waUSDC), address(this), 1, false);
+        waUSDC.transfer(address(vault), 1);
+    }
+
+    function _addLiquidityToBuffer() internal {
+        vm.prank(lp);
+        router.addLiquidityToBuffer(
+            IERC4626(waDAI),
+            amountsIn[0],
+            amountsIn[0],
+            address(lp)
+        ); 
+
+        deal(address(dai), address(this), 1, false);
+        dai.transfer(address(vault), 1);
+
+        // Token out always usdc
+        deal(address(usdc), address(this), 1, false);
+        usdc.transfer(address(usdc), 1);
+
+        deal(address(waDAI), address(this), 1, false);
+        waDAI.transfer(address(vault), 1);
+
+        deal(address(waUSDC), address(this), 1, false);
+        waUSDC.transfer(address(vault), 1);
     }
 }
