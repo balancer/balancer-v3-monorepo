@@ -65,8 +65,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
     uint256 internal roundingDelta = 1e12;
     // The percentage delta of the swap fee, which is sufficiently large to compensate for
     // inaccuracies in liquidity approximations within the specified limits for these tests
-    uint256 internal liquidityPercentageDelta = 25e16; // 25%
-    uint256 internal swapFeePercentageDelta = 20e16; // 20%
+    uint256 internal liquidityPercentageDelta = 0.25e18; // 25%
+    uint256 internal swapFeePercentageDelta = 0.2e18; // 20%
     uint256 internal maxSwapFeePercentage = 0.1e18; // 10%
     uint256 internal maxAmount = 3e8 * 1e18 - 1;
 
@@ -191,7 +191,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         uint256 daiAmountIn = router.addLiquiditySingleTokenExactOut(
             address(liquidityPool),
             dai,
-            1e50,
+            MAX_UINT128,
             exactBptAmountOut,
             false,
             bytes("")
@@ -231,7 +231,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         uint256 daiAmountIn = router.addLiquiditySingleTokenExactOut(
             address(liquidityPool),
             dai,
-            1e50,
+            MAX_UINT128,
             exactBptAmountOut,
             false,
             bytes("")
@@ -276,7 +276,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.startPrank(alice);
         router.addLiquidityProportional(
             address(liquidityPool),
-            [uint256(1e50), 1e50].toMemoryArray(),
+            [uint256(MAX_UINT128), MAX_UINT128].toMemoryArray(),
             exactBptAmountOut,
             false,
             bytes("")
@@ -328,7 +328,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.startPrank(alice);
         router.addLiquidityProportional(
             address(liquidityPool),
-            [uint256(1e50), 1e50].toMemoryArray(),
+            [uint256(MAX_UINT128), MAX_UINT128].toMemoryArray(),
             exactBptAmountOut,
             false,
             bytes("")
@@ -386,7 +386,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.startPrank(alice);
         uint256[] memory amountsIn = router.addLiquidityProportional(
             address(liquidityPool),
-            [uint256(1e50), 1e50].toMemoryArray(),
+            [uint256(MAX_UINT128), MAX_UINT128].toMemoryArray(),
             exactBptAmountOut,
             false,
             bytes("")
@@ -439,7 +439,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.startPrank(alice);
         uint256[] memory amountsIn = router.addLiquidityProportional(
             address(liquidityPool),
-            [uint256(1e50), 1e50].toMemoryArray(),
+            [uint256(MAX_UINT128), MAX_UINT128].toMemoryArray(),
             exactBptAmountOut,
             false,
             bytes("")
