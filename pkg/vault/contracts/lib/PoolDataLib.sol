@@ -198,6 +198,7 @@ library PoolDataLib {
         );
     }
 
+    // solhint-disable-next-line private-vars-leading-underscore
     function _computeYieldFeesDue(
         PoolData memory poolData,
         uint256 lastLiveBalance,
