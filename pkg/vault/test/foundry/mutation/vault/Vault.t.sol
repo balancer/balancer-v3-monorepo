@@ -75,9 +75,6 @@ contract VaultMutationTest is BaseVaultTest {
         vault.sendTo(dai, address(0), 1);
     }
 
-    /*
-        swap
-    */
     function testSwapWithLockedVault() public {
         SwapParams memory params = SwapParams(SwapKind.EXACT_IN, address(pool), dai, usdc, 1, 0, bytes(""));
 
