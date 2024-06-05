@@ -156,69 +156,64 @@ contract PoolHooksMock is BasePoolHooks {
         return (!failOnBeforeSwapHook, hookAdjustedAmountGivenRaw);
     }
 
-    function onAfterSwap(
-        IHooks.AfterSwapParams calldata params,
-        address pool,
-        uint256 amountCalculatedScaled18,
-        uint256 amountCalculatedRaw
-    ) external override returns (bool, uint256) {
+    function onAfterSwap(IHooks.AfterSwapParams calldata params) external override returns (bool, uint256) {
         // check that actual pool balances match
         (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory scalingFactors) = _vault
-            .getPoolTokenInfo(_pool);
+            .getPoolTokenInfo(params.pool);
 
-        uint256[] memory currentLiveBalances = IVaultMock(address(_vault)).getCurrentLiveBalances(_pool);
+        uint256[] memory currentLiveBalances = IVaultMock(address(_vault)).getCurrentLiveBalances(params.pool);
 
-        uint256[] memory rates = _vault.getPoolTokenRates(_pool);
+        uint256[] memory rates = _vault.getPoolTokenRates(params.pool);
 
         for (uint256 i = 0; i < tokenConfig.length; ++i) {
             if (tokenConfig[i].token == params.tokenIn) {
                 if (params.tokenInBalanceScaled18 != currentLiveBalances[i]) {
-                    return (false, amountCalculatedRaw);
+                    return (false, params.amountCalculatedRaw);
                 }
                 uint256 expectedTokenInBalanceRaw = params.tokenInBalanceScaled18.toRawUndoRateRoundDown(
                     scalingFactors[i],
                     rates[i]
                 );
                 if (expectedTokenInBalanceRaw != balancesRaw[i]) {
-                    return (false, amountCalculatedRaw);
+                    return (false, params.amountCalculatedRaw);
                 }
             } else if (tokenConfig[i].token == params.tokenOut) {
                 if (params.tokenOutBalanceScaled18 != currentLiveBalances[i]) {
-                    return (false, amountCalculatedRaw);
+                    return (false, params.amountCalculatedRaw);
                 }
                 uint256 expectedTokenOutBalanceRaw = params.tokenOutBalanceScaled18.toRawUndoRateRoundDown(
                     scalingFactors[i],
                     rates[i]
                 );
                 if (expectedTokenOutBalanceRaw != balancesRaw[i]) {
-                    return (false, amountCalculatedRaw);
+                    return (false, params.amountCalculatedRaw);
                 }
             }
         }
 
-        uint256 hookAdjustedAmountCalculatedRaw = amountCalculatedRaw;
+        uint256 hookAdjustedAmountCalculatedRaw = params.amountCalculatedRaw;
         if (onAfterSwapHookFee > 0) {
             if (params.kind == SwapKind.EXACT_IN) {
-                hookAdjustedAmountCalculatedRaw = amountCalculatedRaw - onAfterSwapHookFee;
+                hookAdjustedAmountCalculatedRaw -= onAfterSwapHookFee;
                 _vault.sendTo(params.tokenOut, address(this), onAfterSwapHookFee);
             } else {
-                hookAdjustedAmountCalculatedRaw = amountCalculatedRaw + onAfterSwapHookFee;
+                hookAdjustedAmountCalculatedRaw += onAfterSwapHookFee;
                 _vault.sendTo(params.tokenIn, address(this), onAfterSwapHookFee);
             }
         }
         if (onAfterSwapHookDiscount > 0) {
             if (params.kind == SwapKind.EXACT_IN) {
-                hookAdjustedAmountCalculatedRaw = amountCalculatedRaw + onAfterSwapHookDiscount;
+                hookAdjustedAmountCalculatedRaw += onAfterSwapHookDiscount;
                 params.tokenOut.transfer(address(_vault), onAfterSwapHookDiscount);
                 _vault.settle(params.tokenOut);
             } else {
-                hookAdjustedAmountCalculatedRaw = amountCalculatedRaw - onAfterSwapHookDiscount;
+                hookAdjustedAmountCalculatedRaw -= onAfterSwapHookDiscount;
                 params.tokenIn.transfer(address(_vault), onAfterSwapHookDiscount);
                 _vault.settle(params.tokenIn);
             }
         }
 
-        return (amountCalculatedScaled18 > 0 && !failOnAfterSwapHook, hookAdjustedAmountCalculatedRaw);
+        return (params.amountCalculatedScaled18 > 0 && !failOnAfterSwapHook, hookAdjustedAmountCalculatedRaw);
     }
 
     // Liquidity lifecycle hooks

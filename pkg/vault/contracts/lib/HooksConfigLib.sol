@@ -107,12 +107,12 @@ library HooksConfigLib {
                 amountOutScaled18: amountOutScaled18,
                 tokenInBalanceScaled18: poolData.balancesLiveScaled18[state.indexIn],
                 tokenOutBalanceScaled18: poolData.balancesLiveScaled18[state.indexOut],
+                amountCalculatedScaled18: amountCalculatedScaled18,
+                amountCalculatedRaw: amountCalculatedRaw,
                 router: router,
+                pool: params.pool,
                 userData: params.userData
-            }),
-            params.pool,
-            amountCalculatedScaled18,
-            amountCalculatedRaw
+            })
         );
 
         if (success == false) {

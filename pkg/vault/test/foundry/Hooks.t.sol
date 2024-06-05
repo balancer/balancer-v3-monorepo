@@ -250,12 +250,12 @@ contract HooksTest is BaseVaultTest {
                     amountOutScaled18: expectedAmountOut,
                     tokenInBalanceScaled18: defaultAmount * 2,
                     tokenOutBalanceScaled18: defaultAmount - expectedAmountOut - protocolFee,
+                    amountCalculatedScaled18: expectedAmountOut,
+                    amountCalculatedRaw: expectedAmountOut,
                     router: address(router),
+                    pool: pool,
                     userData: ""
-                }),
-                address(pool),
-                expectedAmountOut,
-                expectedAmountOut
+                })
             )
         );
 

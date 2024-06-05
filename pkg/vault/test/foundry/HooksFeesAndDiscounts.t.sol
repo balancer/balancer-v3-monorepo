@@ -338,12 +338,12 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
                     amountOutScaled18: _swapAmount,
                     tokenInBalanceScaled18: poolInitAmount + _swapAmount,
                     tokenOutBalanceScaled18: poolInitAmount - _swapAmount,
+                    amountCalculatedScaled18: _swapAmount,
+                    amountCalculatedRaw: _swapAmount,
                     router: address(router),
+                    pool: pool,
                     userData: ""
-                }),
-                address(pool),
-                _swapAmount,
-                _swapAmount
+                })
             )
         );
 
@@ -390,12 +390,12 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
                     amountOutScaled18: _swapAmount,
                     tokenInBalanceScaled18: poolInitAmount + _swapAmount,
                     tokenOutBalanceScaled18: poolInitAmount - _swapAmount,
+                    amountCalculatedScaled18: _swapAmount,
+                    amountCalculatedRaw: _swapAmount,
                     router: address(router),
+                    pool: pool,
                     userData: ""
-                }),
-                address(pool),
-                _swapAmount,
-                _swapAmount
+                })
             )
         );
 
@@ -439,12 +439,12 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
                     amountOutScaled18: _swapAmount,
                     tokenInBalanceScaled18: poolInitAmount + _swapAmount,
                     tokenOutBalanceScaled18: poolInitAmount - _swapAmount,
+                    amountCalculatedScaled18: _swapAmount,
+                    amountCalculatedRaw: _swapAmount,
                     router: address(router),
+                    pool: pool,
                     userData: ""
-                }),
-                address(pool),
-                _swapAmount,
-                _swapAmount
+                })
             )
         );
 
@@ -500,12 +500,12 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
                     amountOutScaled18: _swapAmount,
                     tokenInBalanceScaled18: poolInitAmount + _swapAmount,
                     tokenOutBalanceScaled18: poolInitAmount - _swapAmount,
+                    amountCalculatedScaled18: _swapAmount,
+                    amountCalculatedRaw: _swapAmount,
                     router: address(router),
+                    pool: pool,
                     userData: ""
-                }),
-                address(pool),
-                _swapAmount,
-                _swapAmount
+                })
             )
         );
 

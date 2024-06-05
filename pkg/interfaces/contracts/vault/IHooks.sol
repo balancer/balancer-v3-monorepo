@@ -167,8 +167,11 @@ interface IHooks {
      * @param amountOutScaled18 Amount of tokenOut (leaving the Vault)
      * @param tokenInBalanceScaled18 Updated (after swap) balance of tokenIn
      * @param tokenOutBalanceScaled18 Updated (after swap) balance of tokenOut
+     * @param amountCalculatedScaled18 Token amount calculated by the swap
+     * @param amountCalculatedRaw Token amount calculated by the swap
      * @param user Account originating the swap operation
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
+     * @param pool Pool address
      * @param userData Additional (optional) data required for the swap
      */
     struct AfterSwapParams {
@@ -179,7 +182,10 @@ interface IHooks {
         uint256 amountOutScaled18;
         uint256 tokenInBalanceScaled18;
         uint256 tokenOutBalanceScaled18;
+        uint256 amountCalculatedScaled18;
+        uint256 amountCalculatedRaw;
         address router;
+        address pool;
         bytes userData;
     }
 
@@ -201,17 +207,11 @@ interface IHooks {
      * once the balances have been updated by the swap.
      *
      * @param params Swap parameters (see above for struct definition)
-     * @param pool Pool address
-     * @param amountCalculatedScaled18 Token amount calculated by the swap
-     * @param amountCalculatedRaw Token amount calculated by the swap
      * @return success True if the pool wishes to proceed with settlement
      * @return hookAdjustedAmountCalculatedRaw New amount calculated, modified by the hook
      */
     function onAfterSwap(
-        AfterSwapParams calldata params,
-        address pool,
-        uint256 amountCalculatedScaled18,
-        uint256 amountCalculatedRaw
+        AfterSwapParams calldata params
     ) external returns (bool success, uint256 hookAdjustedAmountCalculatedRaw);
 
     /**
