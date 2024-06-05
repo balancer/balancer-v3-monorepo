@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -10,6 +12,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 library PoolConfigLib {
     using WordCodec for bytes32;
+    using SafeCast for *;
 
     uint8 private constant _DECIMAL_DIFF_BITLENGTH = 5;
 
@@ -17,30 +20,24 @@ library PoolConfigLib {
         return config.staticSwapFeePercentageUnscaled * FEE_SCALING_FACTOR;
     }
 
-    function setStaticSwapFeePercentage(PoolConfig memory config, uint256 value) internal pure returns (uint256) {
-        return config.staticSwapFeePercentageUnscaled = uint24(value / FEE_SCALING_FACTOR);
+    function setStaticSwapFeePercentage(PoolConfig memory config, uint256 value) internal pure {
+        config.staticSwapFeePercentageUnscaled = (value / FEE_SCALING_FACTOR).toUint24();
     }
 
     function getAggregateProtocolSwapFeePercentage(PoolConfig memory config) internal pure returns (uint256) {
         return config.aggregateProtocolSwapFeePercentageUnscaled * FEE_SCALING_FACTOR;
     }
 
-    function setAggregateProtocolSwapFeePercentage(
-        PoolConfig memory config,
-        uint256 value
-    ) internal pure returns (uint256) {
-        return config.aggregateProtocolSwapFeePercentageUnscaled = uint24(value / FEE_SCALING_FACTOR);
+    function setAggregateProtocolSwapFeePercentage(PoolConfig memory config, uint256 value) internal pure {
+        config.aggregateProtocolSwapFeePercentageUnscaled = (value / FEE_SCALING_FACTOR).toUint24();
     }
 
     function getAggregateProtocolYieldFeePercentage(PoolConfig memory config) internal pure returns (uint256) {
         return config.aggregateProtocolYieldFeePercentageUnscaled * FEE_SCALING_FACTOR;
     }
 
-    function setAggregateProtocolYieldFeePercentage(
-        PoolConfig memory config,
-        uint256 value
-    ) internal pure returns (uint256) {
-        return config.aggregateProtocolYieldFeePercentageUnscaled = uint24(value / FEE_SCALING_FACTOR);
+    function setAggregateProtocolYieldFeePercentage(PoolConfig memory config, uint256 value) internal pure {
+        config.aggregateProtocolYieldFeePercentageUnscaled = (value / FEE_SCALING_FACTOR).toUint24();
     }
 
     function requireUnbalancedLiquidityEnabled(PoolConfig memory config) internal pure {
