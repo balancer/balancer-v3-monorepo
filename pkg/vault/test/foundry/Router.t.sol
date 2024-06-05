@@ -129,12 +129,12 @@ contract RouterTest is BaseVaultTest {
 
     function testQuerySwap() public {
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(EVMCallModeHelpers.NotStaticCall.selector));
+        vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
         router.querySwapSingleTokenExactIn(address(pool), usdc, dai, usdcAmountIn, bytes(""));
     }
 
     function testDisableQueries() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
 
         vault.disableQuery();
 
@@ -146,7 +146,7 @@ contract RouterTest is BaseVaultTest {
         vm.prank(alice);
         vault.disableQuery();
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.QueriesDisabled.selector));
+        vm.expectRevert(IVaultErrors.QueriesDisabled.selector);
 
         vm.prank(address(0), address(0));
         router.querySwapSingleTokenExactIn(address(pool), usdc, dai, usdcAmountIn, bytes(""));
@@ -198,7 +198,7 @@ contract RouterTest is BaseVaultTest {
         checkAddLiquidityPreConditions();
 
         // Caller does not have enough ETH, even if they hold weth.
-        vm.expectRevert(abi.encodeWithSelector(RouterCommon.InsufficientEth.selector));
+        vm.expectRevert(RouterCommon.InsufficientEth.selector);
         vm.prank(alice);
         router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, true, bytes(""));
     }
@@ -269,7 +269,7 @@ contract RouterTest is BaseVaultTest {
         checkAddLiquidityPreConditions();
 
         // Caller does not have enough ETH, even if they hold weth.
-        vm.expectRevert(abi.encodeWithSelector(RouterCommon.InsufficientEth.selector));
+        vm.expectRevert(RouterCommon.InsufficientEth.selector);
         vm.prank(alice);
         router.addLiquidityCustom(address(wethPool), wethDaiAmountsIn, bptAmountOut, true, bytes(""));
     }
@@ -501,7 +501,7 @@ contract RouterTest is BaseVaultTest {
         assertEq(amountsGiven[usdcIdx], 4321);
         assertEq(tokenIndex, usdcIdx);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenNotRegistered.selector));
+        vm.expectRevert(IVaultErrors.TokenNotRegistered.selector);
         router.getSingleInputArrayAndTokenIndex(address(pool), weth, daiAmountIn);
     }
 

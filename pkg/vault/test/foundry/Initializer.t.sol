@@ -82,7 +82,7 @@ contract InitializerTest is BaseVaultTest {
     function testOnBeforeInitializeHookRevert() public {
         PoolHooksMock(poolHooksContract).setFailOnBeforeInitializeHook(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeInitializeHookFailed.selector));
+        vm.expectRevert(IVaultErrors.BeforeInitializeHookFailed.selector);
         router.initialize(
             address(pool),
             standardPoolTokens,
@@ -117,7 +117,7 @@ contract InitializerTest is BaseVaultTest {
     function testOnAfterInitializeHookRevert() public {
         PoolHooksMock(poolHooksContract).setFailOnAfterInitializeHook(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.AfterInitializeHookFailed.selector));
+        vm.expectRevert(IVaultErrors.AfterInitializeHookFailed.selector);
         router.initialize(
             address(pool),
             standardPoolTokens,

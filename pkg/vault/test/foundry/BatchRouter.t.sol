@@ -17,14 +17,14 @@ contract BatchRouter is BaseVaultTest {
     function testSwapDeadlineExactIn() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths;
 
-        vm.expectRevert(abi.encodeWithSelector(RouterCommon.SwapDeadline.selector));
+        vm.expectRevert(RouterCommon.SwapDeadline.selector);
         batchRouter.swapExactIn(paths, block.timestamp - 1, false, bytes(""));
     }
 
     function testSwapDeadlineExactOut() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths;
 
-        vm.expectRevert(abi.encodeWithSelector(RouterCommon.SwapDeadline.selector));
+        vm.expectRevert(RouterCommon.SwapDeadline.selector);
         batchRouter.swapExactOut(paths, block.timestamp - 1, false, bytes(""));
     }
 }
