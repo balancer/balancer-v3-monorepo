@@ -9,14 +9,13 @@ contract ProtocolFeeControllerMock is ProtocolFeeController {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getAggregateFeePercentage(
-        uint256 protocolFeePercentage,
-        uint256 poolCreatorFeePercentage
-    ) external pure returns (uint256) {
-        return _getAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage);
-    }
-
     function getPoolTokensAndCount(address pool) external view returns (IERC20[] memory tokens, uint256 numTokens) {
         return _getPoolTokensAndCount(pool);
+    }
+
+    function getPoolCreatorInfo(
+        address pool
+    ) external view returns (address poolCreator, uint256 creatorSwapFeePercentage, uint256 creatorYieldFeePercentage) {
+        return (_poolCreators[pool], _poolCreatorSwapFeePercentages[pool], _poolCreatorYieldFeePercentages[pool]);
     }
 }
