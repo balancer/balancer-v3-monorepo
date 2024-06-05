@@ -316,11 +316,16 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectProtocolFees(address pool) public nonReentrant onlyVault {
+    /// @inheritdoc IVaultAdmin
+    function collectProtocolFees(address pool) public onlyVault {
         _collectProtocolFees(pool);
     }
 
     function _collectProtocolFees(address pool) private {
+        // nonReentrant: need to inline to avoid stack-too-deep
+        if (_reentrancyGuardEntered()) {
+            revert ReentrancyGuardReentrantCall();
+        }
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
         address feeController = address(_protocolFeeController);
         uint256 numTokens = poolTokens.length;
