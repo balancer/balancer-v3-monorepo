@@ -62,8 +62,11 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
     // Pool -> address of pool creator (empowered to set pool creator fee percentages, and withdraw creator fees).
     mapping(address => address) internal _poolCreators;
 
-    // Pool -> creator fee percentage.
-    mapping(address => uint256) internal _poolCreatorFeePercentages;
+    // Pool -> creator swap fee percentage.
+    mapping(address => uint256) internal _poolCreatorSwapFeePercentages;
+
+    // Pool -> creator yield fee percentage.
+    mapping(address => uint256) internal _poolCreatorYieldFeePercentages;
 
     // Pool -> (Token -> fee): Disaggregated protocol fees (from swap and yield), available for withdrawal
     // by governance.
@@ -160,15 +163,33 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
     }
 
     /// @inheritdoc IProtocolFeeController
-    function computeAggregatePercentages(
-        address pool,
+    function computeAggregateFeePercentage(
+        uint256 protocolFeePercentage,
         uint256 poolCreatorFeePercentage
-    ) public view returns (uint256, uint256) {
-        // Compute aggregate fee return values.
-        return (
-            _getAggregateFeePercentage(_poolProtocolSwapFeePercentages[pool].feePercentage, poolCreatorFeePercentage),
-            _getAggregateFeePercentage(_poolProtocolYieldFeePercentages[pool].feePercentage, poolCreatorFeePercentage)
-        );
+    ) external pure returns (uint256) {
+        return _computeAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage);
+    }
+
+    function _computeAggregateFeePercentage(
+        uint256 protocolFeePercentage,
+        uint256 poolCreatorFeePercentage
+    ) internal pure returns (uint256) {
+        return protocolFeePercentage + protocolFeePercentage.complement().mulDown(poolCreatorFeePercentage);
+    }
+
+    function _getAggregateFeePercentage(address pool, ProtocolFeeType feeType) internal view returns (uint256) {
+        uint256 protocolFeePercentage;
+        uint256 poolCreatorFeePercentage;
+
+        if (feeType == ProtocolFeeType.SWAP) {
+            protocolFeePercentage = _poolProtocolSwapFeePercentages[pool].feePercentage;
+            poolCreatorFeePercentage = _poolCreatorSwapFeePercentages[pool];
+        } else {
+            protocolFeePercentage = _poolProtocolYieldFeePercentages[pool].feePercentage;
+            poolCreatorFeePercentage = _poolCreatorYieldFeePercentages[pool];
+        }
+
+        return _computeAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage);
     }
 
     function _ensureCallerIsPoolCreator(address pool) internal view {
@@ -183,24 +204,6 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
         }
     }
 
-    /**
-     * Note that pool creator fees are calculated based on creatorAndLpFees, and not in totalFees.
-     * See example below:
-     *
-     * tokenOutAmount = 10000; poolSwapFeePct = 10%; protocolFeePct = 40%; creatorFeePct = 60%
-     * totalFees = tokenOutAmount * poolSwapFeePct = 10000 * 10% = 1000
-     * protocolFees = totalFees * protocolFeePct = 1000 * 40% = 400
-     * creatorAndLpFees = totalFees - protocolFees = 1000 - 400 = 600
-     * creatorFees = creatorAndLpFees * creatorFeePct = 600 * 60% = 360
-     * lpFees (will stay in the pool) = creatorAndLpFees - creatorFees = 600 - 360 = 240
-     */
-    function _getAggregateFeePercentage(
-        uint256 protocolFeePercentage,
-        uint256 poolCreatorFeePercentage
-    ) internal pure returns (uint256) {
-        return protocolFeePercentage + protocolFeePercentage.complement().mulDown(poolCreatorFeePercentage);
-    }
-
     function _getPoolTokensAndCount(address pool) internal view returns (IERC20[] memory tokens, uint256 numTokens) {
         tokens = getVault().getPoolTokens(pool);
         numTokens = tokens.length;
@@ -212,7 +215,7 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
         uint256 globalProtocolSwapFee = _globalProtocolSwapFeePercentage;
 
         if (feeConfig.isOverride == false && globalProtocolSwapFee != feeConfig.feePercentage) {
-            _updatePoolSwapFeePercentage(pool, globalProtocolSwapFee, _poolCreatorFeePercentages[pool], false);
+            _updatePoolSwapFeePercentage(pool, globalProtocolSwapFee, false);
         }
     }
 
@@ -222,7 +225,7 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
         uint256 globalProtocolYieldFee = _globalProtocolYieldFeePercentage;
 
         if (feeConfig.isOverride == false && globalProtocolYieldFee != feeConfig.feePercentage) {
-            _updatePoolYieldFeePercentage(pool, globalProtocolYieldFee, _poolCreatorFeePercentages[pool], false);
+            _updatePoolYieldFeePercentage(pool, globalProtocolYieldFee, false);
         }
     }
 
@@ -262,30 +265,28 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
         uint256[] memory swapFeeAmounts,
         uint256[] memory yieldFeeAmounts
     ) external onlyVault {
-        uint256 poolCreatorFeePercentage = _poolCreatorFeePercentages[pool];
-
-        _receiveProtocolFees(pool, ProtocolFeeType.SWAP, poolCreatorFeePercentage, swapFeeAmounts);
-        _receiveProtocolFees(pool, ProtocolFeeType.YIELD, poolCreatorFeePercentage, yieldFeeAmounts);
+        _receiveProtocolFees(pool, ProtocolFeeType.SWAP, swapFeeAmounts);
+        _receiveProtocolFees(pool, ProtocolFeeType.YIELD, yieldFeeAmounts);
     }
 
-    function _receiveProtocolFees(
-        address pool,
-        ProtocolFeeType feeType,
-        uint256 poolCreatorFeePercentage,
-        uint256[] memory feeAmounts
-    ) private {
+    function _receiveProtocolFees(address pool, ProtocolFeeType feeType, uint256[] memory feeAmounts) private {
         // There are two cases when we don't need to split fees (in which case we can save gas and avoid rounding
         // errors by skipping calculations) if either the protocol or pool creator fee percentage is zero.
 
         uint256 protocolFeePercentage = feeType == ProtocolFeeType.SWAP
             ? _poolProtocolSwapFeePercentages[pool].feePercentage
             : _poolProtocolYieldFeePercentages[pool].feePercentage;
+
+        uint256 poolCreatorFeePercentage = feeType == ProtocolFeeType.SWAP
+            ? _poolCreatorSwapFeePercentages[pool]
+            : _poolCreatorYieldFeePercentages[pool];
+
         uint256 aggregateFeePercentage;
 
         bool needToSplitFees = poolCreatorFeePercentage > 0 && protocolFeePercentage > 0;
         if (needToSplitFees) {
             // Calculate once, outside the loop.
-            aggregateFeePercentage = _getAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage);
+            aggregateFeePercentage = _computeAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage);
         }
 
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
@@ -344,7 +345,7 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
         address pool,
         uint256 newProtocolSwapFeePercentage
     ) external withValidSwapFee(newProtocolSwapFeePercentage) withLatestFees(pool) authenticate {
-        _updatePoolSwapFeePercentage(pool, newProtocolSwapFeePercentage, _poolCreatorFeePercentages[pool], true);
+        _updatePoolSwapFeePercentage(pool, newProtocolSwapFeePercentage, true);
     }
 
     /// @inheritdoc IProtocolFeeController
@@ -352,14 +353,30 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
         address pool,
         uint256 newProtocolYieldFeePercentage
     ) external withValidYieldFee(newProtocolYieldFeePercentage) withLatestFees(pool) authenticate {
-        _updatePoolYieldFeePercentage(pool, newProtocolYieldFeePercentage, _poolCreatorFeePercentages[pool], true);
+        _updatePoolYieldFeePercentage(pool, newProtocolYieldFeePercentage, true);
     }
 
     /// @inheritdoc IProtocolFeeController
-    function setPoolCreatorFeePercentage(
+    function setPoolCreatorSwapFeePercentage(
         address pool,
-        uint256 poolCreatorFeePercentage
+        uint256 poolCreatorSwapFeePercentage
     ) external onlyPoolCreator(pool) {
+        _setPoolCreatorFeePercentage(pool, poolCreatorSwapFeePercentage, ProtocolFeeType.SWAP);
+    }
+
+    /// @inheritdoc IProtocolFeeController
+    function setPoolCreatorYieldFeePercentage(
+        address pool,
+        uint256 poolCreatorYieldFeePercentage
+    ) external onlyPoolCreator(pool) {
+        _setPoolCreatorFeePercentage(pool, poolCreatorYieldFeePercentage, ProtocolFeeType.YIELD);
+    }
+
+    function _setPoolCreatorFeePercentage(
+        address pool,
+        uint256 poolCreatorFeePercentage,
+        ProtocolFeeType feeType
+    ) private {
         if (poolCreatorFeePercentage > FixedPoint.ONE) {
             revert PoolCreatorFeePercentageTooHigh();
         }
@@ -367,20 +384,20 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
         // Force collection of fees at existing rate.
         getVault().collectProtocolFees(pool);
 
-        _poolCreatorFeePercentages[pool] = poolCreatorFeePercentage;
+        // Need to set locally, and update aggregate percentage in the vault.
+        if (feeType == ProtocolFeeType.SWAP) {
+            _poolCreatorSwapFeePercentages[pool] = poolCreatorFeePercentage;
 
-        // Need to update aggregate percentages.
-        getVault().updateAggregateSwapFeePercentage(
-            pool,
-            _getAggregateFeePercentage(_poolProtocolSwapFeePercentages[pool].feePercentage, poolCreatorFeePercentage)
-        );
+            getVault().updateAggregateSwapFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.SWAP));
 
-        getVault().updateAggregateYieldFeePercentage(
-            pool,
-            _getAggregateFeePercentage(_poolProtocolYieldFeePercentages[pool].feePercentage, poolCreatorFeePercentage)
-        );
+            emit PoolCreatorSwapFeePercentageChanged(pool, poolCreatorFeePercentage);
+        } else {
+            _poolCreatorYieldFeePercentages[pool] = poolCreatorFeePercentage;
 
-        emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
+            getVault().updateAggregateYieldFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.YIELD));
+
+            emit PoolCreatorYieldFeePercentageChanged(pool, poolCreatorFeePercentage);
+        }
     }
 
     /// @inheritdoc IProtocolFeeController
@@ -414,22 +431,14 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
     }
 
     /// @dev Common code shared between set/update. `isOverride` will be true if governance is setting the percentage.
-    function _updatePoolSwapFeePercentage(
-        address pool,
-        uint256 newProtocolSwapFeePercentage,
-        uint256 poolCreatorFeePercentage,
-        bool isOverride
-    ) private {
+    function _updatePoolSwapFeePercentage(address pool, uint256 newProtocolSwapFeePercentage, bool isOverride) private {
         // Update local storage of the raw percentage
         _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
             feePercentage: uint64(newProtocolSwapFeePercentage),
             isOverride: isOverride
         });
         // Update the resulting aggregate swap fee value in the Vault (PoolConfig).
-        getVault().updateAggregateSwapFeePercentage(
-            pool,
-            _getAggregateFeePercentage(newProtocolSwapFeePercentage, poolCreatorFeePercentage)
-        );
+        getVault().updateAggregateSwapFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.SWAP));
 
         emit ProtocolSwapFeePercentageChanged(pool, newProtocolSwapFeePercentage);
     }
@@ -438,7 +447,6 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
     function _updatePoolYieldFeePercentage(
         address pool,
         uint256 newProtocolYieldFeePercentage,
-        uint256 poolCreatorFeePercentage,
         bool isOverride
     ) private {
         // Update local storage of the raw percentage
@@ -447,10 +455,7 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
             isOverride: isOverride
         });
         // Update the resulting aggregate yield fee value in the Vault (PoolConfig).
-        getVault().updateAggregateYieldFeePercentage(
-            pool,
-            _getAggregateFeePercentage(newProtocolYieldFeePercentage, poolCreatorFeePercentage)
-        );
+        getVault().updateAggregateYieldFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.YIELD));
 
         emit ProtocolYieldFeePercentageChanged(pool, newProtocolYieldFeePercentage);
     }
