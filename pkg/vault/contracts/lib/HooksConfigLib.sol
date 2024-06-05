@@ -109,35 +109,40 @@ library HooksConfigLib {
      * to execute the hook.
      *
      * @param config The encoded hooks configuration
+     * @param router Router address
+     * @param pool Pool address
      * @param maxAmountsInScaled18 An array with maximum amounts for each input token of the add liquidity operation
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
+     * @return hookAdjustedMaxAmountsInRaw New maxAmountsInRaw, modified by the hook
      */
     function onBeforeAddLiquidity(
         HooksConfig memory config,
-        uint256[] memory maxAmountsInScaled18,
         address router,
+        address pool,
+        uint256[] memory maxAmountsInScaled18,
         AddLiquidityParams memory params,
         PoolData memory poolData
-    ) internal returns (bool) {
+    ) internal returns (bool success, uint256[] memory hookAdjustedMaxAmountsInRaw) {
         if (config.shouldCallBeforeAddLiquidity == false) {
-            return false;
+            return (false, params.maxAmountsIn);
         }
 
-        if (
-            IHooks(config.hooksContract).onBeforeAddLiquidity(
-                router,
-                params.kind,
-                maxAmountsInScaled18,
-                params.minBptAmountOut,
-                poolData.balancesLiveScaled18,
-                params.userData
-            ) == false
-        ) {
+        (success, hookAdjustedMaxAmountsInRaw) = IHooks(config.hooksContract).onBeforeAddLiquidity(
+            router,
+            pool,
+            params.kind,
+            maxAmountsInScaled18,
+            params.maxAmountsIn,
+            params.minBptAmountOut,
+            poolData.balancesLiveScaled18,
+            params.userData
+        );
+
+        if (success == false) {
             revert IVaultErrors.BeforeAddLiquidityHookFailed();
         }
-        return true;
     }
 
     /**

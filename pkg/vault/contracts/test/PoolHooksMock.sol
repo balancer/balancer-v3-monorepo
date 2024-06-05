@@ -41,6 +41,9 @@ contract PoolHooksMock is BasePoolHooks {
     bool public changePoolBalancesOnBeforeAddLiquidityHook;
     bool public changePoolBalancesOnBeforeRemoveLiquidityHook;
 
+    uint256 public onBeforeAddLiquidityHookFee;
+    uint256 public onBeforeAddLiquidityHookDiscount;
+
     bool public swapReentrancyHookActive;
     address private _swapHookContract;
     bytes private _swapHookCalldata;
@@ -169,12 +172,17 @@ contract PoolHooksMock is BasePoolHooks {
 
     function onBeforeAddLiquidity(
         address,
-        AddLiquidityKind,
+        address pool,
+        AddLiquidityKind kind,
         uint256[] memory,
+        uint256[] memory maxAmountsInRaw,
         uint256,
         uint256[] memory,
         bytes memory
-    ) external override returns (bool) {
+    ) external override returns (bool, uint256[] memory hookAdjustedMaxAmountsInRaw) {
+        (TokenConfig[] memory tokenConfig, , ) = _vault.getPoolTokenInfo(pool);
+        hookAdjustedMaxAmountsInRaw = maxAmountsInRaw;
+
         if (changeTokenRateOnBeforeAddLiquidity) {
             _updateTokenRate();
         }
@@ -183,7 +191,20 @@ contract PoolHooksMock is BasePoolHooks {
             _setBalancesInVault();
         }
 
-        return !failOnBeforeAddLiquidity;
+        if (onBeforeAddLiquidityHookFee > 0) {
+            for (uint256 i = 0; i < maxAmountsInRaw.length; i++) {
+                hookAdjustedMaxAmountsInRaw[i] -= onBeforeAddLiquidityHookFee;
+                _vault.sendTo(tokenConfig[i].token, address(this), onBeforeAddLiquidityHookFee);
+            }
+        } else if (onBeforeAddLiquidityHookDiscount > 0) {
+            for (uint256 i = 0; i < maxAmountsInRaw.length; i++) {
+                tokenConfig[i].token.transfer(address(_vault), onBeforeAddLiquidityHookDiscount);
+                _vault.settle(tokenConfig[i].token);
+                hookAdjustedMaxAmountsInRaw[i] += onBeforeAddLiquidityHookDiscount;
+            }
+        }
+
+        return (!failOnBeforeAddLiquidity, hookAdjustedMaxAmountsInRaw);
     }
 
     function onBeforeRemoveLiquidity(
@@ -349,6 +370,14 @@ contract PoolHooksMock is BasePoolHooks {
 
     function setPool(address pool) external {
         _pool = pool;
+    }
+
+    function setOnBeforeAddLiquidityHookFee(uint256 hookFee) public {
+        onBeforeAddLiquidityHookFee = hookFee;
+    }
+
+    function setOnBeforeAddLiquidityHookDiscount(uint256 hookDiscount) public {
+        onBeforeAddLiquidityHookDiscount = hookDiscount;
     }
 
     function allowFactory(address factory) external {
