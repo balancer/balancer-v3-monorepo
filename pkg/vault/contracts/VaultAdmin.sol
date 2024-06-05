@@ -316,7 +316,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    /// @inheritdoc IVaultAdmin
     function collectProtocolFees(address pool) public onlyVault {
         _collectProtocolFees(pool);
     }
