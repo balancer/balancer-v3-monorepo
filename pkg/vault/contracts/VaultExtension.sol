@@ -197,8 +197,19 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
             // Gets the default HooksConfig from the hook contract and saves in the vault state
             // Storing into hooksConfig first avoids stack-too-deep
-            hooksConfig = IHooks(params.poolHooksContract).getHooksConfig();
-            _hooksConfig[pool] = hooksConfig;
+            IHooks.HookFlags memory hookFlags = IHooks(params.poolHooksContract).getHookFlags();
+            _hooksConfig[pool] = HooksConfig({
+                shouldCallBeforeInitialize: hookFlags.shouldCallBeforeInitialize,
+                shouldCallAfterInitialize: hookFlags.shouldCallAfterInitialize,
+                shouldCallComputeDynamicSwapFee: hookFlags.shouldCallComputeDynamicSwapFee,
+                shouldCallBeforeSwap: hookFlags.shouldCallBeforeSwap,
+                shouldCallAfterSwap: hookFlags.shouldCallAfterSwap,
+                shouldCallBeforeAddLiquidity: hookFlags.shouldCallBeforeAddLiquidity,
+                shouldCallAfterAddLiquidity: hookFlags.shouldCallAfterAddLiquidity,
+                shouldCallBeforeRemoveLiquidity: hookFlags.shouldCallBeforeRemoveLiquidity,
+                shouldCallAfterRemoveLiquidity: hookFlags.shouldCallAfterRemoveLiquidity,
+                hooksContract: params.poolHooksContract
+            });
         }
 
         uint256 numTokens = params.tokenConfig.length;
