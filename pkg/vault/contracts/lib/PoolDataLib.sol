@@ -49,7 +49,11 @@ library PoolDataLib {
             updateTokenRate(poolData, i);
             updateRawAndLiveBalance(poolData, i, packedBalance.getBalanceRaw(), roundingDirection);
 
-            uint256 aggregateYieldFeeAmountRaw = 0;
+            // Nothing else to do here.
+            if (poolSubjectToYieldFees == false) {
+                continue;
+            }
+
             TokenConfig memory tokenConfig = poolData.tokenConfig[i];
 
             // poolData already has live balances computed from raw balances according to the token rates and the
@@ -62,22 +66,24 @@ library PoolDataLib {
             bool tokenSubjectToYieldFees = tokenConfig.paysYieldFees && tokenConfig.tokenType == TokenType.WITH_RATE;
 
             // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
-            if (poolSubjectToYieldFees && tokenSubjectToYieldFees) {
+            if (tokenSubjectToYieldFees) {
+                uint256 aggregateYieldFeeAmountRaw = 0;
+
                 aggregateYieldFeeAmountRaw = _computeYieldFeesDue(
                     poolData,
                     packedBalance.getBalanceDerived(),
                     i,
                     poolData.poolConfig.aggregateProtocolYieldFeePercentage
                 );
-            }
 
-            if (aggregateYieldFeeAmountRaw > 0) {
-                updateRawAndLiveBalance(
-                    poolData,
-                    i,
-                    poolData.balancesRaw[i] - aggregateYieldFeeAmountRaw,
-                    roundingDirection
-                );
+                if (aggregateYieldFeeAmountRaw > 0) {
+                    updateRawAndLiveBalance(
+                        poolData,
+                        i,
+                        poolData.balancesRaw[i] - aggregateYieldFeeAmountRaw,
+                        roundingDirection
+                    );
+                }
             }
         }
     }
