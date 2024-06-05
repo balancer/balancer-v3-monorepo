@@ -199,7 +199,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
         _amplificationState.startTime = startTimeUint32;
         _amplificationState.endTime = endTimeUint32;
 
-        emit AmpUpdateStarted(currentValueUint64, endValueUint64, startTimeUint32, endTimeUint64Uint32);
+        emit AmpUpdateStarted(currentValueUint64, endValueUint64, startTimeUint32, endTimeUint32);
     }
 
     /**
@@ -267,7 +267,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
     }
 
     function _stopAmplification(uint256 value) internal {
-        uint64 currentValueUint64 = currentValue.toUint64();
+        uint64 currentValueUint64 = value.toUint64();
         _amplificationState.startValue = currentValueUint64;
         _amplificationState.endValue = currentValueUint64;
 
