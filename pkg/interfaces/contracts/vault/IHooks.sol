@@ -84,7 +84,7 @@ interface IHooks {
      * @param kind The type of add liquidity operation (e.g., proportional, custom)
      * @param maxAmountsInScaled18 Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
-     * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
+     * @param balancesScaled18 Current pool balances in token registration order
      * @param userData Optional, arbitrary data with the encoded request
      * @return success True if the pool wishes to proceed with settlement
      */
@@ -100,9 +100,9 @@ interface IHooks {
     /**
      * @notice Optional hook to be executed after adding liquidity.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
-     * @param amountsInScaled18 Actual amounts of tokens added, in the same order as the tokens registered in the pool
+     * @param amountsInScaled18 Actual amounts of tokens added in token registration order
      * @param bptAmountOut Amount of pool tokens minted
-     * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
+     * @param balancesScaled18 Current pool balances in token registration order
      * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
      */
@@ -123,8 +123,8 @@ interface IHooks {
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param kind The type of remove liquidity operation (e.g., proportional, custom)
      * @param maxBptAmountIn Maximum amount of input pool tokens
-     * @param minAmountsOutScaled18 Minimum output amounts, in the same order as the tokens registered in the pool
-     * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
+     * @param minAmountsOutScaled18 Minimum output amounts in token registration order
+     * @param balancesScaled18 Current pool balances in token registration order
      * @param userData Optional, arbitrary data with the encoded request
      * @return success True if the pool wishes to proceed with settlement
      */
@@ -141,8 +141,8 @@ interface IHooks {
      * @notice Optional hook to be executed after removing liquidity.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param bptAmountIn Amount of pool tokens to burn
-     * @param amountsOutScaled18 Amount of tokens to receive, in the same order as the tokens registered in the pool
-     * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
+     * @param amountsOutScaled18 Amount of tokens to receive in token registration order
+     * @param balancesScaled18 Current pool balances in token registration order
      * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
      */

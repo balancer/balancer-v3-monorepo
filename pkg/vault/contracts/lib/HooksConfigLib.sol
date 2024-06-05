@@ -162,7 +162,7 @@ library HooksConfigLib {
      * to execute the hook.
      *
      * @param config The encoded hooks configuration
-     * @param amountsInScaled18 Actual amounts of tokens added, in the same order as the tokens registered in the pool
+     * @param amountsInScaled18 Actual amounts of tokens added in token registration order
      * @param bptAmountOut The BPT amount a user will receive after add liquidity operation succeeds
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
@@ -234,7 +234,7 @@ library HooksConfigLib {
      * fails to execute the hook.
      *
      * @param config The encoded hooks configuration
-     * @param amountsOutScaled18 Amount of tokens to receive, in the same order as the tokens registered in the pool
+     * @param amountsOutScaled18 Amount of tokens to receive in token registration order
      * @param bptAmountIn The BPT amount a user will need burn to remove the liquidity of the pool
      * @param params The remove liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
