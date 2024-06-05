@@ -277,7 +277,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         config.pauseWindowEndTime = params.pauseWindowEndTime;
         // Initialize the pool-specific protocol fee values to the current global defaults.
         (config.aggregateProtocolSwapFeePercentage, config.aggregateProtocolYieldFeePercentage) = _protocolFeeController
-            .registerPool(pool);
+            .registerPool(pool, params.roleAccounts.poolCreator);
         _poolConfig[pool] = config.fromPoolConfig();
 
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
@@ -315,15 +315,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
             roleAssignments[swapFeeAction] = PoolFunctionPermission({
                 account: roleAccounts.swapFeeManager,
-                onlyOwner: true
-            });
-        }
-
-        if (roleAccounts.poolCreator != address(0)) {
-            bytes32 poolCreatorFeeAction = vaultAdmin.getActionId(IVaultAdmin.setPoolCreatorFeePercentage.selector);
-
-            roleAssignments[poolCreatorFeeAction] = PoolFunctionPermission({
-                account: roleAccounts.poolCreator,
                 onlyOwner: true
             });
         }
@@ -575,8 +566,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function getStaticSwapFeeManager(address pool) external view withRegisteredPool(pool) onlyVault returns (address) {
-        return _poolRoleAccounts[pool].swapFeeManager;
+    function getPoolRoleAccounts(
+        address pool
+    ) external view withRegisteredPool(pool) onlyVault returns (PoolRoleAccounts memory) {
+        return _poolRoleAccounts[pool];
     }
 
     /*******************************************************************************
