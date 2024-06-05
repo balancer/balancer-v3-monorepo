@@ -520,7 +520,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     function testDisableVaultBufferAuthentication() public {
         vm.prank(alice);
         // Should revert, since alice has no rights to disable buffer
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         IVaultAdmin(address(vault)).pauseVaultBuffers();
 
         vm.prank(admin);
@@ -529,7 +529,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         vm.prank(alice);
         // Should revert, since alice has no rights to enable buffer
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         IVaultAdmin(address(vault)).unpauseVaultBuffers();
 
         vm.prank(admin);
@@ -555,10 +555,10 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // wrap/unwrap, add and remove liquidity should fail, since vault buffers are disabled
         vm.startPrank(lp);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultBuffersArePaused.selector));
+        vm.expectRevert(IVaultErrors.VaultBuffersArePaused.selector);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultBuffersArePaused.selector));
+        vm.expectRevert(IVaultErrors.VaultBuffersArePaused.selector);
         router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
 
         // remove liquidity is supposed to pass even with buffers paused, so revert is not expected
