@@ -41,7 +41,6 @@ interface IHooks {
         bool shouldCallAfterAddLiquidity;
         bool shouldCallBeforeRemoveLiquidity;
         bool shouldCallAfterRemoveLiquidity;
-        address hooksContract;
     }
 
     /**

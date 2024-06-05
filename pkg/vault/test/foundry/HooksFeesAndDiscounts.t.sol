@@ -33,11 +33,6 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    function createHook() internal override returns (address) {
-        HooksConfig memory hooksConfig;
-        return _createHook(hooksConfig);
-    }
-
     function testOnBeforeSwapHookFeeExactIn() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
         hooksConfig.shouldCallBeforeSwap = true;
