@@ -388,25 +388,13 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
         if (feeType == ProtocolFeeType.SWAP) {
             _poolCreatorSwapFeePercentages[pool] = poolCreatorFeePercentage;
 
-            getVault().updateAggregateSwapFeePercentage(
-                pool,
-                _computeAggregateFeePercentage(
-                    _poolProtocolSwapFeePercentages[pool].feePercentage,
-                    poolCreatorFeePercentage
-                )
-            );
+            getVault().updateAggregateSwapFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.SWAP));
 
             emit PoolCreatorSwapFeePercentageChanged(pool, poolCreatorFeePercentage);
         } else {
             _poolCreatorYieldFeePercentages[pool] = poolCreatorFeePercentage;
 
-            getVault().updateAggregateYieldFeePercentage(
-                pool,
-                _computeAggregateFeePercentage(
-                    _poolProtocolYieldFeePercentages[pool].feePercentage,
-                    poolCreatorFeePercentage
-                )
-            );
+            getVault().updateAggregateYieldFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.YIELD));
 
             emit PoolCreatorYieldFeePercentageChanged(pool, poolCreatorFeePercentage);
         }
