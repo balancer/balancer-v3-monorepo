@@ -122,23 +122,6 @@ interface IProtocolFeeController {
     function getPoolProtocolYieldFeeInfo(address pool) external view returns (uint256, bool);
 
     /**
-     * @notice Compute and return the aggregate percentage.
-     * @dev This can be called after initialization (e.g., when a pool creator fee is updated), and uses the existing
-     * protocol fee percentages for the pool.
-     *
-     * @param pool The pool being registered
-     * @param poolCreatorSwapFeePercentage The creator swap fee percentage for the pool
-     * @param poolCreatorYieldFeePercentage The creator yield fee percentage for the pool
-     * @return aggregateProtocolSwapFeePercentage The aggregate swap fee percentage (protocol and creator fees)
-     * @return aggregateProtocolYieldFeePercentage The aggregate swap fee percentage (protocol and creator fees)
-     */
-    function computeAggregatePercentages(
-        address pool,
-        uint256 poolCreatorSwapFeePercentage,
-        uint256 poolCreatorYieldFeePercentage
-    ) external view returns (uint256 aggregateProtocolSwapFeePercentage, uint256 aggregateProtocolYieldFeePercentage);
-
-    /**
      * @notice Returns the amount of each pool token allocated to the protocol for withdrawal.
      * @dev Includes both swap and yield fees.
      * @param pool The pool on which fees were collected
@@ -153,6 +136,28 @@ interface IProtocolFeeController {
      * @param feeAmounts The total amounts of each token that are available for withdrawal, in token registration order
      */
     function getAggregatePoolCreatorFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
+
+    /**
+     * @notice Returns a calculated aggregate percentage from protocol and pool creator fee percentages.
+     * @dev Not tied to any particular pool; this just performs the low-level "additive fee" calculation.
+     * Note that pool creator fees are calculated based on creatorAndLpFees, and not in totalFees.
+     * See example below:
+     *
+     * tokenOutAmount = 10000; poolSwapFeePct = 10%; protocolFeePct = 40%; creatorFeePct = 60%
+     * totalFees = tokenOutAmount * poolSwapFeePct = 10000 * 10% = 1000
+     * protocolFees = totalFees * protocolFeePct = 1000 * 40% = 400
+     * creatorAndLpFees = totalFees - protocolFees = 1000 - 400 = 600
+     * creatorFees = creatorAndLpFees * creatorFeePct = 600 * 60% = 360
+     * lpFees (will stay in the pool) = creatorAndLpFees - creatorFees = 600 - 360 = 240
+     *
+     * @param protocolFeePercentage The protocol portion of the aggregate fee percentage
+     * @param poolCreatorFeePercentage The pool creator portion of the aggregate fee percentage
+     * @param aggregateFeePercentage The computed aggregate percentage
+     */
+    function computeAggregateFeePercentage(
+        uint256 protocolFeePercentage,
+        uint256 poolCreatorFeePercentage
+    ) external pure returns (uint256 aggregateFeePercentage);
 
     /**
      * @notice Override the protocol swap fee percentage for a specific pool.

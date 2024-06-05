@@ -238,11 +238,11 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         _verifyPoolProtocolFeePercentages(pool);
 
         // But aggregates should be different
-        uint256 expectedAggregateSwapFee = ProtocolFeeControllerMock(address(feeController)).getAggregateFeePercentage(
+        uint256 expectedAggregateSwapFee = feeController.computeAggregateFeePercentage(
             MAX_PROTOCOL_SWAP_FEE,
             POOL_CREATOR_SWAP_FEE
         );
-        uint256 expectedAggregateYieldFee = ProtocolFeeControllerMock(address(feeController)).getAggregateFeePercentage(
+        uint256 expectedAggregateYieldFee = feeController.computeAggregateFeePercentage(
             MAX_PROTOCOL_YIELD_FEE,
             POOL_CREATOR_YIELD_FEE
         );
@@ -604,8 +604,15 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         uint256[] memory protocolFeeAmounts = feeController.getAggregateProtocolFeeAmounts(pool);
         uint256[] memory poolCreatorFeeAmounts = feeController.getAggregatePoolCreatorFeeAmounts(pool);
 
-        (uint256 aggregateProtocolSwapFeePercentage, uint256 aggregateProtocolYieldFeePercentage) = feeController
-            .computeAggregatePercentages(pool, POOL_CREATOR_SWAP_FEE, POOL_CREATOR_YIELD_FEE);
+        uint256 aggregateProtocolSwapFeePercentage = feeController.computeAggregateFeePercentage(
+            MAX_PROTOCOL_SWAP_FEE,
+            POOL_CREATOR_SWAP_FEE
+        );
+        uint256 aggregateProtocolYieldFeePercentage = feeController.computeAggregateFeePercentage(
+            MAX_PROTOCOL_YIELD_FEE,
+            POOL_CREATOR_YIELD_FEE
+        );
+
         uint256 expectedProtocolFeeDAI = PROTOCOL_SWAP_FEE_AMOUNT.divUp(aggregateProtocolSwapFeePercentage).mulUp(
             MAX_PROTOCOL_SWAP_FEE
         );
