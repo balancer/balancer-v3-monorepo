@@ -188,6 +188,7 @@ contract HooksTest is BaseVaultTest {
                     router: address(router),
                     userData: bytes("")
                 }),
+                defaultAmount,
                 address(pool)
             )
         );

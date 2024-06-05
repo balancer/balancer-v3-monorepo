@@ -279,6 +279,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         state.indexIn = indexIn;
         state.indexOut = indexOut;
+        // Initializes hookAdjustedAmountGivenRaw to calculate amountGivenScaled18
+        state.hookAdjustedAmountGivenRaw = params.amountGivenRaw;
+
 
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.

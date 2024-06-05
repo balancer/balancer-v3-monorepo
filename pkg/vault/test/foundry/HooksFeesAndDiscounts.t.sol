@@ -64,7 +64,7 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
                     userData: bytes("")
                 }),
                 _swapAmount,
-                address(pool)
+                pool
             )
         );
 
