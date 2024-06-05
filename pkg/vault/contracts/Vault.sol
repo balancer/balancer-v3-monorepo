@@ -210,8 +210,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
             state.amountGivenScaled18 = _computeAmountGivenScaled18(
-                state.indexIn,
-                state.indexOut,
                 params,
                 poolData,
                 state
@@ -287,7 +285,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
-        state.amountGivenScaled18 = _computeAmountGivenScaled18(indexIn, indexOut, params, poolData, state);
+        state.amountGivenScaled18 = _computeAmountGivenScaled18(params, poolData, state);
         state.swapFeePercentage = poolData.poolConfig.staticSwapFeePercentage;
     }
 
@@ -316,8 +314,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * Uses amountGivenRaw and kind from `params`.
      */
     function _computeAmountGivenScaled18(
-        uint256 indexIn,
-        uint256 indexOut,
         SwapParams memory params,
         PoolData memory poolData,
         SwapState memory state
@@ -329,12 +325,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         return
             params.kind == SwapKind.EXACT_IN
                 ? state.virtualAmountGivenRaw.toScaled18ApplyRateRoundDown(
-                    poolData.decimalScalingFactors[indexIn],
-                    poolData.tokenRates[indexIn]
+                    poolData.decimalScalingFactors[state.indexIn],
+                    poolData.tokenRates[state.indexIn]
                 )
                 : state.virtualAmountGivenRaw.toScaled18ApplyRateRoundUp(
-                    poolData.decimalScalingFactors[indexOut],
-                    poolData.tokenRates[indexOut]
+                    poolData.decimalScalingFactors[state.indexOut],
+                    poolData.tokenRates[state.indexOut]
                 );
     }
 
