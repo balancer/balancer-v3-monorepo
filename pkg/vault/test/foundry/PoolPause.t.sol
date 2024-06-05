@@ -137,18 +137,18 @@ contract PoolPauseTest is BaseVaultTest {
 
     function testCannotPauseIfNotManager() public {
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.pausePool(address(pool));
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.unpausePool(address(pool));
     }
 
     function testGovernancePause() public {
         // Nice try, Bob!
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.pausePool(address(unmanagedPool));
 
         // Reluctantly authorize Bob

@@ -93,7 +93,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function testSwapDeadlineExactIn() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(RouterCommon.SwapDeadline.selector));
+        vm.expectRevert(RouterCommon.SwapDeadline.selector);
         router.swapSingleTokenExactIn(
             address(pool),
             usdc,
@@ -123,7 +123,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function testSwapDeadlineExactOut() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(RouterCommon.SwapDeadline.selector));
+        vm.expectRevert(RouterCommon.SwapDeadline.selector);
         router.swapSingleTokenExactOut(
             address(pool),
             usdc,
