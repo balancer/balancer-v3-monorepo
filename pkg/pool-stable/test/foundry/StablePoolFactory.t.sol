@@ -19,7 +19,7 @@ contract StablePoolFactoryTest is Test {
     }
 
     function testFactoryPausedState() public {
-        uint256 pauseWindowDuration = factory.getPauseWindowDuration();
+        uint32 pauseWindowDuration = factory.getPauseWindowDuration();
         assertEq(pauseWindowDuration, 365 days);
     }
 }

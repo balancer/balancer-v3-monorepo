@@ -148,9 +148,9 @@ contract RecoveryModeTest is BaseVaultTest {
         assertFalse(vault.isPoolInRecoveryMode(pool), "Pool should not be in Recovery Mode after pausing");
 
         // Ensure we are in the permissionless period of the Pool.
-        (, , uint256 bufferPeriodEndTime, ) = vault.getPoolPausedState(pool);
+        (, , uint32 bufferPeriodEndTime, ) = vault.getPoolPausedState(pool);
 
-        skip(bufferPeriodEndTime);
+        vm.warp(bufferPeriodEndTime + 1);
 
         // Confirm the Pool is permissionless
         assertTrue(block.timestamp > bufferPeriodEndTime, "Time should be after Pool's buffer period end time");
