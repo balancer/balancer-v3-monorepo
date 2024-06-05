@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -55,9 +56,9 @@ contract DynamicFeePoolTest is BaseVaultTest {
         vm.label(address(newPool), label);
         PoolRoleAccounts memory roleAccounts;
 
-        HooksConfig memory hooksConfig;
-        hooksConfig.shouldCallComputeDynamicSwapFee = true;
-        PoolHooksMock(poolHooksContract).setHooksConfig(hooksConfig);
+        IHooks.HookFlags memory hookFlags;
+        hookFlags.shouldCallComputeDynamicSwapFee = true;
+        PoolHooksMock(poolHooksContract).setHookFlags(hookFlags);
 
         factoryMock.registerPool(
             address(newPool),
