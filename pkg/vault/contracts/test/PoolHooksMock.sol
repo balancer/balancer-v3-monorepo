@@ -117,23 +117,23 @@ contract PoolHooksMock is BasePoolHooks {
     ) external override returns (bool success, uint256) {
         (TokenConfig[] memory tokenConfig, , ) = _vault.getPoolTokenInfo(pool);
 
-        uint256 updatedAmountGivenRaw = params.amountGivenRaw;
+        uint256 hookAdjustedAmountGivenRaw = params.amountGivenRaw;
         if (onBeforeSwapHookFee > 0) {
             if (params.kind == SwapKind.EXACT_IN) {
-                updatedAmountGivenRaw = params.amountGivenRaw - onBeforeSwapHookFee;
+                hookAdjustedAmountGivenRaw = params.amountGivenRaw - onBeforeSwapHookFee;
                 _vault.sendTo(tokenConfig[params.indexIn].token, address(this), onBeforeSwapHookFee);
             } else {
-                updatedAmountGivenRaw = params.amountGivenRaw + onBeforeSwapHookFee;
+                hookAdjustedAmountGivenRaw = params.amountGivenRaw + onBeforeSwapHookFee;
                 _vault.sendTo(tokenConfig[params.indexOut].token, address(this), onBeforeSwapHookFee);
             }
         }
         if (onBeforeSwapHookDiscount > 0) {
             if (params.kind == SwapKind.EXACT_IN) {
-                updatedAmountGivenRaw = params.amountGivenRaw + onBeforeSwapHookDiscount;
+                hookAdjustedAmountGivenRaw = params.amountGivenRaw + onBeforeSwapHookDiscount;
                 tokenConfig[params.indexIn].token.transfer(address(_vault), onBeforeSwapHookDiscount);
                 _vault.settle(tokenConfig[params.indexIn].token);
             } else {
-                updatedAmountGivenRaw = params.amountGivenRaw - onBeforeSwapHookDiscount;
+                hookAdjustedAmountGivenRaw = params.amountGivenRaw - onBeforeSwapHookDiscount;
                 tokenConfig[params.indexOut].token.transfer(address(_vault), onBeforeSwapHookDiscount);
                 _vault.settle(tokenConfig[params.indexOut].token);
             }
@@ -154,7 +154,7 @@ contract PoolHooksMock is BasePoolHooks {
             Address.functionCall(_swapHookContract, _swapHookCalldata);
         }
 
-        return (!failOnBeforeSwapHook, updatedAmountGivenRaw);
+        return (!failOnBeforeSwapHook, hookAdjustedAmountGivenRaw);
     }
 
     function onAfterSwap(
@@ -197,29 +197,29 @@ contract PoolHooksMock is BasePoolHooks {
             }
         }
 
-        uint256 updatedAmountCalculatedRaw = amountCalculatedRaw;
+        uint256 hookAdjustedAmountCalculatedRaw = amountCalculatedRaw;
         if (onAfterSwapHookFee > 0) {
             if (params.kind == SwapKind.EXACT_IN) {
-                updatedAmountCalculatedRaw = amountCalculatedRaw - onAfterSwapHookFee;
+                hookAdjustedAmountCalculatedRaw = amountCalculatedRaw - onAfterSwapHookFee;
                 _vault.sendTo(params.tokenOut, address(this), onAfterSwapHookFee);
             } else {
-                updatedAmountCalculatedRaw = amountCalculatedRaw + onAfterSwapHookFee;
+                hookAdjustedAmountCalculatedRaw = amountCalculatedRaw + onAfterSwapHookFee;
                 _vault.sendTo(params.tokenIn, address(this), onAfterSwapHookFee);
             }
         }
         if (onAfterSwapHookDiscount > 0) {
             if (params.kind == SwapKind.EXACT_IN) {
-                updatedAmountCalculatedRaw = amountCalculatedRaw + onAfterSwapHookDiscount;
+                hookAdjustedAmountCalculatedRaw = amountCalculatedRaw + onAfterSwapHookDiscount;
                 params.tokenOut.transfer(address(_vault), onAfterSwapHookDiscount);
                 _vault.settle(params.tokenOut);
             } else {
-                updatedAmountCalculatedRaw = amountCalculatedRaw - onAfterSwapHookDiscount;
+                hookAdjustedAmountCalculatedRaw = amountCalculatedRaw - onAfterSwapHookDiscount;
                 params.tokenIn.transfer(address(_vault), onAfterSwapHookDiscount);
                 _vault.settle(params.tokenIn);
             }
         }
 
-        return (amountCalculatedScaled18 > 0 && !failOnAfterSwapHook, updatedAmountCalculatedRaw);
+        return (amountCalculatedScaled18 > 0 && !failOnAfterSwapHook, hookAdjustedAmountCalculatedRaw);
     }
 
     // Liquidity lifecycle hooks

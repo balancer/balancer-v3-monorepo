@@ -198,9 +198,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // if the hook contract does not exist or does not implement onBeforeSwap, HooksConfigLib returns the original
         // amountGivenRaw. Otherwise, the new amount given is amountGivenRaw + delta.
-        // virtualAmountGivenRaw affects only the onSwap calculations of the pool. amountIn (EXACT_IN) or amountOut
+        // hookAdjustedAmountGivenRaw affects only the onSwap calculations of the pool. amountIn (EXACT_IN) or amountOut
         // (EXACT_OUT) are still defined by params.amountGivenRaw.
-        (state.onBeforeSwapSuccess, state.virtualAmountGivenRaw) = hooksConfig.onBeforeSwap(swapParams, params.pool);
+        (state.onBeforeSwapSuccess, state.hookAdjustedAmountGivenRaw) = hooksConfig.onBeforeSwap(
+            swapParams,
+            params.pool
+        );
 
         if (state.onBeforeSwapSuccess == true) {
             // The call to `onBeforeSwap` could potentially update token rates and balances.
@@ -209,11 +212,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.reloadBalancesAndRates(_poolTokenBalances[params.pool], Rounding.ROUND_DOWN);
 
             // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
-            state.amountGivenScaled18 = _computeAmountGivenScaled18(
-                params,
-                poolData,
-                state
-            );
+            state.amountGivenScaled18 = _computeAmountGivenScaled18(params, poolData, state);
 
             swapParams = _buildPoolSwapParams(params, state, poolData);
         }
@@ -279,9 +278,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         state.indexIn = indexIn;
         state.indexOut = indexOut;
-        // Initializes virtualAmountGivenRaw as amountGivenRaw since it'll be used to calculate PoolSwapParams before
-        // onBeforeSwap execution
-        state.virtualAmountGivenRaw = params.amountGivenRaw;
+        // Initializes hookAdjustedAmountGivenRaw as amountGivenRaw since it'll be used to calculate PoolSwapParams
+        // before onBeforeSwap execution
+        state.hookAdjustedAmountGivenRaw = params.amountGivenRaw;
 
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
@@ -294,13 +293,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapState memory state,
         PoolData memory poolData
     ) internal view returns (IBasePool.PoolSwapParams memory) {
-        // Notice that amountGivenRaw = state.virtualAmountGivenRaw. That's because onBeforeSwap can change
+        // Notice that amountGivenRaw = state.hookAdjustedAmountGivenRaw. That's because onBeforeSwap can change
         // amountGivenRaw, and we should use onBeforeSwap result to calculate the swap operation.
         return
             IBasePool.PoolSwapParams({
                 kind: params.kind,
                 amountGivenScaled18: state.amountGivenScaled18,
-                amountGivenRaw: state.virtualAmountGivenRaw,
+                amountGivenRaw: state.hookAdjustedAmountGivenRaw,
                 balancesScaled18: poolData.balancesLiveScaled18,
                 indexIn: state.indexIn,
                 indexOut: state.indexOut,
@@ -320,15 +319,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     ) private pure returns (uint256) {
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
-        // Notice that state.virtualAmountGivenRaw should be initialized (usually equal to params.amountGivenRaw,
+        // Notice that state.hookAdjustedAmountGivenRaw should be initialized (usually equal to params.amountGivenRaw,
         // unless onBeforeSwap changed it)
         return
             params.kind == SwapKind.EXACT_IN
-                ? state.virtualAmountGivenRaw.toScaled18ApplyRateRoundDown(
+                ? state.hookAdjustedAmountGivenRaw.toScaled18ApplyRateRoundDown(
                     poolData.decimalScalingFactors[state.indexIn],
                     poolData.tokenRates[state.indexIn]
                 )
-                : state.virtualAmountGivenRaw.toScaled18ApplyRateRoundUp(
+                : state.hookAdjustedAmountGivenRaw.toScaled18ApplyRateRoundUp(
                     poolData.decimalScalingFactors[state.indexOut],
                     poolData.tokenRates[state.indexOut]
                 );
@@ -419,10 +418,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // 3) Deltas: debit for token in, credit for token out
         // If swap is EXACT_IN, the onBeforeSwap hook may have changed the tokenIn amount. The hook settled any fee or
         // discount applied directly with the vault, so we adjust the amount owed by the user.
-        _takeDebt(params.tokenIn, params.kind == SwapKind.EXACT_IN ? state.virtualAmountGivenRaw : amountInRaw);
+        _takeDebt(params.tokenIn, params.kind == SwapKind.EXACT_IN ? state.hookAdjustedAmountGivenRaw : amountInRaw);
         // If swap is EXACT_OUT, the onBeforeSwap hook may have changed the tokenOut amount. The hook settled any fee
         // or discount applied directly with the vault, so we adjust the amount owed to the user.
-        _supplyCredit(params.tokenOut, params.kind == SwapKind.EXACT_OUT ? state.virtualAmountGivenRaw : amountOutRaw);
+        _supplyCredit(
+            params.tokenOut,
+            params.kind == SwapKind.EXACT_OUT ? state.hookAdjustedAmountGivenRaw : amountOutRaw
+        );
 
         // 4) Compute and charge protocol and creator fees.
         (locals.swapFeeIndex, locals.swapFeeToken) = params.kind == SwapKind.EXACT_IN

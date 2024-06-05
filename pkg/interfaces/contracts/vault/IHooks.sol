@@ -177,12 +177,12 @@ interface IHooks {
      * @param params Swap parameters (see IBasePool.PoolSwapParams for struct definition)
      * @param pool Pool address
      * @return success True if the pool wishes to proceed with settlement
-     * @return updatedAmountGivenRaw New amount given, modified by the hook
+     * @return hookAdjustedAmountGivenRaw New amount given, modified by the hook
      */
     function onBeforeSwap(
         IBasePool.PoolSwapParams calldata params,
         address pool
-    ) external returns (bool success, uint256 updatedAmountGivenRaw);
+    ) external returns (bool success, uint256 hookAdjustedAmountGivenRaw);
 
     /**
      * @notice Called after a swap to give the Pool an opportunity to perform actions.
@@ -193,14 +193,14 @@ interface IHooks {
      * @param amountCalculatedScaled18 Token amount calculated by the swap
      * @param amountCalculatedRaw Token amount calculated by the swap
      * @return success True if the pool wishes to proceed with settlement
-     * @return updatedAmountCalculatedRaw New amount calculated, modified by the hook
+     * @return hookAdjustedAmountCalculatedRaw New amount calculated, modified by the hook
      */
     function onAfterSwap(
         AfterSwapParams calldata params,
         address pool,
         uint256 amountCalculatedScaled18,
         uint256 amountCalculatedRaw
-    ) external returns (bool success, uint256 updatedAmountCalculatedRaw);
+    ) external returns (bool success, uint256 hookAdjustedAmountCalculatedRaw);
 
     /**
      * @notice Called before `onBeforeSwap` if the pool has dynamic fees.
