@@ -291,15 +291,6 @@ contract LiquidityApproximationTest is BaseVaultTest {
             bytes("")
         );
 
-        // remove remaining liquidity
-        router.removeLiquidityProportional(
-            address(liquidityPool),
-            IERC20(liquidityPool).balanceOf(alice),
-            [uint256(0), uint256(0)].toMemoryArray(),
-            false,
-            bytes("")
-        );
-
         vm.stopPrank();
 
         vm.startPrank(bob);
@@ -339,15 +330,6 @@ contract LiquidityApproximationTest is BaseVaultTest {
             IERC20(liquidityPool).balanceOf(alice),
             usdc,
             1,
-            false,
-            bytes("")
-        );
-
-        // remove remaining liquidity
-        router.removeLiquidityProportional(
-            address(liquidityPool),
-            IERC20(liquidityPool).balanceOf(alice),
-            [uint256(0), uint256(0)].toMemoryArray(),
             false,
             bytes("")
         );
