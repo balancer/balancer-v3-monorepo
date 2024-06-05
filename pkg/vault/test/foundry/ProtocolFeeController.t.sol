@@ -29,7 +29,8 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     uint256 internal constant CUSTOM_PROTOCOL_YIELD_FEE = 40e16;
     uint256 internal constant MAX_PROTOCOL_YIELD_FEE = 50e16;
 
-    uint256 internal constant POOL_CREATOR_FEE = 50e16;
+    uint256 internal constant POOL_CREATOR_SWAP_FEE = 40e16;
+    uint256 internal constant POOL_CREATOR_YIELD_FEE = 10e16;
 
     uint256 internal constant PROTOCOL_SWAP_FEE_AMOUNT = 100e18;
     uint256 internal constant PROTOCOL_YIELD_FEE_AMOUNT = 50e18;
@@ -196,34 +197,55 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         );
 
         // Setting the creator fee is a permissioned call.
-        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.setPoolCreatorFeePercentage(pool, POOL_CREATOR_FEE);
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, alice));
+        vm.prank(alice);
+        feeController.setPoolCreatorSwapFeePercentage(pool, POOL_CREATOR_SWAP_FEE);
+
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, alice));
+        vm.prank(alice);
+        feeController.setPoolCreatorYieldFeePercentage(pool, POOL_CREATOR_YIELD_FEE);
 
         // Governance cannot override it.
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setPoolCreatorFeePercentage.selector), bob);
-        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setPoolCreatorSwapFeePercentage.selector),
+            bob
+        );
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, bob));
         vm.prank(bob);
-        vault.setPoolCreatorFeePercentage(pool, 0);
+        feeController.setPoolCreatorSwapFeePercentage(pool, 0);
 
-        // Now set the pool creator fee (only creator).
-        vm.prank(lp);
-        vault.setPoolCreatorFeePercentage(pool, POOL_CREATOR_FEE);
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setPoolCreatorYieldFeePercentage.selector),
+            bob
+        );
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, bob));
+        vm.prank(bob);
+        feeController.setPoolCreatorYieldFeePercentage(pool, 0);
 
-        (address poolCreator, uint256 poolCreatorFee) = vault.getPoolCreatorInfo(pool);
+        // Now set the pool creator fees (only creator).
+        vm.startPrank(lp);
+        feeController.setPoolCreatorSwapFeePercentage(pool, POOL_CREATOR_SWAP_FEE);
+        feeController.setPoolCreatorYieldFeePercentage(pool, POOL_CREATOR_YIELD_FEE);
+        vm.stopPrank();
+
+        (address poolCreator, uint256 poolCreatorSwapFee, uint256 poolCreatorYieldFee) = ProtocolFeeControllerMock(
+            address(feeController)
+        ).getPoolCreatorInfo(pool);
         assertEq(poolCreator, lp, "Pool creator != lp");
-        assertEq(poolCreatorFee, POOL_CREATOR_FEE, "Wrong Pool Creator fee");
+        assertEq(poolCreatorSwapFee, POOL_CREATOR_SWAP_FEE, "Wrong Pool Creator swap fee");
+        assertEq(poolCreatorYieldFee, POOL_CREATOR_YIELD_FEE, "Wrong Pool Creator yield fee");
 
         // Pool percentages should be the same
         _verifyPoolProtocolFeePercentages(pool);
 
         // But aggregates should be different
-        uint256 expectedAggregateSwapFee = ProtocolFeeControllerMock(address(feeController)).getAggregateFeePercentage(
+        uint256 expectedAggregateSwapFee = feeController.computeAggregateFeePercentage(
             MAX_PROTOCOL_SWAP_FEE,
-            POOL_CREATOR_FEE
+            POOL_CREATOR_SWAP_FEE
         );
-        uint256 expectedAggregateYieldFee = ProtocolFeeControllerMock(address(feeController)).getAggregateFeePercentage(
+        uint256 expectedAggregateYieldFee = feeController.computeAggregateFeePercentage(
             MAX_PROTOCOL_YIELD_FEE,
-            POOL_CREATOR_FEE
+            POOL_CREATOR_YIELD_FEE
         );
 
         poolConfig = vault.getPoolConfig(pool);
@@ -502,14 +524,16 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         require(vault.getAggregateProtocolYieldFeeAmount(pool, usdc) == 0, "Non-zero initial USDC protocol yield fees");
 
         // Set a creator fee percentage (before there are any fees), so they will be disaggregated upon collection.
-        vm.prank(lp);
-        vault.setPoolCreatorFeePercentage(pool, POOL_CREATOR_FEE);
+        vm.startPrank(lp);
+        feeController.setPoolCreatorSwapFeePercentage(pool, POOL_CREATOR_SWAP_FEE);
+        feeController.setPoolCreatorYieldFeePercentage(pool, POOL_CREATOR_YIELD_FEE);
+        vm.stopPrank();
 
         // Check that the aggregate percentages are set in the pool config
         uint256 expectedSwapFeePercentage = MAX_PROTOCOL_SWAP_FEE +
-            MAX_PROTOCOL_SWAP_FEE.complement().mulDown(POOL_CREATOR_FEE);
+            MAX_PROTOCOL_SWAP_FEE.complement().mulDown(POOL_CREATOR_SWAP_FEE);
         uint256 expectedYieldFeePercentage = MAX_PROTOCOL_YIELD_FEE +
-            MAX_PROTOCOL_YIELD_FEE.complement().mulDown(POOL_CREATOR_FEE);
+            MAX_PROTOCOL_YIELD_FEE.complement().mulDown(POOL_CREATOR_YIELD_FEE);
 
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
         assertEq(poolConfig.getAggregateProtocolSwapFeePercentage(), expectedSwapFeePercentage);
@@ -585,8 +609,15 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         uint256[] memory protocolFeeAmounts = feeController.getAggregateProtocolFeeAmounts(pool);
         uint256[] memory poolCreatorFeeAmounts = feeController.getAggregatePoolCreatorFeeAmounts(pool);
 
-        (uint256 aggregateProtocolSwapFeePercentage, uint256 aggregateProtocolYieldFeePercentage) = feeController
-            .computeAggregatePercentages(pool, POOL_CREATOR_FEE);
+        uint256 aggregateProtocolSwapFeePercentage = feeController.computeAggregateFeePercentage(
+            MAX_PROTOCOL_SWAP_FEE,
+            POOL_CREATOR_SWAP_FEE
+        );
+        uint256 aggregateProtocolYieldFeePercentage = feeController.computeAggregateFeePercentage(
+            MAX_PROTOCOL_YIELD_FEE,
+            POOL_CREATOR_YIELD_FEE
+        );
+
         uint256 expectedProtocolFeeDAI = PROTOCOL_SWAP_FEE_AMOUNT.divUp(aggregateProtocolSwapFeePercentage).mulUp(
             MAX_PROTOCOL_SWAP_FEE
         );

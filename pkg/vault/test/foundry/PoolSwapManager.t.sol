@@ -79,10 +79,10 @@ contract PoolSwapManagerTest is BaseVaultTest {
     }
 
     function testHasSwapFeeManager() public {
-        address swapFeeManager = vault.getStaticSwapFeeManager(address(pool));
+        address swapFeeManager = vault.getPoolRoleAccounts(address(pool)).swapFeeManager;
         assertEq(swapFeeManager, admin, "swapFeeManager is not admin");
 
-        swapFeeManager = vault.getStaticSwapFeeManager(address(unmanagedPool));
+        swapFeeManager = vault.getPoolRoleAccounts(address(unmanagedPool)).swapFeeManager;
         assertEq(swapFeeManager, address(0), "swapFeeManager is not zero");
     }
 
@@ -97,10 +97,10 @@ contract PoolSwapManagerTest is BaseVaultTest {
     }
 
     function testCannotSetSwapFeePercentageIfNotManager() public {
-        require(vault.getStaticSwapFeeManager(address(pool)) == address(admin), "Wrong swap fee manager");
+        require(vault.getPoolRoleAccounts(address(pool)).swapFeeManager == address(admin), "Wrong swap fee manager");
 
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.setStaticSwapFeePercentage(address(pool), NEW_SWAP_FEE);
     }
 
@@ -108,7 +108,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
         require(vault.getStaticSwapFeePercentage(address(unmanagedPool)) == 0, "initial swap fee non-zero");
 
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.setStaticSwapFeePercentage(address(unmanagedPool), NEW_SWAP_FEE);
 
         bytes32 setSwapFeeRole = vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector);
@@ -121,7 +121,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
 
         // Granting speciic permission to bob on unmanagedPool doesn't grant it on otherPool
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.setStaticSwapFeePercentage(address(otherPool), NEW_SWAP_FEE);
     }
 
@@ -130,14 +130,14 @@ contract PoolSwapManagerTest is BaseVaultTest {
         require(vault.getStaticSwapFeePercentage(address(pool)) == 0, "initial swap fee non-zero");
 
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.setStaticSwapFeePercentage(address(pool), NEW_SWAP_FEE);
 
         bytes32 setSwapFeeRole = vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector);
         authorizer.grantRole(setSwapFeeRole, bob);
 
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.setStaticSwapFeePercentage(address(pool), NEW_SWAP_FEE);
     }
 }

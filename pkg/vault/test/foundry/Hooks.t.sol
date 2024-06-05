@@ -48,8 +48,8 @@ contract HooksTest is BaseVaultTest {
     }
 
     function createHook() internal override returns (address) {
-        HooksConfig memory hooksConfig;
-        return _createHook(hooksConfig);
+        IHooks.HookFlags memory hookFlags;
+        return _createHook(hookFlags);
     }
 
     // onRegister
@@ -153,7 +153,7 @@ contract HooksTest is BaseVaultTest {
         // should fail
         PoolHooksMock(poolHooksContract).setFailOnComputeDynamicSwapFeeHook(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.DynamicSwapFeeHookFailed.selector));
+        vm.expectRevert(IVaultErrors.DynamicSwapFeeHookFailed.selector);
         router.swapSingleTokenExactIn(
             address(pool),
             usdc,
@@ -202,7 +202,7 @@ contract HooksTest is BaseVaultTest {
         // should fail
         PoolHooksMock(poolHooksContract).setFailOnBeforeSwapHook(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
+        vm.expectRevert(IVaultErrors.BeforeSwapHookFailed.selector);
         router.swapSingleTokenExactIn(
             address(pool),
             usdc,
@@ -266,7 +266,7 @@ contract HooksTest is BaseVaultTest {
         // should fail
         PoolHooksMock(poolHooksContract).setFailOnAfterSwapHook(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.AfterSwapHookFailed.selector));
+        vm.expectRevert(IVaultErrors.AfterSwapHookFailed.selector);
         router.swapSingleTokenExactIn(
             address(pool),
             usdc,

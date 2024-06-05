@@ -279,11 +279,11 @@ interface IVaultExtension {
     function getStaticSwapFeePercentage(address pool) external view returns (uint256);
 
     /**
-     * @notice Fetches the static swap fee manager for a given pool (or zero).
-     * @param pool The address of the pool whose static swap fee manager is being queried
-     * @return The current static swap fee manager for the specified pool
+     * @notice Fetches the role accounts for a given pool (pause manager, swap manager, pool creator)
+     * @param pool The address of the pool whose roles are being queried
+     * @return roleAccounts A struct containing the role accounts for the pool (or 0 if unassigned)
      */
-    function getStaticSwapFeeManager(address pool) external view returns (address);
+    function getPoolRoleAccounts(address pool) external view returns (PoolRoleAccounts memory);
 
     /**
      * @notice Query the current dynamic swap fee of a pool, given a set of swap parameters.

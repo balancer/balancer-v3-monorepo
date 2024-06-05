@@ -118,12 +118,6 @@ interface IVaultEvents {
     event SwapFeePercentageChanged(address indexed pool, uint256 swapFeePercentage);
 
     /**
-     * @notice Emitted when the pool creator fee percentage of a pool is updated.
-     * @param poolCreatorFeePercentage The new pool creator fee percentage for the pool
-     */
-    event PoolCreatorFeePercentageChanged(address indexed pool, uint256 poolCreatorFeePercentage);
-
-    /**
      * @dev Recovery mode has been enabled or disabled for a pool.
      * @param pool The pool
      * @param recoveryMode True if recovery mode was enabled

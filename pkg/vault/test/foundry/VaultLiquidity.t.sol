@@ -67,7 +67,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         vault.manualSetPoolConfig(pool, poolConfig);
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector));
+        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         router.addLiquidityUnbalanced(
             address(pool),
             [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
@@ -108,7 +108,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         vault.manualSetPoolConfig(pool, poolConfig);
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector));
+        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         router.addLiquiditySingleTokenExactOut(address(pool), dai, defaultAmount, defaultAmount, false, bytes(""));
     }
 
@@ -137,7 +137,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         vault.manualSetPoolConfig(pool, poolConfig);
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.DoesNotSupportAddLiquidityCustom.selector));
+        vm.expectRevert(IVaultErrors.DoesNotSupportAddLiquidityCustom.selector);
         router.addLiquidityCustom(
             address(pool),
             [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
@@ -243,7 +243,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         poolConfig.disableUnbalancedLiquidity = true;
         vault.manualSetPoolConfig(pool, poolConfig);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector));
+        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         vm.startPrank(alice);
         router.removeLiquiditySingleTokenExactIn(
             address(pool),
@@ -281,7 +281,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         poolConfig.disableUnbalancedLiquidity = true;
         vault.manualSetPoolConfig(pool, poolConfig);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector));
+        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         vm.startPrank(alice);
         router.removeLiquiditySingleTokenExactOut(
             address(pool),
@@ -317,7 +317,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         poolConfig.enableRemoveLiquidityCustom = false;
         vault.manualSetPoolConfig(pool, poolConfig);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.DoesNotSupportRemoveLiquidityCustom.selector));
+        vm.expectRevert(IVaultErrors.DoesNotSupportRemoveLiquidityCustom.selector);
         vm.startPrank(alice);
         router.removeLiquidityCustom(
             address(pool),
