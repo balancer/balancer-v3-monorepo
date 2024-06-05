@@ -83,7 +83,6 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
-                    amountGivenRaw: defaultAmount,
                     balancesScaled18: expectedBalances,
                     indexIn: daiIdx,
                     indexOut: wstethIdx,
@@ -121,7 +120,6 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     amountGivenScaled18: defaultAmount,
-                    amountGivenRaw: rateAdjustedAmountGiven,
                     balancesScaled18: expectedBalances,
                     indexIn: daiIdx,
                     indexOut: wstethIdx,

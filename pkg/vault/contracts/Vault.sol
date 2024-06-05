@@ -202,6 +202,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // (EXACT_OUT) are still defined by params.amountGivenRaw.
         (state.onBeforeSwapSuccess, state.hookAdjustedAmountGivenRaw) = hooksConfig.onBeforeSwap(
             swapParams,
+            params.amountGivenRaw,
             params.pool
         );
 
@@ -278,9 +279,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         state.indexIn = indexIn;
         state.indexOut = indexOut;
-        // Initializes hookAdjustedAmountGivenRaw as amountGivenRaw since it'll be used to calculate PoolSwapParams
-        // before onBeforeSwap execution
-        state.hookAdjustedAmountGivenRaw = params.amountGivenRaw;
 
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
@@ -299,7 +297,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             IBasePool.PoolSwapParams({
                 kind: params.kind,
                 amountGivenScaled18: state.amountGivenScaled18,
-                amountGivenRaw: state.hookAdjustedAmountGivenRaw,
                 balancesScaled18: poolData.balancesLiveScaled18,
                 indexIn: state.indexIn,
                 indexOut: state.indexOut,

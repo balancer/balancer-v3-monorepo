@@ -88,7 +88,6 @@ contract DynamicFeePoolTest is BaseVaultTest {
         IBasePool.PoolSwapParams memory poolSwapParams = IBasePool.PoolSwapParams({
             kind: SwapKind.EXACT_IN,
             amountGivenScaled18: defaultAmount,
-            amountGivenRaw: defaultAmount,
             balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
             indexIn: daiIdx,
             indexOut: usdcIdx,
@@ -117,7 +116,6 @@ contract DynamicFeePoolTest is BaseVaultTest {
         IBasePool.PoolSwapParams memory poolSwapParams = IBasePool.PoolSwapParams({
             kind: SwapKind.EXACT_IN,
             amountGivenScaled18: defaultAmount,
-            amountGivenRaw: defaultAmount,
             balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
             indexIn: daiIdx,
             indexOut: usdcIdx,

@@ -50,7 +50,6 @@ interface IBasePool {
      * @param kind Type of swap (exact in or exact out)
      * @param pool Address of the liquidity pool
      * @param amountGivenScaled18 Amount given based on kind of the swap (e.g., tokenIn for exact in)
-     * @param amountGivenRaw Amount given based on kind of the swap (e.g., tokenIn for exact in)
      * @param balancesScaled18 Current pool balances
      * @param indexIn Index of tokenIn
      * @param indexOut Index of tokenOut
@@ -61,7 +60,6 @@ interface IBasePool {
     struct PoolSwapParams {
         SwapKind kind;
         uint256 amountGivenScaled18;
-        uint256 amountGivenRaw;
         uint256[] balancesScaled18;
         uint256 indexIn;
         uint256 indexOut;

@@ -133,7 +133,6 @@ contract HooksTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
-                    amountGivenRaw: defaultAmount,
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
                     indexIn: usdcIdx,
                     indexOut: daiIdx,
@@ -183,7 +182,6 @@ contract HooksTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
-                    amountGivenRaw: defaultAmount,
                     balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
                     indexIn: usdcIdx,
                     indexOut: daiIdx,

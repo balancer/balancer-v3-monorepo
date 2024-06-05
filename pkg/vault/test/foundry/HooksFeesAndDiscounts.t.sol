@@ -57,13 +57,13 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: _swapAmount,
-                    amountGivenRaw: _swapAmount,
                     balancesScaled18: originalBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
                     router: address(router),
                     userData: bytes("")
                 }),
+                _swapAmount,
                 address(pool)
             )
         );
@@ -75,7 +75,6 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: _swapAmount - hookFee,
-                    amountGivenRaw: _swapAmount - hookFee,
                     balancesScaled18: originalBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
@@ -123,13 +122,13 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: _swapAmount,
-                    amountGivenRaw: _swapAmount,
                     balancesScaled18: originalBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
                     router: address(router),
                     userData: bytes("")
                 }),
+                _swapAmount,
                 address(pool)
             )
         );
@@ -141,7 +140,6 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: _swapAmount + hookDiscount,
-                    amountGivenRaw: _swapAmount + hookDiscount,
                     balancesScaled18: originalBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
@@ -186,13 +184,13 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     amountGivenScaled18: _swapAmount,
-                    amountGivenRaw: _swapAmount,
                     balancesScaled18: originalBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
                     router: address(router),
                     userData: bytes("")
                 }),
+                _swapAmount,
                 address(pool)
             )
         );
@@ -204,7 +202,6 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     amountGivenScaled18: _swapAmount + hookFee,
-                    amountGivenRaw: _swapAmount + hookFee,
                     balancesScaled18: originalBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
@@ -261,13 +258,13 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     amountGivenScaled18: _swapAmount,
-                    amountGivenRaw: _swapAmount,
                     balancesScaled18: originalBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
                     router: address(router),
                     userData: bytes("")
                 }),
+                _swapAmount,
                 address(pool)
             )
         );
@@ -279,7 +276,6 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     amountGivenScaled18: _swapAmount - hookDiscount,
-                    amountGivenRaw: _swapAmount - hookDiscount,
                     balancesScaled18: originalBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,

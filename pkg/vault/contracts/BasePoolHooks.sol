@@ -97,6 +97,7 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
     /// @inheritdoc IHooks
     function onBeforeSwap(
         IBasePool.PoolSwapParams calldata,
+        uint256,
         address
     ) external virtual onlyVault returns (bool, uint256) {
         // return false to trigger an error if shouldCallBeforeSwap is true but this function is not overridden.

@@ -112,27 +112,28 @@ contract PoolHooksMock is BasePoolHooks {
 
     function onBeforeSwap(
         IBasePool.PoolSwapParams calldata params,
+        uint256 amountGivenRaw,
         address pool
     ) external override returns (bool success, uint256) {
         (TokenConfig[] memory tokenConfig, , ) = _vault.getPoolTokenInfo(pool);
 
-        uint256 hookAdjustedAmountGivenRaw = params.amountGivenRaw;
+        uint256 hookAdjustedAmountGivenRaw = amountGivenRaw;
         if (onBeforeSwapHookFee > 0) {
             if (params.kind == SwapKind.EXACT_IN) {
-                hookAdjustedAmountGivenRaw = params.amountGivenRaw - onBeforeSwapHookFee;
+                hookAdjustedAmountGivenRaw -= onBeforeSwapHookFee;
                 _vault.sendTo(tokenConfig[params.indexIn].token, address(this), onBeforeSwapHookFee);
             } else {
-                hookAdjustedAmountGivenRaw = params.amountGivenRaw + onBeforeSwapHookFee;
+                hookAdjustedAmountGivenRaw += onBeforeSwapHookFee;
                 _vault.sendTo(tokenConfig[params.indexOut].token, address(this), onBeforeSwapHookFee);
             }
         }
         if (onBeforeSwapHookDiscount > 0) {
             if (params.kind == SwapKind.EXACT_IN) {
-                hookAdjustedAmountGivenRaw = params.amountGivenRaw + onBeforeSwapHookDiscount;
+                hookAdjustedAmountGivenRaw += onBeforeSwapHookDiscount;
                 tokenConfig[params.indexIn].token.transfer(address(_vault), onBeforeSwapHookDiscount);
                 _vault.settle(tokenConfig[params.indexIn].token);
             } else {
-                hookAdjustedAmountGivenRaw = params.amountGivenRaw - onBeforeSwapHookDiscount;
+                hookAdjustedAmountGivenRaw -= onBeforeSwapHookDiscount;
                 tokenConfig[params.indexOut].token.transfer(address(_vault), onBeforeSwapHookDiscount);
                 _vault.settle(tokenConfig[params.indexOut].token);
             }

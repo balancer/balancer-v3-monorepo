@@ -73,7 +73,6 @@ contract HooksAlteringRatesTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: rateAdjustedAmount,
-                    amountGivenRaw: defaultAmount,
                     balancesScaled18: expectedBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,

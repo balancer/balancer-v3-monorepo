@@ -71,7 +71,6 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: _swapAmount,
-                    amountGivenRaw: _swapAmount,
                     balancesScaled18: originalBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
@@ -89,7 +88,6 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: _swapAmount,
-                    amountGivenRaw: _swapAmount,
                     balancesScaled18: newBalances,
                     indexIn: daiIdx,
                     indexOut: usdcIdx,
