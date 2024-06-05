@@ -74,7 +74,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vm.warp(_vaultBufferPeriodEndTimeTest - 1);
         vault.manualSetVaultPaused(true);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultPaused.selector));
+        vm.expectRevert(IVaultErrors.VaultPaused.selector);
         vault.ensureUnpausedAndGetVaultState(address(pool));
     }
 
@@ -116,7 +116,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vault.manualSetVaultPaused(true);
         vault.manualSetPoolPaused(address(pool), false);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultPaused.selector));
+        vm.expectRevert(IVaultErrors.VaultPaused.selector);
         vault.ensureUnpausedAndGetVaultState(address(pool));
     }
 
