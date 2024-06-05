@@ -170,13 +170,6 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
         return _computeAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage);
     }
 
-    function _computeAggregateFeePercentage(
-        uint256 protocolFeePercentage,
-        uint256 poolCreatorFeePercentage
-    ) internal pure returns (uint256) {
-        return protocolFeePercentage + protocolFeePercentage.complement().mulDown(poolCreatorFeePercentage);
-    }
-
     function _getAggregateFeePercentage(address pool, ProtocolFeeType feeType) internal view returns (uint256) {
         uint256 protocolFeePercentage;
         uint256 poolCreatorFeePercentage;
@@ -190,6 +183,13 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
         }
 
         return _computeAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage);
+    }
+
+    function _computeAggregateFeePercentage(
+        uint256 protocolFeePercentage,
+        uint256 poolCreatorFeePercentage
+    ) internal pure returns (uint256) {
+        return protocolFeePercentage + protocolFeePercentage.complement().mulDown(poolCreatorFeePercentage);
     }
 
     function _ensureCallerIsPoolCreator(address pool) internal view {
