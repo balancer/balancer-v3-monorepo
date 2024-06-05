@@ -272,14 +272,13 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
         uint256[] memory swapFeeAmounts,
         uint256[] memory yieldFeeAmounts
     ) external onlyVault {
-        _receiveProtocolFees(pool, ProtocolFeeType.SWAP, _poolCreatorSwapFeePercentages[pool], swapFeeAmounts);
-        _receiveProtocolFees(pool, ProtocolFeeType.YIELD, _poolCreatorYieldFeePercentages[pool], yieldFeeAmounts);
+        _receiveProtocolFees(pool, ProtocolFeeType.SWAP, swapFeeAmounts);
+        _receiveProtocolFees(pool, ProtocolFeeType.YIELD, yieldFeeAmounts);
     }
 
     function _receiveProtocolFees(
         address pool,
         ProtocolFeeType feeType,
-        uint256 poolCreatorFeePercentage,
         uint256[] memory feeAmounts
     ) private {
         // There are two cases when we don't need to split fees (in which case we can save gas and avoid rounding
@@ -288,6 +287,11 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
         uint256 protocolFeePercentage = feeType == ProtocolFeeType.SWAP
             ? _poolProtocolSwapFeePercentages[pool].feePercentage
             : _poolProtocolYieldFeePercentages[pool].feePercentage;
+
+        uint256 poolCreatorFeePercentage = feeType == ProtocolFeeType.SWAP
+            ? _poolCreatorSwapFeePercentages[pool]
+            : _poolCreatorYieldFeePercentages[pool];
+
         uint256 aggregateFeePercentage;
 
         bool needToSplitFees = poolCreatorFeePercentage > 0 && protocolFeePercentage > 0;
