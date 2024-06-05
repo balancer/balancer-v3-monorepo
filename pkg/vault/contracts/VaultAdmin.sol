@@ -298,6 +298,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             revert PoolCreatorFeePercentageTooHigh();
         }
 
+        _collectProtocolFees(pool);
+
         _poolCreatorFeePercentages[pool] = poolCreatorFeePercentage;
 
         // Need to update aggregate percentages.
@@ -310,14 +312,15 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         config.setAggregateProtocolYieldFeePercentage(aggregateProtocolYieldFeePercentage);
         _poolConfig[pool] = config;
 
-        // NOTE: If you move this line to upper, it will create a stack too deep error.
-        collectProtocolFees(pool);
-
         emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
     function collectProtocolFees(address pool) public nonReentrant onlyVault {
+        _collectProtocolFees(pool);
+    }
+
+    function _collectProtocolFees(address pool) private {
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
         address feeController = address(_protocolFeeController);
         uint256 numTokens = poolTokens.length;

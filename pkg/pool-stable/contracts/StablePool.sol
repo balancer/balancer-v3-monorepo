@@ -89,7 +89,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
         }
 
         uint256 initialAmp = params.amplificationParameter * StableMath.AMP_PRECISION;
-        _setAmplificationStop(initialAmp);
+        _stopAmplification(initialAmp);
     }
 
     /// @inheritdoc IBasePool
@@ -212,7 +212,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
             revert AmpUpdateNotStarted();
         }
 
-        _setAmplificationStop(currentValue);
+        _stopAmplification(currentValue);
     }
 
     /**
@@ -266,7 +266,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
         }
     }
 
-    function _setAmplificationStop(uint256 value) internal {
+    function _stopAmplification(uint256 value) internal {
         uint64 currentValueUint64 = currentValue.toUint64();
         _amplificationState.startValue = currentValueUint64;
         _amplificationState.endValue = currentValueUint64;
