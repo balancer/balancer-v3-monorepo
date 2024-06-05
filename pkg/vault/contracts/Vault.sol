@@ -197,7 +197,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
 
         // if the hook contract does not exist or does not implement onBeforeSwap, HooksConfigLib returns the original
-        // amountGivenRaw. Otherwise, the new amount given is amountGivenRaw + delta.
+        // amountGivenRaw. Otherwise, the new amount given is amountGivenRaw +/- delta.
         // hookAdjustedAmountGivenRaw affects only the onSwap calculations of the pool. amountIn (EXACT_IN) or amountOut
         // (EXACT_OUT) are still defined by params.amountGivenRaw.
         (state.onBeforeSwapSuccess, state.hookAdjustedAmountGivenRaw) = hooksConfig.onBeforeSwap(
