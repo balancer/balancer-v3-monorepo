@@ -122,11 +122,12 @@ interface IVaultExtension {
     function isPoolInitialized(address pool) external view returns (bool);
 
     /**
-     * @notice Gets the tokens registered to a pool.
+     * @notice Gets the tokens registered to a pool, together with their raw balances.
      * @param pool Address of the pool
      * @return tokens List of tokens in the pool
+     * @return balancesRaw Raw balances corresponding to the tokens in the pool
      */
-    function getPoolTokens(address pool) external view returns (IERC20[] memory);
+    function getPoolTokensAndBalancesRaw(address pool) external view returns (IERC20[] memory, uint256[] memory;
 
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.

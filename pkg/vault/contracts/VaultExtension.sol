@@ -446,21 +446,57 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function getPoolTokens(address pool) external view withRegisteredPool(pool) onlyVault returns (IERC20[] memory) {
-        return _getPoolTokens(pool);
+    function getPoolTokensAndBalancesRaw(address pool) external view withRegisteredPool(pool) onlyVault returns (IERC20[] memory tokens, uint256[] memory balancesRaw) {
+        // Retrieve the mapping of tokens and their balances for the specified pool.
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        uint256 numTokens = poolTokenBalances.length();
+        // Initialize arrays to store tokens based on the number of tokens in the pool.
+        tokens = new IERC20[](numTokens);
+        balancesRaw = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            bytes32 packedBalance;
+            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
+            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
+            // storage reads.
+            (tokens[i], packedBalance) = poolTokenBalances.unchecked_at(i);
+            balancesRaw[i] = packedBalance.getBalanceRaw();
+        }
+    }
+
+    function getPoolData(address pool) external view withInitializedPool(pool) onlyVault returns (PoolData memory) {
+        return _loadPoolData(pool, Rounding.ROUND_DOWN);
     }
 
     /// @inheritdoc IVaultExtension
-    function getPoolTokenInfo(
+    function getPoolTokenConfig(
         address pool
     )
         external
         view
         withRegisteredPool(pool)
-        returns (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors)
+        returns (TokenConfig[] memory tokenConfig)
     {
-        PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
-        return (poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors);
+        // Retrieve the mapping of tokens and their balances for the specified pool.
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        uint256 numTokens = poolTokenBalances.length();
+        tokenConfig = new TokenConfig[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
+            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
+            // storage reads.
+            (IERC20 token, ) = poolTokenBalances.unchecked_at(i);
+            tokenConfig[i] = _poolTokenConfig[pool][token];
+        }
+
+        return tokenConfig;
+    }
+
+    function getCurrentBalancesLiveScaled18(
+        address pool
+    ) external view withInitializedPool(pool) onlyVault returns (uint256[] memory balancesLiveScaled18) {
+        return _loadPoolData(pool, Rounding.ROUND_DOWN).balancesLiveScaled18;
     }
 
     /// @inheritdoc IVaultExtension

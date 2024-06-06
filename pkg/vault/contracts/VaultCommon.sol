@@ -276,29 +276,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
     }
 
-    /**
-     * @notice Fetches the tokens and their corresponding balances for a given pool.
-     * @dev Utilizes an enumerable map to obtain pool token balances.
-     * The function is structured to minimize storage reads by leveraging the `unchecked_at` method.
-     *
-     * @param pool The address of the pool for which tokens and balances are to be fetched.
-     * @return tokens An array of token addresses.
-     */
-    function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens) {
-        // Retrieve the mapping of tokens and their balances for the specified pool.
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-
-        // Initialize arrays to store tokens based on the number of tokens in the pool.
-        tokens = new IERC20[](poolTokenBalances.length());
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
-            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
-            // storage reads.
-            (tokens[i], ) = poolTokenBalances.unchecked_at(i);
-        }
-    }
-
     function _loadPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
         return PoolDataLib.load(_poolTokenBalances[pool], _poolConfig[pool], _poolTokenConfig[pool], roundingDirection);
     }
