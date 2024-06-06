@@ -401,11 +401,7 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
 
         assertEq(vars.daiBeforeBob - vars.daiAfterBob, _swapAmount, "Bob DAI balance is wrong");
         assertEq(vars.daiBeforeHook, vars.daiAfterHook, "Hook DAI balance is wrong");
-        assertEq(
-            vars.usdcAfterBob - vars.usdcBeforeBob,
-            _swapAmount + hookDiscount,
-            "Bob USDC balance is wrong"
-        );
+        assertEq(vars.usdcAfterBob - vars.usdcBeforeBob, _swapAmount + hookDiscount, "Bob USDC balance is wrong");
         assertEq(vars.usdcBeforeHook - vars.usdcAfterHook, hookDiscount, "Hook USDC balance is wrong");
 
         _checkPoolAndVaultBalances(vars, _swapAmount);
@@ -522,11 +518,7 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
 
         assertEq(vars.usdcAfterBob - vars.usdcBeforeBob, _swapAmount, "Bob USDC balance is wrong");
         assertEq(vars.usdcBeforeHook, vars.usdcAfterHook, "Hook USDC balance is wrong");
-        assertEq(
-            vars.daiBeforeBob - vars.daiAfterBob,
-            _swapAmount - hookDiscount,
-            "Bob DAI balance is wrong"
-        );
+        assertEq(vars.daiBeforeBob - vars.daiAfterBob, _swapAmount - hookDiscount, "Bob DAI balance is wrong");
         assertEq(vars.daiBeforeHook - vars.daiAfterHook, hookDiscount, "Hook DAI balance is wrong");
 
         _checkPoolAndVaultBalances(vars, _swapAmount);
