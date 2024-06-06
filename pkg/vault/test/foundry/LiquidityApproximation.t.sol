@@ -65,8 +65,8 @@ contract LiquidityApproximationTest is BaseVaultTest {
     uint256 internal roundingDelta = 1e12;
     // The percentage delta of the swap fee, which is sufficiently large to compensate for
     // inaccuracies in liquidity approximations within the specified limits for these tests
-    uint256 internal liquidityPercentageDelta = 25e16; // 25%
-    uint256 internal swapFeePercentageDelta = 20e16; // 20%
+    uint256 internal liquidityPercentageDelta = 0.25e18; // 25%
+    uint256 internal swapFeePercentageDelta = 0.2e18; // 20%
     uint256 internal maxSwapFeePercentage = 0.1e18; // 10%
     uint256 internal maxAmount = 3e8 * 1e18 - 1;
 
@@ -191,7 +191,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         uint256 daiAmountIn = router.addLiquiditySingleTokenExactOut(
             address(liquidityPool),
             dai,
-            1e50,
+            MAX_UINT128,
             exactBptAmountOut,
             false,
             bytes("")
@@ -231,7 +231,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         uint256 daiAmountIn = router.addLiquiditySingleTokenExactOut(
             address(liquidityPool),
             dai,
-            1e50,
+            MAX_UINT128,
             exactBptAmountOut,
             false,
             bytes("")
@@ -257,6 +257,210 @@ contract LiquidityApproximationTest is BaseVaultTest {
             false,
             bytes("")
         );
+
+        assertLiquidityOperationNoSwapFee();
+    }
+
+    function testAddLiquidityProportionalAndRemoveExactIn__Fuzz(
+        uint256 exactBptAmountOut,
+        uint256 swapFeePercentage
+    ) public {
+        exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
+
+        // swap fee from 0% - 10%
+        swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
+
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
+
+        vm.startPrank(alice);
+        router.addLiquidityProportional(
+            address(liquidityPool),
+            [uint256(MAX_UINT128), MAX_UINT128].toMemoryArray(),
+            exactBptAmountOut,
+            false,
+            bytes("")
+        );
+
+        router.removeLiquiditySingleTokenExactIn(
+            address(liquidityPool),
+            IERC20(liquidityPool).balanceOf(alice),
+            usdc,
+            1,
+            false,
+            bytes("")
+        );
+
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        // simulate the same outcome with a pure swap
+        uint256 amountOut = router.swapSingleTokenExactIn(
+            address(swapPool),
+            dai,
+            usdc,
+            defaultBalance - dai.balanceOf(alice),
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        assertLiquidityOperation(amountOut, swapFeePercentage, false);
+    }
+
+    function testAddLiquidityProportionalAndRemoveExactInNoSwapFee__Fuzz(uint256 exactBptAmountOut) public {
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
+
+        exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
+
+        vm.startPrank(alice);
+        router.addLiquidityProportional(
+            address(liquidityPool),
+            [uint256(MAX_UINT128), MAX_UINT128].toMemoryArray(),
+            exactBptAmountOut,
+            false,
+            bytes("")
+        );
+
+        router.removeLiquiditySingleTokenExactIn(
+            address(liquidityPool),
+            IERC20(liquidityPool).balanceOf(alice),
+            usdc,
+            1,
+            false,
+            bytes("")
+        );
+
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        // simulate the same outcome with a pure swap
+        router.swapSingleTokenExactIn(
+            address(swapPool),
+            dai,
+            usdc,
+            defaultBalance - dai.balanceOf(alice),
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        assertLiquidityOperationNoSwapFee();
+    }
+
+    function testAddLiquidityProportionalAndRemoveExactOut__Fuzz(
+        uint256 exactBptAmountOut,
+        uint256 swapFeePercentage
+    ) public {
+        exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
+
+        // swap fee from 0% - 10%
+        swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
+
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
+
+        vm.startPrank(alice);
+        uint256[] memory amountsIn = router.addLiquidityProportional(
+            address(liquidityPool),
+            [uint256(MAX_UINT128), MAX_UINT128].toMemoryArray(),
+            exactBptAmountOut,
+            false,
+            bytes("")
+        );
+
+        (, uint256 usdcIndex) = getSortedIndexes(address(dai), address(usdc));
+        router.removeLiquiditySingleTokenExactOut(
+            address(liquidityPool),
+            IERC20(liquidityPool).balanceOf(alice),
+            usdc,
+            amountsIn[usdcIndex],
+            false,
+            bytes("")
+        );
+
+        // remove remaining liquidity
+        router.removeLiquidityProportional(
+            address(liquidityPool),
+            IERC20(liquidityPool).balanceOf(alice),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        // simulate the same outcome with a pure swap
+        uint256 amountOut = router.swapSingleTokenExactIn(
+            address(swapPool),
+            dai,
+            usdc,
+            defaultBalance - dai.balanceOf(alice),
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        assertLiquidityOperation(amountOut, swapFeePercentage, false);
+    }
+
+    function testAddLiquidityProportionalAndRemoveExactOutNoSwapFee__Fuzz(uint256 exactBptAmountOut) public {
+        vault.manuallySetSwapFee(liquidityPool, 0);
+        vault.manuallySetSwapFee(swapPool, 0);
+
+        exactBptAmountOut = bound(exactBptAmountOut, 1e18, maxAmount / 2 - 1);
+
+        vm.startPrank(alice);
+        uint256[] memory amountsIn = router.addLiquidityProportional(
+            address(liquidityPool),
+            [uint256(MAX_UINT128), MAX_UINT128].toMemoryArray(),
+            exactBptAmountOut,
+            false,
+            bytes("")
+        );
+
+        (, uint256 usdcIndex) = getSortedIndexes(address(dai), address(usdc));
+        router.removeLiquiditySingleTokenExactOut(
+            address(liquidityPool),
+            IERC20(liquidityPool).balanceOf(alice),
+            usdc,
+            amountsIn[usdcIndex],
+            false,
+            bytes("")
+        );
+
+        // remove remaining liquidity
+        router.removeLiquidityProportional(
+            address(liquidityPool),
+            IERC20(liquidityPool).balanceOf(alice),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        // simulate the same outcome with a pure swap
+        router.swapSingleTokenExactIn(
+            address(swapPool),
+            dai,
+            usdc,
+            defaultBalance - dai.balanceOf(alice),
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
 
         assertLiquidityOperationNoSwapFee();
     }
@@ -500,7 +704,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertEq(PoolMock(liquidityPool).balanceOf(bob), 0, "Bob should have 0 BPT");
     }
 
-    function assertLiquidityOperation(uint256 amountOut, uint256 swapFeePercentage, bool addLiquidity) internal {
+    function assertLiquidityOperation(uint256 amountOut, uint256 swapFeePercentage, bool addLiquidity) internal view {
         // See @notice
         assertEq(dai.balanceOf(alice), dai.balanceOf(bob), "Bob and Alice DAI balances are not equal");
 
