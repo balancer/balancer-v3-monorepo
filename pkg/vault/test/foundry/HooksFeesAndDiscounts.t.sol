@@ -579,15 +579,7 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
             poolBalanceChange,
             "Pool USDC balance is wrong"
         );
-        assertEq(
-            vars.daiAfterVault - vars.daiBeforeVault,
-            poolBalanceChange,
-            "Vault DAI balance is wrong"
-        );
-        assertEq(
-            vars.usdcBeforeVault - vars.usdcAfterVault,
-            poolBalanceChange,
-            "Vault USDC balance is wrong"
-        );
+        assertEq(vars.daiAfterVault - vars.daiBeforeVault, poolBalanceChange, "Vault DAI balance is wrong");
+        assertEq(vars.usdcBeforeVault - vars.usdcAfterVault, poolBalanceChange, "Vault USDC balance is wrong");
     }
 }
