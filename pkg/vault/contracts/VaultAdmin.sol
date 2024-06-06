@@ -292,36 +292,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function setPoolCreatorFeePercentage(
-        address pool,
-        uint256 poolCreatorFeePercentage
-    ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
-        _ensureUnpausedAndGetVaultState(pool);
-
-        if (poolCreatorFeePercentage > FixedPoint.ONE) {
-            revert PoolCreatorFeePercentageTooHigh();
-        }
-
-        collectProtocolFees(pool);
-
-        _poolCreatorFeePercentages[pool] = poolCreatorFeePercentage;
-
-        // Need to update aggregate percentages.
-        PoolConfigBits memory config = _poolConfig[pool];
-        (
-            uint256 aggregateProtocolSwapFeePercentage,
-            uint256 aggregateProtocolYieldFeePercentage
-        ) = _protocolFeeController.computeAggregatePercentages(pool, poolCreatorFeePercentage);
-
-        config.setAggregateProtocolSwapFeePercentage(aggregateProtocolSwapFeePercentage);
-        config.setAggregateProtocolYieldFeePercentage(aggregateProtocolYieldFeePercentage);
-
-        _poolConfig[pool] = config;
-
-        emit PoolCreatorFeePercentageChanged(pool, poolCreatorFeePercentage);
-    }
-
-    /// @inheritdoc IVaultAdmin
     function collectProtocolFees(address pool) public nonReentrant onlyVault {
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
         address feeController = address(_protocolFeeController);
@@ -364,11 +334,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         PoolConfigBits memory config = _poolConfig[pool];
         config.setAggregateProtocolYieldFeePercentage(newAggregateYieldFeePercentage);
         _poolConfig[pool] = config;
-    }
-
-    /// @inheritdoc IVaultAdmin
-    function getPoolCreatorInfo(address pool) external view returns (address, uint256) {
-        return (_poolRoleAccounts[pool].poolCreator, _poolCreatorFeePercentages[pool]);
     }
 
     /// @inheritdoc IVaultAdmin

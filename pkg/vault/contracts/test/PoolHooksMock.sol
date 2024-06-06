@@ -54,7 +54,11 @@ contract PoolHooksMock is BasePoolHooks {
 
     mapping(address => bool) private _allowedFactories;
 
-    constructor(IVault vault) BasePoolHooks(vault) {}
+    HookFlags private _hookFlags;
+
+    constructor(IVault vault) BasePoolHooks(vault) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function onRegister(
         address factory,
@@ -65,9 +69,12 @@ contract PoolHooksMock is BasePoolHooks {
         return _allowedFactories[factory];
     }
 
-    function setHooksConfig(HooksConfig memory hooksConfig) external {
-        _hooksConfig = hooksConfig;
-        _hooksConfig.hooksContract = address(this);
+    function getHookFlags() external view override returns (HookFlags memory) {
+        return _hookFlags;
+    }
+
+    function setHookFlags(HookFlags memory hookFlags) external {
+        _hookFlags = hookFlags;
     }
 
     function onBeforeInitialize(uint256[] memory, bytes memory) external override returns (bool) {

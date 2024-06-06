@@ -428,7 +428,14 @@ contract VaultMock is IVaultMainMock, Vault {
             PoolData memory
         )
     {
-        (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData);
+        IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
+
+        (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut) = _swap(
+            params,
+            state,
+            poolData,
+            swapParams
+        );
 
         return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut, params, state, poolData);
     }

@@ -65,7 +65,7 @@ contract RecoveryModeTest is BaseVaultTest {
         // When Vault is not paused, `enableRecoveryMode` is permissioned.
         require(vault.isVaultPaused() == false, "Vault should not be paused initially");
 
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vm.prank(lp);
         vault.enableRecoveryMode(pool);
 
@@ -89,7 +89,7 @@ contract RecoveryModeTest is BaseVaultTest {
         // Also ensure Vault is not paused.
         require(vault.isVaultPaused() == false, "Vault should not be paused initially");
 
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vm.prank(lp);
         vault.enableRecoveryMode(pool);
 
@@ -124,7 +124,7 @@ contract RecoveryModeTest is BaseVaultTest {
 
         // Recovery Mode is permissioned even though the Vault's pause bit is set, because it's no longer pausable.
         assertFalse(vault.isVaultPaused(), "Vault should unpause itself after buffer expiration");
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vm.prank(lp);
         vault.enableRecoveryMode(pool);
 
@@ -157,7 +157,7 @@ contract RecoveryModeTest is BaseVaultTest {
 
         // Recovery Mode is permissioned even though the Pool's pause bit is set, because it's no longer pausable.
         assertFalse(vault.isPoolPaused(pool), "Pool should unpause itself after buffer expiration");
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vm.prank(lp);
         vault.enableRecoveryMode(pool);
 
