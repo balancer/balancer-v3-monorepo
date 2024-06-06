@@ -12,7 +12,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { TokenConfig, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMinimumSwapFee.sol";
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -264,8 +264,8 @@ contract WeightedPoolTest is BaseVaultTest {
     function testSupportsIERC165() public {
         assertTrue(weightedPool.supportsInterface(type(IERC165).interfaceId), "Pool does not support IERC165");
         assertTrue(
-            weightedPool.supportsInterface(type(IMinimumSwapFee).interfaceId),
-            "Pool does not support IMinimumSwapFee"
+            weightedPool.supportsInterface(type(ISwapFeePercentageBounds).interfaceId),
+            "Pool does not support ISwapFeePercentageBounds"
         );
     }
 
