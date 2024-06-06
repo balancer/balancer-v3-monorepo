@@ -10,7 +10,10 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
 
@@ -21,7 +24,16 @@ import { VaultGuard } from "./VaultGuard.sol";
  * @dev Implementation of the ERC-20 Permit extension allowing approvals to be made via signatures, as defined in
  * https://eips.ethereum.org/EIPS/eip-2612[ERC-2612].
  */
-contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonces, ERC165, VaultGuard {
+contract BalancerPoolToken is
+    IERC20,
+    IERC20Metadata,
+    IERC20Permit,
+    ISwapFeePercentageBounds,
+    EIP712,
+    Nonces,
+    ERC165,
+    VaultGuard
+{
     bytes32 public constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
@@ -160,5 +172,22 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonc
      */
     function getRate() public view virtual returns (uint256) {
         return getVault().getBptRate(address(this));
+    }
+
+    /// Min/Max swap fee limits. By default, allow the full 0-100% range.
+
+    /// @inheritdoc ERC165
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(ISwapFeePercentageBounds).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMinimumSwapFeePercentage() public pure virtual returns (uint256) {
+        return 0;
+    }
+
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMaximumSwapFeePercentage() public pure virtual returns (uint256) {
+        return FixedPoint.ONE;
     }
 }
