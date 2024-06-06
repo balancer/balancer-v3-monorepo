@@ -5,9 +5,8 @@ pragma solidity ^0.8.24;
 /**
  * @notice Return the minimum/maximum swap fee percentages for a pool.
  * @dev The Vault does not enforce bounds on swap fee percentages; it is up to the pools whether they want to
- * enforce minimum or maximum swap fees, by implementing the respective interfaces. The Vault will use this
- * interface if it is supported, as determined by the ERC-165 standard for checking whether interfaces are
- * supported.
+ * enforce minimum or maximum swap fee percentages, by implementing this interface. The Vault will use the ERC-165
+ * standard to determine whether a given pool supports limits. If so, pools will need to implement both functions.
  */
 interface ISwapFeePercentageBounds {
     /// @return minimumSwapFeePercentage The minimum swap fee percentage for a pool
