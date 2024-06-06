@@ -303,7 +303,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     function _loadPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
-        return PoolDataLib.load(_poolTokenBalances[pool], _poolConfig[pool], _poolTokenConfig[pool], roundingDirection);
+        return PoolDataLib.load(_poolTokenBalances[pool], _poolConfig[pool], _poolTokenInfo[pool], roundingDirection);
     }
 
     /**
@@ -325,7 +325,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
         for (uint256 i = 0; i < numTokens; ++i) {
             if (aggregateYieldFeeAmountsRaw[i] > 0) {
-                IERC20 token = poolData.tokenConfig[i].token;
+                IERC20 token = poolData.tokens[i];
 
                 poolData.updateRawAndLiveBalance(
                     i,
@@ -365,7 +365,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             poolData.poolConfig.isPoolInRecoveryMode == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            TokenConfig memory tokenConfig = poolData.tokenConfig[i];
+            TokenInfo memory tokenConfig = poolData.tokenInfo[i];
 
             // poolData already has live balances computed from raw balances according to the token rates and the
             // given rounding direction. Charging a yield fee changes the raw

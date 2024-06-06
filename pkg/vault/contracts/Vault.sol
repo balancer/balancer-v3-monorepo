@@ -477,7 +477,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, and
         // `_aggregateProtocolFeeAmounts` in storage.
         PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_UP);
-        InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.maxAmountsIn.length);
+        InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.maxAmountsIn.length);
 
         // Amounts are entering pool math, so round down.
         // Introducing amountsInScaled18 here and passing it through to _addLiquidity is not ideal,
@@ -549,7 +549,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         )
     {
         LiquidityLocals memory locals;
-        locals.numTokens = poolData.tokenConfig.length;
+        locals.numTokens = poolData.tokens.length;
         uint256[] memory swapFeeAmountsScaled18;
 
         if (params.kind == AddLiquidityKind.PROPORTIONAL) {
@@ -623,7 +623,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             {
                 // stack-too-deep (forge)
-                IERC20 token = poolData.tokenConfig[i].token;
+                IERC20 token = poolData.tokens[i];
 
                 // 2) Check limits for raw amounts
                 if (amountInRaw > params.maxAmountsIn[i]) {
@@ -689,7 +689,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances` and
         // `_aggregateProtocolFeeAmounts in storage.
         PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_DOWN);
-        InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.minAmountsOut.length);
+        InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.minAmountsOut.length);
 
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.
         // Do not mutate minAmountsOut, so that we can directly compare the raw limits later, without potentially
@@ -753,7 +753,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         )
     {
         LiquidityLocals memory locals;
-        locals.numTokens = poolData.tokenConfig.length;
+        locals.numTokens = poolData.tokens.length;
         uint256[] memory swapFeeAmountsScaled18;
 
         if (params.kind == RemoveLiquidityKind.PROPORTIONAL) {
@@ -824,7 +824,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             {
                 // stack-too-deep
-                IERC20 token = poolData.tokenConfig[i].token;
+                IERC20 token = poolData.tokens[i];
                 // 2) Check limits for raw amounts
                 if (amountOutRaw < params.minAmountsOut[i]) {
                     revert AmountOutBelowMin(token, amountOutRaw, params.minAmountsOut[i]);
