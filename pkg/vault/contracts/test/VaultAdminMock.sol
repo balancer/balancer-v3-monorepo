@@ -10,8 +10,8 @@ import "../VaultAdmin.sol";
 contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
     constructor(
         IVault mainVault,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
+        uint32 pauseWindowDuration,
+        uint32 bufferPeriodDuration
     ) VaultAdmin(mainVault, pauseWindowDuration, bufferPeriodDuration) {}
 
     function manualPauseVault() external {
