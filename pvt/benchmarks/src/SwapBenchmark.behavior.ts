@@ -37,8 +37,7 @@ export class Benchmark {
     this._testDirname = dirname;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  async deployPool(benchmark: Benchmark): Promise<BaseContract | null> {
+  async deployPool(): Promise<BaseContract | null> {
     return null;
   }
 
@@ -206,5 +205,5 @@ export class Benchmark {
         }
       );
     });
-  }
+  };
 }

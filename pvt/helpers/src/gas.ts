@@ -2,7 +2,6 @@ import { ContractTransactionReceipt } from 'ethers';
 import fs from 'fs/promises';
 import { printGas } from './numbers';
 import path from 'path';
-import parentModule from 'parent-module';
 
 const SNAPS_DIR = '.hardhat-snapshots';
 
