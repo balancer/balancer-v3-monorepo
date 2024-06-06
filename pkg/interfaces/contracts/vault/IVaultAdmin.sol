@@ -18,19 +18,19 @@ interface IVaultAdmin {
      * @notice Returns Vault's pause window end time.
      * @dev This value is immutable; the getter can be called by anyone.
      */
-    function getPauseWindowEndTime() external view returns (uint32);
+    function getPauseWindowEndTime() external view returns (uint256);
 
     /**
      * @notice Returns Vault's buffer period duration.
      * @dev This value is immutable; the getter can be called by anyone.
      */
-    function getBufferPeriodDuration() external view returns (uint32);
+    function getBufferPeriodDuration() external view returns (uint256);
 
     /**
      * @notice Returns Vault's buffer period end time.
      * @dev This value is immutable; the getter can be called by anyone.
      */
-    function getBufferPeriodEndTime() external view returns (uint32);
+    function getBufferPeriodEndTime() external view returns (uint256);
 
     /**
      * @notice Get the minimum number of tokens in a pool.
@@ -76,7 +76,7 @@ interface IVaultAdmin {
      * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
      * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
      */
-    function getVaultPausedState() external view returns (bool, uint32, uint32);
+    function getVaultPausedState() external view returns (bool, uint256, uint256);
 
     /**
      * @notice Pause the Vault: an emergency action which disables all operational state-changing functions.

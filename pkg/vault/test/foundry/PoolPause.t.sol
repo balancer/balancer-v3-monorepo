@@ -16,7 +16,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { FactoryWidePauseWindow } from "../../contracts/factories/FactoryWidePauseWindow.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
-import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
+import { PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 

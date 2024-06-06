@@ -14,19 +14,16 @@ struct LiquidityManagement {
 
 /// @dev Represents a pool's configuration (hooks configuration are separated in another struct).
 struct PoolConfig {
-    uint24 staticSwapFeePercentageUnscaled;
-    uint24 aggregateProtocolSwapFeePercentageUnscaled;
-    uint24 aggregateProtocolYieldFeePercentageUnscaled;
-    uint24 tokenDecimalDiffs;
-    uint32 pauseWindowEndTime;
+    LiquidityManagement liquidityManagement;
+    uint256 staticSwapFeePercentage;
+    uint256 aggregateProtocolSwapFeePercentage;
+    uint256 aggregateProtocolYieldFeePercentage;
+    uint256 tokenDecimalDiffs;
+    uint256 pauseWindowEndTime;
     bool isPoolRegistered;
     bool isPoolInitialized;
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
-    // NOTE: Duplicated parameters from LiquidityManagement because parameters are packed in one slot.
-    bool disableUnbalancedLiquidity;
-    bool enableAddLiquidityCustom;
-    bool enableRemoveLiquidityCustom;
 }
 
 /// @dev Represents a hook contract configuration for a pool.

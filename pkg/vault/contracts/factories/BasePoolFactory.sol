@@ -39,7 +39,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
 
     constructor(
         IVault vault,
-        uint32 pauseWindowDuration,
+        uint256 pauseWindowDuration,
         bytes memory creationCode
     ) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {
         _creationCode = creationCode;

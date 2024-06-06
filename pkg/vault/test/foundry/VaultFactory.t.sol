@@ -38,7 +38,7 @@ contract VaultFactoryTest is Test {
         IVault vault = IVault(vaultAddress);
         assertEq(address(vault.getAuthorizer()), address(authorizer));
 
-        (bool isPaused, uint32 pauseWindowEndTime, uint32 bufferWindowEndTime) = vault.getVaultPausedState();
+        (bool isPaused, uint256 pauseWindowEndTime, uint256 bufferWindowEndTime) = vault.getVaultPausedState();
         assertEq(isPaused, false);
         assertEq(pauseWindowEndTime, block.timestamp + 90 days, "Wrong pause window end time");
         assertEq(bufferWindowEndTime, block.timestamp + 90 days + 30 days, "Wrong buffer window end time");

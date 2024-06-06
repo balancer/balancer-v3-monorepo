@@ -15,17 +15,13 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
+import { AmplificationDataLib, AmplificationDataBits, AmplificationData } from "./lib/AmplificationDataLib.sol";
+
 /// @notice Basic Stable Pool.
 contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Version {
+    using AmplificationDataLib for AmplificationData;
     using FixedPoint for uint256;
     using SafeCast for *;
-
-    struct AmplificationState {
-        uint64 startValue;
-        uint64 endValue;
-        uint32 startTime;
-        uint32 endTime;
-    }
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
     // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
@@ -40,7 +36,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
     uint256 private constant _MAX_AMP_UPDATE_DAILY_RATE = 2;
 
     /// @dev Store amplification state.
-    AmplificationState private _amplificationState;
+    AmplificationDataBits private _amplificationState;
 
     /// @dev An amplification update has started.
     event AmpUpdateStarted(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime);
@@ -89,7 +85,8 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
         }
 
         uint256 initialAmp = params.amplificationParameter * StableMath.AMP_PRECISION;
-        _stopAmplification(initialAmp);
+
+        _setAmplificationData(initialAmp);
     }
 
     /// @inheritdoc IBasePool
@@ -189,17 +186,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
             revert AmpUpdateRateTooFast();
         }
 
-        uint64 currentValueUint64 = currentValue.toUint64();
-        uint64 endValueUint64 = endValue.toUint64();
-        uint32 startTimeUint32 = block.timestamp.toUint32();
-        uint32 endTimeUint32 = endTime.toUint32();
-
-        _amplificationState.startValue = currentValueUint64;
-        _amplificationState.endValue = endValueUint64;
-        _amplificationState.startTime = startTimeUint32;
-        _amplificationState.endTime = endTimeUint32;
-
-        emit AmpUpdateStarted(currentValueUint64, endValueUint64, startTimeUint32, endTimeUint32);
+        _setAmplificationData(currentValue, endValue, block.timestamp, endTime);
     }
 
     /**
@@ -212,7 +199,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
             revert AmpUpdateNotStarted();
         }
 
-        _stopAmplification(currentValue);
+        _setAmplificationData(currentValue);
     }
 
     /**
@@ -227,14 +214,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
     }
 
     function _getAmplificationParameter() internal view returns (uint256 value, bool isUpdating) {
-        AmplificationState memory state = _amplificationState;
-
-        (uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime) = (
-            state.startValue,
-            state.endValue,
-            state.startTime,
-            state.endTime
-        );
+        (uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime) = _getAmplificationData();
 
         // Note that block.timestamp >= startTime, since startTime is set to the current time when an update starts
 
@@ -266,15 +246,37 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
         }
     }
 
-    function _stopAmplification(uint256 value) internal {
-        uint64 currentValueUint64 = value.toUint64();
-        _amplificationState.startValue = currentValueUint64;
-        _amplificationState.endValue = currentValueUint64;
+    function _setAmplificationData(uint256 value) private {
+        _storeAmplificationData(value, value, block.timestamp, block.timestamp);
 
-        uint32 currentTime = block.timestamp.toUint32();
-        _amplificationState.startTime = currentTime;
-        _amplificationState.endTime = currentTime;
+        emit AmpUpdateStopped(value);
+    }
 
-        emit AmpUpdateStopped(currentValueUint64);
+    function _setAmplificationData(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime) private {
+        _storeAmplificationData(startValue, endValue, startTime, endTime);
+
+        emit AmpUpdateStarted(startValue, endValue, startTime, endTime);
+    }
+
+    function _getAmplificationData()
+        private
+        view
+        returns (uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime)
+    {
+        AmplificationData memory data = _amplificationState.toAmpData();
+        startValue = data.startValue;
+        endValue = data.endValue;
+        startTime = data.startTime;
+        endTime = data.endTime;
+    }
+
+    function _storeAmplificationData(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime) private {
+        AmplificationData memory data;
+        data.startValue = startValue.toUint64();
+        data.endValue = endValue.toUint64();
+        data.startTime = startTime.toUint64();
+        data.endTime = endTime.toUint64();
+
+        _amplificationState = data.fromAmpData();
     }
 }

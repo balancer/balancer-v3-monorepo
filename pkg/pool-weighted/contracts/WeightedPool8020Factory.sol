@@ -24,7 +24,7 @@ contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
 
     constructor(
         IVault vault,
-        uint32 pauseWindowDuration,
+        uint256 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion
     ) BasePoolFactory(vault, pauseWindowDuration, type(WeightedPool).creationCode) Version(factoryVersion) {

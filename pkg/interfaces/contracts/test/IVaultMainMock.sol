@@ -26,7 +26,7 @@ interface IVaultMainMock {
     function manualRegisterPoolAtTimestamp(
         address pool,
         IERC20[] memory tokens,
-        uint32 timestamp,
+        uint256 timestamp,
         PoolRoleAccounts memory roleAccounts
     ) external;
 
@@ -36,7 +36,7 @@ interface IVaultMainMock {
 
     function manualSetPoolPaused(address, bool) external;
 
-    function manualSetPoolPauseWindowEndTime(address, uint32) external;
+    function manualSetPoolPauseWindowEndTime(address, uint256) external;
 
     function manualSetVaultPaused(bool) external;
 

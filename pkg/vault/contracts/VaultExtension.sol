@@ -34,6 +34,7 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
@@ -63,6 +64,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using InputHelpers for uint256;
     using ScalingHelpers for *;
     using VaultExtensionsLib for IVault;
+    using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
@@ -128,7 +130,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
         uint256 swapFeePercentage;
-        uint32 pauseWindowEndTime;
+        uint256 pauseWindowEndTime;
         PoolRoleAccounts roleAccounts;
         address poolHooksContract;
         LiquidityManagement liquidityManagement;
@@ -139,7 +141,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool,
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
-        uint32 pauseWindowEndTime,
+        uint256 pauseWindowEndTime,
         PoolRoleAccounts calldata roleAccounts,
         address poolHooksContract,
         LiquidityManagement calldata liquidityManagement
@@ -267,30 +269,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Make pool role assignments. A zero address means default to the authorizer.
         _assignPoolRoles(pool, params.roleAccounts);
 
-        // NOTE: a new stack scope otherwise of stack-too-deep error using viaIR compilation
         // Store config and mark the pool as registered
-
-        {
-            PoolConfig memory config = _poolConfig[pool];
-            config.isPoolRegistered = true;
-
-            config.disableUnbalancedLiquidity = params.liquidityManagement.disableUnbalancedLiquidity;
-            config.enableAddLiquidityCustom = params.liquidityManagement.enableAddLiquidityCustom;
-            config.enableRemoveLiquidityCustom = params.liquidityManagement.enableRemoveLiquidityCustom;
-
-            config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
-            config.pauseWindowEndTime = params.pauseWindowEndTime;
-
-            // Initialize the pool-specific protocol fee values to the current global defaults.
-            (
-                uint256 aggregateProtocolSwapFeePercentage,
-                uint256 aggregateProtocolYieldFeePercentage
-            ) = _protocolFeeController.registerPool(pool, params.roleAccounts.poolCreator);
-            config.setAggregateProtocolSwapFeePercentage(aggregateProtocolSwapFeePercentage);
-            config.setAggregateProtocolYieldFeePercentage(aggregateProtocolYieldFeePercentage);
-
-            _poolConfig[pool] = config;
-        }
+        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        config.isPoolRegistered = true;
+        config.liquidityManagement = params.liquidityManagement;
+        config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
+        config.pauseWindowEndTime = params.pauseWindowEndTime;
+        // Initialize the pool-specific protocol fee values to the current global defaults.
+        (config.aggregateProtocolSwapFeePercentage, config.aggregateProtocolYieldFeePercentage) = _protocolFeeController
+            .registerPool(pool, params.roleAccounts.poolCreator);
+        _poolConfig[pool] = config.fromPoolConfig();
 
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
 
@@ -412,7 +400,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Store config and mark the pool as initialized
         poolData.poolConfig.isPoolInitialized = true;
-        _poolConfig[pool] = poolData.poolConfig;
+        _poolConfig[pool] = poolData.poolConfig.fromPoolConfig();
 
         // Pass scaled balances to the pool
         bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18);
@@ -447,7 +435,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getPoolConfig(address pool) external view withRegisteredPool(pool) onlyVault returns (PoolConfig memory) {
-        return _poolConfig[pool];
+        return _poolConfig[pool].toPoolConfig();
     }
 
     /// @inheritdoc IVaultExtension
@@ -541,8 +529,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function getPoolPausedState(
         address pool
-    ) external view withRegisteredPool(pool) onlyVault returns (bool, uint32, uint32, address) {
-        (bool paused, uint32 pauseWindowEndTime) = _getPoolPausedState(pool);
+    ) external view withRegisteredPool(pool) onlyVault returns (bool, uint256, uint256, address) {
+        (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
 
         return (
             paused,
@@ -574,7 +562,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function getStaticSwapFeePercentage(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
-        return _poolConfig[pool].getStaticSwapFeePercentage();
+        return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
     }
 
     /// @inheritdoc IVaultExtension
@@ -669,7 +657,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert EVMCallModeHelpers.NotStaticCall();
         }
 
-        bool _isQueryDisabled = _vaultState.isQueryDisabled;
+        bool _isQueryDisabled = _vaultState.isQueryDisabled();
         if (_isQueryDisabled) {
             revert QueriesDisabled();
         }
@@ -708,7 +696,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function isQueryDisabled() external view onlyVault returns (bool) {
-        return _vaultState.isQueryDisabled;
+        return _vaultState.isQueryDisabled();
     }
 
     receive() external payable {

@@ -13,7 +13,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
-import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
+import { PoolConfigLib, PoolConfigBits } from "../../../contracts/lib/PoolConfigLib.sol";
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
@@ -99,8 +99,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         );
         assertEq(decimalScalingFactors.length, 0, "should have no decimalScalingFactors");
         assertEq(
-            keccak256(abi.encode(poolConfig)),
-            keccak256(abi.encode(emptyPoolConfig)),
+            PoolConfigBits.unwrap(poolConfig.fromPoolConfig()),
+            PoolConfigBits.unwrap(emptyPoolConfig.fromPoolConfig()),
             "poolConfig should match empty pool config"
         );
     }
@@ -142,10 +142,9 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
                 string.concat("decimalScalingFactors of token", Strings.toString(i), "should match tokenDecimalDiffs")
             );
         }
-
         assertEq(
-            keccak256(abi.encode(newPoolConfig)),
-            keccak256(abi.encode(originalPoolConfig)),
+            PoolConfigBits.unwrap(newPoolConfig.fromPoolConfig()),
+            PoolConfigBits.unwrap(originalPoolConfig.fromPoolConfig()),
             "original and new poolConfigs should be the same"
         );
     }
@@ -232,8 +231,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         }
 
         assertEq(
-            keccak256(abi.encode(newPoolConfig)),
-            keccak256(abi.encode(originalPoolConfig)),
+            PoolConfigBits.unwrap(newPoolConfig.fromPoolConfig()),
+            PoolConfigBits.unwrap(originalPoolConfig.fromPoolConfig()),
             "original and new poolConfigs should be the same"
         );
     }

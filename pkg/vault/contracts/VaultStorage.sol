@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
-import { TokenConfig, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
@@ -20,6 +20,8 @@ import {
     TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
+import { VaultStateBits } from "./lib/VaultStateLib.sol";
+import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 
 // solhint-disable max-states-count
@@ -54,7 +56,7 @@ contract VaultStorage {
     IVaultExtension internal immutable _vaultExtension;
 
     // Registry of pool configs.
-    mapping(address => PoolConfig) internal _poolConfig;
+    mapping(address => PoolConfigBits) internal _poolConfig;
 
     // Registry of pool hooks.
     mapping(address => HooksConfig) internal _hooksConfig;
@@ -99,13 +101,13 @@ contract VaultStorage {
     // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
 
-    uint32 internal immutable _vaultPauseWindowEndTime;
-    uint32 internal immutable _vaultBufferPeriodEndTime;
+    uint256 internal immutable _vaultPauseWindowEndTime;
+    uint256 internal immutable _vaultBufferPeriodEndTime;
     // Stored as a convenience, to avoid calculating it on every operation.
-    uint32 internal immutable _vaultBufferPeriodDuration;
+    uint256 internal immutable _vaultBufferPeriodDuration;
 
-    // protocol fees and paused flags.
-    VaultState internal _vaultState;
+    // Bytes32 with protocol fees and paused flags.
+    VaultStateBits internal _vaultState;
 
     // pool -> roleId (corresponding to a particular function) -> PoolFunctionPermission.
     mapping(address => mapping(bytes32 => PoolFunctionPermission)) internal _poolFunctionPermissions;
