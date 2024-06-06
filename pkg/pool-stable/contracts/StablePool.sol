@@ -9,7 +9,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IMaximumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMaximumSwapFee.sol";
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { BasePoolAuthentication } from "@balancer-labs/v3-vault/contracts/BasePoolAuthentication.sol";
@@ -18,7 +18,7 @@ import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Stab
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 /// @notice Basic Stable Pool.
-contract StablePool is IBasePool, IMaximumSwapFee, BalancerPoolToken, BasePoolAuthentication, Version {
+contract StablePool is IBasePool, ISwapFeePercentageBounds, BalancerPoolToken, BasePoolAuthentication, Version {
     using FixedPoint for uint256;
     using SafeCast for *;
 
@@ -41,6 +41,7 @@ contract StablePool is IBasePool, IMaximumSwapFee, BalancerPoolToken, BasePoolAu
     uint256 private constant _MIN_UPDATE_TIME = 1 days;
     uint256 private constant _MAX_AMP_UPDATE_DAILY_RATE = 2;
 
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 0;
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 0.1e18; // 10%
 
     /// @dev Store amplification state.
@@ -284,10 +285,15 @@ contract StablePool is IBasePool, IMaximumSwapFee, BalancerPoolToken, BasePoolAu
 
     /// @inheritdoc ERC165
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return interfaceId == type(IMaximumSwapFee).interfaceId || super.supportsInterface(interfaceId);
+        return interfaceId == type(ISwapFeePercentageBounds).interfaceId || super.supportsInterface(interfaceId);
     }
 
-    /// @inheritdoc IMaximumSwapFee
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMinimumSwapFeePercentage() external pure returns (uint256) {
+        return _MIN_SWAP_FEE_PERCENTAGE;
+    }
+
+    /// @inheritdoc ISwapFeePercentageBounds
     function getMaximumSwapFeePercentage() external pure returns (uint256) {
         return _MAX_SWAP_FEE_PERCENTAGE;
     }
