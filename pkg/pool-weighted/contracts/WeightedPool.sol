@@ -170,9 +170,7 @@ contract WeightedPool is IBasePool, ISwapFeePercentageBounds, BalancerPoolToken,
 
     /// @inheritdoc ERC165
     function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return
-            interfaceId == type(ISwapFeePercentageBounds).interfaceId ||
-            super.supportsInterface(interfaceId);
+        return interfaceId == type(ISwapFeePercentageBounds).interfaceId || super.supportsInterface(interfaceId);
     }
 
     /// @inheritdoc ISwapFeePercentageBounds

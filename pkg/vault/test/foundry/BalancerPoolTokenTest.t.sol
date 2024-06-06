@@ -312,6 +312,9 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
     function testSupportsIERC165() public {
         assertTrue(poolToken.supportsInterface(type(IERC165).interfaceId), "IERC165 not supported");
-        assertFalse(poolToken.supportsInterface(type(ISwapFeePercentageBounds).interfaceId), "ISwapFeePercentageBounds supported");
+        assertFalse(
+            poolToken.supportsInterface(type(ISwapFeePercentageBounds).interfaceId),
+            "ISwapFeePercentageBounds supported"
+        );
     }
 }

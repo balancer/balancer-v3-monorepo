@@ -195,8 +195,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         uint32 pauseWindowEndTime = poolConfig.pauseWindowEndTime;
 
         // Use the Vault's buffer period.
-        // solhint-disable-next-line not-rely-on-time
         return (
+            // solhint-disable-next-line not-rely-on-time
             poolConfig.isPoolPaused && uint32(block.timestamp) <= pauseWindowEndTime + _vaultBufferPeriodDuration,
             pauseWindowEndTime
         );
