@@ -101,7 +101,7 @@ __metadata:
   dependencies:
     "@balancer-labs/solidity-toolbox": "workspace:*"
     "@balancer-labs/v3-interfaces": "workspace:*"
-    "3-pool-weighted": "workspace:*"
+    "@balancer-labs/v3-pool-weighted": "workspace:*"
     "@balancer-labs/v3-solidity-utils": "workspace:*"
     "@balancer-labs/v3-vault": "workspace:*"
     "@nomicfoundation/hardhat-ethers": "npm:^3.0.0"
