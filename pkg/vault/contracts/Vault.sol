@@ -446,8 +446,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // For ExactOut, we increase the tokenInBalance by (`amountIn` - fees), and decrease the tokenOut balance by
         // `amountOut`.
         (locals.balanceInIncrement, locals.balanceOutDecrement) = params.kind == SwapKind.EXACT_IN
-            ? (amountInRaw, amountOutRaw + totalFeesRaw)
-            : (amountInRaw - totalFeesRaw, amountOutRaw);
+            ? (state.hookAdjustedAmountGivenRaw, amountOutRaw + totalFeesRaw)
+            : (amountInRaw - totalFeesRaw, state.hookAdjustedAmountGivenRaw);
         poolData.increaseTokenBalance(state.indexIn, locals.balanceInIncrement);
         poolData.decreaseTokenBalance(state.indexOut, locals.balanceOutDecrement);
 
