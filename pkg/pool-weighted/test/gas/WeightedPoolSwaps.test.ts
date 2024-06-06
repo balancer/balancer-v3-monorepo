@@ -3,10 +3,11 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
+import { saveSnap } from '@balancer-labs/v3-helpers/src/gas';
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
-import { FP_ZERO, fp, printGas } from '@balancer-labs/v3-helpers/src/numbers';
+import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import {
   MAX_UINT256,
   MAX_UINT160,
@@ -14,7 +15,6 @@ import {
   ZERO_BYTES32,
   ZERO_ADDRESS,
   MAX_UINT128,
-  ONES_BYTES32,
 } from '@balancer-labs/v3-helpers/src/constants';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
@@ -48,8 +48,7 @@ describe('WeightedPool Gas Benchmark', function () {
   let permit2: IPermit2;
   let vault: IVault;
   let feeCollector: ProtocolFeeController;
-  let standardPool: WeightedPool, yieldPool: WeightedPool;
-  let pool: WeightedPool; // Pool under test
+  let pool: WeightedPool;
   let router: Router;
   let alice: SignerWithAddress;
   let admin: SignerWithAddress;
@@ -57,8 +56,8 @@ describe('WeightedPool Gas Benchmark', function () {
   let tokenB: ERC20TestToken;
   let tokenC: ERC20WithRateTestToken;
   let tokenD: ERC20WithRateTestToken;
-  let standardPoolTokens: string[], yieldPoolTokens: string[];
-  let poolTokens: string[]; // tokens of pool under test
+  let poolTokens: string[];
+  let tokenConfig: TokenConfigStruct[];
   let initialBalances: bigint[];
 
   let tokenAAddress: string;
@@ -124,114 +123,63 @@ describe('WeightedPool Gas Benchmark', function () {
     });
   });
 
-  sharedBeforeEach('deploy standard pool', async () => {
-    standardPoolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
-    const tokenConfig: TokenConfigStruct[] = buildTokenConfig(standardPoolTokens);
-
-    const poolRoleAccounts: PoolRoleAccountsStruct = {
-      pauseManager: ZERO_ADDRESS,
-      swapFeeManager: ZERO_ADDRESS,
-      poolCreator: ZERO_ADDRESS,
-    };
-    const tx = await factory.create(
-      'WeightedPool',
-      'Test',
-      tokenConfig,
-      WEIGHTS,
-      poolRoleAccounts,
-      SWAP_FEE,
-      ZERO_ADDRESS,
-      ZERO_BYTES32
-    );
-    const receipt = await tx.wait();
-    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-
-    const standardPoolAddress = event.args.pool;
-
-    standardPool = (await deployedAt('v3-pool-weighted/WeightedPool', standardPoolAddress)) as unknown as WeightedPool;
-  });
-
-  sharedBeforeEach('deploy yield pool', async () => {
-    yieldPoolTokens = sortAddresses([tokenCAddress, tokenDAddress]);
-    const tokenConfig: TokenConfigStruct[] = buildTokenConfig(yieldPoolTokens, true);
-
-    const poolRoleAccounts: PoolRoleAccountsStruct = {
-      pauseManager: ZERO_ADDRESS,
-      swapFeeManager: ZERO_ADDRESS,
-      poolCreator: ZERO_ADDRESS,
-    };
-    const tx = await factory.create(
-      'WeightedPool',
-      'Test',
-      tokenConfig,
-      WEIGHTS,
-      poolRoleAccounts,
-      SWAP_FEE,
-      ZERO_ADDRESS,
-      ONES_BYTES32
-    );
-    const receipt = await tx.wait();
-    const event = expectEvent.inReceipt(receipt, 'PoolCreated');
-
-    const yieldPoolAddress = event.args.pool;
-
-    yieldPool = (await deployedAt('v3-pool-weighted/WeightedPool', yieldPoolAddress)) as unknown as WeightedPool;
-  });
-
   describe('test standard pool', () => {
     sharedBeforeEach(async () => {
-      pool = standardPool;
-      poolTokens = standardPoolTokens;
+      poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
+      tokenConfig = buildTokenConfig(poolTokens, false);
     });
 
-    itTestsSwap();
+    itTestsSwap(
+      '[Standard]',
+      async () => {
+        return;
+      },
+      async () => {
+        return;
+      }
+    );
   });
 
   describe('test yield pool', () => {
     sharedBeforeEach(async () => {
-      pool = yieldPool;
-      poolTokens = yieldPoolTokens;
+      poolTokens = sortAddresses([tokenCAddress, tokenDAddress]);
+      tokenConfig = buildTokenConfig(poolTokens, true);
     });
 
-    itTestsSwap();
-
-    it('measures gas with yield', async () => {
-      await tokenC.setRate(fp(1.1));
-      await tokenD.setRate(fp(1.1));
-      // Warm up
-      let tx = await router
-        .connect(alice)
-        .swapSingleTokenExactIn(pool, poolTokens[0], poolTokens[1], SWAP_AMOUNT, 0, MAX_UINT256, false, '0x');
-
-      let receipt = await tx.wait();
-      console.log('gas (1st tx): ', printGas(receipt!.gasUsed));
-
-      await tokenC.setRate(fp(1.2));
-      await tokenD.setRate(fp(1.2));
-
-      // Measure
-      tx = await router
-        .connect(alice)
-        .swapSingleTokenExactOut(
-          pool,
-          poolTokens[1],
-          poolTokens[0],
-          SWAP_AMOUNT,
-          MAX_UINT128,
-          MAX_UINT256,
-          false,
-          '0x'
-        );
-      receipt = await tx.wait();
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      console.log('gas (warm fee storage slots): ', printGas(receipt!.gasUsed));
-    });
+    itTestsSwap(
+      '[With rate]',
+      async () => {
+        await tokenC.setRate(fp(1.1));
+        await tokenD.setRate(fp(1.1));
+      },
+      async () => {
+        await tokenC.setRate(fp(1.2));
+        await tokenD.setRate(fp(1.2));
+      }
+    );
   });
 
-  function itTestsSwap() {
-    sharedBeforeEach('initialize pool', async () => {
-      initialBalances = Array(standardPoolTokens.length).fill(TOKEN_AMOUNT);
-      await router.connect(alice).initialize(pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+  function itTestsSwap(gasTag: string, actionAfterInit: () => Promise<void>, actionAfterFirstTx: () => Promise<void>) {
+    sharedBeforeEach('deploy pool', async () => {
+      const poolRoleAccounts: PoolRoleAccountsStruct = {
+        pauseManager: ZERO_ADDRESS,
+        swapFeeManager: ZERO_ADDRESS,
+        poolCreator: ZERO_ADDRESS,
+      };
+      const tx = await factory.create(
+        'WeightedPool',
+        'Test',
+        tokenConfig,
+        WEIGHTS,
+        poolRoleAccounts,
+        SWAP_FEE,
+        ZERO_ADDRESS,
+        ZERO_BYTES32
+      );
+      const receipt = await tx.wait();
+      const event = expectEvent.inReceipt(receipt, 'PoolCreated');
+
+      pool = (await deployedAt('v3-pool-weighted/WeightedPool', event.args.pool)) as unknown as WeightedPool;
     });
 
     sharedBeforeEach('set pool fee', async () => {
@@ -243,6 +191,12 @@ describe('WeightedPool Gas Benchmark', function () {
       await authorizer.grantRole(setPoolSwapFeeAction, admin.address);
 
       await vault.connect(admin).setStaticSwapFeePercentage(pool, SWAP_FEE);
+    });
+
+    sharedBeforeEach('initialize pool', async () => {
+      initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
+      await router.connect(alice).initialize(pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+      await actionAfterInit();
     });
 
     it('pool and protocol fee preconditions', async () => {
@@ -261,7 +215,9 @@ describe('WeightedPool Gas Benchmark', function () {
         .swapSingleTokenExactIn(pool, poolTokens[0], poolTokens[1], SWAP_AMOUNT, 0, MAX_UINT256, false, '0x');
 
       let receipt = await tx.wait();
-      console.log('gas (1st tx): ', printGas(receipt!.gasUsed));
+      await saveSnap(__dirname, `${gasTag} swap single token exact in with fees - cold slots`, receipt);
+
+      await actionAfterFirstTx();
 
       // Measure
       tx = await router
@@ -277,8 +233,7 @@ describe('WeightedPool Gas Benchmark', function () {
           '0x'
         );
       receipt = await tx.wait();
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      console.log('gas (warm fee storage slots): ', printGas(receipt!.gasUsed));
+      await saveSnap(__dirname, `${gasTag} swap single token exact in with fees - warm slots`, receipt);
     });
   }
 });
