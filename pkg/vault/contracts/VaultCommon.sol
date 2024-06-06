@@ -8,8 +8,7 @@ import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
-import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMinimumSwapFee.sol";
-import { IMaximumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMaximumSwapFee.sol";
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -448,15 +447,13 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
         // These cannot be called during pool construction. Pools must be deployed first, then registered.
-        if (IERC165(pool).supportsInterface(type(IMaximumSwapFee).interfaceId)) {
-            if (swapFeePercentage > IMaximumSwapFee(pool).getMaximumSwapFeePercentage()) {
-                revert SwapFeePercentageTooHigh();
-            }
-        }
-
-        if (IERC165(pool).supportsInterface(type(IMinimumSwapFee).interfaceId)) {
-            if (swapFeePercentage < IMinimumSwapFee(pool).getMinimumSwapFeePercentage()) {
+        if (IERC165(pool).supportsInterface(type(ISwapFeePercentageBounds).interfaceId)) {
+            if (swapFeePercentage < ISwapFeePercentageBounds(pool).getMinimumSwapFeePercentage()) {
                 revert SwapFeePercentageTooLow();
+            }
+
+            if (swapFeePercentage > ISwapFeePercentageBounds(pool).getMaximumSwapFeePercentage()) {
+                revert SwapFeePercentageTooHigh();
             }
         }
 
