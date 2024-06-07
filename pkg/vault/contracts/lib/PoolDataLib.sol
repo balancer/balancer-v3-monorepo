@@ -3,7 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { PackedTokenBalance } from "./PackedTokenBalance.sol";
-import { PoolConfigBits, PoolConfigLib } from "./PoolConfigLib.sol";
+import { PoolConfigLib } from "./PoolConfigLib.sol";
 
 import {
     PoolData,
@@ -24,12 +24,12 @@ library PoolDataLib {
 
     function load(
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
-        PoolConfigBits poolConfig,
+        PoolConfig memory poolConfig,
         mapping(IERC20 => TokenConfig) storage poolTokenConfig,
         Rounding roundingDirection
     ) internal view returns (PoolData memory poolData) {
         uint256 numTokens = poolTokenBalances.length();
-        poolData.poolConfig = PoolConfigLib.toPoolConfig(poolConfig);
+        poolData.poolConfig = poolConfig;
 
         poolData.tokenConfig = new TokenConfig[](numTokens);
         poolData.balancesRaw = new uint256[](numTokens);

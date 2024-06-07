@@ -22,7 +22,7 @@ import { RouterCommon } from "@balancer-labs/v3-vault/contracts/RouterCommon.sol
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
-import { PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
+import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
