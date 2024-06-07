@@ -58,7 +58,10 @@ interface IVaultMainMock {
 
     function internalGetPoolTokenInfo(
         address
-    ) external view returns (IERC20[] memory, TokenInfo[] memory, uint256[] memory, uint256[] memory, PoolConfig memory);
+    )
+        external
+        view
+        returns (IERC20[] memory, TokenInfo[] memory, uint256[] memory, uint256[] memory, PoolConfig memory);
 
     function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256);
 

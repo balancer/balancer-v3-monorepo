@@ -140,7 +140,12 @@ interface IVaultExtension {
     )
         external
         view
-        returns (IERC20[] memory tokens, TokenInfo[] memory tokenInfo, uint256[] memory balancesRaw, uint256[] memory scalingFactors);
+        returns (
+            IERC20[] memory tokens,
+            TokenInfo[] memory tokenInfo,
+            uint256[] memory balancesRaw,
+            uint256[] memory scalingFactors
+        );
 
     /**
      * @notice Gets the configuration parameters of a pool.
