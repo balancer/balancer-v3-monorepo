@@ -8,7 +8,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenInfo } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -62,10 +62,10 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
     }
 
     function testInitialRateProviderState() public {
-        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(address(pool));
+        (, TokenInfo[] memory tokenInfo, , ) = vault.getPoolTokenInfo(address(pool));
 
-        assertEq(address(tokenConfig[wstethIdx].rateProvider), address(rateProvider), "Wrong rate provider");
-        assertEq(address(tokenConfig[daiIdx].rateProvider), address(0), "Rate provider should be 0");
+        assertEq(address(tokenInfo[wstethIdx].rateProvider), address(rateProvider), "Wrong rate provider");
+        assertEq(address(tokenInfo[daiIdx].rateProvider), address(0), "Rate provider should be 0");
     }
 
     function testSwapSingleTokenExactIWithRate() public {

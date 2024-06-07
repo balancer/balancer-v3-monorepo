@@ -126,10 +126,10 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         // bob should have the full boostedPool BPT.
         assertEq(IERC20(boostedPool).balanceOf(bob), boostedPoolAmount * 2 - MIN_BPT, "Wrong boosted pool BPT amount");
 
-        (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
         // The boosted pool should have `boostedPoolAmount` of both tokens.
-        assertEq(address(tokenConfig[waDaiIdx].token), address(waDAI), "Wrong boosted pool token (waDAI)");
-        assertEq(address(tokenConfig[waUsdcIdx].token), address(waUSDC), "Wrong boosted pool token (waUSDC)");
+        assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong boosted pool token (waDAI)");
+        assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong boosted pool token (waUSDC)");
         assertEq(balancesRaw[0], boostedPoolAmount, "Wrong boosted pool balance [0]");
         assertEq(balancesRaw[1], boostedPoolAmount, "Wrong boosted pool balance [1]");
 
@@ -397,7 +397,7 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
         uint256[] memory balancesRaw;
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
-        (, balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
+        (, , balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
         vars.boostedPoolBalanceBeforeSwapWaDai = balancesRaw[daiIdx];
         vars.boostedPoolBalanceBeforeSwapWaUsdc = balancesRaw[usdcIdx];
     }
@@ -457,7 +457,7 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         uint256[] memory balancesRaw;
 
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
-        (, balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
+        (, , balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
         assertApproxEqAbs(
             balancesRaw[daiIdx],
             vars.boostedPoolBalanceBeforeSwapWaDai + waDAI.convertToShares(vars.expectedAliceDelta),

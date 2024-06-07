@@ -745,12 +745,12 @@ contract VaultUnitLiquidityTest is BaseTest {
         poolData.balancesLiveScaled18 = new uint256[](tokens.length);
         poolData.balancesRaw = new uint256[](tokens.length);
 
-        poolData.tokenConfig = new TokenConfig[](tokens.length);
+        poolData.tokens = new IERC20[](tokens.length);
         poolData.decimalScalingFactors = new uint256[](tokens.length);
         poolData.tokenRates = new uint256[](tokens.length);
 
-        for (uint256 i = 0; i < poolData.tokenConfig.length; i++) {
-            poolData.tokenConfig[i].token = tokens[i];
+        for (uint256 i = 0; i < tokens.length; i++) {
+            poolData.tokens[i] = tokens[i];
             poolData.decimalScalingFactors[i] = 1e18;
             poolData.tokenRates[i] = 1e18 * (i + 1);
 
@@ -810,7 +810,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         PoolData memory poolData_ = poolData;
         uint256 protocolSwapFeePercentage = poolData.poolConfig.getAggregateProtocolSwapFeePercentage();
 
-        for (uint256 i = 0; i < poolData_.tokenConfig.length; i++) {
+        for (uint256 i = 0; i < poolData_.tokens.length; i++) {
             assertEq(amountsInRaw[i], expectedAmountsInRaw[i], "Unexpected tokenIn amount");
             assertEq(amountsInScaled18[i], params_.expectedAmountsInScaled18[i], "Unexpected tokenIn amount");
 
@@ -890,7 +890,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         TestRemoveLiquidityParams memory params_ = params;
         PoolData memory poolData_ = poolData;
         uint256 protocolSwapFeePercentage = poolData.poolConfig.getAggregateProtocolSwapFeePercentage();
-        for (uint256 i = 0; i < poolData.tokenConfig.length; i++) {
+        for (uint256 i = 0; i < poolData.tokens.length; i++) {
             // check _computeAndChargeAggregateProtocolSwapFees
             uint256 protocolSwapFeeAmountRaw = _checkProtocolFeeResult(
                 poolData_,
@@ -937,7 +937,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             poolData.tokenRates[tokenIndex]
         );
         assertEq(
-            vault.getAggregateProtocolSwapFeeAmount(pool, poolData.tokenConfig[tokenIndex].token),
+            vault.getAggregateProtocolSwapFeeAmount(pool, poolData.tokens[tokenIndex]),
             protocolSwapFeeAmountRaw,
             "Unexpected protocol fees"
         );
@@ -949,7 +949,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         uint256[] memory storageLastLiveBalances,
         PoolData memory updatedPoolData
     ) internal {
-        for (uint256 i = 0; i < poolData.tokenConfig.length; i++) {
+        for (uint256 i = 0; i < poolData.tokens.length; i++) {
             assertEq(storagePoolBalances[i], updatedPoolData.balancesRaw[i], "Unexpected pool balance");
 
             assertEq(

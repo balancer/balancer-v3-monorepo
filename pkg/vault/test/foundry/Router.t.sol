@@ -105,14 +105,9 @@ contract RouterTest is BaseVaultTest {
     }
 
     function initPool() internal override {
-        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(address(pool));
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(pool));
+
         vm.prank(lp);
-        IERC20[] memory tokens = new IERC20[](tokenConfig.length);
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            tokens[i] = tokenConfig[i].token;
-        }
-
         router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
 
         vm.prank(lp);
