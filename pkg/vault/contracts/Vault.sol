@@ -621,27 +621,24 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             amountsInRaw[i] = amountInRaw;
 
-            {
-                // stack-too-deep (forge)
-                IERC20 token = poolData.tokens[i];
+            IERC20 token = poolData.tokens[i];
 
-                // 2) Check limits for raw amounts
-                if (amountInRaw > params.maxAmountsIn[i]) {
-                    revert AmountInAboveMax(token, amountInRaw, params.maxAmountsIn[i]);
-                }
-
-                // 3) Deltas: Debit of token[i] for amountInRaw
-                _takeDebt(token, amountInRaw);
-
-                // 4) Compute and charge protocol and creator fees.
-                locals.totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
-                    poolData,
-                    swapFeeAmountsScaled18[i],
-                    params.pool,
-                    token,
-                    i
-                );
+            // 2) Check limits for raw amounts
+            if (amountInRaw > params.maxAmountsIn[i]) {
+                revert AmountInAboveMax(token, amountInRaw, params.maxAmountsIn[i]);
             }
+
+            // 3) Deltas: Debit of token[i] for amountInRaw
+            _takeDebt(token, amountInRaw);
+
+            // 4) Compute and charge protocol and creator fees.
+            locals.totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
+                poolData,
+                swapFeeAmountsScaled18[i],
+                params.pool,
+                token,
+                i
+            );
 
             // 5) Pool balances: raw and live
             // We need regular balances to complete the accounting, and the upscaled balances
@@ -822,26 +819,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             amountsOutRaw[i] = amountOutRaw;
 
-            {
-                // stack-too-deep
-                IERC20 token = poolData.tokens[i];
-                // 2) Check limits for raw amounts
-                if (amountOutRaw < params.minAmountsOut[i]) {
-                    revert AmountOutBelowMin(token, amountOutRaw, params.minAmountsOut[i]);
-                }
-
-                // 3) Deltas: Credit token[i] for amountOutRaw
-                _supplyCredit(token, amountOutRaw);
-
-                // 4) Compute and charge protocol and creator fees.
-                locals.totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
-                    poolData,
-                    swapFeeAmountsScaled18[i],
-                    params.pool,
-                    token,
-                    i
-                );
+            IERC20 token = poolData.tokens[i];
+            // 2) Check limits for raw amounts
+            if (amountOutRaw < params.minAmountsOut[i]) {
+                revert AmountOutBelowMin(token, amountOutRaw, params.minAmountsOut[i]);
             }
+
+            // 3) Deltas: Credit token[i] for amountOutRaw
+            _supplyCredit(token, amountOutRaw);
+
+            // 4) Compute and charge protocol and creator fees.
+            locals.totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
+                poolData,
+                swapFeeAmountsScaled18[i],
+                params.pool,
+                token,
+                i
+            );
 
             // 5) Pool balances: raw and live
             // We need regular balances to complete the accounting, and the upscaled balances
@@ -849,9 +843,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // A Pool's token balance always decreases after an exit
             // (potentially by 0). Also adjust by protocol and pool creator fees.
-            uint256 amountToDecreaseRaw = amountOutRaw + locals.totalFeesRaw;
-
-            poolData.decreaseTokenBalance(i, amountToDecreaseRaw);
+            poolData.decreaseTokenBalance(i, amountOutRaw + locals.totalFeesRaw);
         }
 
         // 6) Store pool balances, raw and live
