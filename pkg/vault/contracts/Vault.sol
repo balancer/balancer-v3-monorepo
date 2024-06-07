@@ -302,8 +302,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     ) private pure returns (uint256) {
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
-        // Notice that state.hookAdjustedAmountGivenRaw should be initialized (usually equal to params.amountGivenRaw,
-        // unless onBeforeSwap changed it)
         return
             params.kind == SwapKind.EXACT_IN
                 ? params.amountGivenRaw.toScaled18ApplyRateRoundDown(
