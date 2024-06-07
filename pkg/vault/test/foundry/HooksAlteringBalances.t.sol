@@ -77,8 +77,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
                     router: address(router),
                     userData: bytes("")
                 }),
-                _swapAmount,
-                address(pool)
+                pool
             )
         );
 

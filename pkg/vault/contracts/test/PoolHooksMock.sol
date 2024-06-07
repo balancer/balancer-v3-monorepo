@@ -41,8 +41,6 @@ contract PoolHooksMock is BasePoolHooks {
     bool public changePoolBalancesOnBeforeAddLiquidityHook;
     bool public changePoolBalancesOnBeforeRemoveLiquidityHook;
 
-    uint256 public onBeforeSwapHookFee;
-    uint256 public onBeforeSwapHookDiscount;
     uint256 public onAfterSwapHookFee;
     uint256 public onAfterSwapHookDiscount;
 
@@ -110,35 +108,7 @@ contract PoolHooksMock is BasePoolHooks {
         return (!failOnComputeDynamicSwapFeeHook, finalSwapFee);
     }
 
-    function onBeforeSwap(
-        IBasePool.PoolSwapParams calldata params,
-        uint256 amountGivenRaw,
-        address pool
-    ) external override returns (bool success, uint256) {
-        (TokenConfig[] memory tokenConfig, , ) = _vault.getPoolTokenInfo(pool);
-
-        uint256 hookAdjustedAmountGivenRaw = amountGivenRaw;
-        if (onBeforeSwapHookFee > 0) {
-            if (params.kind == SwapKind.EXACT_IN) {
-                hookAdjustedAmountGivenRaw -= onBeforeSwapHookFee;
-                _vault.sendTo(tokenConfig[params.indexIn].token, address(this), onBeforeSwapHookFee);
-            } else {
-                hookAdjustedAmountGivenRaw += onBeforeSwapHookFee;
-                _vault.sendTo(tokenConfig[params.indexOut].token, address(this), onBeforeSwapHookFee);
-            }
-        }
-        if (onBeforeSwapHookDiscount > 0) {
-            if (params.kind == SwapKind.EXACT_IN) {
-                hookAdjustedAmountGivenRaw += onBeforeSwapHookDiscount;
-                tokenConfig[params.indexIn].token.transfer(address(_vault), onBeforeSwapHookDiscount);
-                _vault.settle(tokenConfig[params.indexIn].token);
-            } else {
-                hookAdjustedAmountGivenRaw -= onBeforeSwapHookDiscount;
-                tokenConfig[params.indexOut].token.transfer(address(_vault), onBeforeSwapHookDiscount);
-                _vault.settle(tokenConfig[params.indexOut].token);
-            }
-        }
-
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata params, address) external override returns (bool success) {
         if (changeTokenRateOnBeforeSwapHook) {
             _updateTokenRate();
         }
@@ -154,7 +124,7 @@ contract PoolHooksMock is BasePoolHooks {
             Address.functionCall(_swapHookContract, _swapHookCalldata);
         }
 
-        return (!failOnBeforeSwapHook, hookAdjustedAmountGivenRaw);
+        return !failOnBeforeSwapHook;
     }
 
     function onAfterSwap(IHooks.AfterSwapParams calldata params) external override returns (bool, uint256) {
@@ -401,14 +371,6 @@ contract PoolHooksMock is BasePoolHooks {
 
     function setPool(address pool) external {
         _pool = pool;
-    }
-
-    function setOnBeforeSwapHookFee(uint256 hookFeeAmount) external {
-        onBeforeSwapHookFee = hookFeeAmount;
-    }
-
-    function setOnBeforeSwapHookDiscount(uint256 hookDiscountAmount) external {
-        onBeforeSwapHookDiscount = hookDiscountAmount;
     }
 
     function setOnAfterSwapHookFee(uint256 hookFeeAmount) external {

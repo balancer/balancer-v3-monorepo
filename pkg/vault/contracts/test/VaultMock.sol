@@ -417,10 +417,6 @@ contract VaultMock is IVaultMainMock, Vault {
             PoolData memory
         )
     {
-        // _buildPoolSwapParams uses hookAdjustedAmountGivenRaw as the amount to be used as amount given,
-        // because onBeforeSwap hook can modify this value and cannot change the original amountGivenRaw (the exact
-        // value that the user wants to pay or receive)
-        state.hookAdjustedAmountGivenRaw = params.amountGivenRaw;
         IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
 
         (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut) = _swap(

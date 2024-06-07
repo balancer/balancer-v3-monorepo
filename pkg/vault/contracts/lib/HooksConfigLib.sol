@@ -42,33 +42,24 @@ library HooksConfigLib {
      *
      * @param config The encoded hooks configuration
      * @param swapParams The swap parameters used in the hook
-     * @param amountGivenRaw Amount given based on kind of the swap (e.g., tokenIn for exact in)
      * @param pool Pool address
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
-     * @return hookAdjustedAmountGivenRaw New amount given, modified by the hook
      */
     function onBeforeSwap(
         HooksConfig memory config,
         IBasePool.PoolSwapParams memory swapParams,
-        uint256 amountGivenRaw,
         address pool
-    ) internal returns (bool success, uint256 hookAdjustedAmountGivenRaw) {
+    ) internal returns (bool) {
         if (config.shouldCallBeforeSwap == false) {
-            // Hook contract does not implement onBeforeSwap, so success is false (hook was not executed) and do not
-            // change amountGivenRaw (no deltas)
-            return (false, amountGivenRaw);
+            // Hook contract does not implement onBeforeSwap, so success is false (hook was not executed)
+            return false;
         }
 
-        (success, hookAdjustedAmountGivenRaw) = IHooks(config.hooksContract).onBeforeSwap(
-            swapParams,
-            amountGivenRaw,
-            pool
-        );
-
-        if (success == false) {
+        if (IHooks(config.hooksContract).onBeforeSwap(swapParams, pool) == false) {
             // Hook contract implements onBeforeSwap, but it has failed, so reverts the transaction.
             revert IVaultErrors.BeforeSwapHookFailed();
         }
+        return true;
     }
 
     /**
