@@ -1011,17 +1011,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Checking isStaticCall first, so we only parse _vaultState in static calls
         if (EVMCallModeHelpers.isStaticCall() == true && _vaultState.isQueryDisabled == false) {
-            // Uses the most accurate calculation so that a query matches the actual operation
-            if (kind == SwapKind.EXACT_IN) {
-                amountCalculated = wrappedToken.previewDeposit(amountGiven);
-                (amountInUnderlying, amountOutWrapped) = (amountGiven, amountCalculated);
-            } else {
-                amountCalculated = wrappedToken.previewMint(amountGiven);
-                (amountInUnderlying, amountOutWrapped) = (amountCalculated, amountGiven);
-            }
-            _takeDebt(underlyingToken, amountInUnderlying);
-            _supplyCredit(wrappedToken, amountOutWrapped);
-            return (amountCalculated, amountInUnderlying, amountOutWrapped);
+            (, bytes memory data) = _implementation().delegatecall(
+                abi.encodeWithSelector(
+                    IVaultExtension.calculateBufferAmounts.selector,
+                    kind,
+                    underlyingToken,
+                    wrappedToken,
+                    amountGiven
+                )
+            );
+            return abi.decode(data, (uint256, uint256, uint256));
         }
 
         if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
@@ -1141,17 +1140,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Checking isStaticCall first, so we only parse _vaultState in static calls
         if (EVMCallModeHelpers.isStaticCall() == true && _vaultState.isQueryDisabled == false) {
-            // Uses the most accurate calculation so that a query matches the actual operation
-            if (kind == SwapKind.EXACT_IN) {
-                amountCalculated = wrappedToken.previewRedeem(amountGiven);
-                (amountOutUnderlying, amountInWrapped) = (amountCalculated, amountGiven);
-            } else {
-                amountCalculated = wrappedToken.previewWithdraw(amountGiven);
-                (amountOutUnderlying, amountInWrapped) = (amountGiven, amountCalculated);
-            }
-            _takeDebt(wrappedToken, amountInWrapped);
-            _supplyCredit(underlyingToken, amountOutUnderlying);
-            return (amountCalculated, amountInWrapped, amountOutUnderlying);
+            (, bytes memory data) = _implementation().delegatecall(
+                abi.encodeWithSelector(
+                    IVaultExtension.calculateBufferAmounts.selector,
+                    kind,
+                    underlyingToken,
+                    wrappedToken,
+                    amountGiven
+                )
+            );
+            return abi.decode(data, (uint256, uint256, uint256));
         }
 
         if (bufferBalances.getBalanceRaw() > amountOutUnderlying) {

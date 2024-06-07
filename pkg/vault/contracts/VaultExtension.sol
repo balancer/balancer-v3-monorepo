@@ -661,6 +661,28 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
+                                    Buffer Operations
+    *******************************************************************************/
+
+    function calculateBufferAmounts(
+        SwapKind kind,
+        IERC20 underlyingToken,
+        IERC4626 wrappedToken,
+        uint256 amountGiven
+    ) external query returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped) {
+        // Uses the most accurate calculation so that a query matches the actual operation
+        if (kind == SwapKind.EXACT_IN) {
+            amountCalculated = wrappedToken.previewDeposit(amountGiven);
+            (amountInUnderlying, amountOutWrapped) = (amountGiven, amountCalculated);
+        } else {
+            amountCalculated = wrappedToken.previewMint(amountGiven);
+            (amountInUnderlying, amountOutWrapped) = (amountCalculated, amountGiven);
+        }
+        _takeDebt(underlyingToken, amountInUnderlying);
+        _supplyCredit(wrappedToken, amountOutWrapped);
+    }
+
+    /*******************************************************************************
                                         Queries
     *******************************************************************************/
 
