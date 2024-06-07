@@ -127,14 +127,15 @@ contract HooksAddLiquidityFeesAndDiscountsTest is BaseVaultTest {
         hooksConfig.shouldCallAfterAddLiquidity = true;
         vault.setHooksConfig(address(pool), hooksConfig);
 
-        uint256[] memory expectedAmountsIn = [_swapAmount, _swapAmount].toMemoryArray();
-        uint256 expectedBptOut = expectedAmountsIn[daiIdx] + expectedAmountsIn[usdcIdx];
+        uint256[] memory amountsInPoolBalance = [_swapAmount, _swapAmount].toMemoryArray();
+        uint256 expectedBptOut = amountsInPoolBalance[daiIdx] + amountsInPoolBalance[usdcIdx];
         uint256[] memory expectedBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
-        expectedBalances[daiIdx] += expectedAmountsIn[daiIdx];
-        expectedBalances[usdcIdx] += expectedAmountsIn[usdcIdx];
+        expectedBalances[daiIdx] += amountsInPoolBalance[daiIdx];
+        expectedBalances[usdcIdx] += amountsInPoolBalance[usdcIdx];
 
         uint256 hookFee = 1e3;
         PoolHooksMock(poolHooksContract).setOnAfterAddLiquidityHookFee(hookFee);
+        uint256[] memory maxAmountsIn = [_swapAmount + hookFee, _swapAmount + hookFee].toMemoryArray();
 
         HookTestLocals memory vars = _createHookTestLocals();
 
@@ -147,17 +148,17 @@ contract HooksAddLiquidityFeesAndDiscountsTest is BaseVaultTest {
                 IHooks.onAfterAddLiquidity.selector,
                 address(router),
                 pool,
-                expectedAmountsIn,
-                expectedAmountsIn,
+                amountsInPoolBalance,
+                amountsInPoolBalance,
                 expectedBptOut,
                 expectedBalances,
                 bytes("")
             )
         );
 
-        router.addLiquidityUnbalanced(pool, expectedAmountsIn, _swapAmount, false, bytes(""));
+        router.addLiquidityProportional(pool, maxAmountsIn, expectedBptOut, false, bytes(""));
 
-        _checkOnAfterAddLiquidityTestResults(vars, expectedAmountsIn, expectedBptOut, hookFee, 0);
+        _checkOnAfterAddLiquidityTestResults(vars, amountsInPoolBalance, expectedBptOut, hookFee, 0);
     }
 
     function testOnAfterAddLiquidityHookDiscountExactIn() public {
@@ -165,11 +166,11 @@ contract HooksAddLiquidityFeesAndDiscountsTest is BaseVaultTest {
         hooksConfig.shouldCallAfterAddLiquidity = true;
         vault.setHooksConfig(address(pool), hooksConfig);
 
-        uint256[] memory expectedAmountsIn = [_swapAmount, _swapAmount].toMemoryArray();
-        uint256 expectedBptOut = expectedAmountsIn[daiIdx] + expectedAmountsIn[usdcIdx];
+        uint256[] memory amountsInPoolBalance = [_swapAmount, _swapAmount].toMemoryArray();
+        uint256 expectedBptOut = amountsInPoolBalance[daiIdx] + amountsInPoolBalance[usdcIdx];
         uint256[] memory expectedBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
-        expectedBalances[daiIdx] += expectedAmountsIn[daiIdx];
-        expectedBalances[usdcIdx] += expectedAmountsIn[usdcIdx];
+        expectedBalances[daiIdx] += amountsInPoolBalance[daiIdx];
+        expectedBalances[usdcIdx] += amountsInPoolBalance[usdcIdx];
 
         uint256 hookDiscount = 1e3;
         PoolHooksMock(poolHooksContract).setOnAfterAddLiquidityHookDiscount(hookDiscount);
@@ -189,17 +190,17 @@ contract HooksAddLiquidityFeesAndDiscountsTest is BaseVaultTest {
                 IHooks.onAfterAddLiquidity.selector,
                 address(router),
                 pool,
-                expectedAmountsIn,
-                expectedAmountsIn,
+                amountsInPoolBalance,
+                amountsInPoolBalance,
                 expectedBptOut,
                 expectedBalances,
                 bytes("")
             )
         );
 
-        router.addLiquidityUnbalanced(pool, expectedAmountsIn, _swapAmount, false, bytes(""));
+        router.addLiquidityProportional(pool, amountsInPoolBalance, expectedBptOut, false, bytes(""));
 
-        _checkOnAfterAddLiquidityTestResults(vars, expectedAmountsIn, expectedBptOut, 0, hookDiscount);
+        _checkOnAfterAddLiquidityTestResults(vars, amountsInPoolBalance, expectedBptOut, 0, hookDiscount);
     }
 
     struct HookTestLocals {

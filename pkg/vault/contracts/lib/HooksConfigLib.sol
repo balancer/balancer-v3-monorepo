@@ -183,6 +183,16 @@ library HooksConfigLib {
         if (success == false) {
             revert IVaultErrors.AfterAddLiquidityHookFailed();
         }
+
+        for (uint256 i = 0; i < hookAdjustedAmountsInRaw.length; i++) {
+            if (hookAdjustedAmountsInRaw[i] > params.maxAmountsIn[i]) {
+                revert IVaultErrors.AmountInAboveMax(
+                    poolData.tokenConfig[i].token,
+                    hookAdjustedAmountsInRaw[i],
+                    params.maxAmountsIn[i]
+                );
+            }
+        }
     }
 
     /**
