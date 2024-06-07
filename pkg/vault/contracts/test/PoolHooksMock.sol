@@ -108,7 +108,7 @@ contract PoolHooksMock is BasePoolHooks {
         return (!failOnComputeDynamicSwapFeeHook, finalSwapFee);
     }
 
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata params, address) external override returns (bool success) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata, address) external override returns (bool) {
         if (changeTokenRateOnBeforeSwapHook) {
             _updateTokenRate();
         }
