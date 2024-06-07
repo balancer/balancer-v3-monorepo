@@ -102,8 +102,7 @@ contract YieldFeesTest is BaseVaultTest {
             daiRate,
             10,
             yieldFeePercentage,
-            creatorYieldFeePercentage,
-            "testSwapWithoutYieldFeesSnapshot"
+            creatorYieldFeePercentage
         );
     }
 
@@ -127,8 +126,7 @@ contract YieldFeesTest is BaseVaultTest {
             daiRate,
             10,
             yieldFeePercentage,
-            creatorYieldFeePercentage,
-            "testSwapWithProtocolYieldFeesSnapshot"
+            creatorYieldFeePercentage
         );
     }
 
@@ -152,8 +150,7 @@ contract YieldFeesTest is BaseVaultTest {
             daiRate,
             10,
             yieldFeePercentage,
-            creatorYieldFeePercentage,
-            "swapWithProtocolAndCreatorYieldFeesSnapshot"
+            creatorYieldFeePercentage
         );
     }
 
@@ -162,8 +159,7 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 daiRate,
         uint256 pumpRate,
         uint256 protocolYieldFeePercentage,
-        uint256 creatorYieldFeePercentage,
-        string memory snapName
+        uint256 creatorYieldFeePercentage
     ) private {
         _initializePoolAndRateProviders(wstethRate, daiRate);
 
@@ -186,9 +182,7 @@ contract YieldFeesTest is BaseVaultTest {
 
         // Dummy swap
         vm.prank(alice);
-        snapStart(snapName);
         router.swapSingleTokenExactIn(pool, wsteth, dai, amountOut, 0, MAX_UINT256, false, "");
-        snapEnd();
     }
 
     function _initializePoolAndRateProviders(uint256 wstethRate, uint256 daiRate) private {
