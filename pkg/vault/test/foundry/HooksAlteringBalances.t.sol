@@ -119,7 +119,9 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IHooks.onBeforeAddLiquidity.selector,
                 router,
+                pool,
                 AddLiquidityKind.CUSTOM,
+                amountsIn,
                 amountsIn,
                 bptAmountRoundDown,
                 originalBalances,

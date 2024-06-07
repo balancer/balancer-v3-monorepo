@@ -161,7 +161,9 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IHooks.onAfterAddLiquidity.selector,
                 router,
+                pool,
                 expectedAmountsIn,
+                [defaultAmount, defaultAmount].toMemoryArray(),
                 defaultAmount * 2,
                 expectedBalances,
                 bytes("")

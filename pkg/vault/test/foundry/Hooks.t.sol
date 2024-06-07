@@ -306,7 +306,9 @@ contract HooksTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IHooks.onBeforeAddLiquidity.selector,
                 router,
+                pool,
                 AddLiquidityKind.UNBALANCED,
+                [defaultAmount, defaultAmount].toMemoryArray(),
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bptAmountRoundDown,
                 [defaultAmount, defaultAmount].toMemoryArray(),
@@ -413,6 +415,8 @@ contract HooksTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IHooks.onAfterAddLiquidity.selector,
                 router,
+                pool,
+                [defaultAmount, defaultAmount].toMemoryArray(),
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bptAmount,
                 [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),
