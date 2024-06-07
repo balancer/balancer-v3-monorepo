@@ -46,7 +46,7 @@ contract YieldFeesTest is BaseVaultTest {
 
     // Create wsteth / dai pool, with rate providers on wsteth (non-exempt), and dai (exempt)
     function createPool() internal override returns (address) {
-        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
+        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
 
         wstETHRateProvider = new RateProviderMock();
         daiRateProvider = new RateProviderMock();
@@ -74,6 +74,7 @@ contract YieldFeesTest is BaseVaultTest {
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 poolRoleAccounts,
                 swapFee,
+                address(0),
                 bytes32(0)
             )
         );
@@ -86,14 +87,6 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 yieldFeePercentage;
         uint256 creatorYieldFeePercentage;
 
-        // yield fee 20% and creator yield fees 100%
-        (yieldFeePercentage, creatorYieldFeePercentage) = _initializeFees(
-            yieldFeePercentage,
-            creatorYieldFeePercentage,
-            0,
-            0
-        );
-
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
@@ -102,21 +95,14 @@ contract YieldFeesTest is BaseVaultTest {
             daiRate,
             10,
             yieldFeePercentage,
-            creatorYieldFeePercentage
+            creatorYieldFeePercentage,
+            "testSwapWithoutYieldFeesSnapshot"
         );
     }
 
     function testSwapWithProtocolYieldFeesSnapshot() public {
-        uint256 yieldFeePercentage;
-        uint256 creatorYieldFeePercentage;
-
         // yield fee 20% and creator yield fees 100%
-        (yieldFeePercentage, creatorYieldFeePercentage) = _initializeFees(
-            yieldFeePercentage,
-            creatorYieldFeePercentage,
-            2e6,
-            0
-        );
+        (uint256 yieldFeePercentage, uint256 creatorYieldFeePercentage) = _initializeFees(2e6, 0);
 
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
@@ -126,21 +112,13 @@ contract YieldFeesTest is BaseVaultTest {
             daiRate,
             10,
             yieldFeePercentage,
-            creatorYieldFeePercentage
+            creatorYieldFeePercentage,
+            "testSwapWithProtocolYieldFeesSnapshot"
         );
     }
 
     function testSwapWithProtocolAndCreatorYieldFeesSnapshot() public {
-        uint256 yieldFeePercentage;
-        uint256 creatorYieldFeePercentage;
-
-        // yield fee 20% and creator yield fees 100%
-        (yieldFeePercentage, creatorYieldFeePercentage) = _initializeFees(
-            yieldFeePercentage,
-            creatorYieldFeePercentage,
-            2e6,
-            1e7
-        );
+        (uint256 yieldFeePercentage, uint256 creatorYieldFeePercentage) = _initializeFees(2e6, 1e7);
 
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
@@ -150,7 +128,8 @@ contract YieldFeesTest is BaseVaultTest {
             daiRate,
             10,
             yieldFeePercentage,
-            creatorYieldFeePercentage
+            creatorYieldFeePercentage,
+            "swapWithProtocolAndCreatorYieldFeesSnapshot"
         );
     }
 
@@ -159,7 +138,8 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 daiRate,
         uint256 pumpRate,
         uint256 protocolYieldFeePercentage,
-        uint256 creatorYieldFeePercentage
+        uint256 creatorYieldFeePercentage,
+        string memory snapName
     ) private {
         _initializePoolAndRateProviders(wstethRate, daiRate);
 
@@ -182,7 +162,9 @@ contract YieldFeesTest is BaseVaultTest {
 
         // Dummy swap
         vm.prank(alice);
+        snapStart(snapName);
         router.swapSingleTokenExactIn(pool, wsteth, dai, amountOut, 0, MAX_UINT256, false, "");
+        snapEnd();
     }
 
     function _initializePoolAndRateProviders(uint256 wstethRate, uint256 daiRate) private {
@@ -194,11 +176,9 @@ contract YieldFeesTest is BaseVaultTest {
     }
 
     function _initializeFees(
-        uint256 yieldFeePercentage,
-        uint256 creatorYieldFeePercentage,
         uint256 fixedYieldFee,
         uint256 fixedCreatorFee
-    ) private returns (uint256 finalYieldFeePercentage, uint256 finalCreatorFeePercentage) {
+    ) private pure returns (uint256 finalYieldFeePercentage, uint256 finalCreatorFeePercentage) {
         // Fees are stored as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%) in vaultConfig and poolConfig
         // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
 
