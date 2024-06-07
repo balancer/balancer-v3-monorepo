@@ -22,7 +22,7 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     using SafeERC20 for IWETH;
     using StorageSlot for *;
 
-    address private _sender;
+    StorageSlot.AddressSlot private _sender;
 
     /// @dev Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();

@@ -68,13 +68,13 @@ contract VaultStorage {
     mapping(address => mapping(IERC20 => TokenConfig)) internal _poolTokenConfig;
 
     /// @notice Global lock state. Unlock to operate with the vault.
-    bool private __isUnlocked;
+    StorageSlot.AddressSlot private __isUnlocked;
 
     /**
      * @notice The total number of nonzero deltas.
      * @dev It is non-zero only during `unlock` calls.
      */
-    uint256 private __nonzeroDeltaCount;
+    StorageSlot.Uint256Slot private __nonzeroDeltaCount;
 
     /**
      * @notice Represents the token due/owed during an operation.
