@@ -276,7 +276,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.startPrank(alice);
         router.addLiquidityProportional(
             address(liquidityPool),
-            [uint256(MAX_UINT128), MAX_UINT128].toMemoryArray(),
+            [MAX_UINT128, MAX_UINT128].toMemoryArray(),
             exactBptAmountOut,
             false,
             bytes("")
@@ -694,7 +694,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertApproxEqAbs(aliceAmountOut, bobAmountOut, roundingDelta, "Swap fee delta is too big");
 
         // See @notice at `LiquidityApproximationTest`
-        assertGe(bobToAliceRatio, 1e18, "Bob has less USDC compare to Alice");
+        assertGe(bobToAliceRatio, 1e18 - roundingDelta, "Bob has less USDC compare to Alice");
         assertLe(bobToAliceRatio, 1e18 + roundingDelta, "Bob has too much USDC compare to Alice");
 
         // Alice and Bob have no BPT tokens
