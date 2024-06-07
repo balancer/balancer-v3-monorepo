@@ -90,14 +90,7 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
-        _testYieldFeesOnSwap(
-            wstethRate,
-            daiRate,
-            10,
-            yieldFeePercentage,
-            creatorYieldFeePercentage,
-            "testSwapWithoutYieldFeesSnapshot"
-        );
+        _testYieldFeesOnSwap(wstethRate, daiRate, 10, yieldFeePercentage, creatorYieldFeePercentage);
     }
 
     function testSwapWithProtocolYieldFeesSnapshot() public {
@@ -107,14 +100,7 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
-        _testYieldFeesOnSwap(
-            wstethRate,
-            daiRate,
-            10,
-            yieldFeePercentage,
-            creatorYieldFeePercentage,
-            "testSwapWithProtocolYieldFeesSnapshot"
-        );
+        _testYieldFeesOnSwap(wstethRate, daiRate, 10, yieldFeePercentage, creatorYieldFeePercentage);
     }
 
     function testSwapWithProtocolAndCreatorYieldFeesSnapshot() public {
@@ -123,14 +109,7 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
-        _testYieldFeesOnSwap(
-            wstethRate,
-            daiRate,
-            10,
-            yieldFeePercentage,
-            creatorYieldFeePercentage,
-            "swapWithProtocolAndCreatorYieldFeesSnapshot"
-        );
+        _testYieldFeesOnSwap(wstethRate, daiRate, 10, yieldFeePercentage, creatorYieldFeePercentage);
     }
 
     function _testYieldFeesOnSwap(
@@ -138,8 +117,7 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 daiRate,
         uint256 pumpRate,
         uint256 protocolYieldFeePercentage,
-        uint256 creatorYieldFeePercentage,
-        string memory snapName
+        uint256 creatorYieldFeePercentage
     ) private {
         _initializePoolAndRateProviders(wstethRate, daiRate);
 
@@ -162,9 +140,7 @@ contract YieldFeesTest is BaseVaultTest {
 
         // Dummy swap
         vm.prank(alice);
-        snapStart(snapName);
         router.swapSingleTokenExactIn(pool, wsteth, dai, amountOut, 0, MAX_UINT256, false, "");
-        snapEnd();
     }
 
     function _initializePoolAndRateProviders(uint256 wstethRate, uint256 daiRate) private {
