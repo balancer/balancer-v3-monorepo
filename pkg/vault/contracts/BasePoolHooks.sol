@@ -65,12 +65,14 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
     /// @inheritdoc IHooks
     function onAfterAddLiquidity(
         address,
+        address,
         uint256[] memory,
+        uint256[] memory amountsInRaw,
         uint256,
         uint256[] memory,
         bytes memory
-    ) external virtual onlyVault returns (bool) {
-        return false;
+    ) external virtual onlyVault returns (bool, uint256[] memory) {
+        return (false, amountsInRaw);
     }
 
     /// @inheritdoc IHooks

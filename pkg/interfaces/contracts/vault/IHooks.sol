@@ -105,19 +105,24 @@ interface IHooks {
     /**
      * @notice Optional hook to be executed after adding liquidity.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
+     * @param pool Pool address
      * @param amountsInScaled18 Actual amounts of tokens added, in the same order as the tokens registered in the pool
+     * @param amountsInRaw Actual amounts of tokens added in token registration order
      * @param bptAmountOut Amount of pool tokens minted
      * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
      * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
+     * @return hookAdjustedAmountsInRaw New amountsInRaw, modified by the hook
      */
     function onAfterAddLiquidity(
         address router,
+        address pool,
         uint256[] memory amountsInScaled18,
+        uint256[] memory amountsInRaw,
         uint256 bptAmountOut,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) external returns (bool success);
+    ) external returns (bool success, uint256[] memory hookAdjustedAmountsInRaw);
 
     /***************************************************************************
                                  Remove Liquidity

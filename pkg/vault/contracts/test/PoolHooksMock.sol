@@ -43,6 +43,8 @@ contract PoolHooksMock is BasePoolHooks {
 
     uint256 public onBeforeAddLiquidityHookFee;
     uint256 public onBeforeAddLiquidityHookDiscount;
+    uint256 public onAfterAddLiquidityHookFee;
+    uint256 public onAfterAddLiquidityHookDiscount;
 
     bool public swapReentrancyHookActive;
     address private _swapHookContract;
@@ -228,12 +230,30 @@ contract PoolHooksMock is BasePoolHooks {
 
     function onAfterAddLiquidity(
         address,
+        address pool,
         uint256[] memory,
+        uint256[] memory amountsInRaw,
         uint256,
         uint256[] memory,
         bytes memory
-    ) external view override returns (bool) {
-        return !failOnAfterAddLiquidity;
+    ) external override returns (bool, uint256[] memory hookAdjustedAmountsInRaw) {
+        (TokenConfig[] memory tokenConfig, , ) = _vault.getPoolTokenInfo(pool);
+        hookAdjustedAmountsInRaw = amountsInRaw;
+
+        if (onAfterAddLiquidityHookFee > 0) {
+            for (uint256 i = 0; i < amountsInRaw.length; i++) {
+                hookAdjustedAmountsInRaw[i] += onAfterAddLiquidityHookFee;
+                _vault.sendTo(tokenConfig[i].token, address(this), onAfterAddLiquidityHookFee);
+            }
+        } else if (onAfterAddLiquidityHookDiscount > 0) {
+            for (uint256 i = 0; i < amountsInRaw.length; i++) {
+                tokenConfig[i].token.transfer(address(_vault), onAfterAddLiquidityHookDiscount);
+                _vault.settle(tokenConfig[i].token);
+                hookAdjustedAmountsInRaw[i] -= onAfterAddLiquidityHookDiscount;
+            }
+        }
+
+        return (!failOnAfterAddLiquidity, hookAdjustedAmountsInRaw);
     }
 
     function onAfterRemoveLiquidity(
@@ -378,6 +398,14 @@ contract PoolHooksMock is BasePoolHooks {
 
     function setOnBeforeAddLiquidityHookDiscount(uint256 hookDiscount) public {
         onBeforeAddLiquidityHookDiscount = hookDiscount;
+    }
+
+    function setOnAfterAddLiquidityHookFee(uint256 hookFee) public {
+        onAfterAddLiquidityHookFee = hookFee;
+    }
+
+    function setOnAfterAddLiquidityHookDiscount(uint256 hookDiscount) public {
+        onAfterAddLiquidityHookDiscount = hookDiscount;
     }
 
     function allowFactory(address factory) external {

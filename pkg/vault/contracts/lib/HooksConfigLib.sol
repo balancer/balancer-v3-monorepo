@@ -110,7 +110,6 @@ library HooksConfigLib {
      *
      * @param config The encoded hooks configuration
      * @param router Router address
-     * @param pool Pool address
      * @param maxAmountsInScaled18 An array with maximum amounts for each input token of the add liquidity operation
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
@@ -120,7 +119,6 @@ library HooksConfigLib {
     function onBeforeAddLiquidity(
         HooksConfig memory config,
         address router,
-        address pool,
         uint256[] memory maxAmountsInScaled18,
         AddLiquidityParams memory params,
         PoolData memory poolData
@@ -131,7 +129,7 @@ library HooksConfigLib {
 
         (success, hookAdjustedMaxAmountsInRaw) = IHooks(config.hooksContract).onBeforeAddLiquidity(
             router,
-            pool,
+            params.pool,
             params.kind,
             maxAmountsInScaled18,
             params.maxAmountsIn,
@@ -150,32 +148,39 @@ library HooksConfigLib {
      * to execute the hook.
      *
      * @param config The encoded hooks configuration
+     * @param router Router address
      * @param amountsInScaled18 An array with amounts for each input token of the add liquidity operation
+     * @param amountsInRaw An array with amounts for each input token of the add liquidity operation
      * @param bptAmountOut The BPT amount a user will receive after add liquidity operation succeeds
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
+     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
+     * @return hookAdjustedAmountsInRaw New amountsInRaw, modified by the hook
      */
     function onAfterAddLiquidity(
         HooksConfig memory config,
-        uint256[] memory amountsInScaled18,
-        uint256 bptAmountOut,
         address router,
+        uint256[] memory amountsInScaled18,
+        uint256[] memory amountsInRaw,
+        uint256 bptAmountOut,
         AddLiquidityParams memory params,
         PoolData memory poolData
-    ) internal {
+    ) internal returns (bool success, uint256[] memory hookAdjustedAmountsInRaw) {
         if (config.shouldCallAfterAddLiquidity == false) {
-            return;
+            return (false, amountsInRaw);
         }
 
-        if (
-            IHooks(config.hooksContract).onAfterAddLiquidity(
-                router,
-                amountsInScaled18,
-                bptAmountOut,
-                poolData.balancesLiveScaled18,
-                params.userData
-            ) == false
-        ) {
+        (success, hookAdjustedAmountsInRaw) = IHooks(config.hooksContract).onAfterAddLiquidity(
+            router,
+            params.pool,
+            amountsInScaled18,
+            amountsInRaw,
+            bptAmountOut,
+            poolData.balancesLiveScaled18,
+            params.userData
+        );
+
+        if (success == false) {
             revert IVaultErrors.AfterAddLiquidityHookFailed();
         }
     }

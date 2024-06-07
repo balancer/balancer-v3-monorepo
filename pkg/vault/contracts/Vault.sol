@@ -489,7 +489,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         (bool onBeforeAddLiquiditySuccess, uint256[] memory hookAdjustedMaxAmountsInRaw) = hooksConfig
-            .onBeforeAddLiquidity(msg.sender, params.pool, maxAmountsInScaled18, params, poolData);
+            .onBeforeAddLiquidity(msg.sender, maxAmountsInScaled18, params, poolData);
 
         if (onBeforeAddLiquiditySuccess == true) {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
@@ -527,7 +527,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
         }
 
-        hooksConfig.onAfterAddLiquidity(amountsInScaled18, bptAmountOut, msg.sender, params, poolData);
+        (, amountsIn) = hooksConfig.onAfterAddLiquidity(
+            msg.sender,
+            amountsInScaled18,
+            amountsIn,
+            bptAmountOut,
+            params,
+            poolData
+        );
     }
 
     /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
