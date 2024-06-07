@@ -116,6 +116,13 @@ library HooksConfigLib {
             // Hook contract implements onAfterSwap, but it has failed, so reverts the transaction.
             revert IVaultErrors.AfterSwapHookFailed();
         }
+
+        if (
+            (params.kind == SwapKind.EXACT_IN && hookAdjustedAmountCalculatedRaw < params.limitRaw) ||
+            (params.kind == SwapKind.EXACT_OUT && hookAdjustedAmountCalculatedRaw > params.limitRaw)
+        ) {
+            revert IVaultErrors.SwapLimit(hookAdjustedAmountCalculatedRaw, params.limitRaw);
+        }
     }
 
     /**

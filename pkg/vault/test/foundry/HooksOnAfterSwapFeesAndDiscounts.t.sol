@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -14,7 +15,7 @@ import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract HooksFeesAndDiscountsTest is BaseVaultTest {
+contract HooksOnAfterSwapFeesAndDiscountsTest is BaseVaultTest {
     using ArrayHelpers for *;
 
     uint256 internal daiIdx;
@@ -33,7 +34,7 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    function testOnAfterSwapHookFeeExactIn() public {
+    function testFeeExactIn() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
         hooksConfig.shouldCallAfterSwap = true;
         vault.setHooksConfig(address(pool), hooksConfig);
@@ -81,7 +82,7 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
         _checkPoolAndVaultBalances(vars, _swapAmount);
     }
 
-    function testOnAfterSwapHookDiscountExactIn() public {
+    function testDiscountExactIn() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
         hooksConfig.shouldCallAfterSwap = true;
         vault.setHooksConfig(address(pool), hooksConfig);
@@ -132,7 +133,7 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
         _checkPoolAndVaultBalances(vars, _swapAmount);
     }
 
-    function testOnAfterSwapHookFeeExactOut() public {
+    function testFeeExactOut() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
         hooksConfig.shouldCallAfterSwap = true;
         vault.setHooksConfig(address(pool), hooksConfig);
@@ -189,7 +190,7 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
         _checkPoolAndVaultBalances(vars, _swapAmount);
     }
 
-    function testOnAfterSwapHookDiscountExactOut() public {
+    function testDiscountExactOut() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
         hooksConfig.shouldCallAfterSwap = true;
         vault.setHooksConfig(address(pool), hooksConfig);
@@ -247,6 +248,103 @@ contract HooksFeesAndDiscountsTest is BaseVaultTest {
         assertEq(vars.hook.daiBefore - vars.hook.daiAfter, hookDiscount, "Hook DAI balance is wrong");
 
         _checkPoolAndVaultBalances(vars, _swapAmount);
+    }
+
+    function testFeeExactInOutOfLimit() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        hooksConfig.shouldCallAfterSwap = true;
+        vault.setHooksConfig(address(pool), hooksConfig);
+
+        uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
+
+        uint256 hookFee = 1e3;
+        PoolHooksMock(poolHooksContract).setOnAfterSwapHookFee(hookFee);
+
+        // Check that the swap gets updated balances that reflect the updated balance in the before hook
+        vm.prank(bob);
+        // Check if onAfterHook was called with the correct params
+        vm.expectCall(
+            address(poolHooksContract),
+            abi.encodeWithSelector(
+                IHooks.onAfterSwap.selector,
+                IHooks.AfterSwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    tokenIn: dai,
+                    tokenOut: usdc,
+                    amountInScaled18: _swapAmount,
+                    amountOutScaled18: _swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount + _swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount - _swapAmount,
+                    amountCalculatedScaled18: _swapAmount,
+                    amountCalculatedRaw: _swapAmount,
+                    router: address(router),
+                    pool: pool,
+                    userData: ""
+                })
+            )
+        );
+        // Check if call reverted because limits were not respected in the after hook (amountOut < minAmountOut)
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, _swapAmount - hookFee, _swapAmount));
+
+        router.swapSingleTokenExactIn(
+            address(pool),
+            dai,
+            usdc,
+            _swapAmount,
+            _swapAmount,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+    }
+
+    function testFeeExactOutOutOfLimit() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        hooksConfig.shouldCallAfterSwap = true;
+        vault.setHooksConfig(address(pool), hooksConfig);
+
+        uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
+
+        uint256 hookFee = 1e3;
+        PoolHooksMock(poolHooksContract).setOnAfterSwapHookFee(hookFee);
+
+        // Check that the swap gets updated balances that reflect the updated balance in the before hook
+        vm.prank(bob);
+        // Check if onAfterSwap was called with the correct parameters
+        vm.expectCall(
+            address(poolHooksContract),
+            abi.encodeWithSelector(
+                IHooks.onAfterSwap.selector,
+                IHooks.AfterSwapParams({
+                    kind: SwapKind.EXACT_OUT,
+                    tokenIn: dai,
+                    tokenOut: usdc,
+                    amountInScaled18: _swapAmount,
+                    amountOutScaled18: _swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount + _swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount - _swapAmount,
+                    amountCalculatedScaled18: _swapAmount,
+                    amountCalculatedRaw: _swapAmount,
+                    router: address(router),
+                    pool: pool,
+                    userData: ""
+                })
+            )
+        );
+
+        // Check if call reverted because limits were not respected in the after hook (amountIn > maxAmountIn)
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, _swapAmount + hookFee, _swapAmount));
+
+        router.swapSingleTokenExactOut(
+            address(pool),
+            dai,
+            usdc,
+            _swapAmount,
+            _swapAmount,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
     }
 
     struct WalletState {
