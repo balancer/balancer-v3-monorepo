@@ -209,7 +209,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
         // as those passed to the main operation.
         // At this point, the static swap fee percentage is loaded in the swap state as the default,
-        // to be used unless the pool has a dynamic swap fee.
+        // to be used unless the pool has a dynamic swap fee. It is also passed into the hook, to support common cases
+        // where the dynamic fee computation logic uses it.
         (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = hooksConfig.onComputeDynamicSwapFee(
             swapParams,
             state.swapFeePercentage
