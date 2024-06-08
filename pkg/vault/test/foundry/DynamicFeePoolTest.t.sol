@@ -97,7 +97,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams),
+            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams, 0),
             1 // callCount
         );
 
@@ -125,7 +125,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams),
+            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams, 0),
             1 // callCount
         );
 
@@ -161,10 +161,26 @@ contract DynamicFeePoolTest is BaseVaultTest {
     }
 
     function testExternalComputeFee() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+        vault.setStaticSwapFeePercentage(address(pool), 10e16);
+        uint256[] memory balances;
+
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector),
-            1 // callCount
+            abi.encodeWithSelector(
+                IHooks.onComputeDynamicSwapFee.selector,
+                IBasePool.PoolSwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    amountGivenScaled18: 0,
+                    balancesScaled18: balances,
+                    indexIn: 0,
+                    indexOut: 0,
+                    router: address(0),
+                    userData: bytes("")
+                }),
+                10e16
+            )
         );
 
         IBasePool.PoolSwapParams memory swapParams;
