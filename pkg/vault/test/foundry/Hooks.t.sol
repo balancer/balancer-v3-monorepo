@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -137,7 +138,39 @@ contract HooksTest is BaseVaultTest {
                     indexOut: daiIdx,
                     router: address(router),
                     userData: bytes("")
-                })
+                }),
+                0
+            )
+        );
+        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
+    }
+
+    function testOnComputeDynamicSwapFeeHookReturningStaticFee() public {
+        uint256 staticSwapFeePercentage = 10e16;
+
+        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        hooksConfig.shouldCallComputeDynamicSwapFee = true;
+        vault.setHooksConfig(address(pool), hooksConfig);
+
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+        vault.setStaticSwapFeePercentage(address(pool), staticSwapFeePercentage);
+
+        vm.prank(bob);
+        vm.expectCall(
+            address(poolHooksContract),
+            abi.encodeWithSelector(
+                IHooks.onComputeDynamicSwapFee.selector,
+                IBasePool.PoolSwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    amountGivenScaled18: defaultAmount,
+                    balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
+                    indexIn: usdcIdx,
+                    indexOut: daiIdx,
+                    router: address(router),
+                    userData: bytes("")
+                }),
+                staticSwapFeePercentage
             )
         );
         router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
