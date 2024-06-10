@@ -100,7 +100,7 @@ interface IHooks {
     /**
      * @notice Optional hook to be executed after adding liquidity.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
-     * @param amountsInScaled18 Actual amounts of tokens added in token registration order
+     * @param amountsInScaled18 Scaled amounts of tokens added in token registration order
      * @param bptAmountOut Amount of pool tokens minted
      * @param balancesScaled18 Current pool balances in token registration order
      * @param userData Additional (optional) data provided by the user

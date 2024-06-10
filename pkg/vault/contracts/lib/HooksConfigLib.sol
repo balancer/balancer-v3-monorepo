@@ -166,7 +166,7 @@ library HooksConfigLib {
      * to execute the hook.
      *
      * @param config The encoded hooks configuration
-     * @param amountsInScaled18 Actual amounts of tokens added in token registration order
+     * @param amountsInScaled18 Scaled amounts of tokens added in token registration order
      * @param bptAmountOut The BPT amount a user will receive after add liquidity operation succeeds
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
