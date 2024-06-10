@@ -106,7 +106,8 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
 
     /// @inheritdoc IHooks
     function onComputeDynamicSwapFee(
-        IBasePool.PoolSwapParams calldata
+        IBasePool.PoolSwapParams calldata,
+        uint256
     ) external view virtual onlyVault returns (bool, uint256) {
         return (false, 0);
     }

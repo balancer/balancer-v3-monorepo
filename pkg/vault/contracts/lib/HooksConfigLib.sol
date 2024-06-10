@@ -122,14 +122,16 @@ library HooksConfigLib {
      */
     function onComputeDynamicSwapFee(
         HooksConfigBits memory config,
-        IBasePool.PoolSwapParams memory swapParams
+        IBasePool.PoolSwapParams memory swapParams,
+        uint256 staticSwapFeePercentage
     ) internal view returns (bool, uint256) {
         if (config.shouldCallComputeDynamicSwapFee() == false) {
             return (false, 0);
         }
 
         (bool success, uint256 swapFeePercentage) = IHooks(config.getHooksContract()).onComputeDynamicSwapFee(
-            swapParams
+            swapParams,
+            staticSwapFeePercentage
         );
 
         if (success == false) {
