@@ -169,12 +169,12 @@ contract WeightedPool is IBasePool, BalancerPoolToken, Version {
     }
 
     /// @inheritdoc ISwapFeePercentageBounds
-    function getMinimumSwapFeePercentage() public pure override returns (uint256) {
+    function getMinimumSwapFeePercentage() external pure override returns (uint256) {
         return _MIN_SWAP_FEE_PERCENTAGE;
     }
 
     /// @inheritdoc ISwapFeePercentageBounds
-    function getMaximumSwapFeePercentage() public pure override returns (uint256) {
+    function getMaximumSwapFeePercentage() external pure override returns (uint256) {
         return _MAX_SWAP_FEE_PERCENTAGE;
     }
 }

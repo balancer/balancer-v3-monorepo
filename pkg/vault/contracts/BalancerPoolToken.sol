@@ -182,12 +182,12 @@ contract BalancerPoolToken is
     }
 
     /// @inheritdoc ISwapFeePercentageBounds
-    function getMinimumSwapFeePercentage() public pure virtual returns (uint256) {
+    function getMinimumSwapFeePercentage() external pure virtual returns (uint256) {
         return 0;
     }
 
     /// @inheritdoc ISwapFeePercentageBounds
-    function getMaximumSwapFeePercentage() public pure virtual returns (uint256) {
+    function getMaximumSwapFeePercentage() external pure virtual returns (uint256) {
         return FixedPoint.ONE;
     }
 }

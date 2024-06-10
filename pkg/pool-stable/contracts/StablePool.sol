@@ -283,7 +283,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
     }
 
     /// @inheritdoc ISwapFeePercentageBounds
-    function getMaximumSwapFeePercentage() public pure override returns (uint256) {
+    function getMaximumSwapFeePercentage() external pure override returns (uint256) {
         return _MAX_SWAP_FEE_PERCENTAGE;
     }
 }
