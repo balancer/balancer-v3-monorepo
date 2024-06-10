@@ -31,7 +31,6 @@ contract HooksSwapDeltasTest is BaseVaultTest {
 
         _swapAmount = poolInitAmount / 100;
 
-
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
@@ -254,7 +253,7 @@ contract HooksSwapDeltasTest is BaseVaultTest {
         _checkPoolAndVaultBalances(vars, swapAmount);
     }
 
-    function testFeeExactInOutOfLimit() public {
+    function testFeeExactInLimitViolation() public {
         uint256 hookFeePercentage = 1e16;
         PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = _swapAmount.mulDown(hookFeePercentage);
@@ -297,7 +296,7 @@ contract HooksSwapDeltasTest is BaseVaultTest {
         );
     }
 
-    function testFeeExactOutOutOfLimit() public {
+    function testFeeExactOutLimitViolation() public {
         uint256 hookFeePercentage = 1e16;
         PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = _swapAmount.mulDown(hookFeePercentage);
