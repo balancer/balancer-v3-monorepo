@@ -28,6 +28,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
+            false,
             roleAccounts,
             address(0), // No hook contract
             LiquidityManagement({
@@ -46,6 +47,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
+            false,
             roleAccounts,
             poolHooksContract,
             LiquidityManagement({
@@ -70,6 +72,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
+            false,
             roleAccounts,
             poolHooksContract,
             LiquidityManagement({
@@ -85,6 +88,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
         TokenConfig[] memory tokenConfig,
         uint256 swapFee,
         uint32 pauseWindowDuration,
+        bool protocolFeeExempt,
         PoolRoleAccounts memory roleAccounts,
         address poolHooksContract
     ) external {
@@ -93,6 +97,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             swapFee,
             uint32(block.timestamp) + pauseWindowDuration,
+            protocolFeeExempt,
             roleAccounts,
             poolHooksContract,
             LiquidityManagement({
@@ -115,6 +120,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             DEFAULT_SWAP_FEE,
             getNewPoolPauseWindowEndTime(),
+            false,
             roleAccounts,
             poolHooksContract,
             liquidityManagement
@@ -135,6 +141,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
+            false,
             roleAccounts,
             poolHooksContract,
             liquidityManagement
@@ -155,6 +162,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             tokenConfig,
             DEFAULT_SWAP_FEE,
             timestamp,
+            false,
             roleAccounts,
             poolHooksContract,
             liquidityManagement
