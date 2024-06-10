@@ -288,7 +288,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectProtocolFees(address pool) public nonReentrant onlyVault {
+    function collectProtocolFees(address pool) public nonReentrant withRegisteredPool(pool) onlyVault {
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
         address feeController = address(_protocolFeeController);
         uint256 numTokens = poolTokens.length;
@@ -316,7 +316,13 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function updateAggregateSwapFeePercentage(
         address pool,
         uint256 newAggregateSwapFeePercentage
-    ) external withValidPercentage(newAggregateSwapFeePercentage) onlyProtocolFeeController {
+    )
+        external
+        withRegisteredPool(pool)
+        withValidPercentage(newAggregateSwapFeePercentage)
+        onlyProtocolFeeController
+        onlyVault
+    {
         PoolConfig memory config = _poolConfig[pool];
         config.setAggregateProtocolSwapFeePercentage(newAggregateSwapFeePercentage);
         _poolConfig[pool] = config;
@@ -326,7 +332,13 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function updateAggregateYieldFeePercentage(
         address pool,
         uint256 newAggregateYieldFeePercentage
-    ) external withValidPercentage(newAggregateYieldFeePercentage) onlyProtocolFeeController {
+    )
+        external
+        withRegisteredPool(pool)
+        withValidPercentage(newAggregateYieldFeePercentage)
+        onlyProtocolFeeController
+        onlyVault
+    {
         PoolConfig memory config = _poolConfig[pool];
         config.setAggregateProtocolYieldFeePercentage(newAggregateYieldFeePercentage);
         _poolConfig[pool] = config;
@@ -422,7 +434,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         uint256 amountUnderlying,
         uint256 amountWrapped,
         address sharesOwner
-    ) public onlyWhenUnlocked whenVaultBuffersAreNotPaused nonReentrant returns (uint256 issuedShares) {
+    ) public onlyWhenUnlocked whenVaultBuffersAreNotPaused nonReentrant onlyVault returns (uint256 issuedShares) {
         address underlyingToken = wrappedToken.asset();
 
         // amount of shares to issue is the total underlying token that the user is depositing
@@ -470,6 +482,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         onlyWhenUnlocked
         nonReentrant
         authenticate
+        onlyVault
         returns (uint256 removedUnderlyingBalance, uint256 removedWrappedBalance)
     {
         bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
@@ -497,17 +510,17 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferOwnerShares(IERC20 token, address user) external view returns (uint256 shares) {
+    function getBufferOwnerShares(IERC20 token, address user) external view onlyVault returns (uint256 shares) {
         return _bufferLpShares[token][user];
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferTotalShares(IERC20 token) external view returns (uint256 shares) {
+    function getBufferTotalShares(IERC20 token) external view onlyVault returns (uint256 shares) {
         return _bufferTotalShares[token];
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferBalance(IERC20 token) external view returns (uint256, uint256) {
+    function getBufferBalance(IERC20 token) external view onlyVault returns (uint256, uint256) {
         return (_bufferTokenBalances[token].getBalanceRaw(), _bufferTokenBalances[token].getBalanceDerived());
     }
 

@@ -472,6 +472,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         external
         view
         withRegisteredPool(pool)
+        onlyVault
         returns (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors)
     {
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
@@ -482,12 +483,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function computeDynamicSwapFee(
         address pool,
         IBasePool.PoolSwapParams memory swapParams
-    ) external view withRegisteredPool(pool) returns (bool success, uint256 dynamicSwapFee) {
+    ) external view withRegisteredPool(pool) onlyVault returns (bool success, uint256 dynamicSwapFee) {
         return _hooksConfig[pool].onComputeDynamicSwapFee(swapParams, _poolConfig[pool].getStaticSwapFeePercentage());
     }
 
     /// @inheritdoc IVaultExtension
-    function getBptRate(address pool) external view withRegisteredPool(pool) returns (uint256 rate) {
+    function getBptRate(address pool) external view withRegisteredPool(pool) onlyVault returns (uint256 rate) {
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
         uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18);
 
@@ -564,12 +565,18 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     // and yield fee amounts, arbitrarily assigning "Raw" to Swap and "Derived" to Yield.
 
     /// @inheritdoc IVaultExtension
-    function getAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view onlyVault returns (uint256) {
+    function getAggregateProtocolSwapFeeAmount(
+        address pool,
+        IERC20 token
+    ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
         return _aggregateProtocolFeeAmounts[pool][token].getBalanceRaw();
     }
 
     /// @inheritdoc IVaultExtension
-    function getAggregateProtocolYieldFeeAmount(address pool, IERC20 token) external view onlyVault returns (uint256) {
+    function getAggregateProtocolYieldFeeAmount(
+        address pool,
+        IERC20 token
+    ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
         return _aggregateProtocolFeeAmounts[pool][token].getBalanceDerived();
     }
 
@@ -607,6 +614,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         nonReentrant
         withInitializedPool(pool)
         onlyInRecoveryMode(pool)
+        onlyVault
         returns (uint256[] memory amountsOutRaw)
     {
         // Retrieve the mapping of tokens and their balances for the specified pool.
@@ -668,6 +676,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @dev Ensure that only static calls are made to the functions with this modifier.
     modifier query() {
+        _setupQuery();
+        _;
+    }
+
+    function _setupQuery() internal {
         if (!EVMCallModeHelpers.isStaticCall()) {
             revert EVMCallModeHelpers.NotStaticCall();
         }
@@ -679,7 +692,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Unlock so that `onlyWhenUnlocked` does not revert
         _isUnlocked().tstore(true);
-        _;
     }
 
     /// @inheritdoc IVaultExtension
