@@ -19,7 +19,12 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { VaultGuard } from "./VaultGuard.sol";
 
-contract ProtocolFeeController is IProtocolFeeController, SingletonAuthentication, ReentrancyGuardTransient, VaultGuard {
+contract ProtocolFeeController is
+    IProtocolFeeController,
+    SingletonAuthentication,
+    ReentrancyGuardTransient,
+    VaultGuard
+{
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
