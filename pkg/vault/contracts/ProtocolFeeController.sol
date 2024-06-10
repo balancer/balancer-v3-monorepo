@@ -17,7 +17,9 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-contract ProtocolFeeController is IProtocolFeeController, SingletonAuthentication, ReentrancyGuardTransient {
+import { VaultGuard } from "./VaultGuard.sol";
+
+contract ProtocolFeeController is IProtocolFeeController, SingletonAuthentication, ReentrancyGuardTransient, VaultGuard {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
@@ -76,13 +78,6 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
     // the pool creator.
     mapping(address => mapping(IERC20 => uint256)) internal _poolCreatorFeeAmounts;
 
-    modifier onlyVault() {
-        if (msg.sender != address(getVault())) {
-            revert IVaultErrors.SenderIsNotVault(msg.sender);
-        }
-        _;
-    }
-
     // Ensure that the caller is the pool creator.
     modifier onlyPoolCreator(address pool) {
         _ensureCallerIsPoolCreator(pool);
@@ -109,7 +104,7 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
         _;
     }
 
-    constructor(IVault vault_) SingletonAuthentication(vault_) {
+    constructor(IVault vault_) SingletonAuthentication(vault_) VaultGuard(vault_) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
