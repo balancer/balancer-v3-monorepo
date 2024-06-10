@@ -191,7 +191,6 @@ interface IHooks {
 
     /**
      * @notice Called before a swap to give the Pool an opportunity to perform actions.
-     *
      * @param params Swap parameters (see IBasePool.PoolSwapParams for struct definition)
      * @param pool Pool address
      * @return success True if the pool wishes to proceed with settlement
