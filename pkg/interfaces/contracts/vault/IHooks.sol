@@ -192,7 +192,7 @@ interface IHooks {
     /**
      * @notice Called before a swap to give the Pool an opportunity to perform actions.
      * @param params Swap parameters (see IBasePool.PoolSwapParams for struct definition)
-     * @param pool Pool address
+     * @param pool Pool address, used to get pool information from the vault (poolData, token config, etc.)
      * @return success True if the pool wishes to proceed with settlement
      */
     function onBeforeSwap(IBasePool.PoolSwapParams calldata params, address pool) external returns (bool success);
