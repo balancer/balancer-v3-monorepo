@@ -174,8 +174,7 @@ contract PoolHooksMock is BasePoolHooks {
                 hookAdjustedAmountCalculatedRaw += hookFee;
                 _vault.sendTo(params.tokenIn, address(this), hookFee);
             }
-        }
-        if (hookSwapDiscountPercentage > 0) {
+        } else if (hookSwapDiscountPercentage > 0) {
             uint256 hookDiscount = hookAdjustedAmountCalculatedRaw.mulDown(hookSwapDiscountPercentage);
             if (params.kind == SwapKind.EXACT_IN) {
                 hookAdjustedAmountCalculatedRaw += hookDiscount;
