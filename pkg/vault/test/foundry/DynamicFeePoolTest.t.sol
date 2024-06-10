@@ -180,7 +180,8 @@ contract DynamicFeePoolTest is BaseVaultTest {
                     userData: bytes("")
                 }),
                 10e16
-            )
+            ),
+            1 // callCount
         );
 
         IBasePool.PoolSwapParams memory swapParams;
