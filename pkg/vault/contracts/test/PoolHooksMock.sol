@@ -41,6 +41,7 @@ contract PoolHooksMock is BasePoolHooks {
     bool public changePoolBalancesOnBeforeAddLiquidityHook;
     bool public changePoolBalancesOnBeforeRemoveLiquidityHook;
 
+    bool public shouldSettleDiscount;
     uint256 public hookSwapFeePercentage;
     uint256 public hookSwapDiscountPercentage;
 
@@ -60,7 +61,7 @@ contract PoolHooksMock is BasePoolHooks {
     HookFlags private _hookFlags;
 
     constructor(IVault vault) BasePoolHooks(vault) {
-        // solhint-disable-previous-line no-empty-blocks
+        shouldSettleDiscount = true;
     }
 
     function onRegister(
@@ -178,12 +179,16 @@ contract PoolHooksMock is BasePoolHooks {
             uint256 hookDiscount = hookAdjustedAmountCalculatedRaw.mulDown(hookSwapDiscountPercentage);
             if (params.kind == SwapKind.EXACT_IN) {
                 hookAdjustedAmountCalculatedRaw += hookDiscount;
-                params.tokenOut.transfer(address(_vault), hookDiscount);
-                _vault.settle(params.tokenOut);
+                if (shouldSettleDiscount) {
+                    params.tokenOut.transfer(address(_vault), hookDiscount);
+                    _vault.settle(params.tokenOut);
+                }
             } else {
                 hookAdjustedAmountCalculatedRaw -= hookDiscount;
-                params.tokenIn.transfer(address(_vault), hookDiscount);
-                _vault.settle(params.tokenIn);
+                if (shouldSettleDiscount) {
+                    params.tokenIn.transfer(address(_vault), hookDiscount);
+                    _vault.settle(params.tokenIn);
+                }
             }
         }
 
@@ -374,6 +379,10 @@ contract PoolHooksMock is BasePoolHooks {
 
     function setPool(address pool) external {
         _pool = pool;
+    }
+
+    function setShouldSettleDiscount(bool shouldSettleDiscountFlag) external {
+        shouldSettleDiscount = shouldSettleDiscountFlag;
     }
 
     function setHookSwapFeePercentage(uint256 feePercentage) external {

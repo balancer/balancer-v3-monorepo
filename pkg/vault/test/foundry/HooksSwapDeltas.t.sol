@@ -330,6 +330,50 @@ contract HooksSwapDeltasTest is BaseVaultTest {
         );
     }
 
+    function testBalanceNotSettled() public {
+        uint256 hookDiscountPercentage = 1e16;
+        PoolHooksMock(poolHooksContract).setHookSwapDiscountPercentage(hookDiscountPercentage);
+        PoolHooksMock(poolHooksContract).setShouldSettleDiscount(false);
+        uint256 hookDiscount = _swapAmount.mulDown(hookDiscountPercentage);
+
+        // Check that the swap gets updated balances that reflect the updated balance in the before hook
+        vm.prank(bob);
+        // Check if onAfterHook was called with the correct params
+        vm.expectCall(
+            address(poolHooksContract),
+            abi.encodeWithSelector(
+                IHooks.onAfterSwap.selector,
+                IHooks.AfterSwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    tokenIn: dai,
+                    tokenOut: usdc,
+                    amountInScaled18: _swapAmount,
+                    amountOutScaled18: _swapAmount,
+                    tokenInBalanceScaled18: poolInitAmount + _swapAmount,
+                    tokenOutBalanceScaled18: poolInitAmount - _swapAmount,
+                    amountCalculatedScaled18: _swapAmount,
+                    amountCalculatedRaw: _swapAmount,
+                    router: address(router),
+                    pool: pool,
+                    userData: ""
+                })
+            )
+        );
+        // Check if call reverted because balances are not settled
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BalanceNotSettled.selector));
+
+        router.swapSingleTokenExactIn(
+            address(pool),
+            dai,
+            usdc,
+            _swapAmount,
+            _swapAmount,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+    }
+
     struct WalletState {
         uint256 daiBefore;
         uint256 daiAfter;
