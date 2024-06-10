@@ -189,12 +189,14 @@ interface IProtocolFeeController {
      *
      * @param pool The pool being registered
      * @param poolCreator The address of the pool creator (or 0 if there won't be a pool creator fee)
+     * @param protocolFeeExempt If true, the pool is initially exempt from protocol fees
      * @return aggregateProtocolSwapFeePercentage The initial aggregate protocol swap fee percentage
      * @return aggregateProtocolYieldFeePercentage The initial aggregate protocol yield fee percentage
      */
     function registerPool(
         address pool,
-        address poolCreator
+        address poolCreator,
+        bool protocolFeeExempt
     ) external returns (uint256 aggregateProtocolSwapFeePercentage, uint256 aggregateProtocolYieldFeePercentage);
 
     /**

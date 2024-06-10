@@ -47,6 +47,7 @@ contract PoolPauseTest is BaseVaultTest {
             tokenConfig,
             0,
             365 days,
+            false,
             adminRoleAccounts,
             poolHooksContract
         );
@@ -59,6 +60,7 @@ contract PoolPauseTest is BaseVaultTest {
             tokenConfig,
             0,
             365 days,
+            false,
             defaultRoleAccounts,
             poolHooksContract
         );
@@ -70,6 +72,7 @@ contract PoolPauseTest is BaseVaultTest {
             tokenConfig,
             0,
             0,
+            false,
             defaultRoleAccounts,
             poolHooksContract
         );
@@ -81,6 +84,7 @@ contract PoolPauseTest is BaseVaultTest {
             tokenConfig,
             0,
             10000 days,
+            false,
             defaultRoleAccounts,
             poolHooksContract
         );
