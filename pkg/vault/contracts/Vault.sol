@@ -172,7 +172,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         withInitializedPool(params.pool)
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
-        _ensureUnpausedAndGetVaultState(params.pool);
+        _ensureUnpaused(params.pool);
         HooksConfigBits memory hooksConfig = _hooksConfig[params.pool];
 
         if (params.amountGivenRaw == 0) {
@@ -475,7 +475,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // If unbalanced, higher balances = lower invariant ratio with fees.
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
 
-        _ensureUnpausedAndGetVaultState(params.pool);
+        _ensureUnpaused(params.pool);
         HooksConfigBits memory hooksConfig = _hooksConfig[params.pool];
 
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
@@ -688,7 +688,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // If unbalanced, lower balances = lower invariant ratio without fees.
         // bptIn = supply * (1 - ratio), so lower ratio = more bptIn, favoring the pool.
 
-        VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
+        _ensureUnpaused(params.pool);
+
+        VaultStateBits memory vaultState = _vaultState;
         HooksConfigBits memory hooksConfig = _hooksConfig[params.pool];
 
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
@@ -750,7 +752,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         PoolData memory poolData,
         RemoveLiquidityParams memory params,
         uint256[] memory minAmountsOutScaled18,
-        VaultState memory vaultState
+        VaultStateBits memory vaultState
     )
         internal
         nonReentrant
@@ -870,7 +872,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // 7) BPT supply adjustment
         _spendAllowance(address(params.pool), params.from, msg.sender, bptAmountIn);
 
-        if (!vaultState.isQueryDisabled && EVMCallModeHelpers.isStaticCall()) {
+        if (!vaultState.isQueryDisabled() && EVMCallModeHelpers.isStaticCall()) {
             // Increase `from` balance to ensure the burn function succeeds.
             _queryModeBalanceIncrease(params.pool, params.from, bptAmountIn);
         }
@@ -1020,7 +1022,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         // Checking isStaticCall first, so we only parse _vaultState in static calls
-        if (EVMCallModeHelpers.isStaticCall() == true && _vaultState.toVaultState().isQueryDisabled == false) {
+        if (EVMCallModeHelpers.isStaticCall() == true && _vaultState.isQueryDisabled() == false) {
             // Uses the most accurate calculation so that a query matches the actual operation
             if (kind == SwapKind.EXACT_IN) {
                 amountCalculated = wrappedToken.previewDeposit(amountGiven);
@@ -1150,7 +1152,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         // Checking isStaticCall first, so we only parse _vaultState in static calls
-        if (EVMCallModeHelpers.isStaticCall() == true && _vaultState.toVaultState().isQueryDisabled == false) {
+        if (EVMCallModeHelpers.isStaticCall() == true && _vaultState.isQueryDisabled() == false) {
             // Uses the most accurate calculation so that a query matches the actual operation
             if (kind == SwapKind.EXACT_IN) {
                 amountCalculated = wrappedToken.previewRedeem(amountGiven);

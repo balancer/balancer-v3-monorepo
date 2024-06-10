@@ -193,9 +193,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             }
         }
 
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.isVaultPaused = pausing;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
+        VaultStateBits memory vaultState = _vaultState;
+        vaultState.setVaultPaused(pausing);
+        _vaultState = vaultState;
 
         emit VaultPausedStateChanged(pausing);
     }
@@ -287,7 +287,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         uint256 swapFeePercentage
     ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
         // Saving bits by not implementing a new modifier
-        _ensureUnpausedAndGetVaultState(pool);
+        _ensureUnpaused(pool);
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
@@ -404,9 +404,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function disableQuery() external authenticate onlyVault {
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.isQueryDisabled = true;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
+        VaultStateBits memory vaultState = _vaultState;
+        vaultState.setQueryDisabled(true);
+        _vaultState = vaultState;
     }
 
     /*******************************************************************************
@@ -414,16 +414,16 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
     /// @inheritdoc IVaultAdmin
     function unpauseVaultBuffers() external authenticate onlyVault {
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.areBuffersPaused = false;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
+        VaultStateBits memory vaultState = _vaultState;
+        vaultState.setBuffersPaused(false);
+        _vaultState = vaultState;
     }
 
     /// @inheritdoc IVaultAdmin
     function pauseVaultBuffers() external authenticate onlyVault {
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.areBuffersPaused = true;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
+        VaultStateBits memory vaultState = _vaultState;
+        vaultState.setBuffersPaused(true);
+        _vaultState = vaultState;
     }
 
     /// @inheritdoc IVaultAdmin

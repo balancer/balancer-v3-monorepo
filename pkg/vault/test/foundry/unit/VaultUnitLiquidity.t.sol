@@ -565,7 +565,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function testRevertIfBptAmountInAboveMax() public {
-        VaultState memory vaultState;
+        VaultStateBits memory vaultState;
 
         PoolData memory poolData = _makeDefaultParams();
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
@@ -598,7 +598,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function testRevertIfAmountOutBelowMin() public {
-        VaultState memory vaultState;
+        VaultStateBits memory vaultState;
 
         PoolData memory poolData = _makeDefaultParams();
         uint256 defaultMinAmountOut = 1e18;
@@ -641,7 +641,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function testRevertRemoveLiquidityUnbalancedIfUnbalancedLiquidityIsDisabled() public {
-        VaultState memory vaultState;
+        VaultStateBits memory vaultState;
 
         PoolData memory poolData = _makeDefaultParams();
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
@@ -657,7 +657,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function testRevertRemoveLiquiditySingleTokenExactOutIfUnbalancedLiquidityIsDisabled() public {
-        VaultState memory vaultState;
+        VaultStateBits memory vaultState;
 
         PoolData memory poolData = _makeDefaultParams();
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
@@ -673,7 +673,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function testRevertRemoveLiquidityCustomExactOutIfCustomLiquidityIsDisabled() public {
-        VaultState memory vaultState;
+        VaultStateBits memory vaultState;
 
         PoolData memory poolData = _makeDefaultParams();
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
@@ -840,7 +840,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function _testRemoveLiquidity(PoolData memory poolData, TestRemoveLiquidityParams memory params) internal {
-        VaultState memory vaultState;
+        VaultStateBits memory vaultState;
         poolData.poolConfig.setAggregateProtocolSwapFeePercentage(1e16);
 
         uint256[] memory expectedAmountsOutRaw = new uint256[](params.expectedAmountsOutScaled18.length);

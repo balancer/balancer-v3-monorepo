@@ -149,12 +149,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * one more time. This function optimizes the check if vault and pool are paused and returns the vaultState
      * struct to be used elsewhere
      */
-    function _ensureUnpausedAndGetVaultState(address pool) internal view returns (VaultState memory vaultState) {
-        vaultState = _vaultState.toVaultState();
+    function _ensureUnpaused(address pool) internal view {
+        VaultStateBits memory vaultState = _vaultState;
         // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
         // isVaultPaused state again in `_isVaultPaused`.
         // solhint-disable-next-line not-rely-on-time
-        if (vaultState.isVaultPaused && block.timestamp <= _vaultBufferPeriodEndTime) {
+        if (vaultState.isVaultPaused() && block.timestamp <= _vaultBufferPeriodEndTime) {
             revert VaultPaused();
         }
         _ensurePoolNotPaused(pool);

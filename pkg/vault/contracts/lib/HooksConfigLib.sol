@@ -100,11 +100,7 @@ library HooksConfigLib {
     }
 
     function getHooksContract(HooksConfigBits memory config) internal pure returns (address) {
-        if (config.hooksContract == address(0)) {
-            config.hooksContract = config.bits.decodeAddress(HOOKS_CONTRACT_OFFSET);
-        }
-
-        return config.hooksContract;
+        return config.bits.decodeAddress(HOOKS_CONTRACT_OFFSET);
     }
 
     function setHooksContract(HooksConfigBits memory config, address value) internal pure {

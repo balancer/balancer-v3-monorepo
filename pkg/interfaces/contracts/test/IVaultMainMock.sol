@@ -199,7 +199,7 @@ interface IVaultMainMock {
         PoolData memory poolData,
         RemoveLiquidityParams memory params,
         uint256[] memory minAmountsOutScaled18,
-        VaultState memory vaultState
+        VaultStateBits memory vaultState
     )
         external
         returns (

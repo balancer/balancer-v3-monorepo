@@ -47,7 +47,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for *;
     using HooksConfigLib for HooksConfigBits;
-    using VaultStateLib for VaultState;
+    using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
@@ -202,16 +202,16 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetVaultPaused(bool isVaultPaused) public {
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.isVaultPaused = isVaultPaused;
-        _vaultState = vaultState.fromVaultState();
+        VaultStateBits memory vaultState = _vaultState;
+        vaultState.setVaultPaused(isVaultPaused);
+        _vaultState = vaultState;
     }
 
     function manualSetVaultState(bool isVaultPaused, bool isQueryDisabled) public {
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.isVaultPaused = isVaultPaused;
-        vaultState.isQueryDisabled = isQueryDisabled;
-        _vaultState = vaultState.fromVaultState();
+        VaultStateBits memory vaultState = _vaultState;
+        vaultState.setVaultPaused(isVaultPaused);
+        vaultState.setQueryDisabled(isQueryDisabled);
+        _vaultState = vaultState;
     }
 
     function manualSetPoolConfig(address pool, PoolConfig memory poolConfig) public {
@@ -240,7 +240,8 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function ensureUnpausedAndGetVaultState(address pool) public view returns (VaultState memory vaultState) {
-        vaultState = _ensureUnpausedAndGetVaultState(pool);
+        _ensureUnpaused(pool);
+        vaultState = _vaultState.toVaultState();
     }
 
     function internalGetPoolTokenInfo(
@@ -536,7 +537,7 @@ contract VaultMock is IVaultMainMock, Vault {
         PoolData memory poolData,
         RemoveLiquidityParams memory params,
         uint256[] memory minAmountsOutScaled18,
-        VaultState memory vaultState
+        VaultStateBits memory vaultState
     )
         external
         returns (

@@ -177,7 +177,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert PoolAlreadyRegistered(pool);
         }
 
-        HooksConfigBits memory hooksConfig;
+        HooksConfigBits memory hooksConfig = _hooksConfig[pool];
 
         if (params.poolHooksContract != address(0)) {
             // If a hook address was passed, make sure that hook trusts the pool factory
@@ -196,7 +196,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // Storing into hooksConfig first avoids stack-too-deep
             IHooks.HookFlags memory hookFlags = IHooks(params.poolHooksContract).getHookFlags();
 
-            HooksConfigBits memory hooksConfig = _hooksConfig[pool];
             hooksConfig.setShouldCallBeforeInitialize(hookFlags.shouldCallBeforeInitialize);
             hooksConfig.setShouldCallAfterInitialize(hookFlags.shouldCallAfterInitialize);
             hooksConfig.setShouldCallComputeDynamicSwapFee(hookFlags.shouldCallComputeDynamicSwapFee);
@@ -339,7 +338,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external onlyWhenUnlocked withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
-        _ensureUnpausedAndGetVaultState(pool);
+        _ensureUnpaused(pool);
         HooksConfigBits memory hooksConfig = _hooksConfig[pool];
 
         // Balances are zero until after initialize is callled, so there is no need to charge pending yield fee here.
