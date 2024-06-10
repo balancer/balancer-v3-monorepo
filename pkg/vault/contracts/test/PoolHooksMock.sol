@@ -19,7 +19,7 @@ import { RateProviderMock } from "./RateProviderMock.sol";
 import { BasePoolHooks } from "../BasePoolHooks.sol";
 
 contract PoolHooksMock is BasePoolHooks {
-    // using FixedPoint for uint256;
+    using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
     bool public failOnAfterInitialize;
@@ -41,8 +41,8 @@ contract PoolHooksMock is BasePoolHooks {
     bool public changePoolBalancesOnBeforeAddLiquidityHook;
     bool public changePoolBalancesOnBeforeRemoveLiquidityHook;
 
-    uint256 public onAfterSwapHookFee;
-    uint256 public onAfterSwapHookDiscount;
+    uint256 public hookSwapFeePercentage;
+    uint256 public hookSwapDiscountPercentage;
 
     bool public swapReentrancyHookActive;
     address private _swapHookContract;
@@ -163,23 +163,25 @@ contract PoolHooksMock is BasePoolHooks {
         }
 
         uint256 hookAdjustedAmountCalculatedRaw = params.amountCalculatedRaw;
-        if (onAfterSwapHookFee > 0) {
+        if (hookSwapFeePercentage > 0) {
+            uint256 hookFee = hookAdjustedAmountCalculatedRaw.mulDown(hookSwapFeePercentage);
             if (params.kind == SwapKind.EXACT_IN) {
-                hookAdjustedAmountCalculatedRaw -= onAfterSwapHookFee;
-                _vault.sendTo(params.tokenOut, address(this), onAfterSwapHookFee);
+                hookAdjustedAmountCalculatedRaw -= hookFee;
+                _vault.sendTo(params.tokenOut, address(this), hookFee);
             } else {
-                hookAdjustedAmountCalculatedRaw += onAfterSwapHookFee;
-                _vault.sendTo(params.tokenIn, address(this), onAfterSwapHookFee);
+                hookAdjustedAmountCalculatedRaw += hookFee;
+                _vault.sendTo(params.tokenIn, address(this), hookFee);
             }
         }
-        if (onAfterSwapHookDiscount > 0) {
+        if (hookSwapDiscountPercentage > 0) {
+            uint256 hookDiscount = hookAdjustedAmountCalculatedRaw.mulDown(hookSwapDiscountPercentage);
             if (params.kind == SwapKind.EXACT_IN) {
-                hookAdjustedAmountCalculatedRaw += onAfterSwapHookDiscount;
-                params.tokenOut.transfer(address(_vault), onAfterSwapHookDiscount);
+                hookAdjustedAmountCalculatedRaw += hookDiscount;
+                params.tokenOut.transfer(address(_vault), hookDiscount);
                 _vault.settle(params.tokenOut);
             } else {
-                hookAdjustedAmountCalculatedRaw -= onAfterSwapHookDiscount;
-                params.tokenIn.transfer(address(_vault), onAfterSwapHookDiscount);
+                hookAdjustedAmountCalculatedRaw -= hookDiscount;
+                params.tokenIn.transfer(address(_vault), hookDiscount);
                 _vault.settle(params.tokenIn);
             }
         }
@@ -373,12 +375,12 @@ contract PoolHooksMock is BasePoolHooks {
         _pool = pool;
     }
 
-    function setOnAfterSwapHookFee(uint256 hookFeeAmount) external {
-        onAfterSwapHookFee = hookFeeAmount;
+    function setHookSwapFeePercentage(uint256 feePercentage) external {
+        hookSwapFeePercentage = feePercentage;
     }
 
-    function setOnAfterSwapHookDiscount(uint256 hookDiscountAmount) external {
-        onAfterSwapHookDiscount = hookDiscountAmount;
+    function setHookSwapDiscountPercentage(uint256 discountPercentage) external {
+        hookSwapDiscountPercentage = discountPercentage;
     }
 
     function allowFactory(address factory) external {

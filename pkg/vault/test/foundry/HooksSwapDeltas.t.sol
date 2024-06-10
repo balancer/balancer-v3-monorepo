@@ -9,13 +9,15 @@ import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol"
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract HooksOnAfterSwapFeesAndDiscountsTest is BaseVaultTest {
+contract HooksSwapDeltasTest is BaseVaultTest {
+    using FixedPoint for uint256;
     using ArrayHelpers for *;
 
     uint256 internal daiIdx;
@@ -34,15 +36,18 @@ contract HooksOnAfterSwapFeesAndDiscountsTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    function testFeeExactIn() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallAfterSwap = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
+    function createHook() internal override returns (address) {
+        // Sets all flags as false
+        IHooks.HookFlags memory hookFlags;
+        hookFlags.shouldCallAfterSwap = true;
+        return _createHook(hookFlags);
+    }
 
-        uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
-
-        uint256 hookFee = 1e3;
-        PoolHooksMock(poolHooksContract).setOnAfterSwapHookFee(hookFee);
+    function testFeeExactIn_Fuzz(uint256 hookFeePercentage) public {
+        // Fee between 0 and 100%
+        hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
+        PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
+        uint256 hookFee = _swapAmount.mulDown(hookFeePercentage);
 
         HookTestLocals memory vars = _createHookTestLocals();
 
@@ -82,15 +87,11 @@ contract HooksOnAfterSwapFeesAndDiscountsTest is BaseVaultTest {
         _checkPoolAndVaultBalances(vars, _swapAmount);
     }
 
-    function testDiscountExactIn() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallAfterSwap = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
-
-        uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
-
-        uint256 hookDiscount = 1e3;
-        PoolHooksMock(poolHooksContract).setOnAfterSwapHookDiscount(hookDiscount);
+    function testDiscountExactIn_Fuzz(uint256 hookDiscountPercentage) public {
+        // Discount between 0 and 100%
+        hookDiscountPercentage = bound(hookDiscountPercentage, 0, 1e18);
+        PoolHooksMock(poolHooksContract).setHookSwapDiscountPercentage(hookDiscountPercentage);
+        uint256 hookDiscount = _swapAmount.mulDown(hookDiscountPercentage);
 
         // Hook needs to pay the discount to the pool. Since it's exact in, the discount is paid in tokenOut amount.
         usdc.mint(address(poolHooksContract), hookDiscount);
@@ -133,15 +134,11 @@ contract HooksOnAfterSwapFeesAndDiscountsTest is BaseVaultTest {
         _checkPoolAndVaultBalances(vars, _swapAmount);
     }
 
-    function testFeeExactOut() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallAfterSwap = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
-
-        uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
-
-        uint256 hookFee = 1e3;
-        PoolHooksMock(poolHooksContract).setOnAfterSwapHookFee(hookFee);
+    function testFeeExactOut_Fuzz(uint256 hookFeePercentage) public {
+        // Fee between 0 and 100%
+        hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
+        PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
+        uint256 hookFee = _swapAmount.mulDown(hookFeePercentage);
 
         HookTestLocals memory vars = _createHookTestLocals();
 
@@ -190,15 +187,11 @@ contract HooksOnAfterSwapFeesAndDiscountsTest is BaseVaultTest {
         _checkPoolAndVaultBalances(vars, _swapAmount);
     }
 
-    function testDiscountExactOut() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallAfterSwap = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
-
-        uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
-
-        uint256 hookDiscount = 1e3;
-        PoolHooksMock(poolHooksContract).setOnAfterSwapHookDiscount(hookDiscount);
+    function testDiscountExactOut(uint256 hookDiscountPercentage) public {
+        // Discount between 0 and 100%
+        hookDiscountPercentage = bound(hookDiscountPercentage, 0, 1e18);
+        PoolHooksMock(poolHooksContract).setHookSwapDiscountPercentage(hookDiscountPercentage);
+        uint256 hookDiscount = _swapAmount.mulDown(hookDiscountPercentage);
 
         // Hook needs to pay the discount to the pool. Since it's exact out, the discount is paid in tokenIn amount.
         dai.mint(address(poolHooksContract), hookDiscount);
@@ -251,14 +244,9 @@ contract HooksOnAfterSwapFeesAndDiscountsTest is BaseVaultTest {
     }
 
     function testFeeExactInOutOfLimit() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallAfterSwap = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
-
-        uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
-
-        uint256 hookFee = 1e3;
-        PoolHooksMock(poolHooksContract).setOnAfterSwapHookFee(hookFee);
+        uint256 hookFeePercentage = 1e16;
+        PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
+        uint256 hookFee = _swapAmount.mulDown(hookFeePercentage);
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook
         vm.prank(bob);
@@ -299,14 +287,9 @@ contract HooksOnAfterSwapFeesAndDiscountsTest is BaseVaultTest {
     }
 
     function testFeeExactOutOutOfLimit() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
-        hooksConfig.shouldCallAfterSwap = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
-
-        uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
-
-        uint256 hookFee = 1e3;
-        PoolHooksMock(poolHooksContract).setOnAfterSwapHookFee(hookFee);
+        uint256 hookFeePercentage = 1e16;
+        PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
+        uint256 hookFee = _swapAmount.mulDown(hookFeePercentage);
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook
         vm.prank(bob);
