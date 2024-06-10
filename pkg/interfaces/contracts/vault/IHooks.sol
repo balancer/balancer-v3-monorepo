@@ -213,10 +213,12 @@ interface IHooks {
     /**
      * @notice Called before `onBeforeSwap` if the pool has dynamic fees.
      * @param params Swap parameters (see IBasePool.PoolSwapParams for struct definition)
+     * @param staticSwapFeePercentage Value of the static swap fee, for reference
      * @return success True if the pool wishes to proceed with settlement
      * @return dynamicSwapFee Value of the swap fee
      */
     function onComputeDynamicSwapFee(
-        IBasePool.PoolSwapParams calldata params
+        IBasePool.PoolSwapParams calldata params,
+        uint256 staticSwapFeePercentage
     ) external view returns (bool success, uint256 dynamicSwapFee);
 }
