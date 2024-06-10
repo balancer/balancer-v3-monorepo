@@ -444,14 +444,46 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function getPoolConfig(address pool) external view withRegisteredPool(pool) onlyVault returns (PoolConfig memory) {
-        return _poolConfig[pool].toPoolConfig();
+        PoolConfigBits memory config = _poolConfig[pool];
+
+        return
+            PoolConfig({
+                isPoolRegistered: config.isPoolRegistered(),
+                isPoolInitialized: config.isPoolInitialized(),
+                isPoolPaused: config.isPoolPaused(),
+                isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
+                staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
+                aggregateProtocolSwapFeePercentage: config.getAggregateProtocolSwapFeePercentage(),
+                aggregateProtocolYieldFeePercentage: config.getAggregateProtocolYieldFeePercentage(),
+                tokenDecimalDiffs: config.getTokenDecimalDiffs(),
+                pauseWindowEndTime: config.getPauseWindowEndTime(),
+                liquidityManagement: LiquidityManagement({
+                    disableUnbalancedLiquidity: !config.supportsUnbalancedLiquidity(),
+                    enableAddLiquidityCustom: config.supportsAddLiquidityCustom(),
+                    enableRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom()
+                })
+            });
     }
 
     /// @inheritdoc IVaultExtension
     function getHooksConfig(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (HooksConfig memory) {
-        return _hooksConfig[pool].toHooksConfig();
+        HooksConfigBits memory config = _hooksConfig[pool];
+
+        return
+            HooksConfig({
+                shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
+                shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
+                shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
+                shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
+                shouldCallBeforeRemoveLiquidity: config.shouldCallBeforeRemoveLiquidity(),
+                shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
+                shouldCallComputeDynamicSwapFee: config.shouldCallComputeDynamicSwapFee(),
+                shouldCallBeforeSwap: config.shouldCallBeforeSwap(),
+                shouldCallAfterSwap: config.shouldCallAfterSwap(),
+                hooksContract: config.getHooksContract()
+            });
     }
 
     /// @inheritdoc IVaultExtension

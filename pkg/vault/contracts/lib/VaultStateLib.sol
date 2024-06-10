@@ -38,13 +38,4 @@ library VaultStateLib {
     function setBuffersPaused(VaultStateBits memory config, bool value) internal pure {
         config.bits = config.bits.insertBool(value, BUFFER_PAUSED_OFFSET);
     }
-
-    function toVaultState(VaultStateBits memory config) internal pure returns (VaultState memory) {
-        return
-            VaultState({
-                isQueryDisabled: config.isQueryDisabled(),
-                isVaultPaused: config.isVaultPaused(),
-                areBuffersPaused: config.areBuffersPaused()
-            });
-    }
 }

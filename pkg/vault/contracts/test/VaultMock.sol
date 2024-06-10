@@ -81,10 +81,6 @@ contract VaultMock is IVaultMainMock, Vault {
         _mint(token, to, amount);
     }
 
-    function setConfig(address pool, PoolConfig calldata config) external {
-        _poolConfig[pool] = config.fromPoolConfig();
-    }
-
     function setHooksConfig(address pool, HooksConfig calldata config) external {
         HooksConfigBits memory configBits = _hooksConfig[pool];
 
@@ -214,8 +210,23 @@ contract VaultMock is IVaultMainMock, Vault {
         _vaultState = vaultState;
     }
 
-    function manualSetPoolConfig(address pool, PoolConfig memory poolConfig) public {
-        _poolConfig[pool] = poolConfig.fromPoolConfig();
+    function manualSetPoolConfig(address pool, PoolConfig memory config) public {
+        PoolConfigBits memory poolConfig = _poolConfig[pool];
+
+        poolConfig.setPoolRegistered(config.isPoolRegistered);
+        poolConfig.setPoolInitialized(config.isPoolInitialized);
+        poolConfig.setPoolInRecoveryMode(config.isPoolInRecoveryMode);
+        poolConfig.setPoolPaused(config.isPoolPaused);
+        poolConfig.setStaticSwapFeePercentage(config.staticSwapFeePercentage);
+        poolConfig.setAggregateProtocolSwapFeePercentage(config.aggregateProtocolSwapFeePercentage);
+        poolConfig.setAggregateProtocolYieldFeePercentage(config.aggregateProtocolYieldFeePercentage);
+        poolConfig.setTokenDecimalDiffs(config.tokenDecimalDiffs);
+        poolConfig.setPauseWindowEndTime(config.pauseWindowEndTime);
+        poolConfig.setDisableUnbalancedLiquidity(config.liquidityManagement.disableUnbalancedLiquidity);
+        poolConfig.setAddLiquidityCustom(config.liquidityManagement.enableAddLiquidityCustom);
+        poolConfig.setRemoveLiquidityCustom(config.liquidityManagement.enableRemoveLiquidityCustom);
+
+        _poolConfig[pool] = poolConfig;
     }
 
     function manualSetPoolTokenConfig(address pool, IERC20[] memory tokens, TokenConfig[] memory tokenConfig) public {
@@ -241,7 +252,12 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function ensureUnpausedAndGetVaultState(address pool) public view returns (VaultState memory vaultState) {
         _ensureUnpaused(pool);
-        vaultState = _vaultState.toVaultState();
+        VaultStateBits memory state = _vaultState;
+        vaultState = VaultState({
+            isQueryDisabled: state.isQueryDisabled(),
+            isVaultPaused: state.isVaultPaused(),
+            areBuffersPaused: state.areBuffersPaused()
+        });
     }
 
     function internalGetPoolTokenInfo(
@@ -249,20 +265,10 @@ contract VaultMock is IVaultMainMock, Vault {
     )
         public
         view
-        returns (
-            TokenConfig[] memory tokenConfig,
-            uint256[] memory balancesRaw,
-            uint256[] memory decimalScalingFactors,
-            PoolConfig memory poolConfig
-        )
+        returns (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors)
     {
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
-        return (
-            poolData.tokenConfig,
-            poolData.balancesRaw,
-            poolData.decimalScalingFactors,
-            poolData.poolConfig.toPoolConfig()
-        );
+        return (poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors);
     }
 
     function buildTokenConfig(IERC20[] memory tokens) public view returns (TokenConfig[] memory tokenConfig) {

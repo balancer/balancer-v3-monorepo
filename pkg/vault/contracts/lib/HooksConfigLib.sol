@@ -396,21 +396,4 @@ library HooksConfigLib {
             revert IVaultErrors.AfterInitializeHookFailed();
         }
     }
-
-    function toHooksConfig(HooksConfigBits memory config) internal pure returns (HooksConfig memory) {
-        // Calling the functions (in addition to costing more gas), causes an obscure form of stack error (Yul errors).
-        return
-            HooksConfig({
-                shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
-                shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
-                shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
-                shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
-                shouldCallBeforeRemoveLiquidity: config.shouldCallBeforeRemoveLiquidity(),
-                shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
-                shouldCallComputeDynamicSwapFee: config.shouldCallComputeDynamicSwapFee(),
-                shouldCallBeforeSwap: config.shouldCallBeforeSwap(),
-                shouldCallAfterSwap: config.shouldCallAfterSwap(),
-                hooksContract: config.getHooksContract()
-            });
-    }
 }
