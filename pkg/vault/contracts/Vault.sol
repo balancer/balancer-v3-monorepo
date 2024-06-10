@@ -223,7 +223,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // if the hook contract does not exist or does not implement onAfterSwap, HooksConfigLib returns the original
         // amountCalculated. Otherwise, the new amount calculated is 'amountCalculated + delta'.
-        (state.onAfterSwapSuccess, amountCalculated) = hooksConfig.onAfterSwap(
+        (, amountCalculated) = hooksConfig.onAfterSwap(
             amountCalculatedScaled18,
             amountCalculated,
             msg.sender,
@@ -232,12 +232,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData
         );
 
-        if (state.onAfterSwapSuccess) {
-            if (params.kind == SwapKind.EXACT_IN) {
-                amountOut = amountCalculated;
-            } else {
-                amountIn = amountCalculated;
-            }
+        if (params.kind == SwapKind.EXACT_IN) {
+            amountOut = amountCalculated;
+        } else {
+            amountIn = amountCalculated;
         }
     }
 
