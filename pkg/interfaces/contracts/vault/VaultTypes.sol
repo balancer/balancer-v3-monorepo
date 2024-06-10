@@ -17,6 +17,12 @@ struct PoolConfigBits {
     bytes32 bits;
 }
 
+// @notice Config type to store entire hook configuration of the pool
+struct HooksConfigBits {
+    bytes32 bits;
+    address hooksContract;
+}
+
 /// @dev Represents a pool's configuration (hooks configuration are separated in another struct).
 struct PoolConfig {
     LiquidityManagement liquidityManagement;

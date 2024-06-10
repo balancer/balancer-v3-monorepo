@@ -192,11 +192,14 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev Lowest level routine that plucks only the minimum necessary parts from storage.
     function _getPoolPausedState(address pool) internal view returns (bool, uint256) {
-        (bool pauseBit, uint256 pauseWindowEndTime) = PoolConfigLib.getPoolPausedState(_poolConfig[pool]);
+        PoolConfigBits memory config = _poolConfig[pool];
+
+        bool isPoolPaused = config.isPoolPaused();
+        uint256 pauseWindowEndTime = config.getPauseWindowEndTime();
 
         // Use the Vault's buffer period.
         // solhint-disable-next-line not-rely-on-time
-        return (pauseBit && block.timestamp <= pauseWindowEndTime + _vaultBufferPeriodDuration, pauseWindowEndTime);
+        return (isPoolPaused && block.timestamp <= pauseWindowEndTime + _vaultBufferPeriodDuration, pauseWindowEndTime);
     }
 
     /*******************************************************************************

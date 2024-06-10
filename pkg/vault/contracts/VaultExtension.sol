@@ -60,7 +60,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfigBits;
-    using HooksConfigLib for HooksConfig;
+    using HooksConfigLib for HooksConfigBits;
     using InputHelpers for uint256;
     using ScalingHelpers for *;
     using VaultExtensionsLib for IVault;
@@ -177,7 +177,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert PoolAlreadyRegistered(pool);
         }
 
-        HooksConfig memory hooksConfig;
+        HooksConfigBits memory hooksConfig;
 
         if (params.poolHooksContract != address(0)) {
             // If a hook address was passed, make sure that hook trusts the pool factory
@@ -195,18 +195,19 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // Gets the default HooksConfig from the hook contract and saves in the vault state
             // Storing into hooksConfig first avoids stack-too-deep
             IHooks.HookFlags memory hookFlags = IHooks(params.poolHooksContract).getHookFlags();
-            _hooksConfig[pool] = HooksConfig({
-                shouldCallBeforeInitialize: hookFlags.shouldCallBeforeInitialize,
-                shouldCallAfterInitialize: hookFlags.shouldCallAfterInitialize,
-                shouldCallComputeDynamicSwapFee: hookFlags.shouldCallComputeDynamicSwapFee,
-                shouldCallBeforeSwap: hookFlags.shouldCallBeforeSwap,
-                shouldCallAfterSwap: hookFlags.shouldCallAfterSwap,
-                shouldCallBeforeAddLiquidity: hookFlags.shouldCallBeforeAddLiquidity,
-                shouldCallAfterAddLiquidity: hookFlags.shouldCallAfterAddLiquidity,
-                shouldCallBeforeRemoveLiquidity: hookFlags.shouldCallBeforeRemoveLiquidity,
-                shouldCallAfterRemoveLiquidity: hookFlags.shouldCallAfterRemoveLiquidity,
-                hooksContract: params.poolHooksContract
-            });
+
+            HooksConfigBits memory hooksConfig = _hooksConfig[pool];
+            hooksConfig.setShouldCallBeforeInitialize(hookFlags.shouldCallBeforeInitialize);
+            hooksConfig.setShouldCallAfterInitialize(hookFlags.shouldCallAfterInitialize);
+            hooksConfig.setShouldCallComputeDynamicSwapFee(hookFlags.shouldCallComputeDynamicSwapFee);
+            hooksConfig.setShouldCallBeforeSwap(hookFlags.shouldCallBeforeSwap);
+            hooksConfig.setShouldCallAfterSwap(hookFlags.shouldCallAfterSwap);
+            hooksConfig.setShouldCallBeforeAddLiquidity(hookFlags.shouldCallBeforeAddLiquidity);
+            hooksConfig.setShouldCallAfterAddLiquidity(hookFlags.shouldCallAfterAddLiquidity);
+            hooksConfig.setShouldCallBeforeRemoveLiquidity(hookFlags.shouldCallBeforeRemoveLiquidity);
+            hooksConfig.setShouldCallAfterRemoveLiquidity(hookFlags.shouldCallAfterRemoveLiquidity);
+            hooksConfig.setHooksContract(params.poolHooksContract);
+            _hooksConfig[pool] = hooksConfig;
         }
 
         uint256 numTokens = params.tokenConfig.length;
@@ -339,7 +340,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         bytes memory userData
     ) external onlyWhenUnlocked withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
         _ensureUnpausedAndGetVaultState(pool);
-        HooksConfig memory hooksConfig = _hooksConfig[pool];
+        HooksConfigBits memory hooksConfig = _hooksConfig[pool];
 
         // Balances are zero until after initialize is callled, so there is no need to charge pending yield fee here.
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
@@ -451,7 +452,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function getHooksConfig(
         address pool
     ) external view withRegisteredPool(pool) onlyVault returns (HooksConfig memory) {
-        return _hooksConfig[pool];
+        return _hooksConfig[pool].toHooksConfig();
     }
 
     /// @inheritdoc IVaultExtension

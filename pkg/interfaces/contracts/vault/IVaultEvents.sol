@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
-import { LiquidityManagement, HooksConfig, PoolRoleAccounts, TokenConfig } from "./VaultTypes.sol";
+import { LiquidityManagement, HooksConfig, HooksConfigBits, PoolRoleAccounts, TokenConfig } from "./VaultTypes.sol";
 import { IHooks } from "./IHooks.sol";
 import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import "./VaultTypes.sol";
@@ -30,7 +30,7 @@ interface IVaultEvents {
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts roleAccounts,
-        HooksConfig hooksConfig,
+        HooksConfigBits hooksConfig,
         LiquidityManagement liquidityManagement
     );
 

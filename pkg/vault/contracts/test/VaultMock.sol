@@ -46,7 +46,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using ScalingHelpers for uint256;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for *;
-    using HooksConfigLib for HooksConfig;
+    using HooksConfigLib for HooksConfigBits;
     using VaultStateLib for VaultState;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
@@ -86,7 +86,20 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function setHooksConfig(address pool, HooksConfig calldata config) external {
-        _hooksConfig[pool] = config;
+        HooksConfigBits memory configBits = _hooksConfig[pool];
+
+        configBits.setShouldCallBeforeInitialize(config.shouldCallBeforeInitialize);
+        configBits.setShouldCallAfterInitialize(config.shouldCallAfterInitialize);
+        configBits.setShouldCallComputeDynamicSwapFee(config.shouldCallComputeDynamicSwapFee);
+        configBits.setShouldCallBeforeSwap(config.shouldCallBeforeSwap);
+        configBits.setShouldCallAfterSwap(config.shouldCallAfterSwap);
+        configBits.setShouldCallBeforeAddLiquidity(config.shouldCallBeforeAddLiquidity);
+        configBits.setShouldCallAfterAddLiquidity(config.shouldCallAfterAddLiquidity);
+        configBits.setShouldCallBeforeRemoveLiquidity(config.shouldCallBeforeRemoveLiquidity);
+        configBits.setShouldCallAfterRemoveLiquidity(config.shouldCallAfterRemoveLiquidity);
+        configBits.setHooksContract(config.hooksContract);
+
+        _hooksConfig[pool] = configBits;
     }
 
     // Used for testing pool registration, which is ordinarily done in the pool factory.
