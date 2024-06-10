@@ -236,7 +236,8 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
     /// @inheritdoc IProtocolFeeController
     function registerPool(
         address pool,
-        address poolCreator
+        address poolCreator,
+        bool protocolFeeExempt
     )
         public
         onlyVault
@@ -245,13 +246,19 @@ contract ProtocolFeeController is IProtocolFeeController, SingletonAuthenticatio
         _poolCreators[pool] = poolCreator;
 
         // Set local storage of the actual percentages for the pool (default to global).
-        aggregateProtocolSwapFeePercentage = _globalProtocolSwapFeePercentage;
-        aggregateProtocolYieldFeePercentage = _globalProtocolYieldFeePercentage;
+        aggregateProtocolSwapFeePercentage = protocolFeeExempt ? 0 : _globalProtocolSwapFeePercentage;
+        aggregateProtocolYieldFeePercentage = protocolFeeExempt ? 0 : _globalProtocolYieldFeePercentage;
 
-        // `isOverride` defaults to false. Unless the fee is set by governance through a permissioned call, this pool
-        // can be updated to the current global percentage permissionlessly.
-        _poolProtocolSwapFeePercentages[pool].feePercentage = uint64(aggregateProtocolSwapFeePercentage);
-        _poolProtocolYieldFeePercentages[pool].feePercentage = uint64(aggregateProtocolYieldFeePercentage);
+        // `isOverride` is true if the pool is protocol fee exempt; otherwise, default to false.
+        // If exempt, this pool cannot be updated to the current global percentage permissionlessly.
+        _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
+            feePercentage: uint64(aggregateProtocolSwapFeePercentage),
+            isOverride: protocolFeeExempt
+        });
+        _poolProtocolYieldFeePercentages[pool] = PoolFeeConfig({
+            feePercentage: uint64(aggregateProtocolYieldFeePercentage),
+            isOverride: protocolFeeExempt
+        });
     }
 
     enum ProtocolFeeType {

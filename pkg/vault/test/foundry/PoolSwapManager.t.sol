@@ -46,6 +46,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
             tokenConfig,
             0,
             365 days,
+            false,
             adminRoleAccounts,
             poolHooksContract
         );
@@ -58,6 +59,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
             tokenConfig,
             0,
             365 days,
+            false,
             defaultRoleAccounts,
             poolHooksContract
         );
@@ -71,6 +73,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
             tokenConfig,
             0,
             365 days,
+            false,
             defaultRoleAccounts,
             poolHooksContract
         );
