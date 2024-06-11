@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/console.sol";
+
 import { FixedPoint } from "./FixedPoint.sol";
 
 library BasePoolMath {
@@ -69,7 +71,7 @@ library BasePoolMath {
         uint256[] memory balances,
         uint256 bptTotalSupply,
         uint256 bptAmountIn
-    ) internal pure returns (uint256[] memory amountsOut) {
+    ) internal returns (uint256[] memory amountsOut) {
         /**********************************************************************************************
         // computeProportionalAmountsOut                                                             //
         // (per token)                                                                               //

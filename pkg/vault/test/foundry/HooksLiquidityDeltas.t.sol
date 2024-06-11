@@ -144,6 +144,116 @@ contract HooksLiquidityDeltasTest is BaseVaultTest {
         _checkAddLiquidityHookTestResults(vars, actualAmountsIn, expectedBptOut, 0, hookDiscount);
     }
 
+    function testHookFeeRemoveLiquidityExactIn_Fuzz(uint256 expectedBptIn, uint256 hookFeePercentage) public {
+        // Add liquidity so bob has BPT to remove liquidity
+        vm.prank(bob);
+        router.addLiquidityUnbalanced(
+            pool,
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            poolInitAmount,
+            false,
+            bytes("")
+        );
+
+        // Add fee between 0 and 100%
+        hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
+        PoolHooksMock(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
+
+        // Since operation is not settled in advance, max expected bpt out can't generate a hook fee higher than
+        // pool liquidity, or else the hook won't be able to charge fees
+        expectedBptIn = bound(expectedBptIn, _minBptOut, BalancerPoolToken(pool).balanceOf(bob));
+
+        // Since bob added poolInitAmount in each token of the pool, the pool balances are doubled
+        uint256[] memory actualAmountsOut = BasePoolMath.computeProportionalAmountsOut(
+            [2 * poolInitAmount, 2 * poolInitAmount].toMemoryArray(),
+            BalancerPoolToken(pool).totalSupply(),
+            expectedBptIn
+        );
+        uint256 actualAmountOut = actualAmountsOut[0];
+        uint256 hookFee = actualAmountOut.mulDown(hookFeePercentage);
+
+        uint256[] memory expectedBalances = [2 * poolInitAmount - actualAmountOut, 2 * poolInitAmount - actualAmountOut]
+            .toMemoryArray();
+
+        HookTestLocals memory vars = _createHookTestLocals();
+
+        vm.prank(bob);
+        vm.expectCall(
+            address(poolHooksContract),
+            abi.encodeWithSelector(
+                IHooks.onAfterRemoveLiquidity.selector,
+                address(router),
+                pool,
+                expectedBptIn,
+                actualAmountsOut,
+                actualAmountsOut,
+                expectedBalances,
+                bytes("")
+            )
+        );
+
+        uint256[] memory minAmountsOut = [actualAmountOut - hookFee, actualAmountOut - hookFee].toMemoryArray();
+        router.removeLiquidityProportional(pool, expectedBptIn, minAmountsOut, false, bytes(""));
+
+        _checkRemoveLiquidityHookTestResults(vars, actualAmountsOut, expectedBptIn, hookFee, 0);
+    }
+
+    function testHookDiscountRemoveLiquidityExactIn_Fuzz(uint256 expectedBptIn, uint256 hookDiscountPercentage) public {
+        // Add liquidity so bob has BPT to remove liquidity
+        vm.prank(bob);
+        router.addLiquidityUnbalanced(
+            pool,
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            poolInitAmount,
+            false,
+            bytes("")
+        );
+
+        // Add discount between 0 and 100%
+        hookDiscountPercentage = bound(hookDiscountPercentage, 0, 1e18);
+        PoolHooksMock(poolHooksContract).setRemoveLiquidityHookDiscountPercentage(hookDiscountPercentage);
+
+        // Make sure bob has enough to pay for the transaction
+        expectedBptIn = bound(expectedBptIn, _minBptOut, dai.balanceOf(bob));
+
+        // Since bob added poolInitAmount in each token of the pool, the pool balances are doubled
+        uint256[] memory actualAmountsOut = BasePoolMath.computeProportionalAmountsOut(
+            [2 * poolInitAmount, 2 * poolInitAmount].toMemoryArray(),
+            BalancerPoolToken(pool).totalSupply(),
+            expectedBptIn
+        );
+        uint256 actualAmountOut = actualAmountsOut[0];
+        uint256 hookDiscount = actualAmountOut.mulDown(hookDiscountPercentage);
+
+        // Hook needs to have tokens to pay for discount, else balances do not settle
+        dai.mint(poolHooksContract, hookDiscount);
+        usdc.mint(poolHooksContract, hookDiscount);
+
+        uint256[] memory expectedBalances = [2 * poolInitAmount - actualAmountOut, 2 * poolInitAmount - actualAmountOut]
+            .toMemoryArray();
+
+        HookTestLocals memory vars = _createHookTestLocals();
+
+        vm.prank(bob);
+        vm.expectCall(
+            address(poolHooksContract),
+            abi.encodeWithSelector(
+                IHooks.onAfterRemoveLiquidity.selector,
+                address(router),
+                pool,
+                expectedBptIn,
+                actualAmountsOut,
+                actualAmountsOut,
+                expectedBalances,
+                bytes("")
+            )
+        );
+
+        router.removeLiquidityProportional(pool, expectedBptIn, actualAmountsOut, false, bytes(""));
+
+        _checkRemoveLiquidityHookTestResults(vars, actualAmountsOut, expectedBptIn, 0, hookDiscount);
+    }
+
     struct WalletState {
         uint256 daiBefore;
         uint256 daiAfter;
@@ -173,7 +283,21 @@ contract HooksLiquidityDeltasTest is BaseVaultTest {
         _fillAfterHookTestLocals(vars);
 
         assertEq(vars.bob.bptAfter - vars.bob.bptBefore, expectedBptOut, "Bob BPT balance is wrong");
-        _checkPoolAndVaultBalances(vars, actualAmountsIn[daiIdx], actualAmountsIn[usdcIdx], expectedBptOut);
+
+        assertEq(
+            vars.poolAfter[daiIdx] - vars.poolBefore[daiIdx],
+            actualAmountsIn[daiIdx],
+            "Pool DAI balance is wrong"
+        );
+        assertEq(
+            vars.poolAfter[usdcIdx] - vars.poolBefore[usdcIdx],
+            actualAmountsIn[usdcIdx],
+            "Pool USDC balance is wrong"
+        );
+        assertEq(vars.bptSupplyAfter - vars.bptSupplyBefore, expectedBptOut, "Pool Supply is wrong");
+
+        assertEq(vars.vault.daiAfter - vars.vault.daiBefore, actualAmountsIn[daiIdx], "Vault DAI balance is wrong");
+        assertEq(vars.vault.usdcAfter - vars.vault.usdcBefore, actualAmountsIn[usdcIdx], "Vault USDC balance is wrong");
 
         if (expectedHookFee > 0) {
             assertEq(
@@ -206,18 +330,65 @@ contract HooksLiquidityDeltasTest is BaseVaultTest {
         }
     }
 
-    function _checkPoolAndVaultBalances(
+    function _checkRemoveLiquidityHookTestResults(
         HookTestLocals memory vars,
-        uint256 expectedDeltaDai,
-        uint256 expectedDeltaUsdc,
-        uint256 expectedBptOut
+        uint256[] memory actualAmountsOut,
+        uint256 expectedBptIn,
+        uint256 expectedHookFee,
+        uint256 expectedHookDiscount
     ) private {
-        assertEq(vars.poolAfter[daiIdx] - vars.poolBefore[daiIdx], expectedDeltaDai, "Pool DAI balance is wrong");
-        assertEq(vars.poolAfter[usdcIdx] - vars.poolBefore[usdcIdx], expectedDeltaUsdc, "Pool USDC balance is wrong");
-        assertEq(vars.bptSupplyAfter - vars.bptSupplyBefore, expectedBptOut, "Pool Supply is wrong");
+        _fillAfterHookTestLocals(vars);
 
-        assertEq(vars.vault.daiAfter - vars.vault.daiBefore, expectedDeltaDai, "Vault DAI balance is wrong");
-        assertEq(vars.vault.usdcAfter - vars.vault.usdcBefore, expectedDeltaUsdc, "Vault USDC balance is wrong");
+        assertEq(vars.bob.bptBefore - vars.bob.bptAfter, expectedBptIn, "Bob BPT balance is wrong");
+
+        assertEq(
+            vars.poolBefore[daiIdx] - vars.poolAfter[daiIdx],
+            actualAmountsOut[daiIdx],
+            "Pool DAI balance is wrong"
+        );
+        assertEq(
+            vars.poolBefore[usdcIdx] - vars.poolAfter[usdcIdx],
+            actualAmountsOut[usdcIdx],
+            "Pool USDC balance is wrong"
+        );
+        assertEq(vars.bptSupplyBefore - vars.bptSupplyAfter, expectedBptIn, "Pool Supply is wrong");
+
+        assertEq(vars.vault.daiBefore - vars.vault.daiAfter, actualAmountsOut[daiIdx], "Vault DAI balance is wrong");
+        assertEq(
+            vars.vault.usdcBefore - vars.vault.usdcAfter,
+            actualAmountsOut[usdcIdx],
+            "Vault USDC balance is wrong"
+        );
+
+        if (expectedHookFee > 0) {
+            assertEq(
+                vars.bob.daiAfter - vars.bob.daiBefore,
+                actualAmountsOut[daiIdx] - expectedHookFee,
+                "Bob DAI balance is wrong"
+            );
+            assertEq(
+                vars.bob.usdcAfter - vars.bob.usdcBefore,
+                actualAmountsOut[usdcIdx] - expectedHookFee,
+                "Bob USDC balance is wrong"
+            );
+
+            assertEq(vars.hook.daiAfter - vars.hook.daiBefore, expectedHookFee, "Hook DAI balance is wrong");
+            assertEq(vars.hook.usdcAfter - vars.hook.usdcBefore, expectedHookFee, "Hook USDC balance is wrong");
+        } else if (expectedHookDiscount > 0) {
+            assertEq(
+                vars.bob.daiAfter - vars.bob.daiBefore,
+                actualAmountsOut[daiIdx] + expectedHookDiscount,
+                "Bob DAI balance is wrong"
+            );
+            assertEq(
+                vars.bob.usdcAfter - vars.bob.usdcBefore,
+                actualAmountsOut[usdcIdx] + expectedHookDiscount,
+                "Bob USDC balance is wrong"
+            );
+
+            assertEq(vars.hook.daiBefore - vars.hook.daiAfter, expectedHookDiscount, "Hook DAI balance is wrong");
+            assertEq(vars.hook.usdcBefore - vars.hook.usdcAfter, expectedHookDiscount, "Hook USDC balance is wrong");
+        }
     }
 
     function _createHookTestLocals() private returns (HookTestLocals memory vars) {

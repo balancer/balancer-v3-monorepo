@@ -156,7 +156,6 @@ library HooksConfigLib {
      * @param bptAmountOut The BPT amount a user will receive after add liquidity operation succeeds
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
-     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      * @return hookAdjustedAmountsInRaw New amountsInRaw, modified by the hook
      */
     function onAfterAddLiquidity(
@@ -167,11 +166,12 @@ library HooksConfigLib {
         uint256 bptAmountOut,
         AddLiquidityParams memory params,
         PoolData memory poolData
-    ) internal returns (bool success, uint256[] memory hookAdjustedAmountsInRaw) {
+    ) internal returns (uint256[] memory hookAdjustedAmountsInRaw) {
         if (config.shouldCallAfterAddLiquidity == false) {
-            return (false, amountsInRaw);
+            return amountsInRaw;
         }
 
+        bool success;
         (success, hookAdjustedAmountsInRaw) = IHooks(config.hooksContract).onAfterAddLiquidity(
             router,
             params.pool,
@@ -237,35 +237,51 @@ library HooksConfigLib {
     /**
      * @dev Check if after remove liquidity hook should be called and call it. Throws an error if the hook contract
      * fails to execute the hook.
-     *
      * @param config The encoded hooks configuration
-     * @param amountsOutScaled18 An array with amounts for each output token of the remove liquidity operation
+     * @param router Router address
+     * @param amountsOutScaled18 Scaled amount of tokens to receive in token registration order
+     * @param amountsOutRaw Actual amount of tokens to receive in token registration order
      * @param bptAmountIn The BPT amount a user will need burn to remove the liquidity of the pool
      * @param params The remove liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
+     * @return hookAdjustedAmountsOutRaw New amountsOutRaw, modified by the hook
      */
     function onAfterRemoveLiquidity(
         HooksConfig memory config,
-        uint256[] memory amountsOutScaled18,
-        uint256 bptAmountIn,
         address router,
+        uint256[] memory amountsOutScaled18,
+        uint256[] memory amountsOutRaw,
+        uint256 bptAmountIn,
         RemoveLiquidityParams memory params,
         PoolData memory poolData
-    ) internal {
+    ) internal returns (uint256[] memory hookAdjustedAmountsOutRaw) {
         if (config.shouldCallAfterRemoveLiquidity == false) {
-            return;
+            return amountsOutRaw;
         }
 
-        if (
-            IHooks(config.hooksContract).onAfterRemoveLiquidity(
-                router,
-                bptAmountIn,
-                amountsOutScaled18,
-                poolData.balancesLiveScaled18,
-                params.userData
-            ) == false
-        ) {
+        bool success;
+        (success, hookAdjustedAmountsOutRaw) = IHooks(config.hooksContract).onAfterRemoveLiquidity(
+            router,
+            params.pool,
+            bptAmountIn,
+            amountsOutScaled18,
+            amountsOutRaw,
+            poolData.balancesLiveScaled18,
+            params.userData
+        );
+
+        if (success == false) {
             revert IVaultErrors.AfterRemoveLiquidityHookFailed();
+        }
+
+        for (uint256 i = 0; i < hookAdjustedAmountsOutRaw.length; i++) {
+            if (hookAdjustedAmountsOutRaw[i] < params.minAmountsOut[i]) {
+                revert IVaultErrors.AmountOutBelowMin(
+                    poolData.tokenConfig[i].token,
+                    hookAdjustedAmountsOutRaw[i],
+                    params.minAmountsOut[i]
+                );
+            }
         }
     }
 

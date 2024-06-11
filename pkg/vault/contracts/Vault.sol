@@ -518,7 +518,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             maxAmountsInScaled18
         );
 
-        (, amountsIn) = hooksConfig.onAfterAddLiquidity(
+        amountsIn = hooksConfig.onAfterAddLiquidity(
             msg.sender,
             amountsInScaled18,
             amountsIn,
@@ -735,7 +735,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vaultState
         );
 
-        hooksConfig.onAfterRemoveLiquidity(amountsOutScaled18, bptAmountIn, msg.sender, params, poolData);
+        amountsOut = hooksConfig.onAfterRemoveLiquidity(
+            msg.sender,
+            amountsOutScaled18,
+            amountsOut,
+            bptAmountIn,
+            params,
+            poolData
+        );
     }
 
     /**
