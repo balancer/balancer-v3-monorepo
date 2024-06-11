@@ -176,7 +176,7 @@ contract PoolHooksMock is BasePoolHooks {
     function onBeforeAddLiquidity(
         address,
         address,
-        AddLiquidityKind kind,
+        AddLiquidityKind,
         uint256[] memory,
         uint256,
         uint256[] memory,
