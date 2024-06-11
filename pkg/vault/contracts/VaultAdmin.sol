@@ -349,7 +349,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @inheritdoc IVaultAdmin
     function setProtocolFeeController(
         IProtocolFeeController newProtocolFeeController
-    ) external onlyVaultDelegateCall nonReentrant authenticate {
+    ) external authenticate nonReentrant onlyVaultDelegateCall {
         _protocolFeeController = newProtocolFeeController;
 
         emit ProtocolFeeControllerChanged(newProtocolFeeController);
@@ -489,8 +489,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     )
         public
         onlyWhenUnlocked
-        nonReentrant
         authenticate
+        nonReentrant
         onlyVaultDelegateCall
         returns (uint256 removedUnderlyingBalance, uint256 removedWrappedBalance)
     {
@@ -541,7 +541,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
-    function setAuthorizer(IAuthorizer newAuthorizer) external nonReentrant authenticate onlyVaultDelegateCall {
+    function setAuthorizer(IAuthorizer newAuthorizer) external authenticate nonReentrant onlyVaultDelegateCall {
         _authorizer = newAuthorizer;
 
         emit AuthorizerChanged(newAuthorizer);
