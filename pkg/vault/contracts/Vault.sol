@@ -691,7 +691,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // If unbalanced, lower balances = lower invariant ratio without fees.
         // bptIn = supply * (1 - ratio), so lower ratio = more bptIn, favoring the pool.
 
-        VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
+        _ensureUnpausedAndGetVaultState(params.pool);
         HooksConfig memory hooksConfig = _hooksConfig[params.pool];
 
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
@@ -732,8 +732,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         (bptAmountIn, amountsOut, amountsOutScaled18, returnData) = _removeLiquidity(
             poolData,
             params,
-            minAmountsOutScaled18,
-            vaultState
+            minAmountsOutScaled18
         );
 
         hooksConfig.onAfterRemoveLiquidity(amountsOutScaled18, bptAmountIn, msg.sender, params, poolData);
@@ -752,8 +751,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _removeLiquidity(
         PoolData memory poolData,
         RemoveLiquidityParams memory params,
-        uint256[] memory minAmountsOutScaled18,
-        VaultState memory vaultState
+        uint256[] memory minAmountsOutScaled18
     )
         internal
         nonReentrant
@@ -834,26 +832,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             amountsOutRaw[i] = amountOutRaw;
 
-            // stack-too-deep (forge)
-            {
-                IERC20 token = poolData.tokens[i];
-                // 2) Check limits for raw amounts
-                if (amountOutRaw < params.minAmountsOut[i]) {
-                    revert AmountOutBelowMin(token, amountOutRaw, params.minAmountsOut[i]);
-                }
-
-                // 3) Deltas: Credit token[i] for amountOutRaw
-                _supplyCredit(token, amountOutRaw);
-
-                // 4) Compute and charge protocol and creator fees.
-                locals.totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
-                    poolData,
-                    swapFeeAmountsScaled18[i],
-                    params.pool,
-                    token,
-                    i
-                );
+            IERC20 token = poolData.tokens[i];
+            // 2) Check limits for raw amounts
+            if (amountOutRaw < params.minAmountsOut[i]) {
+                revert AmountOutBelowMin(token, amountOutRaw, params.minAmountsOut[i]);
             }
+
+            // 3) Deltas: Credit token[i] for amountOutRaw
+            _supplyCredit(token, amountOutRaw);
+
+            // 4) Compute and charge protocol and creator fees.
+            locals.totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
+                poolData,
+                swapFeeAmountsScaled18[i],
+                params.pool,
+                token,
+                i
+            );
 
             // 5) Pool balances: raw and live
             // We need regular balances to complete the accounting, and the upscaled balances
@@ -874,7 +869,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // 7) BPT supply adjustment
         _spendAllowance(address(params.pool), params.from, msg.sender, bptAmountIn);
 
-        if (!vaultState.isQueryDisabled && EVMCallModeHelpers.isStaticCall()) {
+        if (EVMCallModeHelpers.isStaticCall() && _vaultState.isQueryDisabled == false) {
             // Increase `from` balance to ensure the burn function succeeds.
             _queryModeBalanceIncrease(params.pool, params.from, bptAmountIn);
         }
