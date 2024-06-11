@@ -201,8 +201,7 @@ interface IVaultMainMock {
     function manualRemoveLiquidity(
         PoolData memory poolData,
         RemoveLiquidityParams memory params,
-        uint256[] memory minAmountsOutScaled18,
-        VaultState memory vaultState
+        uint256[] memory minAmountsOutScaled18
     )
         external
         returns (
