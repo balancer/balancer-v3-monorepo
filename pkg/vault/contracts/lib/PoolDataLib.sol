@@ -21,7 +21,7 @@ library PoolDataLib {
     function load(
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
         PoolConfig memory poolConfig,
-        mapping(IERC20 => TokenInfo) storage poolTokenConfig,
+        mapping(IERC20 => TokenInfo) storage poolTokenInfo,
         Rounding roundingDirection
     ) internal view returns (PoolData memory poolData) {
         uint256 numTokens = poolTokenBalances.length();
@@ -39,7 +39,7 @@ library PoolDataLib {
         for (uint256 i = 0; i < numTokens; ++i) {
             (token, packedBalance) = poolTokenBalances.unchecked_at(i);
             poolData.tokens[i] = token;
-            poolData.tokenInfo[i] = poolTokenConfig[token];
+            poolData.tokenInfo[i] = poolTokenInfo[token];
             updateTokenRate(poolData, i);
             updateRawAndLiveBalance(poolData, i, packedBalance.getBalanceRaw(), roundingDirection);
         }
