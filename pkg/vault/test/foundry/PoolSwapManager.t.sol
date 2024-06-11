@@ -42,10 +42,11 @@ contract PoolSwapManagerTest is BaseVaultTest {
 
         // Make admin the swap fee manager.
         factoryMock.registerGeneralTestPool(
-            address(pool),
+            pool,
             tokenConfig,
             0,
             365 days,
+            false,
             adminRoleAccounts,
             poolHooksContract
         );
@@ -58,6 +59,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
             tokenConfig,
             0,
             365 days,
+            false,
             defaultRoleAccounts,
             poolHooksContract
         );
@@ -71,6 +73,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
             tokenConfig,
             0,
             365 days,
+            false,
             defaultRoleAccounts,
             poolHooksContract
         );
@@ -79,7 +82,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
     }
 
     function testHasSwapFeeManager() public {
-        address swapFeeManager = vault.getPoolRoleAccounts(address(pool)).swapFeeManager;
+        address swapFeeManager = vault.getPoolRoleAccounts(pool).swapFeeManager;
         assertEq(swapFeeManager, admin, "swapFeeManager is not admin");
 
         swapFeeManager = vault.getPoolRoleAccounts(address(unmanagedPool)).swapFeeManager;
@@ -87,21 +90,21 @@ contract PoolSwapManagerTest is BaseVaultTest {
     }
 
     function testSwapFeeManagerCanSetFees() public {
-        require(vault.getStaticSwapFeePercentage(address(pool)) == 0, "initial swap fee non-zero");
+        require(vault.getStaticSwapFeePercentage(pool) == 0, "initial swap fee non-zero");
 
         // swap fee manager can set the static swap fee.
         vm.prank(admin);
-        vault.setStaticSwapFeePercentage(address(pool), NEW_SWAP_FEE);
+        vault.setStaticSwapFeePercentage(pool, NEW_SWAP_FEE);
 
-        assertEq(vault.getStaticSwapFeePercentage(address(pool)), NEW_SWAP_FEE, "Wrong swap fee");
+        assertEq(vault.getStaticSwapFeePercentage(pool), NEW_SWAP_FEE, "Wrong swap fee");
     }
 
     function testCannotSetSwapFeePercentageIfNotManager() public {
-        require(vault.getPoolRoleAccounts(address(pool)).swapFeeManager == address(admin), "Wrong swap fee manager");
+        require(vault.getPoolRoleAccounts(pool).swapFeeManager == address(admin), "Wrong swap fee manager");
 
         vm.prank(bob);
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.setStaticSwapFeePercentage(address(pool), NEW_SWAP_FEE);
+        vault.setStaticSwapFeePercentage(pool, NEW_SWAP_FEE);
     }
 
     function testGovernanceCanSetSwapFeeIfNoManager() public {
@@ -127,17 +130,17 @@ contract PoolSwapManagerTest is BaseVaultTest {
 
     // It is onlyOwner, so governance cannot override
     function testGovernanceCannotSetSwapFeeWithManager() public {
-        require(vault.getStaticSwapFeePercentage(address(pool)) == 0, "initial swap fee non-zero");
+        require(vault.getStaticSwapFeePercentage(pool) == 0, "initial swap fee non-zero");
 
         vm.prank(bob);
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.setStaticSwapFeePercentage(address(pool), NEW_SWAP_FEE);
+        vault.setStaticSwapFeePercentage(pool, NEW_SWAP_FEE);
 
         bytes32 setSwapFeeRole = vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector);
         authorizer.grantRole(setSwapFeeRole, bob);
 
         vm.prank(bob);
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.setStaticSwapFeePercentage(address(pool), NEW_SWAP_FEE);
+        vault.setStaticSwapFeePercentage(pool, NEW_SWAP_FEE);
     }
 }

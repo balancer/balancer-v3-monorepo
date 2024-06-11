@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -34,7 +35,7 @@ contract HooksTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         // Sets the pool address in the hook, so we can check balances of the pool inside the hook
-        PoolHooksMock(poolHooksContract).setPool(address(pool));
+        PoolHooksMock(poolHooksContract).setPool(pool);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
@@ -120,9 +121,9 @@ contract HooksTest is BaseVaultTest {
     // dynamic fee
 
     function testOnComputeDynamicSwapFeeHook() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallComputeDynamicSwapFee = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
+        vault.setHooksConfig(pool, hooksConfig);
 
         vm.prank(bob);
         vm.expectCall(
@@ -137,41 +138,64 @@ contract HooksTest is BaseVaultTest {
                     indexOut: daiIdx,
                     router: address(router),
                     userData: bytes("")
-                })
+                }),
+                0
             )
         );
         snapStart("swapWithOnComputeDynamicSwapFeeHook");
-        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
         snapEnd();
     }
 
-    function testOnComputeDynamicSwapFeeHookRevert() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+    function testOnComputeDynamicSwapFeeHookReturningStaticFee() public {
+        uint256 staticSwapFeePercentage = 10e16;
+
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallComputeDynamicSwapFee = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
+        vault.setHooksConfig(pool, hooksConfig);
+
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+        vault.setStaticSwapFeePercentage(pool, staticSwapFeePercentage);
+
+        vm.prank(bob);
+        vm.expectCall(
+            address(poolHooksContract),
+            abi.encodeWithSelector(
+                IHooks.onComputeDynamicSwapFee.selector,
+                IBasePool.PoolSwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    amountGivenScaled18: defaultAmount,
+                    balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
+                    indexIn: usdcIdx,
+                    indexOut: daiIdx,
+                    router: address(router),
+                    userData: bytes("")
+                }),
+                staticSwapFeePercentage
+            )
+        );
+        router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
+    }
+
+    function testOnComputeDynamicSwapFeeHookRevert() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallComputeDynamicSwapFee = true;
+        vault.setHooksConfig(pool, hooksConfig);
 
         // should fail
         PoolHooksMock(poolHooksContract).setFailOnComputeDynamicSwapFeeHook(true);
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.DynamicSwapFeeHookFailed.selector);
-        router.swapSingleTokenExactIn(
-            address(pool),
-            usdc,
-            dai,
-            defaultAmount,
-            defaultAmount,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, defaultAmount, MAX_UINT256, false, bytes(""));
     }
 
     // before swap
 
     function testOnBeforeSwapHook() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallBeforeSwap = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
+        vault.setHooksConfig(pool, hooksConfig);
 
         vm.prank(bob);
         vm.expectCall(
@@ -190,37 +214,28 @@ contract HooksTest is BaseVaultTest {
             )
         );
         snapStart("swapWithOnBeforeSwapHook");
-        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
         snapEnd();
     }
 
     function testOnBeforeSwapHookRevert() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallBeforeSwap = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
+        vault.setHooksConfig(pool, hooksConfig);
 
         // should fail
         PoolHooksMock(poolHooksContract).setFailOnBeforeSwapHook(true);
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.BeforeSwapHookFailed.selector);
-        router.swapSingleTokenExactIn(
-            address(pool),
-            usdc,
-            dai,
-            defaultAmount,
-            defaultAmount,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, defaultAmount, MAX_UINT256, false, bytes(""));
     }
 
     // after swap
 
     function testOnAfterSwapHook() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallAfterSwap = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
+        vault.setHooksConfig(pool, hooksConfig);
 
         setSwapFeePercentage(swapFeePercentage);
         vault.manualSetAggregateProtocolSwapFeePercentage(
@@ -254,29 +269,20 @@ contract HooksTest is BaseVaultTest {
         );
 
         snapStart("swapWithOnAfterSwapHook");
-        router.swapSingleTokenExactIn(address(pool), usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
         snapEnd();
     }
 
     function testOnAfterSwapHookRevert() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallAfterSwap = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
+        vault.setHooksConfig(pool, hooksConfig);
 
         // should fail
         PoolHooksMock(poolHooksContract).setFailOnAfterSwapHook(true);
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.AfterSwapHookFailed.selector);
-        router.swapSingleTokenExactIn(
-            address(pool),
-            usdc,
-            dai,
-            defaultAmount,
-            defaultAmount,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, defaultAmount, MAX_UINT256, false, bytes(""));
     }
 
     // Before add
@@ -287,7 +293,7 @@ contract HooksTest is BaseVaultTest {
         vm.prank(bob);
         // Doesn't fail, does not call hooks
         router.addLiquidityUnbalanced(
-            address(pool),
+            pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             bptAmount,
             false,
@@ -296,9 +302,9 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnBeforeAddLiquidityHook() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallBeforeAddLiquidity = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
+        vault.setHooksConfig(pool, hooksConfig);
 
         vm.prank(bob);
         vm.expectCall(
@@ -315,7 +321,7 @@ contract HooksTest is BaseVaultTest {
         );
         snapStart("addLiquidityWithOnBeforeHook");
         router.addLiquidityUnbalanced(
-            address(pool),
+            pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             bptAmountRoundDown,
             false,
@@ -331,7 +337,7 @@ contract HooksTest is BaseVaultTest {
 
         vm.prank(alice);
         router.addLiquidityUnbalanced(
-            address(pool),
+            pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             bptAmount,
             false,
@@ -340,7 +346,7 @@ contract HooksTest is BaseVaultTest {
 
         vm.prank(alice);
         router.removeLiquidityProportional(
-            address(pool),
+            pool,
             bptAmount,
             [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
@@ -349,13 +355,13 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnBeforeRemoveLiquidityHook() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallBeforeRemoveLiquidity = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
+        vault.setHooksConfig(pool, hooksConfig);
 
         vm.prank(alice);
         router.addLiquidityUnbalanced(
-            address(pool),
+            pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             bptAmount,
             false,
@@ -377,7 +383,7 @@ contract HooksTest is BaseVaultTest {
         vm.prank(alice);
         snapStart("removeLiquidityWithOnBeforeHook");
         router.removeLiquidityProportional(
-            address(pool),
+            pool,
             bptAmount,
             [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
@@ -394,7 +400,7 @@ contract HooksTest is BaseVaultTest {
         vm.prank(bob);
         // Doesn't fail, does not call hooks
         router.addLiquidityUnbalanced(
-            address(pool),
+            pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             bptAmount,
             false,
@@ -403,9 +409,9 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnAfterAddLiquidityHook() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallAfterAddLiquidity = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
+        vault.setHooksConfig(pool, hooksConfig);
 
         vm.prank(bob);
         vm.expectCall(
@@ -421,7 +427,7 @@ contract HooksTest is BaseVaultTest {
         );
         snapStart("addLiquidityWithOnAfterHook");
         router.addLiquidityUnbalanced(
-            address(pool),
+            pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             bptAmountRoundDown,
             false,
@@ -437,7 +443,7 @@ contract HooksTest is BaseVaultTest {
 
         vm.prank(alice);
         router.addLiquidityUnbalanced(
-            address(pool),
+            pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             bptAmount,
             false,
@@ -446,7 +452,7 @@ contract HooksTest is BaseVaultTest {
 
         vm.prank(alice);
         router.removeLiquidityProportional(
-            address(pool),
+            pool,
             bptAmount,
             [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
@@ -455,13 +461,13 @@ contract HooksTest is BaseVaultTest {
     }
 
     function testOnAfterRemoveLiquidityHook() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallAfterRemoveLiquidity = true;
-        vault.setHooksConfig(address(pool), hooksConfig);
+        vault.setHooksConfig(pool, hooksConfig);
 
         vm.prank(alice);
         router.addLiquidityUnbalanced(
-            address(pool),
+            pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             bptAmount,
             false,
@@ -483,7 +489,7 @@ contract HooksTest is BaseVaultTest {
         vm.prank(alice);
         snapStart("removeLiquidityWithOnAfterHook");
         router.removeLiquidityProportional(
-            address(pool),
+            pool,
             bptAmount,
             [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,
