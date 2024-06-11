@@ -492,7 +492,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        if (hooksConfig.onBeforeAddLiquidity(msg.sender, maxAmountsInScaled18, params, poolData) == true) {
+        if (hooksConfig.onBeforeAddLiquidity(msg.sender, maxAmountsInScaled18, params, poolData)) {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
