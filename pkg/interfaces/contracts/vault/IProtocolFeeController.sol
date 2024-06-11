@@ -127,7 +127,7 @@ interface IProtocolFeeController {
      * @param pool The pool on which fees were collected
      * @param feeAmounts The total amounts of each token that are available for withdrawal, in token registration order
      */
-    function getAggregateProtocolFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
+    function getProtocolFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
 
     /**
      * @notice Returns the amount of each pool token allocated to the pool creator for withdrawal.
@@ -135,7 +135,7 @@ interface IProtocolFeeController {
      * @param pool The pool on which fees were collected
      * @param feeAmounts The total amounts of each token that are available for withdrawal, in token registration order
      */
-    function getAggregatePoolCreatorFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
+    function getPoolCreatorFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
 
     /**
      * @notice Returns a calculated aggregate percentage from protocol and pool creator fee percentages.
@@ -184,20 +184,20 @@ interface IProtocolFeeController {
     /**
      * @notice Add pool-specific entries to the protocol swap and yield percentages.
      * @dev This must be called from the Vault during pool registration. It will initialize the pool to the global
-     * protocol fee percentage values, and return the initial aggregate protocol fee percentages, based on an
+     * protocol fee percentage values, and return the initial aggregate fee percentages, based on an
      * initial pool creator fee of 0.
      *
      * @param pool The pool being registered
      * @param poolCreator The address of the pool creator (or 0 if there won't be a pool creator fee)
      * @param protocolFeeExempt If true, the pool is initially exempt from protocol fees
-     * @return aggregateProtocolSwapFeePercentage The initial aggregate protocol swap fee percentage
-     * @return aggregateProtocolYieldFeePercentage The initial aggregate protocol yield fee percentage
+     * @return aggregateSwapFeePercentage The initial aggregate swap fee percentage
+     * @return aggregateYieldFeePercentage The initial aggregate yield fee percentage
      */
     function registerPool(
         address pool,
         address poolCreator,
         bool protocolFeeExempt
-    ) external returns (uint256 aggregateProtocolSwapFeePercentage, uint256 aggregateProtocolYieldFeePercentage);
+    ) external returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage);
 
     /**
      * @notice Called by the Vault when protocol swap or yield fees are collected.

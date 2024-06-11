@@ -285,12 +285,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             config.pauseWindowEndTime = params.pauseWindowEndTime;
 
             // Initialize the pool-specific protocol fee values to the current global defaults.
-            (
-                uint256 aggregateProtocolSwapFeePercentage,
-                uint256 aggregateProtocolYieldFeePercentage
-            ) = _protocolFeeController.registerPool(pool, params.roleAccounts.poolCreator, params.protocolFeeExempt);
-            config.setAggregateProtocolSwapFeePercentage(aggregateProtocolSwapFeePercentage);
-            config.setAggregateProtocolYieldFeePercentage(aggregateProtocolYieldFeePercentage);
+            (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) = _protocolFeeController
+                .registerPool(pool, params.roleAccounts.poolCreator, params.protocolFeeExempt);
+            config.setAggregateSwapFeePercentage(aggregateSwapFeePercentage);
+            config.setAggregateYieldFeePercentage(aggregateYieldFeePercentage);
 
             _poolConfig[pool] = config;
         }
@@ -564,13 +562,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     // and yield fee amounts, arbitrarily assigning "Raw" to Swap and "Derived" to Yield.
 
     /// @inheritdoc IVaultExtension
-    function getAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view onlyVault returns (uint256) {
-        return _aggregateProtocolFeeAmounts[pool][token].getBalanceRaw();
+    function getAggregateSwapFeeAmount(address pool, IERC20 token) external view onlyVault returns (uint256) {
+        return _aggregateFeeAmounts[pool][token].getBalanceRaw();
     }
 
     /// @inheritdoc IVaultExtension
-    function getAggregateProtocolYieldFeeAmount(address pool, IERC20 token) external view onlyVault returns (uint256) {
-        return _aggregateProtocolFeeAmounts[pool][token].getBalanceDerived();
+    function getAggregateYieldFeeAmount(address pool, IERC20 token) external view onlyVault returns (uint256) {
+        return _aggregateFeeAmounts[pool][token].getBalanceDerived();
     }
 
     /// @inheritdoc IVaultExtension

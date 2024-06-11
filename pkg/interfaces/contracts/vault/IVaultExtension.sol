@@ -69,7 +69,7 @@ interface IVaultExtension {
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param swapFeePercentage The initial static swap fee percentage of the pool
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
-     * @param protocolFeeExempt If true, the pool's initial aggregate protocol fees will be set to 0
+     * @param protocolFeeExempt If true, the pool's initial aggregate fees will be set to 0
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHooksContract Contract that implements the hooks for the pool
      * @param liquidityManagement Liquidity management flags with implemented methods
@@ -258,20 +258,20 @@ interface IVaultExtension {
     *******************************************************************************/
 
     /**
-     * @notice Returns the accumulated swap fees (including aggregate protocol fees) in `token` collected by the pool.
+     * @notice Returns the accumulated swap fees (including aggregate fees) in `token` collected by the pool.
      * @param pool The address of the pool for which protocol fees have been collected
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
      */
-    function getAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view returns (uint256);
+    function getAggregateSwapFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
     /**
-     * @notice Returns the accumulated yield fees (including aggregate protocol fees) in `token` collected by the pool.
+     * @notice Returns the accumulated yield fees (including aggregate fees) in `token` collected by the pool.
      * @param pool The address of the pool for which protocol fees have been collected
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
      */
-    function getAggregateProtocolYieldFeeAmount(address pool, IERC20 token) external view returns (uint256);
+    function getAggregateYieldFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
     /**
      * @notice Fetches the static swap fee percentage for a given pool.

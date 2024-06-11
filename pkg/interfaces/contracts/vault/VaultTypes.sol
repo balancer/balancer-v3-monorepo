@@ -15,8 +15,8 @@ struct LiquidityManagement {
 /// @dev Represents a pool's configuration (hooks configuration are separated in another struct).
 struct PoolConfig {
     uint24 staticSwapFeePercentageUnscaled;
-    uint24 aggregateProtocolSwapFeePercentageUnscaled;
-    uint24 aggregateProtocolYieldFeePercentageUnscaled;
+    uint24 aggregateSwapFeePercentageUnscaled;
+    uint24 aggregateYieldFeePercentageUnscaled;
     uint24 tokenDecimalDiffs;
     uint32 pauseWindowEndTime;
     bool isPoolRegistered;
