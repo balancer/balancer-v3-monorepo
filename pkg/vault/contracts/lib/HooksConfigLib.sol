@@ -118,7 +118,6 @@ library HooksConfigLib {
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
-     * @return hookAdjustedMaxAmountsInRaw New maxAmountsInRaw, modified by the hook
      */
     function onBeforeAddLiquidity(
         HooksConfig memory config,
@@ -126,25 +125,24 @@ library HooksConfigLib {
         uint256[] memory maxAmountsInScaled18,
         AddLiquidityParams memory params,
         PoolData memory poolData
-    ) internal returns (bool success, uint256[] memory hookAdjustedMaxAmountsInRaw) {
+    ) internal returns (bool) {
         if (config.shouldCallBeforeAddLiquidity == false) {
-            return (false, params.maxAmountsIn);
+            return false;
         }
 
-        (success, hookAdjustedMaxAmountsInRaw) = IHooks(config.hooksContract).onBeforeAddLiquidity(
-            router,
-            params.pool,
-            params.kind,
-            maxAmountsInScaled18,
-            params.maxAmountsIn,
-            params.minBptAmountOut,
-            poolData.balancesLiveScaled18,
-            params.userData
-        );
-
-        if (success == false) {
+        if (
+            IHooks(config.hooksContract).onBeforeAddLiquidity(
+                router,
+                params.kind,
+                maxAmountsInScaled18,
+                params.minBptAmountOut,
+                poolData.balancesLiveScaled18,
+                params.userData
+            ) == false
+        ) {
             revert IVaultErrors.BeforeAddLiquidityHookFailed();
         }
+        return true;
     }
 
     /**

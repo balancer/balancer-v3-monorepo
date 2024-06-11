@@ -492,17 +492,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        (bool onBeforeAddLiquiditySuccess, uint256[] memory hookAdjustedMaxAmountsInRaw) = hooksConfig
-            .onBeforeAddLiquidity(msg.sender, maxAmountsInScaled18, params, poolData);
-
-        if (onBeforeAddLiquiditySuccess == true) {
+        if (hooksConfig.onBeforeAddLiquidity(msg.sender, maxAmountsInScaled18, params, poolData) == true) {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
             poolData.reloadBalancesAndRates(_poolTokenBalances[params.pool], Rounding.ROUND_UP);
 
             // Also update maxAmountsInScaled18, as the rates might have changed.
-            maxAmountsInScaled18 = hookAdjustedMaxAmountsInRaw.copyToScaled18ApplyRateRoundDownArray(
+            maxAmountsInScaled18 = params.maxAmountsIn.copyToScaled18ApplyRateRoundDownArray(
                 poolData.decimalScalingFactors,
                 poolData.tokenRates
             );
@@ -520,16 +517,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             params,
             maxAmountsInScaled18
         );
-
-        if (params.kind == AddLiquidityKind.UNBALANCED) {
-            // UNBALANCED addLiquidity is EXACT_IN. onBeforeAddLiquidity hook may have changed amountsIn,
-            // so we restore it.
-            amountsIn = params.maxAmountsIn;
-            amountsInScaled18 = amountsIn.copyToScaled18ApplyRateRoundDownArray(
-                poolData.decimalScalingFactors,
-                poolData.tokenRates
-            );
-        }
 
         (, amountsIn) = hooksConfig.onAfterAddLiquidity(
             msg.sender,
@@ -650,8 +637,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IERC20 token = poolData.tokenConfig[i].token;
 
                 // 2) Check limits for raw amounts
-                // UNBALANCED is ignored because it's an EXACT_IN operation.
-                if (params.kind != AddLiquidityKind.UNBALANCED && amountInRaw > params.maxAmountsIn[i]) {
+                if (amountInRaw > params.maxAmountsIn[i]) {
                     revert AmountInAboveMax(token, amountInRaw, params.maxAmountsIn[i]);
                 }
 

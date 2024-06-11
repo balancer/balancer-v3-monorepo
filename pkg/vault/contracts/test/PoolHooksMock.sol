@@ -19,7 +19,7 @@ import { RateProviderMock } from "./RateProviderMock.sol";
 import { BasePoolHooks } from "../BasePoolHooks.sol";
 
 contract PoolHooksMock is BasePoolHooks {
-    // using FixedPoint for uint256;
+    using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
     bool public failOnAfterInitialize;
@@ -41,10 +41,8 @@ contract PoolHooksMock is BasePoolHooks {
     bool public changePoolBalancesOnBeforeAddLiquidityHook;
     bool public changePoolBalancesOnBeforeRemoveLiquidityHook;
 
-    uint256 public onBeforeAddLiquidityHookFee;
-    uint256 public onBeforeAddLiquidityHookDiscount;
-    uint256 public onAfterAddLiquidityHookFee;
-    uint256 public onAfterAddLiquidityHookDiscount;
+    uint256 public addLiquidityHookFeePercentage;
+    uint256 public addLiquidityHookDiscountPercentage;
 
     bool public swapReentrancyHookActive;
     address private _swapHookContract;
@@ -175,17 +173,12 @@ contract PoolHooksMock is BasePoolHooks {
 
     function onBeforeAddLiquidity(
         address,
-        address pool,
         AddLiquidityKind kind,
         uint256[] memory,
-        uint256[] memory maxAmountsInRaw,
         uint256,
         uint256[] memory,
         bytes memory
-    ) external override returns (bool, uint256[] memory hookAdjustedMaxAmountsInRaw) {
-        (TokenConfig[] memory tokenConfig, , ) = _vault.getPoolTokenInfo(pool);
-        hookAdjustedMaxAmountsInRaw = maxAmountsInRaw;
-
+    ) external override returns (bool) {
         if (changeTokenRateOnBeforeAddLiquidity) {
             _updateTokenRate();
         }
@@ -194,20 +187,7 @@ contract PoolHooksMock is BasePoolHooks {
             _setBalancesInVault();
         }
 
-        if (onBeforeAddLiquidityHookFee > 0) {
-            for (uint256 i = 0; i < maxAmountsInRaw.length; i++) {
-                hookAdjustedMaxAmountsInRaw[i] -= onBeforeAddLiquidityHookFee;
-                _vault.sendTo(tokenConfig[i].token, address(this), onBeforeAddLiquidityHookFee);
-            }
-        } else if (onBeforeAddLiquidityHookDiscount > 0) {
-            for (uint256 i = 0; i < maxAmountsInRaw.length; i++) {
-                tokenConfig[i].token.transfer(address(_vault), onBeforeAddLiquidityHookDiscount);
-                _vault.settle(tokenConfig[i].token);
-                hookAdjustedMaxAmountsInRaw[i] += onBeforeAddLiquidityHookDiscount;
-            }
-        }
-
-        return (!failOnBeforeAddLiquidity, hookAdjustedMaxAmountsInRaw);
+        return !failOnBeforeAddLiquidity;
     }
 
     function onBeforeRemoveLiquidity(
@@ -241,16 +221,18 @@ contract PoolHooksMock is BasePoolHooks {
         (TokenConfig[] memory tokenConfig, , ) = _vault.getPoolTokenInfo(pool);
         hookAdjustedAmountsInRaw = amountsInRaw;
 
-        if (onAfterAddLiquidityHookFee > 0) {
+        if (addLiquidityHookFeePercentage > 0) {
             for (uint256 i = 0; i < amountsInRaw.length; i++) {
-                hookAdjustedAmountsInRaw[i] += onAfterAddLiquidityHookFee;
-                _vault.sendTo(tokenConfig[i].token, address(this), onAfterAddLiquidityHookFee);
+                uint256 hookFee = amountsInRaw[i].mulDown(addLiquidityHookFeePercentage);
+                hookAdjustedAmountsInRaw[i] += hookFee;
+                _vault.sendTo(tokenConfig[i].token, address(this), hookFee);
             }
-        } else if (onAfterAddLiquidityHookDiscount > 0) {
+        } else if (addLiquidityHookDiscountPercentage > 0) {
             for (uint256 i = 0; i < amountsInRaw.length; i++) {
-                tokenConfig[i].token.transfer(address(_vault), onAfterAddLiquidityHookDiscount);
+                uint256 hookDiscount = amountsInRaw[i].mulDown(addLiquidityHookDiscountPercentage);
+                tokenConfig[i].token.transfer(address(_vault), hookDiscount);
                 _vault.settle(tokenConfig[i].token);
-                hookAdjustedAmountsInRaw[i] -= onAfterAddLiquidityHookDiscount;
+                hookAdjustedAmountsInRaw[i] -= hookDiscount;
             }
         }
 
@@ -393,20 +375,12 @@ contract PoolHooksMock is BasePoolHooks {
         _pool = pool;
     }
 
-    function setOnBeforeAddLiquidityHookFee(uint256 hookFee) public {
-        onBeforeAddLiquidityHookFee = hookFee;
+    function setAddLiquidityHookFeePercentage(uint256 hookFeePercentage) public {
+        addLiquidityHookFeePercentage = hookFeePercentage;
     }
 
-    function setOnBeforeAddLiquidityHookDiscount(uint256 hookDiscount) public {
-        onBeforeAddLiquidityHookDiscount = hookDiscount;
-    }
-
-    function setOnAfterAddLiquidityHookFee(uint256 hookFee) public {
-        onAfterAddLiquidityHookFee = hookFee;
-    }
-
-    function setOnAfterAddLiquidityHookDiscount(uint256 hookDiscount) public {
-        onAfterAddLiquidityHookDiscount = hookDiscount;
+    function setAddLiquidityHookDiscountPercentage(uint256 hookDiscountPercentage) public {
+        addLiquidityHookDiscountPercentage = hookDiscountPercentage;
     }
 
     function allowFactory(address factory) external {

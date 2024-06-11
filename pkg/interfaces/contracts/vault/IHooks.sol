@@ -81,26 +81,21 @@ interface IHooks {
     /**
      * @notice Optional hook to be executed before adding liquidity.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
-     * @param pool Pool address
      * @param kind The type of add liquidity operation (e.g., proportional, custom)
      * @param maxAmountsInScaled18 Maximum amounts of input tokens
-     * @param maxAmountsInRaw Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
      * @param balancesScaled18 Current pool balances, in the same order as the tokens registered in the pool
      * @param userData Optional, arbitrary data with the encoded request
      * @return success True if the pool wishes to proceed with settlement
-     * @return hookAdjustedMaxAmountsInRaw New maxAmountsInRaw, modified by the hook
      */
     function onBeforeAddLiquidity(
         address router,
-        address pool,
         AddLiquidityKind kind,
         uint256[] memory maxAmountsInScaled18,
-        uint256[] memory maxAmountsInRaw,
         uint256 minBptAmountOut,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) external returns (bool success, uint256[] memory hookAdjustedMaxAmountsInRaw);
+    ) external returns (bool success);
 
     /**
      * @notice Optional hook to be executed after adding liquidity.
