@@ -34,8 +34,6 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
 
         _swapAmount = poolInitAmount / 100;
 
-        // Sets the pool address in the hook, so we can check balances of the pool inside the hook
-        PoolHooksMock(poolHooksContract).setPool(address(pool));
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
