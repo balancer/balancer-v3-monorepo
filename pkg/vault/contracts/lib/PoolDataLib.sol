@@ -104,30 +104,4 @@ library PoolDataLib {
             poolData.tokenRates[tokenIndex]
         );
     }
-
-    function increaseTokenBalance(
-        PoolData memory poolData,
-        uint256 tokenIndex,
-        uint256 amountToIncreaseRaw
-    ) internal pure {
-        updateRawAndLiveBalance(
-            poolData,
-            tokenIndex,
-            poolData.balancesRaw[tokenIndex] + amountToIncreaseRaw,
-            Rounding.ROUND_UP
-        );
-    }
-
-    function decreaseTokenBalance(
-        PoolData memory poolData,
-        uint256 tokenIndex,
-        uint256 amountToDecreaseRaw
-    ) internal pure {
-        updateRawAndLiveBalance(
-            poolData,
-            tokenIndex,
-            poolData.balancesRaw[tokenIndex] - amountToDecreaseRaw,
-            Rounding.ROUND_DOWN
-        );
-    }
 }

@@ -413,8 +413,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         (locals.balanceInIncrement, locals.balanceOutDecrement) = params.kind == SwapKind.EXACT_IN
             ? (amountInRaw, amountOutRaw + totalFeesRaw)
             : (amountInRaw - totalFeesRaw, amountOutRaw);
-        poolData.increaseTokenBalance(state.indexIn, locals.balanceInIncrement);
-        poolData.decreaseTokenBalance(state.indexOut, locals.balanceOutDecrement);
+
+        poolData.updateRawAndLiveBalance(
+            state.indexIn,
+            poolData.balancesRaw[state.indexIn] + locals.balanceInIncrement,
+            Rounding.ROUND_UP
+        );
+        poolData.updateRawAndLiveBalance(
+            state.indexOut,
+            poolData.balancesRaw[state.indexOut] - locals.balanceOutDecrement,
+            Rounding.ROUND_DOWN
+        );
 
         // 6) Store pool balances, raw and live (only index in and out)
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
@@ -649,9 +658,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // to use in the `after` hook later on.
 
             // A pool's token balance increases by amounts in after adding liquidity, minus fees.
-            uint256 amountToIncreaseRaw = amountInRaw - locals.totalFeesRaw;
-
-            poolData.increaseTokenBalance(i, amountToIncreaseRaw);
+            poolData.updateRawAndLiveBalance(
+                i,
+                poolData.balancesRaw[i] + amountInRaw - locals.totalFeesRaw,
+                Rounding.ROUND_UP
+            );
         }
 
         // 6) Store pool balances, raw and live
@@ -823,23 +834,26 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             amountsOutRaw[i] = amountOutRaw;
 
-            IERC20 token = poolData.tokens[i];
-            // 2) Check limits for raw amounts
-            if (amountOutRaw < params.minAmountsOut[i]) {
-                revert AmountOutBelowMin(token, amountOutRaw, params.minAmountsOut[i]);
+            // stack-too-deep (forge)
+            {
+                IERC20 token = poolData.tokens[i];
+                // 2) Check limits for raw amounts
+                if (amountOutRaw < params.minAmountsOut[i]) {
+                    revert AmountOutBelowMin(token, amountOutRaw, params.minAmountsOut[i]);
+                }
+
+                // 3) Deltas: Credit token[i] for amountOutRaw
+                _supplyCredit(token, amountOutRaw);
+
+                // 4) Compute and charge protocol and creator fees.
+                locals.totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
+                    poolData,
+                    swapFeeAmountsScaled18[i],
+                    params.pool,
+                    token,
+                    i
+                );
             }
-
-            // 3) Deltas: Credit token[i] for amountOutRaw
-            _supplyCredit(token, amountOutRaw);
-
-            // 4) Compute and charge protocol and creator fees.
-            locals.totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
-                poolData,
-                swapFeeAmountsScaled18[i],
-                params.pool,
-                token,
-                i
-            );
 
             // 5) Pool balances: raw and live
             // We need regular balances to complete the accounting, and the upscaled balances
@@ -847,7 +861,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // A Pool's token balance always decreases after an exit
             // (potentially by 0). Also adjust by protocol and pool creator fees.
-            poolData.decreaseTokenBalance(i, amountOutRaw + locals.totalFeesRaw);
+            poolData.updateRawAndLiveBalance(
+                i,
+                poolData.balancesRaw[i] - (amountOutRaw + locals.totalFeesRaw),
+                Rounding.ROUND_DOWN
+            );
         }
 
         // 6) Store pool balances, raw and live
