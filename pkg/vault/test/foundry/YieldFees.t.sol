@@ -319,12 +319,12 @@ contract YieldFeesTest is BaseVaultTest {
         bool roundUp
     ) internal returns (uint256[] memory liveBalances) {
         PoolData memory data = vault.loadPoolDataUpdatingBalancesAndYieldFees(
-            address(pool),
+            pool,
             roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN
         );
 
         uint256[] memory expectedScalingFactors = PoolMock(pool).getDecimalScalingFactors();
-        uint256[] memory expectedRawBalances = vault.getRawBalances(address(pool));
+        uint256[] memory expectedRawBalances = vault.getRawBalances(pool);
         uint256[] memory expectedRates = new uint256[](2);
 
         expectedRates[wstethIdx] = wstethRate;

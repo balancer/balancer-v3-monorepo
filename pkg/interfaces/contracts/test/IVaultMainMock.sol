@@ -28,6 +28,8 @@ interface IVaultMainMock {
         PoolRoleAccounts memory roleAccounts
     ) external;
 
+    function manualSetPoolRegistered(address pool, bool status) external;
+
     function manualSetIsUnlocked(bool status) external;
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) external;

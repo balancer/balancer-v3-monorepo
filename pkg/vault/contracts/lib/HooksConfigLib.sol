@@ -142,17 +142,21 @@ library HooksConfigLib {
      *
      * @param config The encoded hooks configuration
      * @param swapParams The swap parameters used in the hook
+     * @param pool Pool address
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
     function onBeforeSwap(
         HooksConfigBits memory config,
-        IBasePool.PoolSwapParams memory swapParams
+        IBasePool.PoolSwapParams memory swapParams,
+        address pool
     ) internal returns (bool) {
         if (config.shouldCallBeforeSwap() == false) {
+            // Hook contract does not implement onBeforeSwap, so success is false (hook was not executed)
             return false;
         }
 
-        if (IHooks(config.getHooksContract()).onBeforeSwap(swapParams) == false) {
+        if (IHooks(config.getHooksContract()).onBeforeSwap(swapParams, pool) == false) {
+            // Hook contract implements onBeforeSwap, but it has failed, so reverts the transaction.
             revert IVaultErrors.BeforeSwapHookFailed();
         }
         return true;
@@ -163,44 +167,61 @@ library HooksConfigLib {
      * execute the hook.
      *
      * @param config The encoded hooks configuration
-     * @param amountCalculatedScaled18 The amount calculated by the vault's onSwap function
+     * @param amountCalculatedScaled18 Token amount calculated by the swap
+     * @param amountCalculatedRaw Token amount calculated by the swap
      * @param params The swap parameters
      * @param state Temporary state used in swap operations
      * @param poolData Struct containing balance and token information of the pool
+     * @return hookAdjustedAmountCalculatedRaw New amount calculated, modified by the hook
      */
     function onAfterSwap(
         HooksConfigBits memory config,
         uint256 amountCalculatedScaled18,
+        uint256 amountCalculatedRaw,
         address router,
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
-    ) internal {
+    ) internal returns (uint256 hookAdjustedAmountCalculatedRaw) {
         if (config.shouldCallAfterSwap() == false) {
-            return;
+            // Hook contract does not implement onAfterSwap, so success is false (hook was not executed) and do not
+            // change amountCalculatedRaw (no deltas)
+            return amountCalculatedRaw;
         }
 
         // Adjust balances for the AfterSwap hook.
         (uint256 amountInScaled18, uint256 amountOutScaled18) = params.kind == SwapKind.EXACT_IN
             ? (state.amountGivenScaled18, amountCalculatedScaled18)
             : (amountCalculatedScaled18, state.amountGivenScaled18);
-        if (
-            IHooks(config.getHooksContract()).onAfterSwap(
-                IHooks.AfterSwapParams({
-                    kind: params.kind,
-                    tokenIn: params.tokenIn,
-                    tokenOut: params.tokenOut,
-                    amountInScaled18: amountInScaled18,
-                    amountOutScaled18: amountOutScaled18,
-                    tokenInBalanceScaled18: poolData.balancesLiveScaled18[state.indexIn],
-                    tokenOutBalanceScaled18: poolData.balancesLiveScaled18[state.indexOut],
-                    router: router,
-                    userData: params.userData
-                }),
-                amountCalculatedScaled18
-            ) == false
-        ) {
+
+        bool success;
+        (success, hookAdjustedAmountCalculatedRaw) = IHooks(config.getHooksContract()).onAfterSwap(
+            IHooks.AfterSwapParams({
+                kind: params.kind,
+                tokenIn: params.tokenIn,
+                tokenOut: params.tokenOut,
+                amountInScaled18: amountInScaled18,
+                amountOutScaled18: amountOutScaled18,
+                tokenInBalanceScaled18: poolData.balancesLiveScaled18[state.indexIn],
+                tokenOutBalanceScaled18: poolData.balancesLiveScaled18[state.indexOut],
+                amountCalculatedScaled18: amountCalculatedScaled18,
+                amountCalculatedRaw: amountCalculatedRaw,
+                router: router,
+                pool: params.pool,
+                userData: params.userData
+            })
+        );
+
+        if (success == false) {
+            // Hook contract implements onAfterSwap, but it has failed, so reverts the transaction.
             revert IVaultErrors.AfterSwapHookFailed();
+        }
+
+        if (
+            (params.kind == SwapKind.EXACT_IN && hookAdjustedAmountCalculatedRaw < params.limitRaw) ||
+            (params.kind == SwapKind.EXACT_OUT && hookAdjustedAmountCalculatedRaw > params.limitRaw)
+        ) {
+            revert IVaultErrors.SwapLimit(hookAdjustedAmountCalculatedRaw, params.limitRaw);
         }
     }
 
@@ -245,7 +266,7 @@ library HooksConfigLib {
      * to execute the hook.
      *
      * @param config The encoded hooks configuration
-     * @param amountsInScaled18 An array with amounts for each input token of the add liquidity operation
+     * @param amountsInScaled18 Scaled amounts of tokens added in token registration order
      * @param bptAmountOut The BPT amount a user will receive after add liquidity operation succeeds
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
@@ -317,7 +338,7 @@ library HooksConfigLib {
      * fails to execute the hook.
      *
      * @param config The encoded hooks configuration
-     * @param amountsOutScaled18 An array with amounts for each output token of the remove liquidity operation
+     * @param amountsOutScaled18 Amount of tokens to receive in token registration order
      * @param bptAmountIn The BPT amount a user will need burn to remove the liquidity of the pool
      * @param params The remove liquidity parameters
      * @param poolData Struct containing balance and token information of the pool

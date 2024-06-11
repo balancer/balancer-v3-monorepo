@@ -37,7 +37,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         assertTrue(protocolSwapFeePercentage > 0);
         assertTrue(poolCreatorFeePercentage > 0);
 
-        PoolConfig memory config = vault.getPoolConfig(address(pool));
+        PoolConfig memory config = vault.getPoolConfig(pool);
 
         assertEq(config.staticSwapFeePercentage, swapFeePercentage);
         assertEq(
@@ -74,7 +74,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         vm.prank(alice);
         snapStart("routerAddLiquidityUnbalancedWithCreatorFee");
-        bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, expectedBptAmountOut, false, bytes(""));
+        bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, expectedBptAmountOut, false, bytes(""));
         snapEnd();
         // should mint correct amount of BPT tokens
         assertEq(bptAmountOut, expectedBptAmountOut, "Invalid amount of BPT");
@@ -107,7 +107,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         vm.prank(alice);
         snapStart("routerAddLiquiditySingleTokenExactOutWithCreatorFee");
         uint256 amountIn = router.addLiquiditySingleTokenExactOut(
-            address(pool),
+            pool,
             dai,
             // amount + (amount / ( 100% - swapFee%)) / 2 + 1
             defaultAmount + (defaultAmount / 99) / 2 + 1,
@@ -151,7 +151,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         snapStart("routerRemoveLiquiditySingleTokenExactInWithCreatorFee");
         uint256 amountOut = router.removeLiquiditySingleTokenExactIn(
-            address(pool),
+            pool,
             bptAmountIn,
             dai,
             defaultAmount,
@@ -195,7 +195,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         snapStart("routerRemoveLiquiditySingleTokenExactOutWithCreatorFee");
         bptAmountIn = router.removeLiquiditySingleTokenExactOut(
-            address(pool),
+            pool,
             2 * defaultAmount,
             dai,
             uint256(defaultAmount),
@@ -285,7 +285,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         vm.startPrank(alice);
 
         router.addLiquidityUnbalanced(
-            address(pool),
+            pool,
             [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
             defaultAmount,
             false,

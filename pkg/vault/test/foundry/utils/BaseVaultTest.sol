@@ -114,7 +114,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
             approveForSender();
             vm.stopPrank();
         }
-        if (address(pool) != address(0)) {
+        if (pool != address(0)) {
             approveForPool(IERC20(pool));
         }
         // Add initial liquidity

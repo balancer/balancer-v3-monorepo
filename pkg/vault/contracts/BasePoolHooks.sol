@@ -95,13 +95,16 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
     }
 
     /// @inheritdoc IHooks
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata) external virtual onlyVault returns (bool) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata, address) external virtual onlyVault returns (bool) {
+        // return false to trigger an error if shouldCallBeforeSwap is true but this function is not overridden.
         return false;
     }
 
     /// @inheritdoc IHooks
-    function onAfterSwap(AfterSwapParams calldata, uint256) external virtual onlyVault returns (bool) {
-        return false;
+    function onAfterSwap(AfterSwapParams calldata) external virtual onlyVault returns (bool, uint256) {
+        // return false to trigger an error if shouldCallAfterSwap is true but this function is not overridden.
+        // The second argument is not used.
+        return (false, 0);
     }
 
     /// @inheritdoc IHooks
