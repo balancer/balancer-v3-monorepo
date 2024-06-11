@@ -62,7 +62,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
     }
 
     function testInitialRateProviderState() public {
-        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(address(pool));
+        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(pool);
 
         assertEq(address(tokenConfig[wstethIdx].rateProvider), address(rateProvider), "Wrong rate provider");
         assertEq(address(tokenConfig[daiIdx].rateProvider), address(0), "Rate provider should be 0");
@@ -77,7 +77,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         expectedBalances[daiIdx] = defaultAmount;
 
         vm.expectCall(
-            address(pool),
+            pool,
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
                 IBasePool.PoolSwapParams({
@@ -94,7 +94,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
 
         vm.prank(bob);
         router.swapSingleTokenExactIn(
-            address(pool),
+            pool,
             dai,
             wsteth,
             defaultAmount,
@@ -114,7 +114,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         expectedBalances[daiIdx] = defaultAmount;
 
         vm.expectCall(
-            address(pool),
+            pool,
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
                 IBasePool.PoolSwapParams({
@@ -131,7 +131,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
 
         vm.prank(bob);
         router.swapSingleTokenExactOut(
-            address(pool),
+            pool,
             dai,
             wsteth,
             rateAdjustedAmountGiven,
