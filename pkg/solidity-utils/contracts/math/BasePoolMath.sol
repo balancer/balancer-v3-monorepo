@@ -69,7 +69,7 @@ library BasePoolMath {
         uint256[] memory balances,
         uint256 bptTotalSupply,
         uint256 bptAmountIn
-    ) internal returns (uint256[] memory amountsOut) {
+    ) internal pure returns (uint256[] memory amountsOut) {
         /**********************************************************************************************
         // computeProportionalAmountsOut                                                             //
         // (per token)                                                                               //
