@@ -594,7 +594,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         vm.expectRevert(
             abi.encodeWithSelector(IVaultErrors.BptAmountInAboveMax.selector, bptAmountIn, params.maxBptAmountIn)
         );
-        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18, vaultState);
+        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
     function testRevertIfAmountOutBelowMin() public {
@@ -637,12 +637,10 @@ contract VaultUnitLiquidityTest is BaseTest {
             )
         );
 
-        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18, vaultState);
+        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
     function testRevertRemoveLiquidityUnbalancedIfUnbalancedLiquidityIsDisabled() public {
-        VaultState memory vaultState;
-
         PoolData memory poolData = _makeDefaultParams();
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
             poolData,
@@ -653,12 +651,10 @@ contract VaultUnitLiquidityTest is BaseTest {
         poolData.poolConfig.disableUnbalancedLiquidity = true;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
-        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18, vaultState);
+        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
     function testRevertRemoveLiquiditySingleTokenExactOutIfUnbalancedLiquidityIsDisabled() public {
-        VaultState memory vaultState;
-
         PoolData memory poolData = _makeDefaultParams();
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
             poolData,
@@ -669,12 +665,10 @@ contract VaultUnitLiquidityTest is BaseTest {
         poolData.poolConfig.disableUnbalancedLiquidity = true;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
-        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18, vaultState);
+        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
     function testRevertRemoveLiquidityCustomExactOutIfCustomLiquidityIsDisabled() public {
-        VaultState memory vaultState;
-
         PoolData memory poolData = _makeDefaultParams();
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
             poolData,
@@ -684,7 +678,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         );
 
         vm.expectRevert(IVaultErrors.DoesNotSupportRemoveLiquidityCustom.selector);
-        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18, vaultState);
+        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
     // #endregion
@@ -840,7 +834,6 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function _testRemoveLiquidity(PoolData memory poolData, TestRemoveLiquidityParams memory params) internal {
-        VaultState memory vaultState;
         poolData.poolConfig.setAggregateProtocolSwapFeePercentage(1e16);
 
         uint256[] memory expectedAmountsOutRaw = new uint256[](params.expectedAmountsOutScaled18.length);
@@ -867,12 +860,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             uint256[] memory amountsOutRaw,
             uint256[] memory amountsOutScaled18,
 
-        ) = vault.manualRemoveLiquidity(
-                poolData,
-                params.removeLiquidityParams,
-                params.minAmountsOutScaled18,
-                vaultState
-            );
+        ) = vault.manualRemoveLiquidity(poolData, params.removeLiquidityParams, params.minAmountsOutScaled18);
 
         assertEq(bptAmountIn, params.expectedBPTAmountIn, "Unexpected BPT amount in");
         assertEq(
