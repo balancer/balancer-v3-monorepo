@@ -21,6 +21,7 @@ import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.s
 contract OracleHook is BasePoolHooks {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
+    using ScalingHelpers for IERC20;
 
     constructor(IVault vault) BasePoolHooks(vault) {
         // solhint-disable-previous-line no-empty-blocks
@@ -68,6 +69,15 @@ contract OracleHook is BasePoolHooks {
         console.log("tokenInBalanceScaled18: %s", params.tokenInBalanceScaled18);
         console.log("tokenOutBalanceScaled18: %s", params.tokenOutBalanceScaled18);
         console.log("amountCalculatedScaled18: %s", amountCalculatedScaled18);
+
+        uint256 priceInScaled18 = params.amountInScaled18.divDown(params.amountOutScaled18);
+        uint256 priceIn = priceInScaled18.toRawRoundDown(params.tokenIn.computeScalingFactor());
+        uint256 priceOutScaled18 = params.amountOutScaled18.divDown(params.amountInScaled18);
+        uint256 priceOut = priceOutScaled18.toRawRoundDown(params.tokenOut.computeScalingFactor());
+        console.log("priceInScaled18: %s", priceInScaled18);
+        console.log("priceIn: %s", priceIn);
+        console.log("priceOutScaled18: %s", priceOutScaled18);
+        console.log("priceOut: %s", priceOut);
         return true;
     }
 }
