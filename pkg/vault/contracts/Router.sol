@@ -1156,8 +1156,13 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 s
             );
         }
-        // Use Permit2 for tokens that are swapped and added into the Vault.
-        _permit2.permit(msg.sender, permit2Batch, permit2Signature);
+
+        // Only call permit2 if there's something to do.
+        if (permit2Batch.details.length > 0) {
+            // Use Permit2 for tokens that are swapped and added into the Vault.
+            _permit2.permit(msg.sender, permit2Batch, permit2Signature);
+        }
+
         // Execute all the required operations once permissions have been granted.
         return multicall(multicallData);
     }
