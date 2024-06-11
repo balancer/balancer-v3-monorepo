@@ -34,7 +34,6 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
 
         _swapAmount = poolInitAmount / 100;
 
-
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
