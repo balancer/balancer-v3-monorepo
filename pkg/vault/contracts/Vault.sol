@@ -1015,16 +1015,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Checking isStaticCall first, so we only parse _vaultState in static calls
         if (EVMCallModeHelpers.isStaticCall() == true && _vaultState.isQueryDisabled == false) {
-            (, bytes memory data) = _implementation().delegatecall(
-                abi.encodeWithSelector(
-                    IVaultExtension.calculateBufferAmounts.selector,
-                    kind,
-                    underlyingToken,
-                    wrappedToken,
-                    amountGiven
-                )
-            );
-            return abi.decode(data, (uint256, uint256, uint256));
+            return _calculateBufferAmounts(kind, wrappedToken, amountGiven);
         }
 
         if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
@@ -1144,16 +1135,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Checking isStaticCall first, so we only parse _vaultState in static calls
         if (EVMCallModeHelpers.isStaticCall() == true && _vaultState.isQueryDisabled == false) {
-            (, bytes memory data) = _implementation().delegatecall(
-                abi.encodeWithSelector(
-                    IVaultExtension.calculateBufferAmounts.selector,
-                    kind,
-                    underlyingToken,
-                    wrappedToken,
-                    amountGiven
-                )
-            );
-            return abi.decode(data, (uint256, uint256, uint256));
+            return _calculateBufferAmounts(kind, wrappedToken, amountGiven);
         }
 
         if (bufferBalances.getBalanceRaw() > amountOutUnderlying) {
@@ -1234,6 +1216,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _takeDebt(wrappedToken, amountInWrapped);
         _supplyCredit(underlyingToken, amountOutUnderlying);
+    }
+
+    /**
+     * @dev Call VaultExtension to calculate the amounts for wrap/unwrap operations.
+     */
+    function _calculateBufferAmounts(
+        SwapKind kind,
+        IERC4626 wrappedToken,
+        uint256 amountGiven
+    ) internal returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped) {
+        bytes memory data = Address.functionDelegateCall(
+            _implementation(),
+            abi.encodeWithSelector(IVaultExtension.calculateBufferAmounts.selector, kind, wrappedToken, amountGiven)
+        );
+        return abi.decode(data, (uint256, uint256, uint256));
     }
 
     /**
