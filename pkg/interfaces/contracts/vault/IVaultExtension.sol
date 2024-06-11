@@ -69,6 +69,7 @@ interface IVaultExtension {
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param swapFeePercentage The initial static swap fee percentage of the pool
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
+     * @param protocolFeeExempt If true, the pool's initial aggregate protocol fees will be set to 0
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHooksContract Contract that implements the hooks for the pool
      * @param liquidityManagement Liquidity management flags with implemented methods
@@ -78,6 +79,7 @@ interface IVaultExtension {
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
+        bool protocolFeeExempt,
         PoolRoleAccounts calldata roleAccounts,
         address poolHooksContract,
         LiquidityManagement calldata liquidityManagement

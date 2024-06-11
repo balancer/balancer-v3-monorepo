@@ -81,6 +81,7 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
             pool,
             tokens,
             swapFeePercentage,
+            false, // not exempt from protocol fees
             roleAccounts,
             poolHooksContract,
             getDefaultLiquidityManagement()

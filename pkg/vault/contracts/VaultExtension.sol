@@ -131,6 +131,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         TokenConfig[] tokenConfig;
         uint256 swapFeePercentage;
         uint256 pauseWindowEndTime;
+        bool protocolFeeExempt;
         PoolRoleAccounts roleAccounts;
         address poolHooksContract;
         LiquidityManagement liquidityManagement;
@@ -142,6 +143,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
+        bool protocolFeeExempt,
         PoolRoleAccounts calldata roleAccounts,
         address poolHooksContract,
         LiquidityManagement calldata liquidityManagement
@@ -152,6 +154,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 tokenConfig: tokenConfig,
                 swapFeePercentage: swapFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
+                protocolFeeExempt: protocolFeeExempt,
                 roleAccounts: roleAccounts,
                 poolHooksContract: poolHooksContract,
                 liquidityManagement: liquidityManagement
@@ -282,7 +285,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             (
                 uint256 aggregateProtocolSwapFeePercentage,
                 uint256 aggregateProtocolYieldFeePercentage
-            ) = _protocolFeeController.registerPool(pool, params.roleAccounts.poolCreator);
+            ) = _protocolFeeController.registerPool(pool, params.roleAccounts.poolCreator, params.protocolFeeExempt);
             config.setAggregateProtocolSwapFeePercentage(aggregateProtocolSwapFeePercentage);
             config.setAggregateProtocolYieldFeePercentage(aggregateProtocolYieldFeePercentage);
 
