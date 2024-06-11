@@ -176,8 +176,8 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetPoolRegistered(address pool, bool status) public {
-        PoolConfig memory poolConfig = _poolConfig[pool];
-        poolConfig.isPoolRegistered = status;
+        PoolConfigBits memory poolConfig = _poolConfig[pool];
+        poolConfig.setPoolRegistered(status);
         _poolConfig[pool] = poolConfig;
     }
 
@@ -233,6 +233,10 @@ contract VaultMock is IVaultMainMock, Vault {
         poolConfig.setRemoveLiquidityCustom(config.liquidityManagement.enableRemoveLiquidityCustom);
 
         _poolConfig[pool] = poolConfig;
+    }
+
+    function manualSetPoolConfigBits(address pool, PoolConfigBits memory config) public {
+        _poolConfig[pool] = config;
     }
 
     function manualSetPoolTokenConfig(address pool, IERC20[] memory tokens, TokenConfig[] memory tokenConfig) public {
@@ -589,5 +593,9 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualTransfer(IERC20 token, address to, uint256 amount) external {
         token.transfer(to, amount);
+    }
+
+    function manualGetPoolConfigBits(address pool) external view returns (PoolConfigBits memory) {
+        return _poolConfig[pool];
     }
 }

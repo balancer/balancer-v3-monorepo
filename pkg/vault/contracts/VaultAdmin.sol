@@ -152,7 +152,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function getVaultPausedState() external view onlyVaultDelegateCall returns (bool, uint32, uint32) {
+    function getVaultPausedState() external view onlyVaultDelegateCall returns (bool, uint256, uint256) {
         return (_isVaultPaused(), _vaultPauseWindowEndTime, _vaultBufferPeriodEndTime);
     }
 
