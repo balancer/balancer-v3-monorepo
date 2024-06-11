@@ -134,4 +134,27 @@ contract Permit2Test is BaseVaultTest {
         // Allowance is spent
         assertEq(amount, 0, "USDC allowance is not spent");
     }
+
+    function testEmptyBatchAndCall() public {
+        IRouter.PermitApproval[] memory permitBatch = new IRouter.PermitApproval[](0);
+        bytes[] memory permitSignatures = new bytes[](0);
+        IAllowanceTransfer.PermitBatch memory permit2Batch;
+        bytes[] memory multicallData = new bytes[](1);
+
+        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+        bptAmountOut = defaultAmount * 2;
+
+        multicallData[0] = abi.encodeWithSelector(
+            IRouter.addLiquidityUnbalanced.selector,
+            address(pool),
+            amountsIn,
+            bptAmountOut,
+            false,
+            bytes("")
+        );
+
+        vm.expectCall(address(router), multicallData[0]);
+        vm.prank(alice);
+        router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, "", multicallData);
+    }
 }
