@@ -169,7 +169,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetIsUnlocked(bool status) public {
-        _isUnlocked().tstore(status);
+        _isUnlockedSlot().tstore(status);
     }
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) public {
@@ -400,11 +400,11 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetAccountDelta(IERC20 token, int256 delta) external {
-        _tokenDeltas().tSet(token, delta);
+        _tokenDeltasSlot().tSet(token, delta);
     }
 
     function manualSetNonZeroDeltaCount(uint256 deltaCount) external {
-        _nonzeroDeltaCount().tstore(deltaCount);
+        _nonzeroDeltaCountSlot().tstore(deltaCount);
     }
 
     function manualInternalSwap(

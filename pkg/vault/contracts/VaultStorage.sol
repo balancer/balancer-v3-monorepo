@@ -28,6 +28,18 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
  * @dev Storage layout for Vault. This contract has no code other than a thin abstraction for transient storage slots.
  */
 contract VaultStorage {
+    using StorageSlot for *;
+
+    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.VaultStorage.isUnlocked")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant _IS_UNLOCKED_SLOT = 0x1369d017453f080f2416efe5ae39c8a4b4655ea0634227aaab0afdb9a9f93f00;
+
+    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.VaultStorage.nonZeroDeltaCount")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant _NON_ZERO_DELTA_COUNT_SLOT =
+        0xbcbf50c510014a975eac30806436734486f167c41af035c1645353d475d57100;
+
+    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.VaultStorage.tokenDelta")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant _TOKEN_DELTA_SLOT = 0x3e6fc372e95f8254c75fc2b01bdea8b1f768c112bff2fa8a04df690bd23c6f00;
+
     // Minimum BPT amount minted upon initialization.
     uint256 internal constant _MINIMUM_BPT = 1e6;
 
@@ -66,21 +78,6 @@ contract VaultStorage {
 
     // Pool -> (token -> TokenConfig): The token configuration of each Pool's tokens.
     mapping(address => mapping(IERC20 => TokenConfig)) internal _poolTokenConfig;
-
-    /// @notice Global lock state. Unlock to operate with the vault.
-    StorageSlot.AddressSlot private __isUnlocked;
-
-    /**
-     * @notice The total number of nonzero deltas.
-     * @dev It is non-zero only during `unlock` calls.
-     */
-    StorageSlot.Uint256Slot private __nonzeroDeltaCount;
-
-    /**
-     * @notice Represents the token due/owed during an operation.
-     * @dev Must all net to zero when the operation is finished.
-     */
-    mapping(IERC20 => int256) private __tokenDeltas;
 
     // Pool -> (Token -> fee): aggregate protocol swap/yield fees accumulated in the Vault for harvest.
     // Reusing PackedTokenBalance to save bytecode (despite differing semantics).
@@ -138,21 +135,22 @@ contract VaultStorage {
 
     // solhint-disable no-inline-assembly
 
-    function _isUnlocked() internal pure returns (StorageSlot.BooleanSlotType slot) {
-        assembly {
-            slot := __isUnlocked.slot
-        }
+    function _isUnlockedSlot() internal pure returns (StorageSlot.BooleanSlotType slot) {
+        return _IS_UNLOCKED_SLOT.asBoolean();
     }
 
-    function _nonzeroDeltaCount() internal pure returns (StorageSlot.Uint256SlotType slot) {
-        assembly {
-            slot := __nonzeroDeltaCount.slot
-        }
+    /**
+     * @notice The total number of nonzero deltas slot;
+     * @dev It is non-zero only during `unlock` calls.
+     */
+    function _nonzeroDeltaCountSlot() internal pure returns (StorageSlot.Uint256SlotType slot) {
+        return _NON_ZERO_DELTA_COUNT_SLOT.asUint256();
     }
 
-    function _tokenDeltas() internal pure returns (TokenDeltaMappingSlotType slot) {
+    function _tokenDeltasSlot() internal pure returns (TokenDeltaMappingSlotType slot) {
+        // solhint-disable-next-line no-inline-assembly
         assembly {
-            slot := __tokenDeltas.slot
+            slot := _TOKEN_DELTA_SLOT
         }
     }
 }

@@ -89,21 +89,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * time the external call is complete.
      */
     modifier transient() {
-        bool isUnlockedBefore = _isUnlocked().tload();
+        bool isUnlockedBefore = _isUnlockedSlot().tload();
 
         if (isUnlockedBefore == false) {
-            _isUnlocked().tstore(true);
+            _isUnlockedSlot().tstore(true);
         }
 
         // The caller does everything here and has to settle all outstanding balances
         _;
 
         if (isUnlockedBefore == false) {
-            if (_nonzeroDeltaCount().tload() != 0) {
+            if (_nonzeroDeltaCountSlot().tload() != 0) {
                 revert BalanceNotSettled();
             }
 
-            _isUnlocked().tstore(false);
+            _isUnlockedSlot().tstore(false);
         }
     }
 

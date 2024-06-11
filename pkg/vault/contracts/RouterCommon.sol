@@ -22,7 +22,8 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     using SafeERC20 for IWETH;
     using StorageSlot for *;
 
-    StorageSlot.AddressSlot private _sender;
+    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.RouterCommon.sender")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant _SENDER_SLOT = 0xcf578e3975346110e60ca9b952a379fc819893ae913bafbfed4ed78de9e6dc00;
 
     /// @dev Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
@@ -44,12 +45,11 @@ contract RouterCommon is IRouterCommon, VaultGuard {
 
     modifier saveSender() {
         {
-            StorageSlot.AddressSlotType senderSlot = _getSenderSlot();
-            address sender = senderSlot.tload();
+            address sender = _getSenderSlot().tload();
 
             // NOTE: This is a one-time operation. The sender can't be changed within the one transaction.
             if (sender == address(0)) {
-                senderSlot.tstore(msg.sender);
+                _getSenderSlot().tstore(msg.sender);
             }
         }
         _;
@@ -155,14 +155,7 @@ contract RouterCommon is IRouterCommon, VaultGuard {
         return _getSenderSlot().tload();
     }
 
-    // solhint-disable no-inline-assembly
-    function _getSenderSlot() internal pure returns (StorageSlot.AddressSlotType) {
-        StorageSlot.AddressSlotType slot;
-
-        assembly {
-            slot := _sender.slot
-        }
-
-        return slot;
+    function _getSenderSlot() internal view returns (StorageSlot.AddressSlotType) {
+        return _SENDER_SLOT.asAddress();
     }
 }
