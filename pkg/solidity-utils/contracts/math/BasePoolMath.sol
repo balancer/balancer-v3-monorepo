@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/console.sol";
-
 import { FixedPoint } from "./FixedPoint.sol";
 
 library BasePoolMath {
