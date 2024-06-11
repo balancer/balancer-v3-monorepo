@@ -44,7 +44,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         return _createHook(hookFlags);
     }
 
-    function testHookFeeAddLiquidityExactIn_Fuzz(uint256 expectedBptOut, uint256 hookFeePercentage) public {
+    function testHookFeeAddLiquidityExactIn__Fuzz(uint256 expectedBptOut, uint256 hookFeePercentage) public {
         // Add fee between 0 and 100%
         hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
         PoolHooksMock(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
@@ -96,7 +96,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         _checkAddLiquidityHookTestResults(vars, actualAmountsIn, expectedBptOut, hookFee, 0);
     }
 
-    function testHookDiscountAddLiquidityExactIn_Fuzz(uint256 expectedBptOut, uint256 hookDiscountPercentage) public {
+    function testHookDiscountAddLiquidityExactIn__Fuzz(uint256 expectedBptOut, uint256 hookDiscountPercentage) public {
         // Add discount between 0 and 100%
         hookDiscountPercentage = bound(hookDiscountPercentage, 0, 1e18);
         PoolHooksMock(poolHooksContract).setAddLiquidityHookDiscountPercentage(hookDiscountPercentage);
@@ -141,7 +141,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         _checkAddLiquidityHookTestResults(vars, actualAmountsIn, expectedBptOut, 0, hookDiscount);
     }
 
-    function testHookFeeRemoveLiquidityExactIn_Fuzz(uint256 expectedBptIn, uint256 hookFeePercentage) public {
+    function testHookFeeRemoveLiquidityExactIn__Fuzz(uint256 expectedBptIn, uint256 hookFeePercentage) public {
         // Add liquidity so bob has BPT to remove liquidity
         vm.prank(bob);
         router.addLiquidityUnbalanced(
@@ -194,7 +194,10 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         _checkRemoveLiquidityHookTestResults(vars, actualAmountsOut, expectedBptIn, hookFee, 0);
     }
 
-    function testHookDiscountRemoveLiquidityExactIn_Fuzz(uint256 expectedBptIn, uint256 hookDiscountPercentage) public {
+    function testHookDiscountRemoveLiquidityExactIn__Fuzz(
+        uint256 expectedBptIn,
+        uint256 hookDiscountPercentage
+    ) public {
         // Add liquidity so bob has BPT to remove liquidity
         vm.prank(bob);
         router.addLiquidityUnbalanced(
