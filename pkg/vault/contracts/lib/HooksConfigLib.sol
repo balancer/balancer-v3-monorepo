@@ -133,6 +133,7 @@ library HooksConfigLib {
         if (
             IHooks(config.hooksContract).onBeforeAddLiquidity(
                 router,
+                params.pool,
                 params.kind,
                 maxAmountsInScaled18,
                 params.minBptAmountOut,
@@ -222,6 +223,7 @@ library HooksConfigLib {
         if (
             IHooks(config.hooksContract).onBeforeRemoveLiquidity(
                 router,
+                params.pool,
                 params.kind,
                 params.maxBptAmountIn,
                 minAmountsOutScaled18,

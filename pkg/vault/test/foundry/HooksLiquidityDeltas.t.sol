@@ -159,8 +159,7 @@ contract HooksLiquidityDeltasTest is BaseVaultTest {
         hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
         PoolHooksMock(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
 
-        // Since operation is not settled in advance, max expected bpt out can't generate a hook fee higher than
-        // pool liquidity, or else the hook won't be able to charge fees
+        // Make sure bob has enough to pay for the transaction
         expectedBptIn = bound(expectedBptIn, _minBptOut, BalancerPoolToken(pool).balanceOf(bob));
 
         // Since bob added poolInitAmount in each token of the pool, the pool balances are doubled
@@ -214,7 +213,7 @@ contract HooksLiquidityDeltasTest is BaseVaultTest {
         PoolHooksMock(poolHooksContract).setRemoveLiquidityHookDiscountPercentage(hookDiscountPercentage);
 
         // Make sure bob has enough to pay for the transaction
-        expectedBptIn = bound(expectedBptIn, _minBptOut, dai.balanceOf(bob));
+        expectedBptIn = bound(expectedBptIn, _minBptOut, BalancerPoolToken(pool).balanceOf(bob));
 
         // Since bob added poolInitAmount in each token of the pool, the pool balances are doubled
         uint256[] memory actualAmountsOut = BasePoolMath.computeProportionalAmountsOut(

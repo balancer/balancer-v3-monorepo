@@ -81,6 +81,7 @@ interface IHooks {
     /**
      * @notice Optional hook to be executed before adding liquidity.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
+     * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of add liquidity operation (e.g., proportional, custom)
      * @param maxAmountsInScaled18 Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
@@ -90,6 +91,7 @@ interface IHooks {
      */
     function onBeforeAddLiquidity(
         address router,
+        address pool,
         AddLiquidityKind kind,
         uint256[] memory maxAmountsInScaled18,
         uint256 minBptAmountOut,
@@ -126,6 +128,7 @@ interface IHooks {
     /**
      * @notice Optional hook to be executed before removing liquidity.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
+     * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of remove liquidity operation (e.g., proportional, custom)
      * @param maxBptAmountIn Maximum amount of input pool tokens
      * @param minAmountsOutScaled18 Minimum output amounts, in the same order as the tokens registered in the pool
@@ -135,6 +138,7 @@ interface IHooks {
      */
     function onBeforeRemoveLiquidity(
         address router,
+        address pool,
         RemoveLiquidityKind kind,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOutScaled18,

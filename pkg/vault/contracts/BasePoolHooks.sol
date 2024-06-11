@@ -51,6 +51,7 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
     /// @inheritdoc IHooks
     function onBeforeAddLiquidity(
         address,
+        address,
         AddLiquidityKind,
         uint256[] memory,
         uint256,
@@ -75,6 +76,7 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
 
     /// @inheritdoc IHooks
     function onBeforeRemoveLiquidity(
+        address,
         address,
         RemoveLiquidityKind,
         uint256,

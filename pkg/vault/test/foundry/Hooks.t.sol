@@ -35,7 +35,7 @@ contract HooksTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         // Sets the pool address in the hook, so we can check balances of the pool inside the hook
-        PoolHooksMock(poolHooksContract).setPool(address(pool));
+        PoolHooksMock(poolHooksContract).setPool(pool);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
@@ -121,7 +121,7 @@ contract HooksTest is BaseVaultTest {
     // dynamic fee
 
     function testOnComputeDynamicSwapFeeHook() public {
-        HooksConfig memory hooksConfig = vault.getHooksConfig(address(pool));
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallComputeDynamicSwapFee = true;
         vault.setHooksConfig(address(pool), hooksConfig);
 
@@ -342,7 +342,6 @@ contract HooksTest is BaseVaultTest {
                 pool,
                 AddLiquidityKind.UNBALANCED,
                 [defaultAmount, defaultAmount].toMemoryArray(),
-                [defaultAmount, defaultAmount].toMemoryArray(),
                 bptAmountRoundDown,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bytes("")
@@ -390,7 +389,7 @@ contract HooksTest is BaseVaultTest {
 
         vm.prank(alice);
         router.addLiquidityUnbalanced(
-            address(pool),
+            pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             bptAmount,
             false,
@@ -402,6 +401,7 @@ contract HooksTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IHooks.onBeforeRemoveLiquidity.selector,
                 router,
+                pool,
                 RemoveLiquidityKind.PROPORTIONAL,
                 bptAmount,
                 [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
@@ -510,7 +510,9 @@ contract HooksTest is BaseVaultTest {
             abi.encodeWithSelector(
                 IHooks.onAfterRemoveLiquidity.selector,
                 router,
+                pool,
                 bptAmount,
+                [defaultAmount, defaultAmount].toMemoryArray(),
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bytes("")
