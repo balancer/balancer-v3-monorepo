@@ -69,9 +69,9 @@ contract VaultUnitTest is BaseTest {
         assertEq(poolSwapParams.userData, params.userData, "Unexpected userData");
     }
 
-    function testComputeAndChargeAggregateProtocolSwapFees() public {
+    function testComputeAndChargeAggregateSwapFees() public {
         uint256 tokenIndex = 0;
-        vault.manualSetAggregateProtocolSwapFeeAmount(pool, dai, 0);
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, 0);
 
         uint256 swapFeeAmountScaled18 = 1e18;
         uint256 protocolSwapFeePercentage = 10e16;
@@ -79,13 +79,13 @@ contract VaultUnitTest is BaseTest {
         PoolData memory poolData;
         poolData.decimalScalingFactors = decimalScalingFactors;
         poolData.tokenRates = tokenRates;
-        poolData.poolConfig.setAggregateProtocolSwapFeePercentage(protocolSwapFeePercentage);
+        poolData.poolConfig.setAggregateSwapFeePercentage(protocolSwapFeePercentage);
 
         uint256 expectedSwapFeeAmountRaw = swapFeeAmountScaled18
             .mulUp(protocolSwapFeePercentage)
             .toRawUndoRateRoundDown(poolData.decimalScalingFactors[tokenIndex], poolData.tokenRates[tokenIndex]);
 
-        uint256 totalFeesRaw = vault.manualComputeAndChargeAggregateProtocolSwapFees(
+        uint256 totalFeesRaw = vault.manualComputeAndChargeAggregateSwapFees(
             poolData,
             swapFeeAmountScaled18,
             pool,
@@ -96,20 +96,20 @@ contract VaultUnitTest is BaseTest {
         // No creator fees, so protocol fees is equal to the total
         assertEq(totalFeesRaw, expectedSwapFeeAmountRaw, "Unexpected totalFeesRaw");
         assertEq(
-            vault.getAggregateProtocolSwapFeeAmount(pool, dai),
+            vault.getAggregateSwapFeeAmount(pool, dai),
             expectedSwapFeeAmountRaw,
             "Unexpected protocol fees in storage"
         );
     }
 
-    function testComputeAndChargeAggregateProtocolSwapFeeIfPoolIsInRecoveryMode() public {
+    function testComputeAndChargeAggregateSwapFeeIfPoolIsInRecoveryMode() public {
         PoolData memory poolData;
         poolData.poolConfig.isPoolInRecoveryMode = true;
 
-        uint256 totalFeesRaw = vault.manualComputeAndChargeAggregateProtocolSwapFees(poolData, 1e18, pool, dai, 0);
+        uint256 totalFeesRaw = vault.manualComputeAndChargeAggregateSwapFees(poolData, 1e18, pool, dai, 0);
 
         assertEq(totalFeesRaw, 0, "Unexpected totalFeesRaw");
-        assertEq(vault.getAggregateProtocolSwapFeeAmount(pool, dai), 0, "Unexpected protocol fees in storage");
+        assertEq(vault.getAggregateSwapFeeAmount(pool, dai), 0, "Unexpected protocol fees in storage");
     }
 
     function testManualUpdatePoolDataLiveBalancesAndRates() public {

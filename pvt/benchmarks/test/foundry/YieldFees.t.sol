@@ -167,7 +167,7 @@ contract YieldFeesTest is BaseVaultTest {
     ) private {
         _initializePoolAndRateProviders(wstethRate, daiRate);
 
-        vault.manualSetAggregateProtocolYieldFeePercentage(
+        vault.manualSetAggregateYieldFeePercentage(
             pool,
             _getAggregateFeePercentage(protocolYieldFeePercentage, creatorYieldFeePercentage)
         );

@@ -51,8 +51,8 @@ contract VaultUnitSwapTest is BaseTest {
         swapTokens = [dai, usdc];
         vault.manualSetPoolTokenBalances(pool, swapTokens, initialBalances);
 
-        vault.manualSetAggregateProtocolSwapFeeAmount(pool, swapTokens[0], 0);
-        vault.manualSetAggregateProtocolSwapFeeAmount(pool, swapTokens[1], 0);
+        vault.manualSetAggregateSwapFeeAmount(pool, swapTokens[0], 0);
+        vault.manualSetAggregateSwapFeeAmount(pool, swapTokens[1], 0);
     }
 
     function testMakeParams() public {
@@ -312,7 +312,7 @@ contract VaultUnitSwapTest is BaseTest {
         poolData.balancesRaw = initialBalances;
 
         poolData.poolConfig.setStaticSwapFeePercentage(swapFeePercentage);
-        poolData.poolConfig.setAggregateProtocolSwapFeePercentage(
+        poolData.poolConfig.setAggregateSwapFeePercentage(
             _getAggregateFeePercentage(swapFeePercentage, poolCreatorFeePercentage)
         );
 
@@ -363,7 +363,7 @@ contract VaultUnitSwapTest is BaseTest {
 
         // Expected fees
         uint256 expectedProtocolSwapFeeAmountScaled18 = expectedSwapFeeAmountScaled18.mulUp(
-            poolData.poolConfig.getAggregateProtocolSwapFeePercentage()
+            poolData.poolConfig.getAggregateSwapFeePercentage()
         );
 
         uint256 expectedProtocolFeeAmountRaw = expectedProtocolSwapFeeAmountScaled18.toRawUndoRateRoundDown(
@@ -372,12 +372,12 @@ contract VaultUnitSwapTest is BaseTest {
         );
 
         assertEq(
-            vault.getAggregateProtocolSwapFeeAmount(pool, swapTokens[swapState.indexOut]),
+            vault.getAggregateSwapFeeAmount(pool, swapTokens[swapState.indexOut]),
             expectedProtocolFeeAmountRaw,
             "Unexpected protocol fees in storage"
         );
         assertEq(
-            vault.getAggregateProtocolSwapFeeAmount(pool, swapTokens[swapState.indexIn]),
+            vault.getAggregateSwapFeeAmount(pool, swapTokens[swapState.indexIn]),
             0,
             "Unexpected non-zero protocol fees in storage"
         );
@@ -429,7 +429,7 @@ contract VaultUnitSwapTest is BaseTest {
 
         // Expected fees
         uint256 expectedProtocolFeeAmountScaled18 = expectedSwapFeeAmountScaled18.mulUp(
-            poolData.poolConfig.getAggregateProtocolSwapFeePercentage()
+            poolData.poolConfig.getAggregateSwapFeePercentage()
         );
 
         uint256 expectedProtocolFeeAmountRaw = expectedProtocolFeeAmountScaled18.toRawUndoRateRoundDown(
@@ -438,12 +438,12 @@ contract VaultUnitSwapTest is BaseTest {
         );
 
         assertEq(
-            vault.getAggregateProtocolSwapFeeAmount(pool, swapTokens[swapState.indexIn]),
+            vault.getAggregateSwapFeeAmount(pool, swapTokens[swapState.indexIn]),
             expectedProtocolFeeAmountRaw,
             "Unexpected protocol fees in storage"
         );
         assertEq(
-            vault.getAggregateProtocolSwapFeeAmount(pool, swapTokens[swapState.indexOut]),
+            vault.getAggregateSwapFeeAmount(pool, swapTokens[swapState.indexOut]),
             0,
             "Unexpected non-zero protocol fees in storage"
         );
