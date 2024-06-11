@@ -19,7 +19,7 @@ import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract HooksLiquidityDeltasTest is BaseVaultTest {
+contract HookAdjustedLiquidityTest is BaseVaultTest {
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 

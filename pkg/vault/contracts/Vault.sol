@@ -518,6 +518,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             maxAmountsInScaled18
         );
 
+        // AmountsIn can be changed by onAfterAddLiquidity if the hook charges fees or gives discounts
         amountsIn = hooksConfig.onAfterAddLiquidity(
             msg.sender,
             amountsInScaled18,
@@ -735,6 +736,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             vaultState
         );
 
+        // AmountsOut can be changed by onAfterRemoveLiquidity if the hook charges fees or gives discounts
         amountsOut = hooksConfig.onAfterRemoveLiquidity(
             msg.sender,
             amountsOutScaled18,
