@@ -162,6 +162,12 @@ contract VaultMock is IVaultMainMock, Vault {
         );
     }
 
+    function manualSetPoolRegistered(address pool, bool status) public {
+        PoolConfig memory poolConfig = _poolConfig[pool];
+        poolConfig.isPoolRegistered = status;
+        _poolConfig[pool] = poolConfig;
+    }
+
     function manualSetIsUnlocked(bool status) public {
         _isUnlocked().tstore(status);
     }

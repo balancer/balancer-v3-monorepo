@@ -53,6 +53,7 @@ contract VaultUnitSwapTest is BaseTest {
 
         vault.manualSetAggregateSwapFeeAmount(pool, swapTokens[0], 0);
         vault.manualSetAggregateSwapFeeAmount(pool, swapTokens[1], 0);
+        vault.manualSetPoolRegistered(pool, true);
     }
 
     function testMakeParams() public {
