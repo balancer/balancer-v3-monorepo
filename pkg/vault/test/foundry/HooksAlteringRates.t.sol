@@ -143,7 +143,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
-        // Unbalanced add sets amounts to maxAmounts. We can't intercept `_addLliquidity`, but can verify
+        // Unbalanced add sets amounts to maxAmounts. We can't intercept `_addLiquidity`, but can verify
         // maxAmounts are updated by inspecting the amountsIn.
 
         uint256[] memory expectedAmountsIn = new uint256[](2);
