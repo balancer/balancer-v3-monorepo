@@ -700,7 +700,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     function _setupQuery() internal {
-        if (!EVMCallModeHelpers.isStaticCall()) {
+        if (EVMCallModeHelpers.isStaticCall() == false) {
             revert EVMCallModeHelpers.NotStaticCall();
         }
 

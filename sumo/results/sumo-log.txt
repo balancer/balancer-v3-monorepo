@@ -1,0 +1,57 @@
+>>> SELECTED FILES 
+
+Contracts to be mutated : (10):
+	- /home/juan/prj/v3-bal/pkg/vault/contracts/BalancerPoolToken.sol
+	- /home/juan/prj/v3-bal/pkg/vault/contracts/lib/PackedTokenBalance.sol
+	- /home/juan/prj/v3-bal/pkg/vault/contracts/lib/PoolConfigLib.sol
+	- /home/juan/prj/v3-bal/pkg/vault/contracts/lib/VaultExtensionsLib.sol
+	- /home/juan/prj/v3-bal/pkg/vault/contracts/lib/VaultStateLib.sol
+	- /home/juan/prj/v3-bal/pkg/vault/contracts/token/ERC20MultiToken.sol
+	- /home/juan/prj/v3-bal/pkg/vault/contracts/Vault.sol
+	- /home/juan/prj/v3-bal/pkg/vault/contracts/VaultAdmin.sol
+	- /home/juan/prj/v3-bal/pkg/vault/contracts/VaultCommon.sol
+	- /home/juan/prj/v3-bal/pkg/vault/contracts/VaultExtension.sol
+Tests to be run : (40):
+	- /home/juan/prj/v3-bal/pkg/vault/test/BalancerPoolTokenTest.test.ts
+	- /home/juan/prj/v3-bal/pkg/vault/test/BatchSwap.test.ts
+	- /home/juan/prj/v3-bal/pkg/vault/test/ERC4626BufferPool.test.ts
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/BalancerPoolTokenTest.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/BufferSwapTest.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/ERC4626BufferPoolFactory.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/ERC4626RebalanceRateValidation.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/ERC4626WrapperValidation.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/fork/ERC4626RebalanceValidation.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/fork/ERC4626WrapperValidation.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/Hooks.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/HooksAlteringRates.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/Initializer.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/LiquidityApproximation.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/PackedTokenBalance.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/PoolConfigLib.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/PoolData.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/PoolPause.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/ProtocolYieldFees.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/RateProvider.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/RecoveryMode.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/Router.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/utils/BaseVaultTest.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/utils/ERC4626BufferPoolFactoryMock.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/utils/ERC4626BufferPoolMock.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/utils/ERC4626TokenBrokenRateMock.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/utils/ERC4626TokenMock.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/utils/VaultMockDeployer.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/VaultDefaultHandlers.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/VaultFactory.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/VaultLiquidity.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/VaultLiquidityFees.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/VaultLiquidityRate.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/VaultStateLib.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/VaultSwap.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/VaultSwapRate.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/foundry/VaultTokens.t.sol
+	- /home/juan/prj/v3-bal/pkg/vault/test/poolSetup.ts
+	- /home/juan/prj/v3-bal/pkg/vault/test/Queries.test.ts
+	- /home/juan/prj/v3-bal/pkg/vault/test/Vault.test.ts
+
+
+>>> GENERATED MUTANTS 
