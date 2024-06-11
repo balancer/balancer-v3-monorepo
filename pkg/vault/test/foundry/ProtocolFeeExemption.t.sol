@@ -67,8 +67,8 @@ contract ProtocolFeeExemptionTest is BaseVaultTest {
 
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
 
-        assertEq(poolConfig.aggregateProtocolSwapFeePercentageUnscaled * FEE_SCALING_FACTOR, GLOBAL_SWAP_FEE);
-        assertEq(poolConfig.aggregateProtocolYieldFeePercentageUnscaled * FEE_SCALING_FACTOR, GLOBAL_YIELD_FEE);
+        assertEq(poolConfig.aggregateProtocolSwapFeePercentage, GLOBAL_SWAP_FEE);
+        assertEq(poolConfig.aggregateProtocolYieldFeePercentage, GLOBAL_YIELD_FEE);
     }
 
     function testWithProtocolFeeExemption() public {
@@ -81,7 +81,7 @@ contract ProtocolFeeExemptionTest is BaseVaultTest {
 
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
 
-        assertEq(poolConfig.aggregateProtocolSwapFeePercentageUnscaled, 0);
-        assertEq(poolConfig.aggregateProtocolYieldFeePercentageUnscaled, 0);
+        assertEq(poolConfig.aggregateProtocolSwapFeePercentage, 0);
+        assertEq(poolConfig.aggregateProtocolYieldFeePercentage, 0);
     }
 }

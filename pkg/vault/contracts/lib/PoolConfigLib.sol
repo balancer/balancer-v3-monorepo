@@ -74,7 +74,10 @@ library PoolConfigLib {
     }
 
     function setStaticSwapFeePercentage(PoolConfigBits memory config, uint256 value) internal pure {
-        config.bits = config.bits.insertUint(value / FEE_SCALING_FACTOR, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH);
+        value /= FEE_SCALING_FACTOR;
+        require(value <= type(uint24).max, "Token decimal diffs too large");
+
+        config.bits = config.bits.insertUint(value, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH);
     }
 
     function getAggregateProtocolSwapFeePercentage(PoolConfigBits memory config) internal pure returns (uint256) {
@@ -82,11 +85,10 @@ library PoolConfigLib {
     }
 
     function setAggregateProtocolSwapFeePercentage(PoolConfigBits memory config, uint256 value) internal pure {
-        config.bits = config.bits.insertUint(
-            value / FEE_SCALING_FACTOR,
-            AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET,
-            FEE_BITLENGTH
-        );
+        value /= FEE_SCALING_FACTOR;
+        require(value <= type(uint24).max, "Token decimal diffs too large");
+
+        config.bits = config.bits.insertUint(value, AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH);
     }
 
     function getAggregateProtocolYieldFeePercentage(PoolConfigBits memory config) internal pure returns (uint256) {
@@ -94,11 +96,10 @@ library PoolConfigLib {
     }
 
     function setAggregateProtocolYieldFeePercentage(PoolConfigBits memory config, uint256 value) internal pure {
-        config.bits = config.bits.insertUint(
-            value / FEE_SCALING_FACTOR,
-            AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET,
-            FEE_BITLENGTH
-        );
+        value /= FEE_SCALING_FACTOR;
+        require(value <= type(uint24).max, "Token decimal diffs too large");
+
+        config.bits = config.bits.insertUint(value, AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH);
     }
 
     function getTokenDecimalDiffs(PoolConfigBits memory config) internal pure returns (uint256) {
@@ -106,6 +107,8 @@ library PoolConfigLib {
     }
 
     function setTokenDecimalDiffs(PoolConfigBits memory config, uint256 value) internal pure {
+        require(value <= type(uint24).max, "Token decimal diffs too large");
+
         config.bits = config.bits.insertUint(value, DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH);
     }
 
@@ -114,6 +117,8 @@ library PoolConfigLib {
     }
 
     function setPauseWindowEndTime(PoolConfigBits memory config, uint256 value) internal pure {
+        require(value <= type(uint32).max, "Token decimal diffs too large");
+
         config.bits = config.bits.insertUint(value, PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH);
     }
 
