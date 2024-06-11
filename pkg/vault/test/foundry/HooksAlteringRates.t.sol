@@ -28,9 +28,9 @@ contract HooksAlteringRatesTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        HooksConfig memory config = vault.getHooksConfig(address(pool));
+        HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeSwap = true;
-        vault.setHooksConfig(address(pool), config);
+        vault.setHooksConfig(pool, config);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
@@ -67,7 +67,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         // Check that the swap gets balances and amount given that reflect the updated rate
         vm.prank(bob);
         vm.expectCall(
-            address(pool),
+            pool,
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
                 IBasePool.PoolSwapParams({
@@ -82,7 +82,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             )
         );
 
-        router.swapSingleTokenExactIn(address(pool), dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(pool, dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
     }
 
     function testOnBeforeInitializeHookAltersRate() public {
@@ -133,17 +133,17 @@ contract HooksAlteringRatesTest is BaseVaultTest {
     }
 
     function testOnBeforeAddLiquidityHookAltersRate() public {
-        HooksConfig memory config = vault.getHooksConfig(address(pool));
+        HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeAddLiquidity = true;
         config.shouldCallAfterAddLiquidity = true;
-        vault.setHooksConfig(address(pool), config);
+        vault.setHooksConfig(pool, config);
 
         // Change rate of first token
         PoolHooksMock(poolHooksContract).setChangeTokenRateOnBeforeAddLiquidityHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
-        // Unbalanced add sets amounts to maxAmounts. We can't intercept `_addLliquidity`, but can verify
+        // Unbalanced add sets amounts to maxAmounts. We can't intercept `_addLiquidity`, but can verify
         // maxAmounts are updated by inspecting the amountsIn.
 
         uint256[] memory expectedAmountsIn = new uint256[](2);
@@ -169,7 +169,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         );
 
         router.addLiquidityUnbalanced(
-            address(pool),
+            pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             bptAmountRoundDown,
             false,
@@ -178,9 +178,9 @@ contract HooksAlteringRatesTest is BaseVaultTest {
     }
 
     function testOnBeforeRemoveLiquidityHookAlterRate() public {
-        HooksConfig memory config = vault.getHooksConfig(address(pool));
+        HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeRemoveLiquidity = true;
-        vault.setHooksConfig(address(pool), config);
+        vault.setHooksConfig(pool, config);
 
         // Change rate of first token
         PoolHooksMock(poolHooksContract).setChangeTokenRateOnBeforeRemoveLiquidityHook(true, rateProvider, 0.5e18);
@@ -189,7 +189,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
 
         vm.prank(alice);
         router.addLiquidityUnbalanced(
-            address(pool),
+            pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             bptAmount,
             false,
@@ -207,7 +207,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
 
         // removeLiquidityCustom passes the minAmountsOut to the callback, so we can check that they are updated.
         vm.expectCall(
-            address(pool),
+            pool,
             abi.encodeWithSelector(
                 IPoolLiquidity.onRemoveLiquidityCustom.selector,
                 router,
@@ -219,7 +219,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         );
         vm.prank(alice);
         router.removeLiquidityCustom(
-            address(pool),
+            pool,
             bptAmount,
             [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
             false,

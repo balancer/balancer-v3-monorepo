@@ -105,7 +105,7 @@ contract RouterTest is BaseVaultTest {
     }
 
     function initPool() internal override {
-        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(address(pool));
+        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(pool);
         vm.prank(lp);
         IERC20[] memory tokens = new IERC20[](tokenConfig.length);
 
@@ -113,7 +113,7 @@ contract RouterTest is BaseVaultTest {
             tokens[i] = tokenConfig[i].token;
         }
 
-        router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
+        router.initialize(pool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
 
         vm.prank(lp);
         bool wethIsEth = true;
@@ -130,7 +130,7 @@ contract RouterTest is BaseVaultTest {
     function testQuerySwap() public {
         vm.prank(bob);
         vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
-        router.querySwapSingleTokenExactIn(address(pool), usdc, dai, usdcAmountIn, bytes(""));
+        router.querySwapSingleTokenExactIn(pool, usdc, dai, usdcAmountIn, bytes(""));
     }
 
     function testDisableQueries() public {
@@ -149,7 +149,7 @@ contract RouterTest is BaseVaultTest {
         vm.expectRevert(IVaultErrors.QueriesDisabled.selector);
 
         vm.prank(address(0), address(0));
-        router.querySwapSingleTokenExactIn(address(pool), usdc, dai, usdcAmountIn, bytes(""));
+        router.querySwapSingleTokenExactIn(pool, usdc, dai, usdcAmountIn, bytes(""));
     }
 
     function testInitializeBelowMinimum() public {
@@ -485,24 +485,20 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testGetSingleInputArray() public {
-        (uint256[] memory amountsGiven, uint256 tokenIndex) = router.getSingleInputArrayAndTokenIndex(
-            address(pool),
-            dai,
-            1234
-        );
+        (uint256[] memory amountsGiven, uint256 tokenIndex) = router.getSingleInputArrayAndTokenIndex(pool, dai, 1234);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[daiIdx], 1234);
         assertEq(amountsGiven[usdcIdx], 0);
         assertEq(tokenIndex, daiIdx);
 
-        (amountsGiven, tokenIndex) = router.getSingleInputArrayAndTokenIndex(address(pool), usdc, 4321);
+        (amountsGiven, tokenIndex) = router.getSingleInputArrayAndTokenIndex(pool, usdc, 4321);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[daiIdx], 0);
         assertEq(amountsGiven[usdcIdx], 4321);
         assertEq(tokenIndex, usdcIdx);
 
         vm.expectRevert(IVaultErrors.TokenNotRegistered.selector);
-        router.getSingleInputArrayAndTokenIndex(address(pool), weth, daiAmountIn);
+        router.getSingleInputArrayAndTokenIndex(pool, weth, daiAmountIn);
     }
 
     function checkRemoveLiquidityPreConditions() internal view {
