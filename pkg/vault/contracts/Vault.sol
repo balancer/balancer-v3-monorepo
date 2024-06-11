@@ -1036,7 +1036,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         // Checking isStaticCall first, so we only parse _vaultState in static calls
-        if (_isQueryContext()) {
+        if (_isQueryContext(_vaultState)) {
             // Uses the most accurate calculation so that a query matches the actual operation
             if (kind == SwapKind.EXACT_IN) {
                 amountCalculated = wrappedToken.previewDeposit(amountGiven);
@@ -1166,7 +1166,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         // Checking isStaticCall first, so we only parse _vaultState in static calls
-        if (_isQueryContext()) {
+        if (_isQueryContext(_vaultState)) {
             // Uses the most accurate calculation so that a query matches the actual operation
             if (kind == SwapKind.EXACT_IN) {
                 amountCalculated = wrappedToken.previewRedeem(amountGiven);
@@ -1260,7 +1260,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _supplyCredit(underlyingToken, amountOutUnderlying);
     }
 
-    function _isQueryContext(VaultStateBits vaultState) internal returns (bool) {
+    function _isQueryContext(VaultStateBits memory vaultState) internal view returns (bool) {
         return EVMCallModeHelpers.isStaticCall() && vaultState.isQueryDisabled() == false;
     }
 
