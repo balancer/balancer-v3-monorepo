@@ -225,10 +225,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountCalculatedScaled18;
         (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, swapParams);
 
-        // Since all we need is the amountCalculated, we ignore the "success" return value for onAfterSwap here.
-        // HooksConfigLib checks the return value of the hook itself, and will revert if it is called and fails.
-        // Otherwise, it returns (false, original amountCalculated) if the hook is not called, and
-        // (true, amountCalculated + delta) if it is called successfully.
+    // If the hook contract does not exist or does not implement onAfterSwap, HooksConfigLib returns the original
+    // amountCalculated. Otherwise, the new amount calculated is 'amountCalculated + delta'. If the underlying
+    // hook fails, or limits are violated, `onAfterSwap` will revert.
         amountCalculated = hooksConfig.onAfterSwap(
             amountCalculatedScaled18,
             amountCalculated,
