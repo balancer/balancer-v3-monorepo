@@ -229,7 +229,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // HooksConfigLib checks the return value of the hook itself, and will revert if it is called and fails.
         // Otherwise, it returns (false, original amountCalculated) if the hook is not called, and
         // (true, amountCalculated + delta) if it is called successfully.
-        (, amountCalculated) = hooksConfig.onAfterSwap(
+        amountCalculated = hooksConfig.onAfterSwap(
             amountCalculatedScaled18,
             amountCalculated,
             msg.sender,

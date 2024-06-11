@@ -76,7 +76,6 @@ library HooksConfigLib {
      * @param params The swap parameters
      * @param state Temporary state used in swap operations
      * @param poolData Struct containing balance and token information of the pool
-     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      * @return hookAdjustedAmountCalculatedRaw New amount calculated, modified by the hook
      */
     function onAfterSwap(
@@ -87,11 +86,11 @@ library HooksConfigLib {
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
-    ) internal returns (bool success, uint256 hookAdjustedAmountCalculatedRaw) {
+    ) internal returns (uint256 hookAdjustedAmountCalculatedRaw) {
         if (config.shouldCallAfterSwap == false) {
             // Hook contract does not implement onAfterSwap, so success is false (hook was not executed) and do not
             // change amountCalculatedRaw (no deltas)
-            return (false, amountCalculatedRaw);
+            return amountCalculatedRaw;
         }
 
         // Adjust balances for the AfterSwap hook.
@@ -99,6 +98,7 @@ library HooksConfigLib {
             ? (state.amountGivenScaled18, amountCalculatedScaled18)
             : (amountCalculatedScaled18, state.amountGivenScaled18);
 
+        bool success;
         (success, hookAdjustedAmountCalculatedRaw) = IHooks(config.hooksContract).onAfterSwap(
             IHooks.AfterSwapParams({
                 kind: params.kind,
