@@ -41,7 +41,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         return _createHook(hookFlags);
     }
 
-    function testFeeExactIn_Fuzz(uint256 swapAmount, uint256 hookFeePercentage) public {
+    function testFeeExactIn__Fuzz(uint256 swapAmount, uint256 hookFeePercentage) public {
         // Swap between _minSwapAmount and whole pool liquidity (pool math is linear)
         swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
 
@@ -88,7 +88,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         _checkPoolAndVaultBalances(vars, swapAmount);
     }
 
-    function testDiscountExactIn_Fuzz(uint256 swapAmount, uint256 hookDiscountPercentage) public {
+    function testDiscountExactIn__Fuzz(uint256 swapAmount, uint256 hookDiscountPercentage) public {
         // Swap between _minSwapAmount and whole pool liquidity (pool math is linear)
         swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
 
@@ -138,7 +138,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         _checkPoolAndVaultBalances(vars, swapAmount);
     }
 
-    function testFeeExactOut_Fuzz(uint256 swapAmount, uint256 hookFeePercentage) public {
+    function testFeeExactOut__Fuzz(uint256 swapAmount, uint256 hookFeePercentage) public {
         // Swap between _minSwapAmount and whole pool liquidity (pool math is linear)
         swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
 
@@ -194,7 +194,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         _checkPoolAndVaultBalances(vars, swapAmount);
     }
 
-    function testDiscountExactOut_Fuzz(uint256 swapAmount, uint256 hookDiscountPercentage) public {
+    function testDiscountExactOut__Fuzz(uint256 swapAmount, uint256 hookDiscountPercentage) public {
         // Swap between _minSwapAmount and whole pool liquidity (pool math is linear)
         swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
 
@@ -420,6 +420,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
     }
 
     function _checkPoolAndVaultBalances(HookTestLocals memory vars, uint256 poolBalanceChange) private {
+        // Considers swap fee = 0, so only hook fees and discounts occurred
         assertEq(vars.poolAfter[daiIdx] - vars.poolBefore[daiIdx], poolBalanceChange, "Pool DAI balance is wrong");
         assertEq(vars.poolBefore[usdcIdx] - vars.poolAfter[usdcIdx], poolBalanceChange, "Pool USDC balance is wrong");
         assertEq(vars.vault.daiAfter - vars.vault.daiBefore, poolBalanceChange, "Vault DAI balance is wrong");
