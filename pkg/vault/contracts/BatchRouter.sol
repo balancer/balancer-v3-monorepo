@@ -164,7 +164,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
             uint256 stepExactAmountIn = path.exactAmountIn;
             IERC20 stepTokenIn = path.tokenIn;
 
-            _vault.sync(stepTokenIn);
+            //_vault.sync([address(stepTokenIn)].toMemoryArray().asIERC20());
 
             if (path.steps[0].isBuffer && EVMCallModeHelpers.isStaticCall() == false) {
                 // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
@@ -317,7 +317,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         // The token in for the next step is the token out of the current step.
                         stepTokenIn = step.tokenOut;
                         // If this is an intermediate step, BPT is minted to the vault so we just get the credit.
-                        _vault.settle(IERC20(step.pool));
+                        _vault.settle(IERC20(step.pool), bptAmountOut);
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact in
@@ -441,7 +441,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                     stepTokenIn = path.steps[uint256(j - 1)].tokenOut;
                 }
 
-                _vault.sync(stepTokenIn);
+                //_vault.sync([address(stepTokenIn)].toMemoryArray().asIERC20());
 
                 if (step.isBuffer) {
                     if (stepLocals.isLastStep && !EVMCallModeHelpers.isStaticCall()) {
@@ -535,7 +535,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         // Refund unused portion of BPT flashloan to the Vault
                         if (bptAmountIn < stepMaxAmountIn) {
                             stepTokenIn.safeTransfer(address(_vault), stepMaxAmountIn - bptAmountIn);
-                            _vault.settle(stepTokenIn);
+                            _vault.settle(stepTokenIn, stepMaxAmountIn-bptAmountIn);
                         }
                     }
                 } else if (address(step.tokenOut) == step.pool) {
@@ -573,7 +573,7 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
                         _currentSwapTokenOutAmounts().tSub(address(step.tokenOut), stepExactAmountOut);
                     } else {
                         // If it's not the first step, BPT is minted to the vault so we just get the credit.
-                        _vault.settle(IERC20(step.pool));
+                        _vault.settle(IERC20(step.pool), 0);
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact out

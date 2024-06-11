@@ -116,10 +116,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function settle(IERC20 token) public nonReentrant onlyWhenUnlocked returns (uint256 paid) {
+    function settle(IERC20 token, uint256 amountIn) public nonReentrant onlyWhenUnlocked returns (uint256 paid) {
         uint256 reservesBefore = _reservesOf[token];
         _reservesOf[token] = token.balanceOf(address(this));
         paid = _reservesOf[token] - reservesBefore;
+
+        if (paid > amountIn) {
+           paid = amountIn;
+        }
 
         _supplyCredit(token, paid);
     }
@@ -881,7 +885,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function sync(IERC20 token) external {
+    function sync(IERC20 token, uint256 balanceBefore) external {
         _reservesOf[token] = token.balanceOf(address(this));
     }
 

@@ -29,7 +29,7 @@ interface IVaultMain {
      * @param token Token's address
      * @return paid Amount paid during settlement
      */
-    function settle(IERC20 token) external returns (uint256 paid);
+    function settle(IERC20 token, uint256 balanceBefore) external returns (uint256 paid);
 
     /**
      * @notice Sends tokens to a recipient.
@@ -125,7 +125,7 @@ interface IVaultMain {
         BufferWrapOrUnwrapParams memory params
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
-    function sync(IERC20 token) external;
+    function sync(IERC20 token, uint256 balanceBefore) external;
 
     /*******************************************************************************
                                 Authentication
