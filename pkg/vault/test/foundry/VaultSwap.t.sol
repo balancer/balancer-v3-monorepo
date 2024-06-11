@@ -42,21 +42,12 @@ contract VaultSwapTest is BaseVaultTest {
     /// Swap
 
     function testCannotSwapWhenPaused() public {
-        vault.manualPausePool(address(pool));
+        vault.manualPausePool(pool);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, address(pool)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, pool));
 
         vm.prank(bob);
-        router.swapSingleTokenExactIn(
-            address(pool),
-            usdc,
-            dai,
-            defaultAmount,
-            defaultAmount,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, defaultAmount, MAX_UINT256, false, bytes(""));
     }
 
     function testSwapNotInitialized() public {
@@ -76,23 +67,14 @@ contract VaultSwapTest is BaseVaultTest {
     function testSwapLimitExactIn() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, defaultAmount - 1, defaultAmount));
-        router.swapSingleTokenExactIn(
-            address(pool),
-            usdc,
-            dai,
-            defaultAmount - 1,
-            defaultAmount,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
+        router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount - 1, defaultAmount, MAX_UINT256, false, bytes(""));
     }
 
     function testSwapDeadlineExactIn() public {
         vm.prank(alice);
         vm.expectRevert(RouterCommon.SwapDeadline.selector);
         router.swapSingleTokenExactIn(
-            address(pool),
+            pool,
             usdc,
             dai,
             defaultAmount,
@@ -107,7 +89,7 @@ contract VaultSwapTest is BaseVaultTest {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, defaultAmount, defaultAmount - 1));
         router.swapSingleTokenExactOut(
-            address(pool),
+            pool,
             usdc,
             dai,
             defaultAmount,
@@ -122,7 +104,7 @@ contract VaultSwapTest is BaseVaultTest {
         vm.prank(alice);
         vm.expectRevert(RouterCommon.SwapDeadline.selector);
         router.swapSingleTokenExactOut(
-            address(pool),
+            pool,
             usdc,
             dai,
             defaultAmount,
@@ -139,17 +121,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function swapSingleTokenExactIn() public returns (uint256 fee, uint256 protocolFee) {
         vm.prank(alice);
-        router.swapSingleTokenExactIn(
-            address(pool),
-            usdc,
-            dai,
-            defaultAmount,
-            defaultAmount,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
-
+        router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, defaultAmount, MAX_UINT256, false, bytes(""));
         return (0, 0);
     }
 
@@ -159,17 +131,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function swapSingleTokenExactOut() public returns (uint256 fee, uint256 protocolFee) {
         vm.prank(alice);
-        router.swapSingleTokenExactOut(
-            address(pool),
-            usdc,
-            dai,
-            defaultAmount,
-            defaultAmount,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
-
+        router.swapSingleTokenExactOut(pool, usdc, dai, defaultAmount, defaultAmount, MAX_UINT256, false, bytes(""));
         return (0, 0);
     }
 
@@ -182,7 +144,7 @@ contract VaultSwapTest is BaseVaultTest {
 
         vm.expectEmit();
         emit IVaultEvents.Swap(
-            address(pool),
+            pool,
             usdc,
             dai,
             defaultAmount,
@@ -194,7 +156,7 @@ contract VaultSwapTest is BaseVaultTest {
 
         vm.prank(alice);
         router.swapSingleTokenExactIn(
-            address(pool),
+            pool,
             usdc,
             dai,
             defaultAmount,
@@ -210,7 +172,7 @@ contract VaultSwapTest is BaseVaultTest {
 
         vm.expectEmit();
         emit IVaultEvents.Swap(
-            address(pool),
+            pool,
             usdc,
             dai,
             defaultAmount + swapFee,
@@ -222,7 +184,7 @@ contract VaultSwapTest is BaseVaultTest {
 
         vm.prank(alice);
         router.swapSingleTokenExactOut(
-            address(pool),
+            pool,
             usdc,
             dai,
             defaultAmount,
@@ -238,7 +200,7 @@ contract VaultSwapTest is BaseVaultTest {
 
         vm.prank(alice);
         router.swapSingleTokenExactIn(
-            address(pool),
+            pool,
             usdc,
             dai,
             defaultAmount,
@@ -274,7 +236,7 @@ contract VaultSwapTest is BaseVaultTest {
 
         vm.prank(alice);
         router.swapSingleTokenExactIn(
-            address(pool),
+            pool,
             usdc,
             dai,
             defaultAmount,
@@ -296,7 +258,7 @@ contract VaultSwapTest is BaseVaultTest {
 
         vm.prank(alice);
         router.swapSingleTokenExactOut(
-            address(pool),
+            pool,
             usdc, // tokenIn
             dai, // tokenOut
             defaultAmount, // exactAmountOut
@@ -334,7 +296,7 @@ contract VaultSwapTest is BaseVaultTest {
 
         vm.prank(alice);
         router.swapSingleTokenExactOut(
-            address(pool),
+            pool,
             usdc, // tokenIn
             dai, // tokenOut
             defaultAmount, // exactAmountOut
@@ -357,7 +319,7 @@ contract VaultSwapTest is BaseVaultTest {
 
         vm.prank(alice);
         router.swapSingleTokenExactIn(
-            address(pool),
+            pool,
             usdc,
             dai,
             defaultAmount / 2,
@@ -369,7 +331,7 @@ contract VaultSwapTest is BaseVaultTest {
 
         vm.prank(alice);
         router.swapSingleTokenExactIn(
-            address(pool),
+            pool,
             usdc,
             dai,
             defaultAmount / 2,
@@ -390,7 +352,7 @@ contract VaultSwapTest is BaseVaultTest {
 
         vm.prank(bob);
         router.swapSingleTokenExactIn(
-            address(pool),
+            pool,
             usdc,
             dai,
             defaultAmount,
@@ -422,7 +384,7 @@ contract VaultSwapTest is BaseVaultTest {
         // do second swap
         SwapParams memory params = SwapParams({
             kind: SwapKind.EXACT_IN,
-            pool: address(pool),
+            pool: pool,
             tokenIn: dai,
             tokenOut: usdc,
             amountGivenRaw: defaultAmount,
@@ -435,7 +397,7 @@ contract VaultSwapTest is BaseVaultTest {
     function startSwap() public {
         SwapParams memory params = SwapParams({
             kind: SwapKind.EXACT_IN,
-            pool: address(pool),
+            pool: pool,
             tokenIn: usdc,
             tokenOut: dai,
             amountGivenRaw: defaultAmount,
@@ -447,9 +409,9 @@ contract VaultSwapTest is BaseVaultTest {
 
     function testReentrancySwap() public {
         // Enable before swap
-        HooksConfig memory config = vault.getHooksConfig(address(pool));
+        HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeSwap = true;
-        vault.setHooksConfig(address(pool), config);
+        vault.setHooksConfig(pool, config);
 
         // Enable reentrancy hook
         PoolHooksMock(poolHooksContract).setSwapReentrancyHookActive(true);
@@ -461,11 +423,11 @@ contract VaultSwapTest is BaseVaultTest {
         uint256 usdcBeforeSwap = usdc.balanceOf(address(this));
         uint256 daiBeforeSwap = dai.balanceOf(address(this));
 
-        (, uint256[] memory balancesRawBefore, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory balancesRawBefore, ) = vault.getPoolTokenInfo(pool);
 
         vault.unlock(abi.encode(this.startSwap.selector));
 
-        (, uint256[] memory balancesRawAfter, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory balancesRawAfter, ) = vault.getPoolTokenInfo(pool);
 
         // Pool balances should not change
         for (uint256 i = 0; i < balancesRawAfter.length; ++i) {
@@ -501,7 +463,7 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(dai.balanceOf(alice), daiBeforeSwap + defaultAmount - daiFee, "Swap: User's DAI balance is wrong");
 
         // Tokens are adjusted in the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(pool);
         assertEq(balances[daiIdx], daiFee - daiProtocolFee, "Swap: Pool's [0] balance is wrong");
         assertEq(balances[usdcIdx], 2 * defaultAmount + usdcFee - usdcProtocolFee, "Swap: Pool's [1] balance is wrong");
 
