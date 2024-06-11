@@ -262,39 +262,46 @@ library HooksConfigLib {
      * fails to execute the hook.
      * @param config The encoded hooks configuration
      * @param router Router address
+     * @param bptAmountIn The BPT amount a user will need burn to remove the liquidity of the pool
      * @param amountsOutScaled18 Scaled amount of tokens to receive in token registration order
      * @param amountsOutRaw Actual amount of tokens to receive in token registration order
-     * @param bptAmountIn The BPT amount a user will need burn to remove the liquidity of the pool
      * @param params The remove liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
+     * @return hookAdjustedBptAmountIn New bptAmountIn, modified by the hook
      * @return hookAdjustedAmountsOutRaw New amountsOutRaw, modified by the hook
      */
     function onAfterRemoveLiquidity(
         HooksConfig memory config,
         address router,
+        uint256 bptAmountIn,
         uint256[] memory amountsOutScaled18,
         uint256[] memory amountsOutRaw,
-        uint256 bptAmountIn,
         RemoveLiquidityParams memory params,
         PoolData memory poolData
-    ) internal returns (uint256[] memory hookAdjustedAmountsOutRaw) {
+    ) internal returns (uint256 hookAdjustedBptAmountIn, uint256[] memory hookAdjustedAmountsOutRaw) {
         if (config.shouldCallAfterRemoveLiquidity == false) {
-            return amountsOutRaw;
+            return (bptAmountIn, amountsOutRaw);
         }
 
         bool success;
-        (success, hookAdjustedAmountsOutRaw) = IHooks(config.hooksContract).onAfterRemoveLiquidity(
-            router,
-            params.pool,
-            bptAmountIn,
-            amountsOutScaled18,
-            amountsOutRaw,
-            poolData.balancesLiveScaled18,
-            params.userData
-        );
+        (success, hookAdjustedBptAmountIn, hookAdjustedAmountsOutRaw) = IHooks(config.hooksContract)
+            .onAfterRemoveLiquidity(
+                router,
+                params.pool,
+                params.kind,
+                bptAmountIn,
+                amountsOutScaled18,
+                amountsOutRaw,
+                poolData.balancesLiveScaled18,
+                params.userData
+            );
 
         if (success == false) {
             revert IVaultErrors.AfterRemoveLiquidityHookFailed();
+        }
+
+        if (hookAdjustedBptAmountIn > params.maxBptAmountIn) {
+            revert IVaultErrors.BptAmountInAboveMax(hookAdjustedBptAmountIn, params.maxBptAmountIn);
         }
 
         for (uint256 i = 0; i < hookAdjustedAmountsOutRaw.length; i++) {

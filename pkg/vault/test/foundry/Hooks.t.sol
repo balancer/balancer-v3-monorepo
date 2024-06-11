@@ -487,6 +487,7 @@ contract HooksTest is BaseVaultTest {
                 IHooks.onAfterRemoveLiquidity.selector,
                 router,
                 pool,
+                RemoveLiquidityKind.PROPORTIONAL,
                 bptAmount,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 [defaultAmount, defaultAmount].toMemoryArray(),

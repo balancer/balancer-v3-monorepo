@@ -273,31 +273,43 @@ contract PoolHooksMock is BasePoolHooks {
     function onAfterRemoveLiquidity(
         address,
         address pool,
-        uint256,
+        RemoveLiquidityKind kind,
+        uint256 bptAmountIn,
         uint256[] memory,
         uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) external override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+    ) external override returns (bool, uint256 hookAdjustedBptAmountIn, uint256[] memory hookAdjustedAmountsOutRaw) {
         (TokenConfig[] memory tokenConfig, , ) = _vault.getPoolTokenInfo(pool);
+        hookAdjustedBptAmountIn = bptAmountIn;
         hookAdjustedAmountsOutRaw = amountsOutRaw;
 
-        if (removeLiquidityHookFeePercentage > 0) {
-            for (uint256 i = 0; i < amountsOutRaw.length; i++) {
-                uint256 hookFee = amountsOutRaw[i].mulDown(removeLiquidityHookFeePercentage);
-                hookAdjustedAmountsOutRaw[i] -= hookFee;
-                _vault.sendTo(tokenConfig[i].token, address(this), hookFee);
+        if (kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
+            if (removeLiquidityHookFeePercentage > 0) {
+                uint256 hookFee = bptAmountIn.mulDown(removeLiquidityHookFeePercentage);
+                hookAdjustedBptAmountIn += hookFee;
+            } else if (removeLiquidityHookDiscountPercentage > 0) {
+                uint256 hookDiscount = bptAmountIn.mulDown(removeLiquidityHookDiscountPercentage);
+                hookAdjustedBptAmountIn -= hookDiscount;
             }
-        } else if (removeLiquidityHookDiscountPercentage > 0) {
-            for (uint256 i = 0; i < amountsOutRaw.length; i++) {
-                uint256 hookDiscount = amountsOutRaw[i].mulDown(removeLiquidityHookDiscountPercentage);
-                tokenConfig[i].token.transfer(address(_vault), hookDiscount);
-                _vault.settle(tokenConfig[i].token);
-                hookAdjustedAmountsOutRaw[i] += hookDiscount;
+        } else {
+            if (removeLiquidityHookFeePercentage > 0) {
+                for (uint256 i = 0; i < amountsOutRaw.length; i++) {
+                    uint256 hookFee = amountsOutRaw[i].mulDown(removeLiquidityHookFeePercentage);
+                    hookAdjustedAmountsOutRaw[i] -= hookFee;
+                    _vault.sendTo(tokenConfig[i].token, address(this), hookFee);
+                }
+            } else if (removeLiquidityHookDiscountPercentage > 0) {
+                for (uint256 i = 0; i < amountsOutRaw.length; i++) {
+                    uint256 hookDiscount = amountsOutRaw[i].mulDown(removeLiquidityHookDiscountPercentage);
+                    tokenConfig[i].token.transfer(address(_vault), hookDiscount);
+                    _vault.settle(tokenConfig[i].token);
+                    hookAdjustedAmountsOutRaw[i] += hookDiscount;
+                }
             }
         }
 
-        return (!failOnAfterRemoveLiquidity, hookAdjustedAmountsOutRaw);
+        return (!failOnAfterRemoveLiquidity, hookAdjustedBptAmountIn, hookAdjustedAmountsOutRaw);
     }
 
     /***********************************************************
