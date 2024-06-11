@@ -72,7 +72,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
      */
     function _queryModeBalanceIncrease(address pool, address to, uint256 amount) internal {
         // Enforce that this can only be called in a read-only, query context.
-        if (!EVMCallModeHelpers.isStaticCall()) {
+        if (EVMCallModeHelpers.isStaticCall() == false) {
             revert EVMCallModeHelpers.NotStaticCall();
         }
 

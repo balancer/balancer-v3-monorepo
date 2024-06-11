@@ -277,7 +277,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // to a lower calculated amountOut, favoring the pool.
         state.amountGivenScaled18 = _computeAmountGivenScaled18(params, poolData, state);
 
-        PoolConfigBits memory poolConfig = poolData.poolConfig;
         state.swapFeePercentage = poolData.poolConfig.getStaticSwapFeePercentage();
     }
 
@@ -573,6 +572,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     {
         LiquidityLocals memory locals;
         PoolConfigBits memory poolConfig = poolData.poolConfig;
+
         locals.numTokens = poolData.tokenConfig.length;
         uint256[] memory swapFeeAmountsScaled18;
 
@@ -705,7 +705,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _ensureUnpaused(params.pool);
 
-        VaultStateBits memory vaultState = _vaultState;
         HooksConfigBits memory hooksConfig = _hooksConfig[params.pool];
 
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
@@ -747,7 +746,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData,
             params,
             minAmountsOutScaled18,
-            vaultState
+            _vaultState
         );
 
         hooksConfig.onAfterRemoveLiquidity(amountsOutScaled18, bptAmountIn, msg.sender, params, poolData);
@@ -1037,7 +1036,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         // Checking isStaticCall first, so we only parse _vaultState in static calls
-        if (EVMCallModeHelpers.isStaticCall() == true && _vaultState.isQueryDisabled() == false) {
+        if (_isQueryContext()) {
             // Uses the most accurate calculation so that a query matches the actual operation
             if (kind == SwapKind.EXACT_IN) {
                 amountCalculated = wrappedToken.previewDeposit(amountGiven);
@@ -1167,7 +1166,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         // Checking isStaticCall first, so we only parse _vaultState in static calls
-        if (EVMCallModeHelpers.isStaticCall() == true && _vaultState.isQueryDisabled() == false) {
+        if (_isQueryContext()) {
             // Uses the most accurate calculation so that a query matches the actual operation
             if (kind == SwapKind.EXACT_IN) {
                 amountCalculated = wrappedToken.previewRedeem(amountGiven);
@@ -1259,6 +1258,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _takeDebt(wrappedToken, amountInWrapped);
         _supplyCredit(underlyingToken, amountOutUnderlying);
+    }
+
+    function _isQueryContext(VaultStateBits vaultState) internal returns (bool) {
+        return EVMCallModeHelpers.isStaticCall() && vaultState.isQueryDisabled() == false;
     }
 
     /**
