@@ -91,10 +91,10 @@ contract PoolDataTest is BaseVaultTest {
             assertEq(data.balancesLiveScaled18[i], expectedLiveBalance);
         }
 
-        assertEq(address(data.tokenConfig[0].token), address(dai));
-        assertEq(address(data.tokenConfig[1].token), address(wsteth));
+        assertEq(address(data.tokens[0]), address(dai));
+        assertEq(address(data.tokens[1]), address(wsteth));
 
-        assertEq(address(data.tokenConfig[0].rateProvider), address(daiRateProvider));
-        assertEq(address(data.tokenConfig[1].rateProvider), address(wstETHRateProvider));
+        assertEq(address(data.tokenInfo[0].rateProvider), address(daiRateProvider));
+        assertEq(address(data.tokenInfo[1].rateProvider), address(wstETHRateProvider));
     }
 }
