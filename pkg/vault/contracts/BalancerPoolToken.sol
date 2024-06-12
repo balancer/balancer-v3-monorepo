@@ -23,15 +23,7 @@ import { VaultGuard } from "./VaultGuard.sol";
  * @dev Implementation of the ERC-20 Permit extension allowing approvals to be made via signatures, as defined in
  * https://eips.ethereum.org/EIPS/eip-2612[ERC-2612].
  */
-contract BalancerPoolToken is
-    IERC20,
-    IERC20Metadata,
-    IERC20Permit,
-    EIP712,
-    Nonces,
-    ERC165,
-    VaultGuard
-{
+contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonces, ERC165, VaultGuard {
     bytes32 public constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
