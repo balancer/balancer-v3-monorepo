@@ -35,28 +35,23 @@ contract BatchRouter is IBatchRouter, RouterCommon, ReentrancyGuardTransient {
     using TransientStorageHelpers for *;
     using SafeERC20 for IERC20;
 
-    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.BatchRouter.currentSwapTokenIn")) - 1)) &
-    // ~bytes32(uint256(0xff))
+    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.BatchRouter.currentSwapTokenIn")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant _CURRENT_SWAP_TOKEN_IN_SLOT =
         0xb276eab7abc1c10fac5dab35f51c6fbf9fc0b15fdb2c9f2edd2bfe33095f1600;
 
-    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.BatchRouter.currentSwapTokenOut")) - 1)) &
-    // ~bytes32(uint256(0xff))
+    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.BatchRouter.currentSwapTokenOut")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant _CURRENT_SWAP_TOKEN_OUT_SLOT =
         0x3ba378cb53eaeb1108f84c22a05310cbd3dc67412e17a4a2f494603000caa800;
 
-    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.BatchRouter.currentSwapTokenInAmounts")) - 1)) &
-    // ~bytes32(uint256(0xff))
+    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.BatchRouter.currentSwapTokenInAmounts")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant _CURRENT_SWAP_TOKEN_IN_AMOUNTS_SLOT =
         0x06ba1e8689ad487950c48ade122f991a3021efb3a5c1b2f9e3b4819d1b753600;
 
-    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.BatchRouter.currentSwapTokenOutAmounts")) - 1)) &
-    // ~bytes32(uint256(0xff))
+    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.BatchRouter.currentSwapTokenOutAmounts")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant _CURRENT_SWAP_TOKEN_OUT_AMOUNTS_SLOT =
         0x97ddd42f52b47acebf1e9eff2243e7b11827a6dee43dbccc154642b6067cf500;
 
-    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.BatchRouter.settledTokenAmounts")) - 1)) &
-    // ~bytes32(uint256(0xff))
+    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.BatchRouter.settledTokenAmounts")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant _SETTLED_TOKEN_AMOUNTS_SLOT =
         0xc799a3102d3694f08e0dd1762f8ef04fa493494b13d9acef05b5fea80d4fe300;
 

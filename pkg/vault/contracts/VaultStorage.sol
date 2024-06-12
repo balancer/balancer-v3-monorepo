@@ -30,17 +30,14 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 contract VaultStorage {
     using StorageSlot for *;
 
-    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.VaultStorage.isUnlocked")) - 1)) &
-    // ~bytes32(uint256(0xff))
+    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.VaultStorage.isUnlocked")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant _IS_UNLOCKED_SLOT = 0x1369d017453f080f2416efe5ae39c8a4b4655ea0634227aaab0afdb9a9f93f00;
 
-    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.VaultStorage.nonZeroDeltaCount")) - 1)) &
-    // ~bytes32(uint256(0xff))
+    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.VaultStorage.nonZeroDeltaCount")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant _NON_ZERO_DELTA_COUNT_SLOT =
         0xbcbf50c510014a975eac30806436734486f167c41af035c1645353d475d57100;
 
-    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.VaultStorage.tokenDelta")) - 1)) &
-    // ~bytes32(uint256(0xff))
+    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.VaultStorage.tokenDelta")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant _TOKEN_DELTA_SLOT = 0x3e6fc372e95f8254c75fc2b01bdea8b1f768c112bff2fa8a04df690bd23c6f00;
 
     // Minimum BPT amount minted upon initialization.
