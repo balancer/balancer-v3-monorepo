@@ -118,6 +118,7 @@ contract VaultUnitTest is BaseTest {
 
     function testManualUpdatePoolDataLiveBalancesAndRates() public {
         PoolData memory poolData;
+        poolData.tokens = new IERC20[](2);
         poolData.balancesRaw = new uint256[](2);
         poolData.tokenRates = new uint256[](2);
         poolData.balancesLiveScaled18 = new uint256[](2);
@@ -127,16 +128,18 @@ contract VaultUnitTest is BaseTest {
 
         poolData.decimalScalingFactors = decimalScalingFactors;
 
-        poolData.tokenConfig = new TokenConfig[](2);
-        poolData.tokenConfig[0].tokenType = TokenType.STANDARD;
-        poolData.tokenConfig[1].tokenType = TokenType.WITH_RATE;
-        poolData.tokenConfig[1].rateProvider = IRateProvider(rateProvider);
+        poolData.tokenInfo = new TokenInfo[](2);
+        poolData.tokenInfo[0].tokenType = TokenType.STANDARD;
+        poolData.tokenInfo[1].tokenType = TokenType.WITH_RATE;
+        poolData.tokenInfo[1].rateProvider = IRateProvider(rateProvider);
 
         uint256[] memory tokenBalances = [uint256(1e18), 2e18].toMemoryArray();
 
         IERC20[] memory defaultTokens = new IERC20[](2);
         defaultTokens[0] = dai;
         defaultTokens[1] = usdc;
+        poolData.tokens[0] = dai;
+        poolData.tokens[1] = usdc;
 
         vault.manualSetPoolTokenBalances(pool, defaultTokens, tokenBalances);
 

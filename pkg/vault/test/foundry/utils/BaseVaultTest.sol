@@ -156,12 +156,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         uint256[] memory amountsIn,
         uint256 minBptOut
     ) internal virtual returns (uint256 bptOut) {
-        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(poolToInit);
-        IERC20[] memory tokens = new IERC20[](tokenConfig.length);
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            tokens[i] = tokenConfig[i].token;
-        }
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(poolToInit);
 
         return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, "");
     }
@@ -217,12 +212,12 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     function getBalances(address user) internal view returns (Balances memory balances) {
         balances.userBpt = IERC20(pool).balanceOf(user);
 
-        (TokenConfig[] memory tokenConfig, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(pool);
+        (IERC20[] memory tokens, , uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(pool);
         balances.poolTokens = poolBalances;
         balances.userTokens = new uint256[](poolBalances.length);
         for (uint256 i = 0; i < poolBalances.length; ++i) {
             // Don't assume token ordering.
-            balances.userTokens[i] = tokenConfig[i].token.balanceOf(user);
+            balances.userTokens[i] = tokens[i].balanceOf(user);
         }
     }
 
