@@ -31,7 +31,7 @@ library AmplificationDataLib {
     uint8 public constant START_TIME_OFFSET = END_VALUE_OFFSET + _AMP_VALUE_BIT_LENGTH;
     uint8 public constant END_TIME_OFFSET = START_TIME_OFFSET + _TIMESTAMP_BIT_LENGTH;
 
-    uint8 private constant _AMP_VALUE_BIT_LENGTH = 32;
+    uint8 private constant _AMP_VALUE_BIT_LENGTH = 64;
     uint8 private constant _TIMESTAMP_BIT_LENGTH = 32;
 
     function getStartValue(AmplificationDataBits data) internal pure returns (uint64) {
