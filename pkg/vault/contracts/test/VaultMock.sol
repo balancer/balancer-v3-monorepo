@@ -19,7 +19,8 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import {
-    TransientStorageHelpers
+    TransientStorageHelpers,
+    TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
@@ -567,5 +568,17 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualTransfer(IERC20 token, address to, uint256 amount) external {
         token.transfer(to, amount);
+    }
+
+    function manualGetIsUnlockedSlot() public pure returns (StorageSlot.BooleanSlotType slot) {
+        return _isUnlockedSlot();
+    }
+
+    function manualGetNonzeroDeltaCountSlot() public pure returns (StorageSlot.Uint256SlotType slot) {
+        return _nonzeroDeltaCountSlot();
+    }
+
+    function manualGetTokenDeltasSlot() public pure returns (TokenDeltaMappingSlotType slot) {
+        return _tokenDeltasSlot();
     }
 }
