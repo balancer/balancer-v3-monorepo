@@ -78,7 +78,7 @@ interface IVaultExtension {
         address pool,
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
-        uint256 pauseWindowEndTime,
+        uint32 pauseWindowEndTime,
         bool protocolFeeExempt,
         PoolRoleAccounts calldata roleAccounts,
         address poolHooksContract,
@@ -251,7 +251,7 @@ interface IVaultExtension {
      * @return poolBufferPeriodEndTime The timestamp after which the Pool unpauses itself (if paused)
      * @return pauseManager The pause manager, or the zero address
      */
-    function getPoolPausedState(address pool) external view returns (bool, uint256, uint256, address);
+    function getPoolPausedState(address pool) external view returns (bool, uint32, uint32, address);
 
     /*******************************************************************************
                                    Fees

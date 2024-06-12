@@ -41,8 +41,8 @@ contract HooksTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
         // Create another pool and pool factory to test onRegister
-        uint256 pauseWindowEndTime = vault.getPauseWindowEndTime();
-        uint256 bufferPeriodDuration = vault.getBufferPeriodDuration();
+        uint32 pauseWindowEndTime = vault.getPauseWindowEndTime();
+        uint32 bufferPeriodDuration = vault.getBufferPeriodDuration();
         anotherFactory = new PoolFactoryMock(IVault(vault), pauseWindowEndTime - bufferPeriodDuration);
         vm.label(address(anotherFactory), "another factory");
         anotherPool = address(new PoolMock(IVault(address(vault)), "Another Pool", "ANOTHER"));

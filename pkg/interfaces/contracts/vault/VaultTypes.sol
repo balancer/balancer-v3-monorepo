@@ -33,8 +33,8 @@ struct PoolConfig {
     uint256 staticSwapFeePercentage;
     uint256 aggregateProtocolSwapFeePercentage;
     uint256 aggregateProtocolYieldFeePercentage;
-    uint256 tokenDecimalDiffs;
-    uint256 pauseWindowEndTime;
+    uint24 tokenDecimalDiffs;
+    uint32 pauseWindowEndTime;
     bool isPoolRegistered;
     bool isPoolInitialized;
     bool isPoolPaused;
@@ -269,4 +269,5 @@ struct BufferWrapOrUnwrapParams {
 // Protocol Fees are 24-bit values. We transform them by multiplying by 1e11, so
 // they can be set to any value between 0% and 100% (step 0.00001%).
 uint256 constant FEE_BITLENGTH = 24;
+uint256 constant MAX_FEE_VALUE = type(uint24).max;
 uint256 constant FEE_SCALING_FACTOR = 1e11;

@@ -63,8 +63,8 @@ contract VaultMock is IVaultMainMock, Vault {
         IAuthorizer authorizer,
         IProtocolFeeController protocolFeeController
     ) Vault(vaultExtension, authorizer, protocolFeeController) {
-        uint256 pauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
-        uint256 bufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
+        uint32 pauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
+        uint32 bufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
         _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowEndTime - bufferPeriodDuration);
         _inputHelpersMock = new InputHelpersMock();
     }
@@ -158,7 +158,7 @@ contract VaultMock is IVaultMainMock, Vault {
     function manualRegisterPoolAtTimestamp(
         address pool,
         IERC20[] memory tokens,
-        uint256 timestamp,
+        uint32 timestamp,
         PoolRoleAccounts memory roleAccounts
     ) external whenVaultNotPaused {
         _poolFactoryMock.registerPoolAtTimestamp(
@@ -191,7 +191,7 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolConfig[pool] = poolConfig;
     }
 
-    function manualSetPoolPauseWindowEndTime(address pool, uint256 pauseWindowEndTime) public {
+    function manualSetPoolPauseWindowEndTime(address pool, uint32 pauseWindowEndTime) public {
         PoolConfigBits memory poolConfig = _poolConfig[pool];
         poolConfig.setPauseWindowEndTime(pauseWindowEndTime);
         _poolConfig[pool] = poolConfig;

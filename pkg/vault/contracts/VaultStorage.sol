@@ -101,10 +101,10 @@ contract VaultStorage {
     // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
 
-    uint256 internal immutable _vaultPauseWindowEndTime;
-    uint256 internal immutable _vaultBufferPeriodEndTime;
+    uint32 internal immutable _vaultPauseWindowEndTime;
+    uint32 internal immutable _vaultBufferPeriodEndTime;
     // Stored as a convenience, to avoid calculating it on every operation.
-    uint256 internal immutable _vaultBufferPeriodDuration;
+    uint32 internal immutable _vaultBufferPeriodDuration;
 
     // Bytes32 with protocol fees and paused flags.
     VaultStateBits internal _vaultState;

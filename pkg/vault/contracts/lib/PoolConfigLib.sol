@@ -12,6 +12,8 @@ library PoolConfigLib {
     using WordCodec for bytes32;
     using PoolConfigLib for PoolConfigBits;
 
+    error InvalidSize(uint256 expected);
+
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;
@@ -75,7 +77,10 @@ library PoolConfigLib {
 
     function setStaticSwapFeePercentage(PoolConfigBits memory config, uint256 value) internal pure {
         value /= FEE_SCALING_FACTOR;
-        require(value <= type(uint24).max, "Token decimal diffs too large");
+
+        if (value > MAX_FEE_VALUE) {
+            revert InvalidSize(FEE_BITLENGTH);
+        }
 
         config.bits = config.bits.insertUint(value, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH);
     }
@@ -86,7 +91,10 @@ library PoolConfigLib {
 
     function setAggregateProtocolSwapFeePercentage(PoolConfigBits memory config, uint256 value) internal pure {
         value /= FEE_SCALING_FACTOR;
-        require(value <= type(uint24).max, "Token decimal diffs too large");
+
+        if (value > MAX_FEE_VALUE) {
+            revert InvalidSize(FEE_BITLENGTH);
+        }
 
         config.bits = config.bits.insertUint(value, AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH);
     }
@@ -97,28 +105,27 @@ library PoolConfigLib {
 
     function setAggregateProtocolYieldFeePercentage(PoolConfigBits memory config, uint256 value) internal pure {
         value /= FEE_SCALING_FACTOR;
-        require(value <= type(uint24).max, "Token decimal diffs too large");
+
+        if (value > MAX_FEE_VALUE) {
+            revert InvalidSize(FEE_BITLENGTH);
+        }
 
         config.bits = config.bits.insertUint(value, AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH);
     }
 
-    function getTokenDecimalDiffs(PoolConfigBits memory config) internal pure returns (uint256) {
-        return config.bits.decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH);
+    function getTokenDecimalDiffs(PoolConfigBits memory config) internal pure returns (uint24) {
+        return uint24(config.bits.decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH));
     }
 
-    function setTokenDecimalDiffs(PoolConfigBits memory config, uint256 value) internal pure {
-        require(value <= type(uint24).max, "Token decimal diffs too large");
-
+    function setTokenDecimalDiffs(PoolConfigBits memory config, uint24 value) internal pure {
         config.bits = config.bits.insertUint(value, DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH);
     }
 
-    function getPauseWindowEndTime(PoolConfigBits memory config) internal pure returns (uint256) {
-        return config.bits.decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH);
+    function getPauseWindowEndTime(PoolConfigBits memory config) internal pure returns (uint32) {
+        return uint32(config.bits.decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH));
     }
 
-    function setPauseWindowEndTime(PoolConfigBits memory config, uint256 value) internal pure {
-        require(value <= type(uint32).max, "Token decimal diffs too large");
-
+    function setPauseWindowEndTime(PoolConfigBits memory config, uint32 value) internal pure {
         config.bits = config.bits.insertUint(value, PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH);
     }
 
@@ -169,14 +176,14 @@ library PoolConfigLib {
     }
 
     // Convert from an array of decimal differences, to the encoded 24 bit value (only uses bottom 20 bits).
-    function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint256) {
+    function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint24) {
         bytes32 value;
 
         for (uint256 i = 0; i < tokenDecimalDiffs.length; ++i) {
             value = value.insertUint(tokenDecimalDiffs[i], i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
         }
 
-        return uint256(value);
+        return uint24(uint256(value));
     }
 
     function getDecimalScalingFactors(
@@ -185,7 +192,7 @@ library PoolConfigLib {
     ) internal pure returns (uint256[] memory) {
         uint256[] memory scalingFactors = new uint256[](numTokens);
 
-        bytes32 tokenDecimalDiffs = bytes32(config.getTokenDecimalDiffs());
+        bytes32 tokenDecimalDiffs = bytes32(uint256(config.getTokenDecimalDiffs()));
 
         for (uint256 i = 0; i < numTokens; ++i) {
             uint256 decimalDiff = tokenDecimalDiffs.decodeUint(i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);

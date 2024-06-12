@@ -109,7 +109,7 @@ contract PoolPauseTest is BaseVaultTest {
     }
 
     function testInvalidDuration() public {
-        uint256 maxDuration = type(uint32).max - block.timestamp;
+        uint32 maxDuration = type(uint32).max - uint32(block.timestamp);
 
         vm.expectRevert(FactoryWidePauseWindow.PoolPauseWindowDurationOverflow.selector);
         new PoolFactoryMock(vault, maxDuration + 1);

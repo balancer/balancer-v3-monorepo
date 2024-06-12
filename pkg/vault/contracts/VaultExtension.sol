@@ -130,7 +130,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
         uint256 swapFeePercentage;
-        uint256 pauseWindowEndTime;
+        uint32 pauseWindowEndTime;
         bool protocolFeeExempt;
         PoolRoleAccounts roleAccounts;
         address poolHooksContract;
@@ -142,7 +142,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool,
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
-        uint256 pauseWindowEndTime,
+        uint32 pauseWindowEndTime,
         bool protocolFeeExempt,
         PoolRoleAccounts calldata roleAccounts,
         address poolHooksContract,
@@ -578,8 +578,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function getPoolPausedState(
         address pool
-    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (bool, uint256, uint256, address) {
-        (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
+    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (bool, uint32, uint32, address) {
+        (bool paused, uint32 pauseWindowEndTime) = _getPoolPausedState(pool);
 
         return (
             paused,

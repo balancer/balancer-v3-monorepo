@@ -17,8 +17,9 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
     using PoolConfigLib for PoolConfigBits;
     using WordCodec for bytes32;
 
-    uint256 private constant MAX_UINT24_VALUE = uint256(type(uint24).max);
-    uint256 private constant MAX_UINT32_VALUE = uint256(type(uint32).max);
+    uint24 private constant MAX_UINT24_VALUE = type(uint24).max;
+    uint32 private constant MAX_UINT32_VALUE = type(uint32).max;
+
     uint256 constant TOKEN_DECIMAL_DIFFS_BITLENGTH = 24;
     uint8 constant DECIMAL_DIFF_BITLENGTH = 5;
     uint256 constant TIMESTAMP_BITLENGTH = 32;
@@ -100,7 +101,7 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
             DECIMAL_DIFF_BITLENGTH
         );
 
-        config.setTokenDecimalDiffs(uint256(value));
+        config.setTokenDecimalDiffs(uint24(uint256(value)));
 
         uint256[] memory scalingFactors = config.getDecimalScalingFactors(2);
 
@@ -248,7 +249,7 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
 
     function testSetTokenDecimalDiffs() public {
         PoolConfigBits memory configBits;
-        uint256 value = MAX_UINT24_VALUE;
+        uint24 value = MAX_UINT24_VALUE;
         configBits.setTokenDecimalDiffs(value);
         assertEq(configBits.getTokenDecimalDiffs(), value, "tokenDecimalDiffs mismatch (testSetTokenDecimalDiffs)");
     }
@@ -269,7 +270,7 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
 
     function testSetPauseWindowEndTime() public {
         PoolConfigBits memory configBits;
-        uint256 value = MAX_UINT32_VALUE;
+        uint32 value = MAX_UINT32_VALUE;
         configBits.setPauseWindowEndTime(value);
         assertEq(configBits.getPauseWindowEndTime(), value, "pauseWindowEndTime mismatch (testSetPauseWindowEndTime)");
     }

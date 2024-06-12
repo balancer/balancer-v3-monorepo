@@ -77,8 +77,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     constructor(
         IVault mainVault,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
+        uint32 pauseWindowDuration,
+        uint32 bufferPeriodDuration
     ) Authentication(bytes32(uint256(uint160(address(mainVault))))) {
         if (pauseWindowDuration > _MAX_PAUSE_WINDOW_DURATION) {
             revert VaultPauseWindowDurationTooLarge();
@@ -88,7 +88,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         }
 
         // solhint-disable-next-line not-rely-on-time
-        uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
+        uint32 pauseWindowEndTime = uint32(block.timestamp) + pauseWindowDuration;
 
         _vaultPauseWindowEndTime = pauseWindowEndTime;
         _vaultBufferPeriodDuration = bufferPeriodDuration;
@@ -107,17 +107,17 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function getPauseWindowEndTime() external view returns (uint256) {
+    function getPauseWindowEndTime() external view returns (uint32) {
         return _vaultPauseWindowEndTime;
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferPeriodDuration() external view returns (uint256) {
+    function getBufferPeriodDuration() external view returns (uint32) {
         return _vaultBufferPeriodDuration;
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferPeriodEndTime() external view returns (uint256) {
+    function getBufferPeriodEndTime() external view returns (uint32) {
         return _vaultBufferPeriodEndTime;
     }
 
@@ -152,7 +152,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function getVaultPausedState() external view onlyVaultDelegateCall returns (bool, uint256, uint256) {
+    function getVaultPausedState() external view onlyVaultDelegateCall returns (bool, uint32, uint32) {
         return (_isVaultPaused(), _vaultPauseWindowEndTime, _vaultBufferPeriodEndTime);
     }
 
