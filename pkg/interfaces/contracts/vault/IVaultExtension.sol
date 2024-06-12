@@ -265,7 +265,7 @@ interface IVaultExtension {
 
     /**
      * @notice Returns the accumulated swap fees (including aggregate fees) in `token` collected by the pool.
-     * @param pool The address of the pool for which protocol fees have been collected
+     * @param pool The address of the pool for which aggregate fees have been collected
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
      */
@@ -273,7 +273,7 @@ interface IVaultExtension {
 
     /**
      * @notice Returns the accumulated yield fees (including aggregate fees) in `token` collected by the pool.
-     * @param pool The address of the pool for which protocol fees have been collected
+     * @param pool The address of the pool for which aggregate fees have been collected
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
      */
