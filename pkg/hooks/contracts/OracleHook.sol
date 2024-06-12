@@ -28,8 +28,8 @@ contract OracleHook is BasePoolHooks {
     }
 
     function onRegister(
-        address,
-        address,
+        address factory,
+        address pool,
         TokenConfig[] memory tokenConfig,
         LiquidityManagement calldata
     ) external view override onlyVault returns (bool) {
@@ -68,16 +68,30 @@ contract OracleHook is BasePoolHooks {
         console.log("amountOutScaled18: %s", params.amountOutScaled18);
         console.log("tokenInBalanceScaled18: %s", params.tokenInBalanceScaled18);
         console.log("tokenOutBalanceScaled18: %s", params.tokenOutBalanceScaled18);
-        console.log("amountCalculatedScaled18: %s", amountCalculatedScaled18);
+        console.log("amountCalculatedScaled18: %s", amountCalculatedScaled18); // NOTE: Redundant parameter
 
-        uint256 priceInScaled18 = params.amountInScaled18.divDown(params.amountOutScaled18);
-        uint256 priceIn = priceInScaled18.toRawRoundDown(params.tokenIn.computeScalingFactor());
-        uint256 priceOutScaled18 = params.amountOutScaled18.divDown(params.amountInScaled18);
-        uint256 priceOut = priceOutScaled18.toRawRoundDown(params.tokenOut.computeScalingFactor());
-        console.log("priceInScaled18: %s", priceInScaled18);
-        console.log("priceIn: %s", priceIn);
-        console.log("priceOutScaled18: %s", priceOutScaled18);
-        console.log("priceOut: %s", priceOut);
+        // NOTE: `toRawRoundDown` doesn't account for token rates
+        // `vault` could be queried with `pool` to get the token rates
+        uint256 priceInWithFeeScaled18 = params.amountInScaled18.divDown(params.amountOutScaled18);
+        uint256 priceInWithFee = priceInWithFeeScaled18.toRawRoundDown(params.tokenIn.computeScalingFactor());
+        uint256 priceOutWithFeeScaled18 = params.amountOutScaled18.divDown(params.amountInScaled18);
+        uint256 priceOutWithFee = priceOutWithFeeScaled18.toRawRoundDown(params.tokenOut.computeScalingFactor());
+        console.log("priceInWithFeeScaled18: %s", priceInWithFeeScaled18);
+        console.log("priceInWithFee: %s", priceInWithFee);
+        console.log("priceOutWithFeeScaled18: %s", priceOutWithFeeScaled18);
+        console.log("priceOutWithFee: %s", priceOutWithFee);
+        // NOTE: Calculating prices without fees requires the `onSwap` return value
+
+        // NOTE: `toRawRoundDown` doesn't account for token rates
+        // `vault` could be queried with `pool` to get the raw balances (not scaled, not rated)
+        uint256 spotPriceInScaled18 = params.tokenInBalanceScaled18.divDown(params.tokenOutBalanceScaled18);
+        uint256 spotPriceIn = spotPriceInScaled18.toRawRoundDown(params.tokenIn.computeScalingFactor());
+        uint256 spotPriceOutScaled18 = params.tokenOutBalanceScaled18.divDown(params.tokenInBalanceScaled18);
+        uint256 spotPriceOut = spotPriceOutScaled18.toRawRoundDown(params.tokenOut.computeScalingFactor());
+        console.log("spotPriceInScaled18: %s", spotPriceInScaled18);
+        console.log("spotPriceIn: %s", spotPriceIn);
+        console.log("spotPriceOutScaled18: %s", spotPriceOutScaled18);
+        console.log("spotPriceOut: %s", spotPriceOut);
         return true;
     }
 }

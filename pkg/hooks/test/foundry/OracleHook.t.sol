@@ -89,6 +89,12 @@ contract HooksTest is BaseVaultTest {
     // before swap
 
     function testOnBeforeSwapHook() public {
+        setSwapFeePercentage(swapFeePercentage);
+        vault.manualSetAggregateProtocolSwapFeePercentage(
+            pool,
+            _getAggregateFeePercentage(protocolSwapFeePercentage, 0)
+        );
+
         vm.prank(bob);
         vm.expectCall(
             poolHooksContract,
