@@ -6,10 +6,10 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { BasePoolAuthentication } from "@balancer-labs/v3-vault/contracts/BasePoolAuthentication.sol";
@@ -18,7 +18,7 @@ import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Stab
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 /// @notice Basic Stable Pool.
-contract StablePool is IBasePool, ISwapFeePercentageBounds, BalancerPoolToken, BasePoolAuthentication, Version {
+contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Version {
     using FixedPoint for uint256;
     using SafeCast for *;
 
@@ -281,11 +281,6 @@ contract StablePool is IBasePool, ISwapFeePercentageBounds, BalancerPoolToken, B
         _amplificationState.endTime = currentTime;
 
         emit AmpUpdateStopped(currentValueUint64);
-    }
-
-    /// @inheritdoc ERC165
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return interfaceId == type(ISwapFeePercentageBounds).interfaceId || super.supportsInterface(interfaceId);
     }
 
     /// @inheritdoc ISwapFeePercentageBounds

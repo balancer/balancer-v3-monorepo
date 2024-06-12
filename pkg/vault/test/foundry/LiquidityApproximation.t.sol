@@ -421,7 +421,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.startPrank(alice);
         uint256[] memory amountsIn = router.addLiquidityProportional(
             address(liquidityPool),
-            [uint256(MAX_UINT128), MAX_UINT128].toMemoryArray(),
+            [MAX_UINT128, MAX_UINT128].toMemoryArray(),
             exactBptAmountOut,
             false,
             bytes("")

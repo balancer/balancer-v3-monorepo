@@ -172,10 +172,9 @@ interface IVaultErrors {
 
     /**
      * @dev  Error raised when the swap fee percentage is less than the minimum allowed value.
-     * The Vault itself does not impose a universal minimum. Rather, it asks each pool whether
-     * it supports the `ISwapFeePercentageBounds` interface. If it does, the Vault validates
-     * against the limits, and reverts with this error if it is below the minimum value returned
-     * by the pool.
+     * The Vault itself does not impose a universal minimum. Rather, it validates against the
+     * range specified by the `ISwapFeePercentageBounds` interface. and reverts with this error
+     * if it is below the minimum value returned by the pool.
      *
      * Pools with dynamic fees do not check these limits.
      */
@@ -183,10 +182,9 @@ interface IVaultErrors {
 
     /**
      * @dev  Error raised when the swap fee percentage is greater than the maximum allowed value.
-     * The Vault itself does not impose a universal maximum. Rather, it asks each pool whether
-     * it supports the `ISwapFeePercentageBounds` interface. If it does, the Vault validates
-     * against the limits, and reverts with this error if it is above the maximum value returned
-     * by the pool.
+     * The Vault itself does not impose a universal minimum. Rather, it validates against the
+     * range specified by the `ISwapFeePercentageBounds` interface. and reverts with this error
+     * if it is above the maximum value returned by the pool.
      *
      * Pools with dynamic fees do not check these limits.
      */
