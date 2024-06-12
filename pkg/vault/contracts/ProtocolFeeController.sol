@@ -263,16 +263,16 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
-    function receiveProtocolFees(
+    function receiveAggregateFees(
         address pool,
         uint256[] memory swapFeeAmounts,
         uint256[] memory yieldFeeAmounts
     ) external onlyVault {
-        _receiveProtocolFees(pool, ProtocolFeeType.SWAP, swapFeeAmounts);
-        _receiveProtocolFees(pool, ProtocolFeeType.YIELD, yieldFeeAmounts);
+        _receiveAggregateFees(pool, ProtocolFeeType.SWAP, swapFeeAmounts);
+        _receiveAggregateFees(pool, ProtocolFeeType.YIELD, yieldFeeAmounts);
     }
 
-    function _receiveProtocolFees(address pool, ProtocolFeeType feeType, uint256[] memory feeAmounts) private {
+    function _receiveAggregateFees(address pool, ProtocolFeeType feeType, uint256[] memory feeAmounts) private {
         // There are two cases when we don't need to split fees (in which case we can save gas and avoid rounding
         // errors by skipping calculations) if either the protocol or pool creator fee percentage is zero.
 

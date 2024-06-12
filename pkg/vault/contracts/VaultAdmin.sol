@@ -311,7 +311,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             }
         }
 
-        _protocolFeeController.receiveProtocolFees(pool, totalSwapFees, totalYieldFees);
+        _protocolFeeController.receiveAggregateFees(pool, totalSwapFees, totalYieldFees);
     }
 
     /// @inheritdoc IVaultAdmin

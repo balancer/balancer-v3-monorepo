@@ -541,7 +541,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             "Wrong USDC protocol yield fees"
         );
 
-        // Collecting fees will emit events, and call `receiveProtocolFees`.
+        // Collecting fees will emit events, and call `receiveAggregateFees`.
         vm.expectEmit();
         emit IProtocolFeeController.ProtocolSwapFeeCollected(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
 
@@ -555,7 +555,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
         vm.expectCall(
             address(feeController),
-            abi.encodeWithSelector(IProtocolFeeController.receiveProtocolFees.selector, pool, swapAmounts, yieldAmounts)
+            abi.encodeWithSelector(IProtocolFeeController.receiveAggregateFees.selector, pool, swapAmounts, yieldAmounts)
         );
         // Move them to the fee controller.
         vault.collectAggregateFees(pool);
