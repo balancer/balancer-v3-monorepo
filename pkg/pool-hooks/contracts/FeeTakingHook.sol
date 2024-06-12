@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
@@ -73,10 +75,81 @@ contract FeeTakingHook is BasePoolHooks {
         return (true, hookAdjustedAmountCalculatedRaw);
     }
 
+    /// @inheritdoc IHooks
+    function onAfterAddLiquidity(
+        address,
+        address pool,
+        uint256[] memory,
+        uint256[] memory amountsInRaw,
+        uint256,
+        uint256[] memory,
+        bytes memory
+    ) external override returns (bool success, uint256[] memory) {
+        // Currently, the hook fee implementation for onAfterAddLiquidity only support proportional addLiquidity.
+        // That's because other types of addLiquidity requires an exact amount in, so fees need to be charged as BPTs,
+        // and our current architecture does not support it.
+
+        IERC20[] memory tokens = _vault.getPoolTokens(pool);
+        uint256[] memory hookAdjustedAmountsInRaw = amountsInRaw;
+
+        if (addLiquidityHookFeePercentage > 0) {
+            // Charge fees proportional to amounts in of each token
+            for (uint256 i = 0; i < amountsInRaw.length; i++) {
+                uint256 hookFee = amountsInRaw[i].mulDown(addLiquidityHookFeePercentage);
+                hookAdjustedAmountsInRaw[i] += hookFee;
+                // Sends the hook fee to the hook and registers the debt in the vault
+                _vault.sendTo(tokens[i], address(this), hookFee);
+            }
+        }
+
+        return (true, hookAdjustedAmountsInRaw);
+    }
+
+    /// @inheritdoc IHooks
+    function onAfterRemoveLiquidity(
+        address,
+        address pool,
+        uint256,
+        uint256[] memory,
+        uint256[] memory amountsOutRaw,
+        uint256[] memory,
+        bytes memory
+    ) external override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+        // Currently, the hook fee implementation for onAfterRemoveLiquidity only support proportional removeLiquidity.
+        // That's because other types of removeLiquidity requires an exact amount out, so fees need to be charged as
+        // BPTs, and our current architecture does not support it.
+
+        IERC20[] memory tokens = _vault.getPoolTokens(pool);
+        hookAdjustedAmountsOutRaw = amountsOutRaw;
+
+        if (removeLiquidityHookFeePercentage > 0) {
+            // Charge fees proportional to amounts out of each token
+            for (uint256 i = 0; i < amountsOutRaw.length; i++) {
+                uint256 hookFee = amountsOutRaw[i].mulDown(removeLiquidityHookFeePercentage);
+                hookAdjustedAmountsOutRaw[i] -= hookFee;
+                // Sends the hook fee to the hook and registers the debt in the vault
+                _vault.sendTo(tokens[i], address(this), hookFee);
+            }
+        }
+
+        return (true, hookAdjustedAmountsOutRaw);
+    }
+
     // Setters
 
     // Sets the hook swap fee percentage, which will be accrued after a swap was executed
     function setHookSwapFeePercentage(uint256 feePercentage) external {
         hookSwapFeePercentage = feePercentage;
+    }
+
+    // Sets the hook add liquidity fee percentage, which will be accrued after an add liquidity operation was executed
+    function setAddLiquidityHookFeePercentage(uint256 hookFeePercentage) public {
+        addLiquidityHookFeePercentage = hookFeePercentage;
+    }
+
+    // Sets the hook remove liquidity fee percentage, which will be accrued after a remove liquidity operation was
+    // executed
+    function setRemoveLiquidityHookFeePercentage(uint256 hookFeePercentage) public {
+        removeLiquidityHookFeePercentage = hookFeePercentage;
     }
 }
