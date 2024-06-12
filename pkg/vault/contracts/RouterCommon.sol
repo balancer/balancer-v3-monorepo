@@ -22,6 +22,7 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     using SafeERC20 for IWETH;
     using StorageSlot for *;
 
+    // solhint-disable max-line-length
     // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.RouterCommon.sender")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant _SENDER_SLOT = 0xcf578e3975346110e60ca9b952a379fc819893ae913bafbfed4ed78de9e6dc00;
 

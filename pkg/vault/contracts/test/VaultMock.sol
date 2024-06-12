@@ -570,15 +570,15 @@ contract VaultMock is IVaultMainMock, Vault {
         token.transfer(to, amount);
     }
 
-    function manualGetIsUnlockedSlot() public pure returns (StorageSlot.BooleanSlotType slot) {
+    function manualGetIsUnlockedSlot() external pure returns (StorageSlot.BooleanSlotType slot) {
         return _isUnlockedSlot();
     }
 
-    function manualGetNonzeroDeltaCountSlot() public pure returns (StorageSlot.Uint256SlotType slot) {
+    function manualGetNonzeroDeltaCountSlot() external pure returns (StorageSlot.Uint256SlotType slot) {
         return _nonzeroDeltaCountSlot();
     }
 
-    function manualGetTokenDeltasSlot() public pure returns (TokenDeltaMappingSlotType slot) {
+    function manualGetTokenDeltasSlot() external pure returns (TokenDeltaMappingSlotType slot) {
         return _tokenDeltasSlot();
     }
 }
