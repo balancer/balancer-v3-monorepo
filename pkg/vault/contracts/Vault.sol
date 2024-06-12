@@ -276,7 +276,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
         state.amountGivenScaled18 = _computeAmountGivenScaled18(params, poolData, state);
-
         state.swapFeePercentage = poolData.poolConfig.getStaticSwapFeePercentage();
     }
 
