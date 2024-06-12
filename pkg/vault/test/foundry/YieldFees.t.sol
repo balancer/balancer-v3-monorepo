@@ -4,13 +4,9 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { FEE_SCALING_FACTOR, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -243,7 +239,7 @@ contract YieldFeesTest is BaseVaultTest {
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
 
-        _testYieldFeesOnSwap(wstethRate, daiRate, protocolYieldFeePercentage, poolCreatorFeePercentage, false);
+        _testYieldFeesOnSwap(wstethRate, daiRate, protocolYieldFeePercentage, poolCreatorFeePercentage);
     }
 
     function testYieldFeesOnSwap() public {
@@ -254,15 +250,14 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
-        _testYieldFeesOnSwap(wstethRate, daiRate, protocolYieldFeePercentage, poolCreatorFeePercentage, true);
+        _testYieldFeesOnSwap(wstethRate, daiRate, protocolYieldFeePercentage, poolCreatorFeePercentage);
     }
 
     function _testYieldFeesOnSwap(
         uint256 wstethRate,
         uint256 daiRate,
         uint256 protocolYieldFeePercentage,
-        uint256 poolCreatorFeePercentage,
-        bool shouldSnap
+        uint256 poolCreatorFeePercentage
     ) private {
         pool = createPool();
         wstETHRateProvider.mockRate(wstethRate);
@@ -288,13 +283,7 @@ contract YieldFeesTest is BaseVaultTest {
 
         // Dummy swap
         vm.prank(alice);
-        if (shouldSnap) {
-            snapStart("swapWithProtocolAndCreatorYieldFees");
-        }
         router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, "");
-        if (shouldSnap) {
-            snapEnd();
-        }
 
         // No matter what the rates are, the value of wsteth grows from 1x to 10x.
         // Then, the protocol takes its cut out of the 9x difference.

@@ -76,9 +76,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         uint256 expectedBptAmountOut = (defaultAmount * 995) / 1000;
 
         vm.prank(alice);
-        snapStart("routerAddLiquidityUnbalancedWithCreatorFee");
         bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, expectedBptAmountOut, false, bytes(""));
-        snapEnd();
+
         // should mint correct amount of BPT tokens
         assertEq(bptAmountOut, expectedBptAmountOut, "Invalid amount of BPT");
     }
@@ -108,7 +107,6 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2 + 1; // mulUp
 
         vm.prank(alice);
-        snapStart("routerAddLiquiditySingleTokenExactOutWithCreatorFee");
         uint256 amountIn = router.addLiquiditySingleTokenExactOut(
             pool,
             dai,
@@ -118,7 +116,6 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
 
         (amountsIn, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountIn);
 
@@ -152,7 +149,6 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         protocolSwapFees[daiIdx] = swapFeeAmount / 2;
         poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2;
 
-        snapStart("routerRemoveLiquiditySingleTokenExactInWithCreatorFee");
         uint256 amountOut = router.removeLiquiditySingleTokenExactIn(
             pool,
             bptAmountIn,
@@ -161,7 +157,6 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
 
         (amountsOut, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountOut);
 
@@ -196,7 +191,6 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1; // mulUp
         poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2 + 1; // mulUp
 
-        snapStart("routerRemoveLiquiditySingleTokenExactOutWithCreatorFee");
         bptAmountIn = router.removeLiquiditySingleTokenExactOut(
             pool,
             2 * defaultAmount,
@@ -205,7 +199,6 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
 
         // amount + (amount / ( 100% - swapFee%)) / 2 + 1
         assertEq(bptAmountIn, defaultAmount + (defaultAmount / 99) / 2 + 1, "Wrong bptAmountIn");
