@@ -60,7 +60,10 @@ interface IVaultMainMock {
 
     function internalGetPoolTokenInfo(
         address
-    ) external view returns (TokenConfig[] memory, uint256[] memory, uint256[] memory, PoolConfig memory);
+    )
+        external
+        view
+        returns (IERC20[] memory, TokenInfo[] memory, uint256[] memory, uint256[] memory, PoolConfig memory);
 
     function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256);
 
@@ -200,8 +203,7 @@ interface IVaultMainMock {
     function manualRemoveLiquidity(
         PoolData memory poolData,
         RemoveLiquidityParams memory params,
-        uint256[] memory minAmountsOutScaled18,
-        VaultState memory vaultState
+        uint256[] memory minAmountsOutScaled18
     )
         external
         returns (

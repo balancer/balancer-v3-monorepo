@@ -247,7 +247,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
-            _poolTokenConfig[pool][token] = tokenData;
+
+            _poolTokenInfo[pool][token] = TokenInfo({
+                tokenType: tokenData.tokenType,
+                rateProvider: tokenData.rateProvider,
+                paysYieldFees: tokenData.paysYieldFees
+            });
 
             if (tokenData.tokenType == TokenType.STANDARD) {
                 if (hasRateProvider || tokenData.paysYieldFees) {
@@ -351,7 +356,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         if (poolData.poolConfig.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);
         }
-        uint256 numTokens = poolData.tokenConfig.length;
+        uint256 numTokens = poolData.tokens.length;
 
         InputHelpers.ensureInputLengthMatch(numTokens, exactAmountsIn.length);
 
@@ -391,8 +396,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     ) internal nonReentrant returns (uint256 bptAmountOut) {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
 
-        for (uint256 i = 0; i < poolData.tokenConfig.length; ++i) {
-            IERC20 actualToken = poolData.tokenConfig[i].token;
+        for (uint256 i = 0; i < poolData.tokens.length; ++i) {
+            IERC20 actualToken = poolData.tokens[i];
 
             // Tokens passed into `initialize` are the "expected" tokens.
             if (actualToken != tokens[i]) {
@@ -476,11 +481,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         external
         view
         withRegisteredPool(pool)
-        onlyVaultDelegateCall
-        returns (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory decimalScalingFactors)
+        returns (
+            IERC20[] memory tokens,
+            TokenInfo[] memory tokenInfo,
+            uint256[] memory balancesRaw,
+            uint256[] memory decimalScalingFactors
+        )
     {
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
-        return (poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors);
+        return (poolData.tokens, poolData.tokenInfo, poolData.balancesRaw, poolData.decimalScalingFactors);
     }
 
     /// @inheritdoc IVaultExtension

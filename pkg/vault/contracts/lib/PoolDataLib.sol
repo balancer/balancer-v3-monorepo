@@ -2,21 +2,17 @@
 
 pragma solidity ^0.8.24;
 
-import { PackedTokenBalance } from "./PackedTokenBalance.sol";
-import { PoolConfigLib } from "./PoolConfigLib.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {
-    PoolData,
-    Rounding,
-    TokenType,
-    PoolConfig,
-    TokenConfig
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { PackedTokenBalance } from "./PackedTokenBalance.sol";
+import { PoolConfigLib } from "./PoolConfigLib.sol";
 
 library PoolDataLib {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -25,13 +21,14 @@ library PoolDataLib {
     function load(
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
         PoolConfig memory poolConfig,
-        mapping(IERC20 => TokenConfig) storage poolTokenConfig,
+        mapping(IERC20 => TokenInfo) storage poolTokenInfo,
         Rounding roundingDirection
     ) internal view returns (PoolData memory poolData) {
         uint256 numTokens = poolTokenBalances.length();
         poolData.poolConfig = poolConfig;
 
-        poolData.tokenConfig = new TokenConfig[](numTokens);
+        poolData.tokens = new IERC20[](numTokens);
+        poolData.tokenInfo = new TokenInfo[](numTokens);
         poolData.balancesRaw = new uint256[](numTokens);
         poolData.balancesLiveScaled18 = new uint256[](numTokens);
         poolData.decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolData.poolConfig, numTokens);
@@ -41,7 +38,8 @@ library PoolDataLib {
 
         for (uint256 i = 0; i < numTokens; ++i) {
             (token, packedBalance) = poolTokenBalances.unchecked_at(i);
-            poolData.tokenConfig[i] = poolTokenConfig[token];
+            poolData.tokens[i] = token;
+            poolData.tokenInfo[i] = poolTokenInfo[token];
             updateTokenRate(poolData, i);
             updateRawAndLiveBalance(poolData, i, packedBalance.getBalanceRaw(), roundingDirection);
         }
@@ -59,7 +57,7 @@ library PoolDataLib {
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
         Rounding roundingDirection
     ) internal view {
-        uint256 numTokens = poolData.tokenConfig.length;
+        uint256 numTokens = poolData.tokens.length;
 
         // It's possible a reentrant hook changed the raw balances in Vault storage.
         // Update them before computing the live balances.
@@ -76,12 +74,12 @@ library PoolDataLib {
     }
 
     function updateTokenRate(PoolData memory poolData, uint256 tokenIndex) internal view {
-        TokenType tokenType = poolData.tokenConfig[tokenIndex].tokenType;
+        TokenType tokenType = poolData.tokenInfo[tokenIndex].tokenType;
 
         if (tokenType == TokenType.STANDARD) {
             poolData.tokenRates[tokenIndex] = FixedPoint.ONE;
         } else if (tokenType == TokenType.WITH_RATE) {
-            poolData.tokenRates[tokenIndex] = poolData.tokenConfig[tokenIndex].rateProvider.getRate();
+            poolData.tokenRates[tokenIndex] = poolData.tokenInfo[tokenIndex].rateProvider.getRate();
         } else {
             revert IVaultErrors.InvalidTokenConfiguration();
         }
@@ -104,32 +102,6 @@ library PoolDataLib {
             newRawBalance,
             poolData.decimalScalingFactors[tokenIndex],
             poolData.tokenRates[tokenIndex]
-        );
-    }
-
-    function increaseTokenBalance(
-        PoolData memory poolData,
-        uint256 tokenIndex,
-        uint256 amountToIncreaseRaw
-    ) internal pure {
-        updateRawAndLiveBalance(
-            poolData,
-            tokenIndex,
-            poolData.balancesRaw[tokenIndex] + amountToIncreaseRaw,
-            Rounding.ROUND_UP
-        );
-    }
-
-    function decreaseTokenBalance(
-        PoolData memory poolData,
-        uint256 tokenIndex,
-        uint256 amountToDecreaseRaw
-    ) internal pure {
-        updateRawAndLiveBalance(
-            poolData,
-            tokenIndex,
-            poolData.balancesRaw[tokenIndex] - amountToDecreaseRaw,
-            Rounding.ROUND_DOWN
         );
     }
 }

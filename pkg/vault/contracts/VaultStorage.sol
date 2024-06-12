@@ -64,8 +64,8 @@ contract VaultStorage {
     // as scaled 18-decimal FP values. Each value takes up half the storage slot (i.e., 128 bits).
     mapping(address => EnumerableMap.IERC20ToBytes32Map) internal _poolTokenBalances;
 
-    // Pool -> (token -> TokenConfig): The token configuration of each Pool's tokens.
-    mapping(address => mapping(IERC20 => TokenConfig)) internal _poolTokenConfig;
+    // Pool -> (token -> TokenInfo): The token configuration of each Pool's tokens.
+    mapping(address => mapping(IERC20 => TokenInfo)) internal _poolTokenInfo;
 
     /// @notice Global lock state. Unlock to operate with the vault.
     bool private __isUnlocked;
