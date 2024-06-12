@@ -249,20 +249,20 @@ contract PoolHooksMock is BasePoolHooks {
         uint256[] memory,
         bytes memory
     ) external override returns (bool, uint256[] memory hookAdjustedAmountsInRaw) {
-        (TokenConfig[] memory tokenConfig, , ) = _vault.getPoolTokenInfo(pool);
+        (IERC20[] memory tokens, , , ) = _vault.getPoolTokenInfo(pool);
         hookAdjustedAmountsInRaw = amountsInRaw;
 
         if (addLiquidityHookFeePercentage > 0) {
             for (uint256 i = 0; i < amountsInRaw.length; i++) {
                 uint256 hookFee = amountsInRaw[i].mulDown(addLiquidityHookFeePercentage);
                 hookAdjustedAmountsInRaw[i] += hookFee;
-                _vault.sendTo(tokenConfig[i].token, address(this), hookFee);
+                _vault.sendTo(tokens[i], address(this), hookFee);
             }
         } else if (addLiquidityHookDiscountPercentage > 0) {
             for (uint256 i = 0; i < amountsInRaw.length; i++) {
                 uint256 hookDiscount = amountsInRaw[i].mulDown(addLiquidityHookDiscountPercentage);
-                tokenConfig[i].token.transfer(address(_vault), hookDiscount);
-                _vault.settle(tokenConfig[i].token);
+                tokens[i].transfer(address(_vault), hookDiscount);
+                _vault.settle(tokens[i]);
                 hookAdjustedAmountsInRaw[i] -= hookDiscount;
             }
         }
@@ -279,20 +279,20 @@ contract PoolHooksMock is BasePoolHooks {
         uint256[] memory,
         bytes memory
     ) external override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
-        (TokenConfig[] memory tokenConfig, , ) = _vault.getPoolTokenInfo(pool);
+        (IERC20[] memory tokens, , , ) = _vault.getPoolTokenInfo(pool);
         hookAdjustedAmountsOutRaw = amountsOutRaw;
 
         if (removeLiquidityHookFeePercentage > 0) {
             for (uint256 i = 0; i < amountsOutRaw.length; i++) {
                 uint256 hookFee = amountsOutRaw[i].mulDown(removeLiquidityHookFeePercentage);
                 hookAdjustedAmountsOutRaw[i] -= hookFee;
-                _vault.sendTo(tokenConfig[i].token, address(this), hookFee);
+                _vault.sendTo(tokens[i], address(this), hookFee);
             }
         } else if (removeLiquidityHookDiscountPercentage > 0) {
             for (uint256 i = 0; i < amountsOutRaw.length; i++) {
                 uint256 hookDiscount = amountsOutRaw[i].mulDown(removeLiquidityHookDiscountPercentage);
-                tokenConfig[i].token.transfer(address(_vault), hookDiscount);
-                _vault.settle(tokenConfig[i].token);
+                tokens[i].transfer(address(_vault), hookDiscount);
+                _vault.settle(tokens[i]);
                 hookAdjustedAmountsOutRaw[i] += hookDiscount;
             }
         }

@@ -211,7 +211,7 @@ library HooksConfigLib {
         for (uint256 i = 0; i < hookAdjustedAmountsInRaw.length; i++) {
             if (hookAdjustedAmountsInRaw[i] > params.maxAmountsIn[i]) {
                 revert IVaultErrors.AmountInAboveMax(
-                    poolData.tokenConfig[i].token,
+                    poolData.tokens[i],
                     hookAdjustedAmountsInRaw[i],
                     params.maxAmountsIn[i]
                 );
@@ -300,7 +300,7 @@ library HooksConfigLib {
         for (uint256 i = 0; i < hookAdjustedAmountsOutRaw.length; i++) {
             if (hookAdjustedAmountsOutRaw[i] < params.minAmountsOut[i]) {
                 revert IVaultErrors.AmountOutBelowMin(
-                    poolData.tokenConfig[i].token,
+                    poolData.tokens[i],
                     hookAdjustedAmountsOutRaw[i],
                     params.minAmountsOut[i]
                 );
