@@ -56,8 +56,6 @@ contract VaultMock is IVaultMainMock, Vault {
     PoolFactoryMock private immutable _poolFactoryMock;
     InputHelpersMock private immutable _inputHelpersMock;
 
-    bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
-
     constructor(
         IVaultExtension vaultExtension,
         IAuthorizer authorizer,

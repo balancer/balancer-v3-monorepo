@@ -134,7 +134,7 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
 
     // Returns the correct block.timestamp to consider the pool unpaused
     function _getTimeAfterPoolPauseBufferPeriod() private view returns (uint256) {
-        uint256 bufferPeriodDuration = vault.getBufferPeriodDuration();
+        uint32 bufferPeriodDuration = vault.getBufferPeriodDuration();
         return _FIXED_POOL_PAUSE_END_TIME + bufferPeriodDuration + 1;
     }
 }
