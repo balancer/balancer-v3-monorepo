@@ -769,7 +769,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _mint(params.pool, hooksConfig.hooksContract, hookFee);
         } else if (hookAdjustedBptAmountIn < bptAmountIn) {
             uint256 hookDiscount = bptAmountIn - hookAdjustedBptAmountIn;
-            _approve(params.pool, hooksConfig.hooksContract, msg.sender, hookDiscount);
+            _spendAllowance(params.pool, hooksConfig.hooksContract, msg.sender, hookDiscount);
             _burn(params.pool, hooksConfig.hooksContract, hookDiscount);
             _mint(params.pool, params.from, hookDiscount);
         }
