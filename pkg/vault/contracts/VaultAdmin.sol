@@ -290,7 +290,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectProtocolFees(address pool) public nonReentrant withRegisteredPool(pool) onlyVaultDelegateCall {
+    function collectAggregateFees(address pool) public nonReentrant withRegisteredPool(pool) onlyVaultDelegateCall {
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
         address feeController = address(_protocolFeeController);
         uint256 numTokens = poolTokens.length;
@@ -301,17 +301,17 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             IERC20 token = poolTokens[i];
 
-            (totalSwapFees[i], totalYieldFees[i]) = _aggregateProtocolFeeAmounts[pool][token].fromPackedBalance();
+            (totalSwapFees[i], totalYieldFees[i]) = _aggregateFeeAmounts[pool][token].fromPackedBalance();
 
             if (totalSwapFees[i] > 0 || totalYieldFees[i] > 0) {
                 // The ProtocolFeeController will pull tokens from the Vault.
                 token.approve(feeController, totalSwapFees[i] + totalYieldFees[i]);
 
-                _aggregateProtocolFeeAmounts[pool][token] = 0;
+                _aggregateFeeAmounts[pool][token] = 0;
             }
         }
 
-        _protocolFeeController.receiveProtocolFees(pool, totalSwapFees, totalYieldFees);
+        _protocolFeeController.receiveAggregateFees(pool, totalSwapFees, totalYieldFees);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -326,7 +326,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         onlyVaultDelegateCall
     {
         PoolConfig memory config = _poolConfig[pool];
-        config.setAggregateProtocolSwapFeePercentage(newAggregateSwapFeePercentage);
+        config.setAggregateSwapFeePercentage(newAggregateSwapFeePercentage);
         _poolConfig[pool] = config;
     }
 
@@ -342,7 +342,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         onlyVaultDelegateCall
     {
         PoolConfig memory config = _poolConfig[pool];
-        config.setAggregateProtocolYieldFeePercentage(newAggregateYieldFeePercentage);
+        config.setAggregateYieldFeePercentage(newAggregateYieldFeePercentage);
         _poolConfig[pool] = config;
     }
 

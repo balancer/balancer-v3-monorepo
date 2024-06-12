@@ -124,11 +124,11 @@ interface IVaultAdmin {
     function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
 
     /**
-     * @notice Collects accumulated protocol swap and yield fees for the specified pool.
+     * @notice Collects accumulated aggregate swap and yield fees for the specified pool.
      * @dev Fees are sent to the ProtocolFeeController address.
-     * @param pool The pool on which all protocol fees should be collected
+     * @param pool The pool on which all aggregate fees should be collected
      */
-    function collectProtocolFees(address pool) external;
+    function collectAggregateFees(address pool) external;
 
     /**
      * @notice Update an aggregate swap fee percentage.
