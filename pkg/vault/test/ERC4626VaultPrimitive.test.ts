@@ -214,8 +214,8 @@ describe('ERC4626VaultPrimitive', function () {
       expect(await wDAI.balanceOf(lp)).to.eq(0);
       expect(await wUSDC.balanceOf(lp)).to.eq(0);
 
-      const [tokenConfig, balances] = await vault.getPoolTokenInfo(pool);
-      const tokenTypes = tokenConfig.map((config) => config.tokenType);
+      const [, tokenInfo, balances] = await vault.getPoolTokenInfo(pool);
+      const tokenTypes = tokenInfo.map((config) => config.tokenType);
 
       const expectedTokenTypes = boostedPoolTokens.map(() => TokenType.WITH_RATE);
       expect(tokenTypes).to.deep.equal(expectedTokenTypes);
