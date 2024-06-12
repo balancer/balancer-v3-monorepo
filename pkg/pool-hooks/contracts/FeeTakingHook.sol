@@ -31,7 +31,7 @@ contract FeeTakingHook is BasePoolHooks {
         address,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) external override onlyVault returns (bool) {
+    ) external view override onlyVault returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented. Returning true allows any pool, with
         // any configuration, to use this hook
         return true;
