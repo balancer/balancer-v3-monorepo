@@ -17,8 +17,8 @@ using AmplificationDataLib for AmplificationDataBits global;
 struct AmplificationData {
     uint64 startValue;
     uint64 endValue;
-    uint64 startTime;
-    uint64 endTime;
+    uint32 startTime;
+    uint32 endTime;
 }
 
 library AmplificationDataLib {

@@ -107,6 +107,22 @@ library HooksConfigLib {
         config.bits = config.bits.insertAddress(value, HOOKS_CONTRACT_OFFSET);
     }
 
+    function toHooksConfig(HooksConfigBits memory config) internal pure returns (HooksConfig memory) {
+        return
+            HooksConfig({
+                shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
+                shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
+                shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
+                shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
+                shouldCallBeforeRemoveLiquidity: config.shouldCallBeforeRemoveLiquidity(),
+                shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
+                shouldCallComputeDynamicSwapFee: config.shouldCallComputeDynamicSwapFee(),
+                shouldCallBeforeSwap: config.shouldCallBeforeSwap(),
+                shouldCallAfterSwap: config.shouldCallAfterSwap(),
+                hooksContract: config.getHooksContract()
+            });
+    }
+
     /**
      * @dev Check if dynamic swap fee hook should be called and call it. Throws an error if the hook contract fails to
      * execute the hook.

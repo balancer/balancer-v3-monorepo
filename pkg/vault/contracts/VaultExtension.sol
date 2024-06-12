@@ -302,7 +302,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.swapFeePercentage,
             params.pauseWindowEndTime,
             params.roleAccounts,
-            hooksConfig,
+            hooksConfig.toHooksConfig(),
             params.liquidityManagement
         );
     }
@@ -465,6 +465,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 pauseWindowEndTime: config.getPauseWindowEndTime(),
                 liquidityManagement: LiquidityManagement({
+                    // NOTE: supportUnbalancedLiquidity is inverted because false means it is supported
                     disableUnbalancedLiquidity: !config.supportsUnbalancedLiquidity(),
                     enableAddLiquidityCustom: config.supportsAddLiquidityCustom(),
                     enableRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom()
@@ -476,21 +477,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function getHooksConfig(
         address pool
     ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (HooksConfig memory) {
-        HooksConfigBits memory config = _hooksConfig[pool];
-
-        return
-            HooksConfig({
-                shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
-                shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
-                shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
-                shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
-                shouldCallBeforeRemoveLiquidity: config.shouldCallBeforeRemoveLiquidity(),
-                shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
-                shouldCallComputeDynamicSwapFee: config.shouldCallComputeDynamicSwapFee(),
-                shouldCallBeforeSwap: config.shouldCallBeforeSwap(),
-                shouldCallAfterSwap: config.shouldCallAfterSwap(),
-                hooksContract: config.getHooksContract()
-            });
+        return _hooksConfig[pool].toHooksConfig();
     }
 
     /// @inheritdoc IVaultExtension

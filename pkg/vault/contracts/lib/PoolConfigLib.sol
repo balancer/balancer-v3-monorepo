@@ -123,7 +123,7 @@ library PoolConfigLib {
     }
 
     function supportsUnbalancedLiquidity(PoolConfigBits memory config) internal pure returns (bool) {
-        // NOTE: The unbalanced liquidity flag is default-on (false means it is supported)
+        // NOTE: The unbalanced liquidity flag is default-on (false means it is supported). This function returns the inverted value.
         return !config.bits.decodeBool(UNBALANCED_LIQUIDITY_OFFSET);
     }
 

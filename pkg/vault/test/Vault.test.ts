@@ -22,6 +22,7 @@ import { TokenType } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { PoolRoleAccountsStruct } from '../typechain-types/contracts/Vault';
+import { IVaultEvents__factory } from '@balancer-labs/v3-solidity-utils/typechain-types';
 
 describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;

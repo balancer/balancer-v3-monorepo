@@ -29,7 +29,7 @@ interface IVaultEvents {
         uint256 swapFeePercentage,
         uint256 pauseWindowEndTime,
         PoolRoleAccounts roleAccounts,
-        HooksConfigBits hooksConfig,
+        HooksConfig hooksConfig,
         LiquidityManagement liquidityManagement
     );
 
