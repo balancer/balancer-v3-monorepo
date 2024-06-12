@@ -297,13 +297,13 @@ contract PoolHooksMock is BasePoolHooks {
                 for (uint256 i = 0; i < amountsOutRaw.length; i++) {
                     uint256 hookFee = amountsOutRaw[i].mulDown(removeLiquidityHookFeePercentage);
                     hookAdjustedAmountsOutRaw[i] -= hookFee;
-                    _vault.sendTo(tokenConfig[i].token, address(this), hookFee);
+                    _vault.sendTo(tokens[i], address(this), hookFee);
                 }
             } else if (removeLiquidityHookDiscountPercentage > 0) {
                 for (uint256 i = 0; i < amountsOutRaw.length; i++) {
                     uint256 hookDiscount = amountsOutRaw[i].mulDown(removeLiquidityHookDiscountPercentage);
-                    tokenConfig[i].token.transfer(address(_vault), hookDiscount);
-                    _vault.settle(tokenConfig[i].token);
+                    tokens[i].transfer(address(_vault), hookDiscount);
+                    _vault.settle(tokens[i]);
                     hookAdjustedAmountsOutRaw[i] += hookDiscount;
                 }
             }
