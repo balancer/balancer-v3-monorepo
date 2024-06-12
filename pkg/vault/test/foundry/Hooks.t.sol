@@ -142,9 +142,7 @@ contract HooksTest is BaseVaultTest {
                 0
             )
         );
-        snapStart("swapWithOnComputeDynamicSwapFeeHook");
         router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
-        snapEnd();
     }
 
     function testOnComputeDynamicSwapFeeHookReturningStaticFee() public {
@@ -214,9 +212,7 @@ contract HooksTest is BaseVaultTest {
                 pool
             )
         );
-        snapStart("swapWithOnBeforeSwapHook");
         router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
-        snapEnd();
     }
 
     function testOnBeforeSwapHookRevert() public {
@@ -271,9 +267,7 @@ contract HooksTest is BaseVaultTest {
             )
         );
 
-        snapStart("swapWithOnAfterSwapHook");
         router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
-        snapEnd();
     }
 
     function testOnAfterSwapHookRevert() public {
@@ -323,7 +317,6 @@ contract HooksTest is BaseVaultTest {
                 bytes("")
             )
         );
-        snapStart("addLiquidityWithOnBeforeHook");
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
@@ -331,7 +324,6 @@ contract HooksTest is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
     }
 
     // Before remove
@@ -386,7 +378,6 @@ contract HooksTest is BaseVaultTest {
             )
         );
         vm.prank(alice);
-        snapStart("removeLiquidityWithOnBeforeHook");
         router.removeLiquidityProportional(
             pool,
             bptAmount,
@@ -394,7 +385,6 @@ contract HooksTest is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
     }
 
     // After add
@@ -432,7 +422,6 @@ contract HooksTest is BaseVaultTest {
                 bytes("")
             )
         );
-        snapStart("addLiquidityWithOnAfterHook");
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
@@ -440,7 +429,6 @@ contract HooksTest is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
     }
 
     // After remove
@@ -496,7 +484,6 @@ contract HooksTest is BaseVaultTest {
         );
 
         vm.prank(alice);
-        snapStart("removeLiquidityWithOnAfterHook");
         router.removeLiquidityProportional(
             pool,
             bptAmount,
@@ -504,6 +491,5 @@ contract HooksTest is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
     }
 }

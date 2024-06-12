@@ -32,9 +32,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
         vm.prank(alice);
-        snapStart("vaultAddLiquidityProportional");
         amountsIn = router.addLiquidityProportional(pool, amountsIn, bptAmountOut, false, bytes(""));
-        snapEnd();
 
         // should mint correct amount of BPT tokens
         assertEq(bptAmountOut, defaultAmount, "Invalid amount of BPT");
@@ -48,9 +46,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
         vm.prank(alice);
-        snapStart("vaultAddLiquidityUnbalanced");
         bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, defaultAmount, false, bytes(""));
-        snapEnd();
 
         // should mint correct amount of BPT tokens
         assertEq(bptAmountOut, defaultAmount * 2, "Invalid amount of BPT");
@@ -80,7 +76,6 @@ contract VaultLiquidityTest is BaseVaultTest {
     function addLiquiditySingleTokenExactOut() public returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         bptAmountOut = defaultAmount;
         vm.prank(alice);
-        snapStart("vaultAddLiquiditySingleTokenExactOut");
         uint256 amountIn = router.addLiquiditySingleTokenExactOut(
             pool,
             dai,
@@ -89,7 +84,6 @@ contract VaultLiquidityTest is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
 
         (amountsIn, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountIn);
 
@@ -193,7 +187,6 @@ contract VaultLiquidityTest is BaseVaultTest {
     function removeLiquidityProportional() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         bptAmountIn = defaultAmount * 2;
 
-        snapStart("vaultRemoveLiquidityProportional");
         amountsOut = router.removeLiquidityProportional(
             pool,
             bptAmountIn,
@@ -201,7 +194,6 @@ contract VaultLiquidityTest is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
 
         // amountsOut are correct
         assertEq(amountsOut[0], defaultAmount, "Wrong AmountOut[0]");
@@ -215,7 +207,6 @@ contract VaultLiquidityTest is BaseVaultTest {
     function removeLiquiditySingleTokenExactIn() public returns (uint256[] memory amountsOut, uint256 bptAmountIn) {
         bptAmountIn = defaultAmount * 2;
 
-        snapStart("vaultRemoveLiquiditySingleTokenExactIn");
         uint256 amountOut = router.removeLiquiditySingleTokenExactIn(
             pool,
             bptAmountIn,
@@ -224,7 +215,6 @@ contract VaultLiquidityTest is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
 
         (amountsOut, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountOut);
 
@@ -252,7 +242,6 @@ contract VaultLiquidityTest is BaseVaultTest {
         amountsOut = new uint256[](2);
         amountsOut[daiIdx] = defaultAmount * 2;
 
-        snapStart("vaultRemoveLiquiditySingleTokenExactOut");
         bptAmountIn = router.removeLiquiditySingleTokenExactOut(
             pool,
             2 * defaultAmount,
@@ -261,7 +250,6 @@ contract VaultLiquidityTest is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
     }
 
     function testRemoveLiquiditySingleTokenExactOut() public {
