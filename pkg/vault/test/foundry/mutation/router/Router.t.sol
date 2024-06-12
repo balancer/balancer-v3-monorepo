@@ -55,7 +55,7 @@ contract RouterMutationTest is BaseVaultTest {
     function testInitializeHookWhenNotVault() public {
         IRouter.InitializeHookParams memory hookParams = IRouter.InitializeHookParams(
             msg.sender,
-            address(pool),
+            pool,
             tokens,
             amountsIn,
             0,
@@ -75,7 +75,7 @@ contract RouterMutationTest is BaseVaultTest {
     function testAddLiquidityHookWhenNotVault() public {
         IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
             msg.sender,
-            address(pool),
+            pool,
             amountsIn,
             0,
             AddLiquidityKind.PROPORTIONAL,
@@ -95,7 +95,7 @@ contract RouterMutationTest is BaseVaultTest {
     */
     function testRemoveLiquidityRecoveryHookWhenNotVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        router.removeLiquidityRecoveryHook(address(pool), msg.sender, amountsIn[0]);
+        router.removeLiquidityRecoveryHook(pool, msg.sender, amountsIn[0]);
     }
 
     /*
@@ -107,7 +107,7 @@ contract RouterMutationTest is BaseVaultTest {
         IRouter.SwapSingleTokenHookParams memory params = IRouter.SwapSingleTokenHookParams(
             msg.sender,
             SwapKind.EXACT_IN,
-            address(pool),
+            pool,
             IERC20(dai),
             IERC20(usdc),
             amountsIn[0],
@@ -130,7 +130,7 @@ contract RouterMutationTest is BaseVaultTest {
         IRouter.SwapSingleTokenHookParams memory params = IRouter.SwapSingleTokenHookParams(
             msg.sender,
             SwapKind.EXACT_IN,
-            address(pool),
+            pool,
             IERC20(dai),
             IERC20(usdc),
             amountsIn[0],
@@ -152,7 +152,7 @@ contract RouterMutationTest is BaseVaultTest {
     function testQueryAddLiquidityHookWhenNotVault() public {
         IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
             msg.sender,
-            address(pool),
+            pool,
             amountsIn,
             0,
             AddLiquidityKind.PROPORTIONAL,
@@ -172,7 +172,7 @@ contract RouterMutationTest is BaseVaultTest {
     function testQueryRemoveLiquidityHookWhenNotVault() public {
         IRouter.RemoveLiquidityHookParams memory params = IRouter.RemoveLiquidityHookParams(
             msg.sender,
-            address(pool),
+            pool,
             amountsIn,
             0,
             RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN,
@@ -191,6 +191,6 @@ contract RouterMutationTest is BaseVaultTest {
     */
     function testQueryRemoveLiquidityRecoveryHookWhenNoVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        router.queryRemoveLiquidityRecoveryHook(address(pool), msg.sender, 10);
+        router.queryRemoveLiquidityRecoveryHook(pool, msg.sender, 10);
     }
 }
