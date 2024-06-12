@@ -2,11 +2,21 @@
 
 pragma solidity ^0.8.24;
 
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import {
+    LiquidityManagement,
+    SwapKind,
+    TokenConfig
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
 
 contract FeeTakingHook is BasePoolHooks {
+    using FixedPoint for uint256;
+
     uint256 public hookSwapFeePercentage;
     uint256 public addLiquidityHookFeePercentage;
     uint256 public removeLiquidityHookFeePercentage;
@@ -14,7 +24,19 @@ contract FeeTakingHook is BasePoolHooks {
     constructor(IVault vault) BasePoolHooks(vault) {}
 
     /// @inheritdoc IHooks
-    function getHookFlags() external view override returns (HookFlags memory) {
+    function onRegister(
+        address,
+        address,
+        TokenConfig[] memory,
+        LiquidityManagement calldata
+    ) external override onlyVault returns (bool) {
+        // NOTICE: In real hooks, make sure this function is properly implemented. Returning true allows any pool, with
+        // any configuration, to use this hook
+        return true;
+    }
+
+    /// @inheritdoc IHooks
+    function getHookFlags() external pure override returns (HookFlags memory) {
         HookFlags memory hookFlags;
         hookFlags.shouldCallAfterSwap = true;
         hookFlags.shouldCallAfterAddLiquidity = true;

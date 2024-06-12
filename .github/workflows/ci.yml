@@ -155,3 +155,17 @@ jobs:
           path: pkg/
       - name: Test
         run: yarn workspace @balancer-labs/v3-pool-stable test:forge
+
+  test-forge-pool-hooks:
+    runs-on: ubuntu-latest
+    needs: lint-and-build
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
+      - name: Test
+        run: yarn workspace @balancer-labs/v3-pool-hooks test:forge
