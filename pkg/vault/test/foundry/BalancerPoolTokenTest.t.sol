@@ -14,7 +14,6 @@ import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
