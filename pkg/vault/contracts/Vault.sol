@@ -432,7 +432,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         poolData.updateRawAndLiveBalance(
             state.indexIn,
             poolData.balancesRaw[state.indexIn] + locals.balanceInIncrement,
-            Rounding.ROUND_DOWN
+            Rounding.ROUND_UP
         );
         poolData.updateRawAndLiveBalance(
             state.indexOut,
