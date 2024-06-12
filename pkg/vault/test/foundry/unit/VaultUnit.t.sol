@@ -70,6 +70,8 @@ contract VaultUnitTest is BaseTest {
     }
 
     function testComputeAndChargeAggregateProtocolSwapFees() public {
+        vault.manualSetPoolRegistered(pool, true);
+
         uint256 tokenIndex = 0;
         vault.manualSetAggregateProtocolSwapFeeAmount(pool, dai, 0);
 
@@ -103,6 +105,8 @@ contract VaultUnitTest is BaseTest {
     }
 
     function testComputeAndChargeAggregateProtocolSwapFeeIfPoolIsInRecoveryMode() public {
+        vault.manualSetPoolRegistered(pool, true);
+
         PoolData memory poolData;
         poolData.poolConfig.isPoolInRecoveryMode = true;
 

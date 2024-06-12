@@ -70,6 +70,8 @@ contract VaultUnitLiquidityTest is BaseTest {
         uint256[] memory initialBalances = new uint256[](tokens.length);
         vault.manualSetPoolTokenBalances(pool, tokens, initialBalances);
 
+        vault.manualSetPoolRegistered(pool, true);
+
         for (uint256 i = 0; i < tokens.length; i++) {
             vault.manualSetAggregateProtocolSwapFeeAmount(pool, tokens[i], 0);
         }

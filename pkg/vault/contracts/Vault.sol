@@ -194,14 +194,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
 
-        if (hooksConfig.onBeforeSwap(swapParams) == true) {
+        if (hooksConfig.onBeforeSwap(swapParams, params.pool)) {
             // The call to `onBeforeSwap` could potentially update token rates and balances.
             // We update `poolData.tokenRates`, `poolData.rawBalances` and `poolData.balancesLiveScaled18`
             // to ensure the `onSwap` and `onComputeDynamicSwapFee` are called with the current values.
             poolData.reloadBalancesAndRates(_poolTokenBalances[params.pool], Rounding.ROUND_DOWN);
 
             // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
-            state.amountGivenScaled18 = _computeAmountGivenScaled18(state.indexIn, state.indexOut, params, poolData);
+            state.amountGivenScaled18 = _computeAmountGivenScaled18(params, poolData, state);
 
             swapParams = _buildPoolSwapParams(params, state, poolData);
         }
@@ -225,7 +225,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountCalculatedScaled18;
         (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, swapParams);
 
-        hooksConfig.onAfterSwap(amountCalculatedScaled18, msg.sender, params, state, poolData);
+        // If the hook contract does not exist or does not implement onAfterSwap, HooksConfigLib returns the original
+        // amountCalculated. Otherwise, the new amount calculated is 'amountCalculated + delta'. If the underlying
+        // hook fails, or limits are violated, `onAfterSwap` will revert.
+        amountCalculated = hooksConfig.onAfterSwap(
+            amountCalculatedScaled18,
+            amountCalculated,
+            msg.sender,
+            params,
+            state,
+            poolData
+        );
+
+        if (params.kind == SwapKind.EXACT_IN) {
+            amountOut = amountCalculated;
+        } else {
+            amountIn = amountCalculated;
+        }
     }
 
     function _loadSwapState(
@@ -257,7 +273,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
-        state.amountGivenScaled18 = _computeAmountGivenScaled18(indexIn, indexOut, params, poolData);
+        state.amountGivenScaled18 = _computeAmountGivenScaled18(params, poolData, state);
         state.swapFeePercentage = poolData.poolConfig.getStaticSwapFeePercentage();
     }
 
@@ -283,22 +299,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * Uses amountGivenRaw and kind from `params`.
      */
     function _computeAmountGivenScaled18(
-        uint256 indexIn,
-        uint256 indexOut,
         SwapParams memory params,
-        PoolData memory poolData
+        PoolData memory poolData,
+        SwapState memory state
     ) private pure returns (uint256) {
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
         return
             params.kind == SwapKind.EXACT_IN
                 ? params.amountGivenRaw.toScaled18ApplyRateRoundDown(
-                    poolData.decimalScalingFactors[indexIn],
-                    poolData.tokenRates[indexIn]
+                    poolData.decimalScalingFactors[state.indexIn],
+                    poolData.tokenRates[state.indexIn]
                 )
                 : params.amountGivenRaw.toScaled18ApplyRateRoundUp(
-                    poolData.decimalScalingFactors[indexOut],
-                    poolData.tokenRates[indexOut]
+                    poolData.decimalScalingFactors[state.indexOut],
+                    poolData.tokenRates[state.indexOut]
                 );
     }
 
