@@ -312,18 +312,5 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
     function testSupportsIERC165() public {
         assertTrue(poolToken.supportsInterface(type(IERC165).interfaceId), "IERC165 not supported");
-        assertTrue(
-            poolToken.supportsInterface(type(ISwapFeePercentageBounds).interfaceId),
-            "ISwapFeePercentageBounds not supported"
-        );
-    }
-
-    function testDefaultBounds() public {
-        assertEq(ISwapFeePercentageBounds(poolToken).getMinimumSwapFeePercentage(), 0, "Minimum swap fee != 0");
-        assertEq(
-            ISwapFeePercentageBounds(poolToken).getMaximumSwapFeePercentage(),
-            FixedPoint.ONE,
-            "Minimum swap fee != 0"
-        );
     }
 }
