@@ -207,7 +207,11 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualSetPoolTokenConfig(address pool, IERC20[] memory tokens, TokenConfig[] memory tokenConfig) public {
         for (uint256 i = 0; i < tokens.length; ++i) {
-            _poolTokenConfig[pool][tokens[i]] = tokenConfig[i];
+            _poolTokenInfo[pool][tokens[i]] = TokenInfo({
+                tokenType: tokenConfig[i].tokenType,
+                rateProvider: tokenConfig[i].rateProvider,
+                paysYieldFees: tokenConfig[i].paysYieldFees
+            });
         }
     }
 
@@ -236,14 +240,21 @@ contract VaultMock is IVaultMainMock, Vault {
         public
         view
         returns (
-            TokenConfig[] memory tokenConfig,
+            IERC20[] memory tokens,
+            TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
             uint256[] memory decimalScalingFactors,
             PoolConfig memory poolConfig
         )
     {
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
-        return (poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors, poolData.poolConfig);
+        return (
+            poolData.tokens,
+            poolData.tokenInfo,
+            poolData.balancesRaw,
+            poolData.decimalScalingFactors,
+            poolData.poolConfig
+        );
     }
 
     function buildTokenConfig(IERC20[] memory tokens) public view returns (TokenConfig[] memory tokenConfig) {
@@ -517,8 +528,7 @@ contract VaultMock is IVaultMainMock, Vault {
     function manualRemoveLiquidity(
         PoolData memory poolData,
         RemoveLiquidityParams memory params,
-        uint256[] memory minAmountsOutScaled18,
-        VaultState memory vaultState
+        uint256[] memory minAmountsOutScaled18
     )
         external
         returns (
@@ -532,8 +542,7 @@ contract VaultMock is IVaultMainMock, Vault {
         (bptAmountIn, amountsOutRaw, amountsOutScaled18, returnData) = _removeLiquidity(
             poolData,
             params,
-            minAmountsOutScaled18,
-            vaultState
+            minAmountsOutScaled18
         );
 
         updatedPoolData = poolData;

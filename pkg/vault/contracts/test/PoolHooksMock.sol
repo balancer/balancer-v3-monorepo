@@ -19,7 +19,7 @@ import { RateProviderMock } from "./RateProviderMock.sol";
 import { BasePoolHooks } from "../BasePoolHooks.sol";
 
 contract PoolHooksMock is BasePoolHooks {
-    // using FixedPoint for uint256;
+    using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
     bool public failOnAfterInitialize;
@@ -41,6 +41,10 @@ contract PoolHooksMock is BasePoolHooks {
     bool public changePoolBalancesOnBeforeAddLiquidityHook;
     bool public changePoolBalancesOnBeforeRemoveLiquidityHook;
 
+    bool public shouldSettleDiscount;
+    uint256 public hookSwapFeePercentage;
+    uint256 public hookSwapDiscountPercentage;
+
     bool public swapReentrancyHookActive;
     address private _swapHookContract;
     bytes private _swapHookCalldata;
@@ -57,7 +61,7 @@ contract PoolHooksMock is BasePoolHooks {
     HookFlags private _hookFlags;
 
     constructor(IVault vault) BasePoolHooks(vault) {
-        // solhint-disable-previous-line no-empty-blocks
+        shouldSettleDiscount = true;
     }
 
     function onRegister(
@@ -106,7 +110,7 @@ contract PoolHooksMock is BasePoolHooks {
         return (!failOnComputeDynamicSwapFeeHook, finalSwapFee);
     }
 
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata) external override returns (bool success) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata, address) external override returns (bool) {
         if (changeTokenRateOnBeforeSwapHook) {
             _updateTokenRate();
         }
@@ -125,45 +129,69 @@ contract PoolHooksMock is BasePoolHooks {
         return !failOnBeforeSwapHook;
     }
 
-    function onAfterSwap(
-        IHooks.AfterSwapParams calldata params,
-        uint256 amountCalculatedScaled18
-    ) external view override returns (bool success) {
+    function onAfterSwap(IHooks.AfterSwapParams calldata params) external override returns (bool, uint256) {
         // check that actual pool balances match
-        (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory scalingFactors) = _vault
-            .getPoolTokenInfo(_pool);
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory scalingFactors) = _vault
+            .getPoolTokenInfo(params.pool);
 
-        uint256[] memory currentLiveBalances = IVaultMock(address(_vault)).getCurrentLiveBalances(_pool);
+        uint256[] memory currentLiveBalances = IVaultMock(address(_vault)).getCurrentLiveBalances(params.pool);
 
-        uint256[] memory rates = _vault.getPoolTokenRates(_pool);
+        uint256[] memory rates = _vault.getPoolTokenRates(params.pool);
 
-        for (uint256 i = 0; i < tokenConfig.length; ++i) {
-            if (tokenConfig[i].token == params.tokenIn) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            if (tokens[i] == params.tokenIn) {
                 if (params.tokenInBalanceScaled18 != currentLiveBalances[i]) {
-                    return false;
+                    return (false, params.amountCalculatedRaw);
                 }
                 uint256 expectedTokenInBalanceRaw = params.tokenInBalanceScaled18.toRawUndoRateRoundDown(
                     scalingFactors[i],
                     rates[i]
                 );
                 if (expectedTokenInBalanceRaw != balancesRaw[i]) {
-                    return false;
+                    return (false, params.amountCalculatedRaw);
                 }
-            } else if (tokenConfig[i].token == params.tokenOut) {
+            } else if (tokens[i] == params.tokenOut) {
                 if (params.tokenOutBalanceScaled18 != currentLiveBalances[i]) {
-                    return false;
+                    return (false, params.amountCalculatedRaw);
                 }
                 uint256 expectedTokenOutBalanceRaw = params.tokenOutBalanceScaled18.toRawUndoRateRoundDown(
                     scalingFactors[i],
                     rates[i]
                 );
                 if (expectedTokenOutBalanceRaw != balancesRaw[i]) {
-                    return false;
+                    return (false, params.amountCalculatedRaw);
                 }
             }
         }
 
-        return amountCalculatedScaled18 > 0 && !failOnAfterSwapHook;
+        uint256 hookAdjustedAmountCalculatedRaw = params.amountCalculatedRaw;
+        if (hookSwapFeePercentage > 0) {
+            uint256 hookFee = hookAdjustedAmountCalculatedRaw.mulDown(hookSwapFeePercentage);
+            if (params.kind == SwapKind.EXACT_IN) {
+                hookAdjustedAmountCalculatedRaw -= hookFee;
+                _vault.sendTo(params.tokenOut, address(this), hookFee);
+            } else {
+                hookAdjustedAmountCalculatedRaw += hookFee;
+                _vault.sendTo(params.tokenIn, address(this), hookFee);
+            }
+        } else if (hookSwapDiscountPercentage > 0) {
+            uint256 hookDiscount = hookAdjustedAmountCalculatedRaw.mulDown(hookSwapDiscountPercentage);
+            if (params.kind == SwapKind.EXACT_IN) {
+                hookAdjustedAmountCalculatedRaw += hookDiscount;
+                if (shouldSettleDiscount) {
+                    params.tokenOut.transfer(address(_vault), hookDiscount);
+                    _vault.settle(params.tokenOut);
+                }
+            } else {
+                hookAdjustedAmountCalculatedRaw -= hookDiscount;
+                if (shouldSettleDiscount) {
+                    params.tokenIn.transfer(address(_vault), hookDiscount);
+                    _vault.settle(params.tokenIn);
+                }
+            }
+        }
+
+        return (params.amountCalculatedScaled18 > 0 && !failOnAfterSwapHook, hookAdjustedAmountCalculatedRaw);
     }
 
     // Liquidity lifecycle hooks
@@ -350,6 +378,18 @@ contract PoolHooksMock is BasePoolHooks {
 
     function setPool(address pool) external {
         _pool = pool;
+    }
+
+    function setShouldSettleDiscount(bool shouldSettleDiscountFlag) external {
+        shouldSettleDiscount = shouldSettleDiscountFlag;
+    }
+
+    function setHookSwapFeePercentage(uint256 feePercentage) external {
+        hookSwapFeePercentage = feePercentage;
+    }
+
+    function setHookSwapDiscountPercentage(uint256 discountPercentage) external {
+        hookSwapDiscountPercentage = discountPercentage;
     }
 
     function allowFactory(address factory) external {

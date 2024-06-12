@@ -155,7 +155,7 @@ contract RouterCommon is IRouterCommon, VaultGuard {
         return _getSenderSlot().tload();
     }
 
-    function _getSenderSlot() internal view returns (StorageSlot.AddressSlotType) {
+    function _getSenderSlot() internal pure returns (StorageSlot.AddressSlotType) {
         return _SENDER_SLOT.asAddress();
     }
 }
