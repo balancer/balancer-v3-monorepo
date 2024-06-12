@@ -311,6 +311,70 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         _checkRemoveLiquidityHookTestResults(vars, expectedAmountsOut, expectedBptAmountIn, hookFee, 0, true);
     }
 
+    function testHookDiscountRemoveLiquidityExactOut__Fuzz(
+        uint256 expectedDaiOut,
+        uint256 hookDiscountPercentage
+    ) public {
+        // Add liquidity so bob has BPT to remove liquidity
+        vm.startPrank(bob);
+        router.addLiquidityUnbalanced(
+            pool,
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            poolInitAmount,
+            false,
+            bytes("")
+        );
+        BalancerPoolToken(pool).transfer(poolHooksContract, poolInitAmount);
+        vm.stopPrank();
+
+        // Add discount between 0 and 100%
+        hookDiscountPercentage = bound(hookDiscountPercentage, 0, 1e18);
+        PoolHooksMock(poolHooksContract).setRemoveLiquidityHookDiscountPercentage(hookDiscountPercentage);
+
+        // Make sure bob has enough BPTs to pay for the transaction
+        expectedDaiOut = bound(expectedDaiOut, 1e6, poolInitAmount);
+        uint256[] memory expectedAmountsOut = new uint256[](2);
+        expectedAmountsOut[daiIdx] = expectedDaiOut;
+
+        uint256[] memory expectedBalances = [2 * poolInitAmount, 2 * poolInitAmount].toMemoryArray();
+        (uint256 bptAmountInToPool, ) = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
+            expectedBalances,
+            daiIdx,
+            expectedDaiOut,
+            BalancerPoolToken(pool).totalSupply(),
+            0,
+            IBasePool(pool).computeInvariant
+        );
+        expectedBalances[daiIdx] -= expectedDaiOut;
+        uint256 hookDiscount = bptAmountInToPool.mulDown(hookDiscountPercentage);
+        uint256 expectedBptAmountIn = bptAmountInToPool - hookDiscount;
+
+        vm.prank(poolHooksContract);
+        BalancerPoolToken(pool).approve(address(router), hookDiscount);
+
+        HookTestLocals memory vars = _createHookTestLocals();
+
+        vm.prank(bob);
+        vm.expectCall(
+            address(poolHooksContract),
+            abi.encodeWithSelector(
+                IHooks.onAfterRemoveLiquidity.selector,
+                address(router),
+                pool,
+                RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                bptAmountInToPool,
+                expectedAmountsOut,
+                expectedAmountsOut,
+                expectedBalances,
+                bytes("")
+            )
+        );
+
+        router.removeLiquiditySingleTokenExactOut(pool, bptAmountInToPool, dai, expectedDaiOut, false, bytes(""));
+
+        _checkRemoveLiquidityHookTestResults(vars, expectedAmountsOut, expectedBptAmountIn, 0, hookDiscount, true);
+    }
+
     struct WalletState {
         uint256 daiBefore;
         uint256 daiAfter;
