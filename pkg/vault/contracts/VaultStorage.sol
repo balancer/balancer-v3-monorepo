@@ -39,9 +39,6 @@ contract VaultStorage {
     // This maximum token count is also hard-coded in `PoolConfigLib`.
     uint256 internal constant _MAX_TOKENS = 4;
 
-    // Maximum pool swap fee percentage.
-    uint256 internal constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
-
     // Maximum pause and buffer period durations.
     uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
     uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 90 days;

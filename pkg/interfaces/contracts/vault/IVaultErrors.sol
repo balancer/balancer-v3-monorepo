@@ -163,9 +163,6 @@ interface IVaultErrors {
                                      Fees
     *******************************************************************************/
 
-    /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
-    error SwapFeePercentageTooHigh();
-
     /**
      * @dev Error raised when the sum of the parts (aggregate swap or yield fee)
      * is greater than the whole (total swap or yield fee). Also validated when the protocol fee
@@ -175,13 +172,23 @@ interface IVaultErrors {
 
     /**
      * @dev  Error raised when the swap fee percentage is less than the minimum allowed value.
-     * The Vault itself does not impose a universal minimum. Rather, it asks each pool whether
-     * it supports the `IMinimumSwapFee` interface. If it does, the Vault validates against the
-     * minimum value returned by the pool.
+     * The Vault itself does not impose a universal minimum. Rather, it validates against the
+     * range specified by the `ISwapFeePercentageBounds` interface. and reverts with this error
+     * if it is below the minimum value returned by the pool.
      *
-     * Pools with dynamic fees do not check for a lower limit.
+     * Pools with dynamic fees do not check these limits.
      */
     error SwapFeePercentageTooLow();
+
+    /**
+     * @dev  Error raised when the swap fee percentage is greater than the maximum allowed value.
+     * The Vault itself does not impose a universal minimum. Rather, it validates against the
+     * range specified by the `ISwapFeePercentageBounds` interface. and reverts with this error
+     * if it is above the maximum value returned by the pool.
+     *
+     * Pools with dynamic fees do not check these limits.
+     */
+    error SwapFeePercentageTooHigh();
 
     /*******************************************************************************
                                     Queries
