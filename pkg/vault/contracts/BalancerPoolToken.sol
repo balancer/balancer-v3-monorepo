@@ -10,7 +10,6 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -28,7 +27,6 @@ contract BalancerPoolToken is
     IERC20,
     IERC20Metadata,
     IERC20Permit,
-    ISwapFeePercentageBounds,
     EIP712,
     Nonces,
     ERC165,
@@ -172,22 +170,5 @@ contract BalancerPoolToken is
      */
     function getRate() public view virtual returns (uint256) {
         return getVault().getBptRate(address(this));
-    }
-
-    /// Min/Max swap fee limits. By default, allow the full 0-100% range.
-
-    /// @inheritdoc ERC165
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return interfaceId == type(ISwapFeePercentageBounds).interfaceId || super.supportsInterface(interfaceId);
-    }
-
-    /// @inheritdoc ISwapFeePercentageBounds
-    function getMinimumSwapFeePercentage() external pure virtual returns (uint256) {
-        return 0;
-    }
-
-    /// @inheritdoc ISwapFeePercentageBounds
-    function getMaximumSwapFeePercentage() external pure virtual returns (uint256) {
-        return FixedPoint.ONE;
     }
 }

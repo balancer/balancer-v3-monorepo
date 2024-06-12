@@ -116,7 +116,7 @@ interface IVaultAdmin {
     /**
      * @notice Assigns a new static swap fee percentage to the specified pool.
      * @dev This is a permissioned function, disabled if the pool is paused. The swap fee percentage must be within
-     * the bounds specified by `ISwapFeePercentageBounds`; pools may override one or both of these bounds.
+     * the bounds specified by the pool's implementation of `ISwapFeePercentageBounds`.
      * Emits the SwapFeePercentageChanged event.
      *
      * @param pool The address of the pool for which the static swap fee will be changed

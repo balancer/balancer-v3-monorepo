@@ -4,10 +4,11 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ISwapFeePercentageBounds } from "./ISwapFeePercentageBounds.sol";
 import { SwapKind } from "./VaultTypes.sol";
 
 /// @notice Interface for a Base Pool
-interface IBasePool {
+interface IBasePool is ISwapFeePercentageBounds {
     /**
      * @notice Gets the tokens registered to a pool.
      * @dev Delegated to the Vault; added here as a convenience, mainly for off-chain processes.
