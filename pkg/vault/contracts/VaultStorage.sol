@@ -104,7 +104,7 @@ contract VaultStorage {
     // Stored as a convenience, to avoid calculating it on every operation.
     uint32 internal immutable _vaultBufferPeriodDuration;
 
-    // protocol fees and paused flags.
+    // Vault pause and query flags.
     VaultState internal _vaultState;
 
     // pool -> roleId (corresponding to a particular function) -> PoolFunctionPermission.
@@ -113,7 +113,7 @@ contract VaultStorage {
     // pool -> PoolRoleAccounts (accounts assigned to specific roles; e.g., pauseManager).
     mapping(address => PoolRoleAccounts) internal _poolRoleAccounts;
 
-    // Contract that receives protocol swap and yield fees
+    // Contract that receives aggregate swap and yield fees
     IProtocolFeeController internal _protocolFeeController;
 
     // Buffers are a vault internal concept, keyed on the wrapped token address.
