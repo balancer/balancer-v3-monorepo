@@ -3,19 +3,15 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
 
-import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
@@ -24,10 +20,6 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Router } from "../../contracts/Router.sol";
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
-import { VaultMock } from "../../contracts/test/VaultMock.sol";
-import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
-
-import { VaultMockDeployer } from "./utils/VaultMockDeployer.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -251,9 +243,7 @@ contract RouterTest is BaseVaultTest {
         checkAddLiquidityPreConditions();
 
         vm.prank(alice);
-        snapStart("routerAddLiquidityWETH");
         router.addLiquidityCustom(address(wethPool), wethDaiAmountsIn, bptAmountOut, false, bytes(""));
-        snapEnd();
 
         // weth was deposited, pool tokens were minted to Alice.
         assertEq(defaultBalance - weth.balanceOf(alice), ethAmountIn, "Wrong ETH balance");
@@ -272,7 +262,6 @@ contract RouterTest is BaseVaultTest {
     function testAddLiquidityNative() public {
         checkAddLiquidityPreConditions();
 
-        snapStart("routerAddLiquidityNative");
         vm.prank(alice);
         router.addLiquidityCustom{ value: ethAmountIn }(
             address(wethPool),
@@ -281,7 +270,6 @@ contract RouterTest is BaseVaultTest {
             true,
             bytes("")
         );
-        snapEnd();
 
         // weth was deposited, pool tokens were minted to Alice.
         assertEq(address(alice).balance, defaultBalance - ethAmountIn, "Wrong ETH balance");
@@ -322,9 +310,7 @@ contract RouterTest is BaseVaultTest {
         checkRemoveLiquidityPreConditions();
 
         wethIsEth = false;
-        snapStart("routerRemoveLiquidityWETH");
         router.removeLiquidityCustom(address(wethPool), exactBptAmount, wethDaiAmountsIn, wethIsEth, "");
-        snapEnd();
 
         // Liquidity position was removed, Alice gets weth back
         assertEq(weth.balanceOf(alice), defaultBalance + ethAmountIn, "Wrong WETH balance");
@@ -348,7 +334,6 @@ contract RouterTest is BaseVaultTest {
         uint256 aliceNativeBalanceBefore = address(alice).balance;
         checkRemoveLiquidityPreConditions();
 
-        snapStart("routerRemoveLiquidityNative");
         router.removeLiquidityCustom(
             address(wethPool),
             exactBptAmount,
@@ -356,7 +341,6 @@ contract RouterTest is BaseVaultTest {
             wethIsEth,
             ""
         );
-        snapEnd();
 
         // Liquidity position was removed, Alice gets ETH back
         assertEq(weth.balanceOf(alice), defaultBalance, "Wrong WETH balance");
@@ -370,7 +354,6 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = false;
 
         vm.prank(alice);
-        snapStart("routerSwapSingleTokenExactInWETH");
         uint256 outputTokenAmount = router.swapSingleTokenExactIn(
             address(wethPool),
             weth,
@@ -381,7 +364,6 @@ contract RouterTest is BaseVaultTest {
             wethIsEth,
             ""
         );
-        snapEnd();
 
         assertEq(weth.balanceOf(alice), defaultBalance - ethAmountIn, "Wrong WETH balance");
         assertEq(dai.balanceOf(alice), defaultBalance + outputTokenAmount, "Wrong DAI balance");
@@ -414,7 +396,6 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = true;
 
         vm.prank(alice);
-        snapStart("routerSwapSingleTokenExactInNative");
         router.swapSingleTokenExactIn{ value: ethAmountIn }(
             address(wethPool),
             weth,
@@ -425,7 +406,6 @@ contract RouterTest is BaseVaultTest {
             wethIsEth,
             ""
         );
-        snapEnd();
 
         assertEq(weth.balanceOf(alice), defaultBalance, "Wrong WETH balance");
         assertEq(dai.balanceOf(alice), defaultBalance + ethAmountIn, "Wrong DAI balance");

@@ -4,13 +4,9 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { FEE_SCALING_FACTOR, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -121,7 +117,7 @@ contract YieldFeesTest is BaseVaultTest {
             poolCreatorFeePercentage
         );
         // Set non-zero yield fee
-        vault.manualSetAggregateProtocolYieldFeePercentage(pool, aggregateYieldFeePercentage);
+        vault.manualSetAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage);
 
         uint256[] memory originalLiveBalances = verifyLiveBalances(wstethRate, daiRate, roundUp);
 
@@ -144,10 +140,10 @@ contract YieldFeesTest is BaseVaultTest {
         }
 
         // Should be no protocol fees on dai, since it is yield fee exempt
-        assertEq(vault.manualGetAggregateProtocolYieldFeeAmount(pool, dai), 0, "Protocol fees on exempt dai are not 0");
+        assertEq(vault.manualGetAggregateYieldFeeAmount(pool, dai), 0, "Protocol fees on exempt dai are not 0");
 
         // There should be fees on non-exempt wsteth
-        uint256 actualProtocolFee = vault.manualGetAggregateProtocolYieldFeeAmount(pool, wsteth);
+        uint256 actualProtocolFee = vault.manualGetAggregateYieldFeeAmount(pool, wsteth);
         assertTrue(actualProtocolFee > 0, "wstETH did not collect any protocol fees");
 
         // How much should the fee be?
@@ -243,7 +239,7 @@ contract YieldFeesTest is BaseVaultTest {
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
 
-        _testYieldFeesOnSwap(wstethRate, daiRate, protocolYieldFeePercentage, poolCreatorFeePercentage, false);
+        _testYieldFeesOnSwap(wstethRate, daiRate, protocolYieldFeePercentage, poolCreatorFeePercentage);
     }
 
     function testYieldFeesOnSwap() public {
@@ -254,15 +250,14 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
-        _testYieldFeesOnSwap(wstethRate, daiRate, protocolYieldFeePercentage, poolCreatorFeePercentage, true);
+        _testYieldFeesOnSwap(wstethRate, daiRate, protocolYieldFeePercentage, poolCreatorFeePercentage);
     }
 
     function _testYieldFeesOnSwap(
         uint256 wstethRate,
         uint256 daiRate,
         uint256 protocolYieldFeePercentage,
-        uint256 poolCreatorFeePercentage,
-        bool shouldSnap
+        uint256 poolCreatorFeePercentage
     ) private {
         pool = createPool();
         wstETHRateProvider.mockRate(wstethRate);
@@ -270,18 +265,15 @@ contract YieldFeesTest is BaseVaultTest {
 
         initPool();
 
-        require(vault.manualGetAggregateProtocolYieldFeeAmount(pool, dai) == 0, "Initial protocol fees for DAI not 0");
-        require(
-            vault.manualGetAggregateProtocolYieldFeeAmount(pool, wsteth) == 0,
-            "Initial protocol fees for wstETH not 0"
-        );
+        require(vault.manualGetAggregateYieldFeeAmount(pool, dai) == 0, "Initial protocol fees for DAI not 0");
+        require(vault.manualGetAggregateYieldFeeAmount(pool, wsteth) == 0, "Initial protocol fees for wstETH not 0");
 
         uint256 aggregateYieldFeePercentage = _getAggregateFeePercentage(
             protocolYieldFeePercentage,
             poolCreatorFeePercentage
         );
 
-        vault.manualSetAggregateProtocolYieldFeePercentage(pool, aggregateYieldFeePercentage);
+        vault.manualSetAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage);
 
         // Pump the rates 10 times
         wstethRate *= 10;
@@ -291,24 +283,18 @@ contract YieldFeesTest is BaseVaultTest {
 
         // Dummy swap
         vm.prank(alice);
-        if (shouldSnap) {
-            snapStart("swapWithProtocolAndCreatorYieldFees");
-        }
         router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, "");
-        if (shouldSnap) {
-            snapEnd();
-        }
 
         // No matter what the rates are, the value of wsteth grows from 1x to 10x.
         // Then, the protocol takes its cut out of the 9x difference.
 
         assertApproxEqAbs(
-            vault.manualGetAggregateProtocolYieldFeeAmount(pool, wsteth),
+            vault.manualGetAggregateYieldFeeAmount(pool, wsteth),
             ((poolInitAmount * 9) / 10).mulDown(aggregateYieldFeePercentage),
             1e3,
             "Yield fees for wstETH is not the expected one"
         );
-        assertEq(vault.manualGetAggregateProtocolYieldFeeAmount(pool, dai), 0, "Yield fees for exempt dai are not 0");
+        assertEq(vault.manualGetAggregateYieldFeeAmount(pool, dai), 0, "Yield fees for exempt dai are not 0");
     }
 
     function verifyLiveBalances(

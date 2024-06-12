@@ -65,11 +65,11 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         assertEq(feePercentage, 0, "Pool protocol yield fee percentage is non-zero");
         assertFalse(isOverride, "Pool protocol yield fee is an override");
 
-        uint256[] memory feeAmounts = feeController.getAggregateProtocolFeeAmounts(pool);
+        uint256[] memory feeAmounts = feeController.getProtocolFeeAmounts(pool);
         assertEq(feeAmounts[0], 0, "Collected protocol fee amount [0] is non-zero");
         assertEq(feeAmounts[1], 0, "Collected protocol fee amount [1] is non-zero");
 
-        feeAmounts = feeController.getAggregatePoolCreatorFeeAmounts(pool);
+        feeAmounts = feeController.getPoolCreatorFeeAmounts(pool);
         assertEq(feeAmounts[0], 0, "Collected creator fee amount [0] is non-zero");
         assertEq(feeAmounts[1], 0, "Collected creator fee amount [1] is non-zero");
     }
@@ -185,13 +185,9 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
         // Aggregate percentage with no creator fee should just be the global fee percentages
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
+        assertEq(poolConfig.getAggregateSwapFeePercentage(), MAX_PROTOCOL_SWAP_FEE, "Pool aggregate swap fee != MAX");
         assertEq(
-            poolConfig.getAggregateProtocolSwapFeePercentage(),
-            MAX_PROTOCOL_SWAP_FEE,
-            "Pool aggregate swap fee != MAX"
-        );
-        assertEq(
-            poolConfig.getAggregateProtocolYieldFeePercentage(),
+            poolConfig.getAggregateYieldFeePercentage(),
             MAX_PROTOCOL_YIELD_FEE,
             "Pool aggregate yield fee != MAX"
         );
@@ -249,16 +245,8 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         );
 
         poolConfig = vault.getPoolConfig(pool);
-        assertEq(
-            poolConfig.getAggregateProtocolSwapFeePercentage(),
-            expectedAggregateSwapFee,
-            "Wrong aggregate swap fee"
-        );
-        assertEq(
-            poolConfig.getAggregateProtocolYieldFeePercentage(),
-            expectedAggregateYieldFee,
-            "Wrong aggregate yield fee"
-        );
+        assertEq(poolConfig.getAggregateSwapFeePercentage(), expectedAggregateSwapFee, "Wrong aggregate swap fee");
+        assertEq(poolConfig.getAggregateYieldFeePercentage(), expectedAggregateYieldFee, "Wrong aggregate yield fee");
     }
 
     function testSettingPoolProtocolSwapFee() public {
@@ -287,7 +275,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
         // Check that pool config has the right value
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
-        assertEq(poolConfig.getAggregateProtocolSwapFeePercentage(), CUSTOM_PROTOCOL_SWAP_FEE);
+        assertEq(poolConfig.getAggregateSwapFeePercentage(), CUSTOM_PROTOCOL_SWAP_FEE);
     }
 
     function testSettingPoolProtocolSwapFeeTooHigh() public {
@@ -342,7 +330,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
         // Check that pool config has the right value
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
-        assertEq(poolConfig.getAggregateProtocolYieldFeePercentage(), CUSTOM_PROTOCOL_YIELD_FEE);
+        assertEq(poolConfig.getAggregateYieldFeePercentage(), CUSTOM_PROTOCOL_YIELD_FEE);
     }
 
     function testSettingPoolProtocolYieldFeeTooHigh() public {
@@ -517,11 +505,11 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         _registerPoolWithMaxProtocolFees();
         _verifyPoolProtocolFeePercentages(pool);
 
-        require(vault.getAggregateProtocolSwapFeeAmount(pool, dai) == 0, "Non-zero initial DAI protocol swap fees");
-        require(vault.getAggregateProtocolSwapFeeAmount(pool, usdc) == 0, "Non-zero initial USDC protocol swap fees");
+        require(vault.getAggregateSwapFeeAmount(pool, dai) == 0, "Non-zero initial DAI protocol swap fees");
+        require(vault.getAggregateSwapFeeAmount(pool, usdc) == 0, "Non-zero initial USDC protocol swap fees");
 
-        require(vault.getAggregateProtocolYieldFeeAmount(pool, dai) == 0, "Non-zero initial DAI protocol yield fees");
-        require(vault.getAggregateProtocolYieldFeeAmount(pool, usdc) == 0, "Non-zero initial USDC protocol yield fees");
+        require(vault.getAggregateYieldFeeAmount(pool, dai) == 0, "Non-zero initial DAI protocol yield fees");
+        require(vault.getAggregateYieldFeeAmount(pool, usdc) == 0, "Non-zero initial USDC protocol yield fees");
 
         // Set a creator fee percentage (before there are any fees), so they will be disaggregated upon collection.
         vm.startPrank(lp);
@@ -536,28 +524,24 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             MAX_PROTOCOL_YIELD_FEE.complement().mulDown(POOL_CREATOR_YIELD_FEE);
 
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
-        assertEq(poolConfig.getAggregateProtocolSwapFeePercentage(), expectedSwapFeePercentage);
-        assertEq(poolConfig.getAggregateProtocolYieldFeePercentage(), expectedYieldFeePercentage);
+        assertEq(poolConfig.getAggregateSwapFeePercentage(), expectedSwapFeePercentage);
+        assertEq(poolConfig.getAggregateYieldFeePercentage(), expectedYieldFeePercentage);
 
-        vault.manualSetAggregateProtocolSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
-        vault.manualSetAggregateProtocolYieldFeeAmount(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
+        vault.manualSetAggregateYieldFeeAmount(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);
 
         // Pool should have the protocol swap and yield fees.
-        assertEq(
-            vault.getAggregateProtocolSwapFeeAmount(pool, dai),
-            PROTOCOL_SWAP_FEE_AMOUNT,
-            "Wrong DAI protocol swap fees"
-        );
-        assertEq(vault.getAggregateProtocolSwapFeeAmount(pool, usdc), 0, "Non-zero USDC protocol swap fees");
+        assertEq(vault.getAggregateSwapFeeAmount(pool, dai), PROTOCOL_SWAP_FEE_AMOUNT, "Wrong DAI protocol swap fees");
+        assertEq(vault.getAggregateSwapFeeAmount(pool, usdc), 0, "Non-zero USDC protocol swap fees");
 
-        assertEq(vault.getAggregateProtocolYieldFeeAmount(pool, dai), 0, "Non-zero DAI protocol yield fees");
+        assertEq(vault.getAggregateYieldFeeAmount(pool, dai), 0, "Non-zero DAI protocol yield fees");
         assertEq(
-            vault.getAggregateProtocolYieldFeeAmount(pool, usdc),
+            vault.getAggregateYieldFeeAmount(pool, usdc),
             PROTOCOL_YIELD_FEE_AMOUNT,
             "Wrong USDC protocol yield fees"
         );
 
-        // Collecting fees will emit events, and call `receiveProtocolFees`.
+        // Collecting fees will emit events, and call `receiveAggregateFees`.
         vm.expectEmit();
         emit IProtocolFeeController.ProtocolSwapFeeCollected(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
 
@@ -571,49 +555,38 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
         vm.expectCall(
             address(feeController),
-            abi.encodeWithSelector(IProtocolFeeController.receiveProtocolFees.selector, pool, swapAmounts, yieldAmounts)
+            abi.encodeWithSelector(
+                IProtocolFeeController.receiveAggregateFees.selector,
+                pool,
+                swapAmounts,
+                yieldAmounts
+            )
         );
         // Move them to the fee controller.
-        vault.collectProtocolFees(pool);
+        vault.collectAggregateFees(pool);
 
         // Now the fee controller should have them - and the Vault should be zero.
-        assertEq(
-            vault.getAggregateProtocolSwapFeeAmount(pool, dai),
-            0,
-            "Non-zero post-collection DAI protocol swap fees"
-        );
-        assertEq(
-            vault.getAggregateProtocolSwapFeeAmount(pool, usdc),
-            0,
-            "Non-zero post-collection USDC protocol swap fees"
-        );
-        assertEq(
-            vault.getAggregateProtocolYieldFeeAmount(pool, dai),
-            0,
-            "Non-zero post-collection DAI protocol yield fees"
-        );
-        assertEq(
-            vault.getAggregateProtocolYieldFeeAmount(pool, usdc),
-            0,
-            "Non-zero post-collection USDC protocol yield fees"
-        );
+        assertEq(vault.getAggregateSwapFeeAmount(pool, dai), 0, "Non-zero post-collection DAI protocol swap fees");
+        assertEq(vault.getAggregateSwapFeeAmount(pool, usdc), 0, "Non-zero post-collection USDC protocol swap fees");
+        assertEq(vault.getAggregateYieldFeeAmount(pool, dai), 0, "Non-zero post-collection DAI protocol yield fees");
+        assertEq(vault.getAggregateYieldFeeAmount(pool, usdc), 0, "Non-zero post-collection USDC protocol yield fees");
 
         assertEq(dai.balanceOf(address(feeController)), PROTOCOL_SWAP_FEE_AMOUNT);
         assertEq(usdc.balanceOf(address(feeController)), PROTOCOL_YIELD_FEE_AMOUNT);
 
-        uint256[] memory protocolFeeAmounts = feeController.getAggregateProtocolFeeAmounts(pool);
-        uint256[] memory poolCreatorFeeAmounts = feeController.getAggregatePoolCreatorFeeAmounts(pool);
+        uint256[] memory protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
+        uint256[] memory poolCreatorFeeAmounts = feeController.getPoolCreatorFeeAmounts(pool);
 
-        uint256 aggregateProtocolSwapFeePercentage = feeController.computeAggregateFeePercentage(
+        uint256 aggregateSwapFeePercentage = feeController.computeAggregateFeePercentage(
             MAX_PROTOCOL_SWAP_FEE,
             POOL_CREATOR_SWAP_FEE
         );
-        uint256 aggregateProtocolYieldFeePercentage = feeController.computeAggregateFeePercentage(
+        uint256 aggregateYieldFeePercentage = feeController.computeAggregateFeePercentage(
             MAX_PROTOCOL_YIELD_FEE,
             POOL_CREATOR_YIELD_FEE
         );
 
-        uint256 expectedProtocolFeeDAI = PROTOCOL_SWAP_FEE_AMOUNT.divUp(aggregateProtocolSwapFeePercentage).mulUp(
+        uint256 expectedProtocolFeeDAI = PROTOCOL_SWAP_FEE_AMOUNT.divUp(aggregateSwapFeePercentage).mulUp(
             MAX_PROTOCOL_SWAP_FEE
         );
         uint256 expectedCreatorFeeDAI = PROTOCOL_SWAP_FEE_AMOUNT - expectedProtocolFeeDAI;
@@ -625,7 +598,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             "Wrong disaggregated DAI pool creator fee amount"
         );
 
-        uint256 expectedProtocolFeeUSDC = PROTOCOL_YIELD_FEE_AMOUNT.divUp(aggregateProtocolYieldFeePercentage).mulUp(
+        uint256 expectedProtocolFeeUSDC = PROTOCOL_YIELD_FEE_AMOUNT.divUp(aggregateYieldFeePercentage).mulUp(
             MAX_PROTOCOL_YIELD_FEE
         );
         uint256 expectedCreatorFeeUSDC = PROTOCOL_YIELD_FEE_AMOUNT - expectedProtocolFeeUSDC;
@@ -667,7 +640,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.withdrawProtocolFees(pool, admin);
 
         // Should be zeroed out in the controller
-        protocolFeeAmounts = feeController.getAggregateProtocolFeeAmounts(pool);
+        protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
         assertEq(protocolFeeAmounts[0], 0, "Non-zero protocol fee amounts after withdrawal [0]");
         assertEq(protocolFeeAmounts[1], 0, "Non-zero protocol fee amounts after withdrawal [1]");
 
@@ -686,7 +659,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.withdrawPoolCreatorFees(pool, lp);
 
         // Should be zeroed out in the controller
-        poolCreatorFeeAmounts = feeController.getAggregatePoolCreatorFeeAmounts(pool);
+        poolCreatorFeeAmounts = feeController.getPoolCreatorFeeAmounts(pool);
         assertEq(poolCreatorFeeAmounts[0], 0, "Non-zero creator fee amounts after withdrawal [0]");
         assertEq(poolCreatorFeeAmounts[1], 0, "Non-zero creator fee amounts after withdrawal [1]");
 
