@@ -18,7 +18,6 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
@@ -765,12 +764,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (hookAdjustedBptAmountIn > bptAmountIn) {
             uint256 hookFee = hookAdjustedBptAmountIn - bptAmountIn;
-            _burn(params.pool, IRouterCommon(msg.sender).getSender(), hookFee);
+            _spendAllowance(params.pool, params.from, msg.sender, hookFee);
+            _burn(params.pool, params.from, hookFee);
             _mint(params.pool, hooksConfig.hooksContract, hookFee);
         } else if (hookAdjustedBptAmountIn < bptAmountIn) {
             uint256 hookDiscount = bptAmountIn - hookAdjustedBptAmountIn;
+            _approve(params.pool, hooksConfig.hooksContract, msg.sender, hookDiscount);
             _burn(params.pool, hooksConfig.hooksContract, hookDiscount);
-            _mint(params.pool, IRouterCommon(msg.sender).getSender(), hookDiscount);
+            _mint(params.pool, params.from, hookDiscount);
         }
         bptAmountIn = hookAdjustedBptAmountIn;
     }
