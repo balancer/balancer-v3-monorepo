@@ -150,6 +150,7 @@ interface IHooks {
      * @notice Optional hook to be executed after removing liquidity.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
+     * @param kind The type of remove liquidity operation (e.g., proportional, custom)
      * @param bptAmountIn Amount of pool tokens to burn
      * @param amountsOutScaled18 Scaled amount of tokens to receive in token registration order
      * @param amountsOutRaw Actual amount of tokens to receive in token registration order
@@ -161,6 +162,7 @@ interface IHooks {
     function onAfterRemoveLiquidity(
         address router,
         address pool,
+        RemoveLiquidityKind kind,
         uint256 bptAmountIn,
         uint256[] memory amountsOutScaled18,
         uint256[] memory amountsOutRaw,
