@@ -9,6 +9,8 @@ import {
 
 interface IVaultStorageMock {
     function manualGetIsUnlockedSlot() external pure returns (StorageSlot.BooleanSlotType slot);
+
     function manualGetNonzeroDeltaCountSlot() external pure returns (StorageSlot.Uint256SlotType slot);
+
     function manualGetTokenDeltasSlot() external pure returns (TokenDeltaMappingSlotType slot);
 }
