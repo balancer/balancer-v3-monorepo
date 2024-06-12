@@ -41,6 +41,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
     uint256 private constant _MIN_UPDATE_TIME = 1 days;
     uint256 private constant _MAX_AMP_UPDATE_DAILY_RATE = 2;
 
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 0;
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 0.1e18; // 10%
 
     /// @dev Store amplification state.
@@ -283,7 +284,12 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
     }
 
     /// @inheritdoc ISwapFeePercentageBounds
-    function getMaximumSwapFeePercentage() external pure override returns (uint256) {
+    function getMinimumSwapFeePercentage() external pure returns (uint256) {
+        return _MIN_SWAP_FEE_PERCENTAGE;
+    }
+
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMaximumSwapFeePercentage() external pure returns (uint256) {
         return _MAX_SWAP_FEE_PERCENTAGE;
     }
 }
