@@ -31,8 +31,8 @@ library AmplificationDataLib {
     uint8 public constant START_TIME_OFFSET = END_VALUE_OFFSET + _AMP_VALUE_BIT_LENGTH;
     uint8 public constant END_TIME_OFFSET = START_TIME_OFFSET + _TIMESTAMP_BIT_LENGTH;
 
-    uint8 private constant _AMP_VALUE_BIT_LENGTH = 64;
-    uint8 private constant _TIMESTAMP_BIT_LENGTH = 64;
+    uint8 private constant _AMP_VALUE_BIT_LENGTH = 32;
+    uint8 private constant _TIMESTAMP_BIT_LENGTH = 32;
 
     function getStartValue(AmplificationDataBits data) internal pure returns (uint64) {
         return AmplificationDataBits.unwrap(data).decodeUint(START_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH).toUint64();
@@ -42,12 +42,12 @@ library AmplificationDataLib {
         return AmplificationDataBits.unwrap(data).decodeUint(END_VALUE_OFFSET, _AMP_VALUE_BIT_LENGTH).toUint64();
     }
 
-    function getStartTime(AmplificationDataBits data) internal pure returns (uint64) {
-        return AmplificationDataBits.unwrap(data).decodeUint(START_TIME_OFFSET, _TIMESTAMP_BIT_LENGTH).toUint64();
+    function getStartTime(AmplificationDataBits data) internal pure returns (uint32) {
+        return AmplificationDataBits.unwrap(data).decodeUint(START_TIME_OFFSET, _TIMESTAMP_BIT_LENGTH).toUint32();
     }
 
-    function getEndTime(AmplificationDataBits data) internal pure returns (uint64) {
-        return AmplificationDataBits.unwrap(data).decodeUint(END_TIME_OFFSET, _TIMESTAMP_BIT_LENGTH).toUint64();
+    function getEndTime(AmplificationDataBits data) internal pure returns (uint32) {
+        return AmplificationDataBits.unwrap(data).decodeUint(END_TIME_OFFSET, _TIMESTAMP_BIT_LENGTH).toUint32();
     }
 
     function fromAmpData(AmplificationData memory data) internal pure returns (AmplificationDataBits) {

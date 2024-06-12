@@ -108,8 +108,7 @@ describe('Vault', function () {
       expect(await vault.isPoolRegistered(poolA)).to.be.true;
       expect(await vault.isPoolRegistered(poolB)).to.be.false;
 
-      const [tokenConfig, balances] = await vault.getPoolTokenInfo(poolA);
-      const tokens = tokenConfig.map((config) => config.token);
+      const [tokens, , balances] = await vault.getPoolTokenInfo(poolA);
 
       expect(tokens).to.deep.equal(poolATokens);
       expect(balances).to.deep.equal(Array(tokens.length).fill(0));
@@ -290,8 +289,8 @@ describe('Vault', function () {
       });
 
       it('has rate providers', async () => {
-        const [tokenConfig] = await vault.getPoolTokenInfo(poolC);
-        const poolProviders = tokenConfig.map((config) => config.rateProvider);
+        const [, tokenInfo] = await vault.getPoolTokenInfo(poolC);
+        const poolProviders = tokenInfo.map((config) => config.rateProvider);
         const tokenRates = await vault.getPoolTokenRates(poolC);
 
         expect(poolProviders).to.deep.equal(rateProviders);

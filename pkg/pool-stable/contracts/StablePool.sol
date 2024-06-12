@@ -274,8 +274,8 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
         AmplificationData memory data;
         data.startValue = startValue.toUint64();
         data.endValue = endValue.toUint64();
-        data.startTime = startTime.toUint64();
-        data.endTime = endTime.toUint64();
+        data.startTime = startTime.toUint32();
+        data.endTime = endTime.toUint32();
 
         _amplificationState = data.fromAmpData();
     }

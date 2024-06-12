@@ -42,8 +42,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     *******************************************************************************/
 
     function testEmptyPoolTokenConfig() public {
-        (TokenConfig[] memory newTokenConfig, , ) = vault.internalGetPoolTokenInfo(pool);
-        assertEq(newTokenConfig.length, 0, "newTokenConfig should be empty");
+        (, TokenInfo[] memory newTokenInfo, , ) = vault.internalGetPoolTokenInfo(pool);
+        assertEq(newTokenInfo.length, 0, "newTokenInfo should be empty");
     }
 
     function testNonEmptyPoolTokenBalance() public {
@@ -58,27 +58,29 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         originalBalancesRaw[2] = 3000;
         vault.manualSetPoolTokenBalances(pool, tokens, originalBalancesRaw);
 
-        (TokenConfig[] memory newTokenConfig, uint256[] memory balancesRaw, ) = vault.internalGetPoolTokenInfo(pool);
-        assertEq(newTokenConfig.length, 3);
+        (IERC20[] memory newTokens, TokenInfo[] memory newTokenInfo, uint256[] memory balancesRaw, ) = vault
+            .internalGetPoolTokenInfo(pool);
+        assertEq(newTokens.length, 3);
+        assertEq(newTokenInfo.length, 3);
         assertEq(balancesRaw.length, 3);
-        for (uint256 i = 0; i < newTokenConfig.length; ++i) {
+        for (uint256 i = 0; i < newTokens.length; ++i) {
             assertEq(
-                address(newTokenConfig[i].token),
+                address(newTokens[i]),
                 address(tokens[i]),
                 string.concat("token", Strings.toString(i), "address is not correct")
             );
             assertEq(
-                uint256(newTokenConfig[i].tokenType),
+                uint256(newTokenInfo[i].tokenType),
                 uint256(TokenType.STANDARD),
                 string.concat("token", Strings.toString(i), "should be STANDARD type")
             );
             assertEq(
-                address(newTokenConfig[i].rateProvider),
+                address(newTokenInfo[i].rateProvider),
                 address(0),
                 string.concat("token", Strings.toString(i), "should have no rate provider")
             );
             assertEq(
-                newTokenConfig[i].paysYieldFees,
+                newTokenInfo[i].paysYieldFees,
                 false,
                 string.concat("token", Strings.toString(i), "paysYieldFees flag should be false")
             );
@@ -94,7 +96,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     function testEmptyPoolConfig() public {
         PoolConfigBits memory emptyPoolConfig;
 
-        (, , uint256[] memory decimalScalingFactors) = vault.internalGetPoolTokenInfo(pool);
+        (, , , uint256[] memory decimalScalingFactors) = vault.internalGetPoolTokenInfo(pool);
         assertEq(decimalScalingFactors.length, 0, "should have no decimalScalingFactors");
 
         assertEq(
@@ -126,7 +128,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         originalPoolConfig.setTokenDecimalDiffs(PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs));
         vault.manualSetPoolConfigBits(pool, originalPoolConfig);
 
-        (, , uint256[] memory decimalScalingFactors) = vault.internalGetPoolTokenInfo(pool);
+        (, , , uint256[] memory decimalScalingFactors) = vault.internalGetPoolTokenInfo(pool);
         assertEq(
             decimalScalingFactors.length,
             3,
@@ -183,33 +185,35 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         vault.manualSetPoolConfigBits(pool, originalPoolConfig);
 
         (
-            TokenConfig[] memory newTokenConfig,
+            IERC20[] memory newTokens,
+            TokenInfo[] memory newTokenInfo,
             uint256[] memory balancesRaw,
             uint256[] memory decimalScalingFactors
         ) = vault.internalGetPoolTokenInfo(pool);
 
-        assertEq(newTokenConfig.length, 3);
+        assertEq(newTokens.length, 3);
+        assertEq(newTokenInfo.length, 3);
         assertEq(balancesRaw.length, 3);
         assertEq(decimalScalingFactors.length, 3);
 
-        for (uint256 i = 0; i < newTokenConfig.length; ++i) {
+        for (uint256 i = 0; i < newTokens.length; ++i) {
             assertEq(
-                address(newTokenConfig[i].token),
+                address(newTokens[i]),
                 address(tokens[i]),
                 string.concat("token", Strings.toString(i), "address is not correct")
             );
             assertEq(
-                uint256(newTokenConfig[i].tokenType),
+                uint256(newTokenInfo[i].tokenType),
                 uint256(TokenType.STANDARD),
                 string.concat("token", Strings.toString(i), "should be STANDARD type")
             );
             assertEq(
-                address(newTokenConfig[i].rateProvider),
+                address(newTokenInfo[i].rateProvider),
                 address(0),
                 string.concat("token", Strings.toString(i), "should have no rate provider")
             );
             assertEq(
-                newTokenConfig[i].paysYieldFees,
+                newTokenInfo[i].paysYieldFees,
                 false,
                 string.concat("token", Strings.toString(i), "paysYieldFees flag should be false")
             );

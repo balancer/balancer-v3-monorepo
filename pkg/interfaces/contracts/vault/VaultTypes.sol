@@ -122,9 +122,13 @@ enum TokenType {
 }
 
 /**
- * @dev Encapsulate the data required for the Vault to support a token of the given type.
- * For STANDARD tokens, the rate provider address must be 0, and paysYieldFees must be false.
- * All WITH_RATE tokens need a rate provider, and may or may not be yield-bearing.
+ * @dev Encapsulate the data required for the Vault to support a token of the given type. For STANDARD tokens,
+ * the rate provider address must be 0, and paysYieldFees must be false. All WITH_RATE tokens need a rate provider,
+ * and may or may not be yield-bearing.
+ *
+ * At registration time, it is useful to include the token address along with the token parameters in the structure
+ * passed to `registerPool`, as the alternative would be parallel arrays, which would be error prone and require
+ * validation checks. `TokenConfig` is only used for registration, and is never put into storage (see `TokenInfo`).
  *
  * @param token The token address
  * @param tokenType The token type (see the enum for supported types)
@@ -138,9 +142,25 @@ struct TokenConfig {
     bool paysYieldFees;
 }
 
+/**
+ * @dev This data structure is stored in `_poolTokenInfo`, a nested mapping from pool -> (token -> TokenInfo).
+ * Since the token is already the key of the nested mapping, it would be redundant (and an extra SLOAD) to store
+ * it again in the struct. When we construct PoolData, the tokens are separated into their own array.
+ *
+ * @param tokenType The token type (see the enum for supported types)
+ * @param rateProvider The rate provider for a token (see further documentation above)
+ * @param paysYieldFees Flag indicating whether yield fees should be charged on this token
+ */
+struct TokenInfo {
+    TokenType tokenType;
+    IRateProvider rateProvider;
+    bool paysYieldFees;
+}
+
 struct PoolData {
     PoolConfigBits poolConfig;
-    TokenConfig[] tokenConfig;
+    IERC20[] tokens;
+    TokenInfo[] tokenInfo;
     uint256[] balancesRaw;
     uint256[] balancesLiveScaled18;
     uint256[] tokenRates;

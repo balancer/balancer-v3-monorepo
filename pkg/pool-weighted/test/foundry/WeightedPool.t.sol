@@ -116,7 +116,7 @@ contract WeightedPoolTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT, "Vault: Wrong DAI balance");
 
         // Tokens are deposited to the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], DAI_AMOUNT, "Pool: Wrong DAI balance");
         assertEq(balances[1], USDC_AMOUNT, "Pool: Wrong USDC balance");
 
@@ -140,7 +140,7 @@ contract WeightedPoolTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT * 2, "Vault: Wrong DAI balance");
 
         // Tokens are deposited to the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], DAI_AMOUNT * 2, "Pool: Wrong DAI balance");
         assertEq(balances[1], USDC_AMOUNT * 2, "Pool: Wrong USDC balance");
 
@@ -183,7 +183,7 @@ contract WeightedPoolTest is BaseVaultTest {
         assertApproxEqAbs(dai.balanceOf(address(vault)), DAI_AMOUNT, DELTA, "Vault: Wrong DAI balance");
 
         // Tokens are deposited to the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertApproxEqAbs(balances[0], DAI_AMOUNT, DELTA, "Pool: Wrong DAI balance");
         assertApproxEqAbs(balances[1], USDC_AMOUNT, DELTA, "Pool: Wrong USDC balance");
 
@@ -220,7 +220,7 @@ contract WeightedPoolTest is BaseVaultTest {
         assertEq(usdc.balanceOf(address(vault)), USDC_AMOUNT - amountCalculated, "Vault: Wrong USDC balance");
         assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT + DAI_AMOUNT_IN, "Vault: Wrong DAI balance");
 
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
 
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
