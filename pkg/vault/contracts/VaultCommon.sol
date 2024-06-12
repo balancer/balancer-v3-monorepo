@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
@@ -447,18 +446,15 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
         // These cannot be called during pool construction. Pools must be deployed first, then registered.
-        if (IERC165(pool).supportsInterface(type(ISwapFeePercentageBounds).interfaceId)) {
-            if (swapFeePercentage < ISwapFeePercentageBounds(pool).getMinimumSwapFeePercentage()) {
-                revert SwapFeePercentageTooLow();
-            }
-
-            if (swapFeePercentage > ISwapFeePercentageBounds(pool).getMaximumSwapFeePercentage()) {
-                revert SwapFeePercentageTooHigh();
-            }
+        if (swapFeePercentage < ISwapFeePercentageBounds(pool).getMinimumSwapFeePercentage()) {
+            revert SwapFeePercentageTooLow();
         }
 
-        // Still has to be valid, regardless of what the pool defines.
-        if (swapFeePercentage > FixedPoint.ONE) {
+        // Still has to be a valid percentage, regardless of what the pool defines.
+        if (
+            swapFeePercentage > ISwapFeePercentageBounds(pool).getMaximumSwapFeePercentage() ||
+            swapFeePercentage > FixedPoint.ONE
+        ) {
             revert SwapFeePercentageTooHigh();
         }
 

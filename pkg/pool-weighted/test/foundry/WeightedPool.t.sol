@@ -261,14 +261,6 @@ contract WeightedPoolTest is BaseVaultTest {
         router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
     }
 
-    function testSupportsIERC165() public {
-        assertTrue(weightedPool.supportsInterface(type(IERC165).interfaceId), "Pool does not support IERC165");
-        assertTrue(
-            weightedPool.supportsInterface(type(ISwapFeePercentageBounds).interfaceId),
-            "Pool does not support ISwapFeePercentageBounds"
-        );
-    }
-
     function testMinimumSwapFee() public {
         assertEq(weightedPool.getMinimumSwapFeePercentage(), MIN_SWAP_FEE, "Minimum swap fee mismatch");
     }
