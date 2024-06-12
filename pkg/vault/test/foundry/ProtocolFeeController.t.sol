@@ -555,7 +555,12 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
         vm.expectCall(
             address(feeController),
-            abi.encodeWithSelector(IProtocolFeeController.receiveAggregateFees.selector, pool, swapAmounts, yieldAmounts)
+            abi.encodeWithSelector(
+                IProtocolFeeController.receiveAggregateFees.selector,
+                pool,
+                swapAmounts,
+                yieldAmounts
+            )
         );
         // Move them to the fee controller.
         vault.collectAggregateFees(pool);
