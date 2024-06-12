@@ -32,14 +32,14 @@ contract VaultCommonModifiersTest is BaseVaultTest {
     *******************************************************************************/
 
     function testUninitializedPool() public {
-        vault.manualSetInitializedPool(address(pool), false);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, address(pool)));
-        vault.mockWithInitializedPool(address(pool));
+        vault.manualSetInitializedPool(pool, false);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, pool));
+        vault.mockWithInitializedPool(pool);
     }
 
     function testInitializedPool() public {
-        vault.manualSetInitializedPool(address(pool), true);
+        vault.manualSetInitializedPool(pool, true);
         // If function does not revert, test passes
-        vault.mockWithInitializedPool(address(pool));
+        vault.mockWithInitializedPool(pool);
     }
 }

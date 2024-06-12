@@ -76,19 +76,19 @@ contract GetBptRateTest is BaseVaultTest {
             .toMemoryArray();
         uint256 weightedInvariant = WeightedMath.computeInvariant(weights, liveBalances);
         uint256 expectedRate = weightedInvariant.divDown(totalSupply);
-        uint256 actualRate = vault.getBptRate(address(pool));
+        uint256 actualRate = vault.getBptRate(pool);
         assertEq(actualRate, expectedRate, "Wrong rate");
 
         uint256[] memory amountsIn = [defaultAmount, 0].toMemoryArray();
         vm.prank(bob);
-        uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
+        uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, 0, false, bytes(""));
 
         totalSupply += addLiquidityBptAmountOut;
         liveBalances = [2 * defaultAmount.mulDown(daiMockRate), defaultAmount.mulDown(usdcMockRate)].toMemoryArray();
         weightedInvariant = WeightedMath.computeInvariant(weights, liveBalances);
 
         expectedRate = weightedInvariant.divDown(totalSupply);
-        actualRate = vault.getBptRate(address(pool));
+        actualRate = vault.getBptRate(pool);
         assertEq(actualRate, expectedRate, "Wrong rate after addLiquidity");
     }
 }

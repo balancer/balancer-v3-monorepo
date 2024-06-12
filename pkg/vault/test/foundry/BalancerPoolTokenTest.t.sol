@@ -61,17 +61,17 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     function testBurn() public {
         uint256 burnAmount = defaultAmount - MINIMUM_TOTAL_SUPPLY;
 
-        vault.mintERC20(address(pool), user, defaultAmount);
+        vault.mintERC20(pool, user, defaultAmount);
 
         vm.expectEmit();
         emit IERC20.Transfer(user, address(0), burnAmount);
-        vault.burnERC20(address(pool), user, burnAmount);
+        vault.burnERC20(pool, user, burnAmount);
 
         assertEq(poolToken.balanceOf(user), MINIMUM_TOTAL_SUPPLY, "balance mismatch");
     }
 
     function testApprove() public {
-        vault.mintERC20(address(pool), address(this), defaultAmount);
+        vault.mintERC20(pool, address(this), defaultAmount);
 
         vm.expectEmit();
         emit IERC20.Approval(address(this), user, defaultAmount);
@@ -81,7 +81,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     function testTransfer() public {
-        vault.mintERC20(address(pool), address(this), defaultAmount);
+        vault.mintERC20(pool, address(this), defaultAmount);
 
         vm.expectEmit();
         emit IERC20.Transfer(address(this), user, defaultAmount);
@@ -95,7 +95,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     function testTransferFrom() public {
         address from = address(0xABCD);
 
-        vault.mintERC20(address(pool), address(from), defaultAmount);
+        vault.mintERC20(pool, address(from), defaultAmount);
 
         vm.prank(from);
         poolToken.approve(address(this), defaultAmount);
