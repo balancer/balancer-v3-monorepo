@@ -13,6 +13,10 @@ import { Benchmark } from '@balancer-labs/v3-benchmarks/src/SwapBenchmark.behavi
 class WeightedPoolBenchmark extends Benchmark {
   WEIGHTS = [fp(0.5), fp(0.5)];
 
+  constructor(dirname: string) {
+    super(dirname, 'WeightedPool');
+  }
+
   override async deployPool(): Promise<BaseContract> {
     const factory = (await deploy('v3-pool-weighted/WeightedPoolFactory', {
       args: [await this.vault.getAddress(), MONTH * 12, '', ''],
