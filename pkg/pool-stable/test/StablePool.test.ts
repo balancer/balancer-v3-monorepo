@@ -26,6 +26,7 @@ describe('StablePool', () => {
   const POOL_VERSION = 'Stable Pool v1';
 
   const TOKEN_AMOUNT = fp(1000);
+  const MIN_SWAP_FEE = 1e12;
 
   let permit2: IPermit2;
   let vault: IVaultMock;
@@ -75,7 +76,7 @@ describe('StablePool', () => {
       tokenConfig,
       200n,
       [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
-      0, // swap fee
+      MIN_SWAP_FEE,
       ZERO_ADDRESS,
       TypesConverter.toBytes32(bn(numTokens))
     );

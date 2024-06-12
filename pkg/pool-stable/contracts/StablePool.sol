@@ -41,7 +41,7 @@ contract StablePool is IBasePool, ISwapFeePercentageBounds, BalancerPoolToken, B
     uint256 private constant _MIN_UPDATE_TIME = 1 days;
     uint256 private constant _MAX_AMP_UPDATE_DAILY_RATE = 2;
 
-    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 0;
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 0.1e18; // 10%
 
     /// @dev Store amplification state.
