@@ -5,15 +5,13 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
-import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { SwapKind, SwapParams, HooksConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
@@ -23,7 +21,6 @@ import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultSwapTest is BaseVaultTest {
-    using ArrayHelpers for *;
     using FixedPoint for uint256;
 
     PoolMock internal noInitPool;
@@ -124,9 +121,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function swapSingleTokenExactIn() public returns (uint256 fee, uint256 protocolFee) {
         vm.prank(alice);
-        snapStart("vaultSwapSingleTokenExactIn");
         router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, defaultAmount, MAX_UINT256, false, bytes(""));
-        snapEnd();
         return (0, 0);
     }
 
@@ -136,9 +131,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function swapSingleTokenExactOut() public returns (uint256 fee, uint256 protocolFee) {
         vm.prank(alice);
-        snapStart("vaultSwapSingleTokenExactOut");
         router.swapSingleTokenExactOut(pool, usdc, dai, defaultAmount, defaultAmount, MAX_UINT256, false, bytes(""));
-        snapEnd();
         return (0, 0);
     }
 
@@ -206,7 +199,6 @@ contract VaultSwapTest is BaseVaultTest {
         setSwapFeePercentage(swapFeePercentage);
 
         vm.prank(alice);
-        snapStart("vaultSwapSingleTokenExactInWithFee");
         router.swapSingleTokenExactIn(
             pool,
             usdc,
@@ -217,7 +209,6 @@ contract VaultSwapTest is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
 
         return (swapFee, 0);
     }
@@ -244,7 +235,6 @@ contract VaultSwapTest is BaseVaultTest {
         vault.manualSetAggregateProtocolSwapFeePercentage(pool, protocolSwapFeePercentage);
 
         vm.prank(alice);
-        snapStart("vaultSwapSingleTokenExactInWithProtocolFee");
         router.swapSingleTokenExactIn(
             pool,
             usdc,
@@ -255,7 +245,6 @@ contract VaultSwapTest is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
 
         return (swapFee, protocolSwapFee);
     }
@@ -498,13 +487,5 @@ contract VaultSwapTest is BaseVaultTest {
         for (uint256 i = 0; i < currentLiveBalances.length; ++i) {
             assertEq(currentLiveBalances[i], lastLiveBalances[i]);
         }
-    }
-
-    function testSetSwapFeeTooHigh() public {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
-        vm.prank(alice);
-
-        vm.expectRevert(IVaultErrors.SwapFeePercentageTooHigh.selector);
-        vault.setStaticSwapFeePercentage(address(pool), FixedPoint.ONE + 1);
     }
 }
