@@ -769,14 +769,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData
         );
 
-        if (hookAdjustedBptAmountIn > bptAmountIn) {
-            uint256 hookFee = hookAdjustedBptAmountIn - bptAmountIn;
-            _spendAllowance(params.pool, params.from, msg.sender, hookFee);
-            IERC20(params.pool).transferFrom(params.from, hooksConfig.hooksContract, hookFee);
-        } else if (hookAdjustedBptAmountIn < bptAmountIn) {
-            uint256 hookDiscount = bptAmountIn - hookAdjustedBptAmountIn;
-            _spendAllowance(params.pool, hooksConfig.hooksContract, msg.sender, hookDiscount);
-            IERC20(params.pool).transferFrom(hooksConfig.hooksContract, params.from, hookDiscount);
+        if (EVMCallModeHelpers.isStaticCall() == false || _vaultState.isQueryDisabled) {
+            // If not in query mode, transfer BPTs to the hook.
+            if (hookAdjustedBptAmountIn > bptAmountIn) {
+                uint256 hookFee = hookAdjustedBptAmountIn - bptAmountIn;
+                _spendAllowance(params.pool, params.from, msg.sender, hookFee);
+                IERC20(params.pool).transferFrom(params.from, hooksConfig.hooksContract, hookFee);
+            } else if (hookAdjustedBptAmountIn < bptAmountIn) {
+                uint256 hookDiscount = bptAmountIn - hookAdjustedBptAmountIn;
+                _spendAllowance(params.pool, hooksConfig.hooksContract, msg.sender, hookDiscount);
+                IERC20(params.pool).transferFrom(hooksConfig.hooksContract, params.from, hookDiscount);
+            }
         }
         bptAmountIn = hookAdjustedBptAmountIn;
     }
