@@ -156,6 +156,12 @@ interface IVaultErrors {
     /// @dev The required BPT amount in exceeds the maximum limit specified for the operation.
     error BptAmountInAboveMax(uint256 amount, uint256 limit);
 
+    /// @dev Remove Liquidity did not support changes in BPT amount in by the hook
+    error HookChangedBptAmountIn(uint256 bptAmountIn, uint256 hookAdjustedBptAmountIn);
+
+    /// @dev Remove Liquidity did not support changes in amount out by the hook
+    error HookChangedAmountOut(address token, uint256 amountOut, uint256 hookAdjustedAmountOut);
+
     /// @dev Pool does not support removing liquidity with a customized input.
     error DoesNotSupportRemoveLiquidityCustom();
 

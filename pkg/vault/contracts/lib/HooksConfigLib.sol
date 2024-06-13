@@ -305,12 +305,30 @@ library HooksConfigLib {
             revert IVaultErrors.BptAmountInAboveMax(hookAdjustedBptAmountIn, params.maxBptAmountIn);
         }
 
+        if (
+            (params.kind == RemoveLiquidityKind.PROPORTIONAL ||
+                params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) && hookAdjustedBptAmountIn != bptAmountIn
+        ) {
+            revert IVaultErrors.HookChangedBptAmountIn(bptAmountIn, hookAdjustedBptAmountIn);
+        }
+
         for (uint256 i = 0; i < hookAdjustedAmountsOutRaw.length; i++) {
             if (hookAdjustedAmountsOutRaw[i] < params.minAmountsOut[i]) {
                 revert IVaultErrors.AmountOutBelowMin(
                     poolData.tokens[i],
                     hookAdjustedAmountsOutRaw[i],
                     params.minAmountsOut[i]
+                );
+            }
+
+            if (
+                params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT &&
+                hookAdjustedAmountsOutRaw[i] != amountsOutRaw[i]
+            ) {
+                revert IVaultErrors.HookChangedAmountOut(
+                    address(poolData.tokens[i]),
+                    amountsOutRaw[i],
+                    hookAdjustedAmountsOutRaw[i]
                 );
             }
         }
