@@ -81,7 +81,7 @@ contract FeeTakingHook is BasePoolHooks {
     function onAfterAddLiquidity(
         address,
         address pool,
-        AddLiquidityKind,
+        AddLiquidityKind kind,
         uint256[] memory,
         uint256[] memory amountsInRaw,
         uint256,
@@ -91,6 +91,9 @@ contract FeeTakingHook is BasePoolHooks {
         // Currently, the hook fee implementation for onAfterAddLiquidity only support proportional addLiquidity.
         // That's because other types of addLiquidity requires an exact amount in, so fees need to be charged as BPTs,
         // and our current architecture does not support it.
+        if (kind != AddLiquidityKind.PROPORTIONAL) {
+            return (true, amountsInRaw);
+        }
 
         IERC20[] memory tokens = _vault.getPoolTokens(pool);
         uint256[] memory hookAdjustedAmountsInRaw = amountsInRaw;
@@ -112,7 +115,7 @@ contract FeeTakingHook is BasePoolHooks {
     function onAfterRemoveLiquidity(
         address,
         address pool,
-        RemoveLiquidityKind,
+        RemoveLiquidityKind kind,
         uint256,
         uint256[] memory,
         uint256[] memory amountsOutRaw,
@@ -122,6 +125,9 @@ contract FeeTakingHook is BasePoolHooks {
         // Currently, the hook fee implementation for onAfterRemoveLiquidity only support proportional removeLiquidity.
         // That's because other types of removeLiquidity requires an exact amount out, so fees need to be charged as
         // BPTs, and our current architecture does not support it.
+        if (kind != RemoveLiquidityKind.PROPORTIONAL) {
+            return (true, amountsOutRaw);
+        }
 
         IERC20[] memory tokens = _vault.getPoolTokens(pool);
         hookAdjustedAmountsOutRaw = amountsOutRaw;
