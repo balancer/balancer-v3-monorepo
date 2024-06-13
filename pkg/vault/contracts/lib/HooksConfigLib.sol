@@ -197,6 +197,7 @@ library HooksConfigLib {
         (success, hookAdjustedAmountsInRaw) = IHooks(config.hooksContract).onAfterAddLiquidity(
             router,
             params.pool,
+            params.kind,
             amountsInScaled18,
             amountsInRaw,
             bptAmountOut,
@@ -286,6 +287,7 @@ library HooksConfigLib {
         (success, hookAdjustedAmountsOutRaw) = IHooks(config.hooksContract).onAfterRemoveLiquidity(
             router,
             params.pool,
+            params.kind,
             bptAmountIn,
             amountsOutScaled18,
             amountsOutRaw,

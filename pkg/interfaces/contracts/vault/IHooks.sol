@@ -103,6 +103,7 @@ interface IHooks {
      * @notice Optional hook to be executed after adding liquidity.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
+     * @param kind The type of add liquidity operation (e.g., proportional, custom)
      * @param amountsInScaled18 Actual amounts of tokens added, in the same order as the tokens registered in the pool
      * @param amountsInRaw Actual amounts of tokens added in token registration order
      * @param bptAmountOut Amount of pool tokens minted
@@ -114,6 +115,7 @@ interface IHooks {
     function onAfterAddLiquidity(
         address router,
         address pool,
+        AddLiquidityKind kind,
         uint256[] memory amountsInScaled18,
         uint256[] memory amountsInRaw,
         uint256 bptAmountOut,
@@ -150,6 +152,7 @@ interface IHooks {
      * @notice Optional hook to be executed after removing liquidity.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
+     * @param kind The type of remove liquidity operation (e.g., proportional, custom)
      * @param bptAmountIn Amount of pool tokens to burn
      * @param amountsOutScaled18 Scaled amount of tokens to receive in token registration order
      * @param amountsOutRaw Actual amount of tokens to receive in token registration order
@@ -161,6 +164,7 @@ interface IHooks {
     function onAfterRemoveLiquidity(
         address router,
         address pool,
+        RemoveLiquidityKind kind,
         uint256 bptAmountIn,
         uint256[] memory amountsOutScaled18,
         uint256[] memory amountsOutRaw,
