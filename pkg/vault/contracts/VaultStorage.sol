@@ -16,6 +16,7 @@ import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import {
+    TransientStorageHelpers,
     AddressArraySlotType,
     TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
@@ -30,18 +31,9 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 contract VaultStorage {
     using StorageSlot for *;
 
-    // solhint-disable max-line-length
-    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.VaultStorage.isUnlocked")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant _IS_UNLOCKED_SLOT = 0x1369d017453f080f2416efe5ae39c8a4b4655ea0634227aaab0afdb9a9f93f00;
-
-    // solhint-disable max-line-length
-    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.VaultStorage.nonZeroDeltaCount")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant _NON_ZERO_DELTA_COUNT_SLOT =
-        0xbcbf50c510014a975eac30806436734486f167c41af035c1645353d475d57100;
-
-    // solhint-disable max-line-length
-    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.VaultStorage.tokenDelta")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant _TOKEN_DELTA_SLOT = 0x3e6fc372e95f8254c75fc2b01bdea8b1f768c112bff2fa8a04df690bd23c6f00;
+    bytes32 private immutable _IS_UNLOCKED_SLOT = _calculateVaultStorageSlot("isUnlocked");
+    bytes32 private immutable _NON_ZERO_DELTA_COUNT_SLOT = _calculateVaultStorageSlot("nonZeroDeltaCount");
+    bytes32 private immutable _TOKEN_DELTA_SLOT = _calculateVaultStorageSlot("tokenDelta");
 
     // Minimum BPT amount minted upon initialization.
     uint256 internal constant _MINIMUM_BPT = 1e6;
@@ -136,9 +128,7 @@ contract VaultStorage {
     // Prevents a malicious ERC4626 from changing the asset after the buffer was initialized.
     mapping(IERC20 => address) internal _bufferAssets;
 
-    // solhint-disable no-inline-assembly
-
-    function _isUnlockedSlot() internal pure returns (StorageSlot.BooleanSlotType slot) {
+    function _isUnlocked() internal view returns (StorageSlot.BooleanSlotType slot) {
         return _IS_UNLOCKED_SLOT.asBoolean();
     }
 
@@ -146,14 +136,15 @@ contract VaultStorage {
      * @notice The total number of nonzero deltas slot;
      * @dev It is non-zero only during `unlock` calls.
      */
-    function _nonzeroDeltaCountSlot() internal pure returns (StorageSlot.Uint256SlotType slot) {
+    function _nonZeroDeltaCount() internal view returns (StorageSlot.Uint256SlotType slot) {
         return _NON_ZERO_DELTA_COUNT_SLOT.asUint256();
     }
 
-    function _tokenDeltasSlot() internal pure returns (TokenDeltaMappingSlotType slot) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            slot := _TOKEN_DELTA_SLOT
-        }
+    function _tokenDeltas() internal view returns (TokenDeltaMappingSlotType slot) {
+        return TokenDeltaMappingSlotType.wrap(_TOKEN_DELTA_SLOT);
+    }
+
+    function _calculateVaultStorageSlot(string memory key) private pure returns (bytes32) {
+        return TransientStorageHelpers.calculateSlot(type(VaultStorage).name, key);
     }
 }

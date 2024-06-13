@@ -2,10 +2,9 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import {
+    TransientStorageHelpers,
     TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
@@ -18,25 +17,22 @@ contract VaultStorageTest is BaseVaultTest {
 
     function testGetIsUnlockedSlot() external {
         assertEq(
-            StorageSlot.BooleanSlotType.unwrap(vault.manualGetIsUnlockedSlot()),
-            keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.VaultStorage.isUnlocked")) - 1)) &
-                ~bytes32(uint256(0xff))
+            StorageSlot.BooleanSlotType.unwrap(vault.manualGetIsUnlocked()),
+            TransientStorageHelpers.calculateSlot("VaultStorage", "isUnlocked")
         );
     }
 
     function testGetNonzeroDeltaCountSlot() external {
         assertEq(
-            StorageSlot.Uint256SlotType.unwrap(vault.manualGetNonzeroDeltaCountSlot()),
-            keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.VaultStorage.nonZeroDeltaCount")) - 1)) &
-                ~bytes32(uint256(0xff))
+            StorageSlot.Uint256SlotType.unwrap(vault.manualGetNonzeroDeltaCount()),
+            TransientStorageHelpers.calculateSlot("VaultStorage", "nonZeroDeltaCount")
         );
     }
 
     function testGetTokenDeltasSlot() external {
         assertEq(
-            TokenDeltaMappingSlotType.unwrap(vault.manualGetTokenDeltasSlot()),
-            keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.VaultStorage.tokenDelta")) - 1)) &
-                ~bytes32(uint256(0xff))
+            TokenDeltaMappingSlotType.unwrap(vault.manualGetTokenDeltas()),
+            TransientStorageHelpers.calculateSlot("VaultStorage", "tokenDelta")
         );
     }
 }

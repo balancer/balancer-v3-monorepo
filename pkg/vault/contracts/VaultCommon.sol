@@ -57,7 +57,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     function _ensureUnlocked() internal view {
-        if (_isUnlockedSlot().tload() == false) {
+        if (_isUnlocked().tload() == false) {
             revert VaultIsNotUnlocked();
         }
     }
@@ -102,7 +102,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         if (delta == 0) return;
 
         // Get the current recorded delta for this token.
-        int256 current = _tokenDeltasSlot().tGet(token);
+        int256 current = _tokenDeltas().tGet(token);
 
         // Calculate the new delta after accounting for the change.
         int256 next = current + delta;
@@ -111,17 +111,17 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             // If the resultant delta becomes zero after this operation,
             // decrease the count of non-zero deltas.
             if (next == 0) {
-                _nonzeroDeltaCountSlot().tDecrement();
+                _nonZeroDeltaCount().tDecrement();
             }
             // If there was no previous delta (i.e., it was zero) and now we have one,
             // increase the count of non-zero deltas.
             else if (current == 0) {
-                _nonzeroDeltaCountSlot().tIncrement();
+                _nonZeroDeltaCount().tIncrement();
             }
         }
 
         // Update the delta for this token.
-        _tokenDeltasSlot().tSet(token, next);
+        _tokenDeltas().tSet(token, next);
     }
 
     /*******************************************************************************

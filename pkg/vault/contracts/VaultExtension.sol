@@ -104,17 +104,17 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function isUnlocked() external view onlyVaultDelegateCall returns (bool) {
-        return _isUnlockedSlot().tload();
+        return _isUnlocked().tload();
     }
 
     /// @inheritdoc IVaultExtension
     function getNonzeroDeltaCount() external view onlyVaultDelegateCall returns (uint256) {
-        return _nonzeroDeltaCountSlot().tload();
+        return _nonZeroDeltaCount().tload();
     }
 
     /// @inheritdoc IVaultExtension
     function getTokenDelta(IERC20 token) external view onlyVaultDelegateCall returns (int256) {
-        return _tokenDeltasSlot().tGet(token);
+        return _tokenDeltas().tGet(token);
     }
 
     /// @inheritdoc IVaultExtension
@@ -747,7 +747,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
 
         // Unlock so that `onlyWhenUnlocked` does not revert
-        _isUnlockedSlot().tstore(true);
+        _isUnlocked().tstore(true);
     }
 
     /// @inheritdoc IVaultExtension

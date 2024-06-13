@@ -170,7 +170,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetIsUnlocked(bool status) public {
-        _isUnlockedSlot().tstore(status);
+        _isUnlocked().tstore(status);
     }
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) public {
@@ -412,11 +412,11 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetAccountDelta(IERC20 token, int256 delta) external {
-        _tokenDeltasSlot().tSet(token, delta);
+        _tokenDeltas().tSet(token, delta);
     }
 
     function manualSetNonZeroDeltaCount(uint256 deltaCount) external {
-        _nonzeroDeltaCountSlot().tstore(deltaCount);
+        _nonZeroDeltaCount().tstore(deltaCount);
     }
 
     function manualInternalSwap(
@@ -570,15 +570,15 @@ contract VaultMock is IVaultMainMock, Vault {
         token.transfer(to, amount);
     }
 
-    function manualGetIsUnlockedSlot() external pure returns (StorageSlot.BooleanSlotType slot) {
-        return _isUnlockedSlot();
+    function manualGetIsUnlocked() external view returns (StorageSlot.BooleanSlotType slot) {
+        return _isUnlocked();
     }
 
-    function manualGetNonzeroDeltaCountSlot() external pure returns (StorageSlot.Uint256SlotType slot) {
-        return _nonzeroDeltaCountSlot();
+    function manualGetNonzeroDeltaCount() external view returns (StorageSlot.Uint256SlotType slot) {
+        return _nonZeroDeltaCount();
     }
 
-    function manualGetTokenDeltasSlot() external pure returns (TokenDeltaMappingSlotType slot) {
-        return _tokenDeltasSlot();
+    function manualGetTokenDeltas() external view returns (TokenDeltaMappingSlotType slot) {
+        return _tokenDeltas();
     }
 }

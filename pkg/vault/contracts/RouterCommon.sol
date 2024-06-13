@@ -13,6 +13,9 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import {
+    TransientStorageHelpers
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
@@ -22,9 +25,7 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     using SafeERC20 for IWETH;
     using StorageSlot for *;
 
-    // solhint-disable max-line-length
-    // keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.RouterCommon.sender")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant _SENDER_SLOT = 0xcf578e3975346110e60ca9b952a379fc819893ae913bafbfed4ed78de9e6dc00;
+    bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
 
     /// @dev Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
@@ -156,7 +157,7 @@ contract RouterCommon is IRouterCommon, VaultGuard {
         return _getSenderSlot().tload();
     }
 
-    function _getSenderSlot() internal pure returns (StorageSlot.AddressSlotType) {
+    function _getSenderSlot() internal view returns (StorageSlot.AddressSlotType) {
         return _SENDER_SLOT.asAddress();
     }
 }

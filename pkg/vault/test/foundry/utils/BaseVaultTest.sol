@@ -27,6 +27,7 @@ import { Router } from "../../../contracts/Router.sol";
 import { BatchRouter } from "../../../contracts/BatchRouter.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
+import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../../contracts/test/PoolHooksMock.sol";
 import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
@@ -57,7 +58,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Router mock.
     RouterMock internal router;
     // Batch router
-    BatchRouter internal batchRouter;
+    BatchRouterMock internal batchRouter;
     // Authorizer mock.
     BasicAuthorizerMock internal authorizer;
     // Pool for tests.
@@ -102,7 +103,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         vm.label(address(factoryMock), "factory");
         router = new RouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(router), "router");
-        batchRouter = new BatchRouter(IVault(address(vault)), weth, permit2);
+        batchRouter = new BatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
         poolHooksContract = createHook();
         pool = createPool();

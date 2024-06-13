@@ -176,4 +176,14 @@ contract TransientStorageHelpersTest is Test {
         vm.expectRevert(stdError.arithmeticError);
         transientUint.tDecrement();
     }
+
+    function testCalculateSlot() public {
+        bytes32 slot = TransientStorageHelpers.calculateSlot("domain", "name");
+        assertEq(
+            uint256(slot),
+            keccak256(
+                abi.encode(uint256(keccak256(abi.encodePacked("balancer-labs.v3.storage.", domain, ".", varName))) - 1)
+            ) & ~bytes32(uint256(0xff))
+        );
+    }
 }
