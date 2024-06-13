@@ -415,6 +415,7 @@ contract HooksTest is BaseVaultTest {
                 IHooks.onAfterAddLiquidity.selector,
                 router,
                 pool,
+                AddLiquidityKind.UNBALANCED,
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 [defaultAmount, defaultAmount].toMemoryArray(),
                 bptAmount,

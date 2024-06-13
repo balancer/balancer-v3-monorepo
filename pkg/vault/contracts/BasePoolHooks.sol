@@ -65,6 +65,7 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
     function onAfterAddLiquidity(
         address,
         address,
+        AddLiquidityKind,
         uint256[] memory,
         uint256[] memory amountsInRaw,
         uint256,
