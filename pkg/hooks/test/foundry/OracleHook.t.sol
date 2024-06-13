@@ -12,6 +12,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
@@ -23,6 +24,7 @@ import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVa
 contract HooksTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
+    using ScalingHelpers for IERC20;
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
@@ -65,7 +67,7 @@ contract HooksTest is BaseVaultTest {
         factoryMock.registerPool(anotherPool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
     }
 
-    function testOnRegisterTwoTokens() public {
+    function testOnRegisterTokenScalingFactors() public {
         PoolRoleAccounts memory roleAccounts;
         LiquidityManagement memory liquidityManagement;
 
@@ -73,17 +75,10 @@ contract HooksTest is BaseVaultTest {
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
 
-        vm.expectCall(
-            poolHooksContract,
-            abi.encodeWithSelector(
-                IHooks.onRegister.selector,
-                address(factoryMock),
-                anotherPool,
-                tokenConfig,
-                liquidityManagement
-            )
-        );
         factoryMock.registerPool(anotherPool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
+
+        assertEq(OracleHook(poolHooksContract).tokenScalingFactors(dai), IERC20(dai).computeScalingFactor());
+        assertEq(OracleHook(poolHooksContract).tokenScalingFactors(usdc), IERC20(usdc).computeScalingFactor());
     }
 
     // before swap
