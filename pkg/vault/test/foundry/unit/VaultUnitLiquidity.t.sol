@@ -24,11 +24,14 @@ import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMo
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
 
+import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
+
 contract VaultUnitLiquidityTest is BaseTest {
     using ArrayHelpers for *;
     using ScalingHelpers for *;
     using FixedPoint for *;
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
+    using PoolConfigLib for PoolConfig;
 
     // #region Test structs
 
@@ -67,8 +70,10 @@ contract VaultUnitLiquidityTest is BaseTest {
         uint256[] memory initialBalances = new uint256[](tokens.length);
         vault.manualSetPoolTokenBalances(pool, tokens, initialBalances);
 
+        vault.manualSetPoolRegistered(pool, true);
+
         for (uint256 i = 0; i < tokens.length; i++) {
-            vault.manualSetAggregateProtocolSwapFeeAmount(pool, tokens[i], 0);
+            vault.manualSetAggregateSwapFeeAmount(pool, tokens[i], 0);
         }
     }
 
@@ -206,7 +211,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             bptAmountOut
         );
 
-        poolData.poolConfig.liquidityManagement.enableAddLiquidityCustom = true;
+        poolData.poolConfig.enableAddLiquidityCustom = true;
 
         uint256[] memory expectedAmountsInScaled18 = new uint256[](tokens.length);
         uint256[] memory expectSwapFeeAmountsScaled18 = new uint256[](tokens.length);
@@ -250,7 +255,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             1e18
         );
 
-        poolData.poolConfig.liquidityManagement.enableAddLiquidityCustom = true;
+        poolData.poolConfig.enableAddLiquidityCustom = true;
 
         uint256 bptAmountOut = 0;
         vm.mockCall(
@@ -282,7 +287,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             1e18
         );
 
-        poolData.poolConfig.liquidityManagement.enableAddLiquidityCustom = true;
+        poolData.poolConfig.enableAddLiquidityCustom = true;
 
         uint256[] memory expectedAmountsInScaled18 = new uint256[](tokens.length);
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -323,7 +328,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             1e18
         );
 
-        poolData.poolConfig.liquidityManagement.disableUnbalancedLiquidity = true;
+        poolData.poolConfig.disableUnbalancedLiquidity = true;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         vault.manualAddLiquidity(poolData, params, maxAmountsInScaled18);
@@ -339,7 +344,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             1e18
         );
 
-        poolData.poolConfig.liquidityManagement.disableUnbalancedLiquidity = true;
+        poolData.poolConfig.disableUnbalancedLiquidity = true;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         vault.manualAddLiquidity(poolData, params, maxAmountsInScaled18);
@@ -518,7 +523,7 @@ contract VaultUnitLiquidityTest is BaseTest {
 
     function testRemoveLiquidityCustom() public {
         PoolData memory poolData = _makeDefaultParams();
-        poolData.poolConfig.liquidityManagement.enableRemoveLiquidityCustom = true;
+        poolData.poolConfig.enableRemoveLiquidityCustom = true;
 
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
             poolData,
@@ -571,7 +576,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             1e18,
             0
         );
-        poolData.poolConfig.liquidityManagement.enableRemoveLiquidityCustom = true;
+        poolData.poolConfig.enableRemoveLiquidityCustom = true;
 
         uint256 bptAmountIn = params.maxBptAmountIn + 1;
 
@@ -591,7 +596,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         vm.expectRevert(
             abi.encodeWithSelector(IVaultErrors.BptAmountInAboveMax.selector, bptAmountIn, params.maxBptAmountIn)
         );
-        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18, vaultState);
+        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
     function testRevertIfAmountOutBelowMin() public {
@@ -605,7 +610,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             type(uint256).max,
             defaultMinAmountOut
         );
-        poolData.poolConfig.liquidityManagement.enableRemoveLiquidityCustom = true;
+        poolData.poolConfig.enableRemoveLiquidityCustom = true;
 
         uint256 bptAmountIn = 1e18;
         uint256[] memory amountsOutScaled18 = new uint256[](tokens.length);
@@ -634,12 +639,10 @@ contract VaultUnitLiquidityTest is BaseTest {
             )
         );
 
-        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18, vaultState);
+        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
     function testRevertRemoveLiquidityUnbalancedIfUnbalancedLiquidityIsDisabled() public {
-        VaultState memory vaultState;
-
         PoolData memory poolData = _makeDefaultParams();
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
             poolData,
@@ -647,15 +650,13 @@ contract VaultUnitLiquidityTest is BaseTest {
             type(uint256).max,
             1
         );
-        poolData.poolConfig.liquidityManagement.disableUnbalancedLiquidity = true;
+        poolData.poolConfig.disableUnbalancedLiquidity = true;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
-        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18, vaultState);
+        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
     function testRevertRemoveLiquiditySingleTokenExactOutIfUnbalancedLiquidityIsDisabled() public {
-        VaultState memory vaultState;
-
         PoolData memory poolData = _makeDefaultParams();
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
             poolData,
@@ -663,15 +664,13 @@ contract VaultUnitLiquidityTest is BaseTest {
             type(uint256).max,
             1
         );
-        poolData.poolConfig.liquidityManagement.disableUnbalancedLiquidity = true;
+        poolData.poolConfig.disableUnbalancedLiquidity = true;
 
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
-        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18, vaultState);
+        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
     function testRevertRemoveLiquidityCustomExactOutIfCustomLiquidityIsDisabled() public {
-        VaultState memory vaultState;
-
         PoolData memory poolData = _makeDefaultParams();
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
             poolData,
@@ -681,7 +680,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         );
 
         vm.expectRevert(IVaultErrors.DoesNotSupportRemoveLiquidityCustom.selector);
-        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18, vaultState);
+        vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
     // #endregion
@@ -737,17 +736,17 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function _makeDefaultParams() internal returns (PoolData memory poolData) {
-        poolData.poolConfig.staticSwapFeePercentage = swapFeePercentage;
+        poolData.poolConfig.setStaticSwapFeePercentage(swapFeePercentage);
 
         poolData.balancesLiveScaled18 = new uint256[](tokens.length);
         poolData.balancesRaw = new uint256[](tokens.length);
 
-        poolData.tokenConfig = new TokenConfig[](tokens.length);
+        poolData.tokens = new IERC20[](tokens.length);
         poolData.decimalScalingFactors = new uint256[](tokens.length);
         poolData.tokenRates = new uint256[](tokens.length);
 
-        for (uint256 i = 0; i < poolData.tokenConfig.length; i++) {
-            poolData.tokenConfig[i].token = tokens[i];
+        for (uint256 i = 0; i < tokens.length; i++) {
+            poolData.tokens[i] = tokens[i];
             poolData.decimalScalingFactors[i] = 1e18;
             poolData.tokenRates[i] = 1e18 * (i + 1);
 
@@ -768,7 +767,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function _testAddLiquidity(PoolData memory poolData, TestAddLiquidityParams memory params) internal {
-        poolData.poolConfig.aggregateProtocolSwapFeePercentage = swapFeePercentage;
+        poolData.poolConfig.setAggregateSwapFeePercentage(swapFeePercentage);
 
         uint256[] memory expectedAmountsInRaw = new uint256[](params.expectedAmountsInScaled18.length);
         for (uint256 i = 0; i < expectedAmountsInRaw.length; i++) {
@@ -805,9 +804,9 @@ contract VaultUnitLiquidityTest is BaseTest {
         // NOTE: stack too deep fix
         TestAddLiquidityParams memory params_ = params;
         PoolData memory poolData_ = poolData;
-        uint256 protocolSwapFeePercentage = poolData.poolConfig.aggregateProtocolSwapFeePercentage;
+        uint256 protocolSwapFeePercentage = poolData.poolConfig.getAggregateSwapFeePercentage();
 
-        for (uint256 i = 0; i < poolData_.tokenConfig.length; i++) {
+        for (uint256 i = 0; i < poolData_.tokens.length; i++) {
             assertEq(amountsInRaw[i], expectedAmountsInRaw[i], "Unexpected tokenIn amount");
             assertEq(amountsInScaled18[i], params_.expectedAmountsInScaled18[i], "Unexpected tokenIn amount");
 
@@ -837,8 +836,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function _testRemoveLiquidity(PoolData memory poolData, TestRemoveLiquidityParams memory params) internal {
-        VaultState memory vaultState;
-        poolData.poolConfig.aggregateProtocolSwapFeePercentage = 1e16;
+        poolData.poolConfig.setAggregateSwapFeePercentage(1e16);
 
         uint256[] memory expectedAmountsOutRaw = new uint256[](params.expectedAmountsOutScaled18.length);
         for (uint256 i = 0; i < expectedAmountsOutRaw.length; i++) {
@@ -864,12 +862,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             uint256[] memory amountsOutRaw,
             uint256[] memory amountsOutScaled18,
 
-        ) = vault.manualRemoveLiquidity(
-                poolData,
-                params.removeLiquidityParams,
-                params.minAmountsOutScaled18,
-                vaultState
-            );
+        ) = vault.manualRemoveLiquidity(poolData, params.removeLiquidityParams, params.minAmountsOutScaled18);
 
         assertEq(bptAmountIn, params.expectedBPTAmountIn, "Unexpected BPT amount in");
         assertEq(
@@ -886,9 +879,9 @@ contract VaultUnitLiquidityTest is BaseTest {
         // NOTE: stack too deep fix
         TestRemoveLiquidityParams memory params_ = params;
         PoolData memory poolData_ = poolData;
-        uint256 protocolSwapFeePercentage = poolData.poolConfig.aggregateProtocolSwapFeePercentage;
-        for (uint256 i = 0; i < poolData.tokenConfig.length; i++) {
-            // check _computeAndChargeAggregateProtocolSwapFees
+        uint256 protocolSwapFeePercentage = poolData.poolConfig.getAggregateSwapFeePercentage();
+        for (uint256 i = 0; i < poolData.tokens.length; i++) {
+            // check _computeAndChargeAggregateSwapFees
             uint256 protocolSwapFeeAmountRaw = _checkProtocolFeeResult(
                 poolData_,
                 i,
@@ -934,7 +927,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             poolData.tokenRates[tokenIndex]
         );
         assertEq(
-            vault.getAggregateProtocolSwapFeeAmount(pool, poolData.tokenConfig[tokenIndex].token),
+            vault.getAggregateSwapFeeAmount(pool, poolData.tokens[tokenIndex]),
             protocolSwapFeeAmountRaw,
             "Unexpected protocol fees"
         );
@@ -946,7 +939,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         uint256[] memory storageLastLiveBalances,
         PoolData memory updatedPoolData
     ) internal {
-        for (uint256 i = 0; i < poolData.tokenConfig.length; i++) {
+        for (uint256 i = 0; i < poolData.tokens.length; i++) {
             assertEq(storagePoolBalances[i], updatedPoolData.balancesRaw[i], "Unexpected pool balance");
 
             assertEq(

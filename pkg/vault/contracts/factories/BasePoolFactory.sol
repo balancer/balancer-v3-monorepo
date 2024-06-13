@@ -39,7 +39,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
 
     constructor(
         IVault vault,
-        uint256 pauseWindowDuration,
+        uint32 pauseWindowDuration,
         bytes memory creationCode
     ) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {
         _creationCode = creationCode;
@@ -98,6 +98,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         address pool,
         TokenConfig[] memory tokens,
         uint256 swapFeePercentage,
+        bool protocolFeeExempt,
         PoolRoleAccounts memory roleAccounts,
         address poolHooksContract,
         LiquidityManagement memory liquidityManagement
@@ -107,6 +108,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
             tokens,
             swapFeePercentage,
             getNewPoolPauseWindowEndTime(),
+            protocolFeeExempt,
             roleAccounts,
             poolHooksContract,
             liquidityManagement

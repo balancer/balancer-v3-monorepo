@@ -34,7 +34,6 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
@@ -64,7 +63,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using InputHelpers for uint256;
     using ScalingHelpers for *;
     using VaultExtensionsLib for IVault;
-    using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
@@ -73,7 +71,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     IVaultAdmin private immutable _vaultAdmin;
 
     /// @dev Functions with this modifier can only be delegate-called by the vault.
-    modifier onlyVault() {
+    modifier onlyVaultDelegateCall() {
         _ensureVaultDelegateCall();
         _;
     }
@@ -104,22 +102,22 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function isUnlocked() external view onlyVault returns (bool) {
+    function isUnlocked() external view onlyVaultDelegateCall returns (bool) {
         return _isUnlocked().tload();
     }
 
     /// @inheritdoc IVaultExtension
-    function getNonzeroDeltaCount() external view onlyVault returns (uint256) {
+    function getNonzeroDeltaCount() external view onlyVaultDelegateCall returns (uint256) {
         return _nonzeroDeltaCount().tload();
     }
 
     /// @inheritdoc IVaultExtension
-    function getTokenDelta(IERC20 token) external view onlyVault returns (int256) {
+    function getTokenDelta(IERC20 token) external view onlyVaultDelegateCall returns (int256) {
         return _tokenDeltas().tGet(token);
     }
 
     /// @inheritdoc IVaultExtension
-    function getReservesOf(IERC20 token) external view onlyVault returns (uint256) {
+    function getReservesOf(IERC20 token) external view onlyVaultDelegateCall returns (uint256) {
         return _reservesOf[token];
     }
 
@@ -130,7 +128,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     struct PoolRegistrationParams {
         TokenConfig[] tokenConfig;
         uint256 swapFeePercentage;
-        uint256 pauseWindowEndTime;
+        uint32 pauseWindowEndTime;
+        bool protocolFeeExempt;
         PoolRoleAccounts roleAccounts;
         address poolHooksContract;
         LiquidityManagement liquidityManagement;
@@ -141,17 +140,19 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool,
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
-        uint256 pauseWindowEndTime,
+        uint32 pauseWindowEndTime,
+        bool protocolFeeExempt,
         PoolRoleAccounts calldata roleAccounts,
         address poolHooksContract,
         LiquidityManagement calldata liquidityManagement
-    ) external nonReentrant whenVaultNotPaused onlyVault {
+    ) external nonReentrant whenVaultNotPaused onlyVaultDelegateCall {
         _registerPool(
             pool,
             PoolRegistrationParams({
                 tokenConfig: tokenConfig,
                 swapFeePercentage: swapFeePercentage,
                 pauseWindowEndTime: pauseWindowEndTime,
+                protocolFeeExempt: protocolFeeExempt,
                 roleAccounts: roleAccounts,
                 poolHooksContract: poolHooksContract,
                 liquidityManagement: liquidityManagement
@@ -160,7 +161,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function isPoolRegistered(address pool) external view onlyVault returns (bool) {
+    function isPoolRegistered(address pool) external view onlyVaultDelegateCall returns (bool) {
         return _isPoolRegistered(pool);
     }
 
@@ -246,7 +247,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
-            _poolTokenConfig[pool][token] = tokenData;
+
+            _poolTokenInfo[pool][token] = TokenInfo({
+                tokenType: tokenData.tokenType,
+                rateProvider: tokenData.rateProvider,
+                paysYieldFees: tokenData.paysYieldFees
+            });
 
             if (tokenData.tokenType == TokenType.STANDARD) {
                 if (hasRateProvider || tokenData.paysYieldFees) {
@@ -269,16 +275,28 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Make pool role assignments. A zero address means default to the authorizer.
         _assignPoolRoles(pool, params.roleAccounts);
 
+        // NOTE: a new stack scope otherwise of stack-too-deep error using viaIR compilation
         // Store config and mark the pool as registered
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.isPoolRegistered = true;
-        config.liquidityManagement = params.liquidityManagement;
-        config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
-        config.pauseWindowEndTime = params.pauseWindowEndTime;
-        // Initialize the pool-specific protocol fee values to the current global defaults.
-        (config.aggregateProtocolSwapFeePercentage, config.aggregateProtocolYieldFeePercentage) = _protocolFeeController
-            .registerPool(pool, params.roleAccounts.poolCreator);
-        _poolConfig[pool] = config.fromPoolConfig();
+
+        {
+            PoolConfig memory config = _poolConfig[pool];
+            config.isPoolRegistered = true;
+
+            config.disableUnbalancedLiquidity = params.liquidityManagement.disableUnbalancedLiquidity;
+            config.enableAddLiquidityCustom = params.liquidityManagement.enableAddLiquidityCustom;
+            config.enableRemoveLiquidityCustom = params.liquidityManagement.enableRemoveLiquidityCustom;
+
+            config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
+            config.pauseWindowEndTime = params.pauseWindowEndTime;
+
+            // Initialize the pool-specific protocol fee values to the current global defaults.
+            (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) = _protocolFeeController
+                .registerPool(pool, params.roleAccounts.poolCreator, params.protocolFeeExempt);
+            config.setAggregateSwapFeePercentage(aggregateSwapFeePercentage);
+            config.setAggregateYieldFeePercentage(aggregateYieldFeePercentage);
+
+            _poolConfig[pool] = config;
+        }
 
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
 
@@ -328,7 +346,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external onlyWhenUnlocked withRegisteredPool(pool) onlyVault returns (uint256 bptAmountOut) {
+    ) external onlyWhenUnlocked withRegisteredPool(pool) onlyVaultDelegateCall returns (uint256 bptAmountOut) {
         _ensureUnpausedAndGetVaultState(pool);
         HooksConfig memory hooksConfig = _hooksConfig[pool];
 
@@ -338,7 +356,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         if (poolData.poolConfig.isPoolInitialized) {
             revert PoolAlreadyInitialized(pool);
         }
-        uint256 numTokens = poolData.tokenConfig.length;
+        uint256 numTokens = poolData.tokens.length;
 
         InputHelpers.ensureInputLengthMatch(numTokens, exactAmountsIn.length);
 
@@ -378,8 +396,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     ) internal nonReentrant returns (uint256 bptAmountOut) {
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
 
-        for (uint256 i = 0; i < poolData.tokenConfig.length; ++i) {
-            IERC20 actualToken = poolData.tokenConfig[i].token;
+        for (uint256 i = 0; i < poolData.tokens.length; ++i) {
+            IERC20 actualToken = poolData.tokens[i];
 
             // Tokens passed into `initialize` are the "expected" tokens.
             if (actualToken != tokens[i]) {
@@ -400,7 +418,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Store config and mark the pool as initialized
         poolData.poolConfig.isPoolInitialized = true;
-        _poolConfig[pool] = poolData.poolConfig.fromPoolConfig();
+        _poolConfig[pool] = poolData.poolConfig;
 
         // Pass scaled balances to the pool
         bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18);
@@ -429,30 +447,72 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function isPoolInitialized(address pool) external view withRegisteredPool(pool) onlyVault returns (bool) {
+    function isPoolInitialized(
+        address pool
+    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (bool) {
         return _isPoolInitialized(pool);
     }
 
     /// @inheritdoc IVaultExtension
-    function getPoolConfig(address pool) external view withRegisteredPool(pool) onlyVault returns (PoolConfig memory) {
-        return _poolConfig[pool].toPoolConfig();
+    function getPoolConfig(
+        address pool
+    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (PoolConfig memory) {
+        return _poolConfig[pool];
     }
 
     /// @inheritdoc IVaultExtension
     function getHooksConfig(
         address pool
-    ) external view withRegisteredPool(pool) onlyVault returns (HooksConfig memory) {
+    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (HooksConfig memory) {
         return _hooksConfig[pool];
     }
 
     /// @inheritdoc IVaultExtension
-    function getPoolTokensAndBalancesRaw(address pool) external view withRegisteredPool(pool) onlyVault returns (IERC20[] memory tokens, uint256[] memory balancesRaw) {
+    function getPoolTokens(
+        address pool
+    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (IERC20[] memory tokens) {
         // Retrieve the mapping of tokens and their balances for the specified pool.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
         uint256 numTokens = poolTokenBalances.length();
         // Initialize arrays to store tokens based on the number of tokens in the pool.
         tokens = new IERC20[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
+            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
+            // storage reads.
+            (tokens[i], ) = poolTokenBalances.unchecked_at(i);
+        }
+    }
+
+    function getPoolData(
+        address pool
+    ) external view withInitializedPool(pool) onlyVaultDelegateCall returns (PoolData memory) {
+        return _loadPoolData(pool, Rounding.ROUND_DOWN);
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getPoolTokenInfo(
+        address pool
+    )
+        external
+        view
+        withRegisteredPool(pool)
+        onlyVaultDelegateCall
+        returns (
+            IERC20[] memory tokens,
+            TokenInfo[] memory tokenInfo,
+            uint256[] memory balancesRaw,
+            uint256[] memory lastLiveBalances
+        )
+    {
+        // Retrieve the mapping of tokens and their balances for the specified pool.
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        uint256 numTokens = poolTokenBalances.length();
+        tokens = new IERC20[](numTokens);
+        tokenInfo = new TokenInfo[](numTokens);
         balancesRaw = new uint256[](numTokens);
+        lastLiveBalances = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
             bytes32 packedBalance;
@@ -460,42 +520,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
             (tokens[i], packedBalance) = poolTokenBalances.unchecked_at(i);
+            tokenInfo[i] = _poolTokenInfo[pool][tokens[i]];
             balancesRaw[i] = packedBalance.getBalanceRaw();
+            lastLiveBalances[i] = packedBalance.getBalanceDerived();
         }
-    }
-
-    function getPoolData(address pool) external view withInitializedPool(pool) onlyVault returns (PoolData memory) {
-        return _loadPoolData(pool, Rounding.ROUND_DOWN);
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getPoolTokenConfig(
-        address pool
-    )
-        external
-        view
-        withRegisteredPool(pool)
-        returns (TokenConfig[] memory tokenConfig)
-    {
-        // Retrieve the mapping of tokens and their balances for the specified pool.
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        uint256 numTokens = poolTokenBalances.length();
-        tokenConfig = new TokenConfig[](numTokens);
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
-            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
-            // storage reads.
-            (IERC20 token, ) = poolTokenBalances.unchecked_at(i);
-            tokenConfig[i] = _poolTokenConfig[pool][token];
-        }
-
-        return tokenConfig;
     }
 
     function getCurrentBalancesLiveScaled18(
         address pool
-    ) external view withInitializedPool(pool) onlyVault returns (uint256[] memory balancesLiveScaled18) {
+    ) external view withInitializedPool(pool) onlyVaultDelegateCall returns (uint256[] memory balancesLiveScaled18) {
         return _loadPoolData(pool, Rounding.ROUND_DOWN).balancesLiveScaled18;
     }
 
@@ -503,12 +536,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function computeDynamicSwapFee(
         address pool,
         IBasePool.PoolSwapParams memory swapParams
-    ) external view withRegisteredPool(pool) returns (bool success, uint256 dynamicSwapFee) {
-        return _hooksConfig[pool].onComputeDynamicSwapFee(swapParams);
+    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (bool success, uint256 dynamicSwapFee) {
+        return _hooksConfig[pool].onComputeDynamicSwapFee(swapParams, _poolConfig[pool].getStaticSwapFeePercentage());
     }
 
     /// @inheritdoc IVaultExtension
-    function getBptRate(address pool) external view withRegisteredPool(pool) returns (uint256 rate) {
+    function getBptRate(
+        address pool
+    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (uint256 rate) {
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
         uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18);
 
@@ -520,34 +555,43 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function totalSupply(address token) external view onlyVault returns (uint256) {
+    function totalSupply(address token) external view onlyVaultDelegateCall returns (uint256) {
         return _totalSupply(token);
     }
 
     /// @inheritdoc IVaultExtension
-    function balanceOf(address token, address account) external view onlyVault returns (uint256) {
+    function balanceOf(address token, address account) external view onlyVaultDelegateCall returns (uint256) {
         return _balanceOf(token, account);
     }
 
     /// @inheritdoc IVaultExtension
-    function allowance(address token, address owner, address spender) external view onlyVault returns (uint256) {
+    function allowance(
+        address token,
+        address owner,
+        address spender
+    ) external view onlyVaultDelegateCall returns (uint256) {
         return _allowance(token, owner, spender);
     }
 
     /// @inheritdoc IVaultExtension
-    function transfer(address owner, address to, uint256 amount) external onlyVault returns (bool) {
+    function transfer(address owner, address to, uint256 amount) external onlyVaultDelegateCall returns (bool) {
         _transfer(msg.sender, owner, to, amount);
         return true;
     }
 
     /// @inheritdoc IVaultExtension
-    function approve(address owner, address spender, uint256 amount) external onlyVault returns (bool) {
+    function approve(address owner, address spender, uint256 amount) external onlyVaultDelegateCall returns (bool) {
         _approve(msg.sender, owner, spender, amount);
         return true;
     }
 
     /// @inheritdoc IVaultExtension
-    function transferFrom(address spender, address from, address to, uint256 amount) external onlyVault returns (bool) {
+    function transferFrom(
+        address spender,
+        address from,
+        address to,
+        uint256 amount
+    ) external onlyVaultDelegateCall returns (bool) {
         _spendAllowance(msg.sender, from, spender, amount);
         _transfer(msg.sender, from, to, amount);
         return true;
@@ -558,15 +602,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function isPoolPaused(address pool) external view withRegisteredPool(pool) onlyVault returns (bool) {
+    function isPoolPaused(address pool) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (bool) {
         return _isPoolPaused(pool);
     }
 
     /// @inheritdoc IVaultExtension
     function getPoolPausedState(
         address pool
-    ) external view withRegisteredPool(pool) onlyVault returns (bool, uint256, uint256, address) {
-        (bool paused, uint256 pauseWindowEndTime) = _getPoolPausedState(pool);
+    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (bool, uint32, uint32, address) {
+        (bool paused, uint32 pauseWindowEndTime) = _getPoolPausedState(pool);
 
         return (
             paused,
@@ -585,26 +629,32 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     // and yield fee amounts, arbitrarily assigning "Raw" to Swap and "Derived" to Yield.
 
     /// @inheritdoc IVaultExtension
-    function getAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view onlyVault returns (uint256) {
-        return _aggregateProtocolFeeAmounts[pool][token].getBalanceRaw();
+    function getAggregateSwapFeeAmount(
+        address pool,
+        IERC20 token
+    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (uint256) {
+        return _aggregateFeeAmounts[pool][token].getBalanceRaw();
     }
 
     /// @inheritdoc IVaultExtension
-    function getAggregateProtocolYieldFeeAmount(address pool, IERC20 token) external view onlyVault returns (uint256) {
-        return _aggregateProtocolFeeAmounts[pool][token].getBalanceDerived();
+    function getAggregateYieldFeeAmount(
+        address pool,
+        IERC20 token
+    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (uint256) {
+        return _aggregateFeeAmounts[pool][token].getBalanceDerived();
     }
 
     /// @inheritdoc IVaultExtension
     function getStaticSwapFeePercentage(
         address pool
-    ) external view withRegisteredPool(pool) onlyVault returns (uint256) {
-        return PoolConfigLib.toPoolConfig(_poolConfig[pool]).staticSwapFeePercentage;
+    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (uint256) {
+        return _poolConfig[pool].getStaticSwapFeePercentage();
     }
 
     /// @inheritdoc IVaultExtension
     function getPoolRoleAccounts(
         address pool
-    ) external view withRegisteredPool(pool) onlyVault returns (PoolRoleAccounts memory) {
+    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (PoolRoleAccounts memory) {
         return _poolRoleAccounts[pool];
     }
 
@@ -613,7 +663,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
-    function isPoolInRecoveryMode(address pool) external view withRegisteredPool(pool) onlyVault returns (bool) {
+    function isPoolInRecoveryMode(
+        address pool
+    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (bool) {
         return _isPoolInRecoveryMode(pool);
     }
 
@@ -628,6 +680,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         nonReentrant
         withInitializedPool(pool)
         onlyInRecoveryMode(pool)
+        onlyVaultDelegateCall
         returns (uint256[] memory amountsOutRaw)
     {
         // Retrieve the mapping of tokens and their balances for the specified pool.
@@ -689,28 +742,32 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @dev Ensure that only static calls are made to the functions with this modifier.
     modifier query() {
-        if (!EVMCallModeHelpers.isStaticCall()) {
+        _setupQuery();
+        _;
+    }
+
+    function _setupQuery() internal {
+        if (EVMCallModeHelpers.isStaticCall() == false) {
             revert EVMCallModeHelpers.NotStaticCall();
         }
 
-        bool _isQueryDisabled = _vaultState.isQueryDisabled();
+        bool _isQueryDisabled = _vaultState.isQueryDisabled;
         if (_isQueryDisabled) {
             revert QueriesDisabled();
         }
 
         // Unlock so that `onlyWhenUnlocked` does not revert
         _isUnlocked().tstore(true);
-        _;
     }
 
     /// @inheritdoc IVaultExtension
-    function quote(bytes calldata data) external payable query onlyVault returns (bytes memory result) {
+    function quote(bytes calldata data) external payable query onlyVaultDelegateCall returns (bytes memory result) {
         // Forward the incoming call to the original sender of this transaction.
         return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
     /// @inheritdoc IVaultExtension
-    function quoteAndRevert(bytes calldata data) external payable query onlyVault {
+    function quoteAndRevert(bytes calldata data) external payable query onlyVaultDelegateCall {
         // Forward the incoming call to the original sender of this transaction.
         (bool success, bytes memory result) = (msg.sender).call{ value: msg.value }(data);
         if (success) {
@@ -731,8 +788,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function isQueryDisabled() external view onlyVault returns (bool) {
-        return _vaultState.isQueryDisabled();
+    function isQueryDisabled() external view onlyVaultDelegateCall returns (bool) {
+        return _vaultState.isQueryDisabled;
     }
 
     receive() external payable {

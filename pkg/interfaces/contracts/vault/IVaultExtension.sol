@@ -69,6 +69,7 @@ interface IVaultExtension {
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param swapFeePercentage The initial static swap fee percentage of the pool
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
+     * @param protocolFeeExempt If true, the pool's initial aggregate fees will be set to 0
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHooksContract Contract that implements the hooks for the pool
      * @param liquidityManagement Liquidity management flags with implemented methods
@@ -77,7 +78,8 @@ interface IVaultExtension {
         address pool,
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
-        uint256 pauseWindowEndTime,
+        uint32 pauseWindowEndTime,
+        bool protocolFeeExempt,
         PoolRoleAccounts calldata roleAccounts,
         address poolHooksContract,
         LiquidityManagement calldata liquidityManagement
@@ -122,16 +124,16 @@ interface IVaultExtension {
     function isPoolInitialized(address pool) external view returns (bool);
 
     /**
-     * @notice Gets the tokens registered to a pool, together with their raw balances.
+     * @notice Gets the tokens registered to a pool.
      * @param pool Address of the pool
      * @return tokens List of tokens in the pool
-     * @return balancesRaw Raw balances corresponding to the tokens in the pool
      */
-    function getPoolTokensAndBalancesRaw(address pool) external view returns (IERC20[] memory, uint256[] memory;
+    function getPoolTokens(address pool) external view returns (IERC20[] memory);
 
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
-     * @return tokenConfig Pool's token configuration
+     * @return tokens The pool tokens, in registration order
+     * @return tokenInfo Corresponding token info
      * @return balancesRaw Corresponding raw balances of the tokens
      * @return scalingFactors Corresponding scalingFactors of the tokens
      */
@@ -140,7 +142,12 @@ interface IVaultExtension {
     )
         external
         view
-        returns (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory scalingFactors);
+        returns (
+            IERC20[] memory tokens,
+            TokenInfo[] memory tokenInfo,
+            uint256[] memory balancesRaw,
+            uint256[] memory scalingFactors
+        );
 
     /**
      * @notice Gets the configuration parameters of a pool.
@@ -250,27 +257,27 @@ interface IVaultExtension {
      * @return poolBufferPeriodEndTime The timestamp after which the Pool unpauses itself (if paused)
      * @return pauseManager The pause manager, or the zero address
      */
-    function getPoolPausedState(address pool) external view returns (bool, uint256, uint256, address);
+    function getPoolPausedState(address pool) external view returns (bool, uint32, uint32, address);
 
     /*******************************************************************************
                                    Fees
     *******************************************************************************/
 
     /**
-     * @notice Returns the accumulated swap fees (including aggregate protocol fees) in `token` collected by the pool.
-     * @param pool The address of the pool for which protocol fees have been collected
+     * @notice Returns the accumulated swap fees (including aggregate fees) in `token` collected by the pool.
+     * @param pool The address of the pool for which aggregate fees have been collected
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
      */
-    function getAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view returns (uint256);
+    function getAggregateSwapFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
     /**
-     * @notice Returns the accumulated yield fees (including aggregate protocol fees) in `token` collected by the pool.
-     * @param pool The address of the pool for which protocol fees have been collected
+     * @notice Returns the accumulated yield fees (including aggregate fees) in `token` collected by the pool.
+     * @param pool The address of the pool for which aggregate fees have been collected
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
      */
-    function getAggregateProtocolYieldFeeAmount(address pool, IERC20 token) external view returns (uint256);
+    function getAggregateYieldFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
     /**
      * @notice Fetches the static swap fee percentage for a given pool.

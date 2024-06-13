@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenConfig, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
@@ -20,8 +20,6 @@ import {
     TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
-import { VaultStateBits } from "./lib/VaultStateLib.sol";
-import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 
 // solhint-disable max-states-count
@@ -41,9 +39,6 @@ contract VaultStorage {
     // This maximum token count is also hard-coded in `PoolConfigLib`.
     uint256 internal constant _MAX_TOKENS = 4;
 
-    // Maximum pool swap fee percentage.
-    uint256 internal constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
-
     // Maximum pause and buffer period durations.
     uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
     uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
@@ -56,7 +51,7 @@ contract VaultStorage {
     IVaultExtension internal immutable _vaultExtension;
 
     // Registry of pool configs.
-    mapping(address => PoolConfigBits) internal _poolConfig;
+    mapping(address => PoolConfig) internal _poolConfig;
 
     // Registry of pool hooks.
     mapping(address => HooksConfig) internal _hooksConfig;
@@ -66,8 +61,8 @@ contract VaultStorage {
     // as scaled 18-decimal FP values. Each value takes up half the storage slot (i.e., 128 bits).
     mapping(address => EnumerableMap.IERC20ToBytes32Map) internal _poolTokenBalances;
 
-    // Pool -> (token -> TokenConfig): The token configuration of each Pool's tokens.
-    mapping(address => mapping(IERC20 => TokenConfig)) internal _poolTokenConfig;
+    // Pool -> (token -> TokenInfo): The token configuration of each Pool's tokens.
+    mapping(address => mapping(IERC20 => TokenInfo)) internal _poolTokenInfo;
 
     /// @notice Global lock state. Unlock to operate with the vault.
     bool private __isUnlocked;
@@ -84,10 +79,10 @@ contract VaultStorage {
      */
     mapping(IERC20 => int256) private __tokenDeltas;
 
-    // Pool -> (Token -> fee): aggregate protocol swap/yield fees accumulated in the Vault for harvest.
+    // Pool -> (Token -> fee): aggregate swap/yield fees accumulated in the Vault for harvest.
     // Reusing PackedTokenBalance to save bytecode (despite differing semantics).
     // It's arbitrary which is which: we define raw=swap; derived=yield
-    mapping(address => mapping(IERC20 => bytes32)) internal _aggregateProtocolFeeAmounts;
+    mapping(address => mapping(IERC20 => bytes32)) internal _aggregateFeeAmounts;
 
     /**
      * @dev Represents the total reserve of each ERC20 token. It should be always equal to `token.balanceOf(vault)`,
@@ -101,13 +96,13 @@ contract VaultStorage {
     // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
     // solhint-disable not-rely-on-time
 
-    uint256 internal immutable _vaultPauseWindowEndTime;
-    uint256 internal immutable _vaultBufferPeriodEndTime;
+    uint32 internal immutable _vaultPauseWindowEndTime;
+    uint32 internal immutable _vaultBufferPeriodEndTime;
     // Stored as a convenience, to avoid calculating it on every operation.
-    uint256 internal immutable _vaultBufferPeriodDuration;
+    uint32 internal immutable _vaultBufferPeriodDuration;
 
-    // Bytes32 with protocol fees and paused flags.
-    VaultStateBits internal _vaultState;
+    // Vault pause and query flags.
+    VaultState internal _vaultState;
 
     // pool -> roleId (corresponding to a particular function) -> PoolFunctionPermission.
     mapping(address => mapping(bytes32 => PoolFunctionPermission)) internal _poolFunctionPermissions;
@@ -115,7 +110,7 @@ contract VaultStorage {
     // pool -> PoolRoleAccounts (accounts assigned to specific roles; e.g., pauseManager).
     mapping(address => PoolRoleAccounts) internal _poolRoleAccounts;
 
-    // Contract that receives protocol swap and yield fees
+    // Contract that receives aggregate swap and yield fees
     IProtocolFeeController internal _protocolFeeController;
 
     // Buffers are a vault internal concept, keyed on the wrapped token address.

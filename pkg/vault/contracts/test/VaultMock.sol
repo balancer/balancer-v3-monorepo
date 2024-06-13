@@ -24,8 +24,7 @@ import {
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
 
-import { VaultStateLib } from "../lib/VaultStateLib.sol";
-import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
+import { PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { HooksConfigLib } from "../lib/HooksConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
@@ -47,7 +46,6 @@ contract VaultMock is IVaultMainMock, Vault {
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfig;
     using HooksConfigLib for HooksConfig;
-    using VaultStateLib for VaultState;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
@@ -56,15 +54,13 @@ contract VaultMock is IVaultMainMock, Vault {
     PoolFactoryMock private immutable _poolFactoryMock;
     InputHelpersMock private immutable _inputHelpersMock;
 
-    bytes32 private constant _ALL_BITS_SET = bytes32(type(uint256).max);
-
     constructor(
         IVaultExtension vaultExtension,
         IAuthorizer authorizer,
         IProtocolFeeController protocolFeeController
     ) Vault(vaultExtension, authorizer, protocolFeeController) {
-        uint256 pauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
-        uint256 bufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
+        uint32 pauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
+        uint32 bufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
         _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowEndTime - bufferPeriodDuration);
         _inputHelpersMock = new InputHelpersMock();
     }
@@ -82,7 +78,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function setConfig(address pool, PoolConfig calldata config) external {
-        _poolConfig[pool] = config.fromPoolConfig();
+        _poolConfig[pool] = config;
     }
 
     function setHooksConfig(address pool, HooksConfig calldata config) external {
@@ -118,7 +114,11 @@ contract VaultMock is IVaultMainMock, Vault {
             buildTokenConfig(tokens),
             swapFeePercentage,
             address(0), // No hook contract
-            PoolConfigBits.wrap(_ALL_BITS_SET).toPoolConfig().liquidityManagement
+            LiquidityManagement({
+                disableUnbalancedLiquidity: true,
+                enableAddLiquidityCustom: true,
+                enableRemoveLiquidityCustom: true
+            })
         );
     }
 
@@ -145,7 +145,7 @@ contract VaultMock is IVaultMainMock, Vault {
     function manualRegisterPoolAtTimestamp(
         address pool,
         IERC20[] memory tokens,
-        uint256 timestamp,
+        uint32 timestamp,
         PoolRoleAccounts memory roleAccounts
     ) external whenVaultNotPaused {
         _poolFactoryMock.registerPoolAtTimestamp(
@@ -162,48 +162,56 @@ contract VaultMock is IVaultMainMock, Vault {
         );
     }
 
+    function manualSetPoolRegistered(address pool, bool status) public {
+        PoolConfig memory poolConfig = _poolConfig[pool];
+        poolConfig.isPoolRegistered = status;
+        _poolConfig[pool] = poolConfig;
+    }
+
     function manualSetIsUnlocked(bool status) public {
         _isUnlocked().tstore(status);
     }
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) public {
-        PoolConfig memory poolConfig = _poolConfig[pool].toPoolConfig();
+        PoolConfig memory poolConfig = _poolConfig[pool];
         poolConfig.isPoolInitialized = isPoolInitialized;
-        _poolConfig[pool] = poolConfig.fromPoolConfig();
+        _poolConfig[pool] = poolConfig;
     }
 
-    function manualSetPoolPauseWindowEndTime(address pool, uint256 pauseWindowEndTime) public {
-        PoolConfig memory poolConfig = _poolConfig[pool].toPoolConfig();
+    function manualSetPoolPauseWindowEndTime(address pool, uint32 pauseWindowEndTime) public {
+        PoolConfig memory poolConfig = _poolConfig[pool];
         poolConfig.pauseWindowEndTime = pauseWindowEndTime;
-        _poolConfig[pool] = poolConfig.fromPoolConfig();
+        _poolConfig[pool] = poolConfig;
     }
 
     function manualSetPoolPaused(address pool, bool isPoolPaused) public {
-        PoolConfig memory poolConfig = _poolConfig[pool].toPoolConfig();
+        PoolConfig memory poolConfig = _poolConfig[pool];
         poolConfig.isPoolPaused = isPoolPaused;
-        _poolConfig[pool] = poolConfig.fromPoolConfig();
+        _poolConfig[pool] = poolConfig;
     }
 
     function manualSetVaultPaused(bool isVaultPaused) public {
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.isVaultPaused = isVaultPaused;
-        _vaultState = vaultState.fromVaultState();
+        _vaultState.isVaultPaused = isVaultPaused;
     }
 
     function manualSetVaultState(bool isVaultPaused, bool isQueryDisabled) public {
-        VaultState memory vaultState = _vaultState.toVaultState();
+        VaultState memory vaultState = _vaultState;
         vaultState.isVaultPaused = isVaultPaused;
         vaultState.isQueryDisabled = isQueryDisabled;
-        _vaultState = vaultState.fromVaultState();
+        _vaultState = vaultState;
     }
 
     function manualSetPoolConfig(address pool, PoolConfig memory poolConfig) public {
-        _poolConfig[pool] = poolConfig.fromPoolConfig();
+        _poolConfig[pool] = poolConfig;
     }
 
     function manualSetPoolTokenConfig(address pool, IERC20[] memory tokens, TokenConfig[] memory tokenConfig) public {
         for (uint256 i = 0; i < tokens.length; ++i) {
-            _poolTokenConfig[pool][tokens[i]] = tokenConfig[i];
+            _poolTokenInfo[pool][tokens[i]] = TokenInfo({
+                tokenType: tokenConfig[i].tokenType,
+                rateProvider: tokenConfig[i].rateProvider,
+                paysYieldFees: tokenConfig[i].paysYieldFees
+            });
         }
     }
 
@@ -232,14 +240,21 @@ contract VaultMock is IVaultMainMock, Vault {
         public
         view
         returns (
-            TokenConfig[] memory tokenConfig,
+            IERC20[] memory tokens,
+            TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
             uint256[] memory decimalScalingFactors,
             PoolConfig memory poolConfig
         )
     {
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
-        return (poolData.tokenConfig, poolData.balancesRaw, poolData.decimalScalingFactors, poolData.poolConfig);
+        return (
+            poolData.tokens,
+            poolData.tokenInfo,
+            poolData.balancesRaw,
+            poolData.decimalScalingFactors,
+            poolData.poolConfig
+        );
     }
 
     function buildTokenConfig(IERC20[] memory tokens) public view returns (TokenConfig[] memory tokenConfig) {
@@ -300,13 +315,6 @@ contract VaultMock is IVaultMainMock, Vault {
         }
 
         tokenConfig = _inputHelpersMock.sortTokenConfig(tokenConfig);
-    }
-
-    function getDecimalScalingFactors(address pool) external view returns (uint256[] memory) {
-        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
-        IERC20[] memory tokens = _getPoolTokens(pool);
-
-        return PoolConfigLib.getDecimalScalingFactors(config, tokens.length);
     }
 
     function recoveryModeExit(address pool) external view onlyInRecoveryMode(pool) {
@@ -431,32 +439,32 @@ contract VaultMock is IVaultMainMock, Vault {
         return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut, params, state, poolData);
     }
 
-    function manualGetAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view returns (uint256) {
-        return _aggregateProtocolFeeAmounts[pool][token].getBalanceRaw();
+    function manualGetAggregateSwapFeeAmount(address pool, IERC20 token) external view returns (uint256) {
+        return _aggregateFeeAmounts[pool][token].getBalanceRaw();
     }
 
-    function manualGetAggregateProtocolYieldFeeAmount(address pool, IERC20 token) external view returns (uint256) {
-        return _aggregateProtocolFeeAmounts[pool][token].getBalanceDerived();
+    function manualGetAggregateYieldFeeAmount(address pool, IERC20 token) external view returns (uint256) {
+        return _aggregateFeeAmounts[pool][token].getBalanceDerived();
     }
 
-    function manualSetAggregateProtocolSwapFeeAmount(address pool, IERC20 token, uint256 value) external {
-        _aggregateProtocolFeeAmounts[pool][token] = _aggregateProtocolFeeAmounts[pool][token].setBalanceRaw(value);
+    function manualSetAggregateSwapFeeAmount(address pool, IERC20 token, uint256 value) external {
+        _aggregateFeeAmounts[pool][token] = _aggregateFeeAmounts[pool][token].setBalanceRaw(value);
     }
 
-    function manualSetAggregateProtocolYieldFeeAmount(address pool, IERC20 token, uint256 value) external {
-        _aggregateProtocolFeeAmounts[pool][token] = _aggregateProtocolFeeAmounts[pool][token].setBalanceDerived(value);
+    function manualSetAggregateYieldFeeAmount(address pool, IERC20 token, uint256 value) external {
+        _aggregateFeeAmounts[pool][token] = _aggregateFeeAmounts[pool][token].setBalanceDerived(value);
     }
 
-    function manualSetAggregateProtocolSwapFeePercentage(address pool, uint256 value) external {
-        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
-        config.aggregateProtocolSwapFeePercentage = value;
-        _poolConfig[pool] = config.fromPoolConfig();
+    function manualSetAggregateSwapFeePercentage(address pool, uint256 value) external {
+        PoolConfig memory config = _poolConfig[pool];
+        config.setAggregateSwapFeePercentage(value);
+        _poolConfig[pool] = config;
     }
 
-    function manualSetAggregateProtocolYieldFeePercentage(address pool, uint256 value) external {
-        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
-        config.aggregateProtocolYieldFeePercentage = value;
-        _poolConfig[pool] = config.fromPoolConfig();
+    function manualSetAggregateYieldFeePercentage(address pool, uint256 value) external {
+        PoolConfig memory config = _poolConfig[pool];
+        config.setAggregateYieldFeePercentage(value);
+        _poolConfig[pool] = config;
     }
 
     function manualBuildPoolSwapParams(
@@ -467,14 +475,14 @@ contract VaultMock is IVaultMainMock, Vault {
         return _buildPoolSwapParams(params, state, poolData);
     }
 
-    function manualComputeAndChargeAggregateProtocolSwapFees(
+    function manualComputeAndChargeAggregateSwapFees(
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         address pool,
         IERC20 token,
         uint256 index
     ) external returns (uint256 totalFeesRaw) {
-        return _computeAndChargeAggregateProtocolSwapFees(poolData, swapFeeAmountScaled18, pool, token, index);
+        return _computeAndChargeAggregateSwapFees(poolData, swapFeeAmountScaled18, pool, token, index);
     }
 
     function manualUpdatePoolDataLiveBalancesAndRates(
@@ -513,8 +521,7 @@ contract VaultMock is IVaultMainMock, Vault {
     function manualRemoveLiquidity(
         PoolData memory poolData,
         RemoveLiquidityParams memory params,
-        uint256[] memory minAmountsOutScaled18,
-        VaultState memory vaultState
+        uint256[] memory minAmountsOutScaled18
     )
         external
         returns (
@@ -528,8 +535,7 @@ contract VaultMock is IVaultMainMock, Vault {
         (bptAmountIn, amountsOutRaw, amountsOutScaled18, returnData) = _removeLiquidity(
             poolData,
             params,
-            minAmountsOutScaled18,
-            vaultState
+            minAmountsOutScaled18
         );
 
         updatedPoolData = poolData;

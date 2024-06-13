@@ -14,16 +14,19 @@ struct LiquidityManagement {
 
 /// @dev Represents a pool's configuration (hooks configuration are separated in another struct).
 struct PoolConfig {
-    LiquidityManagement liquidityManagement;
-    uint256 staticSwapFeePercentage;
-    uint256 aggregateProtocolSwapFeePercentage;
-    uint256 aggregateProtocolYieldFeePercentage;
-    uint256 tokenDecimalDiffs;
-    uint256 pauseWindowEndTime;
+    uint24 staticSwapFeePercentageUnscaled;
+    uint24 aggregateSwapFeePercentageUnscaled;
+    uint24 aggregateYieldFeePercentageUnscaled;
+    uint24 tokenDecimalDiffs;
+    uint32 pauseWindowEndTime;
     bool isPoolRegistered;
     bool isPoolInitialized;
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
+    // NOTE: Duplicated parameters from LiquidityManagement because parameters are packed in one slot.
+    bool disableUnbalancedLiquidity;
+    bool enableAddLiquidityCustom;
+    bool enableRemoveLiquidityCustom;
 }
 
 /// @dev Represents a hook contract configuration for a pool.
@@ -97,7 +100,7 @@ struct PoolFunctionPermission {
  * yield-bearing ERC4626 tokens, which can be used to facilitate swaps without requiring wrapping or unwrapping
  * in most cases. The `paysYieldFees` flag can be used to indicate whether a token is yield-bearing (e.g., waDAI),
  * not yield-bearing (e.g., sEUR), or yield-bearing but exempt from fees (e.g., in certain nested pools, where
- * protocol yield fees are charged elsewhere).
+ * yield fees are charged elsewhere).
  *
  * NB: STANDARD must always be the first enum element, so that newly initialized data structures default to Standard.
  */
@@ -107,9 +110,13 @@ enum TokenType {
 }
 
 /**
- * @dev Encapsulate the data required for the Vault to support a token of the given type.
- * For STANDARD tokens, the rate provider address must be 0, and paysYieldFees must be false.
- * All WITH_RATE tokens need a rate provider, and may or may not be yield-bearing.
+ * @dev Encapsulate the data required for the Vault to support a token of the given type. For STANDARD tokens,
+ * the rate provider address must be 0, and paysYieldFees must be false. All WITH_RATE tokens need a rate provider,
+ * and may or may not be yield-bearing.
+ *
+ * At registration time, it is useful to include the token address along with the token parameters in the structure
+ * passed to `registerPool`, as the alternative would be parallel arrays, which would be error prone and require
+ * validation checks. `TokenConfig` is only used for registration, and is never put into storage (see `TokenInfo`).
  *
  * @param token The token address
  * @param tokenType The token type (see the enum for supported types)
@@ -123,9 +130,25 @@ struct TokenConfig {
     bool paysYieldFees;
 }
 
+/**
+ * @dev This data structure is stored in `_poolTokenInfo`, a nested mapping from pool -> (token -> TokenInfo).
+ * Since the token is already the key of the nested mapping, it would be redundant (and an extra SLOAD) to store
+ * it again in the struct. When we construct PoolData, the tokens are separated into their own array.
+ *
+ * @param tokenType The token type (see the enum for supported types)
+ * @param rateProvider The rate provider for a token (see further documentation above)
+ * @param paysYieldFees Flag indicating whether yield fees should be charged on this token
+ */
+struct TokenInfo {
+    TokenType tokenType;
+    IRateProvider rateProvider;
+    bool paysYieldFees;
+}
+
 struct PoolData {
     PoolConfig poolConfig;
-    TokenConfig[] tokenConfig;
+    IERC20[] tokens;
+    TokenInfo[] tokenInfo;
     uint256[] balancesRaw;
     uint256[] balancesLiveScaled18;
     uint256[] tokenRates;

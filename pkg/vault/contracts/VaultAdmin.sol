@@ -28,7 +28,6 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
@@ -51,12 +50,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
-    using VaultStateLib for VaultStateBits;
 
     IVault private immutable _vault;
 
     /// @dev Functions with this modifier can only be delegate-called by the vault.
-    modifier onlyVault() {
+    modifier onlyVaultDelegateCall() {
         _vault.ensureVaultDelegateCall();
         _;
     }
@@ -77,8 +75,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     constructor(
         IVault mainVault,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
+        uint32 pauseWindowDuration,
+        uint32 bufferPeriodDuration
     ) Authentication(bytes32(uint256(uint160(address(mainVault))))) {
         if (pauseWindowDuration > _MAX_PAUSE_WINDOW_DURATION) {
             revert VaultPauseWindowDurationTooLarge();
@@ -88,7 +86,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         }
 
         // solhint-disable-next-line not-rely-on-time
-        uint256 pauseWindowEndTime = block.timestamp + pauseWindowDuration;
+        uint32 pauseWindowEndTime = uint32(block.timestamp) + pauseWindowDuration;
 
         _vaultPauseWindowEndTime = pauseWindowEndTime;
         _vaultBufferPeriodDuration = bufferPeriodDuration;
@@ -107,17 +105,17 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function getPauseWindowEndTime() external view returns (uint256) {
+    function getPauseWindowEndTime() external view returns (uint32) {
         return _vaultPauseWindowEndTime;
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferPeriodDuration() external view returns (uint256) {
+    function getBufferPeriodDuration() external view returns (uint32) {
         return _vaultBufferPeriodDuration;
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferPeriodEndTime() external view returns (uint256) {
+    function getBufferPeriodEndTime() external view returns (uint32) {
         return _vaultBufferPeriodEndTime;
     }
 
@@ -138,7 +136,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @inheritdoc IVaultAdmin
     function getPoolTokenRates(
         address pool
-    ) external view withRegisteredPool(pool) onlyVault returns (uint256[] memory) {
+    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (uint256[] memory) {
         return _loadPoolData(pool, Rounding.ROUND_DOWN).tokenRates;
     }
 
@@ -147,22 +145,22 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
-    function isVaultPaused() external view onlyVault returns (bool) {
+    function isVaultPaused() external view onlyVaultDelegateCall returns (bool) {
         return _isVaultPaused();
     }
 
     /// @inheritdoc IVaultAdmin
-    function getVaultPausedState() external view onlyVault returns (bool, uint256, uint256) {
+    function getVaultPausedState() external view onlyVaultDelegateCall returns (bool, uint32, uint32) {
         return (_isVaultPaused(), _vaultPauseWindowEndTime, _vaultBufferPeriodEndTime);
     }
 
     /// @inheritdoc IVaultAdmin
-    function pauseVault() external authenticate onlyVault {
+    function pauseVault() external authenticate onlyVaultDelegateCall {
         _setVaultPaused(true);
     }
 
     /// @inheritdoc IVaultAdmin
-    function unpauseVault() external authenticate onlyVault {
+    function unpauseVault() external authenticate onlyVaultDelegateCall {
         _setVaultPaused(false);
     }
 
@@ -193,9 +191,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             }
         }
 
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.isVaultPaused = pausing;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
+        _vaultState.isVaultPaused = pausing;
 
         emit VaultPausedStateChanged(pausing);
     }
@@ -236,17 +232,19 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function pausePool(address pool) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
+    function pausePool(address pool) external withRegisteredPool(pool) authenticateByRole(pool) onlyVaultDelegateCall {
         _setPoolPaused(pool, true);
     }
 
     /// @inheritdoc IVaultAdmin
-    function unpausePool(address pool) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
+    function unpausePool(
+        address pool
+    ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVaultDelegateCall {
         _setPoolPaused(pool, false);
     }
 
     function _setPoolPaused(address pool, bool pausing) internal {
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        PoolConfig memory config = _poolConfig[pool];
 
         if (_isPoolPaused(pool)) {
             if (pausing) {
@@ -272,7 +270,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
         // Update poolConfig.
         config.isPoolPaused = pausing;
-        _poolConfig[pool] = config.fromPoolConfig();
+        _poolConfig[pool] = config;
 
         emit PoolPausedStateChanged(pool, pausing);
     }
@@ -285,14 +283,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function setStaticSwapFeePercentage(
         address pool,
         uint256 swapFeePercentage
-    ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVault {
+    ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVaultDelegateCall {
         // Saving bits by not implementing a new modifier
         _ensureUnpausedAndGetVaultState(pool);
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectProtocolFees(address pool) public nonReentrant onlyVault {
+    function collectAggregateFees(address pool) public nonReentrant withRegisteredPool(pool) onlyVaultDelegateCall {
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
         address feeController = address(_protocolFeeController);
         uint256 numTokens = poolTokens.length;
@@ -303,43 +301,55 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             IERC20 token = poolTokens[i];
 
-            (totalSwapFees[i], totalYieldFees[i]) = _aggregateProtocolFeeAmounts[pool][token].fromPackedBalance();
+            (totalSwapFees[i], totalYieldFees[i]) = _aggregateFeeAmounts[pool][token].fromPackedBalance();
 
             if (totalSwapFees[i] > 0 || totalYieldFees[i] > 0) {
                 // The ProtocolFeeController will pull tokens from the Vault.
                 token.approve(feeController, totalSwapFees[i] + totalYieldFees[i]);
 
-                _aggregateProtocolFeeAmounts[pool][token] = 0;
+                _aggregateFeeAmounts[pool][token] = 0;
             }
         }
 
-        _protocolFeeController.receiveProtocolFees(pool, totalSwapFees, totalYieldFees);
+        _protocolFeeController.receiveAggregateFees(pool, totalSwapFees, totalYieldFees);
     }
 
     /// @inheritdoc IVaultAdmin
     function updateAggregateSwapFeePercentage(
         address pool,
         uint256 newAggregateSwapFeePercentage
-    ) external withValidPercentage(newAggregateSwapFeePercentage) onlyProtocolFeeController {
-        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
-        config.aggregateProtocolSwapFeePercentage = newAggregateSwapFeePercentage;
-        _poolConfig[pool] = config.fromPoolConfig();
+    )
+        external
+        withRegisteredPool(pool)
+        withValidPercentage(newAggregateSwapFeePercentage)
+        onlyProtocolFeeController
+        onlyVaultDelegateCall
+    {
+        PoolConfig memory config = _poolConfig[pool];
+        config.setAggregateSwapFeePercentage(newAggregateSwapFeePercentage);
+        _poolConfig[pool] = config;
     }
 
     /// @inheritdoc IVaultAdmin
     function updateAggregateYieldFeePercentage(
         address pool,
         uint256 newAggregateYieldFeePercentage
-    ) external withValidPercentage(newAggregateYieldFeePercentage) onlyProtocolFeeController {
-        PoolConfig memory config = _poolConfig[pool].toPoolConfig();
-        config.aggregateProtocolYieldFeePercentage = newAggregateYieldFeePercentage;
-        _poolConfig[pool] = config.fromPoolConfig();
+    )
+        external
+        withRegisteredPool(pool)
+        withValidPercentage(newAggregateYieldFeePercentage)
+        onlyProtocolFeeController
+        onlyVaultDelegateCall
+    {
+        PoolConfig memory config = _poolConfig[pool];
+        config.setAggregateYieldFeePercentage(newAggregateYieldFeePercentage);
+        _poolConfig[pool] = config;
     }
 
     /// @inheritdoc IVaultAdmin
     function setProtocolFeeController(
         IProtocolFeeController newProtocolFeeController
-    ) external onlyVault nonReentrant authenticate {
+    ) external authenticate nonReentrant onlyVaultDelegateCall {
         _protocolFeeController = newProtocolFeeController;
 
         emit ProtocolFeeControllerChanged(newProtocolFeeController);
@@ -350,7 +360,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
-    function enableRecoveryMode(address pool) external withRegisteredPool(pool) onlyVault {
+    function enableRecoveryMode(address pool) external withRegisteredPool(pool) onlyVaultDelegateCall {
         _ensurePoolNotInRecoveryMode(pool);
 
         // If the Vault or pool is pausable (and currently paused), this call is permissionless.
@@ -363,7 +373,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function disableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate onlyVault {
+    function disableRecoveryMode(address pool) external withRegisteredPool(pool) authenticate onlyVaultDelegateCall {
         _ensurePoolInRecoveryMode(pool);
         _setPoolRecoveryMode(pool, false);
     }
@@ -387,9 +397,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
      */
     function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
         // Update poolConfig
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
+        PoolConfig memory config = _poolConfig[pool];
         config.isPoolInRecoveryMode = recoveryMode;
-        _poolConfig[pool] = config.fromPoolConfig();
+        _poolConfig[pool] = config;
 
         if (recoveryMode == false) {
             _writePoolBalancesToStorage(pool, _loadPoolData(pool, Rounding.ROUND_DOWN));
@@ -403,27 +413,21 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
-    function disableQuery() external authenticate onlyVault {
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.isQueryDisabled = true;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
+    function disableQuery() external authenticate onlyVaultDelegateCall {
+        _vaultState.isQueryDisabled = true;
     }
 
     /*******************************************************************************
                                 Yield-bearing token buffers
     *******************************************************************************/
     /// @inheritdoc IVaultAdmin
-    function unpauseVaultBuffers() external authenticate onlyVault {
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.areBuffersPaused = false;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
+    function unpauseVaultBuffers() external authenticate onlyVaultDelegateCall {
+        _vaultState.areBuffersPaused = false;
     }
 
     /// @inheritdoc IVaultAdmin
-    function pauseVaultBuffers() external authenticate onlyVault {
-        VaultState memory vaultState = _vaultState.toVaultState();
-        vaultState.areBuffersPaused = true;
-        _vaultState = VaultStateLib.fromVaultState(vaultState);
+    function pauseVaultBuffers() external authenticate onlyVaultDelegateCall {
+        _vaultState.areBuffersPaused = true;
     }
 
     /// @inheritdoc IVaultAdmin
@@ -432,7 +436,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         uint256 amountUnderlying,
         uint256 amountWrapped,
         address sharesOwner
-    ) public onlyWhenUnlocked whenVaultBuffersAreNotPaused nonReentrant returns (uint256 issuedShares) {
+    )
+        public
+        onlyWhenUnlocked
+        whenVaultBuffersAreNotPaused
+        nonReentrant
+        onlyVaultDelegateCall
+        returns (uint256 issuedShares)
+    {
         address underlyingToken = wrappedToken.asset();
 
         // amount of shares to issue is the total underlying token that the user is depositing
@@ -478,8 +489,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     )
         public
         onlyWhenUnlocked
-        nonReentrant
         authenticate
+        nonReentrant
+        onlyVaultDelegateCall
         returns (uint256 removedUnderlyingBalance, uint256 removedWrappedBalance)
     {
         bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
@@ -507,17 +519,20 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferOwnerShares(IERC20 token, address user) external view returns (uint256 shares) {
+    function getBufferOwnerShares(
+        IERC20 token,
+        address user
+    ) external view onlyVaultDelegateCall returns (uint256 shares) {
         return _bufferLpShares[token][user];
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferTotalShares(IERC20 token) external view returns (uint256 shares) {
+    function getBufferTotalShares(IERC20 token) external view onlyVaultDelegateCall returns (uint256 shares) {
         return _bufferTotalShares[token];
     }
 
     /// @inheritdoc IVaultAdmin
-    function getBufferBalance(IERC20 token) external view returns (uint256, uint256) {
+    function getBufferBalance(IERC20 token) external view onlyVaultDelegateCall returns (uint256, uint256) {
         return (_bufferTokenBalances[token].getBalanceRaw(), _bufferTokenBalances[token].getBalanceDerived());
     }
 
@@ -526,7 +541,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
-    function setAuthorizer(IAuthorizer newAuthorizer) external nonReentrant authenticate onlyVault {
+    function setAuthorizer(IAuthorizer newAuthorizer) external authenticate nonReentrant onlyVaultDelegateCall {
         _authorizer = newAuthorizer;
 
         emit AuthorizerChanged(newAuthorizer);

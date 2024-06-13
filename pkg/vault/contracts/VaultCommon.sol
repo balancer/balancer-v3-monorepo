@@ -4,11 +4,10 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
-import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMinimumSwapFee.sol";
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -22,8 +21,7 @@ import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
-import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
-import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
+import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultStorage } from "./VaultStorage.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
@@ -40,7 +38,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     using ScalingHelpers for *;
     using SafeCast for *;
     using FixedPoint for *;
-    using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
@@ -150,7 +147,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * struct to be used elsewhere
      */
     function _ensureUnpausedAndGetVaultState(address pool) internal view returns (VaultState memory vaultState) {
-        vaultState = _vaultState.toVaultState();
+        vaultState = _vaultState;
         // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
         // isVaultPaused state again in `_isVaultPaused`.
         // solhint-disable-next-line not-rely-on-time
@@ -166,7 +163,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      */
     function _isVaultPaused() internal view returns (bool) {
         // solhint-disable-next-line not-rely-on-time
-        return block.timestamp <= _vaultBufferPeriodEndTime && _vaultState.isVaultPaused();
+        return block.timestamp <= _vaultBufferPeriodEndTime && _vaultState.isVaultPaused;
     }
 
     /*******************************************************************************
@@ -191,12 +188,17 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /// @dev Lowest level routine that plucks only the minimum necessary parts from storage.
-    function _getPoolPausedState(address pool) internal view returns (bool, uint256) {
-        (bool pauseBit, uint256 pauseWindowEndTime) = PoolConfigLib.getPoolPausedState(_poolConfig[pool]);
+    function _getPoolPausedState(address pool) internal view returns (bool, uint32) {
+        PoolConfig memory poolConfig = _poolConfig[pool];
+
+        uint32 pauseWindowEndTime = poolConfig.pauseWindowEndTime;
 
         // Use the Vault's buffer period.
-        // solhint-disable-next-line not-rely-on-time
-        return (pauseBit && block.timestamp <= pauseWindowEndTime + _vaultBufferPeriodDuration, pauseWindowEndTime);
+        return (
+            // solhint-disable-next-line not-rely-on-time
+            poolConfig.isPoolPaused && uint32(block.timestamp) <= pauseWindowEndTime + _vaultBufferPeriodDuration,
+            pauseWindowEndTime
+        );
     }
 
     /*******************************************************************************
@@ -210,7 +212,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev Reverts if vault buffers are paused.
     function _ensureVaultBuffersAreNotPaused() internal view {
-        if (_vaultState.areBuffersPaused()) {
+        if (_vaultState.areBuffersPaused) {
             revert VaultBuffersArePaused();
         }
     }
@@ -240,7 +242,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev See `isPoolRegistered`
     function _isPoolRegistered(address pool) internal view returns (bool) {
-        return _poolConfig[pool].isPoolRegistered();
+        return _poolConfig[pool].isPoolRegistered;
     }
 
     /// @dev Reverts unless `pool` corresponds to an initialized Pool.
@@ -252,7 +254,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev See `isPoolInitialized`
     function _isPoolInitialized(address pool) internal view returns (bool) {
-        return _poolConfig[pool].isPoolInitialized();
+        return _poolConfig[pool].isPoolInitialized;
     }
 
     /*******************************************************************************
@@ -277,14 +279,14 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     function _loadPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
-        return PoolDataLib.load(_poolTokenBalances[pool], _poolConfig[pool], _poolTokenConfig[pool], roundingDirection);
+        return PoolDataLib.load(_poolTokenBalances[pool], _poolConfig[pool], _poolTokenInfo[pool], roundingDirection);
     }
 
     /**
      * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
      * This function modifies protocol fees and balance storage. Since it modifies storage and makes external
      * calls, it must be nonReentrant.
-     * Side effects: updates `_aggregateProtocolFeeAmounts` and `_poolTokenBalances` in storage.
+     * Side effects: updates `_aggregateFeeAmounts` and `_poolTokenBalances` in storage.
      */
     function _loadPoolDataUpdatingBalancesAndYieldFees(
         address pool,
@@ -293,7 +295,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         // Initialize poolData with base information for subsequent calculations.
         poolData = _loadPoolData(pool, roundingDirection);
 
-        PoolDataLib.syncPoolBalancesAndFees(poolData, _poolTokenBalances[pool], _aggregateProtocolFeeAmounts[pool]);
+        PoolDataLib.syncPoolBalancesAndFees(poolData, _poolTokenBalances[pool], _aggregateFeeAmounts[pool]);
     }
 
     /**
@@ -324,20 +326,22 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
-        if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
+        // These cannot be called during pool construction. Pools must be deployed first, then registered.
+        if (swapFeePercentage < ISwapFeePercentageBounds(pool).getMinimumSwapFeePercentage()) {
+            revert SwapFeePercentageTooLow();
+        }
+
+        // Still has to be a valid percentage, regardless of what the pool defines.
+        if (
+            swapFeePercentage > ISwapFeePercentageBounds(pool).getMaximumSwapFeePercentage() ||
+            swapFeePercentage > FixedPoint.ONE
+        ) {
             revert SwapFeePercentageTooHigh();
         }
 
-        // This cannot be called during pool construction. Pools must be deployed first, then registered.
-        if (IERC165(pool).supportsInterface(type(IMinimumSwapFee).interfaceId)) {
-            if (swapFeePercentage < IMinimumSwapFee(pool).getMinimumSwapFeePercentage()) {
-                revert SwapFeePercentageTooLow();
-            }
-        }
-
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.staticSwapFeePercentage = swapFeePercentage;
-        _poolConfig[pool] = config.fromPoolConfig();
+        PoolConfig memory config = _poolConfig[pool];
+        config.setStaticSwapFeePercentage(swapFeePercentage);
+        _poolConfig[pool] = config;
 
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
@@ -371,6 +375,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @return True if the pool is initialized, false otherwise
      */
     function _isPoolInRecoveryMode(address pool) internal view returns (bool) {
-        return _poolConfig[pool].isPoolInRecoveryMode();
+        return _poolConfig[pool].isPoolInRecoveryMode;
     }
 }

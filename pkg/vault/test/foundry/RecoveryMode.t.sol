@@ -24,22 +24,22 @@ contract RecoveryModeTest is BaseVaultTest {
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
         vm.prank(alice);
-        uint256 bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, defaultAmount, false, bytes(""));
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, defaultAmount, false, bytes(""));
 
         // Raw and live should be in sync
         assertRawAndLiveBalanceRelationship(true);
 
         // Put pool in recovery mode
-        vault.manualEnableRecoveryMode(address(pool));
+        vault.manualEnableRecoveryMode(pool);
 
         // Do a recovery withdrawal
         vm.prank(alice);
-        router.removeLiquidityRecovery(address(pool), bptAmountOut / 2);
+        router.removeLiquidityRecovery(pool, bptAmountOut / 2);
 
         // Raw and live should be out of sync
         assertRawAndLiveBalanceRelationship(false);
 
-        vault.manualDisableRecoveryMode(address(pool));
+        vault.manualDisableRecoveryMode(pool);
 
         // Raw and live should be back in sync
         assertRawAndLiveBalanceRelationship(true);
@@ -148,9 +148,9 @@ contract RecoveryModeTest is BaseVaultTest {
         assertFalse(vault.isPoolInRecoveryMode(pool), "Pool should not be in Recovery Mode after pausing");
 
         // Ensure we are in the permissionless period of the Pool.
-        (, , uint256 bufferPeriodEndTime, ) = vault.getPoolPausedState(pool);
+        (, , uint32 bufferPeriodEndTime, ) = vault.getPoolPausedState(pool);
 
-        skip(bufferPeriodEndTime);
+        vm.warp(bufferPeriodEndTime + 1);
 
         // Confirm the Pool is permissionless
         assertTrue(block.timestamp > bufferPeriodEndTime, "Time should be after Pool's buffer period end time");

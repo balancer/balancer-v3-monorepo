@@ -26,9 +26,11 @@ interface IVaultMainMock {
     function manualRegisterPoolAtTimestamp(
         address pool,
         IERC20[] memory tokens,
-        uint256 timestamp,
+        uint32 timestamp,
         PoolRoleAccounts memory roleAccounts
     ) external;
+
+    function manualSetPoolRegistered(address pool, bool status) external;
 
     function manualSetIsUnlocked(bool status) external;
 
@@ -36,7 +38,7 @@ interface IVaultMainMock {
 
     function manualSetPoolPaused(address, bool) external;
 
-    function manualSetPoolPauseWindowEndTime(address, uint256) external;
+    function manualSetPoolPauseWindowEndTime(address, uint32) external;
 
     function manualSetVaultPaused(bool) external;
 
@@ -58,13 +60,14 @@ interface IVaultMainMock {
 
     function internalGetPoolTokenInfo(
         address
-    ) external view returns (TokenConfig[] memory, uint256[] memory, uint256[] memory, PoolConfig memory);
+    )
+        external
+        view
+        returns (IERC20[] memory, TokenInfo[] memory, uint256[] memory, uint256[] memory, PoolConfig memory);
 
     function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256);
 
     function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256);
-
-    function getDecimalScalingFactors(address pool) external view returns (uint256[] memory);
 
     function getMaxConvertError() external pure returns (uint256);
 
@@ -149,17 +152,17 @@ interface IVaultMainMock {
             PoolData memory
         );
 
-    function manualGetAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view returns (uint256);
+    function manualGetAggregateSwapFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
-    function manualGetAggregateProtocolYieldFeeAmount(address pool, IERC20 token) external view returns (uint256);
+    function manualGetAggregateYieldFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
-    function manualSetAggregateProtocolSwapFeeAmount(address pool, IERC20 token, uint256 value) external;
+    function manualSetAggregateSwapFeeAmount(address pool, IERC20 token, uint256 value) external;
 
-    function manualSetAggregateProtocolYieldFeeAmount(address pool, IERC20 token, uint256 value) external;
+    function manualSetAggregateYieldFeeAmount(address pool, IERC20 token, uint256 value) external;
 
-    function manualSetAggregateProtocolSwapFeePercentage(address pool, uint256 value) external;
+    function manualSetAggregateSwapFeePercentage(address pool, uint256 value) external;
 
-    function manualSetAggregateProtocolYieldFeePercentage(address pool, uint256 value) external;
+    function manualSetAggregateYieldFeePercentage(address pool, uint256 value) external;
 
     function manualBuildPoolSwapParams(
         SwapParams memory params,
@@ -167,7 +170,7 @@ interface IVaultMainMock {
         PoolData memory poolData
     ) external view returns (IBasePool.PoolSwapParams memory);
 
-    function manualComputeAndChargeAggregateProtocolSwapFees(
+    function manualComputeAndChargeAggregateSwapFees(
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         address pool,
@@ -198,8 +201,7 @@ interface IVaultMainMock {
     function manualRemoveLiquidity(
         PoolData memory poolData,
         RemoveLiquidityParams memory params,
-        uint256[] memory minAmountsOutScaled18,
-        VaultState memory vaultState
+        uint256[] memory minAmountsOutScaled18
     )
         external
         returns (

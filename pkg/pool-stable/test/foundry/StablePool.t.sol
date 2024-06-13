@@ -11,6 +11,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { TokenConfig, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -19,7 +20,6 @@ import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Stab
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
-import { PoolConfigBits } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
@@ -116,7 +116,7 @@ contract StablePoolTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(vault)), TOKEN_AMOUNT, "Vault: Wrong DAI balance");
 
         // Tokens are deposited to the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], TOKEN_AMOUNT, "Pool: Wrong DAI balance");
         assertEq(balances[1], TOKEN_AMOUNT, "Pool: Wrong USDC balance");
 
@@ -140,7 +140,7 @@ contract StablePoolTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(vault)), TOKEN_AMOUNT * 2, "Vault: Wrong DAI balance");
 
         // Tokens are deposited to the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], TOKEN_AMOUNT * 2, "Pool: Wrong DAI balance");
         assertEq(balances[1], TOKEN_AMOUNT * 2, "Pool: Wrong USDC balance");
 
@@ -183,7 +183,7 @@ contract StablePoolTest is BaseVaultTest {
         assertApproxEqAbs(dai.balanceOf(address(vault)), TOKEN_AMOUNT, DELTA, "Vault: Wrong DAI balance");
 
         // Tokens are deposited to the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertApproxEqAbs(balances[0], TOKEN_AMOUNT, DELTA, "Pool: Wrong DAI balance");
         assertApproxEqAbs(balances[1], TOKEN_AMOUNT, DELTA, "Pool: Wrong USDC balance");
 
@@ -217,7 +217,7 @@ contract StablePoolTest is BaseVaultTest {
         assertEq(usdc.balanceOf(address(vault)), TOKEN_AMOUNT - amountCalculated, "Vault: Wrong USDC balance");
         assertEq(dai.balanceOf(address(vault)), TOKEN_AMOUNT + TOKEN_AMOUNT_IN, "Vault: Wrong DAI balance");
 
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
 
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
@@ -263,5 +263,17 @@ contract StablePoolTest is BaseVaultTest {
         vm.prank(bob);
 
         router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
+    }
+
+    function testMaximumSwapFee() public {
+        assertEq(stablePool.getMaximumSwapFeePercentage(), MAX_SWAP_FEE, "Maximum swap fee mismatch");
+    }
+
+    function testSetSwapFeeTooHigh() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapFeePercentageTooHigh.selector));
+        vault.setStaticSwapFeePercentage(address(stablePool), MAX_SWAP_FEE + 1);
     }
 }

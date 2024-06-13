@@ -2,21 +2,17 @@
 
 pragma solidity ^0.8.24;
 
-import { PackedTokenBalance } from "./PackedTokenBalance.sol";
-import { PoolConfigBits, PoolConfigLib } from "./PoolConfigLib.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {
-    PoolData,
-    Rounding,
-    TokenType,
-    PoolConfig,
-    TokenConfig
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { PackedTokenBalance } from "./PackedTokenBalance.sol";
+import { PoolConfigLib } from "./PoolConfigLib.sol";
 
 library PoolDataLib {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -26,26 +22,28 @@ library PoolDataLib {
 
     function load(
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
-        PoolConfigBits poolConfig,
-        mapping(IERC20 => TokenConfig) storage poolTokenConfig,
+        PoolConfig memory poolConfig,
+        mapping(IERC20 => TokenInfo) storage poolTokenInfo,
         Rounding roundingDirection
     ) internal view returns (PoolData memory poolData) {
         uint256 numTokens = poolTokenBalances.length();
-        poolData.poolConfig = PoolConfigLib.toPoolConfig(poolConfig);
+        poolData.poolConfig = poolConfig;
 
-        poolData.tokenConfig = new TokenConfig[](numTokens);
+        poolData.tokens = new IERC20[](numTokens);
+        poolData.tokenInfo = new TokenInfo[](numTokens);
         poolData.balancesRaw = new uint256[](numTokens);
         poolData.balancesLiveScaled18 = new uint256[](numTokens);
         poolData.decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolData.poolConfig, numTokens);
         poolData.tokenRates = new uint256[](numTokens);
 
         bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
-            poolData.poolConfig.aggregateProtocolYieldFeePercentage > 0 &&
+            poolData.poolConfig.aggregateYieldFeePercentageUnscaled > 0 &&
             poolData.poolConfig.isPoolInRecoveryMode == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             (IERC20 token, bytes32 packedBalance) = poolTokenBalances.unchecked_at(i);
-            poolData.tokenConfig[i] = poolTokenConfig[token];
+            poolData.tokens[i] = token;
+            poolData.tokenInfo[i] = poolTokenInfo[token];
             updateTokenRate(poolData, i);
             updateRawAndLiveBalance(poolData, i, packedBalance.getBalanceRaw(), roundingDirection);
 
@@ -54,7 +52,7 @@ library PoolDataLib {
                 continue;
             }
 
-            TokenConfig memory tokenConfig = poolData.tokenConfig[i];
+            TokenInfo memory tokenInfo = poolData.tokenInfo[i];
 
             // poolData already has live balances computed from raw balances according to the token rates and the
             // given rounding direction. Charging a yield fee changes the raw
@@ -63,7 +61,7 @@ library PoolDataLib {
 
             // The Vault actually guarantees a token with paysYieldFees set is a WITH_RATE token, so technically we
             // could just check the flag, but we don't want to introduce that dependency for a slight gas savings.
-            bool tokenSubjectToYieldFees = tokenConfig.paysYieldFees && tokenConfig.tokenType == TokenType.WITH_RATE;
+            bool tokenSubjectToYieldFees = tokenInfo.paysYieldFees && tokenInfo.tokenType == TokenType.WITH_RATE;
 
             // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
             if (tokenSubjectToYieldFees) {
@@ -73,7 +71,7 @@ library PoolDataLib {
                     poolData,
                     packedBalance.getBalanceDerived(),
                     i,
-                    poolData.poolConfig.aggregateProtocolYieldFeePercentage
+                    poolData.poolConfig.aggregateYieldFeePercentageUnscaled
                 );
 
                 if (aggregateYieldFeeAmountRaw > 0) {
@@ -96,7 +94,7 @@ library PoolDataLib {
         uint256 numTokens = poolData.balancesRaw.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            IERC20 token = poolData.tokenConfig[i].token;
+            IERC20 token = poolData.tokens[i];
             bytes32 packedBalances = poolTokenBalances.unchecked_valueAt(i);
             uint256 storedBalanceRaw = packedBalances.getBalanceRaw();
 
@@ -130,7 +128,7 @@ library PoolDataLib {
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
         Rounding roundingDirection
     ) internal view {
-        uint256 numTokens = poolData.tokenConfig.length;
+        uint256 numTokens = poolData.tokens.length;
 
         // It's possible a reentrant hook changed the raw balances in Vault storage.
         // Update them before computing the live balances.
@@ -147,12 +145,12 @@ library PoolDataLib {
     }
 
     function updateTokenRate(PoolData memory poolData, uint256 tokenIndex) internal view {
-        TokenType tokenType = poolData.tokenConfig[tokenIndex].tokenType;
+        TokenType tokenType = poolData.tokenInfo[tokenIndex].tokenType;
 
         if (tokenType == TokenType.STANDARD) {
             poolData.tokenRates[tokenIndex] = FixedPoint.ONE;
         } else if (tokenType == TokenType.WITH_RATE) {
-            poolData.tokenRates[tokenIndex] = poolData.tokenConfig[tokenIndex].rateProvider.getRate();
+            poolData.tokenRates[tokenIndex] = poolData.tokenInfo[tokenIndex].rateProvider.getRate();
         } else {
             revert IVaultErrors.InvalidTokenConfiguration();
         }
@@ -175,32 +173,6 @@ library PoolDataLib {
             newRawBalance,
             poolData.decimalScalingFactors[tokenIndex],
             poolData.tokenRates[tokenIndex]
-        );
-    }
-
-    function increaseTokenBalance(
-        PoolData memory poolData,
-        uint256 tokenIndex,
-        uint256 amountToIncreaseRaw
-    ) internal pure {
-        updateRawAndLiveBalance(
-            poolData,
-            tokenIndex,
-            poolData.balancesRaw[tokenIndex] + amountToIncreaseRaw,
-            Rounding.ROUND_UP
-        );
-    }
-
-    function decreaseTokenBalance(
-        PoolData memory poolData,
-        uint256 tokenIndex,
-        uint256 amountToDecreaseRaw
-    ) internal pure {
-        updateRawAndLiveBalance(
-            poolData,
-            tokenIndex,
-            poolData.balancesRaw[tokenIndex] - amountToDecreaseRaw,
-            Rounding.ROUND_DOWN
         );
     }
 
