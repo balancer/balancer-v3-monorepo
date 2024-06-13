@@ -6,7 +6,11 @@ import "forge-std/Test.sol";
 
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    AddLiquidityKind,
+    RemoveLiquidityKind,
+    SwapKind
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
@@ -180,6 +184,7 @@ contract FeeTakingHookTest is BaseVaultTest {
                 IHooks.onAfterAddLiquidity.selector,
                 address(router),
                 pool,
+                AddLiquidityKind.PROPORTIONAL,
                 actualAmountsIn,
                 actualAmountsIn,
                 expectedBptOut,
@@ -233,6 +238,7 @@ contract FeeTakingHookTest is BaseVaultTest {
                 IHooks.onAfterRemoveLiquidity.selector,
                 address(router),
                 pool,
+                RemoveLiquidityKind.PROPORTIONAL,
                 expectedBptIn,
                 actualAmountsOut,
                 actualAmountsOut,

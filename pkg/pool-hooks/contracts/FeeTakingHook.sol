@@ -7,7 +7,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
+    AddLiquidityKind,
     LiquidityManagement,
+    RemoveLiquidityKind,
     SwapKind,
     TokenConfig
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -79,6 +81,7 @@ contract FeeTakingHook is BasePoolHooks {
     function onAfterAddLiquidity(
         address,
         address pool,
+        AddLiquidityKind,
         uint256[] memory,
         uint256[] memory amountsInRaw,
         uint256,
@@ -109,6 +112,7 @@ contract FeeTakingHook is BasePoolHooks {
     function onAfterRemoveLiquidity(
         address,
         address pool,
+        RemoveLiquidityKind,
         uint256,
         uint256[] memory,
         uint256[] memory amountsOutRaw,
