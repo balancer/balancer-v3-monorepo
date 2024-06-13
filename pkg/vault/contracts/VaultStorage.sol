@@ -33,7 +33,7 @@ contract VaultStorage {
 
     bytes32 private immutable _IS_UNLOCKED_SLOT = _calculateVaultStorageSlot("isUnlocked");
     bytes32 private immutable _NON_ZERO_DELTA_COUNT_SLOT = _calculateVaultStorageSlot("nonZeroDeltaCount");
-    bytes32 private immutable _TOKEN_DELTA_SLOT = _calculateVaultStorageSlot("tokenDelta");
+    bytes32 private immutable _TOKEN_DELTAS_SLOT = _calculateVaultStorageSlot("tokenDeltas");
 
     // Minimum BPT amount minted upon initialization.
     uint256 internal constant _MINIMUM_BPT = 1e6;

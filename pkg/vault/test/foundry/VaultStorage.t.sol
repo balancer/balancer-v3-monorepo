@@ -32,7 +32,7 @@ contract VaultStorageTest is BaseVaultTest {
     function testGetTokenDeltasSlot() external {
         assertEq(
             TokenDeltaMappingSlotType.unwrap(vault.manualGetTokenDeltas()),
-            TransientStorageHelpers.calculateSlot("VaultStorage", "tokenDelta")
+            TransientStorageHelpers.calculateSlot("VaultStorage", "tokenDeltas")
         );
     }
 }
