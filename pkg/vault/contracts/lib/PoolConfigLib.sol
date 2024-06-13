@@ -24,20 +24,20 @@ library PoolConfigLib {
         config.staticSwapFeePercentageUnscaled = (value / FEE_SCALING_FACTOR).toUint24();
     }
 
-    function getAggregateProtocolSwapFeePercentage(PoolConfig memory config) internal pure returns (uint256) {
-        return config.aggregateProtocolSwapFeePercentageUnscaled * FEE_SCALING_FACTOR;
+    function getAggregateSwapFeePercentage(PoolConfig memory config) internal pure returns (uint256) {
+        return config.aggregateSwapFeePercentageUnscaled * FEE_SCALING_FACTOR;
     }
 
-    function setAggregateProtocolSwapFeePercentage(PoolConfig memory config, uint256 value) internal pure {
-        config.aggregateProtocolSwapFeePercentageUnscaled = (value / FEE_SCALING_FACTOR).toUint24();
+    function setAggregateSwapFeePercentage(PoolConfig memory config, uint256 value) internal pure {
+        config.aggregateSwapFeePercentageUnscaled = (value / FEE_SCALING_FACTOR).toUint24();
     }
 
-    function getAggregateProtocolYieldFeePercentage(PoolConfig memory config) internal pure returns (uint256) {
-        return config.aggregateProtocolYieldFeePercentageUnscaled * FEE_SCALING_FACTOR;
+    function getAggregateYieldFeePercentage(PoolConfig memory config) internal pure returns (uint256) {
+        return config.aggregateYieldFeePercentageUnscaled * FEE_SCALING_FACTOR;
     }
 
-    function setAggregateProtocolYieldFeePercentage(PoolConfig memory config, uint256 value) internal pure {
-        config.aggregateProtocolYieldFeePercentageUnscaled = (value / FEE_SCALING_FACTOR).toUint24();
+    function setAggregateYieldFeePercentage(PoolConfig memory config, uint256 value) internal pure {
+        config.aggregateYieldFeePercentageUnscaled = (value / FEE_SCALING_FACTOR).toUint24();
     }
 
     function requireUnbalancedLiquidityEnabled(PoolConfig memory config) internal pure {

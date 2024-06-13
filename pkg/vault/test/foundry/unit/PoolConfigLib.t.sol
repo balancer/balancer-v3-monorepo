@@ -56,63 +56,63 @@ contract PoolConfigLibTest is Test {
         );
     }
 
-    function testGetAggregateProtocolSwapFeePercentage() public {
+    function testGetAggregateSwapFeePercentage() public {
         PoolConfig memory config;
-        config.aggregateProtocolSwapFeePercentageUnscaled = MAX_UINT24_VALUE;
+        config.aggregateSwapFeePercentageUnscaled = MAX_UINT24_VALUE;
 
         assertEq(
-            config.getAggregateProtocolSwapFeePercentage(),
+            config.getAggregateSwapFeePercentage(),
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
-            "getAggregateProtocolSwapFeePercentage mismatch (testGetAggregateProtocolSwapFeePercentage)"
+            "getAggregateSwapFeePercentage mismatch (testGetAggregateSwapFeePercentage)"
         );
     }
 
-    function testSetAggregateProtocolSwapFeePercentage() internal pure returns (uint256) {
+    function testSetAggregateSwapFeePercentage() internal pure returns (uint256) {
         uint256 value = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
 
         PoolConfig memory config;
-        config.setAggregateProtocolSwapFeePercentage(value);
+        config.setAggregateSwapFeePercentage(value);
 
         assertEq(
-            config.aggregateProtocolSwapFeePercentageUnscaled,
+            config.aggregateSwapFeePercentageUnscaled,
             MAX_UINT24_VALUE,
-            "aggregateProtocolSwapFeePercentageUnscaled mismatch (testSetAggregateProtocolSwapFeePercentage)"
+            "aggregateSwapFeePercentageUnscaled mismatch (testSetAggregateSwapFeePercentage)"
         );
 
         assertEq(
-            config.getAggregateProtocolSwapFeePercentage(),
+            config.getAggregateSwapFeePercentage(),
             value,
-            "getAggregateProtocolSwapFeePercentage mismatch (testSetAggregateProtocolSwapFeePercentage)"
+            "getAggregateSwapFeePercentage mismatch (testSetAggregateSwapFeePercentage)"
         );
     }
 
-    function testGetAggregateProtocolYieldFeePercentage() public {
+    function testGetAggregateYieldFeePercentage() public {
         PoolConfig memory config;
-        config.aggregateProtocolYieldFeePercentageUnscaled = MAX_UINT24_VALUE;
+        config.aggregateYieldFeePercentageUnscaled = MAX_UINT24_VALUE;
 
         assertEq(
-            config.getAggregateProtocolYieldFeePercentage(),
+            config.getAggregateYieldFeePercentage(),
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
-            "getAggregateProtocolYieldFeePercentage mismatch (testGetAggregateProtocolYieldFeePercentage)"
+            "getAggregateYieldFeePercentage mismatch (testGetAggregateYieldFeePercentage)"
         );
     }
 
-    function testSetAggregateProtocolYieldFeePercentage() internal pure returns (uint256) {
+    function testSetAggregateYieldFeePercentage() internal pure returns (uint256) {
         uint256 value = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
 
         PoolConfig memory config;
-        config.setAggregateProtocolYieldFeePercentage(value);
+        config.setAggregateYieldFeePercentage(value);
 
         assertEq(
-            config.aggregateProtocolYieldFeePercentageUnscaled,
+            config.aggregateYieldFeePercentageUnscaled,
             MAX_UINT24_VALUE,
-            "aggregateProtocolYieldFeePercentageUnscaled mismatch (testSetAggregateProtocolYieldFeePercentage)"
+            "aggregateYieldFeePercentageUnscaled mismatch (testSetAggregateYieldFeePercentage)"
         );
 
         assertEq(
-            config.getAggregateProtocolYieldFeePercentage(),
+            config.getAggregateYieldFeePercentage(),
             value,
-            "getAggregateProtocolYieldFeePercentage mismatch (testSetAggregateProtocolYieldFeePercentage)"
+            "getAggregateYieldFeePercentage mismatch (testSetAggregateYieldFeePercentage)"
         );
     }
 
