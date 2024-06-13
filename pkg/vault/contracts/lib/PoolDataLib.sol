@@ -19,6 +19,7 @@ library PoolDataLib {
     using PackedTokenBalance for bytes32;
     using FixedPoint for *;
     using ScalingHelpers for *;
+    using PoolConfigLib for PoolConfig;
 
     function load(
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
@@ -71,7 +72,7 @@ library PoolDataLib {
                     poolData,
                     packedBalance.getBalanceDerived(),
                     i,
-                    poolData.poolConfig.aggregateYieldFeePercentageUnscaled
+                    poolData.poolConfig.getAggregateYieldFeePercentage()
                 );
 
                 if (aggregateYieldFeeAmountRaw > 0) {
