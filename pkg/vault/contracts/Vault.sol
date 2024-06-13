@@ -187,7 +187,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // as filling in poolData in memory. Since the swap hooks are reentrant and could do anything, including
         // change these balances, we cannot defer settlement until `_swap`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_aggregateProtocolFeeAmounts`
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_aggregateFeeAmounts`
         // in storage.
         PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_DOWN);
 
@@ -334,7 +334,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      *
      * Preconditions: complete `SwapParams`, `SwapState`, and `PoolData`.
      * Side effects: mutates balancesRaw and balancesLiveScaled18 in `poolData`.
-     * Updates `_aggregateProtocolFeeAmounts`, and `_poolTokenBalances` in storage.
+     * Updates `_aggregateFeeAmounts`, and `_poolTokenBalances` in storage.
      * Emits Swap event.
      */
     function _swap(
@@ -412,7 +412,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Note that protocol fee storage is updated before balance storage, as the final raw balances need to take
         // the fees into account.
-        uint256 totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
+        uint256 totalFeesRaw = _computeAndChargeAggregateSwapFees(
             poolData,
             locals.swapFeeAmountScaled18,
             params.pool,
@@ -505,7 +505,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // including change these balances, we cannot defer settlement until `_addLiquidity`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, and
-        // `_aggregateProtocolFeeAmounts` in storage.
+        // `_aggregateFeeAmounts` in storage.
         PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_UP);
         InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.maxAmountsIn.length);
 
@@ -662,7 +662,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _takeDebt(token, amountInRaw);
 
             // 4) Compute and charge protocol and creator fees.
-            locals.totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
+            locals.totalFeesRaw = _computeAndChargeAggregateSwapFees(
                 poolData,
                 swapFeeAmountsScaled18[i],
                 params.pool,
@@ -716,7 +716,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // change these balances, we cannot defer settlement until `_removeLiquidity`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances` and
-        // `_aggregateProtocolFeeAmounts in storage.
+        // `_aggregateFeeAmounts in storage.
         PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_DOWN);
         InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.minAmountsOut.length);
 
@@ -859,7 +859,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             _supplyCredit(token, amountOutRaw);
 
             // 4) Compute and charge protocol and creator fees.
-            locals.totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
+            locals.totalFeesRaw = _computeAndChargeAggregateSwapFees(
                 poolData,
                 swapFeeAmountsScaled18[i],
                 params.pool,
@@ -906,28 +906,28 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /**
      * @dev Preconditions: poolConfig, decimalScalingFactors, tokenRates in `poolData`.
-     * Side effects: updates `_aggregateProtocolFeeAmounts` storage.
+     * Side effects: updates `_aggregateFeeAmounts` storage.
      * Note that this computes the aggregate total of the protocol fees and stores it, without emitting any events.
      * Splitting the fees and event emission occur during fee collection.
      * Should only be called in a non-reentrant context.
      *
      * @return totalFeesRaw Sum of protocol and pool creator fees raw
      */
-    function _computeAndChargeAggregateProtocolSwapFees(
+    function _computeAndChargeAggregateSwapFees(
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         address pool,
         IERC20 token,
         uint256 index
     ) internal returns (uint256 totalFeesRaw) {
-        uint256 aggregateProtocolSwapFeePercentage = poolData.poolConfig.getAggregateProtocolSwapFeePercentage();
-        // If swapFeeAmount equals zero no need to charge anything
+        uint256 aggregateSwapFeePercentage = poolData.poolConfig.getAggregateSwapFeePercentage();
+        // If swapFeeAmount equals zero no need to charge anything\
         if (
             swapFeeAmountScaled18 > 0 &&
-            aggregateProtocolSwapFeePercentage > 0 &&
+            aggregateSwapFeePercentage > 0 &&
             poolData.poolConfig.isPoolInRecoveryMode() == false
         ) {
-            uint256 aggregateSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(aggregateProtocolSwapFeePercentage);
+            uint256 aggregateSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(aggregateSwapFeePercentage);
 
             // Ensure we can never charge more than the total swap fee.
             if (aggregateSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
@@ -941,8 +941,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Both Swap and Yield fees are stored together in a PackedTokenBalance.
             // We have designated "Raw" the derived half for Swap fee storage.
-            bytes32 currentPackedBalance = _aggregateProtocolFeeAmounts[pool][token];
-            _aggregateProtocolFeeAmounts[pool][token] = currentPackedBalance.setBalanceRaw(
+            bytes32 currentPackedBalance = _aggregateFeeAmounts[pool][token];
+            _aggregateFeeAmounts[pool][token] = currentPackedBalance.setBalanceRaw(
                 currentPackedBalance.getBalanceRaw() + totalFeesRaw
             );
         }

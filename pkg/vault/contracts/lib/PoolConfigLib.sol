@@ -26,9 +26,9 @@ library PoolConfigLib {
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
 
     uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
-    uint256 public constant AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
-    uint256 public constant AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET = AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET + FEE_BITLENGTH;
-    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant AGGREGATE_SWAP_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant AGGREGATE_YIELD_FEE_OFFSET = AGGREGATE_SWAP_FEE_OFFSET + FEE_BITLENGTH;
+    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = AGGREGATE_YIELD_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
 
@@ -85,32 +85,32 @@ library PoolConfigLib {
         config.bits = config.bits.insertUint(value, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH);
     }
 
-    function getAggregateProtocolSwapFeePercentage(PoolConfigBits memory config) internal pure returns (uint256) {
-        return config.bits.decodeUint(AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
+    function getAggregateSwapFeePercentage(PoolConfigBits memory config) internal pure returns (uint256) {
+        return config.bits.decodeUint(AGGREGATE_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
-    function setAggregateProtocolSwapFeePercentage(PoolConfigBits memory config, uint256 value) internal pure {
+    function setAggregateSwapFeePercentage(PoolConfigBits memory config, uint256 value) internal pure {
         value /= FEE_SCALING_FACTOR;
 
         if (value > MAX_FEE_VALUE) {
             revert InvalidSize(FEE_BITLENGTH);
         }
 
-        config.bits = config.bits.insertUint(value, AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH);
+        config.bits = config.bits.insertUint(value, AGGREGATE_SWAP_FEE_OFFSET, FEE_BITLENGTH);
     }
 
-    function getAggregateProtocolYieldFeePercentage(PoolConfigBits memory config) internal pure returns (uint256) {
-        return config.bits.decodeUint(AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
+    function getAggregateYieldFeePercentage(PoolConfigBits memory config) internal pure returns (uint256) {
+        return config.bits.decodeUint(AGGREGATE_YIELD_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
-    function setAggregateProtocolYieldFeePercentage(PoolConfigBits memory config, uint256 value) internal pure {
+    function setAggregateYieldFeePercentage(PoolConfigBits memory config, uint256 value) internal pure {
         value /= FEE_SCALING_FACTOR;
 
         if (value > MAX_FEE_VALUE) {
             revert InvalidSize(FEE_BITLENGTH);
         }
 
-        config.bits = config.bits.insertUint(value, AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH);
+        config.bits = config.bits.insertUint(value, AGGREGATE_YIELD_FEE_OFFSET, FEE_BITLENGTH);
     }
 
     function getTokenDecimalDiffs(PoolConfigBits memory config) internal pure returns (uint24) {

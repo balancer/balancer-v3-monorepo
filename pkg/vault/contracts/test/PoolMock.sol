@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
@@ -101,5 +102,15 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
         for (uint256 i = 0; i < tokens.length; ++i) {
             scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
         }
+    }
+
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMinimumSwapFeePercentage() external pure returns (uint256) {
+        return 0;
+    }
+
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMaximumSwapFeePercentage() external pure returns (uint256) {
+        return FixedPoint.ONE;
     }
 }

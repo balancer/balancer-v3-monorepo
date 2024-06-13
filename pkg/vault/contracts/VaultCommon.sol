@@ -4,11 +4,10 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
-import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMinimumSwapFee.sol";
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -312,7 +311,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
      * This function modifies protocol fees and balance storage. Since it modifies storage and makes external
      * calls, it must be nonReentrant.
-     * Side effects: updates `_aggregateProtocolFeeAmounts` and `_poolTokenBalances` in storage.
+     * Side effects: updates `_aggregateFeeAmounts` and `_poolTokenBalances` in storage.
      */
     function _loadPoolDataUpdatingBalancesAndYieldFees(
         address pool,
@@ -337,8 +336,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
                 // Both Swap and Yield fees are stored together in a PackedTokenBalance.
                 // We have designated "Derived" the derived half for Yield fee storage.
-                bytes32 currentPackedBalance = _aggregateProtocolFeeAmounts[pool][token];
-                _aggregateProtocolFeeAmounts[pool][token] = currentPackedBalance.setBalanceDerived(
+                bytes32 currentPackedBalance = _aggregateFeeAmounts[pool][token];
+                _aggregateFeeAmounts[pool][token] = currentPackedBalance.setBalanceDerived(
                     currentPackedBalance.getBalanceDerived() + aggregateYieldFeeAmountsRaw[i]
                 );
             }
@@ -361,10 +360,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
         aggregateYieldFeeAmountsRaw = new uint256[](numTokens);
 
-        uint256 aggregateProtocolYieldFeePercentage = poolData.poolConfig.getAggregateProtocolYieldFeePercentage();
-
+        uint256 aggregateYieldFeePercentage = poolData.poolConfig.getAggregateYieldFeePercentage();
         bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized() &&
-            aggregateProtocolYieldFeePercentage > 0 &&
+            aggregateYieldFeePercentage > 0 &&
             poolData.poolConfig.isPoolInRecoveryMode() == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -385,7 +383,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                     poolData,
                     poolBalances.unchecked_valueAt(i).getBalanceDerived(),
                     i,
-                    aggregateProtocolYieldFeePercentage
+                    aggregateYieldFeePercentage
                 );
             }
         }
@@ -449,15 +447,17 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal virtual {
-        if (swapFeePercentage > _MAX_SWAP_FEE_PERCENTAGE) {
-            revert SwapFeePercentageTooHigh();
+        // These cannot be called during pool construction. Pools must be deployed first, then registered.
+        if (swapFeePercentage < ISwapFeePercentageBounds(pool).getMinimumSwapFeePercentage()) {
+            revert SwapFeePercentageTooLow();
         }
 
-        // This cannot be called during pool construction. Pools must be deployed first, then registered.
-        if (IERC165(pool).supportsInterface(type(IMinimumSwapFee).interfaceId)) {
-            if (swapFeePercentage < IMinimumSwapFee(pool).getMinimumSwapFeePercentage()) {
-                revert SwapFeePercentageTooLow();
-            }
+        // Still has to be a valid percentage, regardless of what the pool defines.
+        if (
+            swapFeePercentage > ISwapFeePercentageBounds(pool).getMaximumSwapFeePercentage() ||
+            swapFeePercentage > FixedPoint.ONE
+        ) {
+            revert SwapFeePercentageTooHigh();
         }
 
         PoolConfigBits memory config = _poolConfig[pool];

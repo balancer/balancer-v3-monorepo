@@ -35,8 +35,8 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
         _checkBitsUsedOnce(PoolConfigLib.REMOVE_LIQUIDITY_CUSTOM_OFFSET);
 
         _checkBitsUsedOnce(PoolConfigLib.STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH);
-        _checkBitsUsedOnce(PoolConfigLib.AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET, FEE_BITLENGTH);
-        _checkBitsUsedOnce(PoolConfigLib.AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET, FEE_BITLENGTH);
+        _checkBitsUsedOnce(PoolConfigLib.AGGREGATE_SWAP_FEE_OFFSET, FEE_BITLENGTH);
+        _checkBitsUsedOnce(PoolConfigLib.AGGREGATE_YIELD_FEE_OFFSET, FEE_BITLENGTH);
         _checkBitsUsedOnce(PoolConfigLib.DECIMAL_SCALING_FACTORS_OFFSET, TOKEN_DECIMAL_DIFFS_BITLENGTH);
         _checkBitsUsedOnce(PoolConfigLib.PAUSE_WINDOW_END_TIME_OFFSET, TIMESTAMP_BITLENGTH);
     }
@@ -55,16 +55,8 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
         assertFalse(configBits.supportsAddLiquidityCustom(), "supportsAddLiquidityCustom should be false");
         assertFalse(configBits.supportsRemoveLiquidityCustom(), "supportsRemoveLiquidityCustom should be false");
         assertEq(configBits.getStaticSwapFeePercentage(), 0, "staticSwapFeePercentage isn't zero");
-        assertEq(
-            configBits.getAggregateProtocolSwapFeePercentage(),
-            0,
-            "aggregateProtocolSwapFeePercentage isn't zero"
-        );
-        assertEq(
-            configBits.getAggregateProtocolYieldFeePercentage(),
-            0,
-            "aggregateProtocolYieldFeePercentage isn't zero"
-        );
+        assertEq(configBits.getAggregateSwapFeePercentage(), 0, "aggregateSwapFeePercentage isn't zero");
+        assertEq(configBits.getAggregateYieldFeePercentage(), 0, "aggregateYieldFeePercentage isn't zero");
         assertEq(configBits.getTokenDecimalDiffs(), 0, "tokenDecimalDiffs isn't zero");
         assertEq(configBits.getPauseWindowEndTime(), 0, "pauseWindowEndTime isn't zero");
     }
@@ -183,53 +175,53 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
         );
     }
 
-    function testGetAggregateProtocolSwapFeePercentage() public {
+    function testGetAggregateSwapFeePercentage() public {
         PoolConfigBits memory configBits;
         configBits.bits = configBits.bits.insertUint(
             MAX_UINT24_VALUE,
-            PoolConfigLib.AGGREGATE_PROTOCOL_SWAP_FEE_OFFSET,
+            PoolConfigLib.AGGREGATE_SWAP_FEE_OFFSET,
             FEE_BITLENGTH
         );
         assertEq(
-            configBits.getAggregateProtocolSwapFeePercentage(),
+            configBits.getAggregateSwapFeePercentage(),
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
-            "getAggregateProtocolSwapFeePercentage mismatch (testGetAggregateProtocolSwapFeePercentage)"
+            "getAggregateSwapFeePercentage mismatch (testGetAggregateSwapFeePercentage)"
         );
     }
 
-    function testSetAggregateProtocolSwapFeePercentage() public {
+    function testSetAggregateSwapFeePercentage() public {
         PoolConfigBits memory configBits;
         uint256 value = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
-        configBits.setAggregateProtocolSwapFeePercentage(value);
+        configBits.setAggregateSwapFeePercentage(value);
         assertEq(
-            configBits.getAggregateProtocolSwapFeePercentage(),
+            configBits.getAggregateSwapFeePercentage(),
             value,
-            "getAggregateProtocolSwapFeePercentage mismatch (testSetAggregateProtocolSwapFeePercentage)"
+            "getAggregateSwapFeePercentage mismatch (testSetAggregateSwapFeePercentage)"
         );
     }
 
-    function testGetAggregateProtocolYieldFeePercentage() public {
+    function testGetAggregateYieldFeePercentage() public {
         PoolConfigBits memory configBits;
         configBits.bits = configBits.bits.insertUint(
             MAX_UINT24_VALUE,
-            PoolConfigLib.AGGREGATE_PROTOCOL_YIELD_FEE_OFFSET,
+            PoolConfigLib.AGGREGATE_YIELD_FEE_OFFSET,
             FEE_BITLENGTH
         );
         assertEq(
-            configBits.getAggregateProtocolYieldFeePercentage(),
+            configBits.getAggregateYieldFeePercentage(),
             MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
-            "getAggregateProtocolYieldFeePercentage mismatch (testGetAggregateProtocolYieldFeePercentage)"
+            "getAggregateYieldFeePercentage mismatch (testGetAggregateYieldFeePercentage)"
         );
     }
 
-    function testSetAggregateProtocolYieldFeePercentage() public {
+    function testSetAggregateYieldFeePercentage() public {
         PoolConfigBits memory configBits;
         uint256 value = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
-        configBits.setAggregateProtocolYieldFeePercentage(value);
+        configBits.setAggregateYieldFeePercentage(value);
         assertEq(
-            configBits.getAggregateProtocolYieldFeePercentage(),
+            configBits.getAggregateYieldFeePercentage(),
             value,
-            "getAggregateProtocolYieldFeePercentage mismatch (testSetAggregateProtocolYieldFeePercentage)"
+            "getAggregateYieldFeePercentage mismatch (testSetAggregateYieldFeePercentage)"
         );
     }
 

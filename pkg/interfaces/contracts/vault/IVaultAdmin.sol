@@ -115,8 +115,9 @@ interface IVaultAdmin {
 
     /**
      * @notice Assigns a new static swap fee percentage to the specified pool.
-     * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
-     * MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
+     * @dev This is a permissioned function, disabled if the pool is paused. The swap fee percentage must be within
+     * the bounds specified by the pool's implementation of `ISwapFeePercentageBounds`.
+     * Emits the SwapFeePercentageChanged event.
      *
      * @param pool The address of the pool for which the static swap fee will be changed
      * @param swapFeePercentage The new swap fee percentage to apply to the pool
@@ -124,11 +125,11 @@ interface IVaultAdmin {
     function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
 
     /**
-     * @notice Collects accumulated protocol swap and yield fees for the specified pool.
+     * @notice Collects accumulated aggregate swap and yield fees for the specified pool.
      * @dev Fees are sent to the ProtocolFeeController address.
-     * @param pool The pool on which all protocol fees should be collected
+     * @param pool The pool on which all aggregate fees should be collected
      */
-    function collectProtocolFees(address pool) external;
+    function collectAggregateFees(address pool) external;
 
     /**
      * @notice Update an aggregate swap fee percentage.

@@ -222,8 +222,8 @@ contract VaultMock is IVaultMainMock, Vault {
         poolConfig.setPoolInRecoveryMode(config.isPoolInRecoveryMode);
         poolConfig.setPoolPaused(config.isPoolPaused);
         poolConfig.setStaticSwapFeePercentage(config.staticSwapFeePercentage);
-        poolConfig.setAggregateProtocolSwapFeePercentage(config.aggregateProtocolSwapFeePercentage);
-        poolConfig.setAggregateProtocolYieldFeePercentage(config.aggregateProtocolYieldFeePercentage);
+        poolConfig.setAggregateSwapFeePercentage(config.aggregateSwapFeePercentage);
+        poolConfig.setAggregateYieldFeePercentage(config.aggregateYieldFeePercentage);
         poolConfig.setTokenDecimalDiffs(config.tokenDecimalDiffs);
         poolConfig.setPauseWindowEndTime(config.pauseWindowEndTime);
         poolConfig.setDisableUnbalancedLiquidity(config.liquidityManagement.disableUnbalancedLiquidity);
@@ -477,31 +477,31 @@ contract VaultMock is IVaultMainMock, Vault {
         return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut, params, state, poolData);
     }
 
-    function manualGetAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view returns (uint256) {
-        return _aggregateProtocolFeeAmounts[pool][token].getBalanceRaw();
+    function manualGetAggregateSwapFeeAmount(address pool, IERC20 token) external view returns (uint256) {
+        return _aggregateFeeAmounts[pool][token].getBalanceRaw();
     }
 
-    function manualGetAggregateProtocolYieldFeeAmount(address pool, IERC20 token) external view returns (uint256) {
-        return _aggregateProtocolFeeAmounts[pool][token].getBalanceDerived();
+    function manualGetAggregateYieldFeeAmount(address pool, IERC20 token) external view returns (uint256) {
+        return _aggregateFeeAmounts[pool][token].getBalanceDerived();
     }
 
-    function manualSetAggregateProtocolSwapFeeAmount(address pool, IERC20 token, uint256 value) external {
-        _aggregateProtocolFeeAmounts[pool][token] = _aggregateProtocolFeeAmounts[pool][token].setBalanceRaw(value);
+    function manualSetAggregateSwapFeeAmount(address pool, IERC20 token, uint256 value) external {
+        _aggregateFeeAmounts[pool][token] = _aggregateFeeAmounts[pool][token].setBalanceRaw(value);
     }
 
-    function manualSetAggregateProtocolYieldFeeAmount(address pool, IERC20 token, uint256 value) external {
-        _aggregateProtocolFeeAmounts[pool][token] = _aggregateProtocolFeeAmounts[pool][token].setBalanceDerived(value);
+    function manualSetAggregateYieldFeeAmount(address pool, IERC20 token, uint256 value) external {
+        _aggregateFeeAmounts[pool][token] = _aggregateFeeAmounts[pool][token].setBalanceDerived(value);
     }
 
-    function manualSetAggregateProtocolSwapFeePercentage(address pool, uint256 value) external {
+    function manualSetAggregateSwapFeePercentage(address pool, uint256 value) external {
         PoolConfigBits memory poolConfig = _poolConfig[pool];
-        poolConfig.setAggregateProtocolSwapFeePercentage(value);
+        poolConfig.setAggregateSwapFeePercentage(value);
         _poolConfig[pool] = poolConfig;
     }
 
-    function manualSetAggregateProtocolYieldFeePercentage(address pool, uint256 value) external {
+    function manualSetAggregateYieldFeePercentage(address pool, uint256 value) external {
         PoolConfigBits memory poolConfig = _poolConfig[pool];
-        poolConfig.setAggregateProtocolYieldFeePercentage(value);
+        poolConfig.setAggregateYieldFeePercentage(value);
         _poolConfig[pool] = poolConfig;
     }
 
@@ -513,14 +513,14 @@ contract VaultMock is IVaultMainMock, Vault {
         return _buildPoolSwapParams(params, state, poolData);
     }
 
-    function manualComputeAndChargeAggregateProtocolSwapFees(
+    function manualComputeAndChargeAggregateSwapFees(
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         address pool,
         IERC20 token,
         uint256 index
     ) external returns (uint256 totalFeesRaw) {
-        return _computeAndChargeAggregateProtocolSwapFees(poolData, swapFeeAmountScaled18, pool, token, index);
+        return _computeAndChargeAggregateSwapFees(poolData, swapFeeAmountScaled18, pool, token, index);
     }
 
     function manualUpdatePoolDataLiveBalancesAndRates(

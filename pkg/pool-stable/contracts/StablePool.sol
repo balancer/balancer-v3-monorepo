@@ -3,8 +3,10 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -34,6 +36,9 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
     // rapidly: for example, by doubling the value every day it can increase by a factor of 8 over three days (2^3).
     uint256 private constant _MIN_UPDATE_TIME = 1 days;
     uint256 private constant _MAX_AMP_UPDATE_DAILY_RATE = 2;
+
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 0;
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 0.1e18; // 10%
 
     /// @dev Store amplification state.
     AmplificationDataBits private _amplificationState;
@@ -278,5 +283,15 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
         data.endTime = endTime.toUint32();
 
         _amplificationState = data.fromAmpData();
+    }
+
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMinimumSwapFeePercentage() external pure returns (uint256) {
+        return _MIN_SWAP_FEE_PERCENTAGE;
+    }
+
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMaximumSwapFeePercentage() external pure returns (uint256) {
+        return _MAX_SWAP_FEE_PERCENTAGE;
     }
 }
