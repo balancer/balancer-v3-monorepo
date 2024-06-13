@@ -26,6 +26,7 @@ import { BaseContract } from 'ethers';
 
 export class Benchmark {
   _testDirname: string;
+  _poolType: string;
   vault!: IVault;
   tokenA!: ERC20WithRateTestToken;
   tokenB!: ERC20WithRateTestToken;
@@ -33,8 +34,9 @@ export class Benchmark {
   pool!: BaseContract;
   tokenConfig!: TokenConfigStruct[];
 
-  constructor(dirname: string) {
+  constructor(dirname: string, poolType: string) {
     this._testDirname = dirname;
+    this._poolType = poolType;
   }
 
   async deployPool(): Promise<BaseContract | null> {
@@ -148,7 +150,11 @@ export class Benchmark {
           .swapSingleTokenExactIn(this.pool, poolTokens[0], poolTokens[1], SWAP_AMOUNT, 0, MAX_UINT256, false, '0x');
 
         let receipt = await tx.wait();
-        await saveSnap(this._testDirname, `${gasTag} swap single token exact in with fees - cold slots`, receipt);
+        await saveSnap(
+          this._testDirname,
+          `[${this._poolType} - ${gasTag}] swap single token exact in with fees - cold slots`,
+          receipt
+        );
 
         await actionAfterFirstTx();
 
@@ -166,7 +172,11 @@ export class Benchmark {
             '0x'
           );
         receipt = await tx.wait();
-        await saveSnap(this._testDirname, `${gasTag} swap single token exact in with fees - warm slots`, receipt);
+        await saveSnap(
+          this._testDirname,
+          `[${this._poolType} - ${gasTag}] swap single token exact in with fees - warm slots`,
+          receipt
+        );
       });
     };
 
@@ -177,7 +187,7 @@ export class Benchmark {
       });
 
       itTestsSwap(
-        '[Standard]',
+        'Standard',
         async () => {
           return;
         },
@@ -194,7 +204,7 @@ export class Benchmark {
       });
 
       itTestsSwap(
-        '[With rate]',
+        'With rate',
         async () => {
           await this.tokenA.setRate(fp(1.1));
           await this.tokenB.setRate(fp(1.1));

@@ -15,8 +15,8 @@ struct LiquidityManagement {
 /// @dev Represents a pool's configuration (hooks configuration are separated in another struct).
 struct PoolConfig {
     uint24 staticSwapFeePercentageUnscaled;
-    uint24 aggregateProtocolSwapFeePercentageUnscaled;
-    uint24 aggregateProtocolYieldFeePercentageUnscaled;
+    uint24 aggregateSwapFeePercentageUnscaled;
+    uint24 aggregateYieldFeePercentageUnscaled;
     uint24 tokenDecimalDiffs;
     uint32 pauseWindowEndTime;
     bool isPoolRegistered;
@@ -100,7 +100,7 @@ struct PoolFunctionPermission {
  * yield-bearing ERC4626 tokens, which can be used to facilitate swaps without requiring wrapping or unwrapping
  * in most cases. The `paysYieldFees` flag can be used to indicate whether a token is yield-bearing (e.g., waDAI),
  * not yield-bearing (e.g., sEUR), or yield-bearing but exempt from fees (e.g., in certain nested pools, where
- * protocol yield fees are charged elsewhere).
+ * yield fees are charged elsewhere).
  *
  * NB: STANDARD must always be the first enum element, so that newly initialized data structures default to Standard.
  */

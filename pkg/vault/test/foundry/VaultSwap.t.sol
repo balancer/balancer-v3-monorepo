@@ -5,15 +5,13 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
-import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { SwapKind, SwapParams, HooksConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
@@ -23,7 +21,6 @@ import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultSwapTest is BaseVaultTest {
-    using ArrayHelpers for *;
     using FixedPoint for uint256;
 
     PoolMock internal noInitPool;
@@ -124,9 +121,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function swapSingleTokenExactIn() public returns (uint256 fee, uint256 protocolFee) {
         vm.prank(alice);
-        snapStart("vaultSwapSingleTokenExactIn");
         router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, defaultAmount, MAX_UINT256, false, bytes(""));
-        snapEnd();
         return (0, 0);
     }
 
@@ -136,9 +131,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function swapSingleTokenExactOut() public returns (uint256 fee, uint256 protocolFee) {
         vm.prank(alice);
-        snapStart("vaultSwapSingleTokenExactOut");
         router.swapSingleTokenExactOut(pool, usdc, dai, defaultAmount, defaultAmount, MAX_UINT256, false, bytes(""));
-        snapEnd();
         return (0, 0);
     }
 
@@ -206,7 +199,6 @@ contract VaultSwapTest is BaseVaultTest {
         setSwapFeePercentage(swapFeePercentage);
 
         vm.prank(alice);
-        snapStart("vaultSwapSingleTokenExactInWithFee");
         router.swapSingleTokenExactIn(
             pool,
             usdc,
@@ -217,7 +209,6 @@ contract VaultSwapTest is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
 
         return (swapFee, 0);
     }
@@ -241,10 +232,9 @@ contract VaultSwapTest is BaseVaultTest {
 
     function swapSingleTokenExactInWithProtocolFee() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage(swapFeePercentage);
-        vault.manualSetAggregateProtocolSwapFeePercentage(pool, protocolSwapFeePercentage);
+        vault.manualSetAggregateSwapFeePercentage(pool, protocolSwapFeePercentage);
 
         vm.prank(alice);
-        snapStart("vaultSwapSingleTokenExactInWithProtocolFee");
         router.swapSingleTokenExactIn(
             pool,
             usdc,
@@ -255,7 +245,6 @@ contract VaultSwapTest is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
 
         return (swapFee, protocolSwapFee);
     }
@@ -303,7 +292,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function swapSingleTokenExactOutWithProtocolFee() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage(swapFeePercentage);
-        vault.manualSetAggregateProtocolSwapFeePercentage(pool, protocolSwapFeePercentage);
+        vault.manualSetAggregateSwapFeePercentage(pool, protocolSwapFeePercentage);
 
         vm.prank(alice);
         router.swapSingleTokenExactOut(
@@ -326,7 +315,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function protocolSwapFeeAccumulation() public returns (uint256 fee, uint256 protocolFee) {
         setSwapFeePercentage(swapFeePercentage);
-        vault.manualSetAggregateProtocolSwapFeePercentage(pool, protocolSwapFeePercentage);
+        vault.manualSetAggregateSwapFeePercentage(pool, protocolSwapFeePercentage);
 
         vm.prank(alice);
         router.swapSingleTokenExactIn(
@@ -355,11 +344,11 @@ contract VaultSwapTest is BaseVaultTest {
         return (swapFee, protocolSwapFee);
     }
 
-    function testCollectProtocolFees() public {
+    function testCollectAggregateFees() public {
         usdc.mint(bob, defaultAmount);
 
         setSwapFeePercentage(swapFeePercentage);
-        vault.manualSetAggregateProtocolSwapFeePercentage(pool, protocolSwapFeePercentage);
+        vault.manualSetAggregateSwapFeePercentage(pool, protocolSwapFeePercentage);
 
         vm.prank(bob);
         router.swapSingleTokenExactIn(
@@ -374,8 +363,8 @@ contract VaultSwapTest is BaseVaultTest {
         );
 
         IProtocolFeeController feeController = vault.getProtocolFeeController();
-        vault.collectProtocolFees(pool);
-        uint256[] memory feeAmounts = feeController.getAggregateProtocolFeeAmounts(pool);
+        vault.collectAggregateFees(pool);
+        uint256[] memory feeAmounts = feeController.getProtocolFeeAmounts(pool);
 
         authorizer.grantRole(
             IAuthentication(address(feeController)).getActionId(IProtocolFeeController.withdrawProtocolFees.selector),
@@ -479,10 +468,7 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(balances[usdcIdx], 2 * defaultAmount + usdcFee - usdcProtocolFee, "Swap: Pool's [1] balance is wrong");
 
         // protocol fees are accrued
-        uint256 actualFee = vault.manualGetAggregateProtocolSwapFeeAmount(
-            pool,
-            kind == SwapKind.EXACT_OUT ? usdc : dai
-        );
+        uint256 actualFee = vault.manualGetAggregateSwapFeeAmount(pool, kind == SwapKind.EXACT_OUT ? usdc : dai);
         assertEq(protocolFee, actualFee, "Swap: Aggregate fee amount is wrong");
 
         // vault are adjusted balances
