@@ -141,7 +141,7 @@ contract VaultStorage {
     }
 
     function _tokenDeltas() internal view returns (TokenDeltaMappingSlotType slot) {
-        return TokenDeltaMappingSlotType.wrap(_TOKEN_DELTA_SLOT);
+        return TokenDeltaMappingSlotType.wrap(_TOKEN_DELTAS_SLOT);
     }
 
     function _calculateVaultStorageSlot(string memory key) private pure returns (bytes32) {
