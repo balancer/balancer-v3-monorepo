@@ -130,17 +130,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /*******************************************************************************
-                                    Pool Information
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultAdmin
-    function getPoolTokenRates(
-        address pool
-    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (uint256[] memory) {
-        return _loadPoolData(pool, Rounding.ROUND_DOWN).tokenRates;
-    }
-
-    /*******************************************************************************
                                     Vault Pausing
     *******************************************************************************/
 

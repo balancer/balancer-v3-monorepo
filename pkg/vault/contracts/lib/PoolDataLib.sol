@@ -42,17 +42,17 @@ library PoolDataLib {
 
         for (uint256 i = 0; i < numTokens; ++i) {
             (IERC20 token, bytes32 packedBalance) = poolTokenBalances.unchecked_at(i);
+            TokenInfo memory tokenInfo = poolTokenInfo[token];
+
             poolData.tokens[i] = token;
-            poolData.tokenInfo[i] = poolTokenInfo[token];
-            updateTokenRate(poolData, i);
+            poolData.tokenInfo[i] = tokenInfo;
+            poolData.tokenRates[i] = getTokenRate(tokenInfo);
             updateRawAndLiveBalance(poolData, i, packedBalance.getBalanceRaw(), roundingDirection);
 
             // Nothing else to do here.
             if (poolSubjectToYieldFees == false) {
                 continue;
             }
-
-            TokenInfo memory tokenInfo = poolData.tokenInfo[i];
 
             // poolData already has live balances computed from raw balances according to the token rates and the
             // given rounding direction. Charging a yield fee changes the raw
@@ -135,7 +135,7 @@ library PoolDataLib {
         bytes32 packedBalance;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            updateTokenRate(poolData, i);
+            poolData.tokenRates[i] = getTokenRate(poolData.tokenInfo[i]);
 
             (, packedBalance) = poolTokenBalances.unchecked_at(i);
 
@@ -144,13 +144,13 @@ library PoolDataLib {
         }
     }
 
-    function updateTokenRate(PoolData memory poolData, uint256 tokenIndex) internal view {
-        TokenType tokenType = poolData.tokenInfo[tokenIndex].tokenType;
+    function getTokenRate(TokenInfo memory tokenInfo) internal view returns (uint256 rate) {
+        TokenType tokenType = tokenInfo.tokenType;
 
         if (tokenType == TokenType.STANDARD) {
-            poolData.tokenRates[tokenIndex] = FixedPoint.ONE;
+            rate = FixedPoint.ONE;
         } else if (tokenType == TokenType.WITH_RATE) {
-            poolData.tokenRates[tokenIndex] = poolData.tokenInfo[tokenIndex].rateProvider.getRate();
+            rate = tokenInfo.rateProvider.getRate();
         } else {
             revert IVaultErrors.InvalidTokenConfiguration();
         }

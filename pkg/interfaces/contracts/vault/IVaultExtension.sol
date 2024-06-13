@@ -131,6 +131,17 @@ interface IVaultExtension {
     function getPoolTokens(address pool) external view returns (IERC20[] memory);
 
     /**
+     * @notice Gets pool token rates.
+     * @dev This function performs external calls if tokens are yield-bearing.
+     * @param pool Address of the pool
+     * @return decimalScalingFactors Token decimal scaling factors, in registration order
+     * @return tokenRates Token rates for yield-bearing tokens, FP(1) for standard tokens, in registration order
+     */
+    function getPoolTokenRates(
+        address pool
+    ) external view returns (uint256[] memory decimalScalingFactors, uint256[] memory tokenRates);
+
+    /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
      * @return tokens The pool tokens, in registration order
      * @return tokenInfo Corresponding token info

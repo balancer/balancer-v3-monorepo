@@ -481,7 +481,35 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
-            (tokens[i], ) = poolTokenBalances.unchecked_at(i);
+            tokens[i] = poolTokenBalances.unchecked_keyAt(i);
+        }
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getPoolTokenRates(
+        address pool
+    )
+        external
+        view
+        withRegisteredPool(pool)
+        onlyVaultDelegateCall
+        returns (uint256[] memory decimalScalingFactors, uint256[] memory tokenRates)
+    {
+        // Retrieve the mapping of tokens and their balances for the specified pool.
+        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        uint256 numTokens = poolTokenBalances.length();
+        PoolConfig memory poolConfig = _poolConfig[pool];
+
+        decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolConfig, numTokens);
+        tokenRates = new uint256[](numTokens);
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
+            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
+            // storage reads.
+            IERC20 token = poolTokenBalances.unchecked_keyAt(i);
+            TokenInfo memory tokenInfo = _poolTokenInfo[pool][token];
+            tokenRates[i] = PoolDataLib.getTokenRate(tokenInfo);
         }
     }
 

@@ -131,12 +131,12 @@ contract PoolHooksMock is BasePoolHooks {
 
     function onAfterSwap(IHooks.AfterSwapParams calldata params) external override returns (bool, uint256) {
         // check that actual pool balances match
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, uint256[] memory scalingFactors) = _vault
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = _vault
             .getPoolTokenInfo(params.pool);
 
         uint256[] memory currentLiveBalances = IVaultMock(address(_vault)).getCurrentLiveBalances(params.pool);
 
-        uint256[] memory rates = _vault.getPoolTokenRates(params.pool);
+        (uint256[] memory scalingFactors, uint256[] memory rates) = _vault.getPoolTokenRates(params.pool);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             if (tokens[i] == params.tokenIn) {

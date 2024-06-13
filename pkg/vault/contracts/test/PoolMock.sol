@@ -96,12 +96,7 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
 
     /// @dev Even though pools do not handle scaling, we still need this for the tests.
     function getDecimalScalingFactors() external view returns (uint256[] memory scalingFactors) {
-        IERC20[] memory tokens = getPoolTokens();
-        scalingFactors = new uint256[](tokens.length);
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
-        }
+        (scalingFactors, ) =_vault.getPoolTokenRates(address(this));
     }
 
     /// @inheritdoc ISwapFeePercentageBounds
