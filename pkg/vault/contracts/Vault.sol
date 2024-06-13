@@ -772,13 +772,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (hookAdjustedBptAmountIn > bptAmountIn) {
             uint256 hookFee = hookAdjustedBptAmountIn - bptAmountIn;
             _spendAllowance(params.pool, params.from, msg.sender, hookFee);
-            _burn(params.pool, params.from, hookFee);
-            _mint(params.pool, hooksConfig.hooksContract, hookFee);
+            IERC20(params.pool).transferFrom(params.from, hooksConfig.hooksContract, hookFee);
         } else if (hookAdjustedBptAmountIn < bptAmountIn) {
             uint256 hookDiscount = bptAmountIn - hookAdjustedBptAmountIn;
             _spendAllowance(params.pool, hooksConfig.hooksContract, msg.sender, hookDiscount);
-            _burn(params.pool, hooksConfig.hooksContract, hookDiscount);
-            _mint(params.pool, params.from, hookDiscount);
+            IERC20(params.pool).transferFrom(hooksConfig.hooksContract, params.from, hookDiscount);
         }
         bptAmountIn = hookAdjustedBptAmountIn;
     }
