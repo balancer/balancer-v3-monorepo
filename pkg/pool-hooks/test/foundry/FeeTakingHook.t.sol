@@ -202,10 +202,10 @@ contract FeeTakingHookTest is BaseVaultTest {
     function testHookFeeRemoveLiquidityExactIn__Fuzz(uint256 expectedBptIn, uint256 hookFeePercentage) public {
         // Add liquidity so bob has BPT to remove liquidity
         vm.prank(bob);
-        router.addLiquidityUnbalanced(
+        router.addLiquidityProportional(
             pool,
             [poolInitAmount, poolInitAmount].toMemoryArray(),
-            poolInitAmount,
+            2 * poolInitAmount,
             false,
             bytes("")
         );

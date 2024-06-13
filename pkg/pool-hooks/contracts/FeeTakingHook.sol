@@ -92,7 +92,8 @@ contract FeeTakingHook is BasePoolHooks {
         // That's because other types of addLiquidity requires an exact amount in, so fees need to be charged as BPTs,
         // and our current architecture does not support it.
         if (kind != AddLiquidityKind.PROPORTIONAL) {
-            return (true, amountsInRaw);
+            // Make the transaction revert by returning false. The second argument does not matter
+            return (false, amountsInRaw);
         }
 
         IERC20[] memory tokens = _vault.getPoolTokens(pool);
@@ -126,7 +127,8 @@ contract FeeTakingHook is BasePoolHooks {
         // That's because other types of removeLiquidity requires an exact amount out, so fees need to be charged as
         // BPTs, and our current architecture does not support it.
         if (kind != RemoveLiquidityKind.PROPORTIONAL) {
-            return (true, amountsOutRaw);
+            // Make the transaction revert by returning false. The second argument does not matter
+            return (false, amountsOutRaw);
         }
 
         IERC20[] memory tokens = _vault.getPoolTokens(pool);
