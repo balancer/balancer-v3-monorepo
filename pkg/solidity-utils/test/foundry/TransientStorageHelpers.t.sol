@@ -180,8 +180,8 @@ contract TransientStorageHelpersTest is Test {
     function testCalculateSlot() public {
         bytes32 slot = TransientStorageHelpers.calculateSlot("domain", "name");
         assertEq(
-            uint256(slot),
-            keccak256(abi.encode(uint256(keccak256(abi.encodePacked("balancer-labs.v3.storage.domain.slot"))) - 1)) &
+            slot,
+            keccak256(abi.encode(uint256(keccak256(abi.encodePacked("balancer-labs.v3.storage.domain.name"))) - 1)) &
                 ~bytes32(uint256(0xff))
         );
     }
