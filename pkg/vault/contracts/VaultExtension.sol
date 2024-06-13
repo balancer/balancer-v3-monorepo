@@ -290,12 +290,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             config.pauseWindowEndTime = params.pauseWindowEndTime;
 
             // Initialize the pool-specific protocol fee values to the current global defaults.
-            (
-                uint256 aggregateProtocolSwapFeePercentage,
-                uint256 aggregateProtocolYieldFeePercentage
-            ) = _protocolFeeController.registerPool(pool, params.roleAccounts.poolCreator, params.protocolFeeExempt);
-            config.setAggregateProtocolSwapFeePercentage(aggregateProtocolSwapFeePercentage);
-            config.setAggregateProtocolYieldFeePercentage(aggregateProtocolYieldFeePercentage);
+            (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) = _protocolFeeController
+                .registerPool(pool, params.roleAccounts.poolCreator, params.protocolFeeExempt);
+            config.setAggregateSwapFeePercentage(aggregateSwapFeePercentage);
+            config.setAggregateYieldFeePercentage(aggregateYieldFeePercentage);
 
             _poolConfig[pool] = config;
         }
@@ -591,19 +589,19 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     // and yield fee amounts, arbitrarily assigning "Raw" to Swap and "Derived" to Yield.
 
     /// @inheritdoc IVaultExtension
-    function getAggregateProtocolSwapFeeAmount(
+    function getAggregateSwapFeeAmount(
         address pool,
         IERC20 token
     ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (uint256) {
-        return _aggregateProtocolFeeAmounts[pool][token].getBalanceRaw();
+        return _aggregateFeeAmounts[pool][token].getBalanceRaw();
     }
 
     /// @inheritdoc IVaultExtension
-    function getAggregateProtocolYieldFeeAmount(
+    function getAggregateYieldFeeAmount(
         address pool,
         IERC20 token
     ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (uint256) {
-        return _aggregateProtocolFeeAmounts[pool][token].getBalanceDerived();
+        return _aggregateFeeAmounts[pool][token].getBalanceDerived();
     }
 
     /// @inheritdoc IVaultExtension

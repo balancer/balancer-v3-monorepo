@@ -39,9 +39,6 @@ contract VaultStorage {
     // This maximum token count is also hard-coded in `PoolConfigLib`.
     uint256 internal constant _MAX_TOKENS = 4;
 
-    // Maximum pool swap fee percentage.
-    uint256 internal constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
-
     // Maximum pause and buffer period durations.
     uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
     uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
@@ -82,10 +79,10 @@ contract VaultStorage {
      */
     mapping(IERC20 => int256) private __tokenDeltas;
 
-    // Pool -> (Token -> fee): aggregate protocol swap/yield fees accumulated in the Vault for harvest.
+    // Pool -> (Token -> fee): aggregate swap/yield fees accumulated in the Vault for harvest.
     // Reusing PackedTokenBalance to save bytecode (despite differing semantics).
     // It's arbitrary which is which: we define raw=swap; derived=yield
-    mapping(address => mapping(IERC20 => bytes32)) internal _aggregateProtocolFeeAmounts;
+    mapping(address => mapping(IERC20 => bytes32)) internal _aggregateFeeAmounts;
 
     /**
      * @dev Represents the total reserve of each ERC20 token. It should be always equal to `token.balanceOf(vault)`,
@@ -104,7 +101,7 @@ contract VaultStorage {
     // Stored as a convenience, to avoid calculating it on every operation.
     uint32 internal immutable _vaultBufferPeriodDuration;
 
-    // protocol fees and paused flags.
+    // Vault pause and query flags.
     VaultState internal _vaultState;
 
     // pool -> roleId (corresponding to a particular function) -> PoolFunctionPermission.
@@ -113,7 +110,7 @@ contract VaultStorage {
     // pool -> PoolRoleAccounts (accounts assigned to specific roles; e.g., pauseManager).
     mapping(address => PoolRoleAccounts) internal _poolRoleAccounts;
 
-    // Contract that receives protocol swap and yield fees
+    // Contract that receives aggregate swap and yield fees
     IProtocolFeeController internal _protocolFeeController;
 
     // Buffers are a vault internal concept, keyed on the wrapped token address.
