@@ -15,9 +15,11 @@ import { StablePoolFactory } from '../typechain-types';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
-import { PoolConfigStructOutput, TokenConfigStruct } from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
+import {
+  PoolConfigStructOutput,
+  TokenConfigStruct,
+} from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
 import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
-import { TokenConfig } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
 

@@ -1,11 +1,9 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { Contract } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
-import { PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/PoolMock';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import {
@@ -18,7 +16,6 @@ import {
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import { IVaultMock } from '@balancer-labs/v3-interfaces/typechain-types';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
-import { PoolConfigStructOutput, TokenConfigStruct } from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
 import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
 import { WeightedPool, WeightedPoolFactory } from '../typechain-types';
 import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
@@ -27,7 +24,8 @@ import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
-import { TokenConfig } from '@balancer-labs/v3-helpers/src/models/types/types';
+import { PoolConfigStructOutput } from '@balancer-labs/v3-solidity-utils/typechain-types/@balancer-labs/v3-interfaces/contracts/vault/IVault';
+import { TokenConfigStruct } from '../typechain-types/@balancer-labs/v3-interfaces/contracts/vault/IVault';
 
 describe('WeightedPool', function () {
   const POOL_SWAP_FEE = fp(0.01);
@@ -43,7 +41,6 @@ describe('WeightedPool', function () {
   let bob: SignerWithAddress;
   let tokenA: ERC20TestToken;
   let tokenB: ERC20TestToken;
-  let tokenC: ERC20TestToken;
   let poolTokens: string[];
 
   let tokenAAddress: string;
@@ -71,7 +68,6 @@ describe('WeightedPool', function () {
 
     tokenA = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token A', 'TKNA', 18] });
     tokenB = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token B', 'TKNB', 6] });
-    tokenC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['Token C', 'TKNC', 8] });
 
     tokenAAddress = await tokenA.getAddress();
     tokenBAddress = await tokenB.getAddress();
