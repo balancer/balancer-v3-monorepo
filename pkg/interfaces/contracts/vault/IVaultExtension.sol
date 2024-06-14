@@ -353,6 +353,16 @@ interface IVaultExtension {
     ) external returns (uint256[] memory amountsOut);
 
     /*******************************************************************************
+                                    Buffer Operations
+    *******************************************************************************/
+
+    function calculateBufferAmounts(
+        SwapKind kind,
+        IERC4626 wrappedToken,
+        uint256 amountGiven
+    ) external returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped);
+
+    /*******************************************************************************
                                     Queries
     *******************************************************************************/
 
