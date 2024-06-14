@@ -408,6 +408,7 @@ contract PoolHooksMock is BasePoolHooks {
 
     function _setBalancesInVault() private {
         IERC20[] memory poolTokens = _vault.getPoolTokens(_pool);
-        IVaultMock(address(_vault)).manualSetPoolTokenBalances(_pool, poolTokens, _newBalancesRaw);
+        // We don't care about last live balances here, so we just use the same raw balances
+        IVaultMock(address(_vault)).manualSetPoolTokenBalances(_pool, poolTokens, _newBalancesRaw, _newBalancesRaw);
     }
 }

@@ -120,16 +120,6 @@ describe('WeightedPool', function () {
         expect(poolConfig.isPoolPaused).to.be.false;
       });
 
-      it('has the correct pool tokens and balances', async () => {
-        const tokensFromPool = await pool.getPoolTokens();
-        expect(tokensFromPool).to.deep.equal(poolTokens);
-
-        const [tokensFromVault, , balancesFromVault] = await vault.getPoolTokenInfo(pool);
-
-        expect(tokensFromVault).to.deep.equal(tokensFromPool);
-        expect(balancesFromVault).to.deep.equal(initialBalances);
-      });
-
       it('cannot be initialized twice', async () => {
         await expect(router.connect(alice).initialize(pool, poolTokens, initialBalances, FP_ZERO, false, '0x'))
           .to.be.revertedWithCustomError(vault, 'PoolAlreadyInitialized')

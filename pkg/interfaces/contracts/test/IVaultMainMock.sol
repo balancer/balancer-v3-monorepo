@@ -44,11 +44,13 @@ interface IVaultMainMock {
 
     function manualSetVaultState(bool, bool) external;
 
-    function manualSetPoolTokenConfig(address, IERC20[] memory, TokenConfig[] memory) external;
+    function manualSetPoolTokenInfo(address, TokenConfig[] memory) external;
+
+    function manualSetPoolTokenInfo(address, IERC20[] memory, TokenInfo[] memory) external;
 
     function manualSetPoolConfig(address, PoolConfig memory) external;
 
-    function manualSetPoolTokenBalances(address, IERC20[] memory, uint256[] memory) external;
+    function manualSetPoolTokenBalances(address, IERC20[] memory, uint256[] memory, uint256[] memory) external;
 
     function mockIsUnlocked() external view;
 
@@ -57,13 +59,6 @@ interface IVaultMainMock {
     function ensurePoolNotPaused(address) external view;
 
     function ensureUnpausedAndGetVaultState(address) external view returns (VaultState memory);
-
-    function internalGetPoolTokenInfo(
-        address
-    )
-        external
-        view
-        returns (IERC20[] memory, TokenInfo[] memory, uint256[] memory, uint256[] memory, PoolConfig memory);
 
     function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256);
 
@@ -79,8 +74,6 @@ interface IVaultMainMock {
     ) external returns (PoolData memory);
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw);
-
-    function getCurrentLiveBalances(address pool) external view returns (uint256[] memory currentLiveBalances);
 
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances);
 

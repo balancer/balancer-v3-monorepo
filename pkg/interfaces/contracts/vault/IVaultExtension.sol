@@ -161,6 +161,15 @@ interface IVaultExtension {
         );
 
     /**
+     * @notice Gets current live balances of a given pool (fixed-point, 18 decimals), corresponding to its tokens in
+     * registration order.
+     * @param pool Address of the pool
+     * @return balancesLiveScaled18 Live token balances after applying decimal scaling factors, token rates and yield
+     * fees due.
+     */
+    function getCurrentLiveBalances(address pool) external view returns (uint256[] memory balancesLiveScaled18);
+
+    /**
      * @notice Gets the configuration parameters of a pool.
      * @param pool Address of the pool
      * @return Pool configuration
