@@ -31,6 +31,10 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 contract VaultStorage {
     using StorageSlot for *;
 
+    // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used
+    // by what is written after =. If you use immutable, the value is first calculated and
+    // then replaced everywhere. That means that if a constant has executable variables,
+    // they will be executed every time the constant is used.
     bytes32 private immutable _IS_UNLOCKED_SLOT = _calculateVaultStorageSlot("isUnlocked");
     bytes32 private immutable _NON_ZERO_DELTA_COUNT_SLOT = _calculateVaultStorageSlot("nonZeroDeltaCount");
     bytes32 private immutable _TOKEN_DELTAS_SLOT = _calculateVaultStorageSlot("tokenDeltas");
@@ -129,7 +133,6 @@ contract VaultStorage {
         return _IS_UNLOCKED_SLOT.asBoolean();
     }
 
-    /// @dev Slot for the total number of nonzero deltas. It's value is non-zero only during `unlock` calls.
     function _nonZeroDeltaCount() internal view returns (StorageSlot.Uint256SlotType slot) {
         return _NON_ZERO_DELTA_COUNT_SLOT.asUint256();
     }

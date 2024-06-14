@@ -14,16 +14,16 @@ import {
 contract BatchRouterStorage {
     using TransientStorageHelpers for *;
 
+    // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used
+    // by what is written after =. If you use immutable, the value is first calculated and
+    // then replaced everywhere. That means that if a constant has executable variables,
+    // they will be executed every time the constant is used.
     bytes32 private immutable _CURRENT_SWAP_TOKEN_IN_SLOT = _calculateBatchRouterStorageSlot("currentSwapTokensIn");
-
     bytes32 private immutable _CURRENT_SWAP_TOKEN_OUT_SLOT = _calculateBatchRouterStorageSlot("currentSwapTokensOut");
-
     bytes32 private immutable _CURRENT_SWAP_TOKEN_IN_AMOUNTS_SLOT =
         _calculateBatchRouterStorageSlot("currentSwapTokenInAmounts");
-
     bytes32 private immutable _CURRENT_SWAP_TOKEN_OUT_AMOUNTS_SLOT =
         _calculateBatchRouterStorageSlot("currentSwapTokenOutAmounts");
-
     bytes32 private immutable _SETTLED_TOKEN_AMOUNTS_SLOT = _calculateBatchRouterStorageSlot("settledTokenAmounts");
 
     // We use transient storage to track tokens and amounts flowing in and out of a batch swap.

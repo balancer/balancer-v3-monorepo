@@ -25,6 +25,10 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     using SafeERC20 for IWETH;
     using StorageSlot for *;
 
+    // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used
+    // by what is written after =. If you use immutable, the value is first calculated and
+    // then replaced everywhere. That means that if a constant has executable variables,
+    // they will be executed every time the constant is used.
     bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
 
     /// @dev Incoming ETH transfer from an address that is not WETH.
