@@ -65,10 +65,10 @@ contract ProtocolFeeExemptionTest is BaseVaultTest {
         pool = address(new PoolMock(IVault(address(vault)), "Non-Exempt Pool", "NOTEXEMPT"));
         factoryMock.registerGeneralTestPool(pool, tokenConfig, 0, 365 days, false, roleAccounts, address(0));
 
-        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
+        PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
 
-        assertEq(poolConfig.aggregateSwapFeePercentage, GLOBAL_SWAP_FEE);
-        assertEq(poolConfig.aggregateYieldFeePercentage, GLOBAL_YIELD_FEE);
+        assertEq(poolConfigBits.aggregateSwapFeePercentage, GLOBAL_SWAP_FEE);
+        assertEq(poolConfigBits.aggregateYieldFeePercentage, GLOBAL_YIELD_FEE);
     }
 
     function testWithProtocolFeeExemption() public {
@@ -79,9 +79,9 @@ contract ProtocolFeeExemptionTest is BaseVaultTest {
         pool = address(new PoolMock(IVault(address(vault)), "Exempt Pool", "EXEMPT"));
         factoryMock.registerGeneralTestPool(pool, tokenConfig, 0, 365 days, true, roleAccounts, address(0));
 
-        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
+        PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
 
-        assertEq(poolConfig.aggregateSwapFeePercentage, 0);
-        assertEq(poolConfig.aggregateYieldFeePercentage, 0);
+        assertEq(poolConfigBits.aggregateSwapFeePercentage, 0);
+        assertEq(poolConfigBits.aggregateYieldFeePercentage, 0);
     }
 }

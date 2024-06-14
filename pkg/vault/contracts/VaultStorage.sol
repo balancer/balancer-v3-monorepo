@@ -54,10 +54,10 @@ contract VaultStorage {
     IVaultExtension internal immutable _vaultExtension;
 
     // Registry of pool configs.
-    mapping(address => PoolConfigBits) internal _poolConfig;
+    mapping(address => PoolConfigBits) internal _poolConfigBits;
 
     // Registry of pool hooks.
-    mapping(address => HooksConfigBits) internal _hooksConfig;
+    mapping(address => HooksConfigBits) internal _hooksConfigBits;
 
     // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
     // Last live balances are used for yield fee computation, and since these have rates applied, they are stored
@@ -105,7 +105,7 @@ contract VaultStorage {
     uint32 internal immutable _vaultBufferPeriodDuration;
 
     // Bytes32 with protocol fees and paused flags.
-    VaultStateBits internal _vaultState;
+    VaultStateBits internal _vaultStateBits;
 
     // pool -> roleId (corresponding to a particular function) -> PoolFunctionPermission.
     mapping(address => mapping(bytes32 => PoolFunctionPermission)) internal _poolFunctionPermissions;

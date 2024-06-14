@@ -102,7 +102,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         assertEq(
             PoolConfigBits.unwrap(vault.manualGetPoolConfigBits(pool)),
             PoolConfigBits.unwrap(emptyPoolConfig),
-            "poolConfig should match empty pool config"
+            "poolConfigBits should match empty pool config"
         );
     }
 

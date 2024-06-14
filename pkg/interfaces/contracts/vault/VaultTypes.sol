@@ -146,7 +146,7 @@ struct TokenInfo {
 }
 
 struct PoolData {
-    PoolConfigBits poolConfig;
+    PoolConfigBits poolConfigBits;
     IERC20[] tokens;
     TokenInfo[] tokenInfo;
     uint256[] balancesRaw;
