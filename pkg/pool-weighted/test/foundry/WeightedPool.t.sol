@@ -43,7 +43,7 @@ contract WeightedPoolTest is BaseVaultTest {
     uint256 constant DAI_AMOUNT_IN = 1 * 1e18;
     uint256 constant USDC_AMOUNT_OUT = 1 * 1e18;
 
-    uint256 constant DELTA = 1e9;
+    uint256 constant DELTA = 3e7;
 
     WeightedPool internal weightedPool;
     uint256[] internal weights;
@@ -85,7 +85,7 @@ contract WeightedPoolTest is BaseVaultTest {
             pool,
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Account for the precision loss
-            DAI_AMOUNT - DELTA - 1e6
+            DAI_AMOUNT - DELTA
         );
         vm.stopPrank();
     }

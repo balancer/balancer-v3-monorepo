@@ -19,7 +19,8 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import {
-    TransientStorageHelpers
+    TransientStorageHelpers,
+    TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
@@ -435,7 +436,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetNonZeroDeltaCount(uint256 deltaCount) external {
-        _nonzeroDeltaCount().tstore(deltaCount);
+        _nonZeroDeltaCount().tstore(deltaCount);
     }
 
     function manualInternalSwap(
@@ -587,5 +588,17 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualGetPoolConfigBits(address pool) external view returns (PoolConfigBits) {
         return _poolConfigBits[pool];
+    }
+
+    function manualGetIsUnlocked() external view returns (StorageSlot.BooleanSlotType slot) {
+        return _isUnlocked();
+    }
+
+    function manualGetNonzeroDeltaCount() external view returns (StorageSlot.Uint256SlotType slot) {
+        return _nonZeroDeltaCount();
+    }
+
+    function manualGetTokenDeltas() external view returns (TokenDeltaMappingSlotType slot) {
+        return _tokenDeltas();
     }
 }

@@ -99,7 +99,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _;
 
         if (isUnlockedBefore == false) {
-            if (_nonzeroDeltaCount().tload() != 0) {
+            if (_nonZeroDeltaCount().tload() != 0) {
                 revert BalanceNotSettled();
             }
 
@@ -884,7 +884,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // 7) BPT supply adjustment
         _spendAllowance(address(params.pool), params.from, msg.sender, bptAmountIn);
 
-        if (_isQueryContext(_vaultStateBits)) {
+        if (_isQueryContext()) {
             // Increase `from` balance to ensure the burn function succeeds.
             _queryModeBalanceIncrease(params.pool, params.from, bptAmountIn);
         }
@@ -1033,19 +1033,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountInUnderlying, amountOutWrapped) = (amountCalculated, amountGiven);
         }
 
-        // Checking isStaticCall first, so we only parse _vaultStateBits in static calls
-        if (_isQueryContext(_vaultStateBits)) {
-            // Uses the most accurate calculation so that a query matches the actual operation
-            if (kind == SwapKind.EXACT_IN) {
-                amountCalculated = wrappedToken.previewDeposit(amountGiven);
-                (amountInUnderlying, amountOutWrapped) = (amountGiven, amountCalculated);
-            } else {
-                amountCalculated = wrappedToken.previewMint(amountGiven);
-                (amountInUnderlying, amountOutWrapped) = (amountCalculated, amountGiven);
-            }
-            _takeDebt(underlyingToken, amountInUnderlying);
-            _supplyCredit(wrappedToken, amountOutWrapped);
-            return (amountCalculated, amountInUnderlying, amountOutWrapped);
+        if (_isQueryContext()) {
+            return _calculateBufferAmounts(kind, wrappedToken, amountGiven);
         }
 
         if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
@@ -1163,19 +1152,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountOutUnderlying, amountInWrapped) = (amountGiven, amountCalculated);
         }
 
-        // Checking isStaticCall first, so we only parse _vaultStateBits in static calls
-        if (_isQueryContext(_vaultStateBits)) {
-            // Uses the most accurate calculation so that a query matches the actual operation
-            if (kind == SwapKind.EXACT_IN) {
-                amountCalculated = wrappedToken.previewRedeem(amountGiven);
-                (amountOutUnderlying, amountInWrapped) = (amountCalculated, amountGiven);
-            } else {
-                amountCalculated = wrappedToken.previewWithdraw(amountGiven);
-                (amountOutUnderlying, amountInWrapped) = (amountGiven, amountCalculated);
-            }
-            _takeDebt(wrappedToken, amountInWrapped);
-            _supplyCredit(underlyingToken, amountOutUnderlying);
-            return (amountCalculated, amountInWrapped, amountOutUnderlying);
+        if (_isQueryContext()) {
+            return _calculateBufferAmounts(kind, wrappedToken, amountGiven);
         }
 
         if (bufferBalances.getBalanceRaw() > amountOutUnderlying) {
@@ -1258,8 +1236,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _supplyCredit(underlyingToken, amountOutUnderlying);
     }
 
-    function _isQueryContext(VaultStateBits vaultState) internal view returns (bool) {
-        return EVMCallModeHelpers.isStaticCall() && vaultState.isQueryDisabled() == false;
+    function _isQueryContext() internal view returns (bool) {
+        return EVMCallModeHelpers.isStaticCall() && _vaultStateBits.isQueryDisabled() == false;
+    }
+
+    /**
+     * @dev Call VaultExtension to calculate the amounts for wrap/unwrap operations.
+     */
+    function _calculateBufferAmounts(
+        SwapKind kind,
+        IERC4626 wrappedToken,
+        uint256 amountGiven
+    ) internal returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped) {
+        bytes memory data = Address.functionDelegateCall(
+            _implementation(),
+            abi.encodeWithSelector(IVaultExtension.calculateBufferAmounts.selector, kind, wrappedToken, amountGiven)
+        );
+        return abi.decode(data, (uint256, uint256, uint256));
     }
 
     /**

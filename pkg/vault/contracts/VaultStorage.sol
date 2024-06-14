@@ -16,6 +16,7 @@ import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import {
+    TransientStorageHelpers,
     AddressArraySlotType,
     TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
@@ -31,6 +32,16 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
  * @dev Storage layout for Vault. This contract has no code other than a thin abstraction for transient storage slots.
  */
 contract VaultStorage {
+    using StorageSlot for *;
+
+    // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used
+    // by what is written after =. If you use immutable, the value is first calculated and
+    // then replaced everywhere. That means that if a constant has executable variables,
+    // they will be executed every time the constant is used.
+    bytes32 private immutable _IS_UNLOCKED_SLOT = _calculateVaultStorageSlot("isUnlocked");
+    bytes32 private immutable _NON_ZERO_DELTA_COUNT_SLOT = _calculateVaultStorageSlot("nonZeroDeltaCount");
+    bytes32 private immutable _TOKEN_DELTAS_SLOT = _calculateVaultStorageSlot("tokenDeltas");
+
     // Minimum BPT amount minted upon initialization.
     uint256 internal constant _MINIMUM_BPT = 1e6;
 
@@ -67,22 +78,7 @@ contract VaultStorage {
     // Pool -> (token -> TokenInfo): The token configuration of each Pool's tokens.
     mapping(address => mapping(IERC20 => TokenInfo)) internal _poolTokenInfo;
 
-    /// @notice Global lock state. Unlock to operate with the vault.
-    bool private __isUnlocked;
-
-    /**
-     * @notice The total number of nonzero deltas.
-     * @dev It is non-zero only during `unlock` calls.
-     */
-    uint256 private __nonzeroDeltaCount;
-
-    /**
-     * @notice Represents the token due/owed during an operation.
-     * @dev Must all net to zero when the operation is finished.
-     */
-    mapping(IERC20 => int256) private __tokenDeltas;
-
-    // Pool -> (Token -> fee): aggregate swap/yield fees accumulated in the Vault for harvest.
+    // Pool -> (Token -> fee): aggregate protocol swap/yield fees accumulated in the Vault for harvest.
     // Reusing PackedTokenBalance to save bytecode (despite differing semantics).
     // It's arbitrary which is which: we define raw=swap; derived=yield
     mapping(address => mapping(IERC20 => bytes32)) internal _aggregateFeeAmounts;
@@ -136,23 +132,19 @@ contract VaultStorage {
     // Prevents a malicious ERC4626 from changing the asset after the buffer was initialized.
     mapping(IERC20 => address) internal _bufferAssets;
 
-    // solhint-disable no-inline-assembly
-
-    function _isUnlocked() internal pure returns (StorageSlot.BooleanSlotType slot) {
-        assembly {
-            slot := __isUnlocked.slot
-        }
+    function _isUnlocked() internal view returns (StorageSlot.BooleanSlotType slot) {
+        return _IS_UNLOCKED_SLOT.asBoolean();
     }
 
-    function _nonzeroDeltaCount() internal pure returns (StorageSlot.Uint256SlotType slot) {
-        assembly {
-            slot := __nonzeroDeltaCount.slot
-        }
+    function _nonZeroDeltaCount() internal view returns (StorageSlot.Uint256SlotType slot) {
+        return _NON_ZERO_DELTA_COUNT_SLOT.asUint256();
     }
 
-    function _tokenDeltas() internal pure returns (TokenDeltaMappingSlotType slot) {
-        assembly {
-            slot := __tokenDeltas.slot
-        }
+    function _tokenDeltas() internal view returns (TokenDeltaMappingSlotType slot) {
+        return TokenDeltaMappingSlotType.wrap(_TOKEN_DELTAS_SLOT);
+    }
+
+    function _calculateVaultStorageSlot(string memory key) private pure returns (bytes32) {
+        return TransientStorageHelpers.calculateSlot(type(VaultStorage).name, key);
     }
 }
