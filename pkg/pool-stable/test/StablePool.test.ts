@@ -142,7 +142,7 @@ describe('StablePool', () => {
         });
 
         it('has the correct pool tokens and balances', async () => {
-          const tokensFromPool = await pool.getPoolTokens();
+          const tokensFromPool = await pool.getTokens();
           expect(tokensFromPool).to.deep.equal(poolTokens.slice(0, numTokens));
 
           const [tokensFromVault, , balancesFromVault] = await vault.getPoolTokenInfo(pool);
