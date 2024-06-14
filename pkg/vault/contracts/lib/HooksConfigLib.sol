@@ -17,6 +17,7 @@ library HooksConfigLib {
      *
      * @param config The encoded hooks configuration
      * @param swapParams The swap parameters used to calculate the fee
+     * @param staticSwapFeePercentage Value of the static swap fee, for reference
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      * @return swapFeePercentage the calculated swap fee percentage. 0 if hook is disabled
      */
@@ -73,6 +74,7 @@ library HooksConfigLib {
      * @param config The encoded hooks configuration
      * @param amountCalculatedScaled18 Token amount calculated by the swap
      * @param amountCalculatedRaw Token amount calculated by the swap
+     * @param router Router address
      * @param params The swap parameters
      * @param state Temporary state used in swap operations
      * @param poolData Struct containing balance and token information of the pool
@@ -227,6 +229,7 @@ library HooksConfigLib {
      * @param config The encoded hooks configuration
      * @param minAmountsOutScaled18 An array with minimum amounts for each output token of the remove liquidity
      * operation
+     * @param router Router address
      * @param params The remove liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
