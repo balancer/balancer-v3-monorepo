@@ -12,7 +12,7 @@ library PoolConfigLib {
     using WordCodec for bytes32;
     using PoolConfigLib for PoolConfigBits;
 
-    error InvalidSize(uint256 expected);
+    error InvalidSize(uint256 currentValue, uint256 expectedSize);
 
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
@@ -79,7 +79,7 @@ library PoolConfigLib {
         value /= FEE_SCALING_FACTOR;
 
         if (value > MAX_FEE_VALUE) {
-            revert InvalidSize(FEE_BITLENGTH);
+            revert InvalidSize(value, FEE_BITLENGTH);
         }
 
         config.bits = config.bits.insertUint(value, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH);
@@ -93,7 +93,7 @@ library PoolConfigLib {
         value /= FEE_SCALING_FACTOR;
 
         if (value > MAX_FEE_VALUE) {
-            revert InvalidSize(FEE_BITLENGTH);
+            revert InvalidSize(value, FEE_BITLENGTH);
         }
 
         config.bits = config.bits.insertUint(value, AGGREGATE_SWAP_FEE_OFFSET, FEE_BITLENGTH);
@@ -107,7 +107,7 @@ library PoolConfigLib {
         value /= FEE_SCALING_FACTOR;
 
         if (value > MAX_FEE_VALUE) {
-            revert InvalidSize(FEE_BITLENGTH);
+            revert InvalidSize(value, FEE_BITLENGTH);
         }
 
         config.bits = config.bits.insertUint(value, AGGREGATE_YIELD_FEE_OFFSET, FEE_BITLENGTH);
