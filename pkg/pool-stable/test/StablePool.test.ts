@@ -15,7 +15,7 @@ import { StablePoolFactory } from '../typechain-types';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
-import { PoolConfigStructOutput } from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
+import { PoolConfigStructOutput, TokenConfigStruct } from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
 import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
 import { TokenConfig } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
@@ -67,14 +67,14 @@ describe('StablePool', () => {
   }
 
   async function deployPool(numTokens: number) {
-    const tokenConfig: TokenConfig[] = buildTokenConfig(poolTokens.slice(0, numTokens));
+    const tokenConfig: TokenConfigStruct[] = buildTokenConfig(poolTokens.slice(0, numTokens));
 
     const tx = await factory.create(
       'Stable Pool',
       `STABLE-${numTokens}`,
       tokenConfig,
       200n,
-      [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
+      { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS, poolCreator: ZERO_ADDRESS },
       0, // swap fee
       ZERO_ADDRESS,
       TypesConverter.toBytes32(bn(numTokens))
