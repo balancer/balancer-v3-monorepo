@@ -49,7 +49,7 @@ contract RouterCommon is IRouterCommon, VaultGuard {
         {
             address sender = _getSenderSlot().tload();
 
-            // NOTE: This is a one-time operation. The sender can't be changed within the one transaction.
+            // NOTE: This is a one-time operation. The sender can't be changed within the transaction.
             if (sender == address(0)) {
                 _getSenderSlot().tstore(msg.sender);
             }
