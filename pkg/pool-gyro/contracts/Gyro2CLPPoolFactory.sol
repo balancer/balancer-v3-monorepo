@@ -23,7 +23,7 @@ contract Gyro2CLPPoolFactory is BasePoolFactory {
 
     constructor(
         IVault vault,
-        uint256 pauseWindowDuration
+        uint32 pauseWindowDuration
     ) BasePoolFactory(vault, pauseWindowDuration, type(Gyro2CLPPool).creationCode) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -43,6 +43,9 @@ contract Gyro2CLPPoolFactory is BasePoolFactory {
         TokenConfig[] memory tokens,
         uint256 sqrtAlpha,
         uint256 sqrtBeta,
+        PoolRoleAccounts memory roleAccounts,
+        uint256 swapFeePercentage,
+        address poolHooksContract,
         bytes32 salt
     ) external returns (address pool) {
         if (tokens.length != 2) {
@@ -57,22 +60,14 @@ contract Gyro2CLPPoolFactory is BasePoolFactory {
             salt
         );
 
-        getVault().registerPool(
+        _registerPoolWithVault(
             pool,
             tokens,
-            getNewPoolPauseWindowEndTime(),
-            address(0), // no pause manager
-            PoolHooks({
-                shouldCallBeforeInitialize: false,
-                shouldCallAfterInitialize: false,
-                shouldCallBeforeAddLiquidity: false,
-                shouldCallAfterAddLiquidity: false,
-                shouldCallBeforeRemoveLiquidity: false,
-                shouldCallAfterRemoveLiquidity: false,
-                shouldCallBeforeSwap: false,
-                shouldCallAfterSwap: false
-            }),
-            LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false })
+            swapFeePercentage,
+            false, // not exempt from protocol fees
+            roleAccounts,
+            poolHooksContract,
+            getDefaultLiquidityManagement()
         );
 
         _registerPoolWithFactory(pool);

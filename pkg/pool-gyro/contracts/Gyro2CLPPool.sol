@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -100,7 +101,7 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(IBasePool.PoolSwapParams memory request) public view onlyVault returns (uint256) {
+    function onSwap(PoolSwapParams calldata request) public view onlyVault returns (uint256) {
         bool tokenInIsToken0 = request.indexIn == 0;
         uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
@@ -183,5 +184,15 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
 
         virtualParamIn = tokenInIsToken0 ? virtualParam[0] : virtualParam[1];
         virtualParamOut = tokenInIsToken0 ? virtualParam[1] : virtualParam[0];
+    }
+
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMinimumSwapFeePercentage() external pure returns (uint256) {
+        return 0;
+    }
+
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMaximumSwapFeePercentage() external pure returns (uint256) {
+        return 1e18;
     }
 }
