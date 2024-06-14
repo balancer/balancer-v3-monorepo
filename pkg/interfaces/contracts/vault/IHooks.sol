@@ -85,7 +85,7 @@ interface IHooks {
      * @param kind The type of add liquidity operation (e.g., proportional, custom)
      * @param maxAmountsInScaled18 Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
-     * @param balancesScaled18 Current pool balances in token registration order
+     * @param balancesScaled18 Current pool balances, sorted in token registration order
      * @param userData Optional, arbitrary data with the encoded request
      * @return success True if the pool wishes to proceed with settlement
      */
@@ -104,13 +104,13 @@ interface IHooks {
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of add liquidity operation (e.g., proportional, custom)
-     * @param amountsInScaled18 Actual amounts of tokens added, in the same order as the tokens registered in the pool
-     * @param amountsInRaw Actual amounts of tokens added in token registration order
+     * @param amountsInScaled18 Actual amounts of tokens added, sorted in token registration order
+     * @param amountsInRaw Actual amounts of tokens added, sorted in token registration order
      * @param bptAmountOut Amount of pool tokens minted
-     * @param balancesScaled18 Current pool balances in token registration order
+     * @param balancesScaled18 Current pool balances, sorted in token registration order
      * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
-     * @return hookAdjustedAmountsInRaw New amountsInRaw, modified by the hook
+     * @return hookAdjustedAmountsInRaw New amountsInRaw, potentially modified by the hook
      */
     function onAfterAddLiquidity(
         address router,
@@ -133,8 +133,8 @@ interface IHooks {
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of remove liquidity operation (e.g., proportional, custom)
      * @param maxBptAmountIn Maximum amount of input pool tokens
-     * @param minAmountsOutScaled18 Minimum output amounts in token registration order
-     * @param balancesScaled18 Current pool balances in token registration order
+     * @param minAmountsOutScaled18 Minimum output amounts, sorted in token registration order
+     * @param balancesScaled18 Current pool balances, sorted in token registration order
      * @param userData Optional, arbitrary data with the encoded request
      * @return success True if the pool wishes to proceed with settlement
      */
@@ -154,12 +154,12 @@ interface IHooks {
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of remove liquidity operation (e.g., proportional, custom)
      * @param bptAmountIn Amount of pool tokens to burn
-     * @param amountsOutScaled18 Scaled amount of tokens to receive in token registration order
-     * @param amountsOutRaw Actual amount of tokens to receive in token registration order
-     * @param balancesScaled18 Current pool balances in token registration order
+     * @param amountsOutScaled18 Scaled amount of tokens to receive, sorted in token registration order
+     * @param amountsOutRaw Actual amount of tokens to receive, sorted in token registration order
+     * @param balancesScaled18 Current pool balances, sorted in token registration order
      * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
-     * @return hookAdjustedAmountsOutRaw New amountsOutRaw, modified by the hook
+     * @return hookAdjustedAmountsOutRaw New amountsOutRaw, potentially modified by the hook
      */
     function onAfterRemoveLiquidity(
         address router,
@@ -221,7 +221,7 @@ interface IHooks {
      *
      * @param params Swap parameters (see above for struct definition)
      * @return success True if the pool wishes to proceed with settlement
-     * @return hookAdjustedAmountCalculatedRaw New amount calculated, modified by the hook
+     * @return hookAdjustedAmountCalculatedRaw New amount calculated, potentially modified by the hook
      */
     function onAfterSwap(
         AfterSwapParams calldata params

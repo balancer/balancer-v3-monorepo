@@ -76,7 +76,7 @@ library HooksConfigLib {
      * @param params The swap parameters
      * @param state Temporary state used in swap operations
      * @param poolData Struct containing balance and token information of the pool
-     * @return hookAdjustedAmountCalculatedRaw New amount calculated, modified by the hook
+     * @return hookAdjustedAmountCalculatedRaw New amount calculated, potentially modified by the hook
      */
     function onAfterSwap(
         HooksConfig memory config,
@@ -178,7 +178,7 @@ library HooksConfigLib {
      * @param bptAmountOut The BPT amount a user will receive after add liquidity operation succeeds
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
-     * @return hookAdjustedAmountsInRaw New amountsInRaw, modified by the hook
+     * @return hookAdjustedAmountsInRaw New amountsInRaw, potentially modified by the hook
      */
     function onAfterAddLiquidity(
         HooksConfig memory config,
@@ -263,12 +263,12 @@ library HooksConfigLib {
      * fails to execute the hook.
      * @param config The encoded hooks configuration
      * @param router Router address
-     * @param amountsOutScaled18 Scaled amount of tokens to receive in token registration order
-     * @param amountsOutRaw Actual amount of tokens to receive in token registration order
+     * @param amountsOutScaled18 Scaled amount of tokens to receive, sorted in token registration order
+     * @param amountsOutRaw Actual amount of tokens to receive, sorted in token registration order
      * @param bptAmountIn The BPT amount a user will need burn to remove the liquidity of the pool
      * @param params The remove liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
-     * @return hookAdjustedAmountsOutRaw New amountsOutRaw, modified by the hook
+     * @return hookAdjustedAmountsOutRaw New amountsOutRaw, potentially modified by the hook
      */
     function onAfterRemoveLiquidity(
         HooksConfig memory config,
