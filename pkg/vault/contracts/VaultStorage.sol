@@ -31,7 +31,6 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 contract VaultStorage {
     using StorageSlot for *;
 
-
     // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used
     // by what is written after =. If you use immutable, the value is first calculated and
     // then replaced everywhere. That means that if a constant has executable variables,
