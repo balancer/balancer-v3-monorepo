@@ -129,10 +129,7 @@ contract VaultStorage {
         return _IS_UNLOCKED_SLOT.asBoolean();
     }
 
-    /**
-     * @notice The total number of nonzero deltas slot;
-     * @dev It is non-zero only during `unlock` calls.
-     */
+    /// @dev Slot for the total number of nonzero deltas. It's value is non-zero only during `unlock` calls.
     function _nonZeroDeltaCount() internal view returns (StorageSlot.Uint256SlotType slot) {
         return _NON_ZERO_DELTA_COUNT_SLOT.asUint256();
     }

@@ -17,7 +17,7 @@ library TransientStorageHelpers {
 
     error TransientIndexOutOfBounds();
 
-    // Calculate the slot for a transient storage variables
+    // Calculate the slot for a transient storage variable.
     function calculateSlot(string memory domain, string memory varName) internal pure returns (bytes32) {
         return
             keccak256(
