@@ -24,9 +24,9 @@ import {
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
 
-import { VaultStateLib } from "../lib/VaultStateLib.sol";
+import { VaultStateLib, VaultStateBits, VaultStateBits } from "../lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
-import { HooksConfigLib } from "../lib/HooksConfigLib.sol";
+import { HooksConfigLib, HooksConfigBits } from "../lib/HooksConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
@@ -46,8 +46,6 @@ contract VaultMock is IVaultMainMock, Vault {
     using ScalingHelpers for uint256;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for *;
-    using HooksConfigLib for HooksConfigBits;
-    using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
@@ -80,20 +78,20 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function setHooksConfig(address pool, HooksConfig calldata config) external {
-        HooksConfigBits memory configBits = _hooksConfig[pool];
+        HooksConfigBits hooksConfig = _hooksConfig[pool];
 
-        configBits.setShouldCallBeforeInitialize(config.shouldCallBeforeInitialize);
-        configBits.setShouldCallAfterInitialize(config.shouldCallAfterInitialize);
-        configBits.setShouldCallComputeDynamicSwapFee(config.shouldCallComputeDynamicSwapFee);
-        configBits.setShouldCallBeforeSwap(config.shouldCallBeforeSwap);
-        configBits.setShouldCallAfterSwap(config.shouldCallAfterSwap);
-        configBits.setShouldCallBeforeAddLiquidity(config.shouldCallBeforeAddLiquidity);
-        configBits.setShouldCallAfterAddLiquidity(config.shouldCallAfterAddLiquidity);
-        configBits.setShouldCallBeforeRemoveLiquidity(config.shouldCallBeforeRemoveLiquidity);
-        configBits.setShouldCallAfterRemoveLiquidity(config.shouldCallAfterRemoveLiquidity);
-        configBits.setHooksContract(config.hooksContract);
+        hooksConfig = hooksConfig.setShouldCallBeforeInitialize(config.shouldCallBeforeInitialize);
+        hooksConfig = hooksConfig.setShouldCallAfterInitialize(config.shouldCallAfterInitialize);
+        hooksConfig = hooksConfig.setShouldCallComputeDynamicSwapFee(config.shouldCallComputeDynamicSwapFee);
+        hooksConfig = hooksConfig.setShouldCallBeforeSwap(config.shouldCallBeforeSwap);
+        hooksConfig = hooksConfig.setShouldCallAfterSwap(config.shouldCallAfterSwap);
+        hooksConfig = hooksConfig.setShouldCallBeforeAddLiquidity(config.shouldCallBeforeAddLiquidity);
+        hooksConfig = hooksConfig.setShouldCallAfterAddLiquidity(config.shouldCallAfterAddLiquidity);
+        hooksConfig = hooksConfig.setShouldCallBeforeRemoveLiquidity(config.shouldCallBeforeRemoveLiquidity);
+        hooksConfig = hooksConfig.setShouldCallAfterRemoveLiquidity(config.shouldCallAfterRemoveLiquidity);
+        hooksConfig = hooksConfig.setHooksContract(config.hooksContract);
 
-        _hooksConfig[pool] = configBits;
+        _hooksConfig[pool] = hooksConfig;
     }
 
     // Used for testing pool registration, which is ordinarily done in the pool factory.
@@ -174,9 +172,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetPoolRegistered(address pool, bool status) public {
-        PoolConfigBits memory poolConfig = _poolConfig[pool];
-        poolConfig.setPoolRegistered(status);
-        _poolConfig[pool] = poolConfig;
+        _poolConfig[pool] = _poolConfig[pool].setPoolRegistered(status);
     }
 
     function manualSetIsUnlocked(bool status) public {
@@ -184,56 +180,45 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) public {
-        PoolConfigBits memory poolConfig = _poolConfig[pool];
-        poolConfig.setPoolInitialized(isPoolInitialized);
-        _poolConfig[pool] = poolConfig;
+        _poolConfig[pool] = _poolConfig[pool].setPoolInitialized(isPoolInitialized);
     }
 
     function manualSetPoolPauseWindowEndTime(address pool, uint32 pauseWindowEndTime) public {
-        PoolConfigBits memory poolConfig = _poolConfig[pool];
-        poolConfig.setPauseWindowEndTime(pauseWindowEndTime);
-        _poolConfig[pool] = poolConfig;
+        _poolConfig[pool] = _poolConfig[pool].setPauseWindowEndTime(pauseWindowEndTime);
     }
 
     function manualSetPoolPaused(address pool, bool isPoolPaused) public {
-        PoolConfigBits memory poolConfig = _poolConfig[pool];
-        poolConfig.setPoolPaused(isPoolPaused);
-        _poolConfig[pool] = poolConfig;
+        _poolConfig[pool] = _poolConfig[pool].setPoolPaused(isPoolPaused);
     }
 
     function manualSetVaultPaused(bool isVaultPaused) public {
-        VaultStateBits memory vaultState = _vaultState;
-        vaultState.setVaultPaused(isVaultPaused);
-        _vaultState = vaultState;
+        _vaultState = _vaultState.setVaultPaused(isVaultPaused);
     }
 
     function manualSetVaultState(bool isVaultPaused, bool isQueryDisabled) public {
-        VaultStateBits memory vaultState = _vaultState;
-        vaultState.setVaultPaused(isVaultPaused);
-        vaultState.setQueryDisabled(isQueryDisabled);
-        _vaultState = vaultState;
+        _vaultState = _vaultState.setVaultPaused(isVaultPaused).setQueryDisabled(isQueryDisabled);
     }
 
     function manualSetPoolConfig(address pool, PoolConfig memory config) public {
-        PoolConfigBits memory poolConfig = _poolConfig[pool];
+        PoolConfigBits poolConfig = _poolConfig[pool];
 
-        poolConfig.setPoolRegistered(config.isPoolRegistered);
-        poolConfig.setPoolInitialized(config.isPoolInitialized);
-        poolConfig.setPoolInRecoveryMode(config.isPoolInRecoveryMode);
-        poolConfig.setPoolPaused(config.isPoolPaused);
-        poolConfig.setStaticSwapFeePercentage(config.staticSwapFeePercentage);
-        poolConfig.setAggregateSwapFeePercentage(config.aggregateSwapFeePercentage);
-        poolConfig.setAggregateYieldFeePercentage(config.aggregateYieldFeePercentage);
-        poolConfig.setTokenDecimalDiffs(config.tokenDecimalDiffs);
-        poolConfig.setPauseWindowEndTime(config.pauseWindowEndTime);
-        poolConfig.setDisableUnbalancedLiquidity(config.liquidityManagement.disableUnbalancedLiquidity);
-        poolConfig.setAddLiquidityCustom(config.liquidityManagement.enableAddLiquidityCustom);
-        poolConfig.setRemoveLiquidityCustom(config.liquidityManagement.enableRemoveLiquidityCustom);
+        poolConfig = poolConfig.setPoolRegistered(config.isPoolRegistered);
+        poolConfig = poolConfig.setPoolInitialized(config.isPoolInitialized);
+        poolConfig = poolConfig.setPoolInRecoveryMode(config.isPoolInRecoveryMode);
+        poolConfig = poolConfig.setPoolPaused(config.isPoolPaused);
+        poolConfig = poolConfig.setStaticSwapFeePercentage(config.staticSwapFeePercentage);
+        poolConfig = poolConfig.setAggregateSwapFeePercentage(config.aggregateSwapFeePercentage);
+        poolConfig = poolConfig.setAggregateYieldFeePercentage(config.aggregateYieldFeePercentage);
+        poolConfig = poolConfig.setTokenDecimalDiffs(config.tokenDecimalDiffs);
+        poolConfig = poolConfig.setPauseWindowEndTime(config.pauseWindowEndTime);
+        poolConfig = poolConfig.setDisableUnbalancedLiquidity(config.liquidityManagement.disableUnbalancedLiquidity);
+        poolConfig = poolConfig.setAddLiquidityCustom(config.liquidityManagement.enableAddLiquidityCustom);
+        poolConfig = poolConfig.setRemoveLiquidityCustom(config.liquidityManagement.enableRemoveLiquidityCustom);
 
         _poolConfig[pool] = poolConfig;
     }
 
-    function manualSetPoolConfigBits(address pool, PoolConfigBits memory config) public {
+    function manualSetPoolConfigBits(address pool, PoolConfigBits config) public {
         _poolConfig[pool] = config;
     }
 
@@ -264,7 +249,7 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function ensureUnpausedAndGetVaultState(address pool) public view returns (VaultState memory vaultState) {
         _ensureUnpaused(pool);
-        VaultStateBits memory state = _vaultState;
+        VaultStateBits state = _vaultState;
         vaultState = VaultState({
             isQueryDisabled: state.isQueryDisabled(),
             isVaultPaused: state.isVaultPaused(),
@@ -349,7 +334,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function getDecimalScalingFactors(address pool) external view returns (uint256[] memory) {
-        PoolConfigBits memory config = _poolConfig[pool];
+        PoolConfigBits config = _poolConfig[pool];
         IERC20[] memory tokens = _getPoolTokens(pool);
 
         return PoolConfigLib.getDecimalScalingFactors(config, tokens.length);
@@ -494,15 +479,11 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetAggregateSwapFeePercentage(address pool, uint256 value) external {
-        PoolConfigBits memory poolConfig = _poolConfig[pool];
-        poolConfig.setAggregateSwapFeePercentage(value);
-        _poolConfig[pool] = poolConfig;
+        _poolConfig[pool] = _poolConfig[pool].setAggregateSwapFeePercentage(value);
     }
 
     function manualSetAggregateYieldFeePercentage(address pool, uint256 value) external {
-        PoolConfigBits memory poolConfig = _poolConfig[pool];
-        poolConfig.setAggregateYieldFeePercentage(value);
-        _poolConfig[pool] = poolConfig;
+        _poolConfig[pool] = _poolConfig[pool].setAggregateYieldFeePercentage(value);
     }
 
     function manualBuildPoolSwapParams(
@@ -600,7 +581,7 @@ contract VaultMock is IVaultMainMock, Vault {
         token.transfer(to, amount);
     }
 
-    function manualGetPoolConfigBits(address pool) external view returns (PoolConfigBits memory) {
+    function manualGetPoolConfigBits(address pool) external view returns (PoolConfigBits) {
         return _poolConfig[pool];
     }
 }

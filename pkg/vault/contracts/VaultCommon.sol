@@ -39,7 +39,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     using ScalingHelpers for *;
     using SafeCast for *;
     using FixedPoint for *;
-    using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
@@ -149,7 +148,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * struct to be used elsewhere
      */
     function _ensureUnpaused(address pool) internal view {
-        VaultStateBits memory vaultState = _vaultState;
+        VaultStateBits vaultState = _vaultState;
         // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
         // isVaultPaused state again in `_isVaultPaused`.
         // solhint-disable-next-line not-rely-on-time
@@ -191,7 +190,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev Lowest level routine that plucks only the minimum necessary parts from storage.
     function _getPoolPausedState(address pool) internal view returns (bool, uint32) {
-        PoolConfigBits memory config = _poolConfig[pool];
+        PoolConfigBits config = _poolConfig[pool];
 
         bool isPoolPaused = config.isPoolPaused();
         uint32 pauseWindowEndTime = config.getPauseWindowEndTime();
@@ -242,7 +241,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev See `isPoolRegistered`
     function _isPoolRegistered(address pool) internal view returns (bool) {
-        PoolConfigBits memory config = _poolConfig[pool];
+        PoolConfigBits config = _poolConfig[pool];
         return config.isPoolRegistered();
     }
 
@@ -255,7 +254,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /// @dev See `isPoolInitialized`
     function _isPoolInitialized(address pool) internal view returns (bool) {
-        PoolConfigBits memory config = _poolConfig[pool];
+        PoolConfigBits config = _poolConfig[pool];
         return config.isPoolInitialized();
     }
 
@@ -460,9 +459,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             revert SwapFeePercentageTooHigh();
         }
 
-        PoolConfigBits memory config = _poolConfig[pool];
-        config.setStaticSwapFeePercentage(swapFeePercentage);
-        _poolConfig[pool] = config;
+        _poolConfig[pool] = _poolConfig[pool].setStaticSwapFeePercentage(swapFeePercentage);
 
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }

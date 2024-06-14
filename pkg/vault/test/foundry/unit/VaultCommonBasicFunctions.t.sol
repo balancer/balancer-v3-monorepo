@@ -94,14 +94,14 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     }
 
     function testEmptyPoolConfig() public {
-        PoolConfigBits memory emptyPoolConfig;
+        PoolConfigBits emptyPoolConfig;
 
         (, , , uint256[] memory decimalScalingFactors) = vault.internalGetPoolTokenInfo(pool);
         assertEq(decimalScalingFactors.length, 0, "should have no decimalScalingFactors");
 
         assertEq(
-            vault.manualGetPoolConfigBits(pool).bits,
-            emptyPoolConfig.bits,
+            PoolConfigBits.unwrap(vault.manualGetPoolConfigBits(pool)),
+            PoolConfigBits.unwrap(emptyPoolConfig),
             "poolConfig should match empty pool config"
         );
     }
@@ -120,12 +120,14 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         rawBalances[2] = 3000;
         vault.manualSetPoolTokenBalances(pool, tokens, rawBalances);
 
-        PoolConfigBits memory originalPoolConfig;
+        PoolConfigBits originalPoolConfig;
         uint8[] memory tokenDecimalDiffs = new uint8[](3);
         tokenDecimalDiffs[0] = 12;
         tokenDecimalDiffs[1] = 10;
         tokenDecimalDiffs[2] = 0;
-        originalPoolConfig.setTokenDecimalDiffs(PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs));
+        originalPoolConfig = originalPoolConfig.setTokenDecimalDiffs(
+            PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs)
+        );
         vault.manualSetPoolConfigBits(pool, originalPoolConfig);
 
         (, , , uint256[] memory decimalScalingFactors) = vault.internalGetPoolTokenInfo(pool);
@@ -142,8 +144,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             );
         }
         assertEq(
-            vault.manualGetPoolConfigBits(pool).bits,
-            originalPoolConfig.bits,
+            PoolConfigBits.unwrap(vault.manualGetPoolConfigBits(pool)),
+            PoolConfigBits.unwrap(originalPoolConfig),
             "original and new poolConfigs should be the same"
         );
     }
@@ -176,12 +178,14 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         originalBalancesRaw[2] = balance3;
         vault.manualSetPoolTokenBalances(pool, tokens, originalBalancesRaw);
 
-        PoolConfigBits memory originalPoolConfig;
+        PoolConfigBits originalPoolConfig;
         uint8[] memory tokenDecimalDiffs = new uint8[](3);
         tokenDecimalDiffs[0] = decimalDiff1;
         tokenDecimalDiffs[1] = decimalDiff2;
         tokenDecimalDiffs[2] = decimalDiff3;
-        originalPoolConfig.setTokenDecimalDiffs(PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs));
+        originalPoolConfig = originalPoolConfig.setTokenDecimalDiffs(
+            PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs)
+        );
         vault.manualSetPoolConfigBits(pool, originalPoolConfig);
 
         (
@@ -231,8 +235,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         }
 
         assertEq(
-            vault.manualGetPoolConfigBits(pool).bits,
-            originalPoolConfig.bits,
+            PoolConfigBits.unwrap(vault.manualGetPoolConfigBits(pool)),
+            PoolConfigBits.unwrap(originalPoolConfig),
             "original and new poolConfigs should be the same"
         );
     }

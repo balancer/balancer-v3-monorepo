@@ -20,7 +20,7 @@ library PoolDataLib {
 
     function load(
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
-        PoolConfigBits memory poolConfig,
+        PoolConfigBits poolConfig,
         mapping(IERC20 => TokenInfo) storage poolTokenInfo,
         Rounding roundingDirection
     ) internal view returns (PoolData memory poolData) {

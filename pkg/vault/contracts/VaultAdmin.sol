@@ -51,7 +51,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
-    using VaultStateLib for VaultStateBits;
 
     IVault private immutable _vault;
 
@@ -193,8 +192,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             }
         }
 
-        VaultStateBits memory vaultState = _vaultState;
-        vaultState.setVaultPaused(pausing);
+        VaultStateBits vaultState = _vaultState;
+        vaultState = vaultState.setVaultPaused(pausing);
         _vaultState = vaultState;
 
         emit VaultPausedStateChanged(pausing);
@@ -248,7 +247,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     function _setPoolPaused(address pool, bool pausing) internal {
-        PoolConfigBits memory config = _poolConfig[pool];
+        PoolConfigBits config = _poolConfig[pool];
 
         if (_isPoolPaused(pool)) {
             if (pausing) {
@@ -273,8 +272,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         }
 
         // Update poolConfig.
-        config.setPoolPaused(pausing);
-        _poolConfig[pool] = config;
+        _poolConfig[pool] = config.setPoolPaused(pausing);
 
         emit PoolPausedStateChanged(pool, pausing);
     }
@@ -329,9 +327,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         onlyProtocolFeeController
         onlyVaultDelegateCall
     {
-        PoolConfigBits memory config = _poolConfig[pool];
-        config.setAggregateSwapFeePercentage(newAggregateSwapFeePercentage);
-        _poolConfig[pool] = config;
+        _poolConfig[pool] = _poolConfig[pool].setAggregateSwapFeePercentage(newAggregateSwapFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -345,9 +341,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         onlyProtocolFeeController
         onlyVaultDelegateCall
     {
-        PoolConfigBits memory config = _poolConfig[pool];
-        config.setAggregateYieldFeePercentage(newAggregateYieldFeePercentage);
-        _poolConfig[pool] = config;
+        _poolConfig[pool] = _poolConfig[pool].setAggregateYieldFeePercentage(newAggregateYieldFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -401,9 +395,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
      */
     function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
         // Update poolConfig
-        PoolConfigBits memory config = _poolConfig[pool];
-        config.setPoolInRecoveryMode(recoveryMode);
-        _poolConfig[pool] = config;
+        _poolConfig[pool] = _poolConfig[pool].setPoolInRecoveryMode(recoveryMode);
 
         if (recoveryMode == false) {
             _writePoolBalancesToStorage(pool, _loadPoolData(pool, Rounding.ROUND_DOWN));
@@ -418,8 +410,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function disableQuery() external authenticate onlyVaultDelegateCall {
-        VaultStateBits memory vaultState = _vaultState;
-        vaultState.setQueryDisabled(true);
+        VaultStateBits vaultState = _vaultState;
+        vaultState = vaultState.setQueryDisabled(true);
         _vaultState = vaultState;
     }
 
@@ -428,15 +420,15 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
     /// @inheritdoc IVaultAdmin
     function unpauseVaultBuffers() external authenticate onlyVaultDelegateCall {
-        VaultStateBits memory vaultState = _vaultState;
-        vaultState.setBuffersPaused(false);
+        VaultStateBits vaultState = _vaultState;
+        vaultState = vaultState.setBuffersPaused(false);
         _vaultState = vaultState;
     }
 
     /// @inheritdoc IVaultAdmin
     function pauseVaultBuffers() external authenticate onlyVaultDelegateCall {
-        VaultStateBits memory vaultState = _vaultState;
-        vaultState.setBuffersPaused(true);
+        VaultStateBits vaultState = _vaultState;
+        vaultState = vaultState.setBuffersPaused(true);
         _vaultState = vaultState;
     }
 

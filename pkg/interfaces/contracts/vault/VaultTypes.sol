@@ -12,20 +12,8 @@ struct LiquidityManagement {
     bool enableRemoveLiquidityCustom;
 }
 
-// @notice Config type to store entire configuration of the pool. We use a struct because we need to load this data in the memory.
-struct PoolConfigBits {
-    bytes32 bits;
-}
-
-// @notice Config type to store entire configuration of the hooks. We use a struct because we need to load this data in the memory.
-struct HooksConfigBits {
-    bytes32 bits;
-}
-
-// @notice Config type to store entire configuration of the vault state. We use a struct because we need to load this data in the memory.
-struct VaultStateBits {
-    bytes32 bits;
-}
+// @notice Config type to store entire configuration of the pool.
+type PoolConfigBits is bytes32;
 
 /// @dev Represents a pool's configuration (hooks configuration are separated in another struct).
 struct PoolConfig {

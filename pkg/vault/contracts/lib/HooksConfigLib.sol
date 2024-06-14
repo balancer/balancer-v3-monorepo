@@ -10,12 +10,15 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+// @notice Config type to store entire configuration of the hooks.
+type HooksConfigBits is bytes32;
+
+using HooksConfigLib for HooksConfigBits global;
+
 library HooksConfigLib {
     using WordCodec for bytes32;
-    using HooksConfigLib for HooksConfigBits;
 
     // Bit offsets for pool config
-
     uint8 public constant BEFORE_INITIALIZE_OFFSET = 0;
     uint8 public constant AFTER_INITIALIZE_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
     uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = AFTER_INITIALIZE_OFFSET + 1;
@@ -27,87 +30,102 @@ library HooksConfigLib {
     uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = BEFORE_REMOVE_LIQUIDITY_OFFSET + 1;
     uint8 public constant HOOKS_CONTRACT_OFFSET = AFTER_REMOVE_LIQUIDITY_OFFSET + 1;
 
-    function shouldCallBeforeInitialize(HooksConfigBits memory config) internal pure returns (bool) {
-        return config.bits.decodeBool(BEFORE_INITIALIZE_OFFSET);
+    function shouldCallBeforeInitialize(HooksConfigBits config) internal pure returns (bool) {
+        return HooksConfigBits.unwrap(config).decodeBool(BEFORE_INITIALIZE_OFFSET);
     }
 
-    function setShouldCallBeforeInitialize(HooksConfigBits memory config, bool value) internal pure {
-        config.bits = config.bits.insertBool(value, BEFORE_INITIALIZE_OFFSET);
+    function setShouldCallBeforeInitialize(HooksConfigBits config, bool value) internal pure returns (HooksConfigBits) {
+        return HooksConfigBits.wrap(HooksConfigBits.unwrap(config).insertBool(value, BEFORE_INITIALIZE_OFFSET));
     }
 
-    function shouldCallAfterInitialize(HooksConfigBits memory config) internal pure returns (bool) {
-        return config.bits.decodeBool(AFTER_INITIALIZE_OFFSET);
+    function shouldCallAfterInitialize(HooksConfigBits config) internal pure returns (bool) {
+        return HooksConfigBits.unwrap(config).decodeBool(AFTER_INITIALIZE_OFFSET);
     }
 
-    function setShouldCallAfterInitialize(HooksConfigBits memory config, bool value) internal pure {
-        config.bits = config.bits.insertBool(value, AFTER_INITIALIZE_OFFSET);
+    function setShouldCallAfterInitialize(HooksConfigBits config, bool value) internal pure returns (HooksConfigBits) {
+        return HooksConfigBits.wrap(HooksConfigBits.unwrap(config).insertBool(value, AFTER_INITIALIZE_OFFSET));
     }
 
-    function shouldCallComputeDynamicSwapFee(HooksConfigBits memory config) internal pure returns (bool) {
-        return config.bits.decodeBool(DYNAMIC_SWAP_FEE_OFFSET);
+    function shouldCallComputeDynamicSwapFee(HooksConfigBits config) internal pure returns (bool) {
+        return HooksConfigBits.unwrap(config).decodeBool(DYNAMIC_SWAP_FEE_OFFSET);
     }
 
-    function setShouldCallComputeDynamicSwapFee(HooksConfigBits memory config, bool value) internal pure {
-        config.bits = config.bits.insertBool(value, DYNAMIC_SWAP_FEE_OFFSET);
+    function setShouldCallComputeDynamicSwapFee(
+        HooksConfigBits config,
+        bool value
+    ) internal pure returns (HooksConfigBits) {
+        return HooksConfigBits.wrap(HooksConfigBits.unwrap(config).insertBool(value, DYNAMIC_SWAP_FEE_OFFSET));
     }
 
-    function shouldCallBeforeSwap(HooksConfigBits memory config) internal pure returns (bool) {
-        return config.bits.decodeBool(BEFORE_SWAP_OFFSET);
+    function shouldCallBeforeSwap(HooksConfigBits config) internal pure returns (bool) {
+        return HooksConfigBits.unwrap(config).decodeBool(BEFORE_SWAP_OFFSET);
     }
 
-    function setShouldCallBeforeSwap(HooksConfigBits memory config, bool value) internal pure {
-        config.bits = config.bits.insertBool(value, BEFORE_SWAP_OFFSET);
+    function setShouldCallBeforeSwap(HooksConfigBits config, bool value) internal pure returns (HooksConfigBits) {
+        return HooksConfigBits.wrap(HooksConfigBits.unwrap(config).insertBool(value, BEFORE_SWAP_OFFSET));
     }
 
-    function shouldCallAfterSwap(HooksConfigBits memory config) internal pure returns (bool) {
-        return config.bits.decodeBool(AFTER_SWAP_OFFSET);
+    function shouldCallAfterSwap(HooksConfigBits config) internal pure returns (bool) {
+        return HooksConfigBits.unwrap(config).decodeBool(AFTER_SWAP_OFFSET);
     }
 
-    function setShouldCallAfterSwap(HooksConfigBits memory config, bool value) internal pure {
-        config.bits = config.bits.insertBool(value, AFTER_SWAP_OFFSET);
+    function setShouldCallAfterSwap(HooksConfigBits config, bool value) internal pure returns (HooksConfigBits) {
+        return HooksConfigBits.wrap(HooksConfigBits.unwrap(config).insertBool(value, AFTER_SWAP_OFFSET));
     }
 
-    function shouldCallBeforeAddLiquidity(HooksConfigBits memory config) internal pure returns (bool) {
-        return config.bits.decodeBool(BEFORE_ADD_LIQUIDITY_OFFSET);
+    function shouldCallBeforeAddLiquidity(HooksConfigBits config) internal pure returns (bool) {
+        return HooksConfigBits.unwrap(config).decodeBool(BEFORE_ADD_LIQUIDITY_OFFSET);
     }
 
-    function setShouldCallBeforeAddLiquidity(HooksConfigBits memory config, bool value) internal pure {
-        config.bits = config.bits.insertBool(value, BEFORE_ADD_LIQUIDITY_OFFSET);
+    function setShouldCallBeforeAddLiquidity(
+        HooksConfigBits config,
+        bool value
+    ) internal pure returns (HooksConfigBits) {
+        return HooksConfigBits.wrap(HooksConfigBits.unwrap(config).insertBool(value, BEFORE_ADD_LIQUIDITY_OFFSET));
     }
 
-    function shouldCallAfterAddLiquidity(HooksConfigBits memory config) internal pure returns (bool) {
-        return config.bits.decodeBool(AFTER_ADD_LIQUIDITY_OFFSET);
+    function shouldCallAfterAddLiquidity(HooksConfigBits config) internal pure returns (bool) {
+        return HooksConfigBits.unwrap(config).decodeBool(AFTER_ADD_LIQUIDITY_OFFSET);
     }
 
-    function setShouldCallAfterAddLiquidity(HooksConfigBits memory config, bool value) internal pure {
-        config.bits = config.bits.insertBool(value, AFTER_ADD_LIQUIDITY_OFFSET);
+    function setShouldCallAfterAddLiquidity(
+        HooksConfigBits config,
+        bool value
+    ) internal pure returns (HooksConfigBits) {
+        return HooksConfigBits.wrap(HooksConfigBits.unwrap(config).insertBool(value, AFTER_ADD_LIQUIDITY_OFFSET));
     }
 
-    function shouldCallBeforeRemoveLiquidity(HooksConfigBits memory config) internal pure returns (bool) {
-        return config.bits.decodeBool(BEFORE_REMOVE_LIQUIDITY_OFFSET);
+    function shouldCallBeforeRemoveLiquidity(HooksConfigBits config) internal pure returns (bool) {
+        return HooksConfigBits.unwrap(config).decodeBool(BEFORE_REMOVE_LIQUIDITY_OFFSET);
     }
 
-    function setShouldCallBeforeRemoveLiquidity(HooksConfigBits memory config, bool value) internal pure {
-        config.bits = config.bits.insertBool(value, BEFORE_REMOVE_LIQUIDITY_OFFSET);
+    function setShouldCallBeforeRemoveLiquidity(
+        HooksConfigBits config,
+        bool value
+    ) internal pure returns (HooksConfigBits) {
+        return HooksConfigBits.wrap(HooksConfigBits.unwrap(config).insertBool(value, BEFORE_REMOVE_LIQUIDITY_OFFSET));
     }
 
-    function shouldCallAfterRemoveLiquidity(HooksConfigBits memory config) internal pure returns (bool) {
-        return config.bits.decodeBool(AFTER_REMOVE_LIQUIDITY_OFFSET);
+    function shouldCallAfterRemoveLiquidity(HooksConfigBits config) internal pure returns (bool) {
+        return HooksConfigBits.unwrap(config).decodeBool(AFTER_REMOVE_LIQUIDITY_OFFSET);
     }
 
-    function setShouldCallAfterRemoveLiquidity(HooksConfigBits memory config, bool value) internal pure {
-        config.bits = config.bits.insertBool(value, AFTER_REMOVE_LIQUIDITY_OFFSET);
+    function setShouldCallAfterRemoveLiquidity(
+        HooksConfigBits config,
+        bool value
+    ) internal pure returns (HooksConfigBits) {
+        return HooksConfigBits.wrap(HooksConfigBits.unwrap(config).insertBool(value, AFTER_REMOVE_LIQUIDITY_OFFSET));
     }
 
-    function getHooksContract(HooksConfigBits memory config) internal pure returns (address) {
-        return config.bits.decodeAddress(HOOKS_CONTRACT_OFFSET);
+    function getHooksContract(HooksConfigBits config) internal pure returns (address) {
+        return HooksConfigBits.unwrap(config).decodeAddress(HOOKS_CONTRACT_OFFSET);
     }
 
-    function setHooksContract(HooksConfigBits memory config, address value) internal pure {
-        config.bits = config.bits.insertAddress(value, HOOKS_CONTRACT_OFFSET);
+    function setHooksContract(HooksConfigBits config, address value) internal pure returns (HooksConfigBits) {
+        return HooksConfigBits.wrap(HooksConfigBits.unwrap(config).insertAddress(value, HOOKS_CONTRACT_OFFSET));
     }
 
-    function toHooksConfig(HooksConfigBits memory config) internal pure returns (HooksConfig memory) {
+    function toHooksConfig(HooksConfigBits config) internal pure returns (HooksConfig memory) {
         return
             HooksConfig({
                 shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
@@ -133,7 +151,7 @@ library HooksConfigLib {
      * @return swapFeePercentage the calculated swap fee percentage. 0 if hook is disabled
      */
     function onComputeDynamicSwapFee(
-        HooksConfigBits memory config,
+        HooksConfigBits config,
         IBasePool.PoolSwapParams memory swapParams,
         uint256 staticSwapFeePercentage
     ) internal view returns (bool, uint256) {
@@ -162,7 +180,7 @@ library HooksConfigLib {
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
     function onBeforeSwap(
-        HooksConfigBits memory config,
+        HooksConfigBits config,
         IBasePool.PoolSwapParams memory swapParams,
         address pool
     ) internal returns (bool) {
@@ -191,7 +209,7 @@ library HooksConfigLib {
      * @return hookAdjustedAmountCalculatedRaw New amount calculated, modified by the hook
      */
     function onAfterSwap(
-        HooksConfigBits memory config,
+        HooksConfigBits config,
         uint256 amountCalculatedScaled18,
         uint256 amountCalculatedRaw,
         address router,
@@ -252,7 +270,7 @@ library HooksConfigLib {
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
     function onBeforeAddLiquidity(
-        HooksConfigBits memory config,
+        HooksConfigBits config,
         uint256[] memory maxAmountsInScaled18,
         address router,
         AddLiquidityParams memory params,
@@ -288,7 +306,7 @@ library HooksConfigLib {
      * @param poolData Struct containing balance and token information of the pool
      */
     function onAfterAddLiquidity(
-        HooksConfigBits memory config,
+        HooksConfigBits config,
         uint256[] memory amountsInScaled18,
         uint256 bptAmountOut,
         address router,
@@ -324,7 +342,7 @@ library HooksConfigLib {
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
     function onBeforeRemoveLiquidity(
-        HooksConfigBits memory config,
+        HooksConfigBits config,
         uint256[] memory minAmountsOutScaled18,
         address router,
         RemoveLiquidityParams memory params,
@@ -360,7 +378,7 @@ library HooksConfigLib {
      * @param poolData Struct containing balance and token information of the pool
      */
     function onAfterRemoveLiquidity(
-        HooksConfigBits memory config,
+        HooksConfigBits config,
         uint256[] memory amountsOutScaled18,
         uint256 bptAmountIn,
         address router,
@@ -394,7 +412,7 @@ library HooksConfigLib {
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
     function onBeforeInitialize(
-        HooksConfigBits memory config,
+        HooksConfigBits config,
         uint256[] memory exactAmountsInScaled18,
         bytes memory userData
     ) internal returns (bool) {
@@ -418,7 +436,7 @@ library HooksConfigLib {
      * @param userData Additional (optional) data required for adding initial liquidity
      */
     function onAfterInitialize(
-        HooksConfigBits memory config,
+        HooksConfigBits config,
         uint256[] memory exactAmountsInScaled18,
         uint256 bptAmountOut,
         bytes memory userData

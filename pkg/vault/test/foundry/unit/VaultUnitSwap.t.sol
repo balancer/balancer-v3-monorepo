@@ -10,13 +10,13 @@ import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/Va
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { PoolConfig, PoolConfigBits } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
+import { PoolConfigLib, PoolConfigBits } from "../../../contracts/lib/PoolConfigLib.sol";
 
 struct TestStateLocals {
     SwapParams params;
@@ -312,10 +312,10 @@ contract VaultUnitSwapTest is BaseTest {
         poolData.tokenRates = tokenRates;
         poolData.balancesRaw = initialBalances;
 
-        poolData.poolConfig.setStaticSwapFeePercentage(swapFeePercentage);
-        poolData.poolConfig.setAggregateSwapFeePercentage(
-            _getAggregateFeePercentage(swapFeePercentage, poolCreatorFeePercentage)
-        );
+        poolData.poolConfig = poolData
+            .poolConfig
+            .setStaticSwapFeePercentage(swapFeePercentage)
+            .setAggregateSwapFeePercentage(_getAggregateFeePercentage(swapFeePercentage, poolCreatorFeePercentage));
 
         poolData.balancesLiveScaled18 = new uint256[](initialBalances.length);
     }

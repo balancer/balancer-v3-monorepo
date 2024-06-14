@@ -9,7 +9,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { HooksConfigLib } from "@balancer-labs/v3-vault/contracts/lib/HooksConfigLib.sol";
+import { HooksConfigLib, HooksConfigBits } from "@balancer-labs/v3-vault/contracts/lib/HooksConfigLib.sol";
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -18,7 +18,6 @@ import { BaseBitsConfigTest } from "@balancer-labs/v3-solidity-utils/test/foundr
 
 contract HooksConfigLibTest is BaseBitsConfigTest {
     using WordCodec for bytes32;
-    using HooksConfigLib for HooksConfigBits;
     using ArrayHelpers for *;
 
     uint256 public constant ADDRESS_BITLENGTH = 160;
@@ -40,7 +39,7 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
     }
 
     function testZeroConfigBytes() public {
-        HooksConfigBits memory config;
+        HooksConfigBits config;
 
         assertFalse(config.shouldCallBeforeInitialize(), "shouldCallBeforeInitialize should be false");
         assertFalse(config.shouldCallAfterInitialize(), "shouldCallAfterInitialize should be false");
@@ -56,32 +55,38 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
 
     // #region test setters and getters
     function testShouldCallBeforeInitialize() public {
-        HooksConfigBits memory config;
-        config.bits = config.bits.insertBool(true, HooksConfigLib.BEFORE_INITIALIZE_OFFSET);
+        HooksConfigBits config;
+        config = HooksConfigBits.wrap(
+            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.BEFORE_INITIALIZE_OFFSET)
+        );
         assertEq(config.shouldCallBeforeInitialize(), true, "shouldCallBeforeInitialize should be true (getter)");
     }
 
     function testSetShouldCallBeforeInitialize() public {
-        HooksConfigBits memory config;
-        HooksConfigLib.setShouldCallBeforeInitialize(config, true);
+        HooksConfigBits config;
+        config = config.setShouldCallBeforeInitialize(true);
         assertEq(config.shouldCallBeforeInitialize(), true, "shouldCallBeforeInitialize should be true (setter)");
     }
 
     function testShouldCallAfterInitialize() public {
-        HooksConfigBits memory config;
-        config.bits = config.bits.insertBool(true, HooksConfigLib.AFTER_INITIALIZE_OFFSET);
+        HooksConfigBits config;
+        config = HooksConfigBits.wrap(
+            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.AFTER_INITIALIZE_OFFSET)
+        );
         assertEq(config.shouldCallAfterInitialize(), true, "shouldCallAfterInitialize should be true (getter)");
     }
 
     function testSetShouldCallAfterInitialize() public {
-        HooksConfigBits memory config;
-        HooksConfigLib.setShouldCallAfterInitialize(config, true);
+        HooksConfigBits config;
+        config = config.setShouldCallAfterInitialize(true);
         assertEq(config.shouldCallAfterInitialize(), true, "shouldCallAfterInitialize should be true (setter)");
     }
 
     function testShouldCallComputeDynamicSwapFee() public {
-        HooksConfigBits memory config;
-        config.bits = config.bits.insertBool(true, HooksConfigLib.DYNAMIC_SWAP_FEE_OFFSET);
+        HooksConfigBits config;
+        config = HooksConfigBits.wrap(
+            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.DYNAMIC_SWAP_FEE_OFFSET)
+        );
         assertEq(
             config.shouldCallComputeDynamicSwapFee(),
             true,
@@ -90,8 +95,8 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
     }
 
     function testSetShouldCallComputeDynamicSwapFee() public {
-        HooksConfigBits memory config;
-        HooksConfigLib.setShouldCallComputeDynamicSwapFee(config, true);
+        HooksConfigBits config;
+        config = config.setShouldCallComputeDynamicSwapFee(true);
         assertEq(
             config.shouldCallComputeDynamicSwapFee(),
             true,
@@ -100,56 +105,66 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
     }
 
     function testShouldCallBeforeSwap() public {
-        HooksConfigBits memory config;
-        config.bits = config.bits.insertBool(true, HooksConfigLib.BEFORE_SWAP_OFFSET);
+        HooksConfigBits config;
+        config = HooksConfigBits.wrap(
+            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.BEFORE_SWAP_OFFSET)
+        );
         assertEq(config.shouldCallBeforeSwap(), true, "shouldCallBeforeSwap should be true (getter)");
     }
 
     function testSetShouldCallBeforeSwap() public {
-        HooksConfigBits memory config;
-        HooksConfigLib.setShouldCallBeforeSwap(config, true);
+        HooksConfigBits config;
+        config = config.setShouldCallBeforeSwap(true);
         assertEq(config.shouldCallBeforeSwap(), true, "shouldCallBeforeSwap should be true (setter)");
     }
 
     function testShouldCallAfterSwap() public {
-        HooksConfigBits memory config;
-        config.bits = config.bits.insertBool(true, HooksConfigLib.AFTER_SWAP_OFFSET);
+        HooksConfigBits config;
+        config = HooksConfigBits.wrap(
+            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.AFTER_SWAP_OFFSET)
+        );
         assertEq(config.shouldCallAfterSwap(), true, "shouldCallAfterSwap should be true (getter)");
     }
 
     function testSetShouldCallAfterSwap() public {
-        HooksConfigBits memory config;
-        HooksConfigLib.setShouldCallAfterSwap(config, true);
+        HooksConfigBits config;
+        config = config.setShouldCallAfterSwap(true);
         assertEq(config.shouldCallAfterSwap(), true, "shouldCallAfterSwap should be true (setter)");
     }
 
     function testShouldCallBeforeAddLiquidity() public {
-        HooksConfigBits memory config;
-        config.bits = config.bits.insertBool(true, HooksConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET);
+        HooksConfigBits config;
+        config = HooksConfigBits.wrap(
+            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET)
+        );
         assertEq(config.shouldCallBeforeAddLiquidity(), true, "shouldCallBeforeAddLiquidity should be true (getter)");
     }
 
     function testSetShouldCallBeforeAddLiquidity() public {
-        HooksConfigBits memory config;
-        HooksConfigLib.setShouldCallBeforeAddLiquidity(config, true);
+        HooksConfigBits config;
+        config = config.setShouldCallBeforeAddLiquidity(true);
         assertEq(config.shouldCallBeforeAddLiquidity(), true, "shouldCallBeforeAddLiquidity should be true (setter)");
     }
 
     function testShouldCallAfterAddLiquidity() public {
-        HooksConfigBits memory config;
-        config.bits = config.bits.insertBool(true, HooksConfigLib.AFTER_ADD_LIQUIDITY_OFFSET);
+        HooksConfigBits config;
+        config = HooksConfigBits.wrap(
+            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.AFTER_ADD_LIQUIDITY_OFFSET)
+        );
         assertEq(config.shouldCallAfterAddLiquidity(), true, "shouldCallAfterAddLiquidity should be true (getter)");
     }
 
     function testSetShouldCallAfterAddLiquidity() public {
-        HooksConfigBits memory config;
-        HooksConfigLib.setShouldCallAfterAddLiquidity(config, true);
+        HooksConfigBits config;
+        config = config.setShouldCallAfterAddLiquidity(true);
         assertEq(config.shouldCallAfterAddLiquidity(), true, "shouldCallAfterAddLiquidity should be true (setter)");
     }
 
     function testShouldCallBeforeRemoveLiquidity() public {
-        HooksConfigBits memory config;
-        config.bits = config.bits.insertBool(true, HooksConfigLib.BEFORE_REMOVE_LIQUIDITY_OFFSET);
+        HooksConfigBits config;
+        config = HooksConfigBits.wrap(
+            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.BEFORE_REMOVE_LIQUIDITY_OFFSET)
+        );
         assertEq(
             config.shouldCallBeforeRemoveLiquidity(),
             true,
@@ -158,8 +173,8 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
     }
 
     function testSetShouldCallBeforeRemoveLiquidity() public {
-        HooksConfigBits memory config;
-        HooksConfigLib.setShouldCallBeforeRemoveLiquidity(config, true);
+        HooksConfigBits config;
+        config = config.setShouldCallBeforeRemoveLiquidity(true);
         assertEq(
             config.shouldCallBeforeRemoveLiquidity(),
             true,
@@ -168,8 +183,10 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
     }
 
     function testShouldCallAfterRemoveLiquidity() public {
-        HooksConfigBits memory config;
-        config.bits = config.bits.insertBool(true, HooksConfigLib.AFTER_REMOVE_LIQUIDITY_OFFSET);
+        HooksConfigBits config;
+        config = HooksConfigBits.wrap(
+            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.AFTER_REMOVE_LIQUIDITY_OFFSET)
+        );
         assertEq(
             config.shouldCallAfterRemoveLiquidity(),
             true,
@@ -178,8 +195,8 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
     }
 
     function testSetShouldCallAfterRemoveLiquidity() public {
-        HooksConfigBits memory config;
-        HooksConfigLib.setShouldCallAfterRemoveLiquidity(config, true);
+        HooksConfigBits config;
+        config = config.setShouldCallAfterRemoveLiquidity(true);
         assertEq(
             config.shouldCallAfterRemoveLiquidity(),
             true,
@@ -188,14 +205,16 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
     }
 
     function testGetHooksContract() public {
-        HooksConfigBits memory config;
-        config.bits = config.bits.insertAddress(hooksContract, HooksConfigLib.HOOKS_CONTRACT_OFFSET);
+        HooksConfigBits config;
+        config = HooksConfigBits.wrap(
+            HooksConfigBits.unwrap(config).insertAddress(hooksContract, HooksConfigLib.HOOKS_CONTRACT_OFFSET)
+        );
         assertEq(config.getHooksContract(), hooksContract, "getHooksContract should be hooksContract (getter)");
     }
 
     function testSetHooksContract() public {
-        HooksConfigBits memory config;
-        HooksConfigLib.setHooksContract(config, hooksContract);
+        HooksConfigBits config;
+        config = config.setHooksContract(hooksContract);
         assertEq(config.getHooksContract(), hooksContract, "getHooksContract should be hooksContract (setter)");
     }
     // #endregion

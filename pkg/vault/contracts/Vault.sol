@@ -32,9 +32,9 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 
-import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
-import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
-import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
+import { VaultStateLib, VaultStateBits, VaultStateBits } from "./lib/VaultStateLib.sol";
+import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
+import { HooksConfigLib, HooksConfigBits } from "./lib/HooksConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
 import { BufferPackedTokenBalance } from "./lib/BufferPackedBalance.sol";
@@ -49,9 +49,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using Address for *;
     using SafeERC20 for IERC20;
     using PoolConfigLib for PoolConfigBits;
-    using HooksConfigLib for HooksConfigBits;
     using ScalingHelpers for *;
-    using VaultStateLib for VaultStateBits;
     using BufferPackedTokenBalance for bytes32;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
@@ -173,7 +171,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
         _ensureUnpaused(params.pool);
-        HooksConfigBits memory hooksConfig = _hooksConfig[params.pool];
+        HooksConfigBits hooksConfig = _hooksConfig[params.pool];
 
         if (params.amountGivenRaw == 0) {
             revert AmountGivenZero();
@@ -498,7 +496,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
 
         _ensureUnpaused(params.pool);
-        HooksConfigBits memory hooksConfig = _hooksConfig[params.pool];
+        HooksConfigBits hooksConfig = _hooksConfig[params.pool];
 
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the add liquidity hooks are reentrant and could do anything,
@@ -709,7 +707,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // bptIn = supply * (1 - ratio), so lower ratio = more bptIn, favoring the pool.
         _ensureUnpaused(params.pool);
 
-        HooksConfigBits memory hooksConfig = _hooksConfig[params.pool];
+        HooksConfigBits hooksConfig = _hooksConfig[params.pool];
 
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the swap hooks are reentrant and could do anything, including
@@ -1260,7 +1258,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _supplyCredit(underlyingToken, amountOutUnderlying);
     }
 
-    function _isQueryContext(VaultStateBits memory vaultState) internal view returns (bool) {
+    function _isQueryContext(VaultStateBits vaultState) internal view returns (bool) {
         return EVMCallModeHelpers.isStaticCall() && vaultState.isQueryDisabled() == false;
     }
 
