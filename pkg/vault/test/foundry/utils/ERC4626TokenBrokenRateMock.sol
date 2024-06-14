@@ -20,8 +20,8 @@ contract ERC4626TokenBrokenRateMock is ERC4626TokenMock {
         string memory tokenSymbol,
         uint256 initialAssets,
         uint256 initialShares,
-        IERC20 baseToken
-    ) ERC4626TokenMock(tokenName, tokenSymbol, initialAssets, initialShares, baseToken) {}
+        IERC20 underlyingToken
+    ) ERC4626TokenMock(tokenName, tokenSymbol, initialAssets, initialShares, underlyingToken) {}
 
     function _convertToShares(uint256 assets) internal view override returns (uint256) {
         uint256 sharesToAdd = (10 * assets) / 100;

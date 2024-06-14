@@ -80,10 +80,11 @@ __metadata:
     ds-test: "https://github.com/dapphub/ds-test#e282159d5170298eb2455a6c05280ab5a73a4ef0"
     ethers: "npm:^6.5.1"
     forge-gas-snapshot: "https://github.com/ylv-io/forge-gas-snapshot"
-    forge-std: "https://github.com/foundry-rs/forge-std.git#v1.7.1"
+    forge-std: "https://github.com/foundry-rs/forge-std.git#v1.8.1"
     hardhat-contract-sizer: "npm:^2.10.0"
     hardhat-gas-reporter: "npm:^1.0.9"
-    hardhat-ignore-warnings: "npm:^0.2.4"
+    hardhat-ignore-warnings: "npm:^0.2.11"
+    permit2: "https://github.com/Uniswap/permit2.git#cc56ad0f3439c502c246fc5cfcc3db92bb8b7219"
     prettier: "npm:^2.8.8"
     prettier-plugin-solidity: "npm:^1.1.3"
     solhint-plugin-prettier: "npm:^0.0.5"
@@ -3777,10 +3778,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"forge-std@https://github.com/foundry-rs/forge-std.git#v1.7.1":
-  version: 1.7.1
-  resolution: "forge-std@https://github.com/foundry-rs/forge-std.git#commit=f73c73d2018eb6a111f35e4dae7b4f27401e9421"
-  checksum: c70629647142dfb8bb2be34562e1167071252189433b3787915c13dff969fd58af81deac5d50eed5909ecdbe077c04ebb1d32186b6c3c83569b982c09d8b9f45
+"forge-std@https://github.com/foundry-rs/forge-std.git#v1.8.1":
+  version: 1.7.6
+  resolution: "forge-std@https://github.com/foundry-rs/forge-std.git#commit=bb4ceea94d6f10eeb5b41dc2391c6c8bf8e734ef"
+  checksum: f9e1156973bdc360989275bdc43b8745f388017eb97c4a0e4b7b55e944a497b5cdbef0a483c1f7a852f93f0cff45d0c9dba05f6331125da9f369c3297f5347b0
   languageName: node
   linkType: hard
 
@@ -4310,14 +4311,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"hardhat-ignore-warnings@npm:^0.2.4":
-  version: 0.2.8
-  resolution: "hardhat-ignore-warnings@npm:0.2.8"
+"hardhat-ignore-warnings@npm:^0.2.11":
+  version: 0.2.11
+  resolution: "hardhat-ignore-warnings@npm:0.2.11"
   dependencies:
     minimatch: "npm:^5.1.0"
     node-interval-tree: "npm:^2.0.1"
     solidity-comments: "npm:^0.0.2"
-  checksum: 63fc079520bf8a440a4fdd6974e427b941c9732a339c1825c0ab67cd5511b5762f97ee8fcc044a41581ae897acea637363254c9e69ee1d95026911dd5a59c800
+  checksum: cabc80c8874797a519bca6a57840d6efdfdb101de3d4741252ef2c18033a0891a72279b6618ff5344c7314a3e3ef6be9e61f3dc116ed538d76918f0941c62722
   languageName: node
   linkType: hard
 
@@ -6294,6 +6295,13 @@ __metadata:
   version: 2.1.0
   resolution: "performance-now@npm:2.1.0"
   checksum: a0fae1e610b785e04b20ae146033a7ea1e639f1aa583a1d4d01b36be787dfebe31227402a7ef3b1ffb621d04750ca73c17b03ec943f2389f7416f95236a61e31
+  languageName: node
+  linkType: hard
+
+"permit2@https://github.com/Uniswap/permit2.git#cc56ad0f3439c502c246fc5cfcc3db92bb8b7219":
+  version: 1.0.0
+  resolution: "permit2@https://github.com/Uniswap/permit2.git#commit=cc56ad0f3439c502c246fc5cfcc3db92bb8b7219"
+  checksum: 4a746a65176d66e23aeff2f31c99bf10ab2a0e0a439aa744d243928156f3d69b698ffaceb858795d8d595f99d4f16e819fdd9ec9e4c8b2bc60c7fd7754418a6a
   languageName: node
   linkType: hard
 

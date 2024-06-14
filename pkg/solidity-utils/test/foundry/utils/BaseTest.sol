@@ -22,17 +22,27 @@ abstract contract BaseTest is Test, GasSnapshot {
     uint256 internal constant MAX_UINT128 = type(uint128).max;
 
     // Default admin.
-    address payable admin;
+    address payable internal admin;
+    uint256 internal adminKey;
     // Default liquidity provider.
-    address payable lp;
+    address payable internal lp;
+    uint256 internal lpKey;
     // Default user.
-    address payable alice;
+    address payable internal alice;
+    uint256 internal aliceKey;
     // Default counterparty.
-    address payable bob;
+    address payable internal bob;
+    uint256 internal bobKey;
     // Malicious user.
-    address payable hacker;
+    address payable internal hacker;
+    uint256 internal hackerKey;
     // Broke user.
-    address payable broke;
+    address payable internal broke;
+    uint256 internal brokeUserKey;
+
+    // List of all users
+    address payable[] internal users;
+    uint256[] internal userKeys;
 
     // ERC20 tokens used for tests.
     ERC20TestToken internal dai;
@@ -44,7 +54,7 @@ abstract contract BaseTest is Test, GasSnapshot {
     IERC20[] internal tokens;
 
     // Default balance for accounts
-    uint256 internal defaultBalance = 1e6 * 1e18;
+    uint256 internal defaultBalance = 1e7 * 1e18;
 
     function setUp() public virtual {
         // Set timestamp only if testing locally
@@ -67,13 +77,27 @@ abstract contract BaseTest is Test, GasSnapshot {
         tokens.push(wsteth);
 
         // Create users for testing.
-        admin = createUser("admin");
-        lp = createUser("lp");
-        alice = createUser("alice");
-        bob = createUser("bob");
-        hacker = createUser("hacker");
-        broke = payable(makeAddr("broke"));
+        (admin, adminKey) = createUser("admin");
+        (lp, lpKey) = createUser("lp");
+        (alice, aliceKey) = createUser("alice");
+        (bob, bobKey) = createUser("bob");
+        (hacker, hackerKey) = createUser("hacker");
+        address brokeNonPay;
+        (brokeNonPay, brokeUserKey) = makeAddrAndKey("broke");
+        broke = payable(brokeNonPay);
         vm.label(broke, "broke");
+
+        // Fill the users list
+        users.push(admin);
+        userKeys.push(adminKey);
+        users.push(lp);
+        userKeys.push(lpKey);
+        users.push(alice);
+        userKeys.push(aliceKey);
+        users.push(bob);
+        userKeys.push(bobKey);
+        users.push(broke);
+        userKeys.push(brokeUserKey);
     }
 
     function getSortedIndexes(
@@ -91,16 +115,16 @@ abstract contract BaseTest is Test, GasSnapshot {
     }
 
     /// @dev Generates a user, labels its address, and funds it with test assets.
-    function createUser(string memory name) internal returns (address payable) {
-        address payable user = payable(makeAddr(name));
+    function createUser(string memory name) internal returns (address payable, uint256) {
+        (address user, uint256 key) = makeAddrAndKey(name);
         vm.label(user, name);
-        vm.deal(user, defaultBalance);
+        vm.deal(payable(user), defaultBalance);
 
-        for (uint256 index = 0; index < tokens.length; index++) {
-            deal(address(tokens[index]), user, defaultBalance);
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            deal(address(tokens[i]), user, defaultBalance);
         }
 
-        return user;
+        return (payable(user), key);
     }
 
     function getDecimalScalingFactor(uint8 decimals) internal pure returns (uint256 scalingFactor) {

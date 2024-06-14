@@ -6,7 +6,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IBatchRouter {
     /***************************************************************************
@@ -16,6 +15,9 @@ interface IBatchRouter {
     struct SwapPathStep {
         address pool;
         IERC20 tokenOut;
+        // if true, pool is a yield-bearing token buffer. Used to wrap/unwrap tokens if pool doesn't have
+        // enough liquidity
+        bool isBuffer;
     }
 
     struct SwapPathExactAmountIn {

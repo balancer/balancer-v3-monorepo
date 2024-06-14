@@ -5,19 +5,22 @@ export const ZERO = 0n;
 export const ONE = 1n;
 
 export const MAX_UINT256: bigint = maxUint(256);
-export const MAX_UINT112: bigint = maxUint(112);
+export const MAX_UINT160: bigint = maxUint(160);
+export const MAX_UINT128: bigint = maxUint(128);
 export const MAX_UINT96: bigint = maxUint(96);
-export const MAX_UINT10: bigint = maxUint(10);
+export const MAX_UINT64: bigint = maxUint(64);
+export const MAX_UINT48: bigint = maxUint(48);
 export const MAX_UINT31: bigint = maxUint(31);
 export const MAX_UINT32: bigint = maxUint(32);
-export const MAX_UINT64: bigint = maxUint(64);
+export const MAX_UINT10: bigint = maxUint(10);
 
-export const MIN_INT22: bigint = minInt(22);
-export const MAX_INT22: bigint = maxInt(22);
-export const MIN_INT53: bigint = minInt(53);
-export const MAX_INT53: bigint = maxInt(53);
-export const MIN_INT256: bigint = minInt(256);
 export const MAX_INT256: bigint = maxInt(256);
+export const MAX_INT53: bigint = maxInt(53);
+export const MAX_INT22: bigint = maxInt(22);
+
+export const MIN_INT256: bigint = minInt(256);
+export const MIN_INT53: bigint = minInt(53);
+export const MIN_INT22: bigint = minInt(22);
 
 export const ANY_ADDRESS = '0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF';
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';

@@ -8,9 +8,17 @@ import { IVaultExtensionMock } from "@balancer-labs/v3-interfaces/contracts/test
 import "../VaultExtension.sol";
 
 contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
+    using PoolConfigLib for PoolConfig;
+
     constructor(IVault vault, IVaultAdmin vaultAdmin) VaultExtension(vault, vaultAdmin) {}
 
     function mockExtensionHash(bytes calldata input) external payable returns (bytes32) {
         return keccak256(input);
+    }
+
+    function manuallySetSwapFee(address pool, uint256 newSwapFee) external {
+        PoolConfig memory config = _poolConfig[pool];
+        config.setStaticSwapFeePercentage(newSwapFee);
+        _poolConfig[pool] = config;
     }
 }

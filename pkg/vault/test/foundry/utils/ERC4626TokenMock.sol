@@ -7,9 +7,11 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-contract ERC4626TokenMock is IERC4626, ERC20 {
+contract ERC4626TokenMock is IERC4626, ERC20, IRateProvider {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
@@ -22,11 +24,11 @@ contract ERC4626TokenMock is IERC4626, ERC20 {
         string memory tokenSymbol,
         uint256 initialAssets,
         uint256 initialShares,
-        IERC20 baseToken
+        IERC20 underlyingToken
     ) ERC20(tokenName, tokenSymbol) {
         _assets = initialAssets;
         _shares = initialShares;
-        _baseToken = baseToken;
+        _baseToken = underlyingToken;
     }
 
     error NotImplemented();
@@ -141,5 +143,9 @@ contract ERC4626TokenMock is IERC4626, ERC20 {
 
     function _convertToAssets(uint256 shares) internal view virtual returns (uint256 assets) {
         return (shares * _assets) / _shares;
+    }
+
+    function getRate() external view returns (uint256) {
+        return _convertToAssets(FixedPoint.ONE);
     }
 }

@@ -13,14 +13,21 @@ import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConv
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { StablePoolFactory } from '../typechain-types';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
-import { MAX_UINT256 } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { PoolConfigStructOutput } from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
 import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
+import { TokenConfig } from '@balancer-labs/v3-helpers/src/models/types/types';
+import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
+import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
 
 describe('StablePool', () => {
+  const FACTORY_VERSION = 'Stable Factory v1';
+  const POOL_VERSION = 'Stable Pool v1';
+
   const TOKEN_AMOUNT = fp(1000);
 
+  let permit2: IPermit2;
   let vault: IVaultMock;
   let router: Router;
   let alice: SignerWithAddress;
@@ -37,18 +44,22 @@ describe('StablePool', () => {
     vault = await TypesConverter.toIVaultMock(await VaultDeployer.deployMock());
 
     const WETH: WETHTestToken = await deploy('v3-solidity-utils/WETHTestToken');
-    router = await deploy('v3-vault/Router', { args: [vault, await WETH.getAddress()] });
+    permit2 = await deployPermit2();
+    router = await deploy('v3-vault/Router', { args: [vault, WETH, permit2] });
 
-    factory = await deploy('StablePoolFactory', { args: [await vault.getAddress(), MONTH * 12] });
+    factory = await deploy('StablePoolFactory', {
+      args: [await vault.getAddress(), MONTH * 12, FACTORY_VERSION, POOL_VERSION],
+    });
 
     tokens = await ERC20TokenList.create(4, { sorted: true });
     poolTokens = await tokens.addresses;
 
     // mint and approve tokens
-    await tokens.asyncEach(async (token) => {
+    for (const token of tokens.tokens) {
       await token.mint(alice, TOKEN_AMOUNT);
-      await token.connect(alice).approve(vault, MAX_UINT256);
-    });
+      await token.connect(alice).approve(permit2, MAX_UINT256);
+      await permit2.connect(alice).approve(token, router, MAX_UINT160, MAX_UINT48);
+    }
   });
 
   for (let i = 2; i <= 4; i++) {
@@ -56,11 +67,16 @@ describe('StablePool', () => {
   }
 
   async function deployPool(numTokens: number) {
+    const tokenConfig: TokenConfig[] = buildTokenConfig(poolTokens.slice(0, numTokens));
+
     const tx = await factory.create(
       'Stable Pool',
       `STABLE-${numTokens}`,
-      buildTokenConfig(poolTokens.slice(0, numTokens)),
+      tokenConfig,
       200n,
+      [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
+      0, // swap fee
+      ZERO_ADDRESS,
       TypesConverter.toBytes32(bn(numTokens))
     );
     const receipt = await tx.wait();
@@ -69,6 +85,7 @@ describe('StablePool', () => {
     const poolAddress = event.args.pool;
 
     pool = await deployedAt('StablePool', poolAddress);
+    await pool.connect(alice).approve(router, MAX_UINT256);
   }
 
   function itDeploysAStablePool(numTokens: number) {
@@ -77,6 +94,15 @@ describe('StablePool', () => {
 
       expect(await pool.name()).to.equal('Stable Pool');
       expect(await pool.symbol()).to.equal(`STABLE-${numTokens}`);
+    });
+
+    it('should have correct versions', async () => {
+      expect(await factory.version()).to.eq(FACTORY_VERSION);
+      expect(await factory.getPoolVersion()).to.eq(POOL_VERSION);
+
+      await deployPool(numTokens);
+
+      expect(await pool.version()).to.eq(POOL_VERSION);
     });
 
     describe(`initialization with ${numTokens} tokens`, () => {
@@ -120,6 +146,7 @@ describe('StablePool', () => {
           expect(tokensFromPool).to.deep.equal(poolTokens.slice(0, numTokens));
 
           const [tokensFromVault, , balancesFromVault] = await vault.getPoolTokenInfo(pool);
+
           expect(tokensFromVault).to.deep.equal(tokensFromPool);
           expect(balancesFromVault).to.deep.equal(initialBalances);
         });

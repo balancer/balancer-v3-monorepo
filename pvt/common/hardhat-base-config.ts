@@ -4,6 +4,8 @@ import './skipFoundryTests.ts';
 type SolcConfig = {
   version: string;
   settings: {
+    viaIR: boolean;
+    evmVersion: string;
     optimizer: {
       enabled: boolean;
       runs?: number;
@@ -15,6 +17,8 @@ export const compilers: [SolcConfig] = [
   {
     version: '0.8.24',
     settings: {
+      viaIR: true,
+      evmVersion: 'cancun',
       optimizer: {
         enabled: true,
         runs: 9999,
@@ -26,19 +30,27 @@ export const compilers: [SolcConfig] = [
 type ContractSettings = Record<
   string,
   {
+    viaIR: boolean;
     version: string;
-    runs: number;
+    runs: number | undefined;
   }
 >;
 
 const contractSettings: ContractSettings = {
+  '@balancer-labs/v3-vault/contracts': {
+    version: compilers[0].version,
+    runs: compilers[0].settings.optimizer.runs,
+    viaIR: true,
+  },
   '@balancer-labs/v3-vault/contracts/Vault.sol': {
     version: '0.8.24',
     runs: 500,
+    viaIR: true,
   },
   '@balancer-labs/v3-vault/contracts/VaultExtension.sol': {
     version: '0.8.24',
     runs: 500,
+    viaIR: true,
   },
 };
 
@@ -53,6 +65,8 @@ export const warnings = {
     'code-size': 'warn' as WarningRule,
     'unused-param': 'warn' as WarningRule,
     'shadowing-opcode': 'off' as WarningRule,
+    'transient-storage': 'off' as WarningRule,
+    'initcode-size': 'off' as WarningRule,
     default: 'error' as WarningRule,
   },
 };
@@ -64,6 +78,8 @@ export const overrides = (packageName: string): Record<string, SolcConfig> => {
     overrides[contract.replace(`${packageName}/`, '')] = {
       version: contractSettings[contract].version,
       settings: {
+        viaIR: contractSettings[contract].viaIR,
+        evmVersion: 'cancun',
         optimizer: {
           enabled: true,
           runs: contractSettings[contract].runs,

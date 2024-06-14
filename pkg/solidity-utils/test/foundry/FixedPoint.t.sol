@@ -110,7 +110,7 @@ contract FixedPointTest is Test {
         unchecked {
             if (b == 0) {
                 // This check is required because Yul's `div` doesn't revert on b==0
-                vm.expectRevert(abi.encodeWithSelector(FixedPoint.ZeroDivision.selector));
+                vm.expectRevert(FixedPoint.ZeroDivision.selector);
                 FixedPoint.divUp(a, b);
             } else if (a != 0 && (a * FixedPoint.ONE) / FixedPoint.ONE != a) {
                 vm.expectRevert(stdError.arithmeticError);

@@ -1,4 +1,4 @@
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
@@ -10,47 +10,21 @@ contract VaultCommonModifiersTest is BaseVaultTest {
     }
 
     /*******************************************************************************
-                                      WithLocker
+                                    onlyWhenUnlocked
     *******************************************************************************/
 
-    function testEmptyLockers() public {
-        address[] memory lockers;
-        vault.manualSetLockers(lockers);
+    function testLock() public {
+        vault.manualSetIsUnlocked(false);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.NoLocker.selector));
-        vault.mockWithLocker();
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultIsNotUnlocked.selector));
+        vault.mockIsUnlocked();
     }
 
-    function testLockersWithWrongAddress() public {
-        address[] memory lockers = new address[](1);
-        lockers[0] = address(alice);
-        vault.manualSetLockers(lockers);
-
-        vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, address(bob), address(alice)));
-        vault.mockWithLocker();
-    }
-
-    function testLockersWithRightAddressInWrongPosition() public {
-        address[] memory lockers = new address[](2);
-        lockers[0] = address(bob);
-        lockers[1] = address(alice);
-        vault.manualSetLockers(lockers);
-
-        vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongLocker.selector, address(bob), address(alice)));
-        vault.mockWithLocker();
-    }
-
-    function testLockersWithRightAddress() public {
-        address[] memory lockers = new address[](2);
-        lockers[0] = address(alice);
-        lockers[1] = address(bob);
-        vault.manualSetLockers(lockers);
+    function testUnlock() public {
+        vault.manualSetIsUnlocked(true);
 
         // If function does not revert, test passes
-        vm.prank(bob);
-        vault.mockWithLocker();
+        vault.mockIsUnlocked();
     }
 
     /*******************************************************************************
@@ -58,14 +32,14 @@ contract VaultCommonModifiersTest is BaseVaultTest {
     *******************************************************************************/
 
     function testUninitializedPool() public {
-        vault.manualSetInitializedPool(address(pool), false);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, address(pool)));
-        vault.mockWithInitializedPool(address(pool));
+        vault.manualSetInitializedPool(pool, false);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, pool));
+        vault.mockWithInitializedPool(pool);
     }
 
     function testInitializedPool() public {
-        vault.manualSetInitializedPool(address(pool), true);
+        vault.manualSetInitializedPool(pool, true);
         // If function does not revert, test passes
-        vault.mockWithInitializedPool(address(pool));
+        vault.mockWithInitializedPool(pool);
     }
 }

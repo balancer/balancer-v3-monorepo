@@ -5,31 +5,31 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { TokenConfig, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
+import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
+import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
-import { Router } from "@balancer-labs/v3-vault/contracts/Router.sol";
-import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
-import { PoolConfigBits, PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
-import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
+import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
+
+import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
+import { StablePool } from "../../contracts/StablePool.sol";
 
 import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
 contract StablePoolTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     StablePoolFactory factory;
 
@@ -40,22 +40,38 @@ contract StablePoolTest is BaseVaultTest {
     uint256 constant DELTA = 1e9;
 
     uint256 constant DEFAULT_AMP_FACTOR = 200;
+    uint256 constant DEFAULT_SWAP_FEE = 0;
 
     StablePool internal stablePool;
     uint256 internal bptAmountOut;
+
+    InputHelpersMock internal immutable inputHelpersMock = new InputHelpersMock();
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
     }
 
     function createPool() internal override returns (address) {
-        factory = new StablePoolFactory(IVault(address(vault)), 365 days);
+        factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         TokenConfig[] memory tokens = new TokenConfig[](2);
+        PoolRoleAccounts memory roleAccounts;
         tokens[0].token = IERC20(dai);
         tokens[1].token = IERC20(usdc);
 
+        // Allow pools created by `factory` to use poolHooksMock hooks
+        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+
         stablePool = StablePool(
-            factory.create("ERC20 Pool", "ERC20POOL", vault.sortTokenConfig(tokens), DEFAULT_AMP_FACTOR, ZERO_BYTES32)
+            factory.create(
+                "ERC20 Pool",
+                "ERC20POOL",
+                inputHelpersMock.sortTokenConfig(tokens),
+                DEFAULT_AMP_FACTOR,
+                roleAccounts,
+                DEFAULT_SWAP_FEE,
+                poolHooksContract,
+                ZERO_BYTES32
+            )
         );
         return address(stablePool);
     }
@@ -72,6 +88,11 @@ contract StablePoolTest is BaseVaultTest {
             false,
             bytes("")
         );
+    }
+
+    function testPoolAddress() public {
+        address calculatedPoolAddress = factory.getDeploymentAddress(ZERO_BYTES32);
+        assertEq(address(stablePool), calculatedPoolAddress);
     }
 
     function testPoolPausedState() public {
@@ -95,7 +116,7 @@ contract StablePoolTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(vault)), TOKEN_AMOUNT, "Vault: Wrong DAI balance");
 
         // Tokens are deposited to the pool
-        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], TOKEN_AMOUNT, "Pool: Wrong DAI balance");
         assertEq(balances[1], TOKEN_AMOUNT, "Pool: Wrong USDC balance");
 
@@ -119,7 +140,7 @@ contract StablePoolTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(vault)), TOKEN_AMOUNT * 2, "Vault: Wrong DAI balance");
 
         // Tokens are deposited to the pool
-        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], TOKEN_AMOUNT * 2, "Pool: Wrong DAI balance");
         assertEq(balances[1], TOKEN_AMOUNT * 2, "Pool: Wrong USDC balance");
 
@@ -162,7 +183,7 @@ contract StablePoolTest is BaseVaultTest {
         assertApproxEqAbs(dai.balanceOf(address(vault)), TOKEN_AMOUNT, DELTA, "Vault: Wrong DAI balance");
 
         // Tokens are deposited to the pool
-        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertApproxEqAbs(balances[0], TOKEN_AMOUNT, DELTA, "Pool: Wrong DAI balance");
         assertApproxEqAbs(balances[1], TOKEN_AMOUNT, DELTA, "Pool: Wrong USDC balance");
 
@@ -196,12 +217,37 @@ contract StablePoolTest is BaseVaultTest {
         assertEq(usdc.balanceOf(address(vault)), TOKEN_AMOUNT - amountCalculated, "Vault: Wrong USDC balance");
         assertEq(dai.balanceOf(address(vault)), TOKEN_AMOUNT + TOKEN_AMOUNT_IN, "Vault: Wrong DAI balance");
 
-        (, , uint256[] memory balances, , ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
 
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
         assertEq(balances[daiIdx], TOKEN_AMOUNT + TOKEN_AMOUNT_IN, "Pool: Wrong DAI balance");
         assertEq(balances[usdcIdx], TOKEN_AMOUNT - amountCalculated, "Pool: Wrong USDC balance");
+    }
+
+    function testGetBptRate() public {
+        uint256 totalSupply = bptAmountOut + MIN_BPT;
+        uint256 stableInvariant = StableMath.computeInvariant(
+            DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
+            [TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray()
+        );
+        uint256 expectedRate = stableInvariant.divDown(totalSupply);
+        uint256 actualRate = IRateProvider(address(pool)).getRate();
+        assertEq(actualRate, expectedRate, "Wrong rate");
+
+        uint256[] memory amountsIn = [TOKEN_AMOUNT, 0].toMemoryArray();
+        vm.prank(bob);
+        uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
+
+        totalSupply += addLiquidityBptAmountOut;
+        stableInvariant = StableMath.computeInvariant(
+            DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
+            [2 * TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray()
+        );
+
+        expectedRate = stableInvariant.divDown(totalSupply);
+        actualRate = IRateProvider(address(pool)).getRate();
+        assertEq(actualRate, expectedRate, "Wrong rate after addLiquidity");
     }
 
     function less(uint256 amount, uint256 base) internal pure returns (uint256) {
@@ -217,5 +263,17 @@ contract StablePoolTest is BaseVaultTest {
         vm.prank(bob);
 
         router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
+    }
+
+    function testMaximumSwapFee() public {
+        assertEq(stablePool.getMaximumSwapFeePercentage(), MAX_SWAP_FEE, "Maximum swap fee mismatch");
+    }
+
+    function testSetSwapFeeTooHigh() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapFeePercentageTooHigh.selector));
+        vault.setStaticSwapFeePercentage(address(stablePool), MAX_SWAP_FEE + 1);
     }
 }
