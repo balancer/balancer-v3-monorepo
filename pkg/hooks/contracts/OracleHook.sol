@@ -82,33 +82,28 @@ contract OracleHook is BasePoolHooks {
         console.log("tokenOutBalanceScaled18: %s", params.tokenOutBalanceScaled18);
         console.log("amountCalculatedScaled18: %s", amountCalculatedScaled18); // NOTE: Redundant parameter
 
-        uint256 priceWithFeeScaled18;
-        uint256 priceWithFee;
-        // NOTE: `toRawRoundDown` doesn't account for token rates
-        // `vault` could be queried with `pool` to get the token rates
-        if (params.tokenIn < params.tokenOut) {
-            priceWithFeeScaled18 = params.amountInScaled18.divDown(params.amountOutScaled18);
-            priceWithFee = priceWithFeeScaled18.toRawRoundDown(tokenScalingFactors[params.tokenIn]);
-        } else {
-            priceWithFeeScaled18 = params.amountOutScaled18.divDown(params.amountInScaled18);
-            priceWithFee = priceWithFeeScaled18.toRawRoundDown(tokenScalingFactors[params.tokenOut]);
-        }
-        console.log("priceWithFeeScaled18: %s", priceWithFeeScaled18);
-        console.log("priceWithFee: %s", priceWithFee);
-        // NOTE: Calculating prices without fees requires the `onSwap` return value
-
+        // NOTE: Calculating swap prices without fees requires the `onSwap` return value
+        uint256 swapPriceWithFeeScaled18;
         uint256 spotPriceScaled18;
+        uint256 swapPriceWithFee;
         uint256 spotPrice;
+        bool zeroForOne = params.tokenIn < params.tokenOut;
         // NOTE: `toRawRoundDown` doesn't account for token rates
-        // `vault` could be queried with `pool` to get the raw balances (not scaled, not rated)
-        if (params.tokenIn < params.tokenOut) {
+        // `vault` could be queried with `pool` to get the token rates or raw balances (not scaled, not rated)
+        if (zeroForOne) {
+            swapPriceWithFeeScaled18 = params.amountInScaled18.divDown(params.amountOutScaled18);
             spotPriceScaled18 = params.tokenInBalanceScaled18.divDown(params.tokenOutBalanceScaled18);
+            swapPriceWithFee = swapPriceWithFeeScaled18.toRawRoundDown(tokenScalingFactors[params.tokenIn]);
             spotPrice = spotPriceScaled18.toRawRoundDown(tokenScalingFactors[params.tokenIn]);
         } else {
+            swapPriceWithFeeScaled18 = params.amountOutScaled18.divDown(params.amountInScaled18);
             spotPriceScaled18 = params.tokenOutBalanceScaled18.divDown(params.tokenInBalanceScaled18);
+            swapPriceWithFee = swapPriceWithFeeScaled18.toRawRoundDown(tokenScalingFactors[params.tokenOut]);
             spotPrice = spotPriceScaled18.toRawRoundDown(tokenScalingFactors[params.tokenOut]);
         }
+        console.log("swapPriceWithFeeScaled18: %s", swapPriceWithFeeScaled18);
         console.log("spotPriceScaled18: %s", spotPriceScaled18);
+        console.log("swapPriceWithFee: %s", swapPriceWithFee);
         console.log("spotPrice: %s", spotPrice);
         return true;
     }
