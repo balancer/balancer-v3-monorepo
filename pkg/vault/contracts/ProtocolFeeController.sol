@@ -60,10 +60,10 @@ contract ProtocolFeeController is
     // Global protocol yield fee.
     uint256 private _globalProtocolYieldFeePercentage;
 
-    // Store the pool-specific swap fee percentages (the Vault's poolConfig stores the aggregate percentage).
+    // Store the pool-specific swap fee percentages (the Vault's poolConfigBits stores the aggregate percentage).
     mapping(address => PoolFeeConfig) internal _poolProtocolSwapFeePercentages;
 
-    // Store the pool-specific yield fee percentages (the Vault's poolConfig stores the aggregate percentage).
+    // Store the pool-specific yield fee percentages (the Vault's poolConfigBits stores the aggregate percentage).
     mapping(address => PoolFeeConfig) internal _poolProtocolYieldFeePercentages;
 
     // Pool -> address of pool creator (empowered to set pool creator fee percentages, and withdraw creator fees).

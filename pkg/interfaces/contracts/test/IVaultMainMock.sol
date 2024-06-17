@@ -13,8 +13,6 @@ interface IVaultMainMock {
 
     function mintERC20(address token, address to, uint256 amount) external;
 
-    function setConfig(address pool, PoolConfig calldata config) external;
-
     function setHooksConfig(address pool, HooksConfig calldata config) external;
 
     function manualRegisterPool(address pool, IERC20[] memory tokens) external;
@@ -48,6 +46,8 @@ interface IVaultMainMock {
 
     function manualSetPoolConfig(address, PoolConfig memory) external;
 
+    function manualSetPoolConfigBits(address pool, PoolConfigBits config) external;
+
     function manualSetPoolTokenBalances(address, IERC20[] memory, uint256[] memory) external;
 
     function mockIsUnlocked() external view;
@@ -60,10 +60,7 @@ interface IVaultMainMock {
 
     function internalGetPoolTokenInfo(
         address
-    )
-        external
-        view
-        returns (IERC20[] memory, TokenInfo[] memory, uint256[] memory, uint256[] memory, PoolConfig memory);
+    ) external view returns (IERC20[] memory, TokenInfo[] memory, uint256[] memory, uint256[] memory);
 
     function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256);
 
@@ -220,4 +217,6 @@ interface IVaultMainMock {
     ) external returns (uint256, uint256);
 
     function manualTransfer(IERC20 token, address to, uint256 amount) external;
+
+    function manualGetPoolConfigBits(address pool) external view returns (PoolConfigBits);
 }
