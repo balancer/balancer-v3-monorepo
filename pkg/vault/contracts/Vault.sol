@@ -740,7 +740,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         // Uses msg.sender as the router (the contract that called the vault)
-        if (hooksConfig.callBeforeRemoveLiquidityHook(minAmountsOutScaled18, msg.sender, params, poolData) == true) {
+        if (hooksConfig.callBeforeRemoveLiquidityHook(minAmountsOutScaled18, msg.sender, params, poolData)) {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
