@@ -114,7 +114,7 @@ contract RecoveryModeTest is BaseVaultTest {
         require(vault.isVaultPaused(), "Vault should be paused initially");
         require(vault.isPoolPaused(pool) == false, "Pool should not be paused initially");
 
-        uint256 bufferPeriodEndTime = vault.getBufferPeriodEndTime();
+        uint32 bufferPeriodEndTime = vault.getBufferPeriodEndTime();
 
         // Ensure we are in the permissionless period of the Vault.
         skip(bufferPeriodEndTime);

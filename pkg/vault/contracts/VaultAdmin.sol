@@ -28,6 +28,7 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
@@ -45,7 +46,7 @@ import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
  */
 contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using PackedTokenBalance for bytes32;
-    using PoolConfigLib for PoolConfig;
+    using PoolConfigLib for PoolConfigBits;
     using VaultExtensionsLib for IVault;
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
@@ -191,7 +192,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             }
         }
 
-        _vaultState.isVaultPaused = pausing;
+        VaultStateBits vaultState = _vaultStateBits;
+        vaultState = vaultState.setVaultPaused(pausing);
+        _vaultStateBits = vaultState;
 
         emit VaultPausedStateChanged(pausing);
     }
@@ -244,7 +247,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     function _setPoolPaused(address pool, bool pausing) internal {
-        PoolConfig memory config = _poolConfig[pool];
+        PoolConfigBits config = _poolConfigBits[pool];
 
         if (_isPoolPaused(pool)) {
             if (pausing) {
@@ -259,7 +262,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             if (pausing) {
                 // Not already paused; we can pause within the window.
                 // solhint-disable-next-line not-rely-on-time
-                if (block.timestamp >= config.pauseWindowEndTime) {
+                if (block.timestamp >= config.getPauseWindowEndTime()) {
                     revert PoolPauseWindowExpired(pool);
                 }
             } else {
@@ -268,9 +271,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             }
         }
 
-        // Update poolConfig.
-        config.isPoolPaused = pausing;
-        _poolConfig[pool] = config;
+        // Update poolConfigBits.
+        _poolConfigBits[pool] = config.setPoolPaused(pausing);
 
         emit PoolPausedStateChanged(pool, pausing);
     }
@@ -285,7 +287,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         uint256 swapFeePercentage
     ) external withRegisteredPool(pool) authenticateByRole(pool) onlyVaultDelegateCall {
         // Saving bits by not implementing a new modifier
-        _ensureUnpausedAndGetVaultState(pool);
+        _ensureUnpaused(pool);
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
@@ -325,9 +327,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         onlyProtocolFeeController
         onlyVaultDelegateCall
     {
-        PoolConfig memory config = _poolConfig[pool];
-        config.setAggregateSwapFeePercentage(newAggregateSwapFeePercentage);
-        _poolConfig[pool] = config;
+        _poolConfigBits[pool] = _poolConfigBits[pool].setAggregateSwapFeePercentage(newAggregateSwapFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -341,9 +341,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         onlyProtocolFeeController
         onlyVaultDelegateCall
     {
-        PoolConfig memory config = _poolConfig[pool];
-        config.setAggregateYieldFeePercentage(newAggregateYieldFeePercentage);
-        _poolConfig[pool] = config;
+        _poolConfigBits[pool] = _poolConfigBits[pool].setAggregateYieldFeePercentage(newAggregateYieldFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -396,10 +394,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
      * @param recoveryMode The desired recovery mode state
      */
     function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
-        // Update poolConfig
-        PoolConfig memory config = _poolConfig[pool];
-        config.isPoolInRecoveryMode = recoveryMode;
-        _poolConfig[pool] = config;
+        // Update poolConfigBits
+        _poolConfigBits[pool] = _poolConfigBits[pool].setPoolInRecoveryMode(recoveryMode);
 
         if (recoveryMode == false) {
             _writePoolBalancesToStorage(pool, _loadPoolData(pool, Rounding.ROUND_DOWN));
@@ -414,7 +410,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function disableQuery() external authenticate onlyVaultDelegateCall {
-        _vaultState.isQueryDisabled = true;
+        VaultStateBits vaultState = _vaultStateBits;
+        vaultState = vaultState.setQueryDisabled(true);
+        _vaultStateBits = vaultState;
     }
 
     /*******************************************************************************
@@ -422,12 +420,16 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
     /// @inheritdoc IVaultAdmin
     function unpauseVaultBuffers() external authenticate onlyVaultDelegateCall {
-        _vaultState.areBuffersPaused = false;
+        VaultStateBits vaultState = _vaultStateBits;
+        vaultState = vaultState.setBuffersPaused(false);
+        _vaultStateBits = vaultState;
     }
 
     /// @inheritdoc IVaultAdmin
     function pauseVaultBuffers() external authenticate onlyVaultDelegateCall {
-        _vaultState.areBuffersPaused = true;
+        VaultStateBits vaultState = _vaultStateBits;
+        vaultState = vaultState.setBuffersPaused(true);
+        _vaultStateBits = vaultState;
     }
 
     /// @inheritdoc IVaultAdmin

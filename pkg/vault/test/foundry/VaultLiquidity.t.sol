@@ -58,9 +58,9 @@ contract VaultLiquidityTest is BaseVaultTest {
 
     function testAddLiquidityUnbalancedDisabled() public {
         // Disable unbalanced liquidity
-        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
-        poolConfig.disableUnbalancedLiquidity = true;
-        vault.manualSetPoolConfig(pool, poolConfig);
+        PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
+        poolConfigBits.liquidityManagement.disableUnbalancedLiquidity = true;
+        vault.manualSetPoolConfig(pool, poolConfigBits);
 
         vm.prank(alice);
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
@@ -97,9 +97,9 @@ contract VaultLiquidityTest is BaseVaultTest {
 
     function testAddLiquiditySingleTokenExactOutDisabled() public {
         // Disable unbalanced liquidity
-        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
-        poolConfig.disableUnbalancedLiquidity = true;
-        vault.manualSetPoolConfig(pool, poolConfig);
+        PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
+        poolConfigBits.liquidityManagement.disableUnbalancedLiquidity = true;
+        vault.manualSetPoolConfig(pool, poolConfigBits);
 
         vm.prank(alice);
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
@@ -126,9 +126,9 @@ contract VaultLiquidityTest is BaseVaultTest {
 
     function testAddLiquidityCustomDisabled() public {
         // Disable add custom liquidity
-        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
-        poolConfig.enableAddLiquidityCustom = false;
-        vault.manualSetPoolConfig(pool, poolConfig);
+        PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
+        poolConfigBits.liquidityManagement.enableAddLiquidityCustom = false;
+        vault.manualSetPoolConfig(pool, poolConfigBits);
 
         vm.prank(alice);
         vm.expectRevert(IVaultErrors.DoesNotSupportAddLiquidityCustom.selector);
@@ -229,9 +229,9 @@ contract VaultLiquidityTest is BaseVaultTest {
 
     function testRemoveLiquiditySingleTokenExactInDisabled() public {
         // Disable unbalanced liquidity
-        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
-        poolConfig.disableUnbalancedLiquidity = true;
-        vault.manualSetPoolConfig(pool, poolConfig);
+        PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
+        poolConfigBits.liquidityManagement.disableUnbalancedLiquidity = true;
+        vault.manualSetPoolConfig(pool, poolConfigBits);
 
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         vm.startPrank(alice);
@@ -258,9 +258,9 @@ contract VaultLiquidityTest is BaseVaultTest {
 
     function testRemoveLiquiditySingleTokenExactOutDisabled() public {
         // Disable unbalanced liquidity
-        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
-        poolConfig.disableUnbalancedLiquidity = true;
-        vault.manualSetPoolConfig(pool, poolConfig);
+        PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
+        poolConfigBits.liquidityManagement.disableUnbalancedLiquidity = true;
+        vault.manualSetPoolConfig(pool, poolConfigBits);
 
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
         vm.startPrank(alice);
@@ -287,9 +287,9 @@ contract VaultLiquidityTest is BaseVaultTest {
 
     function testRemoveLiquidityCustomDisabled() public {
         // Disable remove custom liquidity
-        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
-        poolConfig.enableRemoveLiquidityCustom = false;
-        vault.manualSetPoolConfig(pool, poolConfig);
+        PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
+        poolConfigBits.liquidityManagement.enableRemoveLiquidityCustom = false;
+        vault.manualSetPoolConfig(pool, poolConfigBits);
 
         vm.expectRevert(IVaultErrors.DoesNotSupportRemoveLiquidityCustom.selector);
         vm.startPrank(alice);
