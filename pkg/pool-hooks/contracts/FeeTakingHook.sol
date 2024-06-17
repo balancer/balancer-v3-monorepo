@@ -97,7 +97,7 @@ contract FeeTakingHook is BasePoolHooks {
         // non-proportional add liquidity operations would require taking fees in BPT, we only support proportional
         // addLiquidity.
         if (kind != AddLiquidityKind.PROPORTIONAL) {
-            // Make the transaction revert by returning false. The second argument does not matter
+            // Returning false will make the transaction revert, so the second argument does not matter.
             return (false, amountsInRaw);
         }
 
