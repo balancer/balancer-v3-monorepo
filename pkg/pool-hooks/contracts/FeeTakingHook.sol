@@ -93,9 +93,9 @@ contract FeeTakingHook is BasePoolHooks {
         uint256[] memory,
         bytes memory
     ) external override returns (bool success, uint256[] memory) {
-        // Currently, the hook fee implementation for onAfterAddLiquidity only support proportional addLiquidity.
-        // That's because other types of addLiquidity requires an exact amount in, so fees need to be charged as BPTs,
-        // and our current architecture does not support it.
+        // Our current architecture only supports fees on tokens. Since we must always respect exact `amountsIn`, and
+        // non-proportional add liquidity operations would require taking fees in BPT, we only support proportional
+        // addLiquidity.
         if (kind != AddLiquidityKind.PROPORTIONAL) {
             // Make the transaction revert by returning false. The second argument does not matter
             return (false, amountsInRaw);
