@@ -25,7 +25,7 @@ contract VaultUnitTest is BaseTest {
     using ArrayHelpers for *;
     using ScalingHelpers for *;
     using FixedPoint for *;
-    using PoolConfigLib for PoolConfig;
+    using PoolConfigLib for PoolConfigBits;
 
     IVaultMock internal vault;
 
@@ -81,7 +81,7 @@ contract VaultUnitTest is BaseTest {
         PoolData memory poolData;
         poolData.decimalScalingFactors = decimalScalingFactors;
         poolData.tokenRates = tokenRates;
-        poolData.poolConfig.setAggregateSwapFeePercentage(protocolSwapFeePercentage);
+        poolData.poolConfigBits = poolData.poolConfigBits.setAggregateSwapFeePercentage(protocolSwapFeePercentage);
 
         uint256 expectedSwapFeeAmountRaw = swapFeeAmountScaled18
             .mulUp(protocolSwapFeePercentage)
@@ -108,7 +108,7 @@ contract VaultUnitTest is BaseTest {
         vault.manualSetPoolRegistered(pool, true);
 
         PoolData memory poolData;
-        poolData.poolConfig.isPoolInRecoveryMode = true;
+        poolData.poolConfigBits = poolData.poolConfigBits.setPoolInRecoveryMode(true);
 
         uint256 totalFeesRaw = vault.manualComputeAndChargeAggregateSwapFees(poolData, 1e18, pool, dai, 0);
 
