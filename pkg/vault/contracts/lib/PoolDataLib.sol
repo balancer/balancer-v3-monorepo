@@ -12,7 +12,7 @@ import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { PackedTokenBalance } from "./PackedTokenBalance.sol";
-import { PoolConfigLib } from "./PoolConfigLib.sol";
+import { PoolConfigBits, PoolConfigLib } from "./PoolConfigLib.sol";
 
 library PoolDataLib {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
@@ -20,18 +20,18 @@ library PoolDataLib {
 
     function load(
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
-        PoolConfig memory poolConfig,
+        PoolConfigBits poolConfigBits,
         mapping(IERC20 => TokenInfo) storage poolTokenInfo,
         Rounding roundingDirection
     ) internal view returns (PoolData memory poolData) {
         uint256 numTokens = poolTokenBalances.length();
-        poolData.poolConfig = poolConfig;
 
+        poolData.poolConfigBits = poolConfigBits;
         poolData.tokens = new IERC20[](numTokens);
         poolData.tokenInfo = new TokenInfo[](numTokens);
         poolData.balancesRaw = new uint256[](numTokens);
         poolData.balancesLiveScaled18 = new uint256[](numTokens);
-        poolData.decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolData.poolConfig, numTokens);
+        poolData.decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolData.poolConfigBits, numTokens);
         poolData.tokenRates = new uint256[](numTokens);
         bytes32 packedBalance;
         IERC20 token;

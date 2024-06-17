@@ -155,7 +155,7 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 fixedYieldFee,
         uint256 fixedCreatorFee
     ) private pure returns (uint256 finalYieldFeePercentage, uint256 finalCreatorFeePercentage) {
-        // Fees are stored as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%) in vaultConfig and poolConfig
+        // Fees are stored as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%) in vaultConfig and poolConfigBits
         // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
 
         finalYieldFeePercentage = fixedYieldFee * FEE_SCALING_FACTOR;

@@ -12,21 +12,21 @@ struct LiquidityManagement {
     bool enableRemoveLiquidityCustom;
 }
 
+// @notice Config type to store entire configuration of the pool.
+type PoolConfigBits is bytes32;
+
 /// @dev Represents a pool's configuration (hooks configuration are separated in another struct).
 struct PoolConfig {
-    uint24 staticSwapFeePercentageUnscaled;
-    uint24 aggregateSwapFeePercentageUnscaled;
-    uint24 aggregateYieldFeePercentageUnscaled;
+    LiquidityManagement liquidityManagement;
+    uint256 staticSwapFeePercentage;
+    uint256 aggregateSwapFeePercentage;
+    uint256 aggregateYieldFeePercentage;
     uint24 tokenDecimalDiffs;
     uint32 pauseWindowEndTime;
     bool isPoolRegistered;
     bool isPoolInitialized;
     bool isPoolPaused;
     bool isPoolInRecoveryMode;
-    // NOTE: Duplicated parameters from LiquidityManagement because parameters are packed in one slot.
-    bool disableUnbalancedLiquidity;
-    bool enableAddLiquidityCustom;
-    bool enableRemoveLiquidityCustom;
 }
 
 /// @dev Represents a hook contract configuration for a pool.
@@ -146,7 +146,7 @@ struct TokenInfo {
 }
 
 struct PoolData {
-    PoolConfig poolConfig;
+    PoolConfigBits poolConfigBits;
     IERC20[] tokens;
     TokenInfo[] tokenInfo;
     uint256[] balancesRaw;
@@ -277,4 +277,5 @@ struct BufferWrapOrUnwrapParams {
 // Protocol Fees are 24-bit values. We transform them by multiplying by 1e11, so
 // they can be set to any value between 0% and 100% (step 0.00001%).
 uint256 constant FEE_BITLENGTH = 24;
+uint256 constant MAX_FEE_VALUE = type(uint24).max;
 uint256 constant FEE_SCALING_FACTOR = 1e11;
