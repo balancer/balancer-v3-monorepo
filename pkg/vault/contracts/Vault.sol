@@ -767,7 +767,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 hookAdjustedBptAmountIn;
         // AmountsOut can be changed by onAfterRemoveLiquidity if the hook charges fees or gives discounts
         // Uses msg.sender as the router (the contract that called the vault)
-        (hookAdjustedBptAmountIn, amountsOut) = hooksConfig.onAfterRemoveLiquidity(
+        (hookAdjustedBptAmountIn, amountsOut) = hooksConfig.callAfterRemoveLiquidityHook(
             msg.sender,
             bptAmountIn,
             amountsOutScaled18,
