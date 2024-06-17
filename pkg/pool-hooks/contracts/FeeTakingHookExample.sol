@@ -18,14 +18,16 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
 
-contract FeeTakingHook is BasePoolHooks {
+contract FeeTakingHookExample is BasePoolHooks {
     using FixedPoint for uint256;
 
     uint256 public hookSwapFeePercentage;
     uint256 public addLiquidityHookFeePercentage;
     uint256 public removeLiquidityHookFeePercentage;
 
-    constructor(IVault vault) BasePoolHooks(vault) {}
+    constructor(IVault vault) BasePoolHooks(vault) {
+        // solhint-previous-line no-empty-blocks
+    }
 
     /// @inheritdoc IHooks
     function onRegister(
@@ -34,8 +36,9 @@ contract FeeTakingHook is BasePoolHooks {
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) external view override onlyVault returns (bool) {
-        // NOTICE: In real hooks, make sure this function is properly implemented. Returning true allows any pool, with
-        // any configuration, to use this hook
+        // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
+        // that the given pool is from the factory). Returning true allows any pool, with any configuration, to use
+        // this hook
         return true;
     }
 
@@ -54,7 +57,7 @@ contract FeeTakingHook is BasePoolHooks {
     ) external override onlyVault returns (bool success, uint256 hookAdjustedAmountCalculatedRaw) {
         hookAdjustedAmountCalculatedRaw = params.amountCalculatedRaw;
         if (hookSwapFeePercentage > 0) {
-            uint256 hookFee = hookAdjustedAmountCalculatedRaw.mulDown(hookSwapFeePercentage);
+            uint256 hookFee = params.amountCalculatedRaw.mulDown(hookSwapFeePercentage);
             if (params.kind == SwapKind.EXACT_IN) {
                 // For EXACT_IN swaps, the `amountCalculated` is the amount of `tokenOut`. The fee must be taken
                 // from `amountCalculated`, so we decrease the amount of tokens the Vault will send to the caller.

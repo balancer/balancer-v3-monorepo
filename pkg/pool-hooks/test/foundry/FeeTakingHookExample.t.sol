@@ -19,9 +19,9 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 
-import { FeeTakingHook } from "../../contracts/FeeTakingHook.sol";
+import { FeeTakingHookExample } from "../../contracts/FeeTakingHookExample.sol";
 
-contract FeeTakingHookTest is BaseVaultTest {
+contract FeeTakingHookExampleTest is BaseVaultTest {
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
@@ -39,7 +39,7 @@ contract FeeTakingHookTest is BaseVaultTest {
 
     // Sets the hook of the pool and stores the address in the variable poolHooksContract
     function createHook() internal override returns (address) {
-        FeeTakingHook hook = new FeeTakingHook(IVault(address(vault)));
+        FeeTakingHookExample hook = new FeeTakingHookExample(IVault(address(vault)));
         return address(hook);
     }
 
@@ -49,7 +49,7 @@ contract FeeTakingHookTest is BaseVaultTest {
 
         // Fee between 0 and 100%
         hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
-        FeeTakingHook(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
+        FeeTakingHookExample(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
         HookTestLocals memory vars = _createHookTestLocals();
@@ -96,7 +96,7 @@ contract FeeTakingHookTest is BaseVaultTest {
 
         // Fee between 0 and 100%
         hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
-        FeeTakingHook(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
+        FeeTakingHookExample(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
         HookTestLocals memory vars = _createHookTestLocals();
@@ -149,7 +149,7 @@ contract FeeTakingHookTest is BaseVaultTest {
     function testHookFeeAddLiquidityExactIn__Fuzz(uint256 expectedBptOut, uint256 hookFeePercentage) public {
         // Add fee between 0 and 100%
         hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
-        FeeTakingHook(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
+        FeeTakingHookExample(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
 
         // Since operation is not settled in advance, max expected bpt out can't generate a hook fee higher than
         // pool liquidity, or else the hook won't be able to charge fees
@@ -212,7 +212,7 @@ contract FeeTakingHookTest is BaseVaultTest {
 
         // Add fee between 0 and 100%
         hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
-        FeeTakingHook(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
+        FeeTakingHookExample(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
 
         // Make sure bob has enough to pay for the transaction
         expectedBptIn = bound(expectedBptIn, _minBptOut, BalancerPoolToken(pool).balanceOf(bob));
