@@ -51,15 +51,21 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
 
         // Since operation is not settled in advance, max expected bpt out can't generate a hook fee higher than
         // pool liquidity, or else the hook won't be able to charge fees
-        expectedBptOut = bound(
-            expectedBptOut,
-            _minBptOut,
-            hookFeePercentage == 0 ? MAX_UINT256 : poolInitAmount.divDown(hookFeePercentage)
-        );
+        {
+            uint256 bobDaiBalance = dai.balanceOf(bob);
 
-        // Make sure bob has enough to pay for the transaction
-        if (expectedBptOut > dai.balanceOf(bob)) {
-            expectedBptOut = dai.balanceOf(bob);
+            // Since operation is not settled in advance, max expected bpt out can't generate a hook fee higher than
+            // pool liquidity, or else the hook won't be able to charge fees
+            expectedBptOut = bound(
+                expectedBptOut,
+                _minBptOut,
+                hookFeePercentage == 0 ? bobDaiBalance : poolInitAmount.divDown(hookFeePercentage)
+            );
+
+            // Make sure bob has enough to pay for the transaction
+            if (expectedBptOut > bobDaiBalance) {
+                expectedBptOut = bobDaiBalance;
+            }
         }
 
         uint256[] memory actualAmountsIn = BasePoolMath.computeProportionalAmountsIn(
