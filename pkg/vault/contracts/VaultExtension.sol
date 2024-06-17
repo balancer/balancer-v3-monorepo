@@ -368,7 +368,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        if (hooksConfig.onBeforeInitialize(exactAmountsInScaled18, userData) == true) {
+        if (hooksConfig.callBeforeInitializeHook(exactAmountsInScaled18, userData) == true) {
             // The before hook is reentrant, and could have changed token rates.
             // Updating balances here is unnecessary since they're 0, but we do not special case before init
             // for the sake of bytecode size.
@@ -383,7 +383,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         bptAmountOut = _initialize(pool, to, poolData, tokens, exactAmountsIn, exactAmountsInScaled18, minBptAmountOut);
 
-        hooksConfig.onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData);
+        hooksConfig.callAfterInitializeHook(exactAmountsInScaled18, bptAmountOut, userData);
     }
 
     function _initialize(
@@ -498,7 +498,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool,
         IBasePool.PoolSwapParams memory swapParams
     ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (bool success, uint256 dynamicSwapFee) {
-        return _hooksConfig[pool].onComputeDynamicSwapFee(swapParams, _poolConfig[pool].getStaticSwapFeePercentage());
+        return
+            _hooksConfig[pool].callComputeDynamicSwapFeeHook(
+                swapParams,
+                _poolConfig[pool].getStaticSwapFeePercentage()
+            );
     }
 
     /// @inheritdoc IVaultExtension

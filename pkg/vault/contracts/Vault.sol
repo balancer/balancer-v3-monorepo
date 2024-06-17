@@ -194,7 +194,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
 
-        if (hooksConfig.onBeforeSwap(swapParams, params.pool)) {
+        if (hooksConfig.callBeforeSwapHook(swapParams, params.pool)) {
             // The call to `onBeforeSwap` could potentially update token rates and balances.
             // We update `poolData.tokenRates`, `poolData.rawBalances` and `poolData.balancesLiveScaled18`
             // to ensure the `onSwap` and `onComputeDynamicSwapFee` are called with the current values.
@@ -211,7 +211,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // At this point, the static swap fee percentage is loaded in the swap state as the default,
         // to be used unless the pool has a dynamic swap fee. It is also passed into the hook, to support common cases
         // where the dynamic fee computation logic uses it.
-        (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = hooksConfig.onComputeDynamicSwapFee(
+        (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = hooksConfig.callComputeDynamicSwapFeeHook(
             swapParams,
             state.swapFeePercentage
         );
@@ -229,7 +229,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // amountCalculated. Otherwise, the new amount calculated is 'amountCalculated + delta'. If the underlying
         // hook fails, or limits are violated, `onAfterSwap` will revert.
         // Uses msg.sender as the router (the contract that called the vault)
-        amountCalculated = hooksConfig.onAfterSwap(
+        amountCalculated = hooksConfig.callAfterSwapHook(
             amountCalculatedScaled18,
             amountCalculated,
             msg.sender,
@@ -519,7 +519,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         // Uses msg.sender as the router (the contract that called the vault)
-        if (hooksConfig.onBeforeAddLiquidity(msg.sender, maxAmountsInScaled18, params, poolData)) {
+        if (hooksConfig.callBeforeAddLiquidityHook(msg.sender, maxAmountsInScaled18, params, poolData)) {
             // If the hook library returns true, the hook code was executed, and might have altered the balances,
             // so we need to read them again to ensure that the data is fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
@@ -547,7 +547,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // AmountsIn can be changed by onAfterAddLiquidity if the hook charges fees or gives discounts
         // Uses msg.sender as the router (the contract that called the vault)
-        amountsIn = hooksConfig.onAfterAddLiquidity(
+        amountsIn = hooksConfig.callAfterAddLiquidityHook(
             msg.sender,
             amountsInScaled18,
             amountsIn,
@@ -740,7 +740,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         // Uses msg.sender as the router (the contract that called the vault)
-        if (hooksConfig.onBeforeRemoveLiquidity(minAmountsOutScaled18, msg.sender, params, poolData) == true) {
+        if (hooksConfig.callBeforeRemoveLiquidityHook(minAmountsOutScaled18, msg.sender, params, poolData) == true) {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
@@ -766,7 +766,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // AmountsOut can be changed by onAfterRemoveLiquidity if the hook charges fees or gives discounts
         // Uses msg.sender as the router (the contract that called the vault)
-        amountsOut = hooksConfig.onAfterRemoveLiquidity(
+        amountsOut = hooksConfig.callAfterRemoveLiquidityHook(
             msg.sender,
             amountsOutScaled18,
             amountsOut,
