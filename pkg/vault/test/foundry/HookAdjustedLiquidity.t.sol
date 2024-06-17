@@ -100,7 +100,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256[] memory maxAmountsIn = [actualAmountIn + hookFee, actualAmountIn + hookFee].toMemoryArray();
         router.addLiquidityProportional(pool, maxAmountsIn, expectedBptOut, false, bytes(""));
 
-        _checkAddLiquidityHookTestResults(vars, actualAmountsIn, expectedBptOut, hookFee, 0);
+        _checkAddLiquidityHookTestResults(vars, actualAmountsIn, expectedBptOut, int256(hookFee));
     }
 
     function testHookDiscountAddLiquidityExactIn__Fuzz(uint256 expectedBptOut, uint256 hookDiscountPercentage) public {
@@ -146,7 +146,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
 
         router.addLiquidityProportional(pool, actualAmountsIn, expectedBptOut, false, bytes(""));
 
-        _checkAddLiquidityHookTestResults(vars, actualAmountsIn, expectedBptOut, 0, hookDiscount);
+        _checkAddLiquidityHookTestResults(vars, actualAmountsIn, expectedBptOut, -(int256(hookDiscount)));
     }
 
     function testHookFeeRemoveLiquidityExactIn__Fuzz(uint256 expectedBptIn, uint256 hookFeePercentage) public {
@@ -412,13 +412,11 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         HookTestLocals memory vars,
         uint256[] memory actualAmountsIn,
         uint256 expectedBptOut,
-        uint256 expectedHookFee,
-        uint256 expectedHookDiscount
+        int256 expectedHookDelta
     ) private {
         _fillAfterHookTestLocals(vars);
 
-        assertEq(vars.bob.bptAfter - vars.bob.bptBefore, expectedBptOut, "Bob BPT balance is wrong");
-
+        assertEq(vars.bptSupplyAfter - vars.bptSupplyBefore, expectedBptOut, "Pool Supply is wrong");
         assertEq(
             vars.poolAfter[daiIdx] - vars.poolBefore[daiIdx],
             actualAmountsIn[daiIdx],
@@ -429,40 +427,32 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
             actualAmountsIn[usdcIdx],
             "Pool USDC balance is wrong"
         );
-        assertEq(vars.bptSupplyAfter - vars.bptSupplyBefore, expectedBptOut, "Pool Supply is wrong");
 
         assertEq(vars.vault.daiAfter - vars.vault.daiBefore, actualAmountsIn[daiIdx], "Vault DAI balance is wrong");
         assertEq(vars.vault.usdcAfter - vars.vault.usdcBefore, actualAmountsIn[usdcIdx], "Vault USDC balance is wrong");
 
-        if (expectedHookFee > 0) {
-            assertEq(
-                vars.bob.daiBefore - vars.bob.daiAfter,
-                actualAmountsIn[daiIdx] + expectedHookFee,
-                "Bob DAI balance is wrong"
-            );
-            assertEq(
-                vars.bob.usdcBefore - vars.bob.usdcAfter,
-                actualAmountsIn[usdcIdx] + expectedHookFee,
-                "Bob USDC balance is wrong"
-            );
+        assertEq(vars.bob.bptAfter - vars.bob.bptBefore, expectedBptOut, "Bob BPT balance is wrong");
+        assertEq(
+            int256(vars.bob.daiBefore) - int256(vars.bob.daiAfter),
+            int256(actualAmountsIn[daiIdx]) + expectedHookDelta,
+            "Bob DAI balance is wrong"
+        );
+        assertEq(
+            int256(vars.bob.usdcBefore) - int256(vars.bob.usdcAfter),
+            int256(actualAmountsIn[usdcIdx]) + expectedHookDelta,
+            "Bob USDC balance is wrong"
+        );
 
-            assertEq(vars.hook.daiAfter - vars.hook.daiBefore, expectedHookFee, "Hook DAI balance is wrong");
-            assertEq(vars.hook.usdcAfter - vars.hook.usdcBefore, expectedHookFee, "Hook USDC balance is wrong");
-        } else if (expectedHookDiscount > 0) {
-            assertEq(
-                vars.bob.daiBefore - vars.bob.daiAfter,
-                actualAmountsIn[daiIdx] - expectedHookDiscount,
-                "Bob DAI balance is wrong"
-            );
-            assertEq(
-                vars.bob.usdcBefore - vars.bob.usdcAfter,
-                actualAmountsIn[usdcIdx] - expectedHookDiscount,
-                "Bob USDC balance is wrong"
-            );
-
-            assertEq(vars.hook.daiBefore - vars.hook.daiAfter, expectedHookDiscount, "Hook DAI balance is wrong");
-            assertEq(vars.hook.usdcBefore - vars.hook.usdcAfter, expectedHookDiscount, "Hook USDC balance is wrong");
-        }
+        assertEq(
+            int256(vars.hook.daiAfter) - int256(vars.hook.daiBefore),
+            expectedHookDelta,
+            "Hook DAI balance is wrong"
+        );
+        assertEq(
+            int256(vars.hook.usdcAfter) - int256(vars.hook.usdcBefore),
+            expectedHookDelta,
+            "Hook USDC balance is wrong"
+        );
     }
 
     function _checkRemoveLiquidityHookTestResults(
@@ -474,8 +464,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     ) private {
         _fillAfterHookTestLocals(vars);
 
-        assertEq(vars.bob.bptBefore - vars.bob.bptAfter, expectedBptIn, "Bob BPT balance is wrong");
-
+        assertEq(vars.bptSupplyBefore - vars.bptSupplyAfter, expectedBptIn, "Pool Supply is wrong");
         assertEq(
             vars.poolBefore[daiIdx] - vars.poolAfter[daiIdx],
             actualAmountsOut[daiIdx],
