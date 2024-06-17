@@ -19,9 +19,9 @@ interface IPoolInfo {
     /**
      * @notice Gets the raw data for the pool: tokens, token info, raw balances, last live balances.
      * @return tokens The pool tokens, in registration order
-     * @return tokenInfo Corresponding token info
+     * @return tokenInfo Corresponding token info (type, rate provider, yield flag)
      * @return balancesRaw Corresponding raw balances of the tokens
-     * @return lastLiveBalances Corresponding last live balances from the previous operation of the tokens
+     * @return lastLiveBalances Corresponding last live balances from the previous operation
      */
     function getTokenInfo()
         external
@@ -35,9 +35,7 @@ interface IPoolInfo {
 
     /**
      * @notice Gets current live balances of the pool (fixed-point, 18 decimals).
-     * @dev Live balances
-     * @return balancesLiveScaled18 Live token balances after applying decimal scaling factors, token rates and yield
-     * fees due.
+     * @return balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
      */
     function getCurrentLiveBalances() external view returns (uint256[] memory balancesLiveScaled18);
 

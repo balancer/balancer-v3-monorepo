@@ -56,9 +56,9 @@ library PoolDataLib {
             }
 
             // poolData already has live balances computed from raw balances according to the token rates and the
-            // given rounding direction. Charging a yield fee changes the raw
-            // balance, in which case the safest and most numerically precise way to adjust
-            // the live balance is to simply repeat the scaling (hence the second call below).
+            // given rounding direction. Charging a yield fee changes the raw balance, in which case the safest and
+            // most numerically precise way to adjust the live balance is to simply repeat the scaling (hence the
+            // second call below).
 
             // The Vault actually guarantees a token with paysYieldFees set is a WITH_RATE token, so technically we
             // could just check the flag, but we don't want to introduce that dependency for a slight gas savings.
