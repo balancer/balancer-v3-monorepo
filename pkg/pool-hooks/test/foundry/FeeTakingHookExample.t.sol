@@ -43,12 +43,12 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         return address(hook);
     }
 
-    function testFeeSwapExactIn__Fuzz(uint256 swapAmount, uint256 hookFeePercentage) public {
+    function testFeeSwapExactIn__Fuzz(uint256 swapAmount, uint64 hookFeePercentage) public {
         // Swap between _minSwapAmount and whole pool liquidity (pool math is linear)
         swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
 
         // Fee between 0 and 100%
-        hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
+        hookFeePercentage = uint64(bound(hookFeePercentage, 0, 1e18));
         FeeTakingHookExample(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
@@ -90,12 +90,12 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         _checkPoolAndVaultBalancesAfterSwap(vars, swapAmount);
     }
 
-    function testFeeSwapExactOut__Fuzz(uint256 swapAmount, uint256 hookFeePercentage) public {
+    function testFeeSwapExactOut__Fuzz(uint256 swapAmount, uint64 hookFeePercentage) public {
         // Swap between _minSwapAmount and whole pool liquidity (pool math is linear)
         swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
 
         // Fee between 0 and 100%
-        hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
+        hookFeePercentage = uint64(bound(hookFeePercentage, 0, 1e18));
         FeeTakingHookExample(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
@@ -146,9 +146,9 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         _checkPoolAndVaultBalancesAfterSwap(vars, swapAmount);
     }
 
-    function testHookFeeAddLiquidityExactIn__Fuzz(uint256 expectedBptOut, uint256 hookFeePercentage) public {
+    function testHookFeeAddLiquidityExactIn__Fuzz(uint256 expectedBptOut, uint64 hookFeePercentage) public {
         // Add fee between 0 and 100%
-        hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
+        hookFeePercentage = uint64(bound(hookFeePercentage, 0, 1e18));
         FeeTakingHookExample(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
 
         // Since operation is not settled in advance, max expected bpt out can't generate a hook fee higher than
@@ -199,7 +199,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         _checkAddLiquidityHookTestResults(vars, actualAmountsIn, expectedBptOut, hookFee, 0);
     }
 
-    function testHookFeeRemoveLiquidityExactIn__Fuzz(uint256 expectedBptIn, uint256 hookFeePercentage) public {
+    function testHookFeeRemoveLiquidityExactIn__Fuzz(uint256 expectedBptIn, uint64 hookFeePercentage) public {
         // Add liquidity so bob has BPT to remove liquidity
         vm.prank(bob);
         router.addLiquidityProportional(
@@ -211,7 +211,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         );
 
         // Add fee between 0 and 100%
-        hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
+        hookFeePercentage = uint64(bound(hookFeePercentage, 0, 1e18));
         FeeTakingHookExample(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
 
         // Make sure bob has enough to pay for the transaction

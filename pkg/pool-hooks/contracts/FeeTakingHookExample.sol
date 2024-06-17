@@ -21,9 +21,9 @@ import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.s
 contract FeeTakingHookExample is BasePoolHooks {
     using FixedPoint for uint256;
 
-    uint256 public hookSwapFeePercentage;
-    uint256 public addLiquidityHookFeePercentage;
-    uint256 public removeLiquidityHookFeePercentage;
+    uint64 public hookSwapFeePercentage;
+    uint64 public addLiquidityHookFeePercentage;
+    uint64 public removeLiquidityHookFeePercentage;
 
     constructor(IVault vault) BasePoolHooks(vault) {
         // solhint-previous-line no-empty-blocks
@@ -158,18 +158,18 @@ contract FeeTakingHookExample is BasePoolHooks {
     // Setters
 
     // Sets the hook swap fee percentage, which will be accrued after a swap was executed
-    function setHookSwapFeePercentage(uint256 feePercentage) external {
+    function setHookSwapFeePercentage(uint64 feePercentage) external {
         hookSwapFeePercentage = feePercentage;
     }
 
     // Sets the hook add liquidity fee percentage, which will be accrued after an add liquidity operation was executed
-    function setAddLiquidityHookFeePercentage(uint256 hookFeePercentage) public {
+    function setAddLiquidityHookFeePercentage(uint64 hookFeePercentage) public {
         addLiquidityHookFeePercentage = hookFeePercentage;
     }
 
     // Sets the hook remove liquidity fee percentage, which will be accrued after a remove liquidity operation was
     // executed
-    function setRemoveLiquidityHookFeePercentage(uint256 hookFeePercentage) public {
+    function setRemoveLiquidityHookFeePercentage(uint64 hookFeePercentage) public {
         removeLiquidityHookFeePercentage = hookFeePercentage;
     }
 }
