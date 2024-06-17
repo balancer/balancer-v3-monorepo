@@ -140,7 +140,9 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         tokenDecimalDiffs[0] = 12;
         tokenDecimalDiffs[1] = 10;
         tokenDecimalDiffs[2] = 0;
-        originalPoolConfig = originalPoolConfig.setTokenDecimalDiffs(PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs));
+        originalPoolConfig = originalPoolConfig.setTokenDecimalDiffs(
+            PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs)
+        );
         originalPoolConfig = originalPoolConfig.setPoolRegistered(true);
         vault.manualSetPoolConfigBits(pool, originalPoolConfig);
 
@@ -200,14 +202,6 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         originalLastLiveBalances[1] = balance3;
         originalLastLiveBalances[2] = balance1;
         vault.manualSetPoolTokenBalances(pool, tokens, originalBalancesRaw, originalLastLiveBalances);
-
-        // PoolConfig memory originalPoolConfig;
-        // uint8[] memory tokenDecimalDiffs = new uint8[](3);
-        // tokenDecimalDiffs[0] = decimalDiff1;
-        // tokenDecimalDiffs[1] = decimalDiff2;
-        // tokenDecimalDiffs[2] = decimalDiff3;
-        // originalPoolConfig.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
-        // vault.manualSetPoolConfig(pool, originalPoolConfig);
 
         (
             IERC20[] memory newTokens,
