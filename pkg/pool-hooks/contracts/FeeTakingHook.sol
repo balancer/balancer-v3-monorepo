@@ -56,21 +56,26 @@ contract FeeTakingHook is BasePoolHooks {
         if (hookSwapFeePercentage > 0) {
             uint256 hookFee = hookAdjustedAmountCalculatedRaw.mulDown(hookSwapFeePercentage);
             if (params.kind == SwapKind.EXACT_IN) {
-                // In EXACT_IN, the amount calculated is the amount of tokens out. The hook needs to charge the fee
-                // from amount calculated, so we will take an amount from the total tokens out, and update the amount
-                // calculated accordingly
+                // For EXACT_IN swaps, the `amountCalculated` is the amount of `tokenOut`. The fee must be taken
+                // from `amountCalculated`, so we decrease the amount of tokens the Vault will send to the caller.
+                //
+                // The preceding swap operation has already credited the original `amountCalculated`. Since we're
+                // returning `amountCalculated - hookFee` here, it will only register debt for that reduced amount
+                // on settlement. This call to `sendTo` pulls `hookFee` tokens of `tokenOut` from the Vault to this
+                // contract, and registers the additional debt, so that the total debts match the credits and
+                // settlement succeeds.
                 hookAdjustedAmountCalculatedRaw -= hookFee;
-                // Vault sends tokens to hook and registers the debt. Since amounts calculated is the amount out of
-                // the swap operation, a credit was already supplied to the current operation, so this hookFee debt
-                // will be discounted from there
                 _vault.sendTo(params.tokenOut, address(this), hookFee);
             } else {
-                // In EXACT_OUT, the amount calculated is the amount of tokens in. The hook needs to charge the fee
-                // from amount calculated, so we will increase the amount of tokens in that the user needs to pay.
+                // For EXACT_OUT swaps, the `amountCalculated` is the amount of `tokenIn`. The fee must be taken
+                // from `amountCalculated`, so we increase the amount of tokens the Vault will ask from the user.
+                //
+                // The preceding swap operation has already registered debt for the original `amountCalculated`.
+                // Since we're returning `amountCalculated + hookFee` here, it will supply credit for that increased
+                // amount on settlement. This call to `sendTo` pulls `hookFee` tokens of `tokenIn` from the Vault to
+                // this contract, and registers the additional debt, so that the total debts match the credits and
+                // settlement succeeds.
                 hookAdjustedAmountCalculatedRaw += hookFee;
-                // Vault sends tokens to hook and registers the debt. Since amounts calculated is the amount in of
-                // the swap operation, this debt will increase the amount of tokens in that needs to be settled by the
-                // router
                 _vault.sendTo(params.tokenIn, address(this), hookFee);
             }
         }
