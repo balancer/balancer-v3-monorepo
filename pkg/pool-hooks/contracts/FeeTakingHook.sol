@@ -128,9 +128,9 @@ contract FeeTakingHook is BasePoolHooks {
         uint256[] memory,
         bytes memory
     ) external override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
-        // Currently, the hook fee implementation for onAfterRemoveLiquidity only support proportional removeLiquidity.
-        // That's because other types of removeLiquidity requires an exact amount out, so fees need to be charged as
-        // BPTs, and our current architecture does not support it.
+        // Our current architecture only supports fees on tokens. Since we must always respect exact `amountsOut`, and
+        // non-proportional remove liquidity operations would require taking fees in BPT, we only support proportional
+        // removeLiquidity.
         if (kind != RemoveLiquidityKind.PROPORTIONAL) {
             // Returning false will make the transaction revert, so the second argument does not matter.
             return (false, amountsOutRaw);
