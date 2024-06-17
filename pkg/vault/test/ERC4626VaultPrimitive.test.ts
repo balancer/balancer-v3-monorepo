@@ -162,9 +162,9 @@ describe('ERC4626VaultPrimitive', function () {
       expect(paused).to.be.false;
 
       expect(poolConfig.pauseWindowEndTime).to.gt(currentTime);
-      expect(poolConfig.disableUnbalancedLiquidity).to.be.false;
-      expect(poolConfig.enableAddLiquidityCustom).to.be.true;
-      expect(poolConfig.enableRemoveLiquidityCustom).to.be.true;
+      expect(poolConfig.liquidityManagement.disableUnbalancedLiquidity).to.be.false;
+      expect(poolConfig.liquidityManagement.enableAddLiquidityCustom).to.be.true;
+      expect(poolConfig.liquidityManagement.enableRemoveLiquidityCustom).to.be.true;
 
       const hooksConfig: HooksConfigStructOutput = await vault.getHooksConfig(pool);
       expect(hooksConfig.shouldCallBeforeInitialize).to.be.false;

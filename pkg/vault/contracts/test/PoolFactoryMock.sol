@@ -10,13 +10,14 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FactoryWidePauseWindow } from "../factories/FactoryWidePauseWindow.sol";
+import { PoolConfigBits } from "../lib/PoolConfigLib.sol";
 
 contract PoolFactoryMock is FactoryWidePauseWindow {
     uint256 private constant DEFAULT_SWAP_FEE = 0;
 
     IVault private immutable _vault;
 
-    constructor(IVault vault, uint256 pauseWindowDuration) FactoryWidePauseWindow(pauseWindowDuration) {
+    constructor(IVault vault, uint32 pauseWindowDuration) FactoryWidePauseWindow(pauseWindowDuration) {
         _vault = vault;
     }
 

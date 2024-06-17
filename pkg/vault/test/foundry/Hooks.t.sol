@@ -17,6 +17,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
+import { PoolConfigBits } from "../../contracts/lib/PoolConfigLib.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 

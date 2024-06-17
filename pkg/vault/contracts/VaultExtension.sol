@@ -35,8 +35,9 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
-import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
+import { HooksConfigLib, HooksConfigBits } from "./lib/HooksConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
@@ -59,8 +60,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
-    using PoolConfigLib for PoolConfig;
-    using HooksConfigLib for HooksConfig;
+    using PoolConfigLib for PoolConfigBits;
     using InputHelpers for uint256;
     using ScalingHelpers for *;
     using VaultExtensionsLib for IVault;
@@ -179,7 +179,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert PoolAlreadyRegistered(pool);
         }
 
-        HooksConfig memory hooksConfig;
+        HooksConfigBits hooksConfig = _hooksConfigBits[pool];
 
         if (params.poolHooksContract != address(0)) {
             // If a hook address was passed, make sure that hook trusts the pool factory
@@ -197,18 +197,19 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // Gets the default HooksConfig from the hook contract and saves in the vault state
             // Storing into hooksConfig first avoids stack-too-deep
             IHooks.HookFlags memory hookFlags = IHooks(params.poolHooksContract).getHookFlags();
-            _hooksConfig[pool] = HooksConfig({
-                shouldCallBeforeInitialize: hookFlags.shouldCallBeforeInitialize,
-                shouldCallAfterInitialize: hookFlags.shouldCallAfterInitialize,
-                shouldCallComputeDynamicSwapFee: hookFlags.shouldCallComputeDynamicSwapFee,
-                shouldCallBeforeSwap: hookFlags.shouldCallBeforeSwap,
-                shouldCallAfterSwap: hookFlags.shouldCallAfterSwap,
-                shouldCallBeforeAddLiquidity: hookFlags.shouldCallBeforeAddLiquidity,
-                shouldCallAfterAddLiquidity: hookFlags.shouldCallAfterAddLiquidity,
-                shouldCallBeforeRemoveLiquidity: hookFlags.shouldCallBeforeRemoveLiquidity,
-                shouldCallAfterRemoveLiquidity: hookFlags.shouldCallAfterRemoveLiquidity,
-                hooksContract: params.poolHooksContract
-            });
+
+            hooksConfig = hooksConfig.setShouldCallBeforeInitialize(hookFlags.shouldCallBeforeInitialize);
+            hooksConfig = hooksConfig.setShouldCallAfterInitialize(hookFlags.shouldCallAfterInitialize);
+            hooksConfig = hooksConfig.setShouldCallComputeDynamicSwapFee(hookFlags.shouldCallComputeDynamicSwapFee);
+            hooksConfig = hooksConfig.setShouldCallBeforeSwap(hookFlags.shouldCallBeforeSwap);
+            hooksConfig = hooksConfig.setShouldCallAfterSwap(hookFlags.shouldCallAfterSwap);
+            hooksConfig = hooksConfig.setShouldCallBeforeAddLiquidity(hookFlags.shouldCallBeforeAddLiquidity);
+            hooksConfig = hooksConfig.setShouldCallAfterAddLiquidity(hookFlags.shouldCallAfterAddLiquidity);
+            hooksConfig = hooksConfig.setShouldCallBeforeRemoveLiquidity(hookFlags.shouldCallBeforeRemoveLiquidity);
+            hooksConfig = hooksConfig.setShouldCallAfterRemoveLiquidity(hookFlags.shouldCallAfterRemoveLiquidity);
+            hooksConfig = hooksConfig.setHooksContract(params.poolHooksContract);
+
+            _hooksConfigBits[pool] = hooksConfig;
         }
 
         uint256 numTokens = params.tokenConfig.length;
@@ -276,27 +277,28 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Make pool role assignments. A zero address means default to the authorizer.
         _assignPoolRoles(pool, params.roleAccounts);
 
-        // NOTE: a new stack scope otherwise of stack-too-deep error using viaIR compilation
         // Store config and mark the pool as registered
-
         {
-            PoolConfig memory config = _poolConfig[pool];
-            config.isPoolRegistered = true;
-
-            config.disableUnbalancedLiquidity = params.liquidityManagement.disableUnbalancedLiquidity;
-            config.enableAddLiquidityCustom = params.liquidityManagement.enableAddLiquidityCustom;
-            config.enableRemoveLiquidityCustom = params.liquidityManagement.enableRemoveLiquidityCustom;
-
-            config.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
-            config.pauseWindowEndTime = params.pauseWindowEndTime;
-
             // Initialize the pool-specific protocol fee values to the current global defaults.
             (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) = _protocolFeeController
                 .registerPool(pool, params.roleAccounts.poolCreator, params.protocolFeeExempt);
-            config.setAggregateSwapFeePercentage(aggregateSwapFeePercentage);
-            config.setAggregateYieldFeePercentage(aggregateYieldFeePercentage);
 
-            _poolConfig[pool] = config;
+            PoolConfigBits poolConfigBits = _poolConfigBits[pool];
+
+            poolConfigBits = poolConfigBits.setPoolRegistered(true);
+            poolConfigBits = poolConfigBits.setDisableUnbalancedLiquidity(
+                params.liquidityManagement.disableUnbalancedLiquidity
+            );
+            poolConfigBits = poolConfigBits.setAddLiquidityCustom(params.liquidityManagement.enableAddLiquidityCustom);
+            poolConfigBits = poolConfigBits.setRemoveLiquidityCustom(
+                params.liquidityManagement.enableRemoveLiquidityCustom
+            );
+            poolConfigBits = poolConfigBits.setTokenDecimalDiffs(PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs));
+            poolConfigBits = poolConfigBits.setPauseWindowEndTime(params.pauseWindowEndTime);
+            poolConfigBits = poolConfigBits.setAggregateSwapFeePercentage(aggregateSwapFeePercentage);
+            poolConfigBits = poolConfigBits.setAggregateYieldFeePercentage(aggregateYieldFeePercentage);
+
+            _poolConfigBits[pool] = poolConfigBits;
         }
 
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
@@ -309,7 +311,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.swapFeePercentage,
             params.pauseWindowEndTime,
             params.roleAccounts,
-            hooksConfig,
+            hooksConfig.toHooksConfig(),
             params.liquidityManagement
         );
     }
@@ -348,13 +350,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 minBptAmountOut,
         bytes memory userData
     ) external onlyWhenUnlocked withRegisteredPool(pool) onlyVaultDelegateCall returns (uint256 bptAmountOut) {
-        _ensureUnpausedAndGetVaultState(pool);
-        HooksConfig memory hooksConfig = _hooksConfig[pool];
+        _ensureUnpaused(pool);
+        HooksConfigBits hooksConfig = _hooksConfigBits[pool];
 
         // Balances are zero until after initialize is callled, so there is no need to charge pending yield fee here.
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
 
-        if (poolData.poolConfig.isPoolInitialized) {
+        if (poolData.poolConfigBits.isPoolInitialized()) {
             revert PoolAlreadyInitialized(pool);
         }
         uint256 numTokens = poolData.tokens.length;
@@ -417,9 +419,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         emit PoolBalanceChanged(pool, to, exactAmountsIn.unsafeCastToInt256(true));
 
+        poolData.poolConfigBits = poolData.poolConfigBits.setPoolInitialized(true);
+
         // Store config and mark the pool as initialized
-        poolData.poolConfig.isPoolInitialized = true;
-        _poolConfig[pool] = poolData.poolConfig;
+        _poolConfigBits[pool] = poolData.poolConfigBits;
 
         // Pass scaled balances to the pool
         bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18);
@@ -458,14 +461,33 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function getPoolConfig(
         address pool
     ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (PoolConfig memory) {
-        return _poolConfig[pool];
+        PoolConfigBits config = _poolConfigBits[pool];
+
+        return
+            PoolConfig({
+                isPoolRegistered: config.isPoolRegistered(),
+                isPoolInitialized: config.isPoolInitialized(),
+                isPoolPaused: config.isPoolPaused(),
+                isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
+                staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
+                aggregateSwapFeePercentage: config.getAggregateSwapFeePercentage(),
+                aggregateYieldFeePercentage: config.getAggregateYieldFeePercentage(),
+                tokenDecimalDiffs: config.getTokenDecimalDiffs(),
+                pauseWindowEndTime: config.getPauseWindowEndTime(),
+                liquidityManagement: LiquidityManagement({
+                    // NOTE: supportUnbalancedLiquidity is inverted because false means it is supported
+                    disableUnbalancedLiquidity: !config.supportsUnbalancedLiquidity(),
+                    enableAddLiquidityCustom: config.supportsAddLiquidityCustom(),
+                    enableRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom()
+                })
+            });
     }
 
     /// @inheritdoc IVaultExtension
     function getHooksConfig(
         address pool
     ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (HooksConfig memory) {
-        return _hooksConfig[pool];
+        return _hooksConfigBits[pool].toHooksConfig();
     }
 
     /// @inheritdoc IVaultExtension
@@ -498,7 +520,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool,
         IBasePool.PoolSwapParams memory swapParams
     ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (bool success, uint256 dynamicSwapFee) {
-        return _hooksConfig[pool].onComputeDynamicSwapFee(swapParams, _poolConfig[pool].getStaticSwapFeePercentage());
+        return
+            _hooksConfigBits[pool].onComputeDynamicSwapFee(
+                swapParams,
+                _poolConfigBits[pool].getStaticSwapFeePercentage()
+            );
     }
 
     /// @inheritdoc IVaultExtension
@@ -609,7 +635,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function getStaticSwapFeePercentage(
         address pool
     ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (uint256) {
-        return _poolConfig[pool].getStaticSwapFeePercentage();
+        PoolConfigBits config = _poolConfigBits[pool];
+        return config.getStaticSwapFeePercentage();
     }
 
     /// @inheritdoc IVaultExtension
@@ -739,7 +766,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert EVMCallModeHelpers.NotStaticCall();
         }
 
-        bool _isQueryDisabled = _vaultState.isQueryDisabled;
+        bool _isQueryDisabled = _vaultStateBits.isQueryDisabled();
         if (_isQueryDisabled) {
             revert QueriesDisabled();
         }
@@ -777,7 +804,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultExtension
     function isQueryDisabled() external view onlyVaultDelegateCall returns (bool) {
-        return _vaultState.isQueryDisabled;
+        return _vaultStateBits.isQueryDisabled();
     }
 
     receive() external payable {

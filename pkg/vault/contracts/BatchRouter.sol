@@ -427,7 +427,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                 }
 
                 if (step.isBuffer) {
-                    if (stepLocals.isLastStep && !EVMCallModeHelpers.isStaticCall()) {
+                    if (stepLocals.isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
                         // The buffer will need this token to wrap/unwrap, so take it from the user in advance
                         _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
                     }
