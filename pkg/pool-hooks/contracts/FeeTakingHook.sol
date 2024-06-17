@@ -132,7 +132,7 @@ contract FeeTakingHook is BasePoolHooks {
         // That's because other types of removeLiquidity requires an exact amount out, so fees need to be charged as
         // BPTs, and our current architecture does not support it.
         if (kind != RemoveLiquidityKind.PROPORTIONAL) {
-            // Make the transaction revert by returning false. The second argument does not matter
+            // Returning false will make the transaction revert, so the second argument does not matter.
             return (false, amountsOutRaw);
         }
 
