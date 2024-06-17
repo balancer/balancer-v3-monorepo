@@ -370,7 +370,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        if (hooksConfig.callBeforeInitializeHook(exactAmountsInScaled18, userData) == true) {
+        if (hooksConfig.callBeforeInitializeHook(exactAmountsInScaled18, userData)) {
             // The before hook is reentrant, and could have changed token rates.
             // Updating balances here is unnecessary since they're 0, but we do not special case before init
             // for the sake of bytecode size.
