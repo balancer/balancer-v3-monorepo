@@ -12,34 +12,34 @@ import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openze
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { PackedTokenBalance } from "./PackedTokenBalance.sol";
-import { PoolConfigLib } from "./PoolConfigLib.sol";
+import { PoolConfigBits, PoolConfigLib } from "./PoolConfigLib.sol";
 
 library PoolDataLib {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using PackedTokenBalance for bytes32;
     using FixedPoint for *;
     using ScalingHelpers for *;
-    using PoolConfigLib for PoolConfig;
+    using PoolConfigLib for PoolConfigBits;
 
     function load(
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
-        PoolConfig memory poolConfig,
+        PoolConfigBits poolConfigBits,
         mapping(IERC20 => TokenInfo) storage poolTokenInfo,
         Rounding roundingDirection
     ) internal view returns (PoolData memory poolData) {
         uint256 numTokens = poolTokenBalances.length();
-        poolData.poolConfig = poolConfig;
 
+        poolData.poolConfigBits = poolConfigBits;
         poolData.tokens = new IERC20[](numTokens);
         poolData.tokenInfo = new TokenInfo[](numTokens);
         poolData.balancesRaw = new uint256[](numTokens);
         poolData.balancesLiveScaled18 = new uint256[](numTokens);
-        poolData.decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolData.poolConfig, numTokens);
+        poolData.decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolData.poolConfigBits, numTokens);
         poolData.tokenRates = new uint256[](numTokens);
 
-        bool poolSubjectToYieldFees = poolData.poolConfig.isPoolInitialized &&
-            poolData.poolConfig.aggregateYieldFeePercentageUnscaled > 0 &&
-            poolData.poolConfig.isPoolInRecoveryMode == false;
+        bool poolSubjectToYieldFees = poolData.poolConfigBits.isPoolInitialized() &&
+            poolData.poolConfigBits.getAggregateYieldFeePercentage() > 0 &&
+            poolData.poolConfigBits.isPoolInRecoveryMode() == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             (IERC20 token, bytes32 packedBalance) = poolTokenBalances.unchecked_at(i);
@@ -72,7 +72,7 @@ library PoolDataLib {
                     poolData,
                     packedBalance.getBalanceDerived(),
                     i,
-                    poolData.poolConfig.getAggregateYieldFeePercentage()
+                    poolData.poolConfigBits.getAggregateYieldFeePercentage()
                 );
 
                 if (aggregateYieldFeeAmountRaw > 0) {

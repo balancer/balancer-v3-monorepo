@@ -14,12 +14,12 @@ import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
-import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
+import { PoolConfigLib, PoolConfigBits } from "../../../contracts/lib/PoolConfigLib.sol";
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 contract VaultCommonBasicFunctionsTest is BaseVaultTest {
-    using PoolConfigLib for PoolConfig;
+    using PoolConfigLib for PoolConfigBits;
     using SafeCast for *;
     using ArrayHelpers for *;
 
@@ -135,14 +135,14 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         rawBalances[2] = 3000;
         vault.manualSetPoolTokenBalances(pool, tokens, rawBalances, rawBalances);
 
-        PoolConfig memory originalPoolConfig;
+        PoolConfigBits originalPoolConfig;
         uint8[] memory tokenDecimalDiffs = new uint8[](3);
         tokenDecimalDiffs[0] = 12;
         tokenDecimalDiffs[1] = 10;
         tokenDecimalDiffs[2] = 0;
-        originalPoolConfig.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
-        originalPoolConfig.isPoolRegistered = true;
-        vault.manualSetPoolConfig(pool, originalPoolConfig);
+        originalPoolConfig = originalPoolConfig.setTokenDecimalDiffs(PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs));
+        originalPoolConfig = originalPoolConfig.setPoolRegistered(true);
+        vault.manualSetPoolConfigBits(pool, originalPoolConfig);
 
         (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(pool);
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
@@ -159,10 +159,9 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
                 string.concat("decimalScalingFactors of token", Strings.toString(i), "should match tokenDecimalDiffs")
             );
         }
-
         assertEq(
-            keccak256(abi.encode(originalPoolConfig)),
-            keccak256(abi.encode(poolConfig)),
+            PoolConfigBits.unwrap(vault.manualGetPoolConfigBits(pool)),
+            PoolConfigBits.unwrap(originalPoolConfig),
             "original and new poolConfigs should be the same"
         );
     }

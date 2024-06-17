@@ -25,8 +25,9 @@ import {
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
 
-import { PoolConfigLib } from "../lib/PoolConfigLib.sol";
-import { HooksConfigLib } from "../lib/HooksConfigLib.sol";
+import { VaultStateLib, VaultStateBits, VaultStateBits } from "../lib/VaultStateLib.sol";
+import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
+import { HooksConfigLib, HooksConfigBits } from "../lib/HooksConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
@@ -45,8 +46,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using ScalingHelpers for uint256;
     using PackedTokenBalance for bytes32;
-    using PoolConfigLib for PoolConfig;
-    using HooksConfigLib for HooksConfig;
+    using PoolConfigLib for *;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
@@ -78,12 +78,21 @@ contract VaultMock is IVaultMainMock, Vault {
         _mint(token, to, amount);
     }
 
-    function setConfig(address pool, PoolConfig calldata config) external {
-        _poolConfig[pool] = config;
-    }
-
     function setHooksConfig(address pool, HooksConfig calldata config) external {
-        _hooksConfig[pool] = config;
+        HooksConfigBits hooksConfig = _hooksConfigBits[pool];
+
+        hooksConfig = hooksConfig.setShouldCallBeforeInitialize(config.shouldCallBeforeInitialize);
+        hooksConfig = hooksConfig.setShouldCallAfterInitialize(config.shouldCallAfterInitialize);
+        hooksConfig = hooksConfig.setShouldCallComputeDynamicSwapFee(config.shouldCallComputeDynamicSwapFee);
+        hooksConfig = hooksConfig.setShouldCallBeforeSwap(config.shouldCallBeforeSwap);
+        hooksConfig = hooksConfig.setShouldCallAfterSwap(config.shouldCallAfterSwap);
+        hooksConfig = hooksConfig.setShouldCallBeforeAddLiquidity(config.shouldCallBeforeAddLiquidity);
+        hooksConfig = hooksConfig.setShouldCallAfterAddLiquidity(config.shouldCallAfterAddLiquidity);
+        hooksConfig = hooksConfig.setShouldCallBeforeRemoveLiquidity(config.shouldCallBeforeRemoveLiquidity);
+        hooksConfig = hooksConfig.setShouldCallAfterRemoveLiquidity(config.shouldCallAfterRemoveLiquidity);
+        hooksConfig = hooksConfig.setHooksContract(config.hooksContract);
+
+        _hooksConfigBits[pool] = hooksConfig;
     }
 
     // Used for testing pool registration, which is ordinarily done in the pool factory.
@@ -164,9 +173,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetPoolRegistered(address pool, bool status) public {
-        PoolConfig memory poolConfig = _poolConfig[pool];
-        poolConfig.isPoolRegistered = status;
-        _poolConfig[pool] = poolConfig;
+        _poolConfigBits[pool] = _poolConfigBits[pool].setPoolRegistered(status);
     }
 
     function manualSetIsUnlocked(bool status) public {
@@ -174,36 +181,50 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) public {
-        PoolConfig memory poolConfig = _poolConfig[pool];
-        poolConfig.isPoolInitialized = isPoolInitialized;
-        _poolConfig[pool] = poolConfig;
+        _poolConfigBits[pool] = _poolConfigBits[pool].setPoolInitialized(isPoolInitialized);
     }
 
     function manualSetPoolPauseWindowEndTime(address pool, uint32 pauseWindowEndTime) public {
-        PoolConfig memory poolConfig = _poolConfig[pool];
-        poolConfig.pauseWindowEndTime = pauseWindowEndTime;
-        _poolConfig[pool] = poolConfig;
+        _poolConfigBits[pool] = _poolConfigBits[pool].setPauseWindowEndTime(pauseWindowEndTime);
     }
 
     function manualSetPoolPaused(address pool, bool isPoolPaused) public {
-        PoolConfig memory poolConfig = _poolConfig[pool];
-        poolConfig.isPoolPaused = isPoolPaused;
-        _poolConfig[pool] = poolConfig;
+        _poolConfigBits[pool] = _poolConfigBits[pool].setPoolPaused(isPoolPaused);
     }
 
     function manualSetVaultPaused(bool isVaultPaused) public {
-        _vaultState.isVaultPaused = isVaultPaused;
+        _vaultStateBits = _vaultStateBits.setVaultPaused(isVaultPaused);
     }
 
     function manualSetVaultState(bool isVaultPaused, bool isQueryDisabled) public {
-        VaultState memory vaultState = _vaultState;
-        vaultState.isVaultPaused = isVaultPaused;
-        vaultState.isQueryDisabled = isQueryDisabled;
-        _vaultState = vaultState;
+        _vaultStateBits = _vaultStateBits.setVaultPaused(isVaultPaused).setQueryDisabled(isQueryDisabled);
     }
 
-    function manualSetPoolConfig(address pool, PoolConfig memory poolConfig) public {
-        _poolConfig[pool] = poolConfig;
+    function manualSetPoolConfig(address pool, PoolConfig memory config) public {
+        PoolConfigBits poolConfigBits = _poolConfigBits[pool];
+
+        poolConfigBits = poolConfigBits.setPoolRegistered(config.isPoolRegistered);
+        poolConfigBits = poolConfigBits.setPoolInitialized(config.isPoolInitialized);
+        poolConfigBits = poolConfigBits.setPoolInRecoveryMode(config.isPoolInRecoveryMode);
+        poolConfigBits = poolConfigBits.setPoolPaused(config.isPoolPaused);
+        poolConfigBits = poolConfigBits.setStaticSwapFeePercentage(config.staticSwapFeePercentage);
+        poolConfigBits = poolConfigBits.setAggregateSwapFeePercentage(config.aggregateSwapFeePercentage);
+        poolConfigBits = poolConfigBits.setAggregateYieldFeePercentage(config.aggregateYieldFeePercentage);
+        poolConfigBits = poolConfigBits.setTokenDecimalDiffs(config.tokenDecimalDiffs);
+        poolConfigBits = poolConfigBits.setPauseWindowEndTime(config.pauseWindowEndTime);
+        poolConfigBits = poolConfigBits.setDisableUnbalancedLiquidity(
+            config.liquidityManagement.disableUnbalancedLiquidity
+        );
+        poolConfigBits = poolConfigBits.setAddLiquidityCustom(config.liquidityManagement.enableAddLiquidityCustom);
+        poolConfigBits = poolConfigBits.setRemoveLiquidityCustom(
+            config.liquidityManagement.enableRemoveLiquidityCustom
+        );
+
+        _poolConfigBits[pool] = poolConfigBits;
+    }
+
+    function manualSetPoolConfigBits(address pool, PoolConfigBits config) public {
+        _poolConfigBits[pool] = config;
     }
 
     function manualSetPoolTokenInfo(address pool, TokenConfig[] memory tokenConfig) public {
@@ -246,7 +267,13 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function ensureUnpausedAndGetVaultState(address pool) public view returns (VaultState memory vaultState) {
-        vaultState = _ensureUnpausedAndGetVaultState(pool);
+        _ensureUnpaused(pool);
+        VaultStateBits state = _vaultStateBits;
+        vaultState = VaultState({
+            isQueryDisabled: state.isQueryDisabled(),
+            isVaultPaused: state.isVaultPaused(),
+            areBuffersPaused: state.areBuffersPaused()
+        });
     }
 
     function buildTokenConfig(IERC20[] memory tokens) public view returns (TokenConfig[] memory tokenConfig) {
@@ -442,15 +469,11 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetAggregateSwapFeePercentage(address pool, uint256 value) external {
-        PoolConfig memory config = _poolConfig[pool];
-        config.setAggregateSwapFeePercentage(value);
-        _poolConfig[pool] = config;
+        _poolConfigBits[pool] = _poolConfigBits[pool].setAggregateSwapFeePercentage(value);
     }
 
     function manualSetAggregateYieldFeePercentage(address pool, uint256 value) external {
-        PoolConfig memory config = _poolConfig[pool];
-        config.setAggregateYieldFeePercentage(value);
-        _poolConfig[pool] = config;
+        _poolConfigBits[pool] = _poolConfigBits[pool].setAggregateYieldFeePercentage(value);
     }
 
     function manualBuildPoolSwapParams(
@@ -546,6 +569,10 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualTransfer(IERC20 token, address to, uint256 amount) external {
         token.transfer(to, amount);
+    }
+
+    function manualGetPoolConfigBits(address pool) external view returns (PoolConfigBits) {
+        return _poolConfigBits[pool];
     }
 
     function manualGetIsUnlocked() external view returns (StorageSlot.BooleanSlotType slot) {

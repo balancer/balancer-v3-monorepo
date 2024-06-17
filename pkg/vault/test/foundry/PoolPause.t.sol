@@ -16,7 +16,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { FactoryWidePauseWindow } from "../../contracts/factories/FactoryWidePauseWindow.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
-import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
+import { PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -109,7 +109,7 @@ contract PoolPauseTest is BaseVaultTest {
     }
 
     function testInvalidDuration() public {
-        uint256 maxDuration = type(uint32).max - block.timestamp;
+        uint32 maxDuration = type(uint32).max - uint32(block.timestamp);
 
         vm.expectRevert(FactoryWidePauseWindow.PoolPauseWindowDurationOverflow.selector);
         new PoolFactoryMock(vault, maxDuration + 1);

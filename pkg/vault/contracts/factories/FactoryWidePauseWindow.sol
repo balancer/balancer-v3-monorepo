@@ -20,6 +20,7 @@ contract FactoryWidePauseWindow {
     /// @dev The factory deployer gave a duration that would overflow the Unix timestamp.
     error PoolPauseWindowDurationOverflow();
 
+    // The pause window end time is stored in 32 bits.
     uint32 private constant _MAX_TIMESTAMP = type(uint32).max;
 
     uint32 private immutable _pauseWindowDuration;
@@ -27,14 +28,14 @@ contract FactoryWidePauseWindow {
     // Time when the pause window for all created Pools expires.
     uint32 private immutable _poolsPauseWindowEndTime;
 
-    constructor(uint256 pauseWindowDuration) {
+    constructor(uint32 pauseWindowDuration) {
         if (block.timestamp + pauseWindowDuration > _MAX_TIMESTAMP) {
             revert PoolPauseWindowDurationOverflow();
         }
 
-        _pauseWindowDuration = uint32(pauseWindowDuration);
+        _pauseWindowDuration = pauseWindowDuration;
 
-        _poolsPauseWindowEndTime = uint32(block.timestamp) + uint32(pauseWindowDuration);
+        _poolsPauseWindowEndTime = uint32(block.timestamp) + pauseWindowDuration;
     }
 
     /**

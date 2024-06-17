@@ -21,6 +21,7 @@ import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/We
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
+import { PoolConfigBits } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";

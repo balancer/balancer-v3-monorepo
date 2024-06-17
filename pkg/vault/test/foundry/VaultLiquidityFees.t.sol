@@ -9,13 +9,10 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
-
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultLiquidityWithFeesTest is BaseVaultTest {
     using ArrayHelpers for *;
-    using PoolConfigLib for PoolConfig;
 
     uint64 poolCreatorFeePercentage = 5e17; // 50%
 
@@ -42,9 +39,9 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         PoolConfig memory config = vault.getPoolConfig(pool);
 
-        assertEq(config.getStaticSwapFeePercentage(), swapFeePercentage);
+        assertEq(config.staticSwapFeePercentage, swapFeePercentage);
         assertEq(
-            config.getAggregateSwapFeePercentage(),
+            config.aggregateSwapFeePercentage,
             _getAggregateFeePercentage(protocolSwapFeePercentage, poolCreatorFeePercentage)
         );
     }
