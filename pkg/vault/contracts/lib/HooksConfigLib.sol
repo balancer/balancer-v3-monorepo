@@ -17,10 +17,11 @@ library HooksConfigLib {
      *
      * @param config The encoded hooks configuration
      * @param swapParams The swap parameters used to calculate the fee
+     * @param staticSwapFeePercentage Value of the static swap fee, for reference
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      * @return swapFeePercentage the calculated swap fee percentage. 0 if hook is disabled
      */
-    function onComputeDynamicSwapFee(
+    function callComputeDynamicSwapFeeHook(
         HooksConfig memory config,
         IBasePool.PoolSwapParams memory swapParams,
         uint256 staticSwapFeePercentage
@@ -49,7 +50,7 @@ library HooksConfigLib {
      * @param pool Pool address
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
-    function onBeforeSwap(
+    function callBeforeSwapHook(
         HooksConfig memory config,
         IBasePool.PoolSwapParams memory swapParams,
         address pool
@@ -73,12 +74,13 @@ library HooksConfigLib {
      * @param config The encoded hooks configuration
      * @param amountCalculatedScaled18 Token amount calculated by the swap
      * @param amountCalculatedRaw Token amount calculated by the swap
+     * @param router Router address
      * @param params The swap parameters
      * @param state Temporary state used in swap operations
      * @param poolData Struct containing balance and token information of the pool
-     * @return hookAdjustedAmountCalculatedRaw New amount calculated, modified by the hook
+     * @return hookAdjustedAmountCalculatedRaw New amount calculated, potentially modified by the hook
      */
-    function onAfterSwap(
+    function callAfterSwapHook(
         HooksConfig memory config,
         uint256 amountCalculatedScaled18,
         uint256 amountCalculatedRaw,
@@ -140,7 +142,7 @@ library HooksConfigLib {
      * @param poolData Struct containing balance and token information of the pool
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
-    function onBeforeAddLiquidity(
+    function callBeforeAddLiquidityHook(
         HooksConfig memory config,
         address router,
         uint256[] memory maxAmountsInScaled18,
@@ -178,9 +180,9 @@ library HooksConfigLib {
      * @param bptAmountOut The BPT amount a user will receive after add liquidity operation succeeds
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
-     * @return hookAdjustedAmountsInRaw New amountsInRaw, modified by the hook
+     * @return hookAdjustedAmountsInRaw New amountsInRaw, potentially modified by the hook
      */
-    function onAfterAddLiquidity(
+    function callAfterAddLiquidityHook(
         HooksConfig memory config,
         address router,
         uint256[] memory amountsInScaled18,
@@ -227,11 +229,12 @@ library HooksConfigLib {
      * @param config The encoded hooks configuration
      * @param minAmountsOutScaled18 An array with minimum amounts for each output token of the remove liquidity
      * operation
+     * @param router Router address
      * @param params The remove liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
-    function onBeforeRemoveLiquidity(
+    function callBeforeRemoveLiquidityHook(
         HooksConfig memory config,
         uint256[] memory minAmountsOutScaled18,
         address router,
@@ -264,14 +267,14 @@ library HooksConfigLib {
      * @param config The encoded hooks configuration
      * @param router Router address
      * @param bptAmountIn The BPT amount a user will need burn to remove the liquidity of the pool
-     * @param amountsOutScaled18 Scaled amount of tokens to receive in token registration order
-     * @param amountsOutRaw Actual amount of tokens to receive in token registration order
+     * @param amountsOutScaled18 Scaled amount of tokens to receive, sorted in token registration order
+     * @param amountsOutRaw Actual amount of tokens to receive, sorted in token registration order
      * @param params The remove liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
-     * @return hookAdjustedBptAmountIn New bptAmountIn, modified by the hook
-     * @return hookAdjustedAmountsOutRaw New amountsOutRaw, modified by the hook
+     * @return hookAdjustedBptAmountIn New bptAmountIn, potentially modified by the hook
+     * @return hookAdjustedAmountsOutRaw New amountsOutRaw, potentially modified by the hook
      */
-    function onAfterRemoveLiquidity(
+    function callAfterRemoveLiquidityHook(
         HooksConfig memory config,
         address router,
         uint256 bptAmountIn,
@@ -343,7 +346,7 @@ library HooksConfigLib {
      * @param userData Additional (optional) data required for adding initial liquidity
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
-    function onBeforeInitialize(
+    function callBeforeInitializeHook(
         HooksConfig memory config,
         uint256[] memory exactAmountsInScaled18,
         bytes memory userData
@@ -367,7 +370,7 @@ library HooksConfigLib {
      * @param bptAmountOut The BPT amount a user will receive after initialization operation succeeds
      * @param userData Additional (optional) data required for adding initial liquidity
      */
-    function onAfterInitialize(
+    function callAfterInitializeHook(
         HooksConfig memory config,
         uint256[] memory exactAmountsInScaled18,
         uint256 bptAmountOut,

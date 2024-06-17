@@ -51,15 +51,21 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
 
         // Since operation is not settled in advance, max expected bpt out can't generate a hook fee higher than
         // pool liquidity, or else the hook won't be able to charge fees
-        expectedBptOut = bound(
-            expectedBptOut,
-            _minBptOut,
-            hookFeePercentage == 0 ? MAX_UINT256 : poolInitAmount.divDown(hookFeePercentage)
-        );
+        {
+            uint256 bobDaiBalance = dai.balanceOf(bob);
 
-        // Make sure bob has enough to pay for the transaction
-        if (expectedBptOut > dai.balanceOf(bob)) {
-            expectedBptOut = dai.balanceOf(bob);
+            // Since operation is not settled in advance, max expected bpt out can't generate a hook fee higher than
+            // pool liquidity, or else the hook won't be able to charge fees
+            expectedBptOut = bound(
+                expectedBptOut,
+                _minBptOut,
+                hookFeePercentage == 0 ? bobDaiBalance : poolInitAmount.divDown(hookFeePercentage)
+            );
+
+            // Make sure bob has enough to pay for the transaction
+            if (expectedBptOut > bobDaiBalance) {
+                expectedBptOut = bobDaiBalance;
+            }
         }
 
         uint256[] memory actualAmountsIn = BasePoolMath.computeProportionalAmountsIn(
@@ -194,7 +200,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256[] memory minAmountsOut = [actualAmountOut - hookFee, actualAmountOut - hookFee].toMemoryArray();
         router.removeLiquidityProportional(pool, expectedBptIn, minAmountsOut, false, bytes(""));
 
-        _checkRemoveLiquidityHookTestResults(vars, actualAmountsOut, expectedBptIn, hookFee, 0, false);
+        _checkRemoveLiquidityHookTestResults(vars, actualAmountsOut, expectedBptIn, int256(hookFee), false);
     }
 
     function testHookDiscountRemoveLiquidityExactIn__Fuzz(
@@ -254,7 +260,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
 
         router.removeLiquidityProportional(pool, expectedBptIn, actualAmountsOut, false, bytes(""));
 
-        _checkRemoveLiquidityHookTestResults(vars, actualAmountsOut, expectedBptIn, 0, hookDiscount, false);
+        _checkRemoveLiquidityHookTestResults(vars, actualAmountsOut, expectedBptIn, -(int256(hookDiscount)), false);
     }
 
     function testHookFeeRemoveLiquidityExactOut__Fuzz(uint256 expectedDaiOut, uint256 hookFeePercentage) public {
@@ -457,8 +463,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         HookTestLocals memory vars,
         uint256[] memory actualAmountsOut,
         uint256 expectedBptIn,
-        uint256 expectedHookFee,
-        uint256 expectedHookDiscount,
+        uint256 expectedHookDelta,
         bool isExactOut
     ) private {
         _fillAfterHookTestLocals(vars);

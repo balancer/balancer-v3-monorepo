@@ -7,6 +7,8 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
 contract RouterCommonMock is RouterCommon {
@@ -27,5 +29,9 @@ contract RouterCommonMock is RouterCommon {
         require(success, "RouterCommonMock: failed getSender call");
 
         emit CurrentSenderMock(abi.decode(result, (address)));
+    }
+
+    function manualGetSenderSlot() external view returns (StorageSlot.AddressSlotType) {
+        return _getSenderSlot();
     }
 }
