@@ -13,6 +13,9 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import {
+    TransientStorageHelpers
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
@@ -22,7 +25,11 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     using SafeERC20 for IWETH;
     using StorageSlot for *;
 
-    address private _sender;
+    // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used
+    // by what is written after =. If you use immutable, the value is first calculated and
+    // then replaced everywhere. That means that if a constant has executable variables,
+    // they will be executed every time the constant is used.
+    bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
 
     /// @dev Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
@@ -43,16 +50,17 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     IPermit2 internal immutable _permit2;
 
     modifier saveSender() {
-        {
-            StorageSlot.AddressSlotType senderSlot = _getSenderSlot();
-            address sender = senderSlot.tload();
-
-            // NOTE: This is a one-time operation. The sender can't be changed within the one transaction.
-            if (sender == address(0)) {
-                senderSlot.tstore(msg.sender);
-            }
-        }
+        _saveSender();
         _;
+    }
+
+    function _saveSender() internal {
+        address sender = _getSenderSlot().tload();
+
+        // NOTE: This is a one-time operation. The sender can't be changed within the transaction.
+        if (sender == address(0)) {
+            _getSenderSlot().tstore(msg.sender);
+        }
     }
 
     constructor(IVault vault, IWETH weth, IPermit2 permit2) VaultGuard(vault) {
@@ -155,14 +163,7 @@ contract RouterCommon is IRouterCommon, VaultGuard {
         return _getSenderSlot().tload();
     }
 
-    // solhint-disable no-inline-assembly
-    function _getSenderSlot() internal pure returns (StorageSlot.AddressSlotType) {
-        StorageSlot.AddressSlotType slot;
-
-        assembly {
-            slot := _sender.slot
-        }
-
-        return slot;
+    function _getSenderSlot() internal view returns (StorageSlot.AddressSlotType) {
+        return _SENDER_SLOT.asAddress();
     }
 }
