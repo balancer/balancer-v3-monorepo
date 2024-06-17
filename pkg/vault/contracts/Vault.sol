@@ -776,16 +776,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData
         );
 
-        if (EVMCallModeHelpers.isStaticCall() == false || _vaultState.isQueryDisabled) {
+        if (EVMCallModeHelpers.isStaticCall() == false || _vaultStateBits.isQueryDisabled()) {
             // If not in query mode, transfer BPTs to the hook.
             if (hookAdjustedBptAmountIn > bptAmountIn) {
                 uint256 hookFee = hookAdjustedBptAmountIn - bptAmountIn;
                 _spendAllowance(params.pool, params.from, msg.sender, hookFee);
-                IERC20(params.pool).transferFrom(params.from, hooksConfig.hooksContract, hookFee);
+                IERC20(params.pool).transferFrom(params.from, hooksConfig.getHooksContract(), hookFee);
             } else if (hookAdjustedBptAmountIn < bptAmountIn) {
                 uint256 hookDiscount = bptAmountIn - hookAdjustedBptAmountIn;
-                _spendAllowance(params.pool, hooksConfig.hooksContract, msg.sender, hookDiscount);
-                IERC20(params.pool).transferFrom(hooksConfig.hooksContract, params.from, hookDiscount);
+                _spendAllowance(params.pool, hooksConfig.getHooksContract(), msg.sender, hookDiscount);
+                IERC20(params.pool).transferFrom(hooksConfig.getHooksContract(), params.from, hookDiscount);
             }
         }
         bptAmountIn = hookAdjustedBptAmountIn;
