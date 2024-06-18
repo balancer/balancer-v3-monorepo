@@ -109,7 +109,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultMain
     function unlock(bytes calldata data) external transient returns (bytes memory result) {
-        // Executes the function call with value to the msg.sender.
         return (msg.sender).functionCall(data);
     }
 
