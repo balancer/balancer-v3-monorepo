@@ -198,6 +198,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // Storing into hooksConfig first avoids stack-too-deep
             IHooks.HookFlags memory hookFlags = IHooks(params.poolHooksContract).getHookFlags();
 
+            // Hooks are able to change the result of an add/remove liquidity and swap operation implementing an after
+            // hook, because the after hook has the exact amounts in and amounts out of the operation. onAfter hooks
+            // are able to modify only the calculated part of the operation, since the amount given is exactly what the
+            // user expects to pay/receive from the operation (no flexibility to change the amount given).
+            // In the add/remove liquidity case, unbalanced add/remove have token amounts as amounts given, and BPT
+            // amounts as amounts calculated, which would require a support to change the BPT amount that the user
+            // pays/receives and handle BPT fees in the hook. For simplicity, the vault currently don't support that.
             if (hookFlags.enableHookAdjustedAmounts && params.liquidityManagement.disableUnbalancedLiquidity == false) {
                 revert HookRegistrationFailed(params.poolHooksContract, pool, msg.sender);
             }
