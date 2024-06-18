@@ -9,13 +9,6 @@ import { SwapKind } from "./VaultTypes.sol";
 
 /// @notice Interface for a Base Pool
 interface IBasePool is ISwapFeePercentageBounds {
-    /**
-     * @notice Gets the tokens registered to a pool.
-     * @dev Delegated to the Vault; added here as a convenience, mainly for off-chain processes.
-     * @return tokens List of tokens in the pool
-     */
-    function getPoolTokens() external view returns (IERC20[] memory tokens);
-
     /***************************************************************************
                                    Invariant
     ***************************************************************************/

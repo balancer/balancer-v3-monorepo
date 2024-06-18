@@ -13,12 +13,13 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { BasePoolAuthentication } from "@balancer-labs/v3-vault/contracts/BasePoolAuthentication.sol";
+import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 /// @notice Basic Stable Pool.
-contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Version {
+contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, PoolInfo, Version {
     using FixedPoint for uint256;
     using SafeCast for *;
 
@@ -41,7 +42,11 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
     uint256 private constant _MIN_UPDATE_TIME = 1 days;
     uint256 private constant _MAX_AMP_UPDATE_DAILY_RATE = 2;
 
-    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 0;
+    // Fees are 18-decimal, floating point values, which will be stored in the Vault using 24 bits.
+    // This means they have 0.00001% resolution (i.e., any non-zero bits < 1e11 will cause precision loss).
+    // Minimum values help make the math well-behaved (i.e., the swap fee should overwhelm any rounding error).
+    // Maximum values protect users by preventing permissioned actors from setting excessively high swap fees.
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 0.1e18; // 10%
 
     /// @dev Store amplification state.
@@ -84,6 +89,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
     )
         BalancerPoolToken(vault, params.name, params.symbol)
         BasePoolAuthentication(vault, msg.sender)
+        PoolInfo(vault)
         Version(params.version)
     {
         if (params.amplificationParameter < StableMath.MIN_AMP) {
@@ -95,11 +101,6 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
 
         uint256 initialAmp = params.amplificationParameter * StableMath.AMP_PRECISION;
         _stopAmplification(initialAmp);
-    }
-
-    /// @inheritdoc IBasePool
-    function getPoolTokens() public view returns (IERC20[] memory tokens) {
-        return getVault().getPoolTokens(address(this));
     }
 
     /// @inheritdoc IBasePool

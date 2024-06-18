@@ -49,18 +49,6 @@ interface IVaultAdmin {
     function vault() external view returns (IVault);
 
     /*******************************************************************************
-                                    Pool Information
-    *******************************************************************************/
-
-    /**
-     * @notice Retrieve the scaling factors from a pool's rate providers.
-     * @dev This is not included in `getPoolTokenInfo` since it makes external calls that might revert,
-     * effectively preventing retrieval of basic pool parameters. Tokens without rate providers will always return
-     * FixedPoint.ONE (1e18).
-     */
-    function getPoolTokenRates(address pool) external view returns (uint256[] memory);
-
-    /*******************************************************************************
                                     Vault Pausing
     *******************************************************************************/
 

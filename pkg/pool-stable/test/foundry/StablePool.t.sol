@@ -40,7 +40,6 @@ contract StablePoolTest is BaseVaultTest {
     uint256 constant DELTA = 1e9;
 
     uint256 constant DEFAULT_AMP_FACTOR = 200;
-    uint256 constant DEFAULT_SWAP_FEE = 0;
 
     StablePool internal stablePool;
     uint256 internal bptAmountOut;
@@ -68,7 +67,7 @@ contract StablePoolTest is BaseVaultTest {
                 inputHelpersMock.sortTokenConfig(tokens),
                 DEFAULT_AMP_FACTOR,
                 roleAccounts,
-                DEFAULT_SWAP_FEE,
+                MIN_SWAP_FEE,
                 poolHooksContract,
                 ZERO_BYTES32
             )
@@ -265,6 +264,14 @@ contract StablePoolTest is BaseVaultTest {
 
     function testMaximumSwapFee() public {
         assertEq(stablePool.getMaximumSwapFeePercentage(), MAX_SWAP_FEE, "Maximum swap fee mismatch");
+    }
+
+    function testSetSwapFeeTooLow() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+
+        vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
+        vault.setStaticSwapFeePercentage(address(pool), MIN_SWAP_FEE - 1);
     }
 
     function testSetSwapFeeTooHigh() public {

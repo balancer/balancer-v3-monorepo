@@ -278,29 +278,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
     }
 
-    /**
-     * @notice Fetches the tokens and their corresponding balances for a given pool.
-     * @dev Utilizes an enumerable map to obtain pool token balances.
-     * The function is structured to minimize storage reads by leveraging the `unchecked_at` method.
-     *
-     * @param pool The address of the pool for which tokens and balances are to be fetched.
-     * @return tokens An array of token addresses.
-     */
-    function _getPoolTokens(address pool) internal view returns (IERC20[] memory tokens) {
-        // Retrieve the mapping of tokens and their balances for the specified pool.
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-
-        // Initialize arrays to store tokens based on the number of tokens in the pool.
-        tokens = new IERC20[](poolTokenBalances.length());
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
-            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
-            // storage reads.
-            (tokens[i], ) = poolTokenBalances.unchecked_at(i);
-        }
-    }
-
     function _loadPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
         return
             PoolDataLib.load(_poolTokenBalances[pool], _poolConfigBits[pool], _poolTokenInfo[pool], roundingDirection);
@@ -319,103 +296,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         // Initialize poolData with base information for subsequent calculations.
         poolData = _loadPoolData(pool, roundingDirection);
 
-        uint256[] memory aggregateYieldFeeAmountsRaw = _computePendingYieldFees(pool, poolData);
-
-        uint256 numTokens = aggregateYieldFeeAmountsRaw.length;
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            if (aggregateYieldFeeAmountsRaw[i] > 0) {
-                IERC20 token = poolData.tokens[i];
-
-                poolData.updateRawAndLiveBalance(
-                    i,
-                    poolData.balancesRaw[i] - aggregateYieldFeeAmountsRaw[i],
-                    roundingDirection
-                );
-
-                // Both Swap and Yield fees are stored together in a PackedTokenBalance.
-                // We have designated "Derived" the derived half for Yield fee storage.
-                bytes32 currentPackedBalance = _aggregateFeeAmounts[pool][token];
-                _aggregateFeeAmounts[pool][token] = currentPackedBalance.setBalanceDerived(
-                    currentPackedBalance.getBalanceDerived() + aggregateYieldFeeAmountsRaw[i]
-                );
-            }
-        }
-
-        // Update raw and last live pool balances, as computed by `_loadPoolDataAndYieldFees`
-        _writePoolBalancesToStorage(pool, poolData);
-    }
-
-    /**
-     * @dev Computes the pending yield fees for both the protocol and creator, without changing any state.
-     * No side-effects
-     */
-    function _computePendingYieldFees(
-        address pool,
-        PoolData memory poolData
-    ) internal view returns (uint256[] memory aggregateYieldFeeAmountsRaw) {
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
-        uint256 numTokens = poolBalances.length();
-
-        aggregateYieldFeeAmountsRaw = new uint256[](numTokens);
-
-        uint256 aggregateYieldFeePercentage = poolData.poolConfigBits.getAggregateYieldFeePercentage();
-        bool poolSubjectToYieldFees = poolData.poolConfigBits.isPoolInitialized() &&
-            aggregateYieldFeePercentage > 0 &&
-            poolData.poolConfigBits.isPoolInRecoveryMode() == false;
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            TokenInfo memory tokenInfo = poolData.tokenInfo[i];
-
-            // poolData already has live balances computed from raw balances according to the token rates and the
-            // given rounding direction. Charging a yield fee changes the raw
-            // balance, in which case the safest and most numerically precise way to adjust
-            // the live balance is to simply repeat the scaling (hence the second call below).
-
-            // The Vault actually guarantees a token with paysYieldFees set is a WITH_RATE token, so technically we
-            // could just check the flag, but we don't want to introduce that dependency for a slight gas savings.
-            bool tokenSubjectToYieldFees = tokenInfo.paysYieldFees && tokenInfo.tokenType == TokenType.WITH_RATE;
-
-            // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
-            if (poolSubjectToYieldFees && tokenSubjectToYieldFees) {
-                aggregateYieldFeeAmountsRaw[i] = _computeYieldFeesDue(
-                    poolData,
-                    poolBalances.unchecked_valueAt(i).getBalanceDerived(),
-                    i,
-                    aggregateYieldFeePercentage
-                );
-            }
-        }
-    }
-
-    function _computeYieldFeesDue(
-        PoolData memory poolData,
-        uint256 lastLiveBalance,
-        uint256 tokenIndex,
-        uint256 aggregateYieldFeePercentage
-    ) internal pure returns (uint256 aggregateYieldFeeAmountRaw) {
-        uint256 currentLiveBalance = poolData.balancesLiveScaled18[tokenIndex];
-
-        // Do not charge fees if rates go down. If the rate were to go up, down, and back up again, protocol fees
-        // would be charged multiple times on the "same" yield. For tokens subject to yield fees, this should not
-        // happen, or at least be very rare. It can be addressed for known volatile rates by setting the yield fee
-        // exempt flag on registration, or compensated off-chain if there is an incident with a normally
-        // well-behaved rate provider.
-        if (currentLiveBalance > lastLiveBalance) {
-            unchecked {
-                // Magnitudes checked above, so it's safe to do unchecked math here.
-                uint256 aggregateYieldFeeAmountScaled18 = (currentLiveBalance - lastLiveBalance).mulUp(
-                    aggregateYieldFeePercentage
-                );
-
-                // A pool is subject to yield fees if poolSubjectToYieldFees is true, meaning that
-                // `protocolYieldFeePercentage > 0`. So, we don't need to check this again in here, saving some gas.
-                aggregateYieldFeeAmountRaw = aggregateYieldFeeAmountScaled18.toRawUndoRateRoundDown(
-                    poolData.decimalScalingFactors[tokenIndex],
-                    poolData.tokenRates[tokenIndex]
-                );
-            }
-        }
+        PoolDataLib.syncPoolBalancesAndFees(poolData, _poolTokenBalances[pool], _aggregateFeeAmounts[pool]);
     }
 
     /**
