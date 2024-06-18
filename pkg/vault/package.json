@@ -27,6 +27,7 @@
     "test": "yarn test:hardhat && yarn test:forge",
     "test:hardhat": "hardhat test",
     "test:forge": "forge test -vvv",
+    "test:forgeonly": "forge test -vvv --no-match-test Fork",
     "test:stress": "FOUNDRY_PROFILE=intense forge test -vvv",
     "coverage": "./coverage.sh",
     "gas": "REPORT_GAS=true hardhat test",
