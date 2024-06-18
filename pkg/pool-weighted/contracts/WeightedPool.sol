@@ -20,6 +20,10 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
 
 /// @notice Basic Weighted Pool with immutable weights.
 contract WeightedPool is IBasePool, BalancerPoolToken, PoolInfo, Version {
+    // Fees are 18-decimal, floating point values, which will be stored in the Vault using 24 bits.
+    // This means they have 0.00001% resolution (i.e., any non-zero bits < 1e11 will cause precision loss).
+    // Minimum values help make the math well-behaved (i.e., the swap fee should overwhelm any rounding error).
+    // Maximum values protect users by preventing permissioned actors from setting excessively high swap fees.
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 0.1e18; // 10%
 
