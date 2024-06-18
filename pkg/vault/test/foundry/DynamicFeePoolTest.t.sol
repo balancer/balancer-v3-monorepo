@@ -103,7 +103,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(PoolMock.onSwap.selector, poolSwapParams),
+            abi.encodeWithSelector(IBasePool.onSwap.selector, poolSwapParams),
             1 // callCount
         );
 
@@ -131,7 +131,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(PoolMock.onSwap.selector, poolSwapParams),
+            abi.encodeWithSelector(IBasePool.onSwap.selector, poolSwapParams),
             1 // callCount
         );
 
