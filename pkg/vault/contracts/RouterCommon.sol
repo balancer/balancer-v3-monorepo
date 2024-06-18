@@ -31,6 +31,9 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     // they will be executed every time the constant is used.
     bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
 
+    bytes32 private immutable _MSG_VALUE_SLOT =
+        TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "msgValue");
+
     /// @dev Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
 
@@ -50,16 +53,26 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     IPermit2 internal immutable _permit2;
 
     modifier saveSender() {
-        _saveSender();
+        _saveSender(false);
         _;
     }
 
-    function _saveSender() internal {
+    modifier saveSenderAndValue() {
+        _saveSender(true);
+        _;
+    }
+
+    function _saveSender(bool saveMsgValue) internal {
         address sender = _getSenderSlot().tload();
 
         // NOTE: This is a one-time operation. The sender can't be changed within the transaction.
         if (sender == address(0)) {
             _getSenderSlot().tstore(msg.sender);
+
+            // Guarantee this is written only once. We cannot check for 0, as that is a valid value.
+            if (saveMsgValue) {
+                _getMsgValueSlot().tstore(msg.value);
+            }
         }
     }
 
@@ -79,11 +92,13 @@ contract RouterCommon is IRouterCommon, VaultGuard {
      * returned ETH.
      */
     function _returnEth(address sender, uint256 amountUsed) internal {
-        if (msg.value < amountUsed) {
+        uint256 msgValue = _getMsgValueSlot().tload();
+
+        if (msgValue < amountUsed) {
             revert InsufficientEth();
         }
 
-        uint256 excess = msg.value - amountUsed;
+        uint256 excess = msgValue - amountUsed;
         if (excess > 0) {
             payable(sender).sendValue(excess);
         }
@@ -165,5 +180,9 @@ contract RouterCommon is IRouterCommon, VaultGuard {
 
     function _getSenderSlot() internal view returns (StorageSlot.AddressSlotType) {
         return _SENDER_SLOT.asAddress();
+    }
+
+    function _getMsgValueSlot() internal view returns (StorageSlot.Uint256SlotType) {
+        return _MSG_VALUE_SLOT.asUint256();
     }
 }

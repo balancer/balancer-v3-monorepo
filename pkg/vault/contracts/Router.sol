@@ -21,14 +21,14 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 
 import { RouterCommon } from "./RouterCommon.sol";
-//import "hardhat/console.sol";
-import { console } from "forge-std/console.sol";
 
 contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
     using Address for address payable;
+    using StorageSlot for *;
 
     constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
         // solhint-disable-previous-line no-empty-blocks
@@ -45,7 +45,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external payable returns (uint256 bptAmountOut) {
+    ) external payable saveSenderAndValue returns (uint256 bptAmountOut) {
         return
             abi.decode(
                 _vault.unlock(
@@ -57,7 +57,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                             tokens: tokens,
                             exactAmountsIn: exactAmountsIn,
                             minBptAmountOut: minBptAmountOut,
-                            msgValue: msg.value,
                             userData: userData
                         })
                     )
@@ -74,7 +73,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      */
     function initializeHook(
         InitializeHookParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256 bptAmountOut) {
+    ) external nonReentrant onlyVault returns (uint256 bptAmountOut) {
         bptAmountOut = _vault.initialize(
             params.pool,
             params.sender,
@@ -84,16 +83,16 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             params.userData
         );
 
+        uint256 msgValue = _getMsgValueSlot().tload();
         uint256 ethAmountIn;
+
         for (uint256 i = 0; i < params.tokens.length; ++i) {
             IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
 
-            console.log("passed in: %s; actual: %s", params.msgValue, msg.value);
-
             // There can be only one WETH token in the pool
-            if (params.msgValue > 0 && address(token) == address(_weth)) {
-                if (params.msgValue < amountIn) {
+            if (msgValue > 0 && address(token) == address(_weth)) {
+                if (msgValue < amountIn) {
                     revert InsufficientEth();
                 }
                 _weth.deposit{ value: amountIn }();
@@ -117,9 +116,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address pool,
         uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256[] memory amountsIn) {
+    ) external payable saveSenderAndValue returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(
@@ -130,7 +128,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.PROPORTIONAL,
-                        wethIsEth: wethIsEth,
                         userData: userData
                     })
                 )
@@ -144,9 +141,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address pool,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256 bptAmountOut) {
+    ) external payable saveSenderAndValue returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(
@@ -157,7 +153,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         maxAmountsIn: exactAmountsIn,
                         minBptAmountOut: minBptAmountOut,
                         kind: AddLiquidityKind.UNBALANCED,
-                        wethIsEth: wethIsEth,
                         userData: userData
                     })
                 )
@@ -172,9 +167,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         IERC20 tokenIn,
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256 amountIn) {
+    ) external payable saveSenderAndValue returns (uint256 amountIn) {
         (uint256[] memory maxAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
             pool,
             tokenIn,
@@ -191,7 +185,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
-                        wethIsEth: wethIsEth,
                         userData: userData
                     })
                 )
@@ -207,9 +200,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address pool,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
+    ) external payable saveSenderAndValue returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         return
             abi.decode(
                 _vault.unlock(
@@ -221,7 +213,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                             maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: AddLiquidityKind.CUSTOM,
-                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -241,7 +232,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         AddLiquidityHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
@@ -259,15 +249,16 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         // maxAmountsIn length is checked against tokens length at the vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
-
+        uint256 msgValue = _getMsgValueSlot().tload();
         uint256 ethAmountIn;
+
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
 
             // There can be only one WETH token in the pool
-            if (params.wethIsEth && address(token) == address(_weth)) {
-                if (msg.value < amountIn) {
+            if (msgValue > 0 && address(token) == address(_weth)) {
+                if (msgValue < amountIn) {
                     revert InsufficientEth();
                 }
 
@@ -509,7 +500,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable saveSender returns (uint256) {
+    ) external payable saveSenderAndValue returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -543,7 +534,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable saveSender returns (uint256) {
+    ) external payable saveSenderAndValue returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -575,7 +566,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      */
     function swapSingleTokenHook(
         SwapSingleTokenHookParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256) {
+    ) external nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         IERC20 tokenIn = params.tokenIn;
@@ -804,7 +795,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.UNBALANCED,
-                        wethIsEth: false,
                         userData: userData
                     })
                 )
@@ -831,7 +821,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         maxAmountsIn: exactAmountsIn,
                         minBptAmountOut: 0,
                         kind: AddLiquidityKind.UNBALANCED,
-                        wethIsEth: false,
                         userData: userData
                     })
                 )
@@ -865,7 +854,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
-                        wethIsEth: false,
                         userData: userData
                     })
                 )
@@ -896,7 +884,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                             maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: AddLiquidityKind.CUSTOM,
-                            wethIsEth: false,
                             userData: userData
                         })
                     )

@@ -31,12 +31,14 @@ interface IRouter {
         IERC20[] tokens;
         uint256[] exactAmountsIn;
         uint256 minBptAmountOut;
-        uint256 msgValue;
         bytes userData;
     }
 
     /**
      * @notice Initialize a liquidity pool.
+     * @dev If you send ETH and the pool contains WETH, the ETH will be wrapped to WETH; otherwise the Vault
+     * will pull WETH tokens.
+     * 
      * @param pool Address of the liquidity pool
      * @param tokens Pool tokens
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
@@ -63,7 +65,6 @@ interface IRouter {
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param kind Type of join (e.g., single or multi-token)
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
      */
     struct AddLiquidityHookParams {
@@ -72,16 +73,17 @@ interface IRouter {
         uint256[] maxAmountsIn;
         uint256 minBptAmountOut;
         AddLiquidityKind kind;
-        bool wethIsEth;
         bytes userData;
     }
 
     /**
      * @notice Adds with proportional token amounts to a pool, receiving an exact amount of pool tokens.
+     * @dev If you send ETH and the pool contains WETH, the ETH will be wrapped to WETH; otherwise the Vault
+     * will pull WETH tokens.
+     *
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param exactBptAmountOut Exact amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
      * @return amountsIn Actual amounts of tokens added, sorted in token registration order
      */
@@ -89,16 +91,17 @@ interface IRouter {
         address pool,
         uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn);
 
     /**
      * @notice Adds with arbitrary token amounts in to a pool.
+     * @dev If you send ETH and the pool contains WETH, the ETH will be wrapped to WETH; otherwise the Vault
+     * will pull WETH tokens.
+     *
      * @param pool Address of the liquidity pool
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
      * @return bptAmountOut Actual amount of pool tokens received
      */
@@ -106,17 +109,18 @@ interface IRouter {
         address pool,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountOut);
 
     /**
      * @notice Adds with a single token to a pool, receiving an exact amount of pool tokens.
+     * @dev If you send ETH and the pool contains WETH, the ETH will be wrapped to WETH; otherwise the Vault
+     * will pull WETH tokens.
+     *
      * @param pool Address of the liquidity pool
      * @param tokenIn Token used to add liquidity
      * @param maxAmountIn Maximum amount of tokens to be added
      * @param exactBptAmountOut Exact amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
      * @return amountIn Actual amount of tokens added
      */
@@ -125,18 +129,18 @@ interface IRouter {
         IERC20 tokenIn,
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 amountIn);
 
     /**
      * @notice Adds liquidity to a pool with a custom request.
      * @dev The given maximum and minimum amounts given may be interpreted as exact depending on the pool type.
-     * In any case the caller can expect them to be hard boundaries for the request.
+     * In any case the caller can expect them to be hard boundaries for the request. If you send ETH and the pool
+     * contains WETH, the ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens.
+     *
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
      * @return amountsIn Actual amounts of tokens added, sorted in token registration order
      * @return bptAmountOut Actual amount of pool tokens received
@@ -146,7 +150,6 @@ interface IRouter {
         address pool,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
