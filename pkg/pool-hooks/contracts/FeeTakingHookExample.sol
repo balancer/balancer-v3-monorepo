@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -17,7 +18,7 @@ import {
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
 
-contract FeeTakingHookExample is BasePoolHooks {
+contract FeeTakingHookExample is BasePoolHooks, Ownable {
     using FixedPoint for uint256;
 
     // Percentages are represented as 18-decimal FP, with maximum value of 1e18 (100%), so 60 bits are enough.
@@ -25,7 +26,7 @@ contract FeeTakingHookExample is BasePoolHooks {
     uint64 public addLiquidityHookFeePercentage;
     uint64 public removeLiquidityHookFeePercentage;
 
-    constructor(IVault vault) BasePoolHooks(vault) {
+    constructor(IVault vault) BasePoolHooks(vault) Ownable(msg.sender) {
         // solhint-previous-line no-empty-blocks
     }
 
@@ -158,22 +159,21 @@ contract FeeTakingHookExample is BasePoolHooks {
 
     // Setters
 
-    // Sets the hook swap fee percentage, which will be accrued after a swap was executed.
-    // In a real hook, this function should be permissioned.
-    function setHookSwapFeePercentage(uint64 feePercentage) external {
+    // Sets the hook swap fee percentage, which will be accrued after a swap was executed. This function must be
+    // permissioned.
+    function setHookSwapFeePercentage(uint64 feePercentage) external onlyOwner {
         hookSwapFeePercentage = feePercentage;
     }
 
     // Sets the hook add liquidity fee percentage, which will be accrued after an add liquidity operation was executed.
-    // In a real hook, this function should be permissioned.
-    function setAddLiquidityHookFeePercentage(uint64 hookFeePercentage) public {
+    // This function must be permissioned.
+    function setAddLiquidityHookFeePercentage(uint64 hookFeePercentage) public onlyOwner {
         addLiquidityHookFeePercentage = hookFeePercentage;
     }
 
     // Sets the hook remove liquidity fee percentage, which will be accrued after a remove liquidity operation was
-    // executed.
-    // In a real hook, this function should be permissioned.
-    function setRemoveLiquidityHookFeePercentage(uint64 hookFeePercentage) public {
+    // executed. This function must be permissioned.
+    function setRemoveLiquidityHookFeePercentage(uint64 hookFeePercentage) public onlyOwner {
         removeLiquidityHookFeePercentage = hookFeePercentage;
     }
 }

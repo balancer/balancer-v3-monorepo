@@ -42,6 +42,8 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
 
     // Sets the hook of the pool and stores the address in the variable poolHooksContract
     function createHook() internal override returns (address) {
+        // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
+        vm.prank(lp);
         FeeTakingHookExample hook = new FeeTakingHookExample(IVault(address(vault)));
         return address(hook);
     }
@@ -74,6 +76,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
 
         // Fee between 0 and 100%
         hookFeePercentage = uint64(bound(hookFeePercentage, 0, 1e18));
+        vm.prank(lp);
         FeeTakingHookExample(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
@@ -121,6 +124,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
 
         // Fee between 0 and 100%
         hookFeePercentage = uint64(bound(hookFeePercentage, 0, 1e18));
+        vm.prank(lp);
         FeeTakingHookExample(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
@@ -174,6 +178,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
     function testHookFeeAddLiquidityExactIn__Fuzz(uint256 expectedBptOut, uint64 hookFeePercentage) public {
         // Add fee between 0 and 100%
         hookFeePercentage = uint64(bound(hookFeePercentage, 0, 1e18));
+        vm.prank(lp);
         FeeTakingHookExample(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
 
         // Since operation is not settled in advance, max expected bpt out can't generate a hook fee higher than
@@ -237,6 +242,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
 
         // Add fee between 0 and 100%
         hookFeePercentage = uint64(bound(hookFeePercentage, 0, 1e18));
+        vm.prank(lp);
         FeeTakingHookExample(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
 
         // Make sure bob has enough to pay for the transaction
