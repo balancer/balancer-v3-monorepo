@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -20,12 +22,24 @@ library PoolConfigLib {
     uint8 public constant POOL_PAUSED_OFFSET = POOL_INITIALIZED_OFFSET + 1;
     uint8 public constant POOL_RECOVERY_MODE_OFFSET = POOL_PAUSED_OFFSET + 1;
 
-    // Supported liquidity API bit offsets
+    // Bit offsets for liquidity operations
     uint8 public constant UNBALANCED_LIQUIDITY_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
     uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = UNBALANCED_LIQUIDITY_OFFSET + 1;
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
 
-    uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
+    // Bit offsets for hooks config
+    uint8 public constant BEFORE_INITIALIZE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
+    uint8 public constant AFTER_INITIALIZE_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
+    uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = AFTER_INITIALIZE_OFFSET + 1;
+    uint8 public constant BEFORE_SWAP_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
+    uint8 public constant AFTER_SWAP_OFFSET = BEFORE_SWAP_OFFSET + 1;
+    uint8 public constant BEFORE_ADD_LIQUIDITY_OFFSET = AFTER_SWAP_OFFSET + 1;
+    uint8 public constant AFTER_ADD_LIQUIDITY_OFFSET = BEFORE_ADD_LIQUIDITY_OFFSET + 1;
+    uint8 public constant BEFORE_REMOVE_LIQUIDITY_OFFSET = AFTER_ADD_LIQUIDITY_OFFSET + 1;
+    uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = BEFORE_REMOVE_LIQUIDITY_OFFSET + 1;
+
+    // Bit offsets for uint values
+    uint8 public constant STATIC_SWAP_FEE_OFFSET = AFTER_REMOVE_LIQUIDITY_OFFSET + 1;
     uint256 public constant AGGREGATE_SWAP_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant AGGREGATE_YIELD_FEE_OFFSET = AGGREGATE_SWAP_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = AGGREGATE_YIELD_FEE_OFFSET + FEE_BITLENGTH;
@@ -39,6 +53,7 @@ library PoolConfigLib {
 
     uint8 private constant _TIMESTAMP_BITLENGTH = 32;
 
+    // #region Bit offsets for pool config
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
     }
@@ -55,14 +70,6 @@ library PoolConfigLib {
         return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, POOL_INITIALIZED_OFFSET));
     }
 
-    function isPoolInRecoveryMode(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(POOL_RECOVERY_MODE_OFFSET);
-    }
-
-    function setPoolInRecoveryMode(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
-        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, POOL_RECOVERY_MODE_OFFSET));
-    }
-
     function isPoolPaused(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_PAUSED_OFFSET);
     }
@@ -71,6 +78,465 @@ library PoolConfigLib {
         return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, POOL_PAUSED_OFFSET));
     }
 
+    function isPoolInRecoveryMode(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(POOL_RECOVERY_MODE_OFFSET);
+    }
+
+    function setPoolInRecoveryMode(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, POOL_RECOVERY_MODE_OFFSET));
+    }
+    // #endregion
+
+    // #region Bit offsets for liquidity operations
+    function supportsUnbalancedLiquidity(PoolConfigBits config) internal pure returns (bool) {
+        // NOTE: The unbalanced liquidity flag is default-on (false means it is supported).
+        // This function returns the inverted value.
+        return !PoolConfigBits.unwrap(config).decodeBool(UNBALANCED_LIQUIDITY_OFFSET);
+    }
+
+    function requireUnbalancedLiquidityEnabled(PoolConfigBits config) internal pure {
+        if (config.supportsUnbalancedLiquidity() == false) {
+            revert IVaultErrors.DoesNotSupportUnbalancedLiquidity();
+        }
+    }
+
+    function setDisableUnbalancedLiquidity(
+        PoolConfigBits config,
+        bool disableUnbalancedLiquidity
+    ) internal pure returns (PoolConfigBits) {
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertBool(disableUnbalancedLiquidity, UNBALANCED_LIQUIDITY_OFFSET)
+            );
+    }
+
+    function supportsAddLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_CUSTOM_OFFSET);
+    }
+
+    function requireAddCustomLiquidityEnabled(PoolConfigBits config) internal pure {
+        if (config.supportsAddLiquidityCustom() == false) {
+            revert IVaultErrors.DoesNotSupportAddLiquidityCustom();
+        }
+    }
+
+    function setAddLiquidityCustom(
+        PoolConfigBits config,
+        bool enableAddLiquidityCustom
+    ) internal pure returns (PoolConfigBits) {
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertBool(enableAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET)
+            );
+    }
+
+    function supportsRemoveLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_CUSTOM_OFFSET);
+    }
+
+    function requireRemoveCustomLiquidityEnabled(PoolConfigBits config) internal pure {
+        if (config.supportsRemoveLiquidityCustom() == false) {
+            revert IVaultErrors.DoesNotSupportRemoveLiquidityCustom();
+        }
+    }
+
+    function setRemoveLiquidityCustom(
+        PoolConfigBits config,
+        bool enableRemoveLiquidityCustom
+    ) internal pure returns (PoolConfigBits) {
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertBool(enableRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET)
+            );
+    }
+    // #endregion
+
+    // #region Bit offsets for hooks config
+    function shouldCallBeforeInitialize(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(BEFORE_INITIALIZE_OFFSET);
+    }
+
+    function setShouldCallBeforeInitialize(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, BEFORE_INITIALIZE_OFFSET));
+    }
+
+    function shouldCallAfterInitialize(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(AFTER_INITIALIZE_OFFSET);
+    }
+
+    function setShouldCallAfterInitialize(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, AFTER_INITIALIZE_OFFSET));
+    }
+
+    function shouldCallComputeDynamicSwapFee(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(DYNAMIC_SWAP_FEE_OFFSET);
+    }
+
+    function setShouldCallComputeDynamicSwapFee(
+        PoolConfigBits config,
+        bool value
+    ) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, DYNAMIC_SWAP_FEE_OFFSET));
+    }
+
+    function shouldCallBeforeSwap(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(BEFORE_SWAP_OFFSET);
+    }
+
+    function setShouldCallBeforeSwap(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, BEFORE_SWAP_OFFSET));
+    }
+
+    function shouldCallAfterSwap(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(AFTER_SWAP_OFFSET);
+    }
+
+    function setShouldCallAfterSwap(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, AFTER_SWAP_OFFSET));
+    }
+
+    function shouldCallBeforeAddLiquidity(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(BEFORE_ADD_LIQUIDITY_OFFSET);
+    }
+
+    function setShouldCallBeforeAddLiquidity(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, BEFORE_ADD_LIQUIDITY_OFFSET));
+    }
+
+    function shouldCallAfterAddLiquidity(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(AFTER_ADD_LIQUIDITY_OFFSET);
+    }
+
+    function setShouldCallAfterAddLiquidity(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, AFTER_ADD_LIQUIDITY_OFFSET));
+    }
+
+    function shouldCallBeforeRemoveLiquidity(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(BEFORE_REMOVE_LIQUIDITY_OFFSET);
+    }
+
+    function setShouldCallBeforeRemoveLiquidity(
+        PoolConfigBits config,
+        bool value
+    ) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, BEFORE_REMOVE_LIQUIDITY_OFFSET));
+    }
+
+    function shouldCallAfterRemoveLiquidity(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(AFTER_REMOVE_LIQUIDITY_OFFSET);
+    }
+
+    function setShouldCallAfterRemoveLiquidity(
+        PoolConfigBits config,
+        bool value
+    ) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, AFTER_REMOVE_LIQUIDITY_OFFSET));
+    }
+
+    function toHooksConfig(PoolConfigBits config, address hooksContract) internal pure returns (HooksConfig memory) {
+        return
+            HooksConfig({
+                shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
+                shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
+                shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
+                shouldCallAfterAddLiquidity: config.shouldCallAfterAddLiquidity(),
+                shouldCallBeforeRemoveLiquidity: config.shouldCallBeforeRemoveLiquidity(),
+                shouldCallAfterRemoveLiquidity: config.shouldCallAfterRemoveLiquidity(),
+                shouldCallComputeDynamicSwapFee: config.shouldCallComputeDynamicSwapFee(),
+                shouldCallBeforeSwap: config.shouldCallBeforeSwap(),
+                shouldCallAfterSwap: config.shouldCallAfterSwap(),
+                hooksContract: hooksContract
+            });
+    }
+
+    /**
+     * @dev Check if dynamic swap fee hook should be called and call it. Throws an error if the hook contract fails to
+     * execute the hook.
+     *
+     * @param config The encoded hooks configuration
+     * @param swapParams The swap parameters used to calculate the fee
+     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
+     * @return swapFeePercentage the calculated swap fee percentage. 0 if hook is disabled
+     */
+    function onComputeDynamicSwapFee(
+        PoolConfigBits config,
+        IBasePool.PoolSwapParams memory swapParams,
+        uint256 staticSwapFeePercentage,
+        HooksContractBox storage hooksContractBox
+    ) internal view returns (bool, uint256) {
+        if (config.shouldCallComputeDynamicSwapFee() == false) {
+            return (false, 0);
+        }
+
+        (bool success, uint256 swapFeePercentage) = IHooks(config.getHooksContract()).onComputeDynamicSwapFee(
+            swapParams,
+            staticSwapFeePercentage
+        );
+
+        if (success == false) {
+            revert IVaultErrors.DynamicSwapFeeHookFailed();
+        }
+        return (success, swapFeePercentage);
+    }
+
+    /**
+     * @dev Check if after swap hook should be called and call it. Throws an error if the hook contract fails to
+     * execute the hook.
+     *
+     * @param config The encoded hooks configuration
+     * @param amountCalculatedScaled18 Token amount calculated by the swap
+     * @param amountCalculatedRaw Token amount calculated by the swap
+     * @param params The swap parameters
+     * @param state Temporary state used in swap operations
+     * @param poolData Struct containing balance and token information of the pool
+     * @return hookAdjustedAmountCalculatedRaw New amount calculated, modified by the hook
+     */
+    function onAfterSwap(
+        PoolConfigBits config,
+        uint256 amountCalculatedScaled18,
+        uint256 amountCalculatedRaw,
+        address router,
+        SwapParams memory params,
+        SwapState memory state,
+        PoolData memory poolData
+    ) internal returns (uint256 hookAdjustedAmountCalculatedRaw) {
+        if (config.shouldCallAfterSwap() == false) {
+            // Hook contract does not implement onAfterSwap, so success is false (hook was not executed) and do not
+            // change amountCalculatedRaw (no deltas)
+            return amountCalculatedRaw;
+        }
+
+        // Adjust balances for the AfterSwap hook.
+        (uint256 amountInScaled18, uint256 amountOutScaled18) = params.kind == SwapKind.EXACT_IN
+            ? (state.amountGivenScaled18, amountCalculatedScaled18)
+            : (amountCalculatedScaled18, state.amountGivenScaled18);
+
+        bool success;
+        (success, hookAdjustedAmountCalculatedRaw) = IHooks(config.getHooksContract()).onAfterSwap(
+            IHooks.AfterSwapParams({
+                kind: params.kind,
+                tokenIn: params.tokenIn,
+                tokenOut: params.tokenOut,
+                amountInScaled18: amountInScaled18,
+                amountOutScaled18: amountOutScaled18,
+                tokenInBalanceScaled18: poolData.balancesLiveScaled18[state.indexIn],
+                tokenOutBalanceScaled18: poolData.balancesLiveScaled18[state.indexOut],
+                amountCalculatedScaled18: amountCalculatedScaled18,
+                amountCalculatedRaw: amountCalculatedRaw,
+                router: router,
+                pool: params.pool,
+                userData: params.userData
+            })
+        );
+
+        if (success == false) {
+            // Hook contract implements onAfterSwap, but it has failed, so reverts the transaction.
+            revert IVaultErrors.AfterSwapHookFailed();
+        }
+
+        if (
+            (params.kind == SwapKind.EXACT_IN && hookAdjustedAmountCalculatedRaw < params.limitRaw) ||
+            (params.kind == SwapKind.EXACT_OUT && hookAdjustedAmountCalculatedRaw > params.limitRaw)
+        ) {
+            revert IVaultErrors.SwapLimit(hookAdjustedAmountCalculatedRaw, params.limitRaw);
+        }
+    }
+
+    /**
+     * @dev Check if before add liquidity hook should be called and call it. Throws an error if the hook contract fails
+     * to execute the hook.
+     *
+     * @param config The encoded hooks configuration
+     * @param maxAmountsInScaled18 An array with maximum amounts for each input token of the add liquidity operation
+     * @param params The add liquidity parameters
+     * @param poolData Struct containing balance and token information of the pool
+     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
+     */
+    function onBeforeAddLiquidity(
+        PoolConfigBits config,
+        uint256[] memory maxAmountsInScaled18,
+        address router,
+        AddLiquidityParams memory params,
+        PoolData memory poolData
+    ) internal returns (bool) {
+        if (config.shouldCallBeforeAddLiquidity() == false) {
+            return false;
+        }
+
+        if (
+            IHooks(config.getHooksContract()).onBeforeAddLiquidity(
+                router,
+                params.kind,
+                maxAmountsInScaled18,
+                params.minBptAmountOut,
+                poolData.balancesLiveScaled18,
+                params.userData
+            ) == false
+        ) {
+            revert IVaultErrors.BeforeAddLiquidityHookFailed();
+        }
+        return true;
+    }
+
+    /**
+     * @dev Check if after add liquidity hook should be called and call it. Throws an error if the hook contract fails
+     * to execute the hook.
+     *
+     * @param config The encoded hooks configuration
+     * @param amountsInScaled18 Scaled amounts of tokens added in token registration order
+     * @param bptAmountOut The BPT amount a user will receive after add liquidity operation succeeds
+     * @param params The add liquidity parameters
+     * @param poolData Struct containing balance and token information of the pool
+     */
+    function onAfterAddLiquidity(
+        PoolConfigBits config,
+        uint256[] memory amountsInScaled18,
+        uint256 bptAmountOut,
+        address router,
+        AddLiquidityParams memory params,
+        PoolData memory poolData
+    ) internal {
+        if (config.shouldCallAfterAddLiquidity() == false) {
+            return;
+        }
+
+        if (
+            IHooks(config.getHooksContract()).onAfterAddLiquidity(
+                router,
+                amountsInScaled18,
+                bptAmountOut,
+                poolData.balancesLiveScaled18,
+                params.userData
+            ) == false
+        ) {
+            revert IVaultErrors.AfterAddLiquidityHookFailed();
+        }
+    }
+
+    /**
+     * @dev Check if before remove liquidity hook should be called and call it. Throws an error if the hook contract
+     * fails to execute the hook.
+     *
+     * @param config The encoded hooks configuration
+     * @param minAmountsOutScaled18 An array with minimum amounts for each output token of the remove liquidity
+     * operation
+     * @param params The remove liquidity parameters
+     * @param poolData Struct containing balance and token information of the pool
+     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
+     */
+    function onBeforeRemoveLiquidity(
+        PoolConfigBits config,
+        uint256[] memory minAmountsOutScaled18,
+        address router,
+        RemoveLiquidityParams memory params,
+        PoolData memory poolData
+    ) internal returns (bool) {
+        if (config.shouldCallBeforeRemoveLiquidity() == false) {
+            return false;
+        }
+
+        if (
+            IHooks(config.getHooksContract()).onBeforeRemoveLiquidity(
+                router,
+                params.kind,
+                params.maxBptAmountIn,
+                minAmountsOutScaled18,
+                poolData.balancesLiveScaled18,
+                params.userData
+            ) == false
+        ) {
+            revert IVaultErrors.BeforeRemoveLiquidityHookFailed();
+        }
+        return true;
+    }
+
+    /**
+     * @dev Check if after remove liquidity hook should be called and call it. Throws an error if the hook contract
+     * fails to execute the hook.
+     *
+     * @param config The encoded hooks configuration
+     * @param amountsOutScaled18 Amount of tokens to receive in token registration order
+     * @param bptAmountIn The BPT amount a user will need burn to remove the liquidity of the pool
+     * @param params The remove liquidity parameters
+     * @param poolData Struct containing balance and token information of the pool
+     */
+    function onAfterRemoveLiquidity(
+        PoolConfigBits config,
+        uint256[] memory amountsOutScaled18,
+        uint256 bptAmountIn,
+        address router,
+        RemoveLiquidityParams memory params,
+        PoolData memory poolData
+    ) internal {
+        if (config.shouldCallAfterRemoveLiquidity() == false) {
+            return;
+        }
+
+        if (
+            IHooks(config.getHooksContract()).onAfterRemoveLiquidity(
+                router,
+                bptAmountIn,
+                amountsOutScaled18,
+                poolData.balancesLiveScaled18,
+                params.userData
+            ) == false
+        ) {
+            revert IVaultErrors.AfterRemoveLiquidityHookFailed();
+        }
+    }
+
+    /**
+     * @dev Check if before initialization hook should be called and call it. Throws an error if the hook contract
+     * fails to execute the hook.
+     *
+     * @param config The encoded hooks configuration
+     * @param exactAmountsInScaled18 An array with the initial liquidity of the pool
+     * @param userData Additional (optional) data required for adding initial liquidity
+     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
+     */
+    function onBeforeInitialize(
+        PoolConfigBits config,
+        uint256[] memory exactAmountsInScaled18,
+        bytes memory userData
+    ) internal returns (bool) {
+        if (config.shouldCallBeforeInitialize() == false) {
+            return false;
+        }
+
+        if (IHooks(config.getHooksContract()).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
+            revert IVaultErrors.BeforeInitializeHookFailed();
+        }
+        return true;
+    }
+
+    /**
+     * @dev Check if after initialization hook should be called and call it. Throws an error if the hook contract
+     * fails to execute the hook.
+     *
+     * @param config The encoded hooks configuration
+     * @param exactAmountsInScaled18 An array with the initial liquidity of the pool
+     * @param bptAmountOut The BPT amount a user will receive after initialization operation succeeds
+     * @param userData Additional (optional) data required for adding initial liquidity
+     */
+    function onAfterInitialize(
+        PoolConfigBits config,
+        uint256[] memory exactAmountsInScaled18,
+        uint256 bptAmountOut,
+        bytes memory userData
+    ) internal {
+        if (config.shouldCallAfterInitialize() == false) {
+            return;
+        }
+
+        if (
+            IHooks(config.getHooksContract()).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false
+        ) {
+            revert IVaultErrors.AfterInitializeHookFailed();
+        }
+    }
+    // #endregion
+
+    // #region Bit offsets for uint values
     function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
         return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
@@ -133,6 +599,24 @@ library PoolConfigLib {
             );
     }
 
+    function getDecimalScalingFactors(
+        PoolConfigBits config,
+        uint256 numTokens
+    ) internal pure returns (uint256[] memory) {
+        uint256[] memory scalingFactors = new uint256[](numTokens);
+
+        bytes32 tokenDecimalDiffs = bytes32(uint256(config.getTokenDecimalDiffs()));
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            uint256 decimalDiff = tokenDecimalDiffs.decodeUint(i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
+
+            // This is equivalent to `10**(18+decimalsDifference)` but this form optimizes for 18 decimal tokens.
+            scalingFactors[i] = FixedPoint.ONE * 10 ** decimalDiff;
+        }
+
+        return scalingFactors;
+    }
+
     function setTokenDecimalDiffs(PoolConfigBits config, uint24 value) internal pure returns (PoolConfigBits) {
         return
             PoolConfigBits.wrap(
@@ -154,68 +638,7 @@ library PoolConfigLib {
                 PoolConfigBits.unwrap(config).insertUint(value, PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH)
             );
     }
-
-    function supportsUnbalancedLiquidity(PoolConfigBits config) internal pure returns (bool) {
-        // NOTE: The unbalanced liquidity flag is default-on (false means it is supported).
-        // This function returns the inverted value.
-        return !PoolConfigBits.unwrap(config).decodeBool(UNBALANCED_LIQUIDITY_OFFSET);
-    }
-
-    function setDisableUnbalancedLiquidity(
-        PoolConfigBits config,
-        bool disableUnbalancedLiquidity
-    ) internal pure returns (PoolConfigBits) {
-        return
-            PoolConfigBits.wrap(
-                PoolConfigBits.unwrap(config).insertBool(disableUnbalancedLiquidity, UNBALANCED_LIQUIDITY_OFFSET)
-            );
-    }
-
-    function requireUnbalancedLiquidityEnabled(PoolConfigBits config) internal pure {
-        if (config.supportsUnbalancedLiquidity() == false) {
-            revert IVaultErrors.DoesNotSupportUnbalancedLiquidity();
-        }
-    }
-
-    function supportsAddLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_CUSTOM_OFFSET);
-    }
-
-    function setAddLiquidityCustom(
-        PoolConfigBits config,
-        bool enableAddLiquidityCustom
-    ) internal pure returns (PoolConfigBits) {
-        return
-            PoolConfigBits.wrap(
-                PoolConfigBits.unwrap(config).insertBool(enableAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET)
-            );
-    }
-
-    function requireAddCustomLiquidityEnabled(PoolConfigBits config) internal pure {
-        if (config.supportsAddLiquidityCustom() == false) {
-            revert IVaultErrors.DoesNotSupportAddLiquidityCustom();
-        }
-    }
-
-    function supportsRemoveLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_CUSTOM_OFFSET);
-    }
-
-    function setRemoveLiquidityCustom(
-        PoolConfigBits config,
-        bool enableRemoveLiquidityCustom
-    ) internal pure returns (PoolConfigBits) {
-        return
-            PoolConfigBits.wrap(
-                PoolConfigBits.unwrap(config).insertBool(enableRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET)
-            );
-    }
-
-    function requireRemoveCustomLiquidityEnabled(PoolConfigBits config) internal pure {
-        if (config.supportsRemoveLiquidityCustom() == false) {
-            revert IVaultErrors.DoesNotSupportRemoveLiquidityCustom();
-        }
-    }
+    // #endregion
 
     // Convert from an array of decimal differences, to the encoded 24 bit value (only uses bottom 20 bits).
     function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint24) {
@@ -226,23 +649,5 @@ library PoolConfigLib {
         }
 
         return uint24(uint256(value));
-    }
-
-    function getDecimalScalingFactors(
-        PoolConfigBits config,
-        uint256 numTokens
-    ) internal pure returns (uint256[] memory) {
-        uint256[] memory scalingFactors = new uint256[](numTokens);
-
-        bytes32 tokenDecimalDiffs = bytes32(uint256(config.getTokenDecimalDiffs()));
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            uint256 decimalDiff = tokenDecimalDiffs.decodeUint(i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
-
-            // This is equivalent to `10**(18+decimalsDifference)` but this form optimizes for 18 decimal tokens.
-            scalingFactors[i] = FixedPoint.ONE * 10 ** decimalDiff;
-        }
-
-        return scalingFactors;
     }
 }

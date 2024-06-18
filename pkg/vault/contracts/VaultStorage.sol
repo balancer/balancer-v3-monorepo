@@ -67,8 +67,8 @@ contract VaultStorage {
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfigBits;
 
-    // Registry of pool hooks.
-    mapping(address => HooksConfigBits) internal _hooksConfigBits;
+    // Registry of pool hooks contracts.
+    mapping(address => IHooks) internal _hooksContracts;
 
     // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
     // Last live balances are used for yield fee computation, and since these have rates applied, they are stored
