@@ -233,7 +233,7 @@ library PoolConfigLib {
         return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, AFTER_REMOVE_LIQUIDITY_OFFSET));
     }
 
-    function toHooksConfig(PoolConfigBits config, address hooksContract) internal pure returns (HooksConfig memory) {
+    function toHooksConfig(PoolConfigBits config, IHooks hooksContract) internal pure returns (HooksConfig memory) {
         return
             HooksConfig({
                 shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
@@ -245,7 +245,7 @@ library PoolConfigLib {
                 shouldCallComputeDynamicSwapFee: config.shouldCallComputeDynamicSwapFee(),
                 shouldCallBeforeSwap: config.shouldCallBeforeSwap(),
                 shouldCallAfterSwap: config.shouldCallAfterSwap(),
-                hooksContract: hooksContract
+                hooksContract: address(hooksContract)
             });
     }
 
@@ -262,13 +262,13 @@ library PoolConfigLib {
         PoolConfigBits config,
         IBasePool.PoolSwapParams memory swapParams,
         uint256 staticSwapFeePercentage,
-        HooksContractBox storage hooksContractBox
+        IHooks hooksContract
     ) internal view returns (bool, uint256) {
         if (config.shouldCallComputeDynamicSwapFee() == false) {
             return (false, 0);
         }
 
-        (bool success, uint256 swapFeePercentage) = IHooks(config.getHooksContract()).onComputeDynamicSwapFee(
+        (bool success, uint256 swapFeePercentage) = hooksContract.onComputeDynamicSwapFee(
             swapParams,
             staticSwapFeePercentage
         );
@@ -277,6 +277,33 @@ library PoolConfigLib {
             revert IVaultErrors.DynamicSwapFeeHookFailed();
         }
         return (success, swapFeePercentage);
+    }
+
+    /**
+     * @dev Check if before swap hook should be called and call it. Throws an error if the hook contract fails to
+     * execute the hook.
+     *
+     * @param config The encoded hooks configuration
+     * @param swapParams The swap parameters used in the hook
+     * @param pool Pool address
+     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
+     */
+    function onBeforeSwap(
+        PoolConfigBits config,
+        IBasePool.PoolSwapParams memory swapParams,
+        address pool,
+        IHooks hooksContract
+    ) internal returns (bool) {
+        if (config.shouldCallBeforeSwap() == false) {
+            // Hook contract does not implement onBeforeSwap, so success is false (hook was not executed)
+            return false;
+        }
+
+        if (hooksContract.onBeforeSwap(swapParams, pool) == false) {
+            // Hook contract implements onBeforeSwap, but it has failed, so reverts the transaction.
+            revert IVaultErrors.BeforeSwapHookFailed();
+        }
+        return true;
     }
 
     /**
@@ -298,7 +325,8 @@ library PoolConfigLib {
         address router,
         SwapParams memory params,
         SwapState memory state,
-        PoolData memory poolData
+        PoolData memory poolData,
+        IHooks hooksContract
     ) internal returns (uint256 hookAdjustedAmountCalculatedRaw) {
         if (config.shouldCallAfterSwap() == false) {
             // Hook contract does not implement onAfterSwap, so success is false (hook was not executed) and do not
@@ -312,7 +340,7 @@ library PoolConfigLib {
             : (amountCalculatedScaled18, state.amountGivenScaled18);
 
         bool success;
-        (success, hookAdjustedAmountCalculatedRaw) = IHooks(config.getHooksContract()).onAfterSwap(
+        (success, hookAdjustedAmountCalculatedRaw) = hooksContract.onAfterSwap(
             IHooks.AfterSwapParams({
                 kind: params.kind,
                 tokenIn: params.tokenIn,
@@ -357,14 +385,15 @@ library PoolConfigLib {
         uint256[] memory maxAmountsInScaled18,
         address router,
         AddLiquidityParams memory params,
-        PoolData memory poolData
+        PoolData memory poolData,
+        IHooks hooksContract
     ) internal returns (bool) {
         if (config.shouldCallBeforeAddLiquidity() == false) {
             return false;
         }
 
         if (
-            IHooks(config.getHooksContract()).onBeforeAddLiquidity(
+            hooksContract.onBeforeAddLiquidity(
                 router,
                 params.kind,
                 maxAmountsInScaled18,
@@ -394,14 +423,15 @@ library PoolConfigLib {
         uint256 bptAmountOut,
         address router,
         AddLiquidityParams memory params,
-        PoolData memory poolData
+        PoolData memory poolData,
+        IHooks hooksContract
     ) internal {
         if (config.shouldCallAfterAddLiquidity() == false) {
             return;
         }
 
         if (
-            IHooks(config.getHooksContract()).onAfterAddLiquidity(
+            hooksContract.onAfterAddLiquidity(
                 router,
                 amountsInScaled18,
                 bptAmountOut,
@@ -429,14 +459,15 @@ library PoolConfigLib {
         uint256[] memory minAmountsOutScaled18,
         address router,
         RemoveLiquidityParams memory params,
-        PoolData memory poolData
+        PoolData memory poolData,
+        IHooks hooksContract
     ) internal returns (bool) {
         if (config.shouldCallBeforeRemoveLiquidity() == false) {
             return false;
         }
 
         if (
-            IHooks(config.getHooksContract()).onBeforeRemoveLiquidity(
+            hooksContract.onBeforeRemoveLiquidity(
                 router,
                 params.kind,
                 params.maxBptAmountIn,
@@ -466,14 +497,15 @@ library PoolConfigLib {
         uint256 bptAmountIn,
         address router,
         RemoveLiquidityParams memory params,
-        PoolData memory poolData
+        PoolData memory poolData,
+        IHooks hooksContract
     ) internal {
         if (config.shouldCallAfterRemoveLiquidity() == false) {
             return;
         }
 
         if (
-            IHooks(config.getHooksContract()).onAfterRemoveLiquidity(
+            hooksContract.onAfterRemoveLiquidity(
                 router,
                 bptAmountIn,
                 amountsOutScaled18,
@@ -497,13 +529,14 @@ library PoolConfigLib {
     function onBeforeInitialize(
         PoolConfigBits config,
         uint256[] memory exactAmountsInScaled18,
-        bytes memory userData
+        bytes memory userData,
+        IHooks hooksContract
     ) internal returns (bool) {
         if (config.shouldCallBeforeInitialize() == false) {
             return false;
         }
 
-        if (IHooks(config.getHooksContract()).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
+        if (hooksContract.onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
             revert IVaultErrors.BeforeInitializeHookFailed();
         }
         return true;
@@ -522,15 +555,14 @@ library PoolConfigLib {
         PoolConfigBits config,
         uint256[] memory exactAmountsInScaled18,
         uint256 bptAmountOut,
-        bytes memory userData
+        bytes memory userData,
+        IHooks hooksContract
     ) internal {
         if (config.shouldCallAfterInitialize() == false) {
             return;
         }
 
-        if (
-            IHooks(config.getHooksContract()).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false
-        ) {
+        if (hooksContract.onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
             revert IVaultErrors.AfterInitializeHookFailed();
         }
     }

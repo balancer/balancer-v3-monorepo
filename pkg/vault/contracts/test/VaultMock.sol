@@ -78,23 +78,6 @@ contract VaultMock is IVaultMainMock, Vault {
         _mint(token, to, amount);
     }
 
-    function setHooksConfig(address pool, HooksConfig calldata config) external {
-        HooksConfigBits hooksConfig = _hooksConfigBits[pool];
-
-        hooksConfig = hooksConfig.setShouldCallBeforeInitialize(config.shouldCallBeforeInitialize);
-        hooksConfig = hooksConfig.setShouldCallAfterInitialize(config.shouldCallAfterInitialize);
-        hooksConfig = hooksConfig.setShouldCallComputeDynamicSwapFee(config.shouldCallComputeDynamicSwapFee);
-        hooksConfig = hooksConfig.setShouldCallBeforeSwap(config.shouldCallBeforeSwap);
-        hooksConfig = hooksConfig.setShouldCallAfterSwap(config.shouldCallAfterSwap);
-        hooksConfig = hooksConfig.setShouldCallBeforeAddLiquidity(config.shouldCallBeforeAddLiquidity);
-        hooksConfig = hooksConfig.setShouldCallAfterAddLiquidity(config.shouldCallAfterAddLiquidity);
-        hooksConfig = hooksConfig.setShouldCallBeforeRemoveLiquidity(config.shouldCallBeforeRemoveLiquidity);
-        hooksConfig = hooksConfig.setShouldCallAfterRemoveLiquidity(config.shouldCallAfterRemoveLiquidity);
-        hooksConfig = hooksConfig.setHooksContract(config.hooksContract);
-
-        _hooksConfigBits[pool] = hooksConfig;
-    }
-
     // Used for testing pool registration, which is ordinarily done in the pool factory.
     // The Mock pool has an argument for whether or not to register on deployment. To call register pool
     // separately, deploy it with the registration flag false, then call this function.
@@ -221,6 +204,23 @@ contract VaultMock is IVaultMainMock, Vault {
         );
 
         _poolConfigBits[pool] = poolConfigBits;
+    }
+
+    function manualSetHooksConfig(address pool, HooksConfig memory hooksConfig) public {
+        PoolConfigBits poolConfigBits = _poolConfigBits[pool];
+
+        poolConfigBits = poolConfigBits.setShouldCallBeforeInitialize(hooksConfig.shouldCallBeforeInitialize);
+        poolConfigBits = poolConfigBits.setShouldCallAfterInitialize(hooksConfig.shouldCallAfterInitialize);
+        poolConfigBits = poolConfigBits.setShouldCallComputeDynamicSwapFee(hooksConfig.shouldCallComputeDynamicSwapFee);
+        poolConfigBits = poolConfigBits.setShouldCallBeforeSwap(hooksConfig.shouldCallBeforeSwap);
+        poolConfigBits = poolConfigBits.setShouldCallAfterSwap(hooksConfig.shouldCallAfterSwap);
+        poolConfigBits = poolConfigBits.setShouldCallBeforeAddLiquidity(hooksConfig.shouldCallBeforeAddLiquidity);
+        poolConfigBits = poolConfigBits.setShouldCallAfterAddLiquidity(hooksConfig.shouldCallAfterAddLiquidity);
+        poolConfigBits = poolConfigBits.setShouldCallBeforeRemoveLiquidity(hooksConfig.shouldCallBeforeRemoveLiquidity);
+        poolConfigBits = poolConfigBits.setShouldCallAfterRemoveLiquidity(hooksConfig.shouldCallAfterRemoveLiquidity);
+
+        _poolConfigBits[pool] = poolConfigBits;
+        _hooksContracts[pool] = IHooks(hooksConfig.hooksContract);
     }
 
     function manualSetPoolConfigBits(address pool, PoolConfigBits config) public {

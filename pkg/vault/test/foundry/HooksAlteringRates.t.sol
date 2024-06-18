@@ -30,7 +30,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
 
         HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeSwap = true;
-        vault.setHooksConfig(pool, config);
+        vault.manualSetHooksConfig(pool, config);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
@@ -102,7 +102,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         HooksConfig memory config = vault.getHooksConfig(address(newPool));
         config.shouldCallBeforeInitialize = true;
         config.shouldCallAfterInitialize = true;
-        vault.setHooksConfig(address(newPool), config);
+        vault.manualSetHooksConfig(address(newPool), config);
 
         // Change rate of first token
         PoolHooksMock(poolHooksContract).setChangeTokenRateOnBeforeInitializeHook(true, rateProvider, 0.5e18);
@@ -136,7 +136,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeAddLiquidity = true;
         config.shouldCallAfterAddLiquidity = true;
-        vault.setHooksConfig(pool, config);
+        vault.manualSetHooksConfig(pool, config);
 
         // Change rate of first token
         PoolHooksMock(poolHooksContract).setChangeTokenRateOnBeforeAddLiquidityHook(true, rateProvider, 0.5e18);
@@ -180,7 +180,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
     function testOnBeforeRemoveLiquidityHookAlterRate() public {
         HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeRemoveLiquidity = true;
-        vault.setHooksConfig(pool, config);
+        vault.manualSetHooksConfig(pool, config);
 
         // Change rate of first token
         PoolHooksMock(poolHooksContract).setChangeTokenRateOnBeforeRemoveLiquidityHook(true, rateProvider, 0.5e18);

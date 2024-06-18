@@ -124,7 +124,7 @@ contract HooksTest is BaseVaultTest {
     function testOnComputeDynamicSwapFeeHook() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallComputeDynamicSwapFee = true;
-        vault.setHooksConfig(pool, hooksConfig);
+        vault.manualSetHooksConfig(pool, hooksConfig);
 
         vm.prank(bob);
         vm.expectCall(
@@ -151,7 +151,7 @@ contract HooksTest is BaseVaultTest {
 
         HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallComputeDynamicSwapFee = true;
-        vault.setHooksConfig(pool, hooksConfig);
+        vault.manualSetHooksConfig(pool, hooksConfig);
 
         authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
         vm.prank(alice);
@@ -180,7 +180,7 @@ contract HooksTest is BaseVaultTest {
     function testOnComputeDynamicSwapFeeHookRevert() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallComputeDynamicSwapFee = true;
-        vault.setHooksConfig(pool, hooksConfig);
+        vault.manualSetHooksConfig(pool, hooksConfig);
 
         // should fail
         PoolHooksMock(poolHooksContract).setFailOnComputeDynamicSwapFeeHook(true);
@@ -194,7 +194,7 @@ contract HooksTest is BaseVaultTest {
     function testOnBeforeSwapHook() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallBeforeSwap = true;
-        vault.setHooksConfig(pool, hooksConfig);
+        vault.manualSetHooksConfig(pool, hooksConfig);
 
         vm.prank(bob);
         vm.expectCall(
@@ -219,7 +219,7 @@ contract HooksTest is BaseVaultTest {
     function testOnBeforeSwapHookRevert() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallBeforeSwap = true;
-        vault.setHooksConfig(pool, hooksConfig);
+        vault.manualSetHooksConfig(pool, hooksConfig);
 
         // should fail
         PoolHooksMock(poolHooksContract).setFailOnBeforeSwapHook(true);
@@ -233,7 +233,7 @@ contract HooksTest is BaseVaultTest {
     function testOnAfterSwapHook() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallAfterSwap = true;
-        vault.setHooksConfig(pool, hooksConfig);
+        vault.manualSetHooksConfig(pool, hooksConfig);
 
         setSwapFeePercentage(swapFeePercentage);
         vault.manualSetAggregateSwapFeePercentage(pool, _getAggregateFeePercentage(protocolSwapFeePercentage, 0));
@@ -271,7 +271,7 @@ contract HooksTest is BaseVaultTest {
     function testOnAfterSwapHookRevert() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallAfterSwap = true;
-        vault.setHooksConfig(pool, hooksConfig);
+        vault.manualSetHooksConfig(pool, hooksConfig);
 
         // should fail
         PoolHooksMock(poolHooksContract).setFailOnAfterSwapHook(true);
@@ -299,7 +299,7 @@ contract HooksTest is BaseVaultTest {
     function testOnBeforeAddLiquidityHook() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallBeforeAddLiquidity = true;
-        vault.setHooksConfig(pool, hooksConfig);
+        vault.manualSetHooksConfig(pool, hooksConfig);
 
         vm.prank(bob);
         vm.expectCall(
@@ -350,7 +350,7 @@ contract HooksTest is BaseVaultTest {
     function testOnBeforeRemoveLiquidityHook() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallBeforeRemoveLiquidity = true;
-        vault.setHooksConfig(pool, hooksConfig);
+        vault.manualSetHooksConfig(pool, hooksConfig);
 
         vm.prank(alice);
         router.addLiquidityUnbalanced(
@@ -402,7 +402,7 @@ contract HooksTest is BaseVaultTest {
     function testOnAfterAddLiquidityHook() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallAfterAddLiquidity = true;
-        vault.setHooksConfig(pool, hooksConfig);
+        vault.manualSetHooksConfig(pool, hooksConfig);
 
         vm.prank(bob);
         vm.expectCall(
@@ -452,7 +452,7 @@ contract HooksTest is BaseVaultTest {
     function testOnAfterRemoveLiquidityHook() public {
         HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallAfterRemoveLiquidity = true;
-        vault.setHooksConfig(pool, hooksConfig);
+        vault.manualSetHooksConfig(pool, hooksConfig);
 
         vm.prank(alice);
         router.addLiquidityUnbalanced(
