@@ -198,6 +198,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // Storing into hooksConfig first avoids stack-too-deep
             IHooks.HookFlags memory hookFlags = IHooks(params.poolHooksContract).getHookFlags();
 
+            if (hookFlags.enableHookAdjustedAmounts && params.liquidityManagement.disableUnbalancedLiquidity == false) {
+                revert HookRegistrationFailed(params.poolHooksContract, pool, msg.sender);
+            }
+
             hooksConfig = hooksConfig.setHookAdjustedAmounts(hookFlags.enableHookAdjustedAmounts);
             hooksConfig = hooksConfig.setShouldCallBeforeInitialize(hookFlags.shouldCallBeforeInitialize);
             hooksConfig = hooksConfig.setShouldCallAfterInitialize(hookFlags.shouldCallAfterInitialize);
