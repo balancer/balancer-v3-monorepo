@@ -159,18 +159,21 @@ contract FeeTakingHookExample is BasePoolHooks {
 
     // Setters
 
-    // Sets the hook swap fee percentage, which will be accrued after a swap was executed
+    // Sets the hook swap fee percentage, which will be accrued after a swap was executed.
+    // In a real hook, this function should be permissioned.
     function setHookSwapFeePercentage(uint64 feePercentage) external {
         hookSwapFeePercentage = feePercentage;
     }
 
-    // Sets the hook add liquidity fee percentage, which will be accrued after an add liquidity operation was executed
+    // Sets the hook add liquidity fee percentage, which will be accrued after an add liquidity operation was executed.
+    // In a real hook, this function should be permissioned.
     function setAddLiquidityHookFeePercentage(uint64 hookFeePercentage) public {
         addLiquidityHookFeePercentage = hookFeePercentage;
     }
 
     // Sets the hook remove liquidity fee percentage, which will be accrued after a remove liquidity operation was
-    // executed
+    // executed.
+    // In a real hook, this function should be permissioned.
     function setRemoveLiquidityHookFeePercentage(uint64 hookFeePercentage) public {
         removeLiquidityHookFeePercentage = hookFeePercentage;
     }
