@@ -100,16 +100,14 @@ contract RouterTest is BaseVaultTest {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
 
         vm.prank(lp);
-        router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
+        router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, "");
 
         vm.prank(lp);
-        bool wethIsEth = true;
         router.initialize{ value: ethAmountIn }(
             address(wethPool),
             wethDaiTokens,
             wethDaiAmountsIn,
             initBpt,
-            wethIsEth,
             bytes("")
         );
     }
@@ -146,7 +144,6 @@ contract RouterTest is BaseVaultTest {
             wethDaiTokens,
             [uint256(0), uint256(0)].toMemoryArray(),
             uint256(0),
-            false,
             bytes("")
         );
     }
@@ -154,12 +151,10 @@ contract RouterTest is BaseVaultTest {
     function testInitializeWETHNoBalance() public {
         require(weth.balanceOf(broke) == 0, "Precondition: WETH balance non-zero");
 
-        bool wethIsEth = false;
-
         // Revert when sending ETH while wethIsEth is false (caller holds no weth).
         vm.expectRevert("TRANSFER_FROM_FAILED");
         vm.prank(broke);
-        router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, wethIsEth, bytes(""));
+        router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, bytes(""));
     }
 
     function testInitializeWETH() public {
@@ -171,7 +166,6 @@ contract RouterTest is BaseVaultTest {
             wethDaiTokens,
             wethDaiAmountsIn,
             initBpt,
-            false,
             bytes("")
         );
 
@@ -187,20 +181,18 @@ contract RouterTest is BaseVaultTest {
         // Caller does not have enough ETH, even if they hold weth.
         vm.expectRevert(RouterCommon.InsufficientEth.selector);
         vm.prank(alice);
-        router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, true, bytes(""));
+        router.initialize{ value: 1e12 }(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, bytes(""));
     }
 
     function testInitializeNative() public {
         checkAddLiquidityPreConditions();
 
-        bool wethIsEth = true;
         vm.startPrank(alice);
         bptAmountOut = router.initialize{ value: ethAmountIn }(
             address(wethPoolNoInit),
             wethDaiTokens,
             wethDaiAmountsIn,
             initBpt,
-            wethIsEth,
             bytes("")
         );
 
@@ -213,14 +205,12 @@ contract RouterTest is BaseVaultTest {
     function testInitializeNativeExcessEth() public {
         checkAddLiquidityPreConditions();
 
-        bool wethIsEth = true;
         vm.prank(alice);
         bptAmountOut = router.initialize{ value: defaultBalance }(
             address(wethPoolNoInit),
             wethDaiTokens,
             wethDaiAmountsIn,
             initBpt,
-            wethIsEth,
             bytes("")
         );
 

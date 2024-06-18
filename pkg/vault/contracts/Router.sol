@@ -23,6 +23,8 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 import { RouterCommon } from "./RouterCommon.sol";
+//import "hardhat/console.sol";
+import { console } from "forge-std/console.sol";
 
 contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
@@ -42,12 +44,11 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountOut) {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         Router.initializeHook.selector,
                         InitializeHookParams({
@@ -56,7 +57,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                             tokens: tokens,
                             exactAmountsIn: exactAmountsIn,
                             minBptAmountOut: minBptAmountOut,
-                            wethIsEth: wethIsEth,
+                            msgValue: msg.value,
                             userData: userData
                         })
                     )
@@ -88,9 +89,11 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
 
+            console.log("passed in: %s; actual: %s", params.msgValue, msg.value);
+
             // There can be only one WETH token in the pool
-            if (params.wethIsEth && address(token) == address(_weth)) {
-                if (msg.value < amountIn) {
+            if (params.msgValue > 0 && address(token) == address(_weth)) {
+                if (params.msgValue < amountIn) {
                     revert InsufficientEth();
                 }
                 _weth.deposit{ value: amountIn }();
@@ -118,7 +121,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bytes memory userData
     ) external payable saveSender returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
-            _vault.unlock{ value: msg.value }(
+            _vault.unlock(
                 abi.encodeWithSelector(
                     Router.addLiquidityHook.selector,
                     AddLiquidityHookParams({
@@ -145,7 +148,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bytes memory userData
     ) external payable saveSender returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
-            _vault.unlock{ value: msg.value }(
+            _vault.unlock(
                 abi.encodeWithSelector(
                     Router.addLiquidityHook.selector,
                     AddLiquidityHookParams({
@@ -179,7 +182,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         );
 
         (uint256[] memory amountsIn, , ) = abi.decode(
-            _vault.unlock{ value: msg.value }(
+            _vault.unlock(
                 abi.encodeWithSelector(
                     Router.addLiquidityHook.selector,
                     AddLiquidityHookParams({
@@ -209,7 +212,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable saveSender returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         Router.addLiquidityHook.selector,
                         AddLiquidityHookParams({
@@ -509,7 +512,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable saveSender returns (uint256) {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         Router.swapSingleTokenHook.selector,
                         SwapSingleTokenHookParams({
@@ -543,7 +546,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable saveSender returns (uint256) {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         Router.swapSingleTokenHook.selector,
                         SwapSingleTokenHookParams({

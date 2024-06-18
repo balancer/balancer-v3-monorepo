@@ -127,7 +127,6 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20()),
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
-            false,
             ""
         );
     }

@@ -55,7 +55,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         BatchRouter.swapExactInHook.selector,
                         SwapExactInHookParams({
@@ -85,7 +85,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         BatchRouter.swapExactOutHook.selector,
                         SwapExactOutHookParams({

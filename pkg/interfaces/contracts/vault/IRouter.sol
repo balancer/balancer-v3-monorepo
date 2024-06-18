@@ -23,7 +23,6 @@ interface IRouter {
      * @param tokens Pool tokens
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding initial liquidity
      */
     struct InitializeHookParams {
@@ -32,7 +31,7 @@ interface IRouter {
         IERC20[] tokens;
         uint256[] exactAmountsIn;
         uint256 minBptAmountOut;
-        bool wethIsEth;
+        uint256 msgValue;
         bytes userData;
     }
 
@@ -42,7 +41,6 @@ interface IRouter {
      * @param tokens Pool tokens
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding initial liquidity
      * @return bptAmountOut Actual amount of pool tokens minted in exchange for initial liquidity
      */
@@ -51,7 +49,6 @@ interface IRouter {
         IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
-        bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256 bptAmountOut);
 

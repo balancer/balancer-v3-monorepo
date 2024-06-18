@@ -54,7 +54,6 @@ contract InitializerTest is BaseVaultTest {
             standardPoolTokens,
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
-            false,
             bytes("0xff")
         );
     }
@@ -74,7 +73,6 @@ contract InitializerTest is BaseVaultTest {
             standardPoolTokens,
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
-            false,
             bytes("0xff")
         );
     }
@@ -88,7 +86,6 @@ contract InitializerTest is BaseVaultTest {
             standardPoolTokens,
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
-            false,
             bytes("0xff")
         );
     }
@@ -109,7 +106,6 @@ contract InitializerTest is BaseVaultTest {
             standardPoolTokens,
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
-            false,
             bytes("0xff")
         );
     }
@@ -123,7 +119,6 @@ contract InitializerTest is BaseVaultTest {
             standardPoolTokens,
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
-            false,
             bytes("0xff")
         );
     }
