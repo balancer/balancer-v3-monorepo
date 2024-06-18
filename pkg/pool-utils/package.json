@@ -1,13 +1,13 @@
 {
-  "name": "@balancer-labs/v3-pool-stable",
+  "name": "@balancer-labs/v3-pool-utils",
   "version": "0.1.0",
-  "description": "Balancer V3 Stable Pools",
+  "description": "Balancer V3 Pool Utils",
   "license": "GPL-3.0-only",
-  "homepage": "https://github.com/balancer-labs/balancer-v3-monorepo/tree/master/pkg/pool-stable#readme",
+  "homepage": "https://github.com/balancer-labs/balancer-v3-monorepo/tree/master/pkg/pool-utils#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/balancer-labs/balancer-v3-monorepo.git",
-    "directory": "pkg/pool-stable"
+    "directory": "pkg/pool-utils"
   },
   "bugs": {
     "url": "https://github.com/balancer-labs/balancer-v3-monorepo/issues"
@@ -39,15 +39,15 @@
   },
   "devDependencies": {
     "@balancer-labs/solidity-toolbox": "workspace:*",
-    "@balancer-labs/v3-pool-utils": "workspace:*",
     "@balancer-labs/v3-solidity-utils": "workspace:*",
+    "@balancer-labs/v3-vault": "workspace:*",
     "@typescript-eslint/eslint-plugin": "^5.41.0",
     "@typescript-eslint/parser": "^5.41.0",
     "decimal.js": "^10.4.2",
     "eslint": "^8.26.0",
     "eslint-plugin-mocha-no-only": "^1.1.1",
     "eslint-plugin-prettier": "^4.2.1",
-    "hardhat": "^2.14.0",
+    "hardhat": "^2.21.0",
     "lodash.frompairs": "^4.0.1",
     "lodash.pick": "^4.4.0",
     "lodash.range": "^3.2.0",

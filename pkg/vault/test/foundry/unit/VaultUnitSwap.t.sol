@@ -49,7 +49,8 @@ contract VaultUnitSwapTest is BaseTest {
         vault = IVaultMock(address(VaultMockDeployer.deploy()));
 
         swapTokens = [dai, usdc];
-        vault.manualSetPoolTokenBalances(pool, swapTokens, initialBalances);
+        // We don't care about last live balances, so we set them equal to the raw ones.
+        vault.manualSetPoolTokenBalances(pool, swapTokens, initialBalances, initialBalances);
 
         vault.manualSetAggregateSwapFeeAmount(pool, swapTokens[0], 0);
         vault.manualSetAggregateSwapFeeAmount(pool, swapTokens[1], 0);

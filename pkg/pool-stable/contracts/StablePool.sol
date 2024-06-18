@@ -13,12 +13,13 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { BasePoolAuthentication } from "@balancer-labs/v3-vault/contracts/BasePoolAuthentication.sol";
+import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 /// @notice Basic Stable Pool.
-contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Version {
+contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, PoolInfo, Version {
     using FixedPoint for uint256;
     using SafeCast for *;
 
@@ -84,6 +85,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
     )
         BalancerPoolToken(vault, params.name, params.symbol)
         BasePoolAuthentication(vault, msg.sender)
+        PoolInfo(vault)
         Version(params.version)
     {
         if (params.amplificationParameter < StableMath.MIN_AMP) {
@@ -95,11 +97,6 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Ver
 
         uint256 initialAmp = params.amplificationParameter * StableMath.AMP_PRECISION;
         _stopAmplification(initialAmp);
-    }
-
-    /// @inheritdoc IBasePool
-    function getPoolTokens() public view returns (IERC20[] memory tokens) {
-        return getVault().getPoolTokens(address(this));
     }
 
     /// @inheritdoc IBasePool
