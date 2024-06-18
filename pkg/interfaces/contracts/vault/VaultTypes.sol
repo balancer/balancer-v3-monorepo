@@ -31,6 +31,7 @@ struct PoolConfig {
 
 /// @dev Represents a hook contract configuration for a pool.
 struct HooksConfig {
+    bool enableHookAdjustedAmounts;
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
     bool shouldCallComputeDynamicSwapFee;
