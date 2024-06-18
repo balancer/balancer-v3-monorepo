@@ -20,7 +20,8 @@ library HooksConfigLib {
 
     // Bit offsets for pool config
     uint8 public constant BEFORE_INITIALIZE_OFFSET = 0;
-    uint8 public constant AFTER_INITIALIZE_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
+    uint8 public constant ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
+    uint8 public constant AFTER_INITIALIZE_OFFSET = ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET + 1;
     uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = AFTER_INITIALIZE_OFFSET + 1;
     uint8 public constant BEFORE_SWAP_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
     uint8 public constant AFTER_SWAP_OFFSET = BEFORE_SWAP_OFFSET + 1;
@@ -29,6 +30,15 @@ library HooksConfigLib {
     uint8 public constant BEFORE_REMOVE_LIQUIDITY_OFFSET = AFTER_ADD_LIQUIDITY_OFFSET + 1;
     uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = BEFORE_REMOVE_LIQUIDITY_OFFSET + 1;
     uint8 public constant HOOKS_CONTRACT_OFFSET = AFTER_REMOVE_LIQUIDITY_OFFSET + 1;
+
+    function enableHookAdjustedAmounts(HooksConfigBits config) internal pure returns (bool) {
+        return HooksConfigBits.unwrap(config).decodeBool(ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET);
+    }
+
+    function setHookAdjustedAmounts(HooksConfigBits config, bool value) internal pure returns (HooksConfigBits) {
+        return
+            HooksConfigBits.wrap(HooksConfigBits.unwrap(config).insertBool(value, ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET));
+    }
 
     function shouldCallBeforeInitialize(HooksConfigBits config) internal pure returns (bool) {
         return HooksConfigBits.unwrap(config).decodeBool(BEFORE_INITIALIZE_OFFSET);
@@ -128,6 +138,7 @@ library HooksConfigLib {
     function toHooksConfig(HooksConfigBits config) internal pure returns (HooksConfig memory) {
         return
             HooksConfig({
+                enableHookAdjustedAmounts: config.enableHookAdjustedAmounts(),
                 shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
                 shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
                 shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
@@ -157,7 +168,7 @@ library HooksConfigLib {
         uint256 staticSwapFeePercentage
     ) internal view returns (bool, uint256) {
         if (config.shouldCallComputeDynamicSwapFee() == false) {
-            return (false, 0);
+            return (false, staticSwapFeePercentage);
         }
 
         (bool success, uint256 swapFeePercentage) = IHooks(config.getHooksContract()).onComputeDynamicSwapFee(
@@ -218,7 +229,7 @@ library HooksConfigLib {
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
-    ) internal returns (uint256 hookAdjustedAmountCalculatedRaw) {
+    ) internal returns (uint256) {
         if (config.shouldCallAfterSwap() == false) {
             // Hook contract does not implement onAfterSwap, so success is false (hook was not executed) and do not
             // change amountCalculatedRaw (no deltas)
@@ -230,8 +241,7 @@ library HooksConfigLib {
             ? (state.amountGivenScaled18, amountCalculatedScaled18)
             : (amountCalculatedScaled18, state.amountGivenScaled18);
 
-        bool success;
-        (success, hookAdjustedAmountCalculatedRaw) = IHooks(config.getHooksContract()).onAfterSwap(
+        (bool success, uint256 hookAdjustedAmountCalculatedRaw) = IHooks(config.getHooksContract()).onAfterSwap(
             IHooks.AfterSwapParams({
                 kind: params.kind,
                 tokenIn: params.tokenIn,
@@ -253,12 +263,19 @@ library HooksConfigLib {
             revert IVaultErrors.AfterSwapHookFailed();
         }
 
+        // If hook adjusted amounts is not enabled, ignore amounts returned by the hook
+        if (config.enableHookAdjustedAmounts() == false) {
+            return amountCalculatedRaw;
+        }
+
         if (
             (params.kind == SwapKind.EXACT_IN && hookAdjustedAmountCalculatedRaw < params.limitRaw) ||
             (params.kind == SwapKind.EXACT_OUT && hookAdjustedAmountCalculatedRaw > params.limitRaw)
         ) {
-            revert IVaultErrors.SwapLimit(hookAdjustedAmountCalculatedRaw, params.limitRaw);
+            revert IVaultErrors.HookAdjustedSwapLimit(hookAdjustedAmountCalculatedRaw, params.limitRaw);
         }
+
+        return hookAdjustedAmountCalculatedRaw;
     }
 
     /**
@@ -320,36 +337,43 @@ library HooksConfigLib {
         uint256 bptAmountOut,
         AddLiquidityParams memory params,
         PoolData memory poolData
-    ) internal returns (uint256[] memory hookAdjustedAmountsInRaw) {
+    ) internal returns (uint256[] memory) {
         if (config.shouldCallAfterAddLiquidity() == false) {
             return amountsInRaw;
         }
 
-        bool success;
-        (success, hookAdjustedAmountsInRaw) = IHooks(config.getHooksContract()).onAfterAddLiquidity(
-            router,
-            params.pool,
-            params.kind,
-            amountsInScaled18,
-            amountsInRaw,
-            bptAmountOut,
-            poolData.balancesLiveScaled18,
-            params.userData
-        );
+        (bool success, uint256[] memory hookAdjustedAmountsInRaw) = IHooks(config.getHooksContract())
+            .onAfterAddLiquidity(
+                router,
+                params.pool,
+                params.kind,
+                amountsInScaled18,
+                amountsInRaw,
+                bptAmountOut,
+                poolData.balancesLiveScaled18,
+                params.userData
+            );
 
         if (success == false) {
             revert IVaultErrors.AfterAddLiquidityHookFailed();
         }
 
+        // If hook adjusted amounts is not enabled, ignore amounts returned by the hook
+        if (config.enableHookAdjustedAmounts() == false) {
+            return amountsInRaw;
+        }
+
         for (uint256 i = 0; i < hookAdjustedAmountsInRaw.length; i++) {
             if (hookAdjustedAmountsInRaw[i] > params.maxAmountsIn[i]) {
-                revert IVaultErrors.AmountInAboveMax(
+                revert IVaultErrors.HookAdjustedAmountInAboveMax(
                     poolData.tokens[i],
                     hookAdjustedAmountsInRaw[i],
                     params.maxAmountsIn[i]
                 );
             }
         }
+
+        return hookAdjustedAmountsInRaw;
     }
 
     /**
@@ -411,36 +435,43 @@ library HooksConfigLib {
         uint256 bptAmountIn,
         RemoveLiquidityParams memory params,
         PoolData memory poolData
-    ) internal returns (uint256[] memory hookAdjustedAmountsOutRaw) {
+    ) internal returns (uint256[] memory) {
         if (config.shouldCallAfterRemoveLiquidity() == false) {
             return amountsOutRaw;
         }
 
-        bool success;
-        (success, hookAdjustedAmountsOutRaw) = IHooks(config.getHooksContract()).onAfterRemoveLiquidity(
-            router,
-            params.pool,
-            params.kind,
-            bptAmountIn,
-            amountsOutScaled18,
-            amountsOutRaw,
-            poolData.balancesLiveScaled18,
-            params.userData
-        );
+        (bool success, uint256[] memory hookAdjustedAmountsOutRaw) = IHooks(config.getHooksContract())
+            .onAfterRemoveLiquidity(
+                router,
+                params.pool,
+                params.kind,
+                bptAmountIn,
+                amountsOutScaled18,
+                amountsOutRaw,
+                poolData.balancesLiveScaled18,
+                params.userData
+            );
 
         if (success == false) {
             revert IVaultErrors.AfterRemoveLiquidityHookFailed();
         }
 
+        // If hook adjusted amounts is not enabled, ignore amounts returned by the hook
+        if (config.enableHookAdjustedAmounts() == false) {
+            return amountsOutRaw;
+        }
+
         for (uint256 i = 0; i < hookAdjustedAmountsOutRaw.length; i++) {
             if (hookAdjustedAmountsOutRaw[i] < params.minAmountsOut[i]) {
-                revert IVaultErrors.AmountOutBelowMin(
+                revert IVaultErrors.HookAdjustedAmountOutBelowMin(
                     poolData.tokens[i],
                     hookAdjustedAmountsOutRaw[i],
                     params.minAmountsOut[i]
                 );
             }
         }
+
+        return hookAdjustedAmountsOutRaw;
     }
 
     /**

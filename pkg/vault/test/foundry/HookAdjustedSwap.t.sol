@@ -6,12 +6,14 @@ import "forge-std/Test.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -37,8 +39,31 @@ contract HookAdjustedSwapTest is BaseVaultTest {
     function createHook() internal override returns (address) {
         // Sets all flags as false
         IHooks.HookFlags memory hookFlags;
+        hookFlags.enableHookAdjustedAmounts = true;
         hookFlags.shouldCallAfterSwap = true;
         return _createHook(hookFlags);
+    }
+
+    // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity)
+    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        vm.label(address(newPool), label);
+
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = address(lp);
+
+        LiquidityManagement memory liquidityManagement;
+        liquidityManagement.disableUnbalancedLiquidity = true;
+
+        factoryMock.registerPool(
+            address(newPool),
+            vault.buildTokenConfig(tokens.asIERC20()),
+            roleAccounts,
+            poolHooksContract,
+            liquidityManagement
+        );
+
+        return address(newPool);
     }
 
     function testFeeExactIn__Fuzz(uint256 swapAmount, uint256 hookFeePercentage) public {
@@ -282,7 +307,9 @@ contract HookAdjustedSwapTest is BaseVaultTest {
             )
         );
         // Check if call reverted because limits were not respected in the after hook (amountOut < minAmountOut)
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, _swapAmount - hookFee, _swapAmount));
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.HookAdjustedSwapLimit.selector, _swapAmount - hookFee, _swapAmount)
+        );
 
         router.swapSingleTokenExactIn(
             address(pool),
@@ -326,7 +353,9 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         );
 
         // Check if call reverted because limits were not respected in the after hook (amountIn > maxAmountIn)
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, _swapAmount + hookFee, _swapAmount));
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.HookAdjustedSwapLimit.selector, _swapAmount + hookFee, _swapAmount)
+        );
 
         router.swapSingleTokenExactOut(
             address(pool),
