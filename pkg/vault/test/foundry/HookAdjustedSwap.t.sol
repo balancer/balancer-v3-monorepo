@@ -283,7 +283,9 @@ contract HookAdjustedSwapTest is BaseVaultTest {
             )
         );
         // Check if call reverted because limits were not respected in the after hook (amountOut < minAmountOut)
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, _swapAmount - hookFee, _swapAmount));
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.HookAdjustedSwapLimit.selector, _swapAmount - hookFee, _swapAmount)
+        );
 
         router.swapSingleTokenExactIn(
             address(pool),
@@ -327,7 +329,9 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         );
 
         // Check if call reverted because limits were not respected in the after hook (amountIn > maxAmountIn)
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, _swapAmount + hookFee, _swapAmount));
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.HookAdjustedSwapLimit.selector, _swapAmount + hookFee, _swapAmount)
+        );
 
         router.swapSingleTokenExactOut(
             address(pool),

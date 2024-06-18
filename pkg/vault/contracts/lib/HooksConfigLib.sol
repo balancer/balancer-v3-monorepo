@@ -272,7 +272,7 @@ library HooksConfigLib {
             (params.kind == SwapKind.EXACT_IN && hookAdjustedAmountCalculatedRaw < params.limitRaw) ||
             (params.kind == SwapKind.EXACT_OUT && hookAdjustedAmountCalculatedRaw > params.limitRaw)
         ) {
-            revert IVaultErrors.SwapLimit(hookAdjustedAmountCalculatedRaw, params.limitRaw);
+            revert IVaultErrors.HookAdjustedSwapLimit(hookAdjustedAmountCalculatedRaw, params.limitRaw);
         }
 
         return hookAdjustedAmountCalculatedRaw;
@@ -365,7 +365,7 @@ library HooksConfigLib {
 
         for (uint256 i = 0; i < hookAdjustedAmountsInRaw.length; i++) {
             if (hookAdjustedAmountsInRaw[i] > params.maxAmountsIn[i]) {
-                revert IVaultErrors.AmountInAboveMax(
+                revert IVaultErrors.HookAdjustedAmountInAboveMax(
                     poolData.tokens[i],
                     hookAdjustedAmountsInRaw[i],
                     params.maxAmountsIn[i]
@@ -463,7 +463,7 @@ library HooksConfigLib {
 
         for (uint256 i = 0; i < hookAdjustedAmountsOutRaw.length; i++) {
             if (hookAdjustedAmountsOutRaw[i] < params.minAmountsOut[i]) {
-                revert IVaultErrors.AmountOutBelowMin(
+                revert IVaultErrors.HookAdjustedAmountOutBelowMin(
                     poolData.tokens[i],
                     hookAdjustedAmountsOutRaw[i],
                     params.minAmountsOut[i]
