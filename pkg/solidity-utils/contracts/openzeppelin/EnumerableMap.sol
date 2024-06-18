@@ -9,7 +9,7 @@
 // Additionally, the base private functions that work on bytes32 were removed and replaced with a native implementation
 // for IERC20 keys, to reduce bytecode size and runtime costs.
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -190,6 +190,14 @@ library EnumerableMap {
     function unchecked_at(IERC20ToBytes32Map storage map, uint256 index) internal view returns (IERC20, bytes32) {
         IERC20ToBytes32MapEntry storage entry = map.entries[index];
         return (entry.key, entry.value);
+    }
+
+    /**
+     * @dev Same as {unchecked_At}, except it only returns the key and not the value (performing one less storage
+     * read). O(1).
+     */
+    function unchecked_keyAt(IERC20ToBytes32Map storage map, uint256 index) internal view returns (IERC20) {
+        return map.entries[index].key;
     }
 
     /**

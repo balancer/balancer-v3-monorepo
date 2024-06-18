@@ -1,20 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ISwapFeePercentageBounds } from "./ISwapFeePercentageBounds.sol";
 import { SwapKind } from "./VaultTypes.sol";
 
 /// @notice Interface for a Base Pool
-interface IBasePool {
-    /**
-     * @notice Gets the tokens registered to a pool.
-     * @dev Delegated to the Vault; added here as a convenience, mainly for off-chain processes.
-     * @return tokens List of tokens in the pool
-     */
-    function getPoolTokens() external view returns (IERC20[] memory tokens);
-
+interface IBasePool is ISwapFeePercentageBounds {
     /***************************************************************************
                                    Invariant
     ***************************************************************************/
@@ -53,16 +47,17 @@ interface IBasePool {
      * @param balancesScaled18 Current pool balances
      * @param indexIn Index of tokenIn
      * @param indexOut Index of tokenOut
-     * @param sender Originator of the swap transaction
+     * @param user Account originating the swap operation
+     * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param userData Additional (optional) data required for the swap
      */
-    struct SwapParams {
+    struct PoolSwapParams {
         SwapKind kind;
         uint256 amountGivenScaled18;
         uint256[] balancesScaled18;
         uint256 indexIn;
         uint256 indexOut;
-        address sender;
+        address router;
         bytes userData;
     }
 
@@ -71,5 +66,5 @@ interface IBasePool {
      * @param params Swap parameters (see above for struct definition)
      * @return amountCalculatedScaled18 Calculated amount for the swap
      */
-    function onSwap(SwapParams calldata params) external returns (uint256 amountCalculatedScaled18);
+    function onSwap(PoolSwapParams calldata params) external returns (uint256 amountCalculatedScaled18);
 }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -12,6 +12,7 @@ import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREA
 import { Vault } from "./Vault.sol";
 import { VaultAdmin } from "./VaultAdmin.sol";
 import { VaultExtension } from "./VaultExtension.sol";
+import { ProtocolFeeController } from "./ProtocolFeeController.sol";
 
 /**
  * @dev One-off factory to deploy the Vault at a specific address.
@@ -29,8 +30,8 @@ contract VaultFactory is Authentication {
     bool public isDisabled;
 
     IAuthorizer private immutable _authorizer;
-    uint256 private immutable _pauseWindowDuration;
-    uint256 private immutable _bufferPeriodDuration;
+    uint32 private immutable _pauseWindowDuration;
+    uint32 private immutable _bufferPeriodDuration;
     address private immutable _deployer;
 
     bytes private _creationCode;
@@ -39,8 +40,8 @@ contract VaultFactory is Authentication {
 
     constructor(
         IAuthorizer authorizer,
-        uint256 pauseWindowDuration,
-        uint256 bufferPeriodDuration
+        uint32 pauseWindowDuration,
+        uint32 bufferPeriodDuration
     ) Authentication(bytes32(uint256(uint160(address(this))))) {
         _deployer = msg.sender;
         _creationCode = type(Vault).creationCode;
@@ -72,7 +73,9 @@ contract VaultFactory is Authentication {
 
         VaultExtension vaultExtension = new VaultExtension(IVault(vaultAddress), vaultAdmin);
 
-        address deployedAddress = _create(abi.encode(vaultExtension, _authorizer), salt);
+        ProtocolFeeController feeController = new ProtocolFeeController(IVault(vaultAddress));
+
+        address deployedAddress = _create(abi.encode(vaultExtension, _authorizer, feeController), salt);
 
         // This should always be the case, but we enforce the end state to match the expected outcome anyways.
         if (deployedAddress != targetAddress) {

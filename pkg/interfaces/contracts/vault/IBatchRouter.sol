@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IBatchRouter {
     /***************************************************************************
@@ -16,6 +15,9 @@ interface IBatchRouter {
     struct SwapPathStep {
         address pool;
         IERC20 tokenOut;
+        // if true, pool is a yield-bearing token buffer. Used to wrap/unwrap tokens if pool doesn't have
+        // enough liquidity
+        bool isBuffer;
     }
 
     struct SwapPathExactAmountIn {
@@ -53,9 +55,6 @@ interface IBatchRouter {
         bool wethIsEth;
         bytes userData;
     }
-
-    /// @dev The swap transaction was not validated before the specified deadline timestamp.
-    error SwapDeadline();
 
     /**
      * @notice Executes a swap operation involving multiple paths (steps), specifying exact input token amounts.

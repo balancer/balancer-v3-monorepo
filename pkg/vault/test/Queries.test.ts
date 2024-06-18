@@ -1,25 +1,31 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
-import { MAX_UINT256, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
 import { Router } from '../typechain-types/contracts/Router';
-import { ERC20PoolMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/ERC20PoolMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { VoidSigner } from 'ethers';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { fp } from '@balancer-labs/v3-helpers/src/numbers';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
-import { Vault } from '@balancer-labs/v3-vault/typechain-types';
+import { PoolFactoryMock, PoolMock, RouterMock, Vault } from '@balancer-labs/v3-vault/typechain-types';
 import { buildTokenConfig } from './poolSetup';
+import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
+import { WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
+import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
+import { deployPermit2 } from './Permit2Deployer';
 
 describe('Queries', function () {
+  let permit2: IPermit2;
   let vault: Vault;
   let router: Router;
-  let pool: ERC20PoolMock;
+  let factory: PoolFactoryMock;
+  let pool: PoolMock;
   let DAI: ERC20TestToken;
   let USDC: ERC20TestToken;
+  let WETH: WETHTestToken;
   let zero: VoidSigner;
 
   const DAI_AMOUNT_IN = fp(1000);
@@ -36,22 +42,30 @@ describe('Queries', function () {
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
     vault = await VaultDeployer.deploy();
     const vaultAddress = await vault.getAddress();
-    const WETH = await deploy('v3-solidity-utils/WETHTestToken');
-    router = await deploy('Router', { args: [vaultAddress, WETH] });
+    WETH = await deploy('v3-solidity-utils/WETHTestToken');
+    permit2 = await deployPermit2();
+    router = await deploy('Router', { args: [vaultAddress, WETH, permit2] });
 
     DAI = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['DAI', 'Token A', 18] });
     USDC = await deploy('v3-solidity-utils/ERC20TestToken', { args: ['USDC', 'USDC', 18] });
     const tokenAddresses = sortAddresses([await DAI.getAddress(), await USDC.getAddress()]);
 
     pool = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool', 'POOL', buildTokenConfig(tokenAddresses), true, 365 * 24 * 3600, ZERO_ADDRESS],
+      args: [vaultAddress, 'Pool', 'POOL'],
     });
+
+    factory = await deploy('PoolFactoryMock', { args: [vaultAddress, 12 * MONTH] });
+
+    await factory.registerTestPool(pool, buildTokenConfig([await DAI.getAddress(), await USDC.getAddress()].sort()));
 
     await USDC.mint(alice, 2n * USDC_AMOUNT_IN);
     await DAI.mint(alice, 2n * DAI_AMOUNT_IN);
 
-    await USDC.connect(alice).approve(vault, MAX_UINT256);
-    await DAI.connect(alice).approve(vault, MAX_UINT256);
+    await pool.connect(alice).approve(router, MAX_UINT256);
+    for (const token of [USDC, DAI]) {
+      await token.connect(alice).approve(permit2, MAX_UINT256);
+      await permit2.connect(alice).approve(token, router, MAX_UINT160, MAX_UINT48);
+    }
 
     // The mock pool can be initialized with no liquidity; it mints some BPT to the initializer
     // to comply with the vault's required minimum.
@@ -92,6 +106,21 @@ describe('Queries', function () {
     it('reverts if not a static call (exact out)', async () => {
       await expect(
         router.querySwapSingleTokenExactOut.staticCall(pool, USDC, DAI, DAI_AMOUNT_OUT, '0x')
+      ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
+    });
+  });
+
+  describe('addLiquidityProportional', () => {
+    it('queries addLiquidityProportional correctly', async () => {
+      const amountsIn = await router
+        .connect(zero)
+        .queryAddLiquidityProportional.staticCall(pool, [DAI_AMOUNT_IN, USDC_AMOUNT_IN], BPT_AMOUNT, '0x');
+      expect(amountsIn).to.be.deep.eq([DAI_AMOUNT_IN, USDC_AMOUNT_IN]);
+    });
+
+    it('reverts if not a static call', async () => {
+      await expect(
+        router.queryAddLiquidityProportional.staticCall(pool, [DAI_AMOUNT_IN, USDC_AMOUNT_IN], BPT_AMOUNT, '0x')
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
     });
   });
@@ -205,6 +234,58 @@ describe('Queries', function () {
       await expect(
         router.queryRemoveLiquidityCustom.staticCall(pool, BPT_AMOUNT, [DAI_AMOUNT_IN, USDC_AMOUNT_IN], '0xbeef')
       ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
+    });
+  });
+
+  describe('query and revert', () => {
+    let router: RouterMock;
+
+    sharedBeforeEach('deploy mock router', async () => {
+      router = await deploy('RouterMock', { args: [vault, WETH, permit2] });
+    });
+
+    describe('swap', () => {
+      it('queries a swap exact in correctly', async () => {
+        const amountCalculated = await router
+          .connect(zero)
+          .querySwapSingleTokenExactInAndRevert.staticCall(pool, USDC, DAI, USDC_AMOUNT_IN, '0x');
+        expect(amountCalculated).to.be.eq(DAI_AMOUNT_IN);
+      });
+
+      it('reverts if not a static call (exact in)', async () => {
+        await expect(
+          router.querySwapSingleTokenExactInAndRevert.staticCall(pool, USDC, DAI, USDC_AMOUNT_IN, '0x')
+        ).to.be.revertedWithCustomError(vault, 'NotStaticCall');
+      });
+
+      it('handles query spoofs', async () => {
+        await expect(router.connect(zero).querySpoof.staticCall()).to.be.revertedWithCustomError(
+          vault,
+          'QuoteResultSpoofed'
+        );
+      });
+
+      it('handles custom error codes', async () => {
+        await expect(router.connect(zero).queryRevertErrorCode.staticCall()).to.be.revertedWithCustomError(
+          router,
+          'MockErrorCode'
+        );
+      });
+
+      it('handles legacy errors', async () => {
+        await expect(router.connect(zero).queryRevertLegacy.staticCall()).to.be.revertedWith('Legacy revert reason');
+      });
+
+      it('handles revert with no reason', async () => {
+        await expect(router.connect(zero).queryRevertNoReason.staticCall()).to.be.revertedWithCustomError(
+          router,
+          'ErrorSelectorNotFound'
+        );
+      });
+
+      it('handles panic', async () => {
+        await expect(router.connect(zero).queryRevertPanic.staticCall()).to.be.revertedWithPanic();
+      });
     });
   });
 });

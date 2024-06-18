@@ -1,80 +1,154 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IRateProvider } from "./IRateProvider.sol";
 
-/// @dev Represents a pool's hooks.
-struct PoolHooks {
+struct LiquidityManagement {
+    bool disableUnbalancedLiquidity;
+    bool enableAddLiquidityCustom;
+    bool enableRemoveLiquidityCustom;
+}
+
+// @notice Config type to store entire configuration of the pool.
+type PoolConfigBits is bytes32;
+
+/// @dev Represents a pool's configuration (hooks configuration are separated in another struct).
+struct PoolConfig {
+    LiquidityManagement liquidityManagement;
+    uint256 staticSwapFeePercentage;
+    uint256 aggregateSwapFeePercentage;
+    uint256 aggregateYieldFeePercentage;
+    uint24 tokenDecimalDiffs;
+    uint32 pauseWindowEndTime;
+    bool isPoolRegistered;
+    bool isPoolInitialized;
+    bool isPoolPaused;
+    bool isPoolInRecoveryMode;
+}
+
+/// @dev Represents a hook contract configuration for a pool.
+struct HooksConfig {
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
+    bool shouldCallComputeDynamicSwapFee;
     bool shouldCallBeforeSwap;
     bool shouldCallAfterSwap;
     bool shouldCallBeforeAddLiquidity;
     bool shouldCallAfterAddLiquidity;
     bool shouldCallBeforeRemoveLiquidity;
     bool shouldCallAfterRemoveLiquidity;
+    address hooksContract;
 }
 
-struct LiquidityManagement {
-    bool supportsAddLiquidityCustom;
-    bool supportsRemoveLiquidityCustom;
+/// @dev Represents temporary state used in a swap operation.
+struct SwapState {
+    uint256 indexIn;
+    uint256 indexOut;
+    uint256 amountGivenScaled18;
+    uint256 swapFeePercentage;
 }
 
-/// @dev Represents a pool's configuration, including hooks.
-struct PoolConfig {
-    bool isPoolRegistered;
-    bool isPoolInitialized;
-    bool isPoolPaused;
-    bool isPoolInRecoveryMode;
-    bool hasDynamicSwapFee;
-    uint64 staticSwapFeePercentage; // stores an 18-decimal FP value (max FixedPoint.ONE)
-    uint24 tokenDecimalDiffs; // stores 18-(token decimals), for each token
-    uint32 pauseWindowEndTime;
-    PoolHooks hooks;
-    LiquidityManagement liquidityManagement;
+/**
+ * @dev Represents the Vault's configuration.
+ * @param isQueryDisabled If set to true, disables query functionality of the Vault. Can be modified only by
+ * governance.
+ * @param isVaultPaused If set to true, Swaps and Add/Remove Liquidity operations are halted
+ * @param areBuffersPaused If set to true, the Vault wrap/unwrap primitives associated with buffers will be disabled
+ */
+struct VaultState {
+    bool isQueryDisabled;
+    bool isVaultPaused;
+    bool areBuffersPaused;
+}
+
+/**
+ * @dev Represents the accounts holding certain roles for a given pool. This is passed in on pool registration.
+ * @param pauseManager Account empowered to pause/unpause the pool (or 0 to delegate to governance)
+ * @param swapFeeManager Account empowered to set static swap fees for a pool (or 0 to delegate to goverance)
+ * @param poolCreator Account empowered to set the pool creator fee percentage
+ */
+struct PoolRoleAccounts {
+    address pauseManager;
+    address swapFeeManager;
+    address poolCreator;
+}
+
+/**
+ * @notice Record pool function permissions (as a sort of local authorizer).
+ * @dev For each permissioned function controlled by a role (e.g., pause/unpause), store the account empowered to call
+ * that function, and flag indicating whether, if the caller is not the designated account (which might be zero),
+ * it should then delegate to governance. If the `onlyOwner` flag is true, it can only be called by the designated
+ * account.
+ *
+ * @param account The account with permission to perform the role
+ * @param onlyOwner Flag indicating whether it is reserved to the account alone, or also governance
+ */
+struct PoolFunctionPermission {
+    address account;
+    bool onlyOwner;
 }
 
 /**
  * @dev Token types supported by the Vault. In general, pools may contain any combination of these tokens.
  * STANDARD tokens (e.g., BAL, WETH) have no rate provider.
- * WITH_RATE tokens (e.g., wstETH) require rates but cannot be directly wrapped or unwrapped.
- * In the case of wstETH, this is because the underlying stETH token is rebasing, and such tokens are unsupported
- * by the Vault.
- * ERC4626 tokens (e.g., waDAI) have rates, and can be directly wrapped and unwrapped. The token must conform to
- * a subset of IERC4626, and functions as its own rate provider. To the outside world (e.g., callers of
- * `getPoolTokens`), the pool will appear to contain the underlying base token (DAI, for waDAI), though the
- * wrapped token will be registered and stored in the pool's balance in the Vault.
+ * WITH_RATE tokens (e.g., wstETH) require a rate provider. These may be tokens like wstETH, which need to be wrapped
+ * because the underlying stETH token is rebasing, and such tokens are unsupported by the Vault. They may also be
+ * tokens like sEUR, which track an underlying asset, but are not yield-bearing. Finally, this encompasses
+ * yield-bearing ERC4626 tokens, which can be used to facilitate swaps without requiring wrapping or unwrapping
+ * in most cases. The `paysYieldFees` flag can be used to indicate whether a token is yield-bearing (e.g., waDAI),
+ * not yield-bearing (e.g., sEUR), or yield-bearing but exempt from fees (e.g., in certain nested pools, where
+ * yield fees are charged elsewhere).
  *
  * NB: STANDARD must always be the first enum element, so that newly initialized data structures default to Standard.
  */
 enum TokenType {
     STANDARD,
-    WITH_RATE,
-    ERC4626
+    WITH_RATE
 }
 
 /**
- * @dev Encapsulate the data required for the Vault to support a token of the given type.
- * For STANDARD or ERC4626 tokens, the rate provider address will be 0. By definition, ERC4626 tokens cannot be
- * yield exempt, so the `yieldFeeExempt` flag must be false when registering them.
+ * @dev Encapsulate the data required for the Vault to support a token of the given type. For STANDARD tokens,
+ * the rate provider address must be 0, and paysYieldFees must be false. All WITH_RATE tokens need a rate provider,
+ * and may or may not be yield-bearing.
+ *
+ * At registration time, it is useful to include the token address along with the token parameters in the structure
+ * passed to `registerPool`, as the alternative would be parallel arrays, which would be error prone and require
+ * validation checks. `TokenConfig` is only used for registration, and is never put into storage (see `TokenInfo`).
  *
  * @param token The token address
  * @param tokenType The token type (see the enum for supported types)
  * @param rateProvider The rate provider for a token (see further documentation above)
- * @param yieldFeeExempt Flag indicating whether yield fees should be charged on this token
+ * @param paysYieldFees Flag indicating whether yield fees should be charged on this token
  */
 struct TokenConfig {
     IERC20 token;
     TokenType tokenType;
     IRateProvider rateProvider;
-    bool yieldFeeExempt;
+    bool paysYieldFees;
+}
+
+/**
+ * @dev This data structure is stored in `_poolTokenInfo`, a nested mapping from pool -> (token -> TokenInfo).
+ * Since the token is already the key of the nested mapping, it would be redundant (and an extra SLOAD) to store
+ * it again in the struct. When we construct PoolData, the tokens are separated into their own array.
+ *
+ * @param tokenType The token type (see the enum for supported types)
+ * @param rateProvider The rate provider for a token (see further documentation above)
+ * @param paysYieldFees Flag indicating whether yield fees should be charged on this token
+ */
+struct TokenInfo {
+    TokenType tokenType;
+    IRateProvider rateProvider;
+    bool paysYieldFees;
 }
 
 struct PoolData {
-    PoolConfig poolConfig;
-    TokenConfig[] tokenConfig;
+    PoolConfigBits poolConfigBits;
+    IERC20[] tokens;
+    TokenInfo[] tokenInfo;
     uint256[] balancesRaw;
     uint256[] balancesLiveScaled18;
     uint256[] tokenRates;
@@ -120,6 +194,7 @@ struct SwapParams {
 *******************************************************************************/
 
 enum AddLiquidityKind {
+    PROPORTIONAL,
     UNBALANCED,
     SINGLE_TOKEN_EXACT_OUT,
     CUSTOM
@@ -170,3 +245,37 @@ struct RemoveLiquidityParams {
     RemoveLiquidityKind kind;
     bytes userData;
 }
+
+/*******************************************************************************
+                                Remove liquidity
+*******************************************************************************/
+
+enum WrappingDirection {
+    WRAP,
+    UNWRAP
+}
+
+/**
+ * @dev Data for a wrap/unwrap operation.
+ * @param kind Type of swap (Exact In or Exact Out)
+ * @param direction Direction of the wrapping operation (Wrap or Unwrap)
+ * @param wrappedToken Wrapped token, compatible with interface ERC4626
+ * @param amountGivenRaw Amount specified for tokenIn or tokenOut (depends on the type of swap and wrapping direction)
+ * @param limitRaw Minimum or maximum amount specified for the other token (depends on the type of swap and wrapping
+ * direction)
+ * @param userData Optional user data
+ */
+struct BufferWrapOrUnwrapParams {
+    SwapKind kind;
+    WrappingDirection direction;
+    IERC4626 wrappedToken;
+    uint256 amountGivenRaw;
+    uint256 limitRaw;
+    bytes userData;
+}
+
+// Protocol Fees are 24-bit values. We transform them by multiplying by 1e11, so
+// they can be set to any value between 0% and 100% (step 0.00001%).
+uint256 constant FEE_BITLENGTH = 24;
+uint256 constant MAX_FEE_VALUE = type(uint24).max;
+uint256 constant FEE_SCALING_FACTOR = 1e11;

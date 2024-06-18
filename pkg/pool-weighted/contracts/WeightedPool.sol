@@ -1,21 +1,28 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
+import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 /// @notice Basic Weighted Pool with immutable weights.
-contract WeightedPool is IBasePool, BalancerPoolToken {
+contract WeightedPool is IBasePool, BalancerPoolToken, PoolInfo, Version {
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 0.1e18; // 10%
+
     uint256 private immutable _totalTokens;
 
     uint256 internal immutable _normalizedWeight0;
@@ -28,6 +35,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         string symbol;
         uint256 numTokens;
         uint256[] normalizedWeights;
+        string version;
     }
 
     /// @dev Indicates that one of the pool tokens' weight is below the minimum allowed.
@@ -36,14 +44,18 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
     /// @dev Indicates that the sum of the pool tokens' weights is not FP 1.
     error NormalizedWeightInvariant();
 
-    constructor(NewPoolParams memory params, IVault vault) BalancerPoolToken(vault, params.name, params.symbol) {
-        InputHelpers.ensureInputLengthMatch(params.numTokens, params.normalizedWeights.length);
+    constructor(
+        NewPoolParams memory params,
+        IVault vault
+    ) BalancerPoolToken(vault, params.name, params.symbol) PoolInfo(vault) Version(params.version) {
+        uint256 numTokens = params.numTokens;
+        InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
 
-        _totalTokens = params.numTokens;
+        _totalTokens = numTokens;
 
         // Ensure each normalized weight is above the minimum
         uint256 normalizedSum = 0;
-        for (uint8 i = 0; i < params.numTokens; i++) {
+        for (uint8 i = 0; i < numTokens; ++i) {
             uint256 normalizedWeight = params.normalizedWeights[i];
 
             if (normalizedWeight < WeightedMath._MIN_WEIGHT) {
@@ -59,13 +71,8 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
         _normalizedWeight0 = params.normalizedWeights[0];
         _normalizedWeight1 = params.normalizedWeights[1];
-        _normalizedWeight2 = params.numTokens > 2 ? params.normalizedWeights[2] : 0;
-        _normalizedWeight3 = params.numTokens > 3 ? params.normalizedWeights[3] : 0;
-    }
-
-    /// @inheritdoc IBasePool
-    function getPoolTokens() public view returns (IERC20[] memory tokens) {
-        return getVault().getPoolTokens(address(this));
+        _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
+        _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
     }
 
     /// @inheritdoc IBasePool
@@ -96,7 +103,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(IBasePool.SwapParams memory request) public view onlyVault returns (uint256) {
+    function onSwap(IBasePool.PoolSwapParams memory request) public view onlyVault returns (uint256) {
         uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 
@@ -155,5 +162,15 @@ contract WeightedPool is IBasePool, BalancerPoolToken {
         }
 
         return normalizedWeights;
+    }
+
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMinimumSwapFeePercentage() external pure returns (uint256) {
+        return _MIN_SWAP_FEE_PERCENTAGE;
+    }
+
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMaximumSwapFeePercentage() external pure returns (uint256) {
+        return _MAX_SWAP_FEE_PERCENTAGE;
     }
 }

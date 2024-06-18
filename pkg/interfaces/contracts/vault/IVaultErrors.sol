@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -33,6 +33,14 @@ interface IVaultErrors {
      * @param pool The uninitialized pool
      */
     error PoolNotInitialized(address pool);
+
+    /**
+     * @dev A hook contract rejected a pool on registration.
+     * @param poolHooksContract Address of the hook contract that rejected the pool registration
+     * @param pool Address of the rejected pool
+     * @param poolFactory Address of the pool factory
+     */
+    error HookRegistrationFailed(address poolHooksContract, address pool, address poolFactory);
 
     /**
      * @dev A token was already registered (i.e., it is a duplicate in the pool).
@@ -70,22 +78,11 @@ interface IVaultErrors {
     /// @dev A transient accounting operation completed with outstanding token deltas.
     error BalanceNotSettled();
 
-    /**
-     * @dev In transient accounting, a locker is attempting to execute an operation out of order.
-     * The caller address should equal the locker.
-     * @param locker Address of the current locker being processed
-     * @param caller Address of the caller (msg.sender)
-     */
-    error WrongLocker(address locker, address caller);
-
     /// @dev A user called a Vault function (swap, add/remove liquidity) outside the lock context.
-    error NoLocker();
+    error VaultIsNotUnlocked();
 
-    /**
-     * @dev The caller attempted to access a Locker at an invalid index.
-     * @param index The invalid index
-     */
-    error LockerOutOfBounds(uint256 index);
+    /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
+    error DynamicSwapFeeHookFailed();
 
     /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
     error BeforeSwapHookFailed();
@@ -166,13 +163,31 @@ interface IVaultErrors {
                                      Fees
     *******************************************************************************/
 
-    /// @dev Error raised when the protocol swap fee percentage exceeds the maximum allowed value.
-    error ProtocolSwapFeePercentageTooHigh();
+    /**
+     * @dev Error raised when the sum of the parts (aggregate swap or yield fee)
+     * is greater than the whole (total swap or yield fee). Also validated when the protocol fee
+     * controller updates aggregate fee percentages in the Vault.
+     */
+    error ProtocolFeesExceedTotalCollected();
 
-    /// @dev Error raised when the protocol yield fee percentage exceeds the maximum allowed value.
-    error ProtocolYieldFeePercentageTooHigh();
+    /**
+     * @dev  Error raised when the swap fee percentage is less than the minimum allowed value.
+     * The Vault itself does not impose a universal minimum. Rather, it validates against the
+     * range specified by the `ISwapFeePercentageBounds` interface. and reverts with this error
+     * if it is below the minimum value returned by the pool.
+     *
+     * Pools with dynamic fees do not check these limits.
+     */
+    error SwapFeePercentageTooLow();
 
-    /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
+    /**
+     * @dev  Error raised when the swap fee percentage is greater than the maximum allowed value.
+     * The Vault itself does not impose a universal minimum. Rather, it validates against the
+     * range specified by the `ISwapFeePercentageBounds` interface. and reverts with this error
+     * if it is above the maximum value returned by the pool.
+     *
+     * Pools with dynamic fees do not check these limits.
+     */
     error SwapFeePercentageTooHigh();
 
     /*******************************************************************************
@@ -245,18 +260,15 @@ interface IVaultErrors {
      */
     error PoolPauseWindowExpired(address pool);
 
-    /**
-     * @dev The caller is not the registered pause manager for the pool.
-     * @param pool The pool
-     */
-    error SenderIsNotPauseManager(address pool);
-
     /*******************************************************************************
                                     Miscellaneous
     *******************************************************************************/
 
     /// @dev Optional User Data should be empty in the current add / remove liquidity kind.
     error UserDataNotSupported();
+
+    /// @dev Pool does not support adding / removing liquidity with an unbalanced input.
+    error DoesNotSupportUnbalancedLiquidity();
 
     /// @dev The contract should not receive ETH.
     error CannotReceiveEth();
@@ -270,6 +282,30 @@ interface IVaultErrors {
     /// @dev The vault extension was configured with an incorrect Vault address.
     error WrongVaultExtensionDeployment();
 
+    /// @dev The protocol fee controller was configured with an incorrect Vault address.
+    error WrongProtocolFeeControllerDeployment();
+
     /// @dev The vault admin was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();
+
+    /// @dev Quote reverted with a reserved error code.
+    error QuoteResultSpoofed();
+
+    /// @dev The user is trying to remove more than their allocated shares from the buffer.
+    error NotEnoughBufferShares();
+
+    /// @dev The wrapped token asset does not match the underlying token of the swap path.
+    error WrongWrappedTokenAsset(address token);
+
+    /// @dev The wrappedToken wrap/unwrap function did not deposit/return the expected amount of underlying tokens.
+    error WrongUnderlyingAmount(address wrappedToken);
+
+    /// @dev The wrappedToken wrap/unwrap function did not burn/mint the expected amount of wrapped tokens.
+    error WrongWrappedAmount(address wrappedToken);
+
+    /// @dev The amount given to wrap/unwrap was too small, which can introduce rounding issues.
+    error WrapAmountTooSmall(address wrappedToken);
+
+    /// @dev Vault buffers are paused.
+    error VaultBuffersArePaused();
 }

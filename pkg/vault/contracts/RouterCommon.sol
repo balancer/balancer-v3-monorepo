@@ -1,18 +1,36 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-contract RouterCommon {
+import {
+    TransientStorageHelpers
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+
+import { VaultGuard } from "./VaultGuard.sol";
+
+contract RouterCommon is IRouterCommon, VaultGuard {
     using Address for address payable;
+    using SafeERC20 for IWETH;
+    using StorageSlot for *;
+
+    // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used
+    // by what is written after =. If you use immutable, the value is first calculated and
+    // then replaced everywhere. That means that if a constant has executable variables,
+    // they will be executed every time the constant is used.
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
 
     /// @dev Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
@@ -20,30 +38,36 @@ contract RouterCommon {
     /// @dev The amount of ETH paid is insufficient to complete this operation.
     error InsufficientEth();
 
+    /// @dev The swap transaction was not validated before the specified deadline timestamp.
+    error SwapDeadline();
+
     // Raw token balances are stored in half a slot, so the max is uint128. Moreover, given amounts are usually scaled
     // inside the Vault, so sending max uint256 would result in an overflow and revert.
     uint256 internal constant _MAX_AMOUNT = type(uint128).max;
 
-    IVault internal immutable _vault;
-
     // solhint-disable-next-line var-name-mixedcase
     IWETH internal immutable _weth;
 
-    modifier onlyVault() {
-        _ensureOnlyVault();
+    IPermit2 internal immutable _permit2;
+
+    modifier saveSender() {
+        _saveSender();
         _;
     }
 
-    function _ensureOnlyVault() private view {
-        if (msg.sender != address(_vault)) {
-            revert IVaultErrors.SenderIsNotVault(msg.sender);
+    function _saveSender() internal {
+        address sender = _getSenderSlot().tload();
+
+        // NOTE: This is a one-time operation. The sender can't be changed within the transaction.
+        if (sender == address(0)) {
+            _getSenderSlot().tstore(msg.sender);
         }
     }
 
-    constructor(IVault vault, IWETH weth) {
-        _vault = vault;
+    constructor(IVault vault, IWETH weth, IPermit2 permit2) VaultGuard(vault) {
         _weth = weth;
-        weth.approve(address(_vault), type(uint256).max);
+        _permit2 = permit2;
+        weth.approve(address(vault), type(uint256).max);
     }
 
     /**
@@ -94,12 +118,13 @@ contract RouterCommon {
             // wrap amountIn to WETH
             _weth.deposit{ value: amountIn }();
             // send WETH to Vault
-            _weth.transfer(address(_vault), amountIn);
+            _weth.safeTransfer(address(_vault), amountIn);
             // update Vault accounting
             _vault.settle(_weth);
         } else {
             // Send the tokenIn amount to the Vault
-            _vault.takeFrom(tokenIn, sender, amountIn);
+            _permit2.transferFrom(sender, address(_vault), uint160(amountIn), address(tokenIn));
+            _vault.settle(tokenIn);
         }
     }
 
@@ -132,5 +157,14 @@ contract RouterCommon {
         if (msg.sender != address(_weth)) {
             revert EthTransfer();
         }
+    }
+
+    /// @inheritdoc IRouterCommon
+    function getSender() external view returns (address) {
+        return _getSenderSlot().tload();
+    }
+
+    function _getSenderSlot() internal view returns (StorageSlot.AddressSlotType) {
+        return _SENDER_SLOT.asAddress();
     }
 }

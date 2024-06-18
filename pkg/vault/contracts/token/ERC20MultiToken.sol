@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
@@ -72,7 +72,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
      */
     function _queryModeBalanceIncrease(address pool, address to, uint256 amount) internal {
         // Enforce that this can only be called in a read-only, query context.
-        if (!EVMCallModeHelpers.isStaticCall()) {
+        if (EVMCallModeHelpers.isStaticCall() == false) {
             revert EVMCallModeHelpers.NotStaticCall();
         }
 

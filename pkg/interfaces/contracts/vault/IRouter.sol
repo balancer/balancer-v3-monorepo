@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
+import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
@@ -77,6 +80,23 @@ interface IRouter {
     }
 
     /**
+     * @notice Adds with proportional token amounts to a pool, receiving an exact amount of pool tokens.
+     * @param pool Address of the liquidity pool
+     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
+     * @param exactBptAmountOut Exact amount of pool tokens to be received
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param userData Additional (optional) data required for adding liquidity
+     * @return amountsIn Actual amounts of tokens added, sorted in token registration order
+     */
+    function addLiquidityProportional(
+        address pool,
+        uint256[] memory maxAmountsIn,
+        uint256 exactBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable returns (uint256[] memory amountsIn);
+
+    /**
      * @notice Adds with arbitrary token amounts in to a pool.
      * @param pool Address of the liquidity pool
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
@@ -132,6 +152,23 @@ interface IRouter {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
+
+    /**
+     * @notice Adds liquidity to a yield-bearing token buffer (linear pools embedded in the vault).
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
+     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param sharesOwner Address of the contract that will own the liquidity.
+     *        Only this contract will be able to remove liquidity from the buffer
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in underlying tokens
+     *         (This is the BPT of the vault's internal "Linear Pools")
+     */
+    function addLiquidityToBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlyingRaw,
+        uint256 amountWrappedRaw,
+        address sharesOwner
+    ) external returns (uint256 issuedShares);
 
     /***************************************************************************
                                  Remove Liquidity
@@ -247,34 +284,23 @@ interface IRouter {
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut);
 
+    /**
+     * @notice Removes liquidity from a yield-bearing token buffer (an embedded "Linear Pool").
+     * @dev Only proportional withdrawals are supported, and removing liquidity is permissioned.
+     * @param wrappedToken Address of a wrapped token that implements IERC4626
+     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
+     *        total shares
+     * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
+     * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
+     */
+    function removeLiquidityFromBuffer(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove
+    ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw);
+
     /***************************************************************************
                                        Swaps
     ***************************************************************************/
-
-    struct SwapPathStep {
-        address pool;
-        IERC20 tokenOut;
-    }
-
-    struct SwapPathExactAmountIn {
-        IERC20 tokenIn;
-        // for each step:
-        // if tokenIn == pool use removeLiquidity SINGLE_TOKEN_EXACT_IN
-        // if tokenOut == pool use addLiquidity UNBALANCED
-        SwapPathStep[] steps;
-        uint256 exactAmountIn;
-        uint256 minAmountOut;
-    }
-
-    struct SwapPathExactAmountOut {
-        IERC20 tokenIn;
-        // for each step:
-        // if tokenIn == pool use removeLiquidity SINGLE_TOKEN_EXACT_OUT
-        // if tokenOut == pool use addLiquidity SINGLE_TOKEN_EXACT_OUT
-        SwapPathStep[] steps;
-        uint256 maxAmountIn;
-        uint256 exactAmountOut;
-    }
 
     /**
      * @dev Data for the swap hook.
@@ -301,25 +327,6 @@ interface IRouter {
         bool wethIsEth;
         bytes userData;
     }
-
-    struct SwapExactInHookParams {
-        address sender;
-        SwapPathExactAmountIn[] paths;
-        uint256 deadline;
-        bool wethIsEth;
-        bytes userData;
-    }
-
-    struct SwapExactOutHookParams {
-        address sender;
-        SwapPathExactAmountOut[] paths;
-        uint256 deadline;
-        bool wethIsEth;
-        bytes userData;
-    }
-
-    /// @dev The swap transaction was not mined before the specified deadline timestamp.
-    error SwapDeadline();
 
     /**
      * @notice Executes a swap operation specifying an exact input token amount.
@@ -370,6 +377,21 @@ interface IRouter {
     /***************************************************************************
                                      Queries
     ***************************************************************************/
+
+    /**
+     * @notice Queries an `addLiquidityProportional` operation without actually executing it.
+     * @param pool Address of the liquidity pool
+     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
+     * @param exactBptAmountOut Exact amount of pool tokens to be received
+     * @param userData Additional (optional) data required for the query
+     * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
+     */
+    function queryAddLiquidityProportional(
+        address pool,
+        uint256[] memory maxAmountsIn,
+        uint256 exactBptAmountOut,
+        bytes memory userData
+    ) external returns (uint256[] memory amountsIn);
 
     /**
      * @notice Queries an `addLiquidityUnbalanced` operation without actually executing it.
@@ -520,4 +542,43 @@ interface IRouter {
         uint256 exactAmountOut,
         bytes calldata userData
     ) external returns (uint256 amountIn);
+
+    /*******************************************************************************
+                                    Utils
+    *******************************************************************************/
+
+    /**
+     */
+    struct PermitApproval {
+        address token;
+        address owner;
+        address spender;
+        uint256 amount;
+        uint256 nonce;
+        uint256 deadline;
+    }
+
+    /**
+     * @notice Permits multiple allowances and executes a batch of function calls on this contract.
+     * @param permitBatch An array of `PermitApproval` structs, each representing an ERC20 permit request
+     * @param permitSignatures An array of bytes, corresponding to the permit request signature in `permitBatch`
+     * @param permit2Batch A batch of permit2 approvals
+     * @param permit2Signature A permit2 signature for the batch approval
+     * @param multicallData An array of bytes arrays, each representing an encoded function call on this contract
+     * @return results Array of bytes arrays, each representing the return data from each function call executed
+     */
+    function permitBatchAndCall(
+        PermitApproval[] calldata permitBatch,
+        bytes[] calldata permitSignatures,
+        IAllowanceTransfer.PermitBatch calldata permit2Batch,
+        bytes calldata permit2Signature,
+        bytes[] calldata multicallData
+    ) external returns (bytes[] memory results);
+
+    /**
+     * @notice Executes a batch of function calls on this contract.
+     * @param data Encoded function calls to be executed in the batch.
+     * @return results Array of bytes arrays, each representing the return data from each function call executed.
+     */
+    function multicall(bytes[] calldata data) external returns (bytes[] memory results);
 }

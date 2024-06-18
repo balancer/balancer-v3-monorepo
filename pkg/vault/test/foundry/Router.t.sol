@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
 
-import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
@@ -22,10 +20,6 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Router } from "../../contracts/Router.sol";
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
-import { VaultMock } from "../../contracts/test/VaultMock.sol";
-import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
-
-import { VaultMockDeployer } from "./utils/VaultMockDeployer.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -55,33 +49,33 @@ contract RouterTest is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        approveForPool(IERC20(wethPool));
     }
 
     function createPool() internal override returns (address) {
-        PoolMock newPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
-        );
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
-        wethPool = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 weth Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
+        factoryMock.registerTestPool(
+            address(newPool),
+            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
+            poolHooksContract,
+            lp
         );
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+
+        wethPool = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPool), "wethPool");
 
+        factoryMock.registerTestPool(
+            address(wethPool),
+            vault.buildTokenConfig([address(dai), address(weth)].toMemoryArray().asIERC20()),
+            poolHooksContract,
+            lp
+        );
+
         (daiIdxWethPool, wethIdx) = getSortedIndexes(address(dai), address(weth));
-        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
         wethDaiTokens = InputHelpers.sortTokens([address(weth), address(dai)].toMemoryArray().asIERC20());
 
@@ -89,22 +83,22 @@ contract RouterTest is BaseVaultTest {
         wethDaiAmountsIn[wethIdx] = ethAmountIn;
         wethDaiAmountsIn[daiIdxWethPool] = daiAmountIn;
 
-        wethPoolNoInit = new PoolMock(
-            IVault(address(vault)),
-            "ERC20 weth Pool",
-            "ERC20POOL",
-            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
-            true,
-            365 days,
-            address(0)
-        );
+        wethPoolNoInit = new PoolMock(IVault(address(vault)), "ERC20 weth Pool", "ERC20POOL");
         vm.label(address(wethPoolNoInit), "wethPoolNoInit");
+
+        factoryMock.registerTestPool(
+            address(wethPoolNoInit),
+            vault.buildTokenConfig([address(weth), address(dai)].toMemoryArray().asIERC20()),
+            poolHooksContract,
+            lp
+        );
 
         return address(newPool);
     }
 
     function initPool() internal override {
-        (IERC20[] memory tokens, , , , ) = vault.getPoolTokenInfo(address(pool));
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
+
         vm.prank(lp);
         router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
 
@@ -122,12 +116,12 @@ contract RouterTest is BaseVaultTest {
 
     function testQuerySwap() public {
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(EVMCallModeHelpers.NotStaticCall.selector));
-        router.querySwapSingleTokenExactIn(address(pool), usdc, dai, usdcAmountIn, bytes(""));
+        vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
+        router.querySwapSingleTokenExactIn(pool, usdc, dai, usdcAmountIn, bytes(""));
     }
 
     function testDisableQueries() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
 
         vault.disableQuery();
 
@@ -139,10 +133,10 @@ contract RouterTest is BaseVaultTest {
         vm.prank(alice);
         vault.disableQuery();
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.QueriesDisabled.selector));
+        vm.expectRevert(IVaultErrors.QueriesDisabled.selector);
 
         vm.prank(address(0), address(0));
-        router.querySwapSingleTokenExactIn(address(pool), usdc, dai, usdcAmountIn, bytes(""));
+        router.querySwapSingleTokenExactIn(pool, usdc, dai, usdcAmountIn, bytes(""));
     }
 
     function testInitializeBelowMinimum() public {
@@ -163,7 +157,7 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = false;
 
         // Revert when sending ETH while wethIsEth is false (caller holds no weth).
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, broke, 0, ethAmountIn));
+        vm.expectRevert("TRANSFER_FROM_FAILED");
         vm.prank(broke);
         router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, wethIsEth, bytes(""));
     }
@@ -191,7 +185,7 @@ contract RouterTest is BaseVaultTest {
         checkAddLiquidityPreConditions();
 
         // Caller does not have enough ETH, even if they hold weth.
-        vm.expectRevert(abi.encodeWithSelector(RouterCommon.InsufficientEth.selector));
+        vm.expectRevert(RouterCommon.InsufficientEth.selector);
         vm.prank(alice);
         router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, true, bytes(""));
     }
@@ -240,7 +234,7 @@ contract RouterTest is BaseVaultTest {
         checkAddLiquidityPreConditions();
 
         // Revert when sending ETH while wethIsEth is false (caller holds no weth).
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientBalance.selector, broke, 0, ethAmountIn));
+        vm.expectRevert("TRANSFER_FROM_FAILED");
         vm.prank(broke);
         router.addLiquidityCustom(address(wethPool), wethDaiAmountsIn, bptAmountOut, false, bytes(""));
     }
@@ -249,9 +243,7 @@ contract RouterTest is BaseVaultTest {
         checkAddLiquidityPreConditions();
 
         vm.prank(alice);
-        snapStart("routerAddLiquidityWETH");
         router.addLiquidityCustom(address(wethPool), wethDaiAmountsIn, bptAmountOut, false, bytes(""));
-        snapEnd();
 
         // weth was deposited, pool tokens were minted to Alice.
         assertEq(defaultBalance - weth.balanceOf(alice), ethAmountIn, "Wrong ETH balance");
@@ -262,7 +254,7 @@ contract RouterTest is BaseVaultTest {
         checkAddLiquidityPreConditions();
 
         // Caller does not have enough ETH, even if they hold weth.
-        vm.expectRevert(abi.encodeWithSelector(RouterCommon.InsufficientEth.selector));
+        vm.expectRevert(RouterCommon.InsufficientEth.selector);
         vm.prank(alice);
         router.addLiquidityCustom(address(wethPool), wethDaiAmountsIn, bptAmountOut, true, bytes(""));
     }
@@ -270,7 +262,6 @@ contract RouterTest is BaseVaultTest {
     function testAddLiquidityNative() public {
         checkAddLiquidityPreConditions();
 
-        snapStart("routerAddLiquidityNative");
         vm.prank(alice);
         router.addLiquidityCustom{ value: ethAmountIn }(
             address(wethPool),
@@ -279,7 +270,6 @@ contract RouterTest is BaseVaultTest {
             true,
             bytes("")
         );
-        snapEnd();
 
         // weth was deposited, pool tokens were minted to Alice.
         assertEq(address(alice).balance, defaultBalance - ethAmountIn, "Wrong ETH balance");
@@ -320,9 +310,7 @@ contract RouterTest is BaseVaultTest {
         checkRemoveLiquidityPreConditions();
 
         wethIsEth = false;
-        snapStart("routerRemoveLiquidityWETH");
         router.removeLiquidityCustom(address(wethPool), exactBptAmount, wethDaiAmountsIn, wethIsEth, "");
-        snapEnd();
 
         // Liquidity position was removed, Alice gets weth back
         assertEq(weth.balanceOf(alice), defaultBalance + ethAmountIn, "Wrong WETH balance");
@@ -346,7 +334,6 @@ contract RouterTest is BaseVaultTest {
         uint256 aliceNativeBalanceBefore = address(alice).balance;
         checkRemoveLiquidityPreConditions();
 
-        snapStart("routerRemoveLiquidityNative");
         router.removeLiquidityCustom(
             address(wethPool),
             exactBptAmount,
@@ -354,7 +341,6 @@ contract RouterTest is BaseVaultTest {
             wethIsEth,
             ""
         );
-        snapEnd();
 
         // Liquidity position was removed, Alice gets ETH back
         assertEq(weth.balanceOf(alice), defaultBalance, "Wrong WETH balance");
@@ -368,18 +354,16 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = false;
 
         vm.prank(alice);
-        snapStart("routerSwapSingleTokenExactInWETH");
         uint256 outputTokenAmount = router.swapSingleTokenExactIn(
             address(wethPool),
             weth,
             dai,
             ethAmountIn,
             0,
-            type(uint256).max,
+            MAX_UINT256,
             wethIsEth,
             ""
         );
-        snapEnd();
 
         assertEq(weth.balanceOf(alice), defaultBalance - ethAmountIn, "Wrong WETH balance");
         assertEq(dai.balanceOf(alice), defaultBalance + outputTokenAmount, "Wrong DAI balance");
@@ -395,8 +379,8 @@ contract RouterTest is BaseVaultTest {
             weth,
             dai,
             daiAmountOut,
-            type(uint256).max,
-            type(uint256).max,
+            MAX_UINT256,
+            MAX_UINT256,
             wethIsEth,
             ""
         );
@@ -412,18 +396,16 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = true;
 
         vm.prank(alice);
-        snapStart("routerSwapSingleTokenExactInNative");
         router.swapSingleTokenExactIn{ value: ethAmountIn }(
             address(wethPool),
             weth,
             dai,
             ethAmountIn,
             0,
-            type(uint256).max,
+            MAX_UINT256,
             wethIsEth,
             ""
         );
-        snapEnd();
 
         assertEq(weth.balanceOf(alice), defaultBalance, "Wrong WETH balance");
         assertEq(dai.balanceOf(alice), defaultBalance + ethAmountIn, "Wrong DAI balance");
@@ -442,8 +424,8 @@ contract RouterTest is BaseVaultTest {
             weth,
             dai,
             daiAmountOut,
-            type(uint256).max,
-            type(uint256).max,
+            MAX_UINT256,
+            MAX_UINT256,
             wethIsEth,
             ""
         );
@@ -466,7 +448,7 @@ contract RouterTest is BaseVaultTest {
             dai,
             ethAmountIn,
             0,
-            type(uint256).max,
+            MAX_UINT256,
             wethIsEth,
             ""
         );
@@ -478,24 +460,20 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testGetSingleInputArray() public {
-        (uint256[] memory amountsGiven, uint256 tokenIndex) = router.getSingleInputArrayAndTokenIndex(
-            address(pool),
-            dai,
-            1234
-        );
+        (uint256[] memory amountsGiven, uint256 tokenIndex) = router.getSingleInputArrayAndTokenIndex(pool, dai, 1234);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[daiIdx], 1234);
         assertEq(amountsGiven[usdcIdx], 0);
         assertEq(tokenIndex, daiIdx);
 
-        (amountsGiven, tokenIndex) = router.getSingleInputArrayAndTokenIndex(address(pool), usdc, 4321);
+        (amountsGiven, tokenIndex) = router.getSingleInputArrayAndTokenIndex(pool, usdc, 4321);
         assertEq(amountsGiven.length, 2);
         assertEq(amountsGiven[daiIdx], 0);
         assertEq(amountsGiven[usdcIdx], 4321);
         assertEq(tokenIndex, usdcIdx);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenNotRegistered.selector));
-        router.getSingleInputArrayAndTokenIndex(address(pool), weth, daiAmountIn);
+        vm.expectRevert(IVaultErrors.TokenNotRegistered.selector);
+        router.getSingleInputArrayAndTokenIndex(pool, weth, daiAmountIn);
     }
 
     function checkRemoveLiquidityPreConditions() internal view {

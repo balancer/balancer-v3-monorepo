@@ -12,7 +12,7 @@ on:
     branches: ['*', '**/*']
 
 jobs:
-  lint:
+  lint-and-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -20,109 +20,166 @@ jobs:
         uses: ./.github/actions/setup
       - name: Lint
         run: yarn lint
-
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up environment
-        uses: ./.github/actions/setup
       - name: Build
         run: yarn build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORGE_SNAPSHOT_CHECK: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
 
   test-forge-vault:
     runs-on: ubuntu-latest
+    needs: lint-and-build
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
       - name: Set up environment
         uses: ./.github/actions/setup
-      - name: Compile
-        run: yarn build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FORGE_SNAPSHOT_CHECK: true
       - name: Test
         run: yarn workspace @balancer-labs/v3-vault test:forge
 
   test-fork-vault:
     runs-on: ubuntu-latest
+    needs: lint-and-build
     steps:
       - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
-      - name: Compile
-        run: yarn build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FORGE_SNAPSHOT_CHECK: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
       - name: Fork Test
         run: yarn workspace @balancer-labs/v3-vault test:fork
 
   test-hardhat-vault:
     runs-on: ubuntu-latest
+    needs: lint-and-build
     steps:
       - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
-      - name: Compile
-        run: yarn build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
       - name: Test
         run: yarn workspace @balancer-labs/v3-vault test:hardhat
 
   test-hardhat-solidity-utils:
     runs-on: ubuntu-latest
+    needs: lint-and-build
     steps:
       - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
-      - name: Compile
-        run: yarn build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
       - name: Test
         run: yarn workspace @balancer-labs/v3-solidity-utils test:hardhat
 
   test-forge-solidity-utils:
     runs-on: ubuntu-latest
+    needs: lint-and-build
     steps:
       - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
-      - name: Compile
-        run: yarn build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FORGE_SNAPSHOT_CHECK: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
       - name: Test
         run: yarn workspace @balancer-labs/v3-solidity-utils test:forge
 
   test-hardhat-pool-weighted:
     runs-on: ubuntu-latest
+    needs: lint-and-build
     steps:
       - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
-      - name: Compile
-        run: yarn build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
       - name: Test
         run: yarn workspace @balancer-labs/v3-pool-weighted test:hardhat
 
   test-forge-pool-weighted:
     runs-on: ubuntu-latest
+    needs: lint-and-build
     steps:
       - uses: actions/checkout@v3
       - name: Set up environment
         uses: ./.github/actions/setup
-      - name: Compile
-        run: yarn build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FORGE_SNAPSHOT_CHECK: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
       - name: Test
         run: yarn workspace @balancer-labs/v3-pool-weighted test:forge
+
+  test-hardhat-pool-stable:
+    runs-on: ubuntu-latest
+    needs: lint-and-build
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
+      - name: Test
+        run: yarn workspace @balancer-labs/v3-pool-stable test:hardhat
+
+  test-forge-pool-stable:
+    runs-on: ubuntu-latest
+    needs: lint-and-build
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
+      - name: Test
+        run: yarn workspace @balancer-labs/v3-pool-stable test:forge
+
+  test-hardhat-pool-utils:
+    runs-on: ubuntu-latest
+    needs: lint-and-build
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
+      - name: Test
+        run: yarn workspace @balancer-labs/v3-pool-utils test:hardhat
+
+  test-forge-pool-utils:
+    runs-on: ubuntu-latest
+    needs: lint-and-build
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
+      - name: Test
+        run: yarn workspace @balancer-labs/v3-pool-utils test:forge

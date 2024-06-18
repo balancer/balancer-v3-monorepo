@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -8,6 +8,8 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { TokenInfo } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -38,18 +40,16 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         rateProviders[0] = rateProvider;
         rateProvider.mockRate(mockRate);
 
-        return
-            address(
-                new PoolMock(
-                    IVault(address(vault)),
-                    "ERC20 Pool",
-                    "ERC20POOL",
-                    vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
-                    true,
-                    365 days,
-                    address(0)
-                )
-            );
+        address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+
+        factoryMock.registerTestPool(
+            newPool,
+            vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
+            poolHooksContract,
+            lp
+        );
+
+        return newPool;
     }
 
     function testInitializePoolWithRate() public {
@@ -62,10 +62,10 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
     }
 
     function testInitialRateProviderState() public {
-        (, , , , IRateProvider[] memory rateProviders) = vault.getPoolTokenInfo(address(pool));
+        (, TokenInfo[] memory tokenInfo, , ) = vault.getPoolTokenInfo(pool);
 
-        assertEq(address(rateProviders[wstethIdx]), address(rateProvider), "Wrong rate provider");
-        assertEq(address(rateProviders[daiIdx]), address(0), "Rate provider should be 0");
+        assertEq(address(tokenInfo[wstethIdx].rateProvider), address(rateProvider), "Wrong rate provider");
+        assertEq(address(tokenInfo[daiIdx].rateProvider), address(0), "Rate provider should be 0");
     }
 
     function testSwapSingleTokenExactIWithRate() public {
@@ -77,16 +77,16 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         expectedBalances[daiIdx] = defaultAmount;
 
         vm.expectCall(
-            address(pool),
+            pool,
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
-                IBasePool.SwapParams({
+                IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: expectedBalances,
                     indexIn: daiIdx,
                     indexOut: wstethIdx,
-                    sender: address(router),
+                    router: address(router),
                     userData: bytes("")
                 })
             )
@@ -94,12 +94,12 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
 
         vm.prank(bob);
         router.swapSingleTokenExactIn(
-            address(pool),
+            pool,
             dai,
             wsteth,
             defaultAmount,
             rateAdjustedLimit,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
@@ -114,16 +114,16 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         expectedBalances[daiIdx] = defaultAmount;
 
         vm.expectCall(
-            address(pool),
+            pool,
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
-                IBasePool.SwapParams({
+                IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: expectedBalances,
                     indexIn: daiIdx,
                     indexOut: wstethIdx,
-                    sender: address(router),
+                    router: address(router),
                     userData: bytes("")
                 })
             )
@@ -131,12 +131,12 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
 
         vm.prank(bob);
         router.swapSingleTokenExactOut(
-            address(pool),
+            pool,
             dai,
             wsteth,
             rateAdjustedAmountGiven,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );

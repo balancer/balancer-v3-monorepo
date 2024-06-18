@@ -32,10 +32,15 @@ typechain-types/
 
 # Coverage
 coverage/
+coverage-genhtml/
 coverage.json
+lcov*.info
 
 # Slither
 slither/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Mac
+.DS_Store

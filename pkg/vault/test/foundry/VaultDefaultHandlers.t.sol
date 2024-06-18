@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -19,13 +19,13 @@ contract VaultDefaultHandlers is BaseVaultTest {
 
     function testReceive() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.CannotReceiveEth.selector));
+        vm.expectRevert(IVaultErrors.CannotReceiveEth.selector);
         payable(address(vault)).transfer(1);
     }
 
     function testDefaultHandlerWithEth() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.CannotReceiveEth.selector));
+        vm.expectRevert(IVaultErrors.CannotReceiveEth.selector);
         VaultExtensionMock(payable(address(vault))).mockExtensionHash{ value: 1 }("");
     }
 
@@ -44,7 +44,7 @@ contract VaultDefaultHandlers is BaseVaultTest {
         assertTrue(IVault(address(vault)).isPoolRegistered(pool));
 
         IVault vaultExtension = IVault(vault.getVaultExtension());
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.NotVaultDelegateCall.selector));
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.isPoolRegistered(pool);
     }
 }

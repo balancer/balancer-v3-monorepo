@@ -1,58 +1,60 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+
+import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
+import { PoolConfigBits } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
+import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 
-import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
-import { LiquidityApproximationTest } from "vault/test/foundry/LiquidityApproximation.t.sol";
+import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry/LiquidityApproximation.t.sol";
 
 contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
+    uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
+
     using ArrayHelpers for *;
+
+    uint256 poolCreationNonce;
 
     function setUp() public virtual override {
         LiquidityApproximationTest.setUp();
     }
 
-    function createPool() internal override returns (address) {
-        WeightedPoolFactory factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
-        IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
+    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+        WeightedPoolFactory factory = new WeightedPoolFactory(
+            IVault(address(vault)),
+            365 days,
+            "Factory v1",
+            "Pool v1"
+        );
+        PoolRoleAccounts memory roleAccounts;
 
-        liquidityPool = address(
-            WeightedPool(
-                factory.create(
-                    "ERC20 Pool",
-                    "ERC20POOL",
-                    vault.buildTokenConfig(tokens),
-                    [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-                    ZERO_BYTES32
-                )
+        // Allow pools created by `factory` to use poolHooksMock hooks
+        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+
+        WeightedPool newPool = WeightedPool(
+            factory.create(
+                "ERC20 Pool",
+                "ERC20POOL",
+                vault.buildTokenConfig(tokens.asIERC20()),
+                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                roleAccounts,
+                DEFAULT_SWAP_FEE,
+                poolHooksContract,
+                // NOTE: sends a unique salt
+                bytes32(poolCreationNonce++)
             )
         );
-        vm.label(address(liquidityPool), "liquidityPool");
-
-        swapPool = address(
-            WeightedPool(
-                factory.create(
-                    "ERC20 Pool",
-                    "ERC20POOL",
-                    vault.buildTokenConfig(tokens),
-                    [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-                    ONE_BYTES32
-                )
-            )
-        );
-        vm.label(address(swapPool), "swapPool");
-
-        return address(liquidityPool);
+        vm.label(address(newPool), label);
+        return address(newPool);
     }
 }
