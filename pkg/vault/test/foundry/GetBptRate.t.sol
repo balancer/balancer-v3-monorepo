@@ -57,6 +57,7 @@ contract GetBptRateTest is BaseVaultTest {
                 roleAccounts,
                 swapFeePercentage,
                 address(0), // No hook contract
+                false, // No donations
                 ZERO_BYTES32
             )
         );

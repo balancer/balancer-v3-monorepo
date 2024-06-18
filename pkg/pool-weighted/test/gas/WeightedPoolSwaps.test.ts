@@ -36,6 +36,7 @@ class WeightedPoolBenchmark extends Benchmark {
       poolRoleAccounts,
       fp(0.1),
       ZERO_ADDRESS,
+      false,
       ZERO_BYTES32
     );
     const receipt = await tx.wait();

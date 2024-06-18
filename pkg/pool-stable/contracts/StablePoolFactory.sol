@@ -28,7 +28,7 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion
-    ) BasePoolFactory(vault, pauseWindowDuration, type(StablePool).creationCode) Version(factoryVersion) {
+    ) BasePoolFactory(vault, pauseWindowDuration) Version(factoryVersion) {
         _poolVersion = poolVersion;
     }
 
@@ -72,6 +72,7 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
                 }),
                 getVault()
             ),
+            type(StablePool).creationCode,
             salt
         );
 

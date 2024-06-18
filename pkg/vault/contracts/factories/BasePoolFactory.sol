@@ -31,18 +31,14 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     mapping(address => bool) private _isPoolFromFactory;
     bool private _disabled;
 
-    // Store the creationCode of the contract to be deployed by create3.
-    bytes private _creationCode;
-
     /// @dev A pool creator was specified for a pool from a Balancer core pool type.
     error StandardPoolWithCreator();
 
     constructor(
         IVault vault,
-        uint32 pauseWindowDuration,
-        bytes memory creationCode
+        uint32 pauseWindowDuration
     ) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {
-        _creationCode = creationCode;
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /// @inheritdoc IBasePoolFactory
@@ -88,8 +84,12 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         return keccak256(abi.encode(msg.sender, block.chainid, salt));
     }
 
-    function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address pool) {
-        pool = CREATE3.deploy(_computeFinalSalt(salt), abi.encodePacked(_creationCode, constructorArgs), 0);
+    function _create(
+        bytes memory constructorArgs,
+        bytes memory creationCode,
+        bytes32 salt
+    ) internal returns (address pool) {
+        pool = CREATE3.deploy(_computeFinalSalt(salt), abi.encodePacked(creationCode, constructorArgs), 0);
 
         _registerPoolWithFactory(pool);
     }

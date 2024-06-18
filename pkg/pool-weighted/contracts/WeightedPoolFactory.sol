@@ -13,6 +13,7 @@ import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/Bas
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { WeightedPool } from "./WeightedPool.sol";
+import { WeightedPoolWithDonation } from "./WeightedPoolWithDonation.sol";
 
 /**
  * @notice General Weighted Pool factory
@@ -28,7 +29,7 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion
-    ) BasePoolFactory(vault, pauseWindowDuration, type(WeightedPool).creationCode) Version(factoryVersion) {
+    ) BasePoolFactory(vault, pauseWindowDuration) Version(factoryVersion) {
         _poolVersion = poolVersion;
     }
 
@@ -47,6 +48,7 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
      * @param poolHooksContract Contract that implements the hooks for the pool
+     * @param supportsDonation if true, the pool will support a custom add liquidity which is a donation mechanism
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
@@ -57,10 +59,20 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
         address poolHooksContract,
+        bool supportsDonation,
         bytes32 salt
     ) external returns (address pool) {
         if (roleAccounts.poolCreator != address(0)) {
             revert StandardPoolWithCreator();
+        }
+
+        bytes memory creationCode;
+        LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
+        if (supportsDonation) {
+            creationCode = type(WeightedPoolWithDonation).creationCode;
+            liquidityManagement.enableAddLiquidityCustom = true;
+        } else {
+            creationCode = type(WeightedPool).creationCode;
         }
 
         pool = _create(
@@ -74,6 +86,7 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
                 }),
                 getVault()
             ),
+            creationCode,
             salt
         );
 
@@ -84,7 +97,7 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
             false, // not exempt from protocol fees
             roleAccounts,
             poolHooksContract,
-            getDefaultLiquidityManagement()
+            liquidityManagement
         );
     }
 }
