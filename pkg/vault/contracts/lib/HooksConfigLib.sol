@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/console.sol";
-
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -359,8 +357,6 @@ library HooksConfigLib {
         if (success == false) {
             revert IVaultErrors.AfterAddLiquidityHookFailed();
         }
-
-        console.log("enableHookAdjustedAmounts", config.enableHookAdjustedAmounts() ? "true" : "false");
 
         // If hook adjusted amounts is not enabled, ignore amounts returned by the hook
         if (config.enableHookAdjustedAmounts() == false) {
