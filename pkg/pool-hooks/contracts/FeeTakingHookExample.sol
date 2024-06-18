@@ -15,7 +15,6 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
 import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
 
 contract FeeTakingHookExample is BasePoolHooks {
