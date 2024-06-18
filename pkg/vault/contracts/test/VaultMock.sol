@@ -27,7 +27,6 @@ import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/tes
 
 import { VaultStateLib, VaultStateBits, VaultStateBits } from "../lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
-import { HooksConfigLib, HooksConfigBits } from "../lib/HooksConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
@@ -220,7 +219,7 @@ contract VaultMock is IVaultMainMock, Vault {
         poolConfigBits = poolConfigBits.setShouldCallAfterRemoveLiquidity(hooksConfig.shouldCallAfterRemoveLiquidity);
 
         _poolConfigBits[pool] = poolConfigBits;
-        _hooksContracts[pool] = IHooks(hooksConfig.hooksContract);
+        _hooksContracts[pool] = StorageSlot.AddressSlot({ value: hooksConfig.hooksContract });
     }
 
     function manualSetPoolConfigBits(address pool, PoolConfigBits config) public {
