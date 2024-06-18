@@ -1,13 +1,17 @@
-import '@nomicfoundation/hardhat-ethers';
+import { HardhatUserConfig } from 'hardhat/config';
+
+import { hardhatBaseConfig } from '@balancer-labs/v3-common';
+
 import '@nomicfoundation/hardhat-toolbox';
+import '@nomicfoundation/hardhat-ethers';
 import '@typechain/hardhat';
 
 import 'hardhat-ignore-warnings';
 import 'hardhat-gas-reporter';
+import 'hardhat-contract-sizer';
+import { warnings } from '@balancer-labs/v3-common/hardhat-base-config';
 
-import { hardhatBaseConfig } from '@balancer-labs/v3-common';
-
-export default {
+const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
@@ -16,5 +20,7 @@ export default {
   solidity: {
     compilers: hardhatBaseConfig.compilers,
   },
-  warnings: hardhatBaseConfig.warnings,
+  warnings,
 };
+
+export default config;

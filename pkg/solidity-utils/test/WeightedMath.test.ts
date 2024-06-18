@@ -8,8 +8,8 @@ import { expect } from 'chai';
 
 import {
   computeInvariant,
-  computeInGivenOut,
-  computeOutGivenIn,
+  computeInGivenExactOut,
+  computeOutGivenExactIn,
   computeBptOutGivenExactTokensIn,
   computeBptOutGivenExactTokenIn,
   computeTokenInGivenExactBptOut,
@@ -56,7 +56,7 @@ describe('WeightedMath', function () {
     });
   });
 
-  describe('computeOutGivenIn', () => {
+  describe('computeOutGivenExactIn', () => {
     it('computes correct outAmountPool', async () => {
       const tokenWeightIn = bn(50e18);
       const tokenWeightOut = bn(40e18);
@@ -73,8 +73,14 @@ describe('WeightedMath', function () {
       const roundedUpAmountGiven = bn(15.01e18);
       const roundedDownAmountGiven = bn(14.99e18);
 
-      const expected = computeOutGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn);
-      const result = await math.computeOutGivenIn(
+      const expected = computeOutGivenExactIn(
+        tokenBalanceIn,
+        tokenWeightIn,
+        tokenBalanceOut,
+        tokenWeightOut,
+        tokenAmountIn
+      );
+      const result = await math.computeOutGivenExactIn(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -84,7 +90,7 @@ describe('WeightedMath', function () {
 
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
 
-      const amountOutWithRoundedUpBalances = await math.computeOutGivenIn(
+      const amountOutWithRoundedUpBalances = await math.computeOutGivenExactIn(
         roundedUpBalanceIn,
         tokenWeightIn,
         roundedUpBalanceOut,
@@ -92,7 +98,7 @@ describe('WeightedMath', function () {
         tokenAmountIn
       );
 
-      const amountOutWithRoundedDownBalances = await math.computeOutGivenIn(
+      const amountOutWithRoundedDownBalances = await math.computeOutGivenExactIn(
         roundedDownBalanceIn,
         tokenWeightIn,
         roundedDownBalanceOut,
@@ -104,7 +110,7 @@ describe('WeightedMath', function () {
       expect(amountOutWithRoundedUpBalances).gt(result);
       expect(amountOutWithRoundedDownBalances).lt(result);
 
-      const amountOutWithRoundedUpAmountGiven = await math.computeOutGivenIn(
+      const amountOutWithRoundedUpAmountGiven = await math.computeOutGivenExactIn(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -112,7 +118,7 @@ describe('WeightedMath', function () {
         roundedUpAmountGiven
       );
 
-      const amountOutWithRoundedDownAmountGiven = await math.computeOutGivenIn(
+      const amountOutWithRoundedDownAmountGiven = await math.computeOutGivenExactIn(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -132,8 +138,14 @@ describe('WeightedMath', function () {
       const tokenWeightOut = bn(40e18);
       const tokenAmountIn = bn(10e6); // (MIN AMOUNT = 0.00000000001)
 
-      const expected = computeOutGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn);
-      const result = await math.computeOutGivenIn(
+      const expected = computeOutGivenExactIn(
+        tokenBalanceIn,
+        tokenWeightIn,
+        tokenBalanceOut,
+        tokenWeightOut,
+        tokenAmountIn
+      );
+      const result = await math.computeOutGivenExactIn(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -153,8 +165,14 @@ describe('WeightedMath', function () {
       const tokenWeightOut = bn(1e18);
       const tokenAmountIn = bn(15e18);
 
-      const expected = computeOutGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn);
-      const result = await math.computeOutGivenIn(
+      const expected = computeOutGivenExactIn(
+        tokenBalanceIn,
+        tokenWeightIn,
+        tokenBalanceOut,
+        tokenWeightOut,
+        tokenAmountIn
+      );
+      const result = await math.computeOutGivenExactIn(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -173,8 +191,14 @@ describe('WeightedMath', function () {
       const tokenWeightOut = bn(1e18);
       const tokenAmountIn = bn(15e18);
 
-      const expected = computeOutGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn);
-      const result = await math.computeOutGivenIn(
+      const expected = computeOutGivenExactIn(
+        tokenBalanceIn,
+        tokenWeightIn,
+        tokenBalanceOut,
+        tokenWeightOut,
+        tokenAmountIn
+      );
+      const result = await math.computeOutGivenExactIn(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -194,12 +218,12 @@ describe('WeightedMath', function () {
       const tokenAmountIn = tokenBalanceIn * MAX_IN_RATIO + 1n; // Just slightly greater than maximum allowed
 
       await expect(
-        math.computeOutGivenIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn)
+        math.computeOutGivenExactIn(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountIn)
       ).to.be.revertedWithCustomError(math, 'MaxInRatio');
     });
   });
 
-  describe('computeInGivenOut', () => {
+  describe('computeInGivenExactOut', () => {
     it('computes correct result', async () => {
       const tokenWeightIn = bn(50e18);
       const tokenWeightOut = bn(40e18);
@@ -216,14 +240,14 @@ describe('WeightedMath', function () {
       const roundedUpAmountGiven = bn(15.01e18);
       const roundedDownAmountGiven = bn(14.99e18);
 
-      const expected = computeInGivenOut(
+      const expected = computeInGivenExactOut(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
         tokenWeightOut,
         tokenAmountOut
       );
-      const result = await math.computeInGivenOut(
+      const result = await math.computeInGivenExactOut(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -233,7 +257,7 @@ describe('WeightedMath', function () {
 
       expectEqualWithError(result, expected, MAX_RELATIVE_ERROR);
 
-      const amountInWithRoundedUpBalances = await math.computeInGivenOut(
+      const amountInWithRoundedUpBalances = await math.computeInGivenExactOut(
         roundedUpBalanceIn,
         tokenWeightIn,
         roundedUpBalanceOut,
@@ -241,7 +265,7 @@ describe('WeightedMath', function () {
         tokenAmountOut
       );
 
-      const amountInWithRoundedDownBalances = await math.computeInGivenOut(
+      const amountInWithRoundedDownBalances = await math.computeInGivenExactOut(
         roundedDownBalanceIn,
         tokenWeightIn,
         roundedDownBalanceOut,
@@ -253,7 +277,7 @@ describe('WeightedMath', function () {
       expect(amountInWithRoundedUpBalances).lt(result);
       expect(amountInWithRoundedDownBalances).gt(result);
 
-      const amountInWithRoundedUpAmountGiven = await math.computeInGivenOut(
+      const amountInWithRoundedUpAmountGiven = await math.computeInGivenExactOut(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -261,7 +285,7 @@ describe('WeightedMath', function () {
         roundedUpAmountGiven
       );
 
-      const amountInWithRoundedDownAmountGiven = await math.computeInGivenOut(
+      const amountInWithRoundedDownAmountGiven = await math.computeInGivenExactOut(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -281,14 +305,14 @@ describe('WeightedMath', function () {
       const tokenWeightOut = bn(40e18);
       const tokenAmountOut = bn(10e6); // (MIN AMOUNT = 0.00000000001)
 
-      const expected = computeInGivenOut(
+      const expected = computeInGivenExactOut(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
         tokenWeightOut,
         tokenAmountOut
       );
-      const result = await math.computeInGivenOut(
+      const result = await math.computeInGivenExactOut(
         tokenBalanceIn,
         tokenWeightIn,
         tokenBalanceOut,
@@ -309,7 +333,7 @@ describe('WeightedMath', function () {
       const tokenAmountOut = tokenBalanceOut * MAX_OUT_RATIO + 1n; // Just slightly greater than maximum allowed
 
       await expect(
-        math.computeInGivenOut(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountOut)
+        math.computeInGivenExactOut(tokenBalanceIn, tokenWeightIn, tokenBalanceOut, tokenWeightOut, tokenAmountOut)
       ).to.be.revertedWithCustomError(math, 'MaxOutRatio');
     });
   });
@@ -735,7 +759,7 @@ describe('WeightedMath', function () {
   });
 
   describe('computeBptOutAddToken', () => {
-    it('computes the amount of BTP which should be minted when adding a new token', async () => {
+    it('computes the amount of BPT which should be minted when adding a new token', async () => {
       const normalizedWeight = bn(5e17);
       const bptTotalSupply = bn(1e20);
 

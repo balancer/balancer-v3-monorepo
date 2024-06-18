@@ -2,10 +2,10 @@ import { ethers } from 'hardhat';
 
 import { deploy } from '../../contract';
 
-import ERC20Token from './ERC20Token';
 import ERC20TokenList from './ERC20TokenList';
 import TypesConverter from '../types/TypesConverter';
 import { RawTokenDeployment, RawTokensDeployment, TokenDeployment, TokensDeploymentOptions } from './types';
+import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 
 class ERC20TokensDeployer {
   async deploy(
@@ -20,37 +20,22 @@ class ERC20TokensDeployer {
       varyDecimals
     );
     const tokens = await Promise.all(deployments.map(this.deployToken));
-    const sortedTokens = sorted ? this._sortTokensDeployment(tokens, params) : tokens;
-    return new ERC20TokenList(sortedTokens);
+    let tokenList = new ERC20TokenList(tokens);
+
+    if (sorted) {
+      tokenList = await tokenList.sort();
+    }
+
+    return tokenList;
   }
 
-  async deployToken(params: RawTokenDeployment): Promise<ERC20Token> {
+  async deployToken(params: RawTokenDeployment): Promise<ERC20TestToken> {
     const { symbol, name, decimals, from } = TypesConverter.toTokenDeployment(params);
     const sender = from || (await ethers.getSigners())[0];
 
-    let instance;
-    if (symbol !== 'WETH') {
-      instance = await deploy('v3-solidity-utils/ERC20TestToken', {
-        from: sender,
-        args: [name, symbol, decimals],
-      });
-    } else {
-      instance = await deploy('v3-standalone-utils/TestWETH', {
-        from: sender,
-        args: [],
-      });
-    }
-
-    return new ERC20Token(name, symbol, decimals, instance);
-  }
-
-  private _sortTokensDeployment(tokens: ERC20Token[], params: RawTokensDeployment): ERC20Token[] {
-    const sortedTokens = [...tokens].sort((a, b) => a.compare(b));
-    return TypesConverter.toTokenDeployments(params).map((param, i) => {
-      const token = sortedTokens[i];
-      token.name = param.name;
-      token.symbol = param.symbol;
-      return token;
+    return await deploy('v3-solidity-utils/ERC20TestToken', {
+      from: sender,
+      args: [name, symbol, decimals],
     });
   }
 

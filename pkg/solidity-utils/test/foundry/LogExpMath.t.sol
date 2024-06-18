@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
@@ -31,7 +31,7 @@ contract LogExpMathTest is Test {
      * forge-config: default.fuzz.runs = 256
      * forge-config: intense.fuzz.runs = 10000
      */
-    function testPowMatchesJSFuzzedFFI(uint256 base, uint256 exponent) external {
+    function testPowMatchesJS__FuzzFFI(uint256 base, uint256 exponent) external {
         base = bound(base, LOWER_BASE_BOUND, UPPER_BASE_BOUND);
         exponent = bound(exponent, LOWER_EXPONENT_BOUND, UPPER_EXPONENT_BOUND);
 

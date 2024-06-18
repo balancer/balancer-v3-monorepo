@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SignedMath } from "@openzeppelin/contracts/utils/math/SignedMath.sol";
@@ -32,10 +32,6 @@ library WordCodec {
     /// @dev Function called with an invalid bitLength or offset.
     error OutOfBounds();
 
-    // Masks are values with the least significant N bits set. They can be used to extract an encoded value from a word,
-    // or to insert a new one replacing the old.
-    uint256 private constant _MASK_1 = 2 ** (1) - 1;
-
     /***************************************************************************
                                  In-place Insertion
     ***************************************************************************/
@@ -57,6 +53,24 @@ library WordCodec {
         // result = clearedWord | bytes32(value << offset);
         assembly {
             let mask := sub(shl(bitLength, 1), 1)
+            let clearedWord := and(word, not(shl(offset, mask)))
+            result := or(clearedWord, shl(offset, value))
+        }
+    }
+
+    /**
+     * @dev Inserts an address (160 bits), shifted by an offset, into a 256 bit word,
+     * replacing the old value. Returns the new word.
+     */
+    function insertAddress(bytes32 word, address value, uint256 offset) internal pure returns (bytes32 result) {
+        uint256 addressBitLength = 160;
+        _validateEncodingParams(uint256(uint160(value)), offset, addressBitLength);
+        // Equivalent to:
+        // uint256 mask = (1 << bitLength) - 1;
+        // bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
+        // result = clearedWord | bytes32(value << offset);
+        assembly {
+            let mask := sub(shl(addressBitLength, 1), 1)
             let clearedWord := and(word, not(shl(offset, mask)))
             result := or(clearedWord, shl(offset, value))
         }
@@ -133,6 +147,15 @@ library WordCodec {
         // result = value > maxInt ? (value | int256(~mask)) : value;
         assembly {
             result := or(mul(gt(value, maxInt), not(mask)), value)
+        }
+    }
+
+    /// @dev Decodes and returns an address (160 bits), shifted by an offset, from a 256 bit word.
+    function decodeAddress(bytes32 word, uint256 offset) internal pure returns (address result) {
+        // Equivalent to:
+        // result = address(word >> offset) & ((1 << bitLength) - 1);
+        assembly {
+            result := and(shr(offset, word), sub(shl(160, 1), 1))
         }
     }
 

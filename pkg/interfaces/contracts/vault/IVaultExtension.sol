@@ -1,48 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IAuthorizer } from "./IAuthorizer.sol";
 import { IVault } from "./IVault.sol";
+import { IHooks } from "./IHooks.sol";
+import { IBasePool } from "./IBasePool.sol";
 import "./VaultTypes.sol";
 
 interface IVaultExtension {
     /*******************************************************************************
                               Constants and immutables
     *******************************************************************************/
-
-    /**
-     * @notice Returns Vault's pause window end time.
-     * @dev This value is immutable; the getter can be called by anyone.
-     */
-    function getPauseWindowEndTime() external view returns (uint256);
-
-    /**
-     * @notice Returns Vault's buffer period duration.
-     * @dev This value is immutable; the getter can be called by anyone.
-     */
-    function getBufferPeriodDuration() external view returns (uint256);
-
-    /**
-     * @notice Returns Vault's buffer period end time.
-     * @dev This value is immutable; the getter can be called by anyone.
-     */
-    function getBufferPeriodEndTime() external view returns (uint256);
-
-    /**
-     * @notice Get the minimum number of tokens in a pool.
-     * @dev We expect the vast majority of pools to be 2-token.
-     * @return The token count of a minimal pool
-     */
-    function getMinimumPoolTokens() external pure returns (uint256);
-
-    /**
-     * @notice Get the maximum number of tokens in a pool.
-     * @return The token count of a minimal pool
-     */
-    function getMaximumPoolTokens() external pure returns (uint256);
 
     /// @dev Returns the main Vault address.
     function vault() external view returns (IVault);
@@ -52,17 +22,9 @@ interface IVaultExtension {
     *******************************************************************************/
 
     /**
-     * @notice Returns the address at the specified index of the _handlers array.
-     * @param index The index of the handler's address to fetch
-     * @return The address at the given index
+     * @notice Returns True if the Vault is unlocked, false otherwise.
      */
-    function getHandler(uint256 index) external view returns (address);
-
-    /**
-     * @notice Returns the total number of handlers.
-     * @return The number of handlers
-     */
-    function getHandlersCount() external view returns (uint256);
+    function isUnlocked() external view returns (bool);
 
     /**
      *  @notice Returns the count of non-zero deltas.
@@ -73,18 +35,17 @@ interface IVaultExtension {
     /**
      * @notice Retrieves the token delta for a specific user and token.
      * @dev This function allows reading the value from the `_tokenDeltas` mapping.
-     * @param user The address of the user for whom the delta is being fetched
      * @param token The token for which the delta is being fetched
      * @return The delta of the specified token for the specified user
      */
-    function getTokenDelta(address user, IERC20 token) external view returns (int256);
+    function getTokenDelta(IERC20 token) external view returns (int256);
 
     /**
-     * @notice Retrieves the reserve of a given token.
+     * @notice Retrieves the reserve (i.e., total Vault balance) of a given token.
      * @param token The token for which to retrieve the reserve
      * @return The amount of reserves for the given token
      */
-    function getTokenReserve(IERC20 token) external view returns (uint256);
+    function getReservesOf(IERC20 token) external view returns (uint256);
 
     /*******************************************************************************
                                     Pool Registration
@@ -104,19 +65,23 @@ interface IVaultExtension {
      * If the zero address is provided for the `pauseManager`, permissions for pausing the pool will default to the
      * authorizer.
      *
-     * @param factory The factory address associated with the pool being registered
+     * @param pool The address of the pool being registered
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
+     * @param swapFeePercentage The initial static swap fee percentage of the pool
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
-     * @param pauseManager Optional contract the Vault will allow to pause the pool
-     * @param config Flags indicating which callbacks the pool supports
+     * @param protocolFeeExempt If true, the pool's initial aggregate fees will be set to 0
+     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
+     * @param poolHooksContract Contract that implements the hooks for the pool
      * @param liquidityManagement Liquidity management flags with implemented methods
      */
     function registerPool(
-        address factory,
+        address pool,
         TokenConfig[] memory tokenConfig,
-        uint256 pauseWindowEndTime,
-        address pauseManager,
-        PoolCallbacks calldata config,
+        uint256 swapFeePercentage,
+        uint32 pauseWindowEndTime,
+        bool protocolFeeExempt,
+        PoolRoleAccounts calldata roleAccounts,
+        address poolHooksContract,
         LiquidityManagement calldata liquidityManagement
     ) external;
 
@@ -166,37 +131,23 @@ interface IVaultExtension {
     function getPoolTokens(address pool) external view returns (IERC20[] memory);
 
     /**
-     * @notice Gets the index of a token in a given pool.
-     * @dev Reverts if the pool is not registered, or if the token does not belong to the pool.
-     * @param pool Address of the pool
-     * @param token Address of the token
-     * @return tokenCount Number of tokens in the pool
-     * @return index Index corresponding to the given token in the pool's token list
-     */
-    function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
-
-    /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
-     * @return tokens Tokens registered to the pool
-     * @return tokenTypes The types of all registered tokens
+     * @return tokens The pool tokens, in registration order
+     * @return tokenInfo Corresponding token info
      * @return balancesRaw Corresponding raw balances of the tokens
      * @return scalingFactors Corresponding scalingFactors of the tokens
-     * @return rateProviders Corresponding rateProviders of the tokens (or zero for tokens with no rates)
      */
     function getPoolTokenInfo(
         address pool
     )
         external
         view
-        returns (IERC20[] memory, TokenType[] memory, uint256[] memory, uint256[] memory, IRateProvider[] memory);
-
-    /**
-     * @notice Retrieve the scaling factors from a pool's rate providers.
-     * @dev This is not included in `getPoolTokenInfo` since it makes external calls that might revert,
-     * effectively preventing retrieval of basic pool parameters. Tokens without rate providers will always return
-     * FixedPoint.ONE (1e18).
-     */
-    function getPoolTokenRates(address pool) external view returns (uint256[] memory);
+        returns (
+            IERC20[] memory tokens,
+            TokenInfo[] memory tokenInfo,
+            uint256[] memory balancesRaw,
+            uint256[] memory scalingFactors
+        );
 
     /**
      * @notice Gets the configuration parameters of a pool.
@@ -204,6 +155,20 @@ interface IVaultExtension {
      * @return Pool configuration
      */
     function getPoolConfig(address pool) external view returns (PoolConfig memory);
+
+    /**
+     * @notice Gets the hooks configuration parameters of a pool.
+     * @param pool Address of the pool
+     * @return Hooks configuration
+     */
+    function getHooksConfig(address pool) external view returns (HooksConfig memory);
+
+    /**
+     * @notice Gets the current bpt rate of a pool, by dividing the current invariant by the total supply of BPT.
+     * @param pool Address of the pool
+     * @return rate BPT rate
+     */
+    function getBptRate(address pool) external view returns (uint256 rate);
 
     /*******************************************************************************
                                     Pool Tokens
@@ -271,37 +236,6 @@ interface IVaultExtension {
     function approve(address owner, address spender, uint256 amount) external returns (bool);
 
     /*******************************************************************************
-                                    Vault Pausing
-    *******************************************************************************/
-
-    /**
-     * @notice Indicates whether the Vault is paused.
-     * @return True if the Vault is paused
-     */
-    function isVaultPaused() external view returns (bool);
-
-    /**
-     * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
-     * @return paused True if the Vault is paused
-     * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
-     * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
-     */
-    function getVaultPausedState() external view returns (bool, uint256, uint256);
-
-    /**
-     * @notice Pause the Vault: an emergency action which disables all operational state-changing functions.
-     * @dev This is a permissioned function that will only work during the Pause Window set during deployment.
-     */
-    function pauseVault() external;
-
-    /**
-     * @notice Reverse a `pause` operation, and restore the Vault to normal functionality.
-     * @dev This is a permissioned function that will only work on a paused Vault within the Buffer Period set during
-     * deployment. Note that the Vault will automatically unpause after the Buffer Period expires.
-     */
-    function unpauseVault() external;
-
-    /*******************************************************************************
                                     Pool Pausing
     *******************************************************************************/
 
@@ -323,76 +257,27 @@ interface IVaultExtension {
      * @return poolBufferPeriodEndTime The timestamp after which the Pool unpauses itself (if paused)
      * @return pauseManager The pause manager, or the zero address
      */
-    function getPoolPausedState(address pool) external view returns (bool, uint256, uint256, address);
-
-    /**
-     * @notice Pause the Pool: an emergency action which disables all pool functions.
-     * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
-     * deployment.
-     */
-    function pausePool(address pool) external;
-
-    /**
-     * @notice Reverse a `pause` operation, and restore the Pool to normal functionality.
-     * @dev This is a permissioned function that will only work on a paused Pool within the Buffer Period set during
-     * deployment. Note that the Pool will automatically unpause after the Buffer Period expires.
-     */
-    function unpausePool(address pool) external;
+    function getPoolPausedState(address pool) external view returns (bool, uint32, uint32, address);
 
     /*******************************************************************************
                                    Fees
     *******************************************************************************/
 
     /**
-     * @notice Sets a new swap fee percentage for the protocol.
-     * @param newSwapFeePercentage The new swap fee percentage to be set
-     */
-    function setProtocolSwapFeePercentage(uint256 newSwapFeePercentage) external;
-
-    /**
-     * @notice Retrieves the current protocol swap fee percentage.
-     * @return The current protocol swap fee percentage
-     */
-    function getProtocolSwapFeePercentage() external view returns (uint256);
-
-    /**
-     * @notice Sets a new yield fee percentage for the protocol.
-     * @param newYieldFeePercentage The new swap fee percentage to be set
-     */
-    function setProtocolYieldFeePercentage(uint256 newYieldFeePercentage) external;
-
-    /**
-     * @notice Retrieves the current protocol yield fee percentage.
-     * @return The current protocol yield fee percentage
-     */
-    function getProtocolYieldFeePercentage() external view returns (uint256);
-
-    /**
-     * @notice Returns the accumulated swap and yield fee in `token` collected by the protocol.
+     * @notice Returns the accumulated swap fees (including aggregate fees) in `token` collected by the pool.
+     * @param pool The address of the pool for which aggregate fees have been collected
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
      */
-    function getProtocolFees(address token) external view returns (uint256);
+    function getAggregateSwapFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
     /**
-     * @notice Collects accumulated protocol fees for the specified array of tokens.
-     * @dev Fees are sent to msg.sender.
-     * @param tokens An array of token addresses for which the fees should be collected
+     * @notice Returns the accumulated yield fees (including aggregate fees) in `token` collected by the pool.
+     * @param pool The address of the pool for which aggregate fees have been collected
+     * @param token The address of the token in which fees have been accumulated
+     * @return The total amount of fees accumulated in the specified token
      */
-    function collectProtocolFees(IERC20[] calldata tokens) external;
-
-    /**
-     * @notice Assigns a new static swap fee percentage to the specified pool.
-     * @param pool The address of the pool for which the static swap fee will be changed
-     * @param swapFeePercentage The new swap fee percentage to apply to the pool
-     */
-    function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
-
-    /**
-     * @notice Emitted when the swap fee percentage of a pool is updated.
-     * @param swapFeePercentage The new swap fee percentage for the pool
-     */
-    event SwapFeePercentageChanged(address indexed pool, uint256 indexed swapFeePercentage);
+    function getAggregateYieldFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
     /**
      * @notice Fetches the static swap fee percentage for a given pool.
@@ -401,8 +286,27 @@ interface IVaultExtension {
      */
     function getStaticSwapFeePercentage(address pool) external view returns (uint256);
 
+    /**
+     * @notice Fetches the role accounts for a given pool (pause manager, swap manager, pool creator)
+     * @param pool The address of the pool whose roles are being queried
+     * @return roleAccounts A struct containing the role accounts for the pool (or 0 if unassigned)
+     */
+    function getPoolRoleAccounts(address pool) external view returns (PoolRoleAccounts memory);
+
+    /**
+     * @notice Query the current dynamic swap fee of a pool, given a set of swap parameters.
+     * @param pool The pool
+     * @param swapParams The swap parameters used to compute the fee
+     * @return success True if the pool has a dynamic swap fee and it can be successfully computed
+     * @return dynamicSwapFee The dynamic swap fee percentage
+     */
+    function computeDynamicSwapFee(
+        address pool,
+        IBasePool.PoolSwapParams memory swapParams
+    ) external view returns (bool, uint256);
+
     /*******************************************************************************
-                                Recovery Mode
+                                    Recovery Mode
     *******************************************************************************/
 
     /**
@@ -413,32 +317,44 @@ interface IVaultExtension {
     function isPoolInRecoveryMode(address pool) external view returns (bool);
 
     /**
-     * @notice Enable recovery mode for a pool.
-     * @dev This is a permissioned function.
-     * @param pool The pool
+     * @notice Remove liquidity from a pool specifying exact pool tokens in, with proportional token amounts out.
+     * The request is implemented by the Vault without any interaction with the pool, ensuring that
+     * it works the same for all pools, and cannot be disabled by a new pool type.
+     *
+     * @param pool Address of the pool
+     * @param from Address of user to burn pool tokens from
+     * @param exactBptAmountIn Input pool token amount
+     * @return amountsOut Actual calculated amounts of output tokens, sorted in token registration order
      */
-    function enableRecoveryMode(address pool) external;
+    function removeLiquidityRecovery(
+        address pool,
+        address from,
+        uint256 exactBptAmountIn
+    ) external returns (uint256[] memory amountsOut);
 
-    /**
-     * @notice Disable recovery mode for a pool.
-     * @dev This is a permissioned function.
-     * @param pool The pool
-     */
-    function disableRecoveryMode(address pool) external;
+    /*******************************************************************************
+                                    Buffer Operations
+    *******************************************************************************/
+
+    function calculateBufferAmounts(
+        SwapKind kind,
+        IERC4626 wrappedToken,
+        uint256 amountGiven
+    ) external returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped);
 
     /*******************************************************************************
                                     Queries
     *******************************************************************************/
 
     /**
-     * @notice Invokes a callback on msg.sender with arguments provided in `data`.
+     * @notice Performs a callback on msg.sender with arguments provided in `data`.
      * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
      * anything else will revert.
      *
-     * Allows querying any operation on the Vault that has the `withHandler` modifier.
+     * Allows querying any operation on the Vault that has the `onlyWhenUnlocked` modifier.
      *
      * Allows the external calling of a function via the Vault contract to
-     * access Vault's functions guarded by `withHandler`.
+     * access Vault's functions guarded by `onlyWhenUnlocked`.
      * `transient` modifier ensuring balances changes within the Vault are settled.
      *
      * @param data Contains function signature and args to be passed to the msg.sender
@@ -446,8 +362,22 @@ interface IVaultExtension {
      */
     function quote(bytes calldata data) external payable returns (bytes memory result);
 
-    /// @notice Disables queries functionality on the Vault. Can be called only by governance.
-    function disableQuery() external;
+    /**
+     * @notice Performs a callback on msg.sender with arguments provided in `data`.
+     * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
+     * anything else will revert.
+     *
+     * Allows querying any operation on the Vault that has the `withLocker` modifier.
+     *
+     * Allows the external calling of a function via the Vault contract to
+     * access Vault's functions guarded by `withLocker`.
+     * `transient` modifier ensuring balances changes within the Vault are settled.
+     *
+     * This call always reverts, returning the result in the revert reason.
+     *
+     * @param data Contains function signature and args to be passed to the msg.sender
+     */
+    function quoteAndRevert(bytes calldata data) external payable;
 
     /**
      * @notice Checks if the queries enabled on the Vault.
@@ -456,19 +386,11 @@ interface IVaultExtension {
     function isQueryDisabled() external view returns (bool);
 
     /*******************************************************************************
-                                Authentication
+                                     Miscellaneous
     *******************************************************************************/
 
     /**
-     * @notice Returns the Vault's Authorizer.
-     * @return Address of the authorizer
+     * @notice Returns the Vault Admin contract address.
      */
-    function getAuthorizer() external view returns (IAuthorizer);
-
-    /**
-     * @notice Sets a new Authorizer for the Vault.
-     * @dev The caller must be allowed by the current Authorizer to do this.
-     * Emits an `AuthorizerChanged` event.
-     */
-    function setAuthorizer(IAuthorizer newAuthorizer) external;
+    function getVaultAdmin() external view returns (address);
 }

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
 import "../../contracts/helpers/WordCodec.sol";
 
 contract WordCodecTest is Test {
-    function testEncodeUint255Bits(uint256 input) external {
+    function testEncodeUint255Bits__Fuzz(uint256 input) external {
         vm.assume(input < (1 << (255 - 1)));
 
         bytes32 data = WordCodec.encodeUint(input, 0, 255);
@@ -16,7 +16,7 @@ contract WordCodecTest is Test {
         assertEq(decoded, input);
     }
 
-    function testEncodeUintMultiBits(uint256 input, uint8 bits, uint256 offset) external {
+    function testEncodeUintMultiBits__Fuzz(uint256 input, uint8 bits, uint256 offset) external {
         (input, bits, offset) = _getAdjustedValues(input, bits, offset);
 
         bytes32 data = WordCodec.encodeUint(input, offset, bits);
@@ -25,7 +25,7 @@ contract WordCodecTest is Test {
         assertEq(decoded, input);
     }
 
-    function testEncodeUintOtherBitsFree(uint256 input, uint8 bits, uint256 offset) external {
+    function testEncodeUintOtherBitsFree__Fuzz(uint256 input, uint8 bits, uint256 offset) external {
         (input, bits, offset) = _getAdjustedValues(input, bits, offset);
 
         bytes32 data = WordCodec.encodeUint(input, offset, bits);
@@ -51,7 +51,7 @@ contract WordCodecTest is Test {
         return (input, bits, offset);
     }
 
-    function testInsertUint(bytes32 word, uint256 value, uint256 offset, uint256 bitLength) external {
+    function testInsertUint__Fuzz(bytes32 word, uint256 value, uint256 offset, uint256 bitLength) external {
         if (offset >= 256 || !(bitLength >= 1 && bitLength <= Math.min(255, 256 - offset))) {
             vm.expectRevert(WordCodec.OutOfBounds.selector);
             WordCodec.insertUint(word, value, offset, bitLength);
@@ -69,7 +69,7 @@ contract WordCodecTest is Test {
         }
     }
 
-    function testInsertInt(bytes32 word, int256 value, uint256 offset, uint256 bitLength) external {
+    function testInsertInt__Fuzz(bytes32 word, int256 value, uint256 offset, uint256 bitLength) external {
         if (offset >= 256 || !(bitLength >= 1 && bitLength <= Math.min(255, 256 - offset))) {
             vm.expectRevert(WordCodec.OutOfBounds.selector);
             WordCodec.insertInt(word, value, offset, bitLength);
@@ -88,7 +88,7 @@ contract WordCodecTest is Test {
         }
     }
 
-    function testInsertBool(bytes32 word, bool value, uint256 offset) external {
+    function testInsertBool__Fuzz(bytes32 word, bool value, uint256 offset) external {
         bytes32 clearedWord = bytes32(uint256(word) & ~(1 << offset));
         bytes32 referenceInsertBool = clearedWord | bytes32(uint256(value ? 1 : 0) << offset);
 
@@ -97,16 +97,16 @@ contract WordCodecTest is Test {
         assertEq(insertBool, referenceInsertBool);
     }
 
-    function testDecodeUint(bytes32 word, uint256 offset, uint256 bitLength) external {
-        vm.assume(bitLength > 0 && bitLength < 256);
+    function testDecodeUint__Fuzz(bytes32 word, uint256 offset, uint8 bitLength) external {
+        vm.assume(bitLength > 0);
         uint256 referenceDecodeUint = uint256(word >> offset) & ((1 << bitLength) - 1);
         uint256 decodeUint = WordCodec.decodeUint(word, offset, bitLength);
 
         assertEq(decodeUint, referenceDecodeUint);
     }
 
-    function testDecodeInt(bytes32 word, uint256 offset, uint256 bitLength) external {
-        vm.assume(bitLength > 0 && bitLength < 256);
+    function testDecodeInt__Fuzz(bytes32 word, uint256 offset, uint8 bitLength) external {
+        vm.assume(bitLength > 0);
         int256 maxInt = int256((1 << (bitLength - 1)) - 1);
         uint256 mask = (1 << bitLength) - 1;
         int256 value = int256(uint256(word >> offset) & mask);
@@ -117,7 +117,7 @@ contract WordCodecTest is Test {
         assertEq(decodeInt, referenceDecodeInt);
     }
 
-    function testDecodeBool(bytes32 word, uint256 offset) external {
+    function testDecodeBool__Fuzz(bytes32 word, uint256 offset) external {
         bool referenceDecodeBool = (uint256(word >> offset) & 1) == 1;
         bool decodeBool = WordCodec.decodeBool(word, offset);
 

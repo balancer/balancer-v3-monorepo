@@ -26,7 +26,7 @@ type CompareFunction =
   | 'very-near';
 export type Comparison = [CompareFunction, BigNumberish];
 
-interface BalanceChange {
+export interface BalanceChange {
   account: Account;
   changes?: Dictionary<BigNumberish | Comparison>;
 }
@@ -147,7 +147,7 @@ export async function expectBalanceChange(
     trackers[address] = {};
 
     await tokens.asyncEach(async (token) => {
-      trackers[address][token.symbol] = vault
+      trackers[address][await token.symbol()] = vault
         ? await internalBalanceTracker(vault, address, token)
         : await balanceTracker(address, token);
     });
@@ -159,7 +159,8 @@ export async function expectBalanceChange(
     const address = accountToAddress(account);
     const accountTrackers = trackers[address];
 
-    await tokens.asyncEach(async ({ symbol }) => {
+    await tokens.asyncEach(async (token) => {
+      const symbol = await token.symbol();
       const delta = await accountTrackers[symbol].delta();
 
       const change = (changes || {})[symbol];
@@ -168,15 +169,16 @@ export async function expectBalanceChange(
       } else {
         const compare: CompareFunction = Array.isArray(change) ? change[0] : 'equal';
         const value = bn(Array.isArray(change) ? change[1] : change);
+        const abs = (value: bigint) => (value >= 0n ? value : -value);
 
         if (compare == 'near') {
-          const epsilon = value.abs().div(10);
-          expect(delta).to.be.at.least(value.sub(epsilon));
-          expect(delta).to.be.at.most(value.add(epsilon));
+          const epsilon = abs(value) / 10n;
+          expect(delta).to.be.at.least(value - epsilon);
+          expect(delta).to.be.at.most(value + epsilon);
         } else if (compare == 'very-near') {
-          const epsilon = value.abs().div(100000);
-          expect(delta).to.be.at.least(value.sub(epsilon));
-          expect(delta).to.be.at.most(value.add(epsilon));
+          const epsilon = abs(value) / 100000n;
+          expect(delta).to.be.at.least(value - epsilon);
+          expect(delta).to.be.at.most(value + epsilon);
         } else {
           const errorMessage = `Expected ${delta} ${symbol} to be ${compare} ${value} ${symbol}`;
           expect(delta, errorMessage).to[compare](value.toString());

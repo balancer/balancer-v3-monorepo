@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -27,7 +27,7 @@ contract WeightedMathTest is Test {
         mock = new WeightedMathMock();
     }
 
-    function testComputeOutGivenIn(
+    function testComputeOutGivenExactIn__Fuzz(
         uint64 rawWeightIn,
         uint256 rawBalanceIn,
         uint256 rawBalanceOut,
@@ -45,12 +45,12 @@ contract WeightedMathTest is Test {
 
         assertEq(weightIn + weightOut, FP_ONE);
 
-        uint256 standardResult = mock.computeOutGivenIn(balanceIn, weightIn, balanceOut, weightOut, amountGiven);
+        uint256 standardResult = mock.computeOutGivenExactIn(balanceIn, weightIn, balanceOut, weightOut, amountGiven);
 
         uint256 roundedUpAmountGiven = flipBit ? amountGiven + 1 : amountGiven;
         uint256 roundedDownAmountGiven = flipBit ? amountGiven - 1 : amountGiven;
 
-        uint256 roundedUpResult = mock.computeOutGivenIn(
+        uint256 roundedUpResult = mock.computeOutGivenExactIn(
             balanceIn,
             weightIn,
             balanceOut,
@@ -58,7 +58,7 @@ contract WeightedMathTest is Test {
             roundedUpAmountGiven
         );
 
-        uint256 roundedDownResult = mock.computeOutGivenIn(
+        uint256 roundedDownResult = mock.computeOutGivenExactIn(
             balanceIn,
             weightIn,
             balanceOut,
@@ -70,7 +70,7 @@ contract WeightedMathTest is Test {
         assertLe(roundedDownResult, standardResult);
     }
 
-    function testComputeInGivenOut(
+    function testComputeInGivenExactOut__Fuzz(
         uint64 rawWeightIn,
         uint256 rawBalanceIn,
         uint256 rawBalanceOut,
@@ -88,12 +88,12 @@ contract WeightedMathTest is Test {
 
         assertEq(weightIn + weightOut, FP_ONE);
 
-        uint256 standardResult = mock.computeInGivenOut(balanceIn, weightIn, balanceOut, weightOut, amountGiven);
+        uint256 standardResult = mock.computeInGivenExactOut(balanceIn, weightIn, balanceOut, weightOut, amountGiven);
 
         uint256 roundedUpAmountGiven = flipBit ? amountGiven + 1 : amountGiven;
         uint256 roundedDownAmountGiven = flipBit ? amountGiven - 1 : amountGiven;
 
-        uint256 roundedUpResult = mock.computeInGivenOut(
+        uint256 roundedUpResult = mock.computeInGivenExactOut(
             balanceIn,
             weightIn,
             balanceOut,
@@ -101,7 +101,7 @@ contract WeightedMathTest is Test {
             roundedUpAmountGiven
         );
 
-        uint256 roundedDownResult = mock.computeInGivenOut(
+        uint256 roundedDownResult = mock.computeInGivenExactOut(
             balanceIn,
             weightIn,
             balanceOut,
@@ -122,7 +122,7 @@ contract WeightedMathTest is Test {
     }
 
     // TODO: Temporarily disable; fails intermittently due to math library precision
-    function skipTestComputeBptOutGivenExactTokensIn(
+    function skipTestComputeBptOutGivenExactTokensIn__Fuzz(
         uint64 rawWeight,
         uint64 rawSwapFee,
         uint256 rawTotalSupply,
@@ -149,7 +149,7 @@ contract WeightedMathTest is Test {
         uint256[] memory roundedUpBalances = new uint256[](2);
         uint256[] memory roundedDownBalances = new uint256[](2);
 
-        for (uint256 i = 0; i < 2; i++) {
+        for (uint256 i = 0; i < 2; ++i) {
             roundedUpBalances[i] = flipBit ? vars.balances[i] + 1 : vars.balances[i];
             roundedDownBalances[i] = flipBit ? vars.balances[i] - 1 : vars.balances[i];
         }
@@ -174,7 +174,7 @@ contract WeightedMathTest is Test {
         assertGe(roundedDownResult, standardResult);
     }
 
-    function testComputeBptInGivenExactTokensOut(
+    function testComputeBptInGivenExactTokensOut__Fuzz(
         uint64 rawWeight,
         uint64 rawSwapFee,
         uint256 rawTotalSupply,
@@ -191,7 +191,7 @@ contract WeightedMathTest is Test {
 
         uint256 totalBalance;
 
-        for (uint256 i = 0; i < 2; i++) {
+        for (uint256 i = 0; i < 2; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
             amountsOut[i] = balances[i] / 10;
             totalBalance += balances[i];
@@ -211,7 +211,7 @@ contract WeightedMathTest is Test {
         uint256[] memory roundedUpBalances = new uint256[](2);
         uint256[] memory roundedDownBalances = new uint256[](2);
 
-        for (uint256 i = 0; i < 2; i++) {
+        for (uint256 i = 0; i < 2; ++i) {
             roundedUpBalances[i] = flipBit ? balances[i] + 1 : balances[i];
             roundedDownBalances[i] = flipBit ? balances[i] - 1 : balances[i];
         }
@@ -254,7 +254,7 @@ contract WeightedMathTest is Test {
         vars.swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
         uint256 totalBalance;
 
-        for (uint256 i = 0; i < 2; i++) {
+        for (uint256 i = 0; i < 2; ++i) {
             vars.balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
             totalBalance += vars.balances[i];
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "../math/WeightedMath.sol";
 
@@ -12,24 +12,24 @@ contract WeightedMathMock {
         return WeightedMath.computeInvariant(normalizedWeights, balances);
     }
 
-    function computeOutGivenIn(
+    function computeOutGivenExactIn(
         uint256 balanceIn,
         uint256 weightIn,
         uint256 balanceOut,
         uint256 weightOut,
         uint256 amountIn
     ) external pure returns (uint256) {
-        return WeightedMath.computeOutGivenIn(balanceIn, weightIn, balanceOut, weightOut, amountIn);
+        return WeightedMath.computeOutGivenExactIn(balanceIn, weightIn, balanceOut, weightOut, amountIn);
     }
 
-    function computeInGivenOut(
+    function computeInGivenExactOut(
         uint256 balanceIn,
         uint256 weightIn,
         uint256 balanceOut,
         uint256 weightOut,
         uint256 amountOut
     ) external pure returns (uint256) {
-        return WeightedMath.computeInGivenOut(balanceIn, weightIn, balanceOut, weightOut, amountOut);
+        return WeightedMath.computeInGivenExactOut(balanceIn, weightIn, balanceOut, weightOut, amountOut);
     }
 
     function computeBptOutGivenExactTokensIn(

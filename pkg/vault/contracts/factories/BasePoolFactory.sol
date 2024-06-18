@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import {
     SingletonAuthentication
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
@@ -32,9 +34,12 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     // Store the creationCode of the contract to be deployed by create3.
     bytes private _creationCode;
 
+    /// @dev A pool creator was specified for a pool from a Balancer core pool type.
+    error StandardPoolWithCreator();
+
     constructor(
         IVault vault,
-        uint256 pauseWindowDuration,
+        uint32 pauseWindowDuration,
         bytes memory creationCode
     ) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {
         _creationCode = creationCode;
@@ -51,7 +56,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
     }
 
     /// @inheritdoc IBasePoolFactory
-    function getDeploymentAddress(bytes32 salt) external view returns (address) {
+    function getDeploymentAddress(bytes32 salt) public view returns (address) {
         return CREATE3.getDeployed(_computeFinalSalt(salt));
     }
 
@@ -78,20 +83,50 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         emit PoolCreated(pool);
     }
 
-    function _computeFinalSalt(bytes32 salt) internal view returns (bytes32) {
+    /// @dev Factories that require a custom-calculated salt can override to replace this default salt processing.
+    function _computeFinalSalt(bytes32 salt) internal view virtual returns (bytes32) {
         return keccak256(abi.encode(msg.sender, block.chainid, salt));
     }
 
-    function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address) {
-        return CREATE3.deploy(_computeFinalSalt(salt), abi.encodePacked(_creationCode, constructorArgs), 0);
+    function _create(bytes memory constructorArgs, bytes32 salt) internal returns (address pool) {
+        pool = CREATE3.deploy(_computeFinalSalt(salt), abi.encodePacked(_creationCode, constructorArgs), 0);
+
+        _registerPoolWithFactory(pool);
     }
 
-    function _extractTokensFromTokenConfig(
-        TokenConfig[] memory tokenData
-    ) internal pure returns (IERC20[] memory registeredTokens) {
-        registeredTokens = new IERC20[](tokenData.length);
-        for (uint256 i = 0; i < tokenData.length; i++) {
-            registeredTokens[i] = tokenData[i].token;
-        }
+    function _registerPoolWithVault(
+        address pool,
+        TokenConfig[] memory tokens,
+        uint256 swapFeePercentage,
+        bool protocolFeeExempt,
+        PoolRoleAccounts memory roleAccounts,
+        address poolHooksContract,
+        LiquidityManagement memory liquidityManagement
+    ) internal {
+        getVault().registerPool(
+            pool,
+            tokens,
+            swapFeePercentage,
+            getNewPoolPauseWindowEndTime(),
+            protocolFeeExempt,
+            roleAccounts,
+            poolHooksContract,
+            liquidityManagement
+        );
+    }
+
+    /**
+     * @notice A common place to retrieve a default hooks contract. Currently set to address(0) (i.e. no hooks).
+     */
+    function getDefaultPoolHooksContract() public pure returns (address) {
+        return address(0);
+    }
+
+    /**
+     * @notice Convenience function for constructing a LiquidityManagement object.
+     * @dev Users can call this to create a structure with all false arguments, then set the ones they need to true.
+     */
+    function getDefaultLiquidityManagement() public pure returns (LiquidityManagement memory liquidityManagement) {
+        // solhint-disable-previous-line no-empty-blocks
     }
 }

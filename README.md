@@ -30,7 +30,7 @@ One option to quickly select the suggested Node version is using `nvm`, and runn
 $ nvm use
 ```
 
-Solidity 0.8.4 or higher is required, as V3 uses custom error messages. We strongly recommend using the latest released version of the Solidity compiler (at least 0.8.21), to incorporate all the latest bug fixes.
+Solidity 0.8.24 or higher is required to support the upcoming Cancun hardfork with transient storage. We strongly recommend using the latest released version of the Solidity compiler (at least 0.8.24), to incorporate all the latest bug fixes.
 
 ## Build and Test
 
@@ -42,6 +42,14 @@ Before any tests can be run, the repository needs to be prepared:
 $ yarn # install all dependencies
 ```
 
+You will also need to configure your environment variables to point to RPC endpoints in order to run fork tests.
+Write your preferred RPC URL to `.env`, and source it. For example:
+
+```bash
+$ sed 's,YOUR_MAINNET_RPC_URL,<YOUR_RPC_URL>' .env.example > .env
+$ source .env
+```
+
 ### Regular build
 
 ```bash
@@ -50,7 +58,7 @@ $ yarn build # compile all contracts
 
 Most tests are standalone and simply require installation of dependencies and compilation.
 
-In order to run all tests (including those with extra dependencies), run:
+In order to run all tests (including those with extra dependencies), configure your RPC endpoints by sourcing your `.env` file and run:
 
 ```bash
 $ yarn test # run all tests

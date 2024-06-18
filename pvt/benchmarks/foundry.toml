@@ -3,21 +3,29 @@ src = 'contracts'
 out = 'forge-artifacts'
 libs = ['node_modules']
 test = 'test/foundry'
+ffi = true
 cache_path  = 'forge-cache'
 allow_paths = ['../', '../../node_modules/', '../../pkg']
+fs_permissions = [{ access = "read-write", path = ".forge-snapshots/"}]
 remappings = [
     'vault/=../../pkg/vault/',
+    'pool-weighted/=../../pkg/pool-weighted/',
     'solidity-utils/=../../pkg/solidity-utils/',
     'ds-test/=../../node_modules/forge-std/lib/ds-test/src/',
     'forge-std/=../../node_modules/forge-std/src/',
     '@openzeppelin/=../../node_modules/@openzeppelin/',
-    '@balancer-labs/=../../node_modules/@balancer-labs/'
+    'permit2/=../../node_modules/permit2/',
+    '@balancer-labs/=../../node_modules/@balancer-labs/',
+    'forge-gas-snapshot/=../../node_modules/forge-gas-snapshot/src/'
 ]
 gas_reports = ["Router", "Vault", "WeightedPool"]
 optimizer = true
 optimizer_runs = 9999
-solc_version = '0.8.21'
+via_ir = true
+solc_version = '0.8.24'
 auto_detect_solc = false
+evm_version = 'cancun'
+ignored_error_codes = [2394, 5574, 3860] # Transient storage, code size
 
 [fuzz]
 runs = 10000

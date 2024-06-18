@@ -10,7 +10,7 @@ export function computeInvariant(fpRawBalances: BigNumberish[], fpRawWeights: Bi
   return bn(invariant);
 }
 
-export function computeOutGivenIn(
+export function computeOutGivenExactIn(
   fpBalanceIn: BigNumberish,
   fpWeightIn: BigNumberish,
   fpBalanceOut: BigNumberish,
@@ -24,7 +24,7 @@ export function computeOutGivenIn(
   return bn(toFp(fromFp(fpBalanceOut).mul(ratio)));
 }
 
-export function computeInGivenOut(
+export function computeInGivenExactOut(
   fpBalanceIn: BigNumberish,
   fpWeightIn: BigNumberish,
   fpBalanceOut: BigNumberish,

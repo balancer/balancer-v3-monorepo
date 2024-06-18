@@ -1,44 +1,53 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+
+import { VaultGuard } from "./VaultGuard.sol";
 
 /**
  * @notice A fully ERC20-compatible token to be used as the base contract for Balancer Pools,
  * with all the data and implementation delegated to the ERC20Multitoken contract.
+
+ * @dev Implementation of the ERC-20 Permit extension allowing approvals to be made via signatures, as defined in
+ * https://eips.ethereum.org/EIPS/eip-2612[ERC-2612].
  */
-contract BalancerPoolToken is IERC20, IERC20Metadata {
-    IVault private immutable _vault;
+contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonces, ERC165, VaultGuard {
+    bytes32 public constant PERMIT_TYPEHASH =
+        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
-    string private _name;
-    string private _symbol;
+    // @dev Permit deadline has expired.
+    error ERC2612ExpiredSignature(uint256 deadline);
 
-    modifier onlyVault() {
-        if (msg.sender != address(_vault)) {
-            revert IVaultErrors.SenderIsNotVault(msg.sender);
-        }
-        _;
-    }
+    // @dev Mismatched signature.
+    error ERC2612InvalidSigner(address signer, address owner);
 
-    constructor(IVault vault_, string memory name_, string memory symbol_) {
-        _vault = vault_;
-        _name = name_;
-        _symbol = symbol_;
+    // EIP712 also defines _name.
+    string private _bptName;
+    string private _bptSymbol;
+
+    constructor(IVault vault_, string memory bptName, string memory bptSymbol) EIP712(bptName, "1") VaultGuard(vault_) {
+        _bptName = bptName;
+        _bptSymbol = bptSymbol;
     }
 
     /// @inheritdoc IERC20Metadata
     function name() public view returns (string memory) {
-        return _name;
+        return _bptName;
     }
 
     /// @inheritdoc IERC20Metadata
     function symbol() public view returns (string memory) {
-        return _symbol;
+        return _bptSymbol;
     }
 
     /// @inheritdoc IERC20Metadata
@@ -102,5 +111,54 @@ contract BalancerPoolToken is IERC20, IERC20Metadata {
     /// @dev Emit the Approval event. This function can only be called by the MultiToken.
     function emitApproval(address owner, address spender, uint256 amount) external onlyVault {
         emit Approval(owner, spender, amount);
+    }
+
+    // @inheritdoc IERC20Permit
+    function permit(
+        address owner,
+        address spender,
+        uint256 amount,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public virtual {
+        // solhint-disable-next-line not-rely-on-time
+        if (block.timestamp > deadline) {
+            revert ERC2612ExpiredSignature(deadline);
+        }
+
+        bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, amount, _useNonce(owner), deadline));
+
+        bytes32 hash = _hashTypedDataV4(structHash);
+
+        address signer = ECDSA.recover(hash, v, r, s);
+        if (signer != owner) {
+            revert ERC2612InvalidSigner(signer, owner);
+        }
+
+        _vault.approve(owner, spender, amount);
+    }
+
+    // @inheritdoc IERC20Permit
+    function nonces(address owner) public view virtual override(IERC20Permit, Nonces) returns (uint256) {
+        return super.nonces(owner);
+    }
+
+    // @inheritdoc IERC20Permit
+    // solhint-disable-next-line func-name-mixedcase
+    function DOMAIN_SEPARATOR() external view virtual returns (bytes32) {
+        return _domainSeparatorV4();
+    }
+
+    /**
+     * @notice Get the BPT rate, which is defined as: pool invariant/total supply.
+     * @dev The Vault Extension defines a default implementation (`getBptRate`) to calculate the rate
+     * of any given pool, which should be sufficient in nearly all cases.
+     *
+     * @return rate Rate of the pool's BPT
+     */
+    function getRate() public view virtual returns (uint256) {
+        return getVault().getBptRate(address(this));
     }
 }

@@ -17,7 +17,7 @@ $ yarn gas
 To run specific tests, use `--match-test` or `--match-contract` specifier; for example:
 
 ```console
-$ yarn gas --match-test testSwapGivenInWithoutRate
+$ yarn gas --match-test testSwapExactInWithoutRate
 ```
 
 ## Licensing

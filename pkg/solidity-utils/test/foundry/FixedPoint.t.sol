@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
 import "../../contracts/math/FixedPoint.sol";
 
 contract FixedPointTest is Test {
-    function testComplement(uint256 x) external {
+    function testComplement__Fuzz(uint256 x) external {
         uint256 complement = FixedPoint.complement(x);
 
         if (x < FixedPoint.ONE) {
@@ -17,14 +17,14 @@ contract FixedPointTest is Test {
         }
     }
 
-    function testComplementEquivalence(uint256 x) external {
+    function testComplementEquivalence__Fuzz(uint256 x) external {
         uint256 referenceComplement = (x < FixedPoint.ONE) ? (FixedPoint.ONE - x) : 0;
         uint256 complement = FixedPoint.complement(x);
 
         assertEq(complement, referenceComplement);
     }
 
-    function testMulDown(uint256 a, uint256 b) external {
+    function testMulDown__Fuzz(uint256 a, uint256 b) external {
         unchecked {
             uint256 product = a * b;
             if (a != 0 && product / a != b) {
@@ -41,7 +41,7 @@ contract FixedPointTest is Test {
         }
     }
 
-    function testMulUp(uint256 a, uint256 b) external {
+    function testMulUp__Fuzz(uint256 a, uint256 b) external {
         unchecked {
             uint256 product = a * b;
             if (a != 0 && product / a != b) {
@@ -58,7 +58,7 @@ contract FixedPointTest is Test {
         }
     }
 
-    function testMulUpEquivalence(uint256 a, uint256 b) external {
+    function testMulUpEquivalence__Fuzz(uint256 a, uint256 b) external {
         unchecked {
             uint256 product = a * b;
             vm.assume(a == 0 || product / a == b);
@@ -70,7 +70,7 @@ contract FixedPointTest is Test {
         }
     }
 
-    function testDivDown(uint256 a, uint256 b) external {
+    function testDivDown__Fuzz(uint256 a, uint256 b) external {
         unchecked {
             if (b == 0) {
                 // check for overflow: `divDown` will fail first because of the overflow, and then because of dividing by 0.
@@ -94,7 +94,7 @@ contract FixedPointTest is Test {
         }
     }
 
-    function testDivDownEquivalence(uint256 a, uint256 b) external {
+    function testDivDownEquivalence__Fuzz(uint256 a, uint256 b) external {
         unchecked {
             vm.assume(b > 0);
             vm.assume(a == 0 || (a * FixedPoint.ONE) / FixedPoint.ONE == a);
@@ -106,11 +106,11 @@ contract FixedPointTest is Test {
         }
     }
 
-    function testDivUp(uint256 a, uint256 b) external {
+    function testDivUp__Fuzz(uint256 a, uint256 b) external {
         unchecked {
             if (b == 0) {
                 // This check is required because Yul's `div` doesn't revert on b==0
-                vm.expectRevert(abi.encodeWithSelector(FixedPoint.ZeroDivision.selector));
+                vm.expectRevert(FixedPoint.ZeroDivision.selector);
                 FixedPoint.divUp(a, b);
             } else if (a != 0 && (a * FixedPoint.ONE) / FixedPoint.ONE != a) {
                 vm.expectRevert(stdError.arithmeticError);
@@ -126,7 +126,7 @@ contract FixedPointTest is Test {
         }
     }
 
-    function testDivUpEquivalence(uint256 a, uint256 b) external {
+    function testDivUpEquivalence__Fuzz(uint256 a, uint256 b) external {
         unchecked {
             vm.assume(b > 0);
             vm.assume(a == 0 || (a * FixedPoint.ONE) / FixedPoint.ONE == a);

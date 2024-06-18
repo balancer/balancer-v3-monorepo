@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -8,6 +8,8 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { TokenInfo } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -21,29 +23,33 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for *;
 
+    // Track the indices for the local dai/wsteth pool.
+    uint256 internal daiIdx;
+    uint256 internal wstethIdx;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        (daiIdx, wstethIdx) = getSortedIndexes(address(dai), address(wsteth));
     }
 
     function createPool() internal override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProvider = new RateProviderMock();
+        // Must match the array passed in, not the sorted index, since buildTokenConfig will do the sorting.
         rateProviders[0] = rateProvider;
         rateProvider.mockRate(mockRate);
 
-        return
-            address(
-                new PoolMock(
-                    IVault(address(vault)),
-                    "ERC20 Pool",
-                    "ERC20POOL",
-                    [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
-                    rateProviders,
-                    true,
-                    365 days,
-                    address(0)
-                )
-            );
+        address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+
+        factoryMock.registerTestPool(
+            newPool,
+            vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
+            poolHooksContract,
+            lp
+        );
+
+        return newPool;
     }
 
     function testInitializePoolWithRate() public {
@@ -56,73 +62,81 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
     }
 
     function testInitialRateProviderState() public {
-        (, , , , IRateProvider[] memory rateProviders) = vault.getPoolTokenInfo(address(pool));
+        (, TokenInfo[] memory tokenInfo, , ) = vault.getPoolTokenInfo(pool);
 
-        assertEq(address(rateProviders[0]), address(rateProvider));
-        assertEq(address(rateProviders[1]), address(0));
+        assertEq(address(tokenInfo[wstethIdx].rateProvider), address(rateProvider), "Wrong rate provider");
+        assertEq(address(tokenInfo[daiIdx].rateProvider), address(0), "Rate provider should be 0");
     }
 
-    function testSwapGivenInWithRate() public {
+    function testSwapSingleTokenExactIWithRate() public {
         uint256 rateAdjustedLimit = defaultAmount.divDown(mockRate);
         uint256 rateAdjustedAmount = defaultAmount.mulDown(mockRate);
 
+        uint256[] memory expectedBalances = new uint256[](2);
+        expectedBalances[wstethIdx] = rateAdjustedAmount;
+        expectedBalances[daiIdx] = defaultAmount;
+
         vm.expectCall(
-            address(pool),
+            pool,
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
-                IBasePool.SwapParams({
-                    kind: SwapKind.GIVEN_IN,
+                IBasePool.PoolSwapParams({
+                    kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
-                    balancesScaled18: [rateAdjustedAmount, defaultAmount].toMemoryArray(),
-                    indexIn: 1,
-                    indexOut: 0,
-                    sender: address(router),
+                    balancesScaled18: expectedBalances,
+                    indexIn: daiIdx,
+                    indexOut: wstethIdx,
+                    router: address(router),
                     userData: bytes("")
                 })
             )
         );
 
         vm.prank(bob);
-        router.swapExactIn(
-            address(pool),
+        router.swapSingleTokenExactIn(
+            pool,
             dai,
             wsteth,
             defaultAmount,
             rateAdjustedLimit,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );
     }
 
-    function testSwapGivenOutWithRate() public {
+    function testSwapSingleTokenExactOutWithRate() public {
         uint256 rateAdjustedBalance = defaultAmount.mulDown(mockRate);
         uint256 rateAdjustedAmountGiven = defaultAmount.divDown(mockRate);
 
+        uint256[] memory expectedBalances = new uint256[](2);
+        expectedBalances[wstethIdx] = rateAdjustedBalance;
+        expectedBalances[daiIdx] = defaultAmount;
+
         vm.expectCall(
-            address(pool),
+            pool,
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
-                IBasePool.SwapParams({
-                    kind: SwapKind.GIVEN_OUT,
+                IBasePool.PoolSwapParams({
+                    kind: SwapKind.EXACT_OUT,
                     amountGivenScaled18: defaultAmount,
-                    balancesScaled18: [rateAdjustedBalance, defaultAmount].toMemoryArray(),
-                    indexIn: 1,
-                    indexOut: 0,
-                    sender: address(router),
+                    balancesScaled18: expectedBalances,
+                    indexIn: daiIdx,
+                    indexOut: wstethIdx,
+                    router: address(router),
                     userData: bytes("")
                 })
             )
         );
 
         vm.prank(bob);
-        router.swapExactOut(
-            address(pool),
+        router.swapSingleTokenExactOut(
+            pool,
             dai,
             wsteth,
             rateAdjustedAmountGiven,
             defaultAmount,
-            type(uint256).max,
+            MAX_UINT256,
             false,
             bytes("")
         );

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -9,6 +9,7 @@ import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -21,64 +22,94 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract VaultLiquidityWithRatesTest is BaseVaultTest {
     using ArrayHelpers for *;
 
+    // Track the indices for the local dai/wsteth pool.
+    uint256 internal daiIdx;
+    uint256 internal wstethIdx;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
         rateProvider.mockRate(mockRate);
+
+        (daiIdx, wstethIdx) = getSortedIndexes(address(dai), address(wsteth));
     }
 
     function createPool() internal override returns (address) {
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProvider = new RateProviderMock();
+        // Still need the rate provider at index 0; buildTokenConfig will sort.
         rateProviders[0] = rateProvider;
 
-        return
-            address(
-                new PoolMock(
-                    IVault(address(vault)),
-                    "ERC20 Pool",
-                    "ERC20POOL",
-                    [address(wsteth), address(dai)].toMemoryArray().asIERC20(),
-                    rateProviders,
-                    true,
-                    365 days,
-                    address(0)
-                )
-            );
+        address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+
+        factoryMock.registerTestPool(
+            newPool,
+            vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
+            poolHooksContract,
+            lp
+        );
+
+        return newPool;
+    }
+
+    function testLastLiveBalanceInitialization() public {
+        // Need to set the rate before initialization for this test
+        pool = createPool();
+        rateProvider.mockRate(mockRate);
+        initPool();
+
+        uint256[] memory rawBalances = vault.getRawBalances(pool);
+        uint256[] memory liveBalances = vault.getLastLiveBalances(pool);
+
+        assertEq(FixedPoint.mulDown(rawBalances[wstethIdx], mockRate), liveBalances[wstethIdx]);
+        assertEq(rawBalances[daiIdx], liveBalances[daiIdx]);
     }
 
     function testAddLiquiditySingleTokenExactOutWithRate() public {
+        uint256[] memory expectedBalances = new uint256[](2);
+        expectedBalances[wstethIdx] = FixedPoint.mulDown(defaultAmount, mockRate);
+        expectedBalances[daiIdx] = defaultAmount;
+
         vm.startPrank(alice);
         vm.expectCall(
-            address(pool),
+            pool,
             abi.encodeWithSelector(
                 IBasePool.computeBalance.selector,
-                [FixedPoint.mulDown(defaultAmount, mockRate), defaultAmount].toMemoryArray(), // liveBalancesScaled18
-                0,
+                expectedBalances, // liveBalancesScaled18
+                wstethIdx,
                 150e16 // 150% growth
             )
         );
 
-        router.addLiquiditySingleTokenExactOut(address(pool), wsteth, defaultAmount, defaultAmount, false, bytes(""));
+        router.addLiquiditySingleTokenExactOut(pool, wsteth, defaultAmount, defaultAmount, false, bytes(""));
     }
 
     function testAddLiquidityCustomWithRate() public {
         uint256 rateAdjustedAmount = FixedPoint.mulDown(defaultAmount, mockRate);
 
+        uint256[] memory expectedAmountsInRaw = new uint256[](2);
+        uint256[] memory expectedBalancesRaw = new uint256[](2);
+
+        expectedAmountsInRaw[wstethIdx] = rateAdjustedAmount;
+        expectedAmountsInRaw[daiIdx] = defaultAmount;
+
+        expectedBalancesRaw[wstethIdx] = rateAdjustedAmount;
+        expectedBalancesRaw[daiIdx] = defaultAmount;
+
         vm.startPrank(alice);
         vm.expectCall(
-            address(pool),
+            pool,
             abi.encodeWithSelector(
                 IPoolLiquidity.onAddLiquidityCustom.selector,
-                alice,
-                [rateAdjustedAmount, defaultAmount].toMemoryArray(), // maxAmountsIn
+                router,
+                expectedAmountsInRaw, // maxAmountsIn
                 defaultAmount, // minBptOut
-                [rateAdjustedAmount, defaultAmount].toMemoryArray(), // liveBalancesScaled18
+                expectedBalancesRaw,
                 bytes("")
             )
         );
 
         router.addLiquidityCustom(
-            address(pool),
+            pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             defaultAmount,
             false,
@@ -90,7 +121,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         vm.startPrank(alice);
 
         router.addLiquidityUnbalanced(
-            address(pool),
+            pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             defaultAmount,
             false,
@@ -99,7 +130,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
 
         // TODO: Find a way to test rates inside the Vault
         router.removeLiquidityProportional(
-            address(pool),
+            pool,
             defaultAmount * 2,
             [defaultAmount, defaultAmount].toMemoryArray(),
             false,
@@ -113,58 +144,60 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         vm.startPrank(alice);
 
         router.addLiquidityUnbalanced(
-            address(pool),
+            pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             defaultAmount,
             false,
             bytes("")
         );
 
-        PoolData memory balances = vault.getPoolData(address(pool), Rounding.ROUND_DOWN);
+        PoolData memory balances = vault.loadPoolDataUpdatingBalancesAndYieldFees(pool, Rounding.ROUND_DOWN);
         uint256 bptAmountIn = defaultAmount * 2;
 
         vm.expectCall(
-            address(pool),
+            pool,
             abi.encodeWithSelector(
                 IBasePool.computeBalance.selector,
-                [balances.balancesLiveScaled18[0], balances.balancesLiveScaled18[1]].toMemoryArray(),
-                0, // tokenOutIndex
+                [balances.balancesLiveScaled18[daiIdx], balances.balancesLiveScaled18[wstethIdx]].toMemoryArray(),
+                wstethIdx, // tokenOutIndex
                 50e16 // invariantRatio
             )
         );
 
-        router.removeLiquiditySingleTokenExactIn(address(pool), bptAmountIn, wsteth, defaultAmount, false, bytes(""));
+        router.removeLiquiditySingleTokenExactIn(pool, bptAmountIn, wsteth, defaultAmount, false, bytes(""));
     }
 
     function testRemoveLiquidityCustomWithRate() public {
         vm.startPrank(alice);
 
         router.addLiquidityUnbalanced(
-            address(pool),
+            pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             defaultAmount,
             false,
             bytes("")
         );
 
-        uint256 rateAdjustedAmountOut = FixedPoint.mulDown(defaultAmount, mockRate);
+        PoolData memory balances = vault.loadPoolDataUpdatingBalancesAndYieldFees(pool, Rounding.ROUND_DOWN);
+        uint256[] memory expectedAmountsOutRaw = new uint256[](2);
 
-        PoolData memory balances = vault.getPoolData(address(pool), Rounding.ROUND_DOWN);
+        expectedAmountsOutRaw[wstethIdx] = FixedPoint.mulDown(defaultAmount, mockRate);
+        expectedAmountsOutRaw[daiIdx] = defaultAmount;
 
         vm.expectCall(
-            address(pool),
+            pool,
             abi.encodeWithSelector(
                 IPoolLiquidity.onRemoveLiquidityCustom.selector,
-                alice,
+                router,
                 defaultAmount, // maxBptAmountIn
-                [rateAdjustedAmountOut, defaultAmount].toMemoryArray(), // minAmountsOut
-                [balances.balancesLiveScaled18[0], balances.balancesLiveScaled18[1]].toMemoryArray(),
+                expectedAmountsOutRaw, // minAmountsOut
+                [balances.balancesLiveScaled18[daiIdx], balances.balancesLiveScaled18[wstethIdx]].toMemoryArray(),
                 bytes("")
             )
         );
 
         router.removeLiquidityCustom(
-            address(pool),
+            pool,
             defaultAmount,
             [defaultAmount, defaultAmount].toMemoryArray(),
             false,

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
+
+// solhint-disable
 
 /**
  * @dev Exponentiation and logarithm functions for 18 decimal fixed point numbers (both base and exponent/argument).

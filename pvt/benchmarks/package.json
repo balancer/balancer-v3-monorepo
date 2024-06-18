@@ -7,9 +7,14 @@
   "scripts": {
     "build": "yarn compile && rm -rf artifacts/build-info",
     "compile": "hardhat compile",
-    "gas": "forge test -vvv --gas-report",
-    "lint": "yarn lint:typescript",
-    "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0"
+    "lint": "yarn lint:solidity && yarn lint:typescript",
+    "lint:solidity": "npx prettier --check --plugin=prettier-plugin-solidity 'test/**/*.sol' 'test/**/*.sol'",
+    "lint:typescript": "NODE_NO_WARNINGS=1 eslint . --ext .ts --ignore-path ../../.eslintignore  --max-warnings 0",
+    "prettier": "npx prettier --write --plugin=prettier-plugin-solidity 'test/**/*.sol' 'test/**/*.sol'",
+    "test": "yarn test:hardhat && yarn test:forge",
+    "test:hardhat": "hardhat test",
+    "test:forge": "forge test -vvv",
+    "gas": "forge test -vvv --gas-report"
   },
   "devDependencies": {
     "@balancer-labs/solidity-toolbox": "workspace:*",
@@ -27,7 +32,7 @@
     "eslint-plugin-mocha-no-only": "^1.1.1",
     "eslint-plugin-prettier": "^4.2.1",
     "ethers": "^6.5.1",
-    "hardhat": "^2.17.2",
+    "hardhat": "^2.21.0",
     "lodash.frompairs": "^4.0.1",
     "lodash.pick": "^4.4.0",
     "lodash.range": "^3.2.0",

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
@@ -13,7 +13,7 @@ contract RateProviderTest is Test {
         rateProvider = new RateProviderMock();
     }
 
-    function testRate(uint256 rate) public {
+    function testRate__Fuzz(uint256 rate) public {
         rate = bound(rate, 1, 100e18);
 
         rateProvider.mockRate(rate);
