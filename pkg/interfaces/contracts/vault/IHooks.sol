@@ -32,6 +32,7 @@ interface IHooks {
     ) external returns (bool);
 
     struct HookFlags {
+        bool enableHookAdjustedAmounts;
         bool shouldCallBeforeInitialize;
         bool shouldCallAfterInitialize;
         bool shouldCallComputeDynamicSwapFee;
@@ -81,15 +82,17 @@ interface IHooks {
     /**
      * @notice Optional hook to be executed before adding liquidity.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
+     * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of add liquidity operation (e.g., proportional, custom)
      * @param maxAmountsInScaled18 Maximum amounts of input tokens
      * @param minBptAmountOut Minimum amount of output pool tokens
-     * @param balancesScaled18 Current pool balances in token registration order
+     * @param balancesScaled18 Current pool balances, sorted in token registration order
      * @param userData Optional, arbitrary data with the encoded request
      * @return success True if the pool wishes to proceed with settlement
      */
     function onBeforeAddLiquidity(
         address router,
+        address pool,
         AddLiquidityKind kind,
         uint256[] memory maxAmountsInScaled18,
         uint256 minBptAmountOut,
@@ -100,19 +103,26 @@ interface IHooks {
     /**
      * @notice Optional hook to be executed after adding liquidity.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
-     * @param amountsInScaled18 Scaled amounts of tokens added in token registration order
+     * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
+     * @param kind The type of add liquidity operation (e.g., proportional, custom)
+     * @param amountsInScaled18 Actual amounts of tokens added, sorted in token registration order
+     * @param amountsInRaw Actual amounts of tokens added, sorted in token registration order
      * @param bptAmountOut Amount of pool tokens minted
-     * @param balancesScaled18 Current pool balances in token registration order
+     * @param balancesScaled18 Current pool balances, sorted in token registration order
      * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
+     * @return hookAdjustedAmountsInRaw New amountsInRaw, potentially modified by the hook
      */
     function onAfterAddLiquidity(
         address router,
+        address pool,
+        AddLiquidityKind kind,
         uint256[] memory amountsInScaled18,
+        uint256[] memory amountsInRaw,
         uint256 bptAmountOut,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) external returns (bool success);
+    ) external returns (bool success, uint256[] memory hookAdjustedAmountsInRaw);
 
     /***************************************************************************
                                  Remove Liquidity
@@ -121,15 +131,17 @@ interface IHooks {
     /**
      * @notice Optional hook to be executed before removing liquidity.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
+     * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of remove liquidity operation (e.g., proportional, custom)
      * @param maxBptAmountIn Maximum amount of input pool tokens
-     * @param minAmountsOutScaled18 Minimum output amounts in token registration order
-     * @param balancesScaled18 Current pool balances in token registration order
+     * @param minAmountsOutScaled18 Minimum output amounts, sorted in token registration order
+     * @param balancesScaled18 Current pool balances, sorted in token registration order
      * @param userData Optional, arbitrary data with the encoded request
      * @return success True if the pool wishes to proceed with settlement
      */
     function onBeforeRemoveLiquidity(
         address router,
+        address pool,
         RemoveLiquidityKind kind,
         uint256 maxBptAmountIn,
         uint256[] memory minAmountsOutScaled18,
@@ -140,19 +152,26 @@ interface IHooks {
     /**
      * @notice Optional hook to be executed after removing liquidity.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
+     * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
+     * @param kind The type of remove liquidity operation (e.g., proportional, custom)
      * @param bptAmountIn Amount of pool tokens to burn
-     * @param amountsOutScaled18 Amount of tokens to receive in token registration order
-     * @param balancesScaled18 Current pool balances in token registration order
+     * @param amountsOutScaled18 Scaled amount of tokens to receive, sorted in token registration order
+     * @param amountsOutRaw Actual amount of tokens to receive, sorted in token registration order
+     * @param balancesScaled18 Current pool balances, sorted in token registration order
      * @param userData Additional (optional) data provided by the user
      * @return success True if the pool wishes to proceed with settlement
+     * @return hookAdjustedAmountsOutRaw New amountsOutRaw, potentially modified by the hook
      */
     function onAfterRemoveLiquidity(
         address router,
+        address pool,
+        RemoveLiquidityKind kind,
         uint256 bptAmountIn,
         uint256[] memory amountsOutScaled18,
+        uint256[] memory amountsOutRaw,
         uint256[] memory balancesScaled18,
         bytes memory userData
-    ) external returns (bool success);
+    ) external returns (bool success, uint256[] memory hookAdjustedAmountsOutRaw);
 
     /***************************************************************************
                                     Swap
@@ -203,7 +222,7 @@ interface IHooks {
      *
      * @param params Swap parameters (see above for struct definition)
      * @return success True if the pool wishes to proceed with settlement
-     * @return hookAdjustedAmountCalculatedRaw New amount calculated, modified by the hook
+     * @return hookAdjustedAmountCalculatedRaw New amount calculated, potentially modified by the hook
      */
     function onAfterSwap(
         AfterSwapParams calldata params

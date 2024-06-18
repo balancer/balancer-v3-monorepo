@@ -51,6 +51,7 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
     /// @inheritdoc IHooks
     function onBeforeAddLiquidity(
         address,
+        address,
         AddLiquidityKind,
         uint256[] memory,
         uint256,
@@ -63,16 +64,20 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
     /// @inheritdoc IHooks
     function onAfterAddLiquidity(
         address,
+        address,
+        AddLiquidityKind,
         uint256[] memory,
+        uint256[] memory amountsInRaw,
         uint256,
         uint256[] memory,
         bytes memory
-    ) external virtual onlyVault returns (bool) {
-        return false;
+    ) external virtual onlyVault returns (bool, uint256[] memory) {
+        return (false, amountsInRaw);
     }
 
     /// @inheritdoc IHooks
     function onBeforeRemoveLiquidity(
+        address,
         address,
         RemoveLiquidityKind,
         uint256,
@@ -86,12 +91,15 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
     /// @inheritdoc IHooks
     function onAfterRemoveLiquidity(
         address,
+        address,
+        RemoveLiquidityKind,
         uint256,
         uint256[] memory,
+        uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) external virtual onlyVault returns (bool) {
-        return false;
+    ) external virtual onlyVault returns (bool, uint256[] memory) {
+        return (false, amountsOutRaw);
     }
 
     /// @inheritdoc IHooks
