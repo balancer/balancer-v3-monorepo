@@ -81,7 +81,7 @@ contract GetBptRateTest is BaseVaultTest {
 
         uint256[] memory amountsIn = [defaultAmount, 0].toMemoryArray();
         vm.prank(bob);
-        uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, 0, false, bytes(""));
+        uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, 0, bytes(""));
 
         totalSupply += addLiquidityBptAmountOut;
         liveBalances = [2 * defaultAmount.mulDown(daiMockRate), defaultAmount.mulDown(usdcMockRate)].toMemoryArray();

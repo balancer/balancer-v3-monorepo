@@ -32,7 +32,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
         vm.prank(alice);
-        amountsIn = router.addLiquidityProportional(pool, amountsIn, bptAmountOut, false, bytes(""));
+        amountsIn = router.addLiquidityProportional(pool, amountsIn, bptAmountOut, bytes(""));
 
         // should mint correct amount of BPT tokens
         assertEq(bptAmountOut, defaultAmount, "Invalid amount of BPT");
@@ -46,7 +46,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
         vm.prank(alice);
-        bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, defaultAmount, false, bytes(""));
+        bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, defaultAmount, bytes(""));
 
         // should mint correct amount of BPT tokens
         assertEq(bptAmountOut, defaultAmount * 2, "Invalid amount of BPT");
@@ -68,7 +68,6 @@ contract VaultLiquidityTest is BaseVaultTest {
             pool,
             [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
             defaultAmount,
-            false,
             bytes("")
         );
     }
@@ -76,14 +75,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     function addLiquiditySingleTokenExactOut() public returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         bptAmountOut = defaultAmount;
         vm.prank(alice);
-        uint256 amountIn = router.addLiquiditySingleTokenExactOut(
-            pool,
-            dai,
-            defaultAmount,
-            bptAmountOut,
-            false,
-            bytes("")
-        );
+        uint256 amountIn = router.addLiquiditySingleTokenExactOut(pool, dai, defaultAmount, bptAmountOut, bytes(""));
 
         (amountsIn, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountIn);
 
@@ -103,7 +95,7 @@ contract VaultLiquidityTest is BaseVaultTest {
 
         vm.prank(alice);
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
-        router.addLiquiditySingleTokenExactOut(pool, dai, defaultAmount, defaultAmount, false, bytes(""));
+        router.addLiquiditySingleTokenExactOut(pool, dai, defaultAmount, defaultAmount, bytes(""));
     }
 
     function addLiquidityCustom() public returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
@@ -112,7 +104,6 @@ contract VaultLiquidityTest is BaseVaultTest {
             pool,
             [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
             defaultAmount,
-            false,
             bytes("")
         );
 
@@ -136,7 +127,6 @@ contract VaultLiquidityTest is BaseVaultTest {
             pool,
             [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
             defaultAmount,
-            false,
             bytes("")
         );
     }
@@ -149,7 +139,6 @@ contract VaultLiquidityTest is BaseVaultTest {
             pool,
             [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
             defaultAmount,
-            false,
             bytes("")
         );
     }
@@ -163,7 +152,6 @@ contract VaultLiquidityTest is BaseVaultTest {
             pool,
             [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
             2 * defaultAmount + 1,
-            false,
             bytes("")
         );
     }
@@ -179,7 +167,7 @@ contract VaultLiquidityTest is BaseVaultTest {
             )
         );
         vm.prank(alice);
-        router.addLiquiditySingleTokenExactOut(pool, dai, defaultAmount - 1, bptAmountOut, false, bytes(""));
+        router.addLiquiditySingleTokenExactOut(pool, dai, defaultAmount - 1, bptAmountOut, bytes(""));
     }
 
     /// Remove
@@ -404,7 +392,6 @@ contract VaultLiquidityTest is BaseVaultTest {
             pool,
             [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
             defaultAmount,
-            false,
             bytes("")
         );
 

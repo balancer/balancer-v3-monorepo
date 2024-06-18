@@ -171,7 +171,6 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
             bptAmountRoundDown,
-            false,
             bytes("")
         );
     }
@@ -187,13 +186,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
         vm.prank(alice);
-        router.addLiquidityUnbalanced(
-            pool,
-            [defaultAmount, defaultAmount].toMemoryArray(),
-            bptAmount,
-            false,
-            bytes("")
-        );
+        router.addLiquidityUnbalanced(pool, [defaultAmount, defaultAmount].toMemoryArray(), bptAmount, bytes(""));
 
         uint256[] memory expectedAmountsOut = new uint256[](2);
         uint256[] memory expectedBalances = new uint256[](2);

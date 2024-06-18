@@ -80,7 +80,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             )
         );
 
-        router.addLiquiditySingleTokenExactOut(pool, wsteth, defaultAmount, defaultAmount, false, bytes(""));
+        router.addLiquiditySingleTokenExactOut(pool, wsteth, defaultAmount, defaultAmount, bytes(""));
     }
 
     function testAddLiquidityCustomWithRate() public {
@@ -108,25 +108,13 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             )
         );
 
-        router.addLiquidityCustom(
-            pool,
-            [defaultAmount, defaultAmount].toMemoryArray(),
-            defaultAmount,
-            false,
-            bytes("")
-        );
+        router.addLiquidityCustom(pool, [defaultAmount, defaultAmount].toMemoryArray(), defaultAmount, bytes(""));
     }
 
     function testRemoveLiquidityProportionalWithRate() public {
         vm.startPrank(alice);
 
-        router.addLiquidityUnbalanced(
-            pool,
-            [defaultAmount, defaultAmount].toMemoryArray(),
-            defaultAmount,
-            false,
-            bytes("")
-        );
+        router.addLiquidityUnbalanced(pool, [defaultAmount, defaultAmount].toMemoryArray(), defaultAmount, bytes(""));
 
         // TODO: Find a way to test rates inside the Vault
         router.removeLiquidityProportional(
@@ -143,13 +131,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
     function testRemoveLiquiditySingleTokenExactInWithRate() public {
         vm.startPrank(alice);
 
-        router.addLiquidityUnbalanced(
-            pool,
-            [defaultAmount, defaultAmount].toMemoryArray(),
-            defaultAmount,
-            false,
-            bytes("")
-        );
+        router.addLiquidityUnbalanced(pool, [defaultAmount, defaultAmount].toMemoryArray(), defaultAmount, bytes(""));
 
         PoolData memory balances = vault.loadPoolDataUpdatingBalancesAndYieldFees(pool, Rounding.ROUND_DOWN);
         uint256 bptAmountIn = defaultAmount * 2;
@@ -170,13 +152,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
     function testRemoveLiquidityCustomWithRate() public {
         vm.startPrank(alice);
 
-        router.addLiquidityUnbalanced(
-            pool,
-            [defaultAmount, defaultAmount].toMemoryArray(),
-            defaultAmount,
-            false,
-            bytes("")
-        );
+        router.addLiquidityUnbalanced(pool, [defaultAmount, defaultAmount].toMemoryArray(), defaultAmount, bytes(""));
 
         PoolData memory balances = vault.loadPoolDataUpdatingBalancesAndYieldFees(pool, Rounding.ROUND_DOWN);
         uint256[] memory expectedAmountsOutRaw = new uint256[](2);

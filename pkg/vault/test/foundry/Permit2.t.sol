@@ -97,7 +97,6 @@ contract Permit2Test is BaseVaultTest {
             pool,
             amountsIn,
             bptAmountOut,
-            false,
             bytes("")
         );
 
@@ -140,7 +139,6 @@ contract Permit2Test is BaseVaultTest {
             pool,
             amountsIn,
             bptAmountOut,
-            false,
             bytes("")
         );
 

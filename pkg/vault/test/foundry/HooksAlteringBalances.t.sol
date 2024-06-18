@@ -140,7 +140,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             )
         );
 
-        router.addLiquidityCustom(pool, amountsIn, bptAmountRoundDown, false, bytes(""));
+        router.addLiquidityCustom(pool, amountsIn, bptAmountRoundDown, bytes(""));
     }
 
     function testOnBeforeRemoveLiquidityHookAlterBalance() public {
@@ -152,7 +152,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
 
         vm.prank(alice);
         // Add liquidity to have BPTs to remove liquidity later
-        router.addLiquidityUnbalanced(pool, amountsOut, 0, false, bytes(""));
+        router.addLiquidityUnbalanced(pool, amountsOut, 0, bytes(""));
 
         uint256 balanceAfterLiquidity = poolInitAmount + defaultAmount;
 

@@ -129,7 +129,7 @@ contract WeightedPoolTest is BaseVaultTest {
     function testAddLiquidity() public {
         uint256[] memory amountsIn = [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray();
         vm.prank(bob);
-        bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, DAI_AMOUNT - DELTA, false, bytes(""));
+        bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, DAI_AMOUNT - DELTA, bytes(""));
 
         // Tokens are transferred from Bob
         assertEq(defaultBalance - usdc.balanceOf(bob), USDC_AMOUNT, "LP: Wrong USDC balance");
@@ -155,7 +155,6 @@ contract WeightedPoolTest is BaseVaultTest {
             address(pool),
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             DAI_AMOUNT - DELTA,
-            false,
             bytes("")
         );
 
@@ -237,7 +236,7 @@ contract WeightedPoolTest is BaseVaultTest {
 
         uint256[] memory amountsIn = [uint256(DAI_AMOUNT), 0].toMemoryArray();
         vm.prank(bob);
-        uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
+        uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, 0, bytes(""));
 
         totalSupply += addLiquidityBptAmountOut;
         weightedInvariant = WeightedMath.computeInvariant(weights, [2 * DAI_AMOUNT, USDC_AMOUNT].toMemoryArray());
@@ -259,7 +258,7 @@ contract WeightedPoolTest is BaseVaultTest {
         uint256[] memory amountsIn = [uint256(1e2 * 1e18), uint256(USDC_AMOUNT)].toMemoryArray();
         vm.prank(bob);
 
-        router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
+        router.addLiquidityUnbalanced(address(pool), amountsIn, 0, bytes(""));
     }
 
     function testMinimumSwapFee() public {
