@@ -198,6 +198,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // Storing into hooksConfig first avoids stack-too-deep
             IHooks.HookFlags memory hookFlags = IHooks(params.poolHooksContract).getHookFlags();
 
+            // When enableHookAdjustedAmounts == true, hooks are able to modify the result of a liquidity or swap
+            // operation by implementing an after hook. For simplicity, the vault only supports modifying the
+            // calculated part of the operation. As such, when a hook supports adjusted amounts, it can not support
+            // unbalanced liquidity operations as this would introduce instances where the amount calculated is the
+            // input amount (EXACT_OUT).
+            if (hookFlags.enableHookAdjustedAmounts && params.liquidityManagement.disableUnbalancedLiquidity == false) {
+                revert HookRegistrationFailed(params.poolHooksContract, pool, msg.sender);
+            }
+
+            hooksConfig = hooksConfig.setHookAdjustedAmounts(hookFlags.enableHookAdjustedAmounts);
             hooksConfig = hooksConfig.setShouldCallBeforeInitialize(hookFlags.shouldCallBeforeInitialize);
             hooksConfig = hooksConfig.setShouldCallAfterInitialize(hookFlags.shouldCallAfterInitialize);
             hooksConfig = hooksConfig.setShouldCallComputeDynamicSwapFee(hookFlags.shouldCallComputeDynamicSwapFee);
@@ -370,7 +380,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        if (hooksConfig.onBeforeInitialize(exactAmountsInScaled18, userData) == true) {
+        if (hooksConfig.callBeforeInitializeHook(exactAmountsInScaled18, userData)) {
             // The before hook is reentrant, and could have changed token rates.
             // Updating balances here is unnecessary since they're 0, but we do not special case before init
             // for the sake of bytecode size.
@@ -385,7 +395,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         bptAmountOut = _initialize(pool, to, poolData, tokens, exactAmountsIn, exactAmountsInScaled18, minBptAmountOut);
 
-        hooksConfig.onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData);
+        hooksConfig.callAfterInitializeHook(exactAmountsInScaled18, bptAmountOut, userData);
     }
 
     function _initialize(
@@ -590,7 +600,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         IBasePool.PoolSwapParams memory swapParams
     ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (bool success, uint256 dynamicSwapFee) {
         return
-            _hooksConfigBits[pool].onComputeDynamicSwapFee(
+            _hooksConfigBits[pool].callComputeDynamicSwapFeeHook(
                 swapParams,
                 _poolConfigBits[pool].getStaticSwapFeePercentage()
             );

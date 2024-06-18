@@ -44,6 +44,10 @@ contract PoolHooksMock is BasePoolHooks {
     bool public shouldSettleDiscount;
     uint256 public hookSwapFeePercentage;
     uint256 public hookSwapDiscountPercentage;
+    uint256 public addLiquidityHookFeePercentage;
+    uint256 public addLiquidityHookDiscountPercentage;
+    uint256 public removeLiquidityHookFeePercentage;
+    uint256 public removeLiquidityHookDiscountPercentage;
 
     bool public swapReentrancyHookActive;
     address private _swapHookContract;
@@ -197,6 +201,7 @@ contract PoolHooksMock is BasePoolHooks {
 
     function onBeforeAddLiquidity(
         address,
+        address,
         AddLiquidityKind,
         uint256[] memory,
         uint256,
@@ -215,6 +220,7 @@ contract PoolHooksMock is BasePoolHooks {
     }
 
     function onBeforeRemoveLiquidity(
+        address,
         address,
         RemoveLiquidityKind,
         uint256,
@@ -235,22 +241,64 @@ contract PoolHooksMock is BasePoolHooks {
 
     function onAfterAddLiquidity(
         address,
+        address pool,
+        AddLiquidityKind,
         uint256[] memory,
+        uint256[] memory amountsInRaw,
         uint256,
         uint256[] memory,
         bytes memory
-    ) external view override returns (bool) {
-        return !failOnAfterAddLiquidity;
+    ) external override returns (bool, uint256[] memory hookAdjustedAmountsInRaw) {
+        (IERC20[] memory tokens, , , ) = _vault.getPoolTokenInfo(pool);
+        hookAdjustedAmountsInRaw = amountsInRaw;
+
+        if (addLiquidityHookFeePercentage > 0) {
+            for (uint256 i = 0; i < amountsInRaw.length; i++) {
+                uint256 hookFee = amountsInRaw[i].mulDown(addLiquidityHookFeePercentage);
+                hookAdjustedAmountsInRaw[i] += hookFee;
+                _vault.sendTo(tokens[i], address(this), hookFee);
+            }
+        } else if (addLiquidityHookDiscountPercentage > 0) {
+            for (uint256 i = 0; i < amountsInRaw.length; i++) {
+                uint256 hookDiscount = amountsInRaw[i].mulDown(addLiquidityHookDiscountPercentage);
+                tokens[i].transfer(address(_vault), hookDiscount);
+                _vault.settle(tokens[i]);
+                hookAdjustedAmountsInRaw[i] -= hookDiscount;
+            }
+        }
+
+        return (!failOnAfterAddLiquidity, hookAdjustedAmountsInRaw);
     }
 
     function onAfterRemoveLiquidity(
         address,
+        address pool,
+        RemoveLiquidityKind,
         uint256,
         uint256[] memory,
+        uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) external view override returns (bool) {
-        return !failOnAfterRemoveLiquidity;
+    ) external override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+        (IERC20[] memory tokens, , , ) = _vault.getPoolTokenInfo(pool);
+        hookAdjustedAmountsOutRaw = amountsOutRaw;
+
+        if (removeLiquidityHookFeePercentage > 0) {
+            for (uint256 i = 0; i < amountsOutRaw.length; i++) {
+                uint256 hookFee = amountsOutRaw[i].mulDown(removeLiquidityHookFeePercentage);
+                hookAdjustedAmountsOutRaw[i] -= hookFee;
+                _vault.sendTo(tokens[i], address(this), hookFee);
+            }
+        } else if (removeLiquidityHookDiscountPercentage > 0) {
+            for (uint256 i = 0; i < amountsOutRaw.length; i++) {
+                uint256 hookDiscount = amountsOutRaw[i].mulDown(removeLiquidityHookDiscountPercentage);
+                tokens[i].transfer(address(_vault), hookDiscount);
+                _vault.settle(tokens[i]);
+                hookAdjustedAmountsOutRaw[i] += hookDiscount;
+            }
+        }
+
+        return (!failOnAfterRemoveLiquidity, hookAdjustedAmountsOutRaw);
     }
 
     /***********************************************************
@@ -389,6 +437,22 @@ contract PoolHooksMock is BasePoolHooks {
 
     function setHookSwapDiscountPercentage(uint256 discountPercentage) external {
         hookSwapDiscountPercentage = discountPercentage;
+    }
+
+    function setAddLiquidityHookFeePercentage(uint256 hookFeePercentage) public {
+        addLiquidityHookFeePercentage = hookFeePercentage;
+    }
+
+    function setAddLiquidityHookDiscountPercentage(uint256 hookDiscountPercentage) public {
+        addLiquidityHookDiscountPercentage = hookDiscountPercentage;
+    }
+
+    function setRemoveLiquidityHookFeePercentage(uint256 hookFeePercentage) public {
+        removeLiquidityHookFeePercentage = hookFeePercentage;
+    }
+
+    function setRemoveLiquidityHookDiscountPercentage(uint256 hookDiscountPercentage) public {
+        removeLiquidityHookDiscountPercentage = hookDiscountPercentage;
     }
 
     function allowFactory(address factory) external {

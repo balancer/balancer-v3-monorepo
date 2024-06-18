@@ -20,7 +20,8 @@ library HooksConfigLib {
 
     // Bit offsets for pool config
     uint8 public constant BEFORE_INITIALIZE_OFFSET = 0;
-    uint8 public constant AFTER_INITIALIZE_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
+    uint8 public constant ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
+    uint8 public constant AFTER_INITIALIZE_OFFSET = ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET + 1;
     uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = AFTER_INITIALIZE_OFFSET + 1;
     uint8 public constant BEFORE_SWAP_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
     uint8 public constant AFTER_SWAP_OFFSET = BEFORE_SWAP_OFFSET + 1;
@@ -29,6 +30,15 @@ library HooksConfigLib {
     uint8 public constant BEFORE_REMOVE_LIQUIDITY_OFFSET = AFTER_ADD_LIQUIDITY_OFFSET + 1;
     uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = BEFORE_REMOVE_LIQUIDITY_OFFSET + 1;
     uint8 public constant HOOKS_CONTRACT_OFFSET = AFTER_REMOVE_LIQUIDITY_OFFSET + 1;
+
+    function enableHookAdjustedAmounts(HooksConfigBits config) internal pure returns (bool) {
+        return HooksConfigBits.unwrap(config).decodeBool(ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET);
+    }
+
+    function setHookAdjustedAmounts(HooksConfigBits config, bool value) internal pure returns (HooksConfigBits) {
+        return
+            HooksConfigBits.wrap(HooksConfigBits.unwrap(config).insertBool(value, ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET));
+    }
 
     function shouldCallBeforeInitialize(HooksConfigBits config) internal pure returns (bool) {
         return HooksConfigBits.unwrap(config).decodeBool(BEFORE_INITIALIZE_OFFSET);
@@ -128,6 +138,7 @@ library HooksConfigLib {
     function toHooksConfig(HooksConfigBits config) internal pure returns (HooksConfig memory) {
         return
             HooksConfig({
+                enableHookAdjustedAmounts: config.enableHookAdjustedAmounts(),
                 shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
                 shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
                 shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
@@ -147,16 +158,17 @@ library HooksConfigLib {
      *
      * @param config The encoded hooks configuration
      * @param swapParams The swap parameters used to calculate the fee
+     * @param staticSwapFeePercentage Value of the static swap fee, for reference
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      * @return swapFeePercentage the calculated swap fee percentage. 0 if hook is disabled
      */
-    function onComputeDynamicSwapFee(
+    function callComputeDynamicSwapFeeHook(
         HooksConfigBits config,
         IBasePool.PoolSwapParams memory swapParams,
         uint256 staticSwapFeePercentage
     ) internal view returns (bool, uint256) {
         if (config.shouldCallComputeDynamicSwapFee() == false) {
-            return (false, 0);
+            return (false, staticSwapFeePercentage);
         }
 
         (bool success, uint256 swapFeePercentage) = IHooks(config.getHooksContract()).onComputeDynamicSwapFee(
@@ -179,7 +191,7 @@ library HooksConfigLib {
      * @param pool Pool address
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
-    function onBeforeSwap(
+    function callBeforeSwapHook(
         HooksConfigBits config,
         IBasePool.PoolSwapParams memory swapParams,
         address pool
@@ -203,12 +215,13 @@ library HooksConfigLib {
      * @param config The encoded hooks configuration
      * @param amountCalculatedScaled18 Token amount calculated by the swap
      * @param amountCalculatedRaw Token amount calculated by the swap
+     * @param router Router address
      * @param params The swap parameters
      * @param state Temporary state used in swap operations
      * @param poolData Struct containing balance and token information of the pool
-     * @return hookAdjustedAmountCalculatedRaw New amount calculated, modified by the hook
+     * @return hookAdjustedAmountCalculatedRaw New amount calculated, potentially modified by the hook
      */
-    function onAfterSwap(
+    function callAfterSwapHook(
         HooksConfigBits config,
         uint256 amountCalculatedScaled18,
         uint256 amountCalculatedRaw,
@@ -216,7 +229,7 @@ library HooksConfigLib {
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
-    ) internal returns (uint256 hookAdjustedAmountCalculatedRaw) {
+    ) internal returns (uint256) {
         if (config.shouldCallAfterSwap() == false) {
             // Hook contract does not implement onAfterSwap, so success is false (hook was not executed) and do not
             // change amountCalculatedRaw (no deltas)
@@ -228,8 +241,7 @@ library HooksConfigLib {
             ? (state.amountGivenScaled18, amountCalculatedScaled18)
             : (amountCalculatedScaled18, state.amountGivenScaled18);
 
-        bool success;
-        (success, hookAdjustedAmountCalculatedRaw) = IHooks(config.getHooksContract()).onAfterSwap(
+        (bool success, uint256 hookAdjustedAmountCalculatedRaw) = IHooks(config.getHooksContract()).onAfterSwap(
             IHooks.AfterSwapParams({
                 kind: params.kind,
                 tokenIn: params.tokenIn,
@@ -251,12 +263,19 @@ library HooksConfigLib {
             revert IVaultErrors.AfterSwapHookFailed();
         }
 
+        // If hook adjusted amounts is not enabled, ignore amounts returned by the hook
+        if (config.enableHookAdjustedAmounts() == false) {
+            return amountCalculatedRaw;
+        }
+
         if (
             (params.kind == SwapKind.EXACT_IN && hookAdjustedAmountCalculatedRaw < params.limitRaw) ||
             (params.kind == SwapKind.EXACT_OUT && hookAdjustedAmountCalculatedRaw > params.limitRaw)
         ) {
-            revert IVaultErrors.SwapLimit(hookAdjustedAmountCalculatedRaw, params.limitRaw);
+            revert IVaultErrors.HookAdjustedSwapLimit(hookAdjustedAmountCalculatedRaw, params.limitRaw);
         }
+
+        return hookAdjustedAmountCalculatedRaw;
     }
 
     /**
@@ -264,15 +283,16 @@ library HooksConfigLib {
      * to execute the hook.
      *
      * @param config The encoded hooks configuration
+     * @param router Router address
      * @param maxAmountsInScaled18 An array with maximum amounts for each input token of the add liquidity operation
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
-    function onBeforeAddLiquidity(
+    function callBeforeAddLiquidityHook(
         HooksConfigBits config,
-        uint256[] memory maxAmountsInScaled18,
         address router,
+        uint256[] memory maxAmountsInScaled18,
         AddLiquidityParams memory params,
         PoolData memory poolData
     ) internal returns (bool) {
@@ -283,6 +303,7 @@ library HooksConfigLib {
         if (
             IHooks(config.getHooksContract()).onBeforeAddLiquidity(
                 router,
+                params.pool,
                 params.kind,
                 maxAmountsInScaled18,
                 params.minBptAmountOut,
@@ -300,34 +321,59 @@ library HooksConfigLib {
      * to execute the hook.
      *
      * @param config The encoded hooks configuration
-     * @param amountsInScaled18 Scaled amounts of tokens added in token registration order
+     * @param router Router address
+     * @param amountsInScaled18 An array with amounts for each input token of the add liquidity operation
+     * @param amountsInRaw An array with amounts for each input token of the add liquidity operation
      * @param bptAmountOut The BPT amount a user will receive after add liquidity operation succeeds
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
+     * @return hookAdjustedAmountsInRaw New amountsInRaw, potentially modified by the hook
      */
-    function onAfterAddLiquidity(
+    function callAfterAddLiquidityHook(
         HooksConfigBits config,
-        uint256[] memory amountsInScaled18,
-        uint256 bptAmountOut,
         address router,
+        uint256[] memory amountsInScaled18,
+        uint256[] memory amountsInRaw,
+        uint256 bptAmountOut,
         AddLiquidityParams memory params,
         PoolData memory poolData
-    ) internal {
+    ) internal returns (uint256[] memory) {
         if (config.shouldCallAfterAddLiquidity() == false) {
-            return;
+            return amountsInRaw;
         }
 
-        if (
-            IHooks(config.getHooksContract()).onAfterAddLiquidity(
+        (bool success, uint256[] memory hookAdjustedAmountsInRaw) = IHooks(config.getHooksContract())
+            .onAfterAddLiquidity(
                 router,
+                params.pool,
+                params.kind,
                 amountsInScaled18,
+                amountsInRaw,
                 bptAmountOut,
                 poolData.balancesLiveScaled18,
                 params.userData
-            ) == false
-        ) {
+            );
+
+        if (success == false) {
             revert IVaultErrors.AfterAddLiquidityHookFailed();
         }
+
+        // If hook adjusted amounts is not enabled, ignore amounts returned by the hook
+        if (config.enableHookAdjustedAmounts() == false) {
+            return amountsInRaw;
+        }
+
+        for (uint256 i = 0; i < hookAdjustedAmountsInRaw.length; i++) {
+            if (hookAdjustedAmountsInRaw[i] > params.maxAmountsIn[i]) {
+                revert IVaultErrors.HookAdjustedAmountInAboveMax(
+                    poolData.tokens[i],
+                    hookAdjustedAmountsInRaw[i],
+                    params.maxAmountsIn[i]
+                );
+            }
+        }
+
+        return hookAdjustedAmountsInRaw;
     }
 
     /**
@@ -337,11 +383,12 @@ library HooksConfigLib {
      * @param config The encoded hooks configuration
      * @param minAmountsOutScaled18 An array with minimum amounts for each output token of the remove liquidity
      * operation
+     * @param router Router address
      * @param params The remove liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
-    function onBeforeRemoveLiquidity(
+    function callBeforeRemoveLiquidityHook(
         HooksConfigBits config,
         uint256[] memory minAmountsOutScaled18,
         address router,
@@ -355,6 +402,7 @@ library HooksConfigLib {
         if (
             IHooks(config.getHooksContract()).onBeforeRemoveLiquidity(
                 router,
+                params.pool,
                 params.kind,
                 params.maxBptAmountIn,
                 minAmountsOutScaled18,
@@ -370,36 +418,60 @@ library HooksConfigLib {
     /**
      * @dev Check if after remove liquidity hook should be called and call it. Throws an error if the hook contract
      * fails to execute the hook.
-     *
      * @param config The encoded hooks configuration
-     * @param amountsOutScaled18 Amount of tokens to receive in token registration order
+     * @param router Router address
+     * @param amountsOutScaled18 Scaled amount of tokens to receive, sorted in token registration order
+     * @param amountsOutRaw Actual amount of tokens to receive, sorted in token registration order
      * @param bptAmountIn The BPT amount a user will need burn to remove the liquidity of the pool
      * @param params The remove liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
+     * @return hookAdjustedAmountsOutRaw New amountsOutRaw, potentially modified by the hook
      */
-    function onAfterRemoveLiquidity(
+    function callAfterRemoveLiquidityHook(
         HooksConfigBits config,
-        uint256[] memory amountsOutScaled18,
-        uint256 bptAmountIn,
         address router,
+        uint256[] memory amountsOutScaled18,
+        uint256[] memory amountsOutRaw,
+        uint256 bptAmountIn,
         RemoveLiquidityParams memory params,
         PoolData memory poolData
-    ) internal {
+    ) internal returns (uint256[] memory) {
         if (config.shouldCallAfterRemoveLiquidity() == false) {
-            return;
+            return amountsOutRaw;
         }
 
-        if (
-            IHooks(config.getHooksContract()).onAfterRemoveLiquidity(
+        (bool success, uint256[] memory hookAdjustedAmountsOutRaw) = IHooks(config.getHooksContract())
+            .onAfterRemoveLiquidity(
                 router,
+                params.pool,
+                params.kind,
                 bptAmountIn,
                 amountsOutScaled18,
+                amountsOutRaw,
                 poolData.balancesLiveScaled18,
                 params.userData
-            ) == false
-        ) {
+            );
+
+        if (success == false) {
             revert IVaultErrors.AfterRemoveLiquidityHookFailed();
         }
+
+        // If hook adjusted amounts is not enabled, ignore amounts returned by the hook
+        if (config.enableHookAdjustedAmounts() == false) {
+            return amountsOutRaw;
+        }
+
+        for (uint256 i = 0; i < hookAdjustedAmountsOutRaw.length; i++) {
+            if (hookAdjustedAmountsOutRaw[i] < params.minAmountsOut[i]) {
+                revert IVaultErrors.HookAdjustedAmountOutBelowMin(
+                    poolData.tokens[i],
+                    hookAdjustedAmountsOutRaw[i],
+                    params.minAmountsOut[i]
+                );
+            }
+        }
+
+        return hookAdjustedAmountsOutRaw;
     }
 
     /**
@@ -411,7 +483,7 @@ library HooksConfigLib {
      * @param userData Additional (optional) data required for adding initial liquidity
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
-    function onBeforeInitialize(
+    function callBeforeInitializeHook(
         HooksConfigBits config,
         uint256[] memory exactAmountsInScaled18,
         bytes memory userData
@@ -435,7 +507,7 @@ library HooksConfigLib {
      * @param bptAmountOut The BPT amount a user will receive after initialization operation succeeds
      * @param userData Additional (optional) data required for adding initial liquidity
      */
-    function onAfterInitialize(
+    function callAfterInitializeHook(
         HooksConfigBits config,
         uint256[] memory exactAmountsInScaled18,
         uint256 bptAmountOut,
