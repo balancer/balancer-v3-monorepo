@@ -21,6 +21,7 @@ import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.s
 contract FeeTakingHookExample is BasePoolHooks {
     using FixedPoint for uint256;
 
+    // Percentages are represented as 18-decimal FP, with maximum value of 1e18 (100%), so 60 bits are enough.
     uint64 public hookSwapFeePercentage;
     uint64 public addLiquidityHookFeePercentage;
     uint64 public removeLiquidityHookFeePercentage;
