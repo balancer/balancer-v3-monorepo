@@ -226,7 +226,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         uint256[] memory maxAmountsIn = [actualAmountIn + hookFee, actualAmountIn + hookFee].toMemoryArray();
         router.addLiquidityProportional(pool, maxAmountsIn, expectedBptOut, false, bytes(""));
 
-        _checkAddLiquidityHookTestResults(vars, actualAmountsIn, expectedBptOut, hookFee, 0);
+        _checkAddLiquidityHookTestResults(vars, actualAmountsIn, expectedBptOut, hookFee);
     }
 
     function testHookFeeRemoveLiquidityExactIn__Fuzz(uint256 expectedBptIn, uint64 hookFeePercentage) public {
@@ -281,7 +281,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         uint256[] memory minAmountsOut = [actualAmountOut - hookFee, actualAmountOut - hookFee].toMemoryArray();
         router.removeLiquidityProportional(pool, expectedBptIn, minAmountsOut, false, bytes(""));
 
-        _checkRemoveLiquidityHookTestResults(vars, actualAmountsOut, expectedBptIn, hookFee, 0);
+        _checkRemoveLiquidityHookTestResults(vars, actualAmountsOut, expectedBptIn, hookFee);
     }
 
     struct WalletState {
@@ -315,8 +315,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         HookTestLocals memory vars,
         uint256[] memory actualAmountsIn,
         uint256 expectedBptOut,
-        uint256 expectedHookFee,
-        uint256 expectedHookDiscount
+        uint256 expectedHookFee
     ) private {
         _fillAfterHookTestLocals(vars);
 
@@ -337,43 +336,26 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         assertEq(vars.vault.daiAfter - vars.vault.daiBefore, actualAmountsIn[daiIdx], "Vault DAI balance is wrong");
         assertEq(vars.vault.usdcAfter - vars.vault.usdcBefore, actualAmountsIn[usdcIdx], "Vault USDC balance is wrong");
 
-        if (expectedHookFee > 0) {
-            assertEq(
-                vars.bob.daiBefore - vars.bob.daiAfter,
-                actualAmountsIn[daiIdx] + expectedHookFee,
-                "Bob DAI balance is wrong"
-            );
-            assertEq(
-                vars.bob.usdcBefore - vars.bob.usdcAfter,
-                actualAmountsIn[usdcIdx] + expectedHookFee,
-                "Bob USDC balance is wrong"
-            );
+        assertEq(
+            vars.bob.daiBefore - vars.bob.daiAfter,
+            actualAmountsIn[daiIdx] + expectedHookFee,
+            "Bob DAI balance is wrong"
+        );
+        assertEq(
+            vars.bob.usdcBefore - vars.bob.usdcAfter,
+            actualAmountsIn[usdcIdx] + expectedHookFee,
+            "Bob USDC balance is wrong"
+        );
 
-            assertEq(vars.hook.daiAfter - vars.hook.daiBefore, expectedHookFee, "Hook DAI balance is wrong");
-            assertEq(vars.hook.usdcAfter - vars.hook.usdcBefore, expectedHookFee, "Hook USDC balance is wrong");
-        } else if (expectedHookDiscount > 0) {
-            assertEq(
-                vars.bob.daiBefore - vars.bob.daiAfter,
-                actualAmountsIn[daiIdx] - expectedHookDiscount,
-                "Bob DAI balance is wrong"
-            );
-            assertEq(
-                vars.bob.usdcBefore - vars.bob.usdcAfter,
-                actualAmountsIn[usdcIdx] - expectedHookDiscount,
-                "Bob USDC balance is wrong"
-            );
-
-            assertEq(vars.hook.daiBefore - vars.hook.daiAfter, expectedHookDiscount, "Hook DAI balance is wrong");
-            assertEq(vars.hook.usdcBefore - vars.hook.usdcAfter, expectedHookDiscount, "Hook USDC balance is wrong");
-        }
+        assertEq(vars.hook.daiAfter - vars.hook.daiBefore, expectedHookFee, "Hook DAI balance is wrong");
+        assertEq(vars.hook.usdcAfter - vars.hook.usdcBefore, expectedHookFee, "Hook USDC balance is wrong");
     }
 
     function _checkRemoveLiquidityHookTestResults(
         HookTestLocals memory vars,
         uint256[] memory actualAmountsOut,
         uint256 expectedBptIn,
-        uint256 expectedHookFee,
-        uint256 expectedHookDiscount
+        uint256 expectedHookFee
     ) private {
         _fillAfterHookTestLocals(vars);
 
@@ -398,35 +380,19 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
             "Vault USDC balance is wrong"
         );
 
-        if (expectedHookFee > 0) {
-            assertEq(
-                vars.bob.daiAfter - vars.bob.daiBefore,
-                actualAmountsOut[daiIdx] - expectedHookFee,
-                "Bob DAI balance is wrong"
-            );
-            assertEq(
-                vars.bob.usdcAfter - vars.bob.usdcBefore,
-                actualAmountsOut[usdcIdx] - expectedHookFee,
-                "Bob USDC balance is wrong"
-            );
+        assertEq(
+            vars.bob.daiAfter - vars.bob.daiBefore,
+            actualAmountsOut[daiIdx] - expectedHookFee,
+            "Bob DAI balance is wrong"
+        );
+        assertEq(
+            vars.bob.usdcAfter - vars.bob.usdcBefore,
+            actualAmountsOut[usdcIdx] - expectedHookFee,
+            "Bob USDC balance is wrong"
+        );
 
-            assertEq(vars.hook.daiAfter - vars.hook.daiBefore, expectedHookFee, "Hook DAI balance is wrong");
-            assertEq(vars.hook.usdcAfter - vars.hook.usdcBefore, expectedHookFee, "Hook USDC balance is wrong");
-        } else if (expectedHookDiscount > 0) {
-            assertEq(
-                vars.bob.daiAfter - vars.bob.daiBefore,
-                actualAmountsOut[daiIdx] + expectedHookDiscount,
-                "Bob DAI balance is wrong"
-            );
-            assertEq(
-                vars.bob.usdcAfter - vars.bob.usdcBefore,
-                actualAmountsOut[usdcIdx] + expectedHookDiscount,
-                "Bob USDC balance is wrong"
-            );
-
-            assertEq(vars.hook.daiBefore - vars.hook.daiAfter, expectedHookDiscount, "Hook DAI balance is wrong");
-            assertEq(vars.hook.usdcBefore - vars.hook.usdcAfter, expectedHookDiscount, "Hook USDC balance is wrong");
-        }
+        assertEq(vars.hook.daiAfter - vars.hook.daiBefore, expectedHookFee, "Hook DAI balance is wrong");
+        assertEq(vars.hook.usdcAfter - vars.hook.usdcBefore, expectedHookFee, "Hook USDC balance is wrong");
     }
 
     function _createHookTestLocals() private returns (HookTestLocals memory vars) {
