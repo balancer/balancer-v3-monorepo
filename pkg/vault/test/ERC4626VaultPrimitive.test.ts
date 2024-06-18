@@ -126,7 +126,7 @@ describe('ERC4626VaultPrimitive', function () {
       await permit2.connect(lp).approve(token, batchRouter, MAX_UINT160, MAX_UINT48);
     }
 
-    await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
+    await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, '0x');
 
     return pool;
   }
@@ -196,14 +196,14 @@ describe('ERC4626VaultPrimitive', function () {
 
     it('emits an event', async () => {
       expect(
-        await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x')
+        await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, '0x')
       )
         .to.emit(vault, 'PoolInitialized')
         .withArgs(pool);
     });
 
     it('updates the state', async () => {
-      await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
+      await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, '0x');
 
       const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
 
@@ -223,9 +223,9 @@ describe('ERC4626VaultPrimitive', function () {
     });
 
     it('cannot be initialized twice', async () => {
-      await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
+      await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, '0x');
       await expect(
-        router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x')
+        router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, '0x')
       ).to.be.revertedWithCustomError(vault, 'PoolAlreadyInitialized');
     });
   });

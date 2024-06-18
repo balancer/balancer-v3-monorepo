@@ -127,7 +127,7 @@ describe('StablePool', () => {
           expect(
             await router
               .connect(alice)
-              .initialize(pool, poolTokens.slice(0, numTokens), initialBalances, FP_ZERO, false, '0x')
+              .initialize(pool, poolTokens.slice(0, numTokens), initialBalances, FP_ZERO, '0x')
           )
             .to.emit(vault, 'PoolInitialized')
             .withArgs(pool);
@@ -152,7 +152,7 @@ describe('StablePool', () => {
         });
 
         it('cannot be initialized twice', async () => {
-          await expect(router.connect(alice).initialize(pool, poolTokens, initialBalances, FP_ZERO, false, '0x'))
+          await expect(router.connect(alice).initialize(pool, poolTokens, initialBalances, FP_ZERO, '0x'))
             .to.be.revertedWithCustomError(vault, 'PoolAlreadyInitialized')
             .withArgs(await pool.getAddress());
         });

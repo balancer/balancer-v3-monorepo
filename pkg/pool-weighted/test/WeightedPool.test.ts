@@ -107,7 +107,7 @@ describe('WeightedPool', function () {
         const idxTokenC = poolTokens.indexOf(tokenCAddress);
         initialBalances[idxTokenC] = 0n;
 
-        expect(await router.connect(alice).initialize(pool, poolTokens, initialBalances, FP_ZERO, false, '0x'))
+        expect(await router.connect(alice).initialize(pool, poolTokens, initialBalances, FP_ZERO, '0x'))
           .to.emit(vault, 'PoolInitialized')
           .withArgs(pool);
       });
@@ -131,7 +131,7 @@ describe('WeightedPool', function () {
       });
 
       it('cannot be initialized twice', async () => {
-        await expect(router.connect(alice).initialize(pool, poolTokens, initialBalances, FP_ZERO, false, '0x'))
+        await expect(router.connect(alice).initialize(pool, poolTokens, initialBalances, FP_ZERO, '0x'))
           .to.be.revertedWithCustomError(vault, 'PoolAlreadyInitialized')
           .withArgs(await pool.getAddress());
       });
@@ -187,7 +187,7 @@ describe('WeightedPool', function () {
       }
 
       await expect(
-        await router.connect(bob).initialize(realPool, realPoolTokens, REAL_POOL_INITIAL_BALANCES, FP_ZERO, false, '0x')
+        await router.connect(bob).initialize(realPool, realPoolTokens, REAL_POOL_INITIAL_BALANCES, FP_ZERO, '0x')
       )
         .to.emit(vault, 'PoolInitialized')
         .withArgs(realPoolAddress);

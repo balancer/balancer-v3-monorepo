@@ -76,7 +76,7 @@ describe('Queries', function () {
         ? [2n * DAI_AMOUNT_IN, 2n * USDC_AMOUNT_IN]
         : [2n * USDC_AMOUNT_IN, 2n * DAI_AMOUNT_IN];
 
-    await router.connect(alice).initialize(pool, tokenAddresses, tokenAmounts, 0, false, '0x');
+    await router.connect(alice).initialize(pool, tokenAddresses, tokenAmounts, 0, '0x');
   });
 
   // TODO: query a pool that has an actual invariant (introduced in #145)

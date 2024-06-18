@@ -130,7 +130,7 @@ export class Benchmark {
 
       sharedBeforeEach('initialize pool', async () => {
         initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
-        await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+        await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, '0x');
         await actionAfterInit();
       });
 
