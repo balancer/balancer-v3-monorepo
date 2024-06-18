@@ -8,6 +8,8 @@ import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol"
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
     AddLiquidityKind,
+    LiquidityManagement,
+    PoolRoleAccounts,
     RemoveLiquidityKind,
     SwapKind
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -18,6 +20,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
+import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { FeeTakingHookExample } from "../../contracts/FeeTakingHookExample.sol";
 
@@ -41,6 +44,28 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
     function createHook() internal override returns (address) {
         FeeTakingHookExample hook = new FeeTakingHookExample(IVault(address(vault)));
         return address(hook);
+    }
+
+    // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity)
+    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        vm.label(address(newPool), label);
+
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = address(lp);
+
+        LiquidityManagement memory liquidityManagement;
+        liquidityManagement.disableUnbalancedLiquidity = true;
+
+        factoryMock.registerPool(
+            address(newPool),
+            vault.buildTokenConfig(tokens.asIERC20()),
+            roleAccounts,
+            poolHooksContract,
+            liquidityManagement
+        );
+
+        return address(newPool);
     }
 
     function testFeeSwapExactIn__Fuzz(uint256 swapAmount, uint64 hookFeePercentage) public {

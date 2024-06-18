@@ -45,6 +45,7 @@ contract FeeTakingHookExample is BasePoolHooks {
     /// @inheritdoc IHooks
     function getHookFlags() external pure override returns (HookFlags memory) {
         HookFlags memory hookFlags;
+        hookFlags.enableHookAdjustedAmounts = true;
         hookFlags.shouldCallAfterSwap = true;
         hookFlags.shouldCallAfterAddLiquidity = true;
         hookFlags.shouldCallAfterRemoveLiquidity = true;
