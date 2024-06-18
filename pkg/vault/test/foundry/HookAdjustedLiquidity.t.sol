@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -15,6 +16,7 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -43,6 +45,28 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         hookFlags.shouldCallAfterAddLiquidity = true;
         hookFlags.shouldCallAfterRemoveLiquidity = true;
         return _createHook(hookFlags);
+    }
+
+    // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity)
+    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        vm.label(address(newPool), label);
+
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = address(lp);
+
+        LiquidityManagement memory liquidityManagement;
+        liquidityManagement.disableUnbalancedLiquidity = true;
+
+        factoryMock.registerPool(
+            address(newPool),
+            vault.buildTokenConfig(tokens.asIERC20()),
+            roleAccounts,
+            poolHooksContract,
+            liquidityManagement
+        );
+
+        return address(newPool);
     }
 
     function testHookFeeAddLiquidityExactIn__Fuzz(uint256 expectedBptOut, uint256 hookFeePercentage) public {
@@ -153,10 +177,10 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     function testHookFeeRemoveLiquidityExactIn__Fuzz(uint256 expectedBptIn, uint256 hookFeePercentage) public {
         // Add liquidity so bob has BPT to remove liquidity
         vm.prank(bob);
-        router.addLiquidityUnbalanced(
+        router.addLiquidityProportional(
             pool,
             [poolInitAmount, poolInitAmount].toMemoryArray(),
-            poolInitAmount,
+            2 * poolInitAmount,
             false,
             bytes("")
         );
@@ -210,10 +234,10 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     ) public {
         // Add liquidity so bob has BPT to remove liquidity
         vm.prank(bob);
-        router.addLiquidityUnbalanced(
+        router.addLiquidityProportional(
             pool,
             [poolInitAmount, poolInitAmount].toMemoryArray(),
-            poolInitAmount,
+            2 * poolInitAmount,
             false,
             bytes("")
         );
