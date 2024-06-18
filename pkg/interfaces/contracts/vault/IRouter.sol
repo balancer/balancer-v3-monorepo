@@ -36,9 +36,7 @@ interface IRouter {
 
     /**
      * @notice Initialize a liquidity pool.
-     * @dev If you send ETH and the pool contains WETH, the ETH will be wrapped to WETH; otherwise the Vault
-     * will pull WETH tokens.
-     * 
+     * @dev If the pool contains WETH, incoming ETH will be wrapped; otherwise the Vault will pull WETH tokens.
      * @param pool Address of the liquidity pool
      * @param tokens Pool tokens
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
@@ -78,9 +76,7 @@ interface IRouter {
 
     /**
      * @notice Adds with proportional token amounts to a pool, receiving an exact amount of pool tokens.
-     * @dev If you send ETH and the pool contains WETH, the ETH will be wrapped to WETH; otherwise the Vault
-     * will pull WETH tokens.
-     *
+     * @dev If the pool contains WETH, incoming ETH will be wrapped; otherwise the Vault will pull WETH tokens.
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param exactBptAmountOut Exact amount of pool tokens to be received
@@ -96,9 +92,7 @@ interface IRouter {
 
     /**
      * @notice Adds with arbitrary token amounts in to a pool.
-     * @dev If you send ETH and the pool contains WETH, the ETH will be wrapped to WETH; otherwise the Vault
-     * will pull WETH tokens.
-     *
+     * @dev If the pool contains WETH, incoming ETH will be wrapped; otherwise the Vault will pull WETH tokens.
      * @param pool Address of the liquidity pool
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
@@ -114,9 +108,7 @@ interface IRouter {
 
     /**
      * @notice Adds with a single token to a pool, receiving an exact amount of pool tokens.
-     * @dev If you send ETH and the pool contains WETH, the ETH will be wrapped to WETH; otherwise the Vault
-     * will pull WETH tokens.
-     *
+     * @dev If the pool contains WETH, incoming ETH will be wrapped; otherwise the Vault will pull WETH tokens.
      * @param pool Address of the liquidity pool
      * @param tokenIn Token used to add liquidity
      * @param maxAmountIn Maximum amount of tokens to be added
@@ -135,8 +127,8 @@ interface IRouter {
     /**
      * @notice Adds liquidity to a pool with a custom request.
      * @dev The given maximum and minimum amounts given may be interpreted as exact depending on the pool type.
-     * In any case the caller can expect them to be hard boundaries for the request. If you send ETH and the pool
-     * contains WETH, the ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens.
+     * In any case the caller can expect them to be hard boundaries for the request. If the pool contains WETH,
+     * incoming ETH will be wrapped; otherwise the Vault will pull WETH tokens.
      *
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
