@@ -119,6 +119,46 @@ contract HooksTest is BaseVaultTest {
         );
     }
 
+    function testOnRegisterHookAdjustedWithUnbalancedLiquidity() public {
+        PoolRoleAccounts memory roleAccounts;
+        LiquidityManagement memory liquidityManagement = LiquidityManagement({
+            disableUnbalancedLiquidity: false,
+            enableAddLiquidityCustom: false,
+            enableRemoveLiquidityCustom: false
+        });
+
+        // Registers the factory, so the factory is not rejected by the hook.
+        PoolHooksMock(poolHooksContract).allowFactory(address(anotherFactory));
+
+        // Enable hook adjusted amounts in the hooks, so hooks can change the amount calculated of add/remove liquidity
+        // and swap operations
+        IHooks.HookFlags memory hookFlags;
+        hookFlags.enableHookAdjustedAmounts = true;
+        PoolHooksMock(poolHooksContract).setHookFlags(hookFlags);
+
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20()
+        );
+
+        // Register should fail, because `enableHookAdjustedAmounts` flag requires unbalanced liquidity to be disabled
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.HookRegistrationFailed.selector,
+                poolHooksContract,
+                address(anotherPool),
+                address(anotherFactory)
+            )
+        );
+
+        anotherFactory.registerPool(
+            address(anotherPool),
+            tokenConfig,
+            roleAccounts,
+            poolHooksContract,
+            liquidityManagement
+        );
+    }
+
     // dynamic fee
 
     function testOnComputeDynamicSwapFeeHook() public {
