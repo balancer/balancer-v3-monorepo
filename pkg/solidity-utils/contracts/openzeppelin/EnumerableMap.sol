@@ -193,6 +193,14 @@ library EnumerableMap {
     }
 
     /**
+     * @dev Same as {unchecked_At}, except it only returns the key and not the value (performing one less storage
+     * read). O(1).
+     */
+    function unchecked_keyAt(IERC20ToBytes32Map storage map, uint256 index) internal view returns (IERC20) {
+        return map.entries[index].key;
+    }
+
+    /**
      * @dev Same as {unchecked_At}, except it only returns the value and not the key (performing one less storage
      * read). O(1).
      */
