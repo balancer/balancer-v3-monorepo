@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -69,7 +70,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         return address(newPool);
     }
 
-    function testHookFeeAddLiquidityExactIn__Fuzz(uint256 expectedBptOut, uint256 hookFeePercentage) public {
+    function testHookFeeAddLiquidity__Fuzz(uint256 expectedBptOut, uint256 hookFeePercentage) public {
         // Add fee between 0 and 100%
         hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
         PoolHooksMock(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
@@ -128,7 +129,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         _checkAddLiquidityHookTestResults(vars, actualAmountsIn, expectedBptOut, int256(hookFee));
     }
 
-    function testHookDiscountAddLiquidityExactIn__Fuzz(uint256 expectedBptOut, uint256 hookDiscountPercentage) public {
+    function testHookDiscountAddLiquidity__Fuzz(uint256 expectedBptOut, uint256 hookDiscountPercentage) public {
         // Add discount between 0 and 100%
         hookDiscountPercentage = bound(hookDiscountPercentage, 0, 1e18);
         PoolHooksMock(poolHooksContract).setAddLiquidityHookDiscountPercentage(hookDiscountPercentage);
@@ -174,7 +175,34 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         _checkAddLiquidityHookTestResults(vars, actualAmountsIn, expectedBptOut, -(int256(hookDiscount)));
     }
 
-    function testHookFeeRemoveLiquidityExactIn__Fuzz(uint256 expectedBptIn, uint256 hookFeePercentage) public {
+    function testHookFeeAddLiquidityLimitViolation() public {
+        // 10% fee
+        uint256 hookFeePercentage = 1e17;
+        PoolHooksMock(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
+
+        uint256 expectedBptOut = poolInitAmount / 100;
+
+        uint256[] memory actualAmountsIn = BasePoolMath.computeProportionalAmountsIn(
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            BalancerPoolToken(pool).totalSupply(),
+            expectedBptOut
+        );
+        uint256 actualAmountIn = actualAmountsIn[0];
+        uint256 hookFee = actualAmountIn.mulDown(hookFeePercentage);
+
+        vm.prank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.HookAdjustedAmountInAboveMax.selector,
+                address(dai),
+                actualAmountIn + hookFee,
+                actualAmountIn
+            )
+        );
+        router.addLiquidityProportional(pool, actualAmountsIn, expectedBptOut, false, bytes(""));
+    }
+
+    function testHookFeeRemoveLiquidity__Fuzz(uint256 expectedBptIn, uint256 hookFeePercentage) public {
         // Add liquidity so bob has BPT to remove liquidity
         vm.prank(bob);
         router.addLiquidityProportional(
@@ -228,10 +256,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         _checkRemoveLiquidityHookTestResults(vars, actualAmountsOut, expectedBptIn, int256(hookFee));
     }
 
-    function testHookDiscountRemoveLiquidityExactIn__Fuzz(
-        uint256 expectedBptIn,
-        uint256 hookDiscountPercentage
-    ) public {
+    function testHookDiscountRemoveLiquidity__Fuzz(uint256 expectedBptIn, uint256 hookDiscountPercentage) public {
         // Add liquidity so bob has BPT to remove liquidity
         vm.prank(bob);
         router.addLiquidityProportional(
@@ -286,6 +311,45 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         router.removeLiquidityProportional(pool, expectedBptIn, actualAmountsOut, false, bytes(""));
 
         _checkRemoveLiquidityHookTestResults(vars, actualAmountsOut, expectedBptIn, -(int256(hookDiscount)));
+    }
+
+    function testHookFeeRemoveLiquidityLimitViolation() public {
+        // Add liquidity so bob has BPT to remove liquidity
+        vm.prank(bob);
+        router.addLiquidityProportional(
+            pool,
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            2 * poolInitAmount,
+            false,
+            bytes("")
+        );
+
+        // 10% fee
+        uint256 hookFeePercentage = 1e17;
+        PoolHooksMock(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
+
+        // 10% of Bob's liquidity
+        uint256 expectedBptIn = BalancerPoolToken(pool).balanceOf(bob) / 10;
+
+        // Since bob added poolInitAmount in each token of the pool, the pool balances are doubled
+        uint256[] memory actualAmountsOut = BasePoolMath.computeProportionalAmountsOut(
+            [2 * poolInitAmount, 2 * poolInitAmount].toMemoryArray(),
+            BalancerPoolToken(pool).totalSupply(),
+            expectedBptIn
+        );
+        uint256 actualAmountOut = actualAmountsOut[0];
+        uint256 hookFee = actualAmountOut.mulDown(hookFeePercentage);
+
+        vm.prank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.HookAdjustedAmountOutBelowMin.selector,
+                address(dai),
+                actualAmountOut - hookFee,
+                actualAmountOut
+            )
+        );
+        router.removeLiquidityProportional(pool, expectedBptIn, actualAmountsOut, false, bytes(""));
     }
 
     struct WalletState {

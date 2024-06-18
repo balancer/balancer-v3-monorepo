@@ -77,9 +77,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
 
         HookTestLocals memory vars = _createHookTestLocals();
 
-        // Check that the swap gets updated balances that reflect the updated balance in the before hook
         vm.prank(bob);
-        // Check if balances were not changed before onBeforeHook
         vm.expectCall(
             address(poolHooksContract),
             abi.encodeWithSelector(
