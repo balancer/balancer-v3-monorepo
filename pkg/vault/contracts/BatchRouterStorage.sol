@@ -14,6 +14,8 @@ import {
 contract BatchRouterStorage {
     using TransientStorageHelpers for *;
 
+    // solhint-disable var-name-mixedcase
+
     // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used
     // by what is written after =. If you use immutable, the value is first calculated and
     // then replaced everywhere. That means that if a constant has executable variables,
@@ -25,6 +27,8 @@ contract BatchRouterStorage {
     bytes32 private immutable _CURRENT_SWAP_TOKEN_OUT_AMOUNTS_SLOT =
         _calculateBatchRouterStorageSlot("currentSwapTokenOutAmounts");
     bytes32 private immutable _SETTLED_TOKEN_AMOUNTS_SLOT = _calculateBatchRouterStorageSlot("settledTokenAmounts");
+
+    // solhint-enable var-name-mixedcase
 
     // We use transient storage to track tokens and amounts flowing in and out of a batch swap.
     // Set of input tokens involved in a batch swap.

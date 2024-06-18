@@ -9,6 +9,7 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -29,6 +30,18 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         BaseVaultTest.setUp();
         // Generates a "random" address for a non-existent pool
         pool = address(bytes20(keccak256(abi.encode(block.timestamp))));
+
+        // Allow manual pool registration
+        vm.mockCall(
+            pool,
+            abi.encodeWithSelector(ISwapFeePercentageBounds.getMinimumSwapFeePercentage.selector),
+            abi.encode(0)
+        );
+        vm.mockCall(
+            pool,
+            abi.encodeWithSelector(ISwapFeePercentageBounds.getMaximumSwapFeePercentage.selector),
+            abi.encode(1e18)
+        );
     }
 
     function createPool() internal pure override returns (address) {
@@ -41,28 +54,36 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
                                   _getPoolTokenInfo
     *******************************************************************************/
 
-    function testEmptyPoolTokenConfig() public {
-        (, TokenInfo[] memory newTokenInfo, , ) = vault.internalGetPoolTokenInfo(pool);
-        assertEq(newTokenInfo.length, 0, "newTokenInfo should be empty");
-    }
-
     function testNonEmptyPoolTokenBalance() public {
         IERC20[] memory tokens = InputHelpers.sortTokens(
             [address(usdc), address(dai), address(wsteth)].toMemoryArray().asIERC20()
         );
+        vault.manualRegisterPool(pool, tokens);
+
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
-        vault.manualSetPoolTokenConfig(pool, tokens, tokenConfig);
+        vault.manualSetPoolTokenInfo(pool, tokenConfig);
         uint256[] memory originalBalancesRaw = new uint256[](3);
         originalBalancesRaw[0] = 1000;
         originalBalancesRaw[1] = 2000;
         originalBalancesRaw[2] = 3000;
-        vault.manualSetPoolTokenBalances(pool, tokens, originalBalancesRaw);
 
-        (IERC20[] memory newTokens, TokenInfo[] memory newTokenInfo, uint256[] memory balancesRaw, ) = vault
-            .internalGetPoolTokenInfo(pool);
+        uint256[] memory originalLastLiveBalances = new uint256[](3);
+        originalLastLiveBalances[0] = 123;
+        originalLastLiveBalances[1] = 456;
+        originalLastLiveBalances[2] = 789;
+
+        vault.manualSetPoolTokenBalances(pool, tokens, originalBalancesRaw, originalLastLiveBalances);
+
+        (
+            IERC20[] memory newTokens,
+            TokenInfo[] memory newTokenInfo,
+            uint256[] memory balancesRaw,
+            uint256[] memory lastLiveBalances
+        ) = vault.getPoolTokenInfo(pool);
         assertEq(newTokens.length, 3);
         assertEq(newTokenInfo.length, 3);
         assertEq(balancesRaw.length, 3);
+        assertEq(lastLiveBalances.length, 3);
         for (uint256 i = 0; i < newTokens.length; ++i) {
             assertEq(
                 address(newTokens[i]),
@@ -88,22 +109,15 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             assertEq(
                 balancesRaw[i],
                 originalBalancesRaw[i],
-                string.concat("token", Strings.toString(i), "balance should match set pool balance")
+                string.concat("token", Strings.toString(i), "balanceRaw should match set pool balance")
+            );
+
+            assertEq(
+                lastLiveBalances[i],
+                originalLastLiveBalances[i],
+                string.concat("token", Strings.toString(i), "lastLiveBalances should match set pool balance")
             );
         }
-    }
-
-    function testEmptyPoolConfig() public {
-        PoolConfigBits emptyPoolConfig;
-
-        (, , , uint256[] memory decimalScalingFactors) = vault.internalGetPoolTokenInfo(pool);
-        assertEq(decimalScalingFactors.length, 0, "should have no decimalScalingFactors");
-
-        assertEq(
-            PoolConfigBits.unwrap(vault.manualGetPoolConfigBits(pool)),
-            PoolConfigBits.unwrap(emptyPoolConfig),
-            "poolConfigBits should match empty pool config"
-        );
     }
 
     function testNonEmptyPoolConfig() public {
@@ -111,14 +125,15 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             [address(usdc), address(dai), address(wsteth)].toMemoryArray().asIERC20()
         );
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
-        vault.manualSetPoolTokenConfig(pool, tokens, tokenConfig);
+        vault.manualSetPoolTokenInfo(pool, tokenConfig);
 
         // decimalScalingFactors depends on balances array (it's used gto calculate number of tokens)
+        // We don't care about last live balances for the purpose of this test.
         uint256[] memory rawBalances = new uint256[](3);
         rawBalances[0] = 1000;
         rawBalances[1] = 2000;
         rawBalances[2] = 3000;
-        vault.manualSetPoolTokenBalances(pool, tokens, rawBalances);
+        vault.manualSetPoolTokenBalances(pool, tokens, rawBalances, rawBalances);
 
         PoolConfigBits originalPoolConfig;
         uint8[] memory tokenDecimalDiffs = new uint8[](3);
@@ -128,9 +143,12 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         originalPoolConfig = originalPoolConfig.setTokenDecimalDiffs(
             PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs)
         );
+        originalPoolConfig = originalPoolConfig.setPoolRegistered(true);
         vault.manualSetPoolConfigBits(pool, originalPoolConfig);
 
-        (, , , uint256[] memory decimalScalingFactors) = vault.internalGetPoolTokenInfo(pool);
+        (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(pool);
+        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
+
         assertEq(
             decimalScalingFactors.length,
             3,
@@ -150,7 +168,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         );
     }
 
-    function testInternalGetPoolTokenInfo__Fuzz(
+    function testGetPoolTokenInfo__Fuzz(
         uint256 balance1,
         uint256 balance2,
         uint256 balance3,
@@ -168,37 +186,34 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         IERC20[] memory tokens = InputHelpers.sortTokens(
             [address(usdc), address(dai), address(wsteth)].toMemoryArray().asIERC20()
         );
+        vault.manualRegisterPool(pool, tokens);
+
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
-        vault.manualSetPoolTokenConfig(pool, tokens, tokenConfig);
+        vault.manualSetPoolTokenInfo(pool, tokenConfig);
 
         // decimalScalingFactors depends on balances array (it's used gto calculate number of tokens)
         uint256[] memory originalBalancesRaw = new uint256[](3);
         originalBalancesRaw[0] = balance1;
         originalBalancesRaw[1] = balance2;
         originalBalancesRaw[2] = balance3;
-        vault.manualSetPoolTokenBalances(pool, tokens, originalBalancesRaw);
 
-        PoolConfigBits originalPoolConfig;
-        uint8[] memory tokenDecimalDiffs = new uint8[](3);
-        tokenDecimalDiffs[0] = decimalDiff1;
-        tokenDecimalDiffs[1] = decimalDiff2;
-        tokenDecimalDiffs[2] = decimalDiff3;
-        originalPoolConfig = originalPoolConfig.setTokenDecimalDiffs(
-            PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs)
-        );
-        vault.manualSetPoolConfigBits(pool, originalPoolConfig);
+        uint256[] memory originalLastLiveBalances = new uint256[](3);
+        originalLastLiveBalances[0] = balance2;
+        originalLastLiveBalances[1] = balance3;
+        originalLastLiveBalances[2] = balance1;
+        vault.manualSetPoolTokenBalances(pool, tokens, originalBalancesRaw, originalLastLiveBalances);
 
         (
             IERC20[] memory newTokens,
             TokenInfo[] memory newTokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory decimalScalingFactors
-        ) = vault.internalGetPoolTokenInfo(pool);
+            uint256[] memory lastLiveBalances
+        ) = vault.getPoolTokenInfo(pool);
 
         assertEq(newTokens.length, 3);
         assertEq(newTokenInfo.length, 3);
         assertEq(balancesRaw.length, 3);
-        assertEq(decimalScalingFactors.length, 3);
+        assertEq(lastLiveBalances.length, 3);
 
         for (uint256 i = 0; i < newTokens.length; ++i) {
             assertEq(
@@ -228,17 +243,11 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
                 string.concat("token", Strings.toString(i), "balance should match set pool balance")
             );
             assertEq(
-                decimalScalingFactors[i],
-                10 ** (18 + tokenDecimalDiffs[i]),
+                lastLiveBalances[i],
+                originalLastLiveBalances[i],
                 string.concat("decimalScalingFactors of token", Strings.toString(i), "should match tokenDecimalDiffs")
             );
         }
-
-        assertEq(
-            PoolConfigBits.unwrap(vault.manualGetPoolConfigBits(pool)),
-            PoolConfigBits.unwrap(originalPoolConfig),
-            "original and new poolConfigs should be the same"
-        );
     }
 
     function testAccountDeltaNonZeroUp__Fuzz(int256 delta) public {
