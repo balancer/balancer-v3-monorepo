@@ -13,7 +13,7 @@ contract PoolDonation is IPoolLiquidity {
         uint256 minBptAmountOut,
         uint256[] memory,
         bytes memory
-    ) external pure returns (uint256[] memory, uint256, uint256[] memory, bytes memory) {
+    ) external pure virtual returns (uint256[] memory, uint256, uint256[] memory, bytes memory) {
         if (minBptAmountOut > 0) {
             revert IVaultErrors.BptAmountOutBelowMin(0, minBptAmountOut);
         }
@@ -30,7 +30,7 @@ contract PoolDonation is IPoolLiquidity {
         uint256[] memory,
         uint256[] memory,
         bytes memory
-    ) external pure returns (uint256, uint256[] memory, uint256[] memory, bytes memory) {
+    ) external pure virtual returns (uint256, uint256[] memory, uint256[] memory, bytes memory) {
         revert IVaultErrors.OperationNotSupported();
     }
 }
