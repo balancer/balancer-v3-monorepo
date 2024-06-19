@@ -25,7 +25,7 @@ via_ir = true
 solc_version = '0.8.24'
 auto_detect_solc = false
 evm_version = 'cancun'
-ignored_error_codes = [2394] # Transient storage
+ignored_error_codes = [2394, 5574, 3860] # Transient storage, code size
 
 [fuzz]
 runs = 10000

@@ -81,7 +81,7 @@ contract VaultTokenTest is BaseVaultTest {
         tokenConfig[0].rateProvider = IRateProvider(waDAI);
         tokenConfig[usdcIdx].token = IERC20(usdc);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidTokenConfiguration.selector));
+        vm.expectRevert(IVaultErrors.InvalidTokenConfiguration.selector);
         _registerPool(tokenConfig);
     }
 
@@ -95,7 +95,7 @@ contract VaultTokenTest is BaseVaultTest {
         tokenConfig[ethIdx].tokenType = TokenType.WITH_RATE;
         tokenConfig[localUsdcIdx].token = IERC20(usdc);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidTokenConfiguration.selector));
+        vm.expectRevert(IVaultErrors.InvalidTokenConfiguration.selector);
         _registerPool(tokenConfig);
     }
 

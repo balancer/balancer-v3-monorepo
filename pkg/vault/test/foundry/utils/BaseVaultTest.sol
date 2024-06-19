@@ -27,6 +27,7 @@ import { Router } from "../../../contracts/Router.sol";
 import { BatchRouter } from "../../../contracts/BatchRouter.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
+import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../../contracts/test/PoolHooksMock.sol";
 import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
@@ -59,7 +60,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Router mock.
     RouterMock internal router;
     // Batch router
-    BatchRouter internal batchRouter;
+    BatchRouterMock internal batchRouter;
     // Authorizer mock.
     BasicAuthorizerMock internal authorizer;
     // Pool for tests.
@@ -92,6 +93,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     // Applies to Weighted Pools.
     uint256 constant MIN_SWAP_FEE = 1e12; // 0.00001%
+    uint256 constant MAX_SWAP_FEE = 0.1e18; // 10%
 
     function setUp() public virtual override {
         BaseTest.setUp();
@@ -108,7 +110,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         vm.label(address(factoryMock), "factory");
         router = new RouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(router), "router");
-        batchRouter = new BatchRouter(IVault(address(vault)), weth, permit2);
+        batchRouter = new BatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
         poolHooksContract = createHook();
         pool = createPool();
@@ -120,7 +122,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
             approveForSender();
             vm.stopPrank();
         }
-        if (address(pool) != address(0)) {
+        if (pool != address(0)) {
             approveForPool(IERC20(pool));
         }
         // Add initial liquidity
@@ -161,12 +163,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         uint256[] memory amountsIn,
         uint256 minBptOut
     ) internal virtual returns (uint256 bptOut) {
-        (TokenConfig[] memory tokenConfig, , ) = vault.getPoolTokenInfo(poolToInit);
-        IERC20[] memory tokens = new IERC20[](tokenConfig.length);
-
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            tokens[i] = tokenConfig[i].token;
-        }
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(poolToInit);
 
         return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, "");
     }
@@ -191,17 +188,16 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     function createHook() internal virtual returns (address) {
         // Sets all flags as false
-        HooksConfig memory hooksConfig;
-        return _createHook(hooksConfig);
+        IHooks.HookFlags memory hookFlags;
+        return _createHook(hookFlags);
     }
 
-    function _createHook(HooksConfig memory hooksConfig) internal virtual returns (address) {
+    function _createHook(IHooks.HookFlags memory hookFlags) internal virtual returns (address) {
         PoolHooksMock newHook = new PoolHooksMock(IVault(address(vault)));
-        hooksConfig.hooksContract = address(newHook);
         // Allow pools built with factoryMock to use the poolHooksMock
         newHook.allowFactory(address(factoryMock));
         // Configure pool hook flags
-        newHook.setHooksConfig(hooksConfig);
+        newHook.setHookFlags(hookFlags);
         vm.label(address(newHook), "pool hooks");
         return address(newHook);
     }
@@ -223,12 +219,12 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     function getBalances(address user) internal view returns (Balances memory balances) {
         balances.userBpt = IERC20(pool).balanceOf(user);
 
-        (TokenConfig[] memory tokenConfig, uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(pool);
+        (IERC20[] memory tokens, , uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(pool);
         balances.poolTokens = poolBalances;
         balances.userTokens = new uint256[](poolBalances.length);
         for (uint256 i = 0; i < poolBalances.length; ++i) {
             // Don't assume token ordering.
-            balances.userTokens[i] = tokenConfig[i].token.balanceOf(user);
+            balances.userTokens[i] = tokens[i].balanceOf(user);
         }
     }
 

@@ -186,7 +186,7 @@ contract VaultExtensionMutationTest is BaseVaultTest {
     */
     function testGetStaticSwapFeeManagerWhenNotVault() public {
         vm.expectRevert();
-        vaultExtension.getStaticSwapFeeManager(pool);
+        vaultExtension.getPoolRoleAccounts(pool);
     }
 
     /*

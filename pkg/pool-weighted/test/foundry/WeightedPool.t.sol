@@ -12,7 +12,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { TokenConfig, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IMinimumSwapFee } from "@balancer-labs/v3-interfaces/contracts/vault/IMinimumSwapFee.sol";
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -43,7 +43,7 @@ contract WeightedPoolTest is BaseVaultTest {
     uint256 constant DAI_AMOUNT_IN = 1 * 1e18;
     uint256 constant USDC_AMOUNT_OUT = 1 * 1e18;
 
-    uint256 constant DELTA = 1e9;
+    uint256 constant DELTA = 3e7;
 
     WeightedPool internal weightedPool;
     uint256[] internal weights;
@@ -85,7 +85,7 @@ contract WeightedPoolTest is BaseVaultTest {
             pool,
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
             // Account for the precision loss
-            DAI_AMOUNT - DELTA - 1e6
+            DAI_AMOUNT - DELTA
         );
         vm.stopPrank();
     }
@@ -116,7 +116,7 @@ contract WeightedPoolTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT, "Vault: Wrong DAI balance");
 
         // Tokens are deposited to the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], DAI_AMOUNT, "Pool: Wrong DAI balance");
         assertEq(balances[1], USDC_AMOUNT, "Pool: Wrong USDC balance");
 
@@ -140,7 +140,7 @@ contract WeightedPoolTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT * 2, "Vault: Wrong DAI balance");
 
         // Tokens are deposited to the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[0], DAI_AMOUNT * 2, "Pool: Wrong DAI balance");
         assertEq(balances[1], USDC_AMOUNT * 2, "Pool: Wrong USDC balance");
 
@@ -183,7 +183,7 @@ contract WeightedPoolTest is BaseVaultTest {
         assertApproxEqAbs(dai.balanceOf(address(vault)), DAI_AMOUNT, DELTA, "Vault: Wrong DAI balance");
 
         // Tokens are deposited to the pool
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertApproxEqAbs(balances[0], DAI_AMOUNT, DELTA, "Pool: Wrong DAI balance");
         assertApproxEqAbs(balances[1], USDC_AMOUNT, DELTA, "Pool: Wrong USDC balance");
 
@@ -220,7 +220,7 @@ contract WeightedPoolTest is BaseVaultTest {
         assertEq(usdc.balanceOf(address(vault)), USDC_AMOUNT - amountCalculated, "Vault: Wrong USDC balance");
         assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT + DAI_AMOUNT_IN, "Vault: Wrong DAI balance");
 
-        (, uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
 
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
@@ -262,16 +262,12 @@ contract WeightedPoolTest is BaseVaultTest {
         router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
     }
 
-    function testSupportsIERC165() public {
-        assertTrue(weightedPool.supportsInterface(type(IERC165).interfaceId), "Pool does not support IERC165");
-        assertTrue(
-            weightedPool.supportsInterface(type(IMinimumSwapFee).interfaceId),
-            "Pool does not support IMinimumSwapFee"
-        );
-    }
-
     function testMinimumSwapFee() public {
         assertEq(weightedPool.getMinimumSwapFeePercentage(), MIN_SWAP_FEE, "Minimum swap fee mismatch");
+    }
+
+    function testMaximumSwapFee() public {
+        assertEq(weightedPool.getMaximumSwapFeePercentage(), MAX_SWAP_FEE, "Maximum swap fee mismatch");
     }
 
     function testFailSwapFeeTooLow() public {
@@ -298,7 +294,15 @@ contract WeightedPoolTest is BaseVaultTest {
         authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
         vm.prank(alice);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapFeePercentageTooLow.selector));
+        vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
         vault.setStaticSwapFeePercentage(address(pool), MIN_SWAP_FEE - 1);
+    }
+
+    function testSetSwapFeeTooHigh() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
+        vm.prank(alice);
+
+        vm.expectRevert(IVaultErrors.SwapFeePercentageTooHigh.selector);
+        vault.setStaticSwapFeePercentage(address(pool), MAX_SWAP_FEE + 1);
     }
 }

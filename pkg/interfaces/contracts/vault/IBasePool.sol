@@ -4,17 +4,11 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { ISwapFeePercentageBounds } from "./ISwapFeePercentageBounds.sol";
 import { SwapKind } from "./VaultTypes.sol";
 
 /// @notice Interface for a Base Pool
-interface IBasePool {
-    /**
-     * @notice Gets the tokens registered to a pool.
-     * @dev Delegated to the Vault; added here as a convenience, mainly for off-chain processes.
-     * @return tokens List of tokens in the pool
-     */
-    function getPoolTokens() external view returns (IERC20[] memory tokens);
-
+interface IBasePool is ISwapFeePercentageBounds {
     /***************************************************************************
                                    Invariant
     ***************************************************************************/
@@ -31,7 +25,7 @@ interface IBasePool {
      * @dev Computes the new balance of a token after an operation, given the invariant growth ratio and all other
      * balances.
      * @param balancesLiveScaled18 Current live balances (adjusted for decimals, rates, etc.)
-     * @param tokenInIndex The index of the token we're computing the balance for, in token registration order
+     * @param tokenInIndex The index of the token we're computing the balance for, sorted in token registration order
      * @param invariantRatio The ratio of the new invariant (after an operation) to the old
      * @return newBalance The new balance of the selected token, after the operation
      */

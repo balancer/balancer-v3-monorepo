@@ -8,23 +8,19 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
-    using FixedPoint for uint256;
     using ArrayHelpers for *;
 
     ERC4626TestToken internal waDAI;
@@ -126,10 +122,10 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         // bob should have the full boostedPool BPT.
         assertEq(IERC20(boostedPool).balanceOf(bob), boostedPoolAmount * 2 - MIN_BPT, "Wrong boosted pool BPT amount");
 
-        (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
         // The boosted pool should have `boostedPoolAmount` of both tokens.
-        assertEq(address(tokenConfig[waDaiIdx].token), address(waDAI), "Wrong boosted pool token (waDAI)");
-        assertEq(address(tokenConfig[waUsdcIdx].token), address(waUSDC), "Wrong boosted pool token (waUSDC)");
+        assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong boosted pool token (waDAI)");
+        assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong boosted pool token (waUSDC)");
         assertEq(balancesRaw[0], boostedPoolAmount, "Wrong boosted pool balance [0]");
         assertEq(balancesRaw[1], boostedPoolAmount, "Wrong boosted pool balance [1]");
 
@@ -167,11 +163,9 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
 
-        snapStart("boostedPoolSwapExactIn-vault");
         vm.prank(alice);
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
-        snapEnd();
 
         // When the buffer has enough liquidity to wrap/unwrap, buffer balances should change by swapAmount
         // DAI buffer receives DAI from user
@@ -191,11 +185,9 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount);
 
-        snapStart("boostedPoolSwapExactOut-vault");
         vm.prank(alice);
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
-        snapEnd();
 
         // When the buffer has enough liquidity to wrap/unwrap, buffer balances should change by swapAmount
         // DAI buffer receives DAI from user
@@ -215,11 +207,9 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(tooLargeSwapAmount);
 
-        snapStart("boostedPoolSwapTooLarge-ExactIn-vault");
         vm.prank(alice);
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
-        snapEnd();
 
         // When the buffer has not enough liquidity to wrap/unwrap and buffers were balanced, buffer balances should
         // not change
@@ -237,11 +227,9 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(tooLargeSwapAmount);
 
-        snapStart("boostedPoolSwapTooLarge-ExactOut-vault");
         vm.prank(alice);
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
-        snapEnd();
 
         // When the buffer has not enough liquidity to wrap/unwrap and buffers were balanced, buffer balances should
         // not change
@@ -266,11 +254,9 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(tooLargeSwapAmount);
 
-        snapStart("boostedPoolSwapUnbalancedBuffer-ExactIn-vault");
         vm.prank(alice);
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
-        snapEnd();
 
         // When the buffer has not enough liquidity to wrap/unwrap and buffers were not balanced, buffers should be
         // perfectly balanced at the end, but only if the wrap/unwrap direction is the same as the operation executed
@@ -299,11 +285,9 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(tooLargeSwapAmount);
 
-        snapStart("boostedPoolSwapUnbalancedBuffer-ExactOut-vault");
         vm.prank(alice);
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
-        snapEnd();
 
         // When the buffer has not enough liquidity to wrap/unwrap and buffers were not balanced, buffers should be
         // perfectly balanced at the end, but only if the wrap/unwrap direction is the same as the operation executed
@@ -397,7 +381,7 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
         uint256[] memory balancesRaw;
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
-        (, balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
+        (, , balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
         vars.boostedPoolBalanceBeforeSwapWaDai = balancesRaw[daiIdx];
         vars.boostedPoolBalanceBeforeSwapWaUsdc = balancesRaw[usdcIdx];
     }
@@ -457,7 +441,7 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         uint256[] memory balancesRaw;
 
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
-        (, balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
+        (, , balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
         assertApproxEqAbs(
             balancesRaw[daiIdx],
             vars.boostedPoolBalanceBeforeSwapWaDai + waDAI.convertToShares(vars.expectedAliceDelta),

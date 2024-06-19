@@ -29,10 +29,10 @@ contract InitializerTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        HooksConfig memory config = vault.getHooksConfig(address(pool));
+        HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeInitialize = true;
         config.shouldCallAfterInitialize = true;
-        vault.setHooksConfig(address(pool), config);
+        vault.setHooksConfig(pool, config);
 
         standardPoolTokens = InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20());
     }
@@ -40,17 +40,17 @@ contract InitializerTest is BaseVaultTest {
     function initPool() internal override {}
 
     function testNoRevertWithZeroConfig() public {
-        HooksConfig memory config = vault.getHooksConfig(address(pool));
+        HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeInitialize = false;
         config.shouldCallAfterInitialize = false;
-        vault.setHooksConfig(address(pool), config);
+        vault.setHooksConfig(pool, config);
 
         PoolHooksMock(poolHooksContract).setFailOnBeforeInitializeHook(true);
         PoolHooksMock(poolHooksContract).setFailOnAfterInitializeHook(true);
 
         vm.prank(bob);
         router.initialize(
-            address(pool),
+            pool,
             standardPoolTokens,
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
@@ -70,7 +70,7 @@ contract InitializerTest is BaseVaultTest {
             )
         );
         router.initialize(
-            address(pool),
+            pool,
             standardPoolTokens,
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
@@ -82,9 +82,9 @@ contract InitializerTest is BaseVaultTest {
     function testOnBeforeInitializeHookRevert() public {
         PoolHooksMock(poolHooksContract).setFailOnBeforeInitializeHook(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeInitializeHookFailed.selector));
+        vm.expectRevert(IVaultErrors.BeforeInitializeHookFailed.selector);
         router.initialize(
-            address(pool),
+            pool,
             standardPoolTokens,
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
@@ -105,7 +105,7 @@ contract InitializerTest is BaseVaultTest {
             )
         );
         router.initialize(
-            address(pool),
+            pool,
             standardPoolTokens,
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
@@ -117,9 +117,9 @@ contract InitializerTest is BaseVaultTest {
     function testOnAfterInitializeHookRevert() public {
         PoolHooksMock(poolHooksContract).setFailOnAfterInitializeHook(true);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.AfterInitializeHookFailed.selector));
+        vm.expectRevert(IVaultErrors.AfterInitializeHookFailed.selector);
         router.initialize(
-            address(pool),
+            pool,
             standardPoolTokens,
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,

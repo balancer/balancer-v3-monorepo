@@ -24,7 +24,7 @@ contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
 
     constructor(
         IVault vault,
-        uint256 pauseWindowDuration,
+        uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion
     ) BasePoolFactory(vault, pauseWindowDuration, type(WeightedPool).creationCode) Version(factoryVersion) {
@@ -91,6 +91,7 @@ contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
             pool,
             tokenConfig,
             swapFeePercentage,
+            false, // not exempt from protocol fees
             roleAccounts,
             getDefaultPoolHooksContract(),
             getDefaultLiquidityManagement()

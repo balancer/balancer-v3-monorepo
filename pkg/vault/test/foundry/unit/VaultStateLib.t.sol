@@ -5,27 +5,62 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { VaultState } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { VaultStateBits, VaultStateLib } from "../../../contracts/lib/VaultStateLib.sol";
 
-contract VaultStateLibTest is Test {
-    // 3 flags = 3 total bits used.
-    uint256 private constant CONFIG_MSB = 3;
+import { VaultStateLib, VaultStateBits, VaultStateBits } from "@balancer-labs/v3-vault/contracts/lib/VaultStateLib.sol";
+import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
-    function testToAndFromVaultStateBits__Fuzz(uint256 rawConfigInt) public {
-        rawConfigInt = bound(rawConfigInt, 0, uint256(1 << CONFIG_MSB) - 1);
-        bytes32 rawConfig = bytes32(rawConfigInt);
-        VaultState memory config = VaultStateLib.toVaultState(VaultStateBits.wrap(rawConfig));
-        bytes32 configBytes32 = VaultStateBits.unwrap(VaultStateLib.fromVaultState(config));
+import { BaseBitsConfigTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseBitsConfigTest.sol";
 
-        assertEq(rawConfig, configBytes32);
+contract VaultStateLibTest is BaseBitsConfigTest {
+    using WordCodec for bytes32;
+
+    function testOffsets() public {
+        _checkBitsUsedOnce(VaultStateLib.QUERY_DISABLED_OFFSET);
+        _checkBitsUsedOnce(VaultStateLib.VAULT_PAUSED_OFFSET);
+        _checkBitsUsedOnce(VaultStateLib.BUFFER_PAUSED_OFFSET);
     }
 
-    function testUnusedVaultStateBits() public {
-        bytes32 unusedBits = bytes32(uint256(type(uint256).max << (CONFIG_MSB + 1)));
+    function testZeroConfigBytes() public {
+        VaultStateBits state;
 
-        VaultState memory config = VaultStateLib.toVaultState(VaultStateBits.wrap(unusedBits));
-        bytes32 configBytes32 = VaultStateBits.unwrap(VaultStateLib.fromVaultState(config));
+        assertFalse(state.isQueryDisabled(), "isQueryDisabled should be false");
+        assertFalse(state.isVaultPaused(), "isVaultPaused should be false");
+        assertFalse(state.areBuffersPaused(), "areBuffersPaused should be false");
+    }
 
-        assertEq(bytes32(0), configBytes32);
+    function testIsQueryDisabled() public {
+        VaultStateBits state;
+        state = VaultStateBits.wrap(VaultStateBits.unwrap(state).insertBool(true, VaultStateLib.QUERY_DISABLED_OFFSET));
+        assertEq(state.isQueryDisabled(), true, "isQueryDisabled should be true");
+    }
+
+    function testSetQueryDisabled() public {
+        VaultStateBits state;
+        state = state.setQueryDisabled(true);
+        assertEq(state.isQueryDisabled(), true, "isQueryDisabled should be true");
+    }
+
+    function testIsVaultPaused() public {
+        VaultStateBits state;
+        state = VaultStateBits.wrap(VaultStateBits.unwrap(state).insertBool(true, VaultStateLib.VAULT_PAUSED_OFFSET));
+        assertEq(state.isVaultPaused(), true, "isVaultPaused should be true");
+    }
+
+    function testSetVaultPaused() public {
+        VaultStateBits state;
+        state = state.setVaultPaused(true);
+        assertEq(state.isVaultPaused(), true, "isVaultPaused should be true");
+    }
+
+    function testAreBuffersPaused() public {
+        VaultStateBits state;
+        state = VaultStateBits.wrap(VaultStateBits.unwrap(state).insertBool(true, VaultStateLib.BUFFER_PAUSED_OFFSET));
+        assertEq(state.areBuffersPaused(), true, "areBuffersPaused should be true");
+    }
+
+    function testSetBuffersPaused() public {
+        VaultStateBits state;
+        state = state.setBuffersPaused(true);
+        assertEq(state.areBuffersPaused(), true, "areBuffersPaused should be true");
     }
 }

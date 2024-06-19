@@ -19,10 +19,13 @@ import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/Va
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 
+import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
+
 contract VaultUnitTest is BaseTest {
     using ArrayHelpers for *;
     using ScalingHelpers for *;
     using FixedPoint for *;
+    using PoolConfigLib for PoolConfigBits;
 
     IVaultMock internal vault;
 
@@ -66,9 +69,11 @@ contract VaultUnitTest is BaseTest {
         assertEq(poolSwapParams.userData, params.userData, "Unexpected userData");
     }
 
-    function testComputeAndChargeAggregateProtocolSwapFees() public {
+    function testComputeAndChargeAggregateSwapFees() public {
+        vault.manualSetPoolRegistered(pool, true);
+
         uint256 tokenIndex = 0;
-        vault.manualSetAggregateProtocolSwapFeeAmount(pool, dai, 0);
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, 0);
 
         uint256 swapFeeAmountScaled18 = 1e18;
         uint256 protocolSwapFeePercentage = 10e16;
@@ -76,13 +81,13 @@ contract VaultUnitTest is BaseTest {
         PoolData memory poolData;
         poolData.decimalScalingFactors = decimalScalingFactors;
         poolData.tokenRates = tokenRates;
-        poolData.poolConfig.aggregateProtocolSwapFeePercentage = protocolSwapFeePercentage;
+        poolData.poolConfigBits = poolData.poolConfigBits.setAggregateSwapFeePercentage(protocolSwapFeePercentage);
 
         uint256 expectedSwapFeeAmountRaw = swapFeeAmountScaled18
             .mulUp(protocolSwapFeePercentage)
             .toRawUndoRateRoundDown(poolData.decimalScalingFactors[tokenIndex], poolData.tokenRates[tokenIndex]);
 
-        uint256 totalFeesRaw = vault.manualComputeAndChargeAggregateProtocolSwapFees(
+        uint256 totalFeesRaw = vault.manualComputeAndChargeAggregateSwapFees(
             poolData,
             swapFeeAmountScaled18,
             pool,
@@ -93,24 +98,27 @@ contract VaultUnitTest is BaseTest {
         // No creator fees, so protocol fees is equal to the total
         assertEq(totalFeesRaw, expectedSwapFeeAmountRaw, "Unexpected totalFeesRaw");
         assertEq(
-            vault.getAggregateProtocolSwapFeeAmount(pool, dai),
+            vault.getAggregateSwapFeeAmount(pool, dai),
             expectedSwapFeeAmountRaw,
             "Unexpected protocol fees in storage"
         );
     }
 
-    function testComputeAndChargeAggregateProtocolSwapFeeIfPoolIsInRecoveryMode() public {
-        PoolData memory poolData;
-        poolData.poolConfig.isPoolInRecoveryMode = true;
+    function testComputeAndChargeAggregateSwapFeeIfPoolIsInRecoveryMode() public {
+        vault.manualSetPoolRegistered(pool, true);
 
-        uint256 totalFeesRaw = vault.manualComputeAndChargeAggregateProtocolSwapFees(poolData, 1e18, pool, dai, 0);
+        PoolData memory poolData;
+        poolData.poolConfigBits = poolData.poolConfigBits.setPoolInRecoveryMode(true);
+
+        uint256 totalFeesRaw = vault.manualComputeAndChargeAggregateSwapFees(poolData, 1e18, pool, dai, 0);
 
         assertEq(totalFeesRaw, 0, "Unexpected totalFeesRaw");
-        assertEq(vault.getAggregateProtocolSwapFeeAmount(pool, dai), 0, "Unexpected protocol fees in storage");
+        assertEq(vault.getAggregateSwapFeeAmount(pool, dai), 0, "Unexpected protocol fees in storage");
     }
 
     function testManualUpdatePoolDataLiveBalancesAndRates() public {
         PoolData memory poolData;
+        poolData.tokens = new IERC20[](2);
         poolData.balancesRaw = new uint256[](2);
         poolData.tokenRates = new uint256[](2);
         poolData.balancesLiveScaled18 = new uint256[](2);
@@ -120,18 +128,21 @@ contract VaultUnitTest is BaseTest {
 
         poolData.decimalScalingFactors = decimalScalingFactors;
 
-        poolData.tokenConfig = new TokenConfig[](2);
-        poolData.tokenConfig[0].tokenType = TokenType.STANDARD;
-        poolData.tokenConfig[1].tokenType = TokenType.WITH_RATE;
-        poolData.tokenConfig[1].rateProvider = IRateProvider(rateProvider);
+        poolData.tokenInfo = new TokenInfo[](2);
+        poolData.tokenInfo[0].tokenType = TokenType.STANDARD;
+        poolData.tokenInfo[1].tokenType = TokenType.WITH_RATE;
+        poolData.tokenInfo[1].rateProvider = IRateProvider(rateProvider);
 
         uint256[] memory tokenBalances = [uint256(1e18), 2e18].toMemoryArray();
 
         IERC20[] memory defaultTokens = new IERC20[](2);
         defaultTokens[0] = dai;
         defaultTokens[1] = usdc;
+        poolData.tokens[0] = dai;
+        poolData.tokens[1] = usdc;
 
-        vault.manualSetPoolTokenBalances(pool, defaultTokens, tokenBalances);
+        // Live balances will be updated, so we just set them equal to the raw ones.
+        vault.manualSetPoolTokenBalances(pool, defaultTokens, tokenBalances, tokenBalances);
 
         vm.mockCall(rateProvider, abi.encodeWithSelector(IRateProvider.getRate.selector), abi.encode(secondTokenRate));
         poolData = vault.manualUpdatePoolDataLiveBalancesAndRates(pool, poolData, Rounding.ROUND_UP);

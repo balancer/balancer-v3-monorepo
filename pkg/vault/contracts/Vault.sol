@@ -32,9 +32,9 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 
-import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
-import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
-import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
+import { VaultStateLib, VaultStateBits, VaultStateBits } from "./lib/VaultStateLib.sol";
+import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
+import { HooksConfigLib, HooksConfigBits } from "./lib/HooksConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
 import { BufferPackedTokenBalance } from "./lib/BufferPackedBalance.sol";
@@ -48,10 +48,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using ArrayHelpers for uint256[];
     using Address for *;
     using SafeERC20 for IERC20;
-    using PoolConfigLib for PoolConfig;
-    using HooksConfigLib for HooksConfig;
+    using PoolConfigLib for PoolConfigBits;
     using ScalingHelpers for *;
-    using VaultStateLib for VaultStateBits;
     using BufferPackedTokenBalance for bytes32;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
@@ -101,7 +99,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _;
 
         if (isUnlockedBefore == false) {
-            if (_nonzeroDeltaCount().tload() != 0) {
+            if (_nonZeroDeltaCount().tload() != 0) {
                 revert BalanceNotSettled();
             }
 
@@ -111,7 +109,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /// @inheritdoc IVaultMain
     function unlock(bytes calldata data) external payable transient returns (bytes memory result) {
-        // Executes the function call with value to the msg.sender.
+        // Executes the function call with value to the msg.sender (router).
         return (msg.sender).functionCallWithValue(data, msg.value);
     }
 
@@ -172,8 +170,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         withInitializedPool(params.pool)
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
-        _ensureUnpausedAndGetVaultState(params.pool);
-        HooksConfig memory hooksConfig = _hooksConfig[params.pool];
+        _ensureUnpaused(params.pool);
+        HooksConfigBits hooksConfig = _hooksConfigBits[params.pool];
 
         if (params.amountGivenRaw == 0) {
             revert AmountGivenZero();
@@ -187,7 +185,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // as filling in poolData in memory. Since the swap hooks are reentrant and could do anything, including
         // change these balances, we cannot defer settlement until `_swap`.
         //
-        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_aggregateProtocolFeeAmounts`
+        // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_aggregateFeeAmounts`
         // in storage.
         PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_DOWN);
 
@@ -196,14 +194,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
 
-        if (hooksConfig.onBeforeSwap(swapParams) == true) {
+        if (hooksConfig.callBeforeSwapHook(swapParams, params.pool)) {
             // The call to `onBeforeSwap` could potentially update token rates and balances.
             // We update `poolData.tokenRates`, `poolData.rawBalances` and `poolData.balancesLiveScaled18`
             // to ensure the `onSwap` and `onComputeDynamicSwapFee` are called with the current values.
             poolData.reloadBalancesAndRates(_poolTokenBalances[params.pool], Rounding.ROUND_DOWN);
 
             // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
-            state.amountGivenScaled18 = _computeAmountGivenScaled18(state.indexIn, state.indexOut, params, poolData);
+            state.amountGivenScaled18 = _computeAmountGivenScaled18(params, poolData, state);
 
             swapParams = _buildPoolSwapParams(params, state, poolData);
         }
@@ -211,8 +209,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
         // as those passed to the main operation.
         // At this point, the static swap fee percentage is loaded in the swap state as the default,
-        // to be used unless the pool has a dynamic swap fee.
-        (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = hooksConfig.onComputeDynamicSwapFee(swapParams);
+        // to be used unless the pool has a dynamic swap fee. It is also passed into the hook, to support common cases
+        // where the dynamic fee computation logic uses it.
+        (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = hooksConfig.callComputeDynamicSwapFeeHook(
+            swapParams,
+            state.swapFeePercentage
+        );
         if (dynamicSwapFeeCalculated) {
             state.swapFeePercentage = dynamicSwapFee;
         }
@@ -223,7 +225,24 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountCalculatedScaled18;
         (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, swapParams);
 
-        hooksConfig.onAfterSwap(amountCalculatedScaled18, msg.sender, params, state, poolData);
+        // If the hook contract does not exist or does not implement onAfterSwap, HooksConfigLib returns the original
+        // amountCalculated. Otherwise, the new amount calculated is 'amountCalculated + delta'. If the underlying
+        // hook fails, or limits are violated, `onAfterSwap` will revert.
+        // Uses msg.sender as the router (the contract that called the vault)
+        amountCalculated = hooksConfig.callAfterSwapHook(
+            amountCalculatedScaled18,
+            amountCalculated,
+            msg.sender,
+            params,
+            state,
+            poolData
+        );
+
+        if (params.kind == SwapKind.EXACT_IN) {
+            amountOut = amountCalculated;
+        } else {
+            amountIn = amountCalculated;
+        }
     }
 
     function _loadSwapState(
@@ -255,8 +274,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
-        state.amountGivenScaled18 = _computeAmountGivenScaled18(indexIn, indexOut, params, poolData);
-        state.swapFeePercentage = poolData.poolConfig.staticSwapFeePercentage;
+        state.amountGivenScaled18 = _computeAmountGivenScaled18(params, poolData, state);
+        state.swapFeePercentage = poolData.poolConfigBits.getStaticSwapFeePercentage();
     }
 
     function _buildPoolSwapParams(
@@ -264,6 +283,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapState memory state,
         PoolData memory poolData
     ) internal view returns (IBasePool.PoolSwapParams memory) {
+        // Uses msg.sender as the router (the contract that called the vault)
         return
             IBasePool.PoolSwapParams({
                 kind: params.kind,
@@ -281,22 +301,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * Uses amountGivenRaw and kind from `params`.
      */
     function _computeAmountGivenScaled18(
-        uint256 indexIn,
-        uint256 indexOut,
         SwapParams memory params,
-        PoolData memory poolData
+        PoolData memory poolData,
+        SwapState memory state
     ) private pure returns (uint256) {
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
         return
             params.kind == SwapKind.EXACT_IN
                 ? params.amountGivenRaw.toScaled18ApplyRateRoundDown(
-                    poolData.decimalScalingFactors[indexIn],
-                    poolData.tokenRates[indexIn]
+                    poolData.decimalScalingFactors[state.indexIn],
+                    poolData.tokenRates[state.indexIn]
                 )
                 : params.amountGivenRaw.toScaled18ApplyRateRoundUp(
-                    poolData.decimalScalingFactors[indexOut],
-                    poolData.tokenRates[indexOut]
+                    poolData.decimalScalingFactors[state.indexOut],
+                    poolData.tokenRates[state.indexOut]
                 );
     }
 
@@ -315,7 +334,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      *
      * Preconditions: complete `SwapParams`, `SwapState`, and `PoolData`.
      * Side effects: mutates balancesRaw and balancesLiveScaled18 in `poolData`.
-     * Updates `_aggregateProtocolFeeAmounts`, and `_poolTokenBalances` in storage.
+     * Updates `_aggregateFeeAmounts`, and `_poolTokenBalances` in storage.
      * Emits Swap event.
      */
     function _swap(
@@ -393,7 +412,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Note that protocol fee storage is updated before balance storage, as the final raw balances need to take
         // the fees into account.
-        uint256 totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
+        uint256 totalFeesRaw = _computeAndChargeAggregateSwapFees(
             poolData,
             locals.swapFeeAmountScaled18,
             params.pool,
@@ -411,8 +430,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         (locals.balanceInIncrement, locals.balanceOutDecrement) = params.kind == SwapKind.EXACT_IN
             ? (amountInRaw, amountOutRaw + totalFeesRaw)
             : (amountInRaw - totalFeesRaw, amountOutRaw);
-        poolData.increaseTokenBalance(state.indexIn, locals.balanceInIncrement);
-        poolData.decreaseTokenBalance(state.indexOut, locals.balanceOutDecrement);
+
+        poolData.updateRawAndLiveBalance(
+            state.indexIn,
+            poolData.balancesRaw[state.indexIn] + locals.balanceInIncrement,
+            Rounding.ROUND_UP
+        );
+        poolData.updateRawAndLiveBalance(
+            state.indexOut,
+            poolData.balancesRaw[state.indexOut] - locals.balanceOutDecrement,
+            Rounding.ROUND_DOWN
+        );
 
         // 6) Store pool balances, raw and live (only index in and out)
         EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
@@ -469,17 +497,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // If unbalanced, higher balances = lower invariant ratio with fees.
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
 
-        _ensureUnpausedAndGetVaultState(params.pool);
-        HooksConfig memory hooksConfig = _hooksConfig[params.pool];
+        _ensureUnpaused(params.pool);
+        HooksConfigBits hooksConfig = _hooksConfigBits[params.pool];
 
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the add liquidity hooks are reentrant and could do anything,
         // including change these balances, we cannot defer settlement until `_addLiquidity`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, and
-        // `_aggregateProtocolFeeAmounts` in storage.
+        // `_aggregateFeeAmounts` in storage.
         PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_UP);
-        InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.maxAmountsIn.length);
+        InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.maxAmountsIn.length);
 
         // Amounts are entering pool math, so round down.
         // Introducing amountsInScaled18 here and passing it through to _addLiquidity is not ideal,
@@ -490,9 +518,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        if (hooksConfig.onBeforeAddLiquidity(maxAmountsInScaled18, msg.sender, params, poolData)) {
-            // The hook might alter the balances, so we need to read them again to ensure that the data is
-            // fresh moving forward.
+        // Uses msg.sender as the router (the contract that called the vault)
+        if (hooksConfig.callBeforeAddLiquidityHook(msg.sender, maxAmountsInScaled18, params, poolData)) {
+            // If the hook library returns true, the hook code was executed, and might have altered the balances,
+            // so we need to read them again to ensure that the data is fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
             poolData.reloadBalancesAndRates(_poolTokenBalances[params.pool], Rounding.ROUND_UP);
 
@@ -516,7 +545,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             maxAmountsInScaled18
         );
 
-        hooksConfig.onAfterAddLiquidity(amountsInScaled18, bptAmountOut, msg.sender, params, poolData);
+        // AmountsIn can be changed by onAfterAddLiquidity if the hook charges fees or gives discounts
+        // Uses msg.sender as the router (the contract that called the vault)
+        amountsIn = hooksConfig.callAfterAddLiquidityHook(
+            msg.sender,
+            amountsInScaled18,
+            amountsIn,
+            bptAmountOut,
+            params,
+            poolData
+        );
     }
 
     /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
@@ -551,7 +589,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         )
     {
         LiquidityLocals memory locals;
-        locals.numTokens = poolData.tokenConfig.length;
+        locals.numTokens = poolData.tokens.length;
         uint256[] memory swapFeeAmountsScaled18;
 
         if (params.kind == AddLiquidityKind.PROPORTIONAL) {
@@ -565,18 +603,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bptAmountOut
             );
         } else if (params.kind == AddLiquidityKind.UNBALANCED) {
-            poolData.poolConfig.requireUnbalancedLiquidityEnabled();
+            poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
 
             amountsInScaled18 = maxAmountsInScaled18;
             (bptAmountOut, swapFeeAmountsScaled18) = BasePoolMath.computeAddLiquidityUnbalanced(
                 poolData.balancesLiveScaled18,
                 maxAmountsInScaled18,
                 _totalSupply(params.pool),
-                poolData.poolConfig.staticSwapFeePercentage,
+                poolData.poolConfigBits.getStaticSwapFeePercentage(),
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            poolData.poolConfig.requireUnbalancedLiquidityEnabled();
+            poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
 
             bptAmountOut = params.minBptAmountOut;
             locals.tokenIndex = InputHelpers.getSingleInputIndex(maxAmountsInScaled18);
@@ -588,12 +626,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     locals.tokenIndex,
                     bptAmountOut,
                     _totalSupply(params.pool),
-                    poolData.poolConfig.staticSwapFeePercentage,
+                    poolData.poolConfigBits.getStaticSwapFeePercentage(),
                     IBasePool(params.pool).computeBalance
                 );
         } else if (params.kind == AddLiquidityKind.CUSTOM) {
-            poolData.poolConfig.requireAddCustomLiquidityEnabled();
+            poolData.poolConfigBits.requireAddCustomLiquidityEnabled();
 
+            // Uses msg.sender as the router (the contract that called the vault)
             (amountsInScaled18, bptAmountOut, swapFeeAmountsScaled18, returnData) = IPoolLiquidity(params.pool)
                 .onAddLiquidityCustom(
                     msg.sender,
@@ -623,36 +662,35 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             amountsInRaw[i] = amountInRaw;
 
-            {
-                // stack-too-deep (forge)
-                IERC20 token = poolData.tokenConfig[i].token;
+            IERC20 token = poolData.tokens[i];
 
-                // 2) Check limits for raw amounts
-                if (amountInRaw > params.maxAmountsIn[i]) {
-                    revert AmountInAboveMax(token, amountInRaw, params.maxAmountsIn[i]);
-                }
-
-                // 3) Deltas: Debit of token[i] for amountInRaw
-                _takeDebt(token, amountInRaw);
-
-                // 4) Compute and charge protocol and creator fees.
-                locals.totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
-                    poolData,
-                    swapFeeAmountsScaled18[i],
-                    params.pool,
-                    token,
-                    i
-                );
+            // 2) Check limits for raw amounts
+            if (amountInRaw > params.maxAmountsIn[i]) {
+                revert AmountInAboveMax(token, amountInRaw, params.maxAmountsIn[i]);
             }
+
+            // 3) Deltas: Debit of token[i] for amountInRaw
+            _takeDebt(token, amountInRaw);
+
+            // 4) Compute and charge protocol and creator fees.
+            locals.totalFeesRaw = _computeAndChargeAggregateSwapFees(
+                poolData,
+                swapFeeAmountsScaled18[i],
+                params.pool,
+                token,
+                i
+            );
 
             // 5) Pool balances: raw and live
             // We need regular balances to complete the accounting, and the upscaled balances
             // to use in the `after` hook later on.
 
             // A pool's token balance increases by amounts in after adding liquidity, minus fees.
-            uint256 amountToIncreaseRaw = amountInRaw - locals.totalFeesRaw;
-
-            poolData.increaseTokenBalance(i, amountToIncreaseRaw);
+            poolData.updateRawAndLiveBalance(
+                i,
+                poolData.balancesRaw[i] + amountInRaw - locals.totalFeesRaw,
+                Rounding.ROUND_UP
+            );
         }
 
         // 6) Store pool balances, raw and live
@@ -680,18 +718,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // If proportional, lower balances = lower proportional amountsOut, favoring the pool.
         // If unbalanced, lower balances = lower invariant ratio without fees.
         // bptIn = supply * (1 - ratio), so lower ratio = more bptIn, favoring the pool.
+        _ensureUnpaused(params.pool);
 
-        VaultState memory vaultState = _ensureUnpausedAndGetVaultState(params.pool);
-        HooksConfig memory hooksConfig = _hooksConfig[params.pool];
+        HooksConfigBits hooksConfig = _hooksConfigBits[params.pool];
 
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the swap hooks are reentrant and could do anything, including
         // change these balances, we cannot defer settlement until `_removeLiquidity`.
         //
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances` and
-        // `_aggregateProtocolFeeAmounts in storage.
+        // `_aggregateFeeAmounts in storage.
         PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(params.pool, Rounding.ROUND_DOWN);
-        InputHelpers.ensureInputLengthMatch(poolData.tokenConfig.length, params.minAmountsOut.length);
+        InputHelpers.ensureInputLengthMatch(poolData.tokens.length, params.minAmountsOut.length);
 
         // Amounts are entering pool math; higher amounts would burn more BPT, so round up to favor the pool.
         // Do not mutate minAmountsOut, so that we can directly compare the raw limits later, without potentially
@@ -701,7 +739,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        if (hooksConfig.onBeforeRemoveLiquidity(minAmountsOutScaled18, msg.sender, params, poolData) == true) {
+        // Uses msg.sender as the router (the contract that called the vault)
+        if (hooksConfig.callBeforeRemoveLiquidityHook(minAmountsOutScaled18, msg.sender, params, poolData)) {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
@@ -722,11 +761,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         (bptAmountIn, amountsOut, amountsOutScaled18, returnData) = _removeLiquidity(
             poolData,
             params,
-            minAmountsOutScaled18,
-            vaultState
+            minAmountsOutScaled18
         );
 
-        hooksConfig.onAfterRemoveLiquidity(amountsOutScaled18, bptAmountIn, msg.sender, params, poolData);
+        // AmountsOut can be changed by onAfterRemoveLiquidity if the hook charges fees or gives discounts
+        // Uses msg.sender as the router (the contract that called the vault)
+        amountsOut = hooksConfig.callAfterRemoveLiquidityHook(
+            msg.sender,
+            amountsOutScaled18,
+            amountsOut,
+            bptAmountIn,
+            params,
+            poolData
+        );
     }
 
     /**
@@ -742,8 +789,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _removeLiquidity(
         PoolData memory poolData,
         RemoveLiquidityParams memory params,
-        uint256[] memory minAmountsOutScaled18,
-        VaultState memory vaultState
+        uint256[] memory minAmountsOutScaled18
     )
         internal
         nonReentrant
@@ -755,7 +801,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         )
     {
         LiquidityLocals memory locals;
-        locals.numTokens = poolData.tokenConfig.length;
+        locals.numTokens = poolData.tokens.length;
         uint256[] memory swapFeeAmountsScaled18;
 
         if (params.kind == RemoveLiquidityKind.PROPORTIONAL) {
@@ -767,7 +813,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bptAmountIn
             );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) {
-            poolData.poolConfig.requireUnbalancedLiquidityEnabled();
+            poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
             bptAmountIn = params.maxBptAmountIn;
             amountsOutScaled18 = minAmountsOutScaled18;
             locals.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
@@ -778,11 +824,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     locals.tokenIndex,
                     bptAmountIn,
                     _totalSupply(params.pool),
-                    poolData.poolConfig.staticSwapFeePercentage,
+                    poolData.poolConfigBits.getStaticSwapFeePercentage(),
                     IBasePool(params.pool).computeBalance
                 );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            poolData.poolConfig.requireUnbalancedLiquidityEnabled();
+            poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
             amountsOutScaled18 = minAmountsOutScaled18;
             locals.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
 
@@ -791,11 +837,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 locals.tokenIndex,
                 amountsOutScaled18[locals.tokenIndex],
                 _totalSupply(params.pool),
-                poolData.poolConfig.staticSwapFeePercentage,
+                poolData.poolConfigBits.getStaticSwapFeePercentage(),
                 IBasePool(params.pool).computeInvariant
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
-            poolData.poolConfig.requireRemoveCustomLiquidityEnabled();
+            poolData.poolConfigBits.requireRemoveCustomLiquidityEnabled();
+            // Uses msg.sender as the router (the contract that called the vault)
             (bptAmountIn, amountsOutScaled18, swapFeeAmountsScaled18, returnData) = IPoolLiquidity(params.pool)
                 .onRemoveLiquidityCustom(
                     msg.sender,
@@ -824,26 +871,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             amountsOutRaw[i] = amountOutRaw;
 
-            {
-                // stack-too-deep
-                IERC20 token = poolData.tokenConfig[i].token;
-                // 2) Check limits for raw amounts
-                if (amountOutRaw < params.minAmountsOut[i]) {
-                    revert AmountOutBelowMin(token, amountOutRaw, params.minAmountsOut[i]);
-                }
-
-                // 3) Deltas: Credit token[i] for amountOutRaw
-                _supplyCredit(token, amountOutRaw);
-
-                // 4) Compute and charge protocol and creator fees.
-                locals.totalFeesRaw = _computeAndChargeAggregateProtocolSwapFees(
-                    poolData,
-                    swapFeeAmountsScaled18[i],
-                    params.pool,
-                    token,
-                    i
-                );
+            IERC20 token = poolData.tokens[i];
+            // 2) Check limits for raw amounts
+            if (amountOutRaw < params.minAmountsOut[i]) {
+                revert AmountOutBelowMin(token, amountOutRaw, params.minAmountsOut[i]);
             }
+
+            // 3) Deltas: Credit token[i] for amountOutRaw
+            _supplyCredit(token, amountOutRaw);
+
+            // 4) Compute and charge protocol and creator fees.
+            locals.totalFeesRaw = _computeAndChargeAggregateSwapFees(
+                poolData,
+                swapFeeAmountsScaled18[i],
+                params.pool,
+                token,
+                i
+            );
 
             // 5) Pool balances: raw and live
             // We need regular balances to complete the accounting, and the upscaled balances
@@ -851,18 +895,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // A Pool's token balance always decreases after an exit
             // (potentially by 0). Also adjust by protocol and pool creator fees.
-            uint256 amountToDecreaseRaw = amountOutRaw + locals.totalFeesRaw;
-
-            poolData.decreaseTokenBalance(i, amountToDecreaseRaw);
+            poolData.updateRawAndLiveBalance(
+                i,
+                poolData.balancesRaw[i] - (amountOutRaw + locals.totalFeesRaw),
+                Rounding.ROUND_DOWN
+            );
         }
 
         // 6) Store pool balances, raw and live
         _writePoolBalancesToStorage(params.pool, poolData);
 
         // 7) BPT supply adjustment
+        // Uses msg.sender as the router (the contract that called the vault)
         _spendAllowance(address(params.pool), params.from, msg.sender, bptAmountIn);
 
-        if (!vaultState.isQueryDisabled && EVMCallModeHelpers.isStaticCall()) {
+        if (_isQueryContext()) {
             // Increase `from` balance to ensure the burn function succeeds.
             _queryModeBalanceIncrease(params.pool, params.from, bptAmountIn);
         }
@@ -881,30 +928,29 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /**
-     * @dev Preconditions: poolConfig, decimalScalingFactors, tokenRates in `poolData`.
-     * Side effects: updates `_aggregateProtocolFeeAmounts` storage.
+     * @dev Preconditions: poolConfigBits, decimalScalingFactors, tokenRates in `poolData`.
+     * Side effects: updates `_aggregateFeeAmounts` storage.
      * Note that this computes the aggregate total of the protocol fees and stores it, without emitting any events.
      * Splitting the fees and event emission occur during fee collection.
      * Should only be called in a non-reentrant context.
      *
      * @return totalFeesRaw Sum of protocol and pool creator fees raw
      */
-    function _computeAndChargeAggregateProtocolSwapFees(
+    function _computeAndChargeAggregateSwapFees(
         PoolData memory poolData,
         uint256 swapFeeAmountScaled18,
         address pool,
         IERC20 token,
         uint256 index
     ) internal returns (uint256 totalFeesRaw) {
-        // If swapFeeAmount equals zero no need to charge anything
+        uint256 aggregateSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
+        // If swapFeeAmount equals zero no need to charge anything\
         if (
             swapFeeAmountScaled18 > 0 &&
-            poolData.poolConfig.aggregateProtocolSwapFeePercentage > 0 &&
-            poolData.poolConfig.isPoolInRecoveryMode == false
+            aggregateSwapFeePercentage > 0 &&
+            poolData.poolConfigBits.isPoolInRecoveryMode() == false
         ) {
-            uint256 aggregateSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(
-                poolData.poolConfig.aggregateProtocolSwapFeePercentage
-            );
+            uint256 aggregateSwapFeeAmountScaled18 = swapFeeAmountScaled18.mulUp(aggregateSwapFeePercentage);
 
             // Ensure we can never charge more than the total swap fee.
             if (aggregateSwapFeeAmountScaled18 > swapFeeAmountScaled18) {
@@ -918,8 +964,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Both Swap and Yield fees are stored together in a PackedTokenBalance.
             // We have designated "Raw" the derived half for Swap fee storage.
-            bytes32 currentPackedBalance = _aggregateProtocolFeeAmounts[pool][token];
-            _aggregateProtocolFeeAmounts[pool][token] = currentPackedBalance.setBalanceRaw(
+            bytes32 currentPackedBalance = _aggregateFeeAmounts[pool][token];
+            _aggregateFeeAmounts[pool][token] = currentPackedBalance.setBalanceRaw(
                 currentPackedBalance.getBalanceRaw() + totalFeesRaw
             );
         }
@@ -1012,19 +1058,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountInUnderlying, amountOutWrapped) = (amountCalculated, amountGiven);
         }
 
-        // Checking isStaticCall first, so we only parse _vaultState in static calls
-        if (EVMCallModeHelpers.isStaticCall() == true && _vaultState.toVaultState().isQueryDisabled == false) {
-            // Uses the most accurate calculation so that a query matches the actual operation
-            if (kind == SwapKind.EXACT_IN) {
-                amountCalculated = wrappedToken.previewDeposit(amountGiven);
-                (amountInUnderlying, amountOutWrapped) = (amountGiven, amountCalculated);
-            } else {
-                amountCalculated = wrappedToken.previewMint(amountGiven);
-                (amountInUnderlying, amountOutWrapped) = (amountCalculated, amountGiven);
-            }
-            _takeDebt(underlyingToken, amountInUnderlying);
-            _supplyCredit(wrappedToken, amountOutWrapped);
-            return (amountCalculated, amountInUnderlying, amountOutWrapped);
+        if (_isQueryContext()) {
+            return _calculateBufferAmounts(kind, wrappedToken, amountGiven);
         }
 
         if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
@@ -1142,19 +1177,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountOutUnderlying, amountInWrapped) = (amountGiven, amountCalculated);
         }
 
-        // Checking isStaticCall first, so we only parse _vaultState in static calls
-        if (EVMCallModeHelpers.isStaticCall() == true && _vaultState.toVaultState().isQueryDisabled == false) {
-            // Uses the most accurate calculation so that a query matches the actual operation
-            if (kind == SwapKind.EXACT_IN) {
-                amountCalculated = wrappedToken.previewRedeem(amountGiven);
-                (amountOutUnderlying, amountInWrapped) = (amountCalculated, amountGiven);
-            } else {
-                amountCalculated = wrappedToken.previewWithdraw(amountGiven);
-                (amountOutUnderlying, amountInWrapped) = (amountGiven, amountCalculated);
-            }
-            _takeDebt(wrappedToken, amountInWrapped);
-            _supplyCredit(underlyingToken, amountOutUnderlying);
-            return (amountCalculated, amountInWrapped, amountOutUnderlying);
+        if (_isQueryContext()) {
+            return _calculateBufferAmounts(kind, wrappedToken, amountGiven);
         }
 
         if (bufferBalances.getBalanceRaw() > amountOutUnderlying) {
@@ -1235,6 +1259,25 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _takeDebt(wrappedToken, amountInWrapped);
         _supplyCredit(underlyingToken, amountOutUnderlying);
+    }
+
+    function _isQueryContext() internal view returns (bool) {
+        return EVMCallModeHelpers.isStaticCall() && _vaultStateBits.isQueryDisabled() == false;
+    }
+
+    /**
+     * @dev Call VaultExtension to calculate the amounts for wrap/unwrap operations.
+     */
+    function _calculateBufferAmounts(
+        SwapKind kind,
+        IERC4626 wrappedToken,
+        uint256 amountGiven
+    ) internal returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped) {
+        bytes memory data = Address.functionDelegateCall(
+            _implementation(),
+            abi.encodeWithSelector(IVaultExtension.calculateBufferAmounts.selector, kind, wrappedToken, amountGiven)
+        );
+        return abi.decode(data, (uint256, uint256, uint256));
     }
 
     /**

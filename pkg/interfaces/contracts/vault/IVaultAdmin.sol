@@ -18,19 +18,19 @@ interface IVaultAdmin {
      * @notice Returns Vault's pause window end time.
      * @dev This value is immutable; the getter can be called by anyone.
      */
-    function getPauseWindowEndTime() external view returns (uint256);
+    function getPauseWindowEndTime() external view returns (uint32);
 
     /**
      * @notice Returns Vault's buffer period duration.
      * @dev This value is immutable; the getter can be called by anyone.
      */
-    function getBufferPeriodDuration() external view returns (uint256);
+    function getBufferPeriodDuration() external view returns (uint32);
 
     /**
      * @notice Returns Vault's buffer period end time.
      * @dev This value is immutable; the getter can be called by anyone.
      */
-    function getBufferPeriodEndTime() external view returns (uint256);
+    function getBufferPeriodEndTime() external view returns (uint32);
 
     /**
      * @notice Get the minimum number of tokens in a pool.
@@ -49,26 +49,6 @@ interface IVaultAdmin {
     function vault() external view returns (IVault);
 
     /*******************************************************************************
-                                    Pool Information
-    *******************************************************************************/
-
-    /**
-     * @notice Retrieve the scaling factors from a pool's rate providers.
-     * @dev This is not included in `getPoolTokenInfo` since it makes external calls that might revert,
-     * effectively preventing retrieval of basic pool parameters. Tokens without rate providers will always return
-     * FixedPoint.ONE (1e18).
-     */
-    function getPoolTokenRates(address pool) external view returns (uint256[] memory);
-
-    /**
-     * @notice Retrieve the pool creator account and fee percentage.
-     * @param pool The pool
-     * @return poolCreator The address of the pool creator
-     * @return poolCreatorFeePercentage The percentage of net protocol fees allocated to the pool creator
-     */
-    function getPoolCreatorInfo(address pool) external view returns (address, uint256);
-
-    /*******************************************************************************
                                     Vault Pausing
     *******************************************************************************/
 
@@ -84,7 +64,7 @@ interface IVaultAdmin {
      * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
      * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
      */
-    function getVaultPausedState() external view returns (bool, uint256, uint256);
+    function getVaultPausedState() external view returns (bool, uint32, uint32);
 
     /**
      * @notice Pause the Vault: an emergency action which disables all operational state-changing functions.
@@ -123,8 +103,9 @@ interface IVaultAdmin {
 
     /**
      * @notice Assigns a new static swap fee percentage to the specified pool.
-     * @dev This is a permissioned function, disabled if the pool is paused. The swap fee must be <=
-     * MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
+     * @dev This is a permissioned function, disabled if the pool is paused. The swap fee percentage must be within
+     * the bounds specified by the pool's implementation of `ISwapFeePercentageBounds`.
+     * Emits the SwapFeePercentageChanged event.
      *
      * @param pool The address of the pool for which the static swap fee will be changed
      * @param swapFeePercentage The new swap fee percentage to apply to the pool
@@ -132,18 +113,11 @@ interface IVaultAdmin {
     function setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) external;
 
     /**
-     * @notice Assigns a new pool creator fee percentage to the specified pool.
-     * @param pool The address of the pool for which the pool creator fee will be changed
-     * @param poolCreatorFeePercentage The new pool creator fee percentage to apply to the pool
-     */
-    function setPoolCreatorFeePercentage(address pool, uint256 poolCreatorFeePercentage) external;
-
-    /**
-     * @notice Collects accumulated protocol swap and yield fees for the specified pool.
+     * @notice Collects accumulated aggregate swap and yield fees for the specified pool.
      * @dev Fees are sent to the ProtocolFeeController address.
-     * @param pool The pool on which all protocol fees should be collected
+     * @param pool The pool on which all aggregate fees should be collected
      */
-    function collectProtocolFees(address pool) external;
+    function collectAggregateFees(address pool) external;
 
     /**
      * @notice Update an aggregate swap fee percentage.

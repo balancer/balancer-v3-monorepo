@@ -17,6 +17,14 @@ library TransientStorageHelpers {
 
     error TransientIndexOutOfBounds();
 
+    // Calculate the slot for a transient storage variable.
+    function calculateSlot(string memory domain, string memory varName) internal pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(uint256(keccak256(abi.encodePacked("balancer-labs.v3.storage.", domain, ".", varName))) - 1)
+            ) & ~bytes32(uint256(0xff));
+    }
+
     // Mappings
 
     function tGet(TokenDeltaMappingSlotType slot, IERC20 k1) internal view returns (int256) {

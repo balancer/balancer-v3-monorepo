@@ -5,20 +5,16 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
-
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
-import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 
 import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
@@ -53,7 +49,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
     }
 
     function createPool() internal override returns (address) {
-        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days);
+        factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         rateProviders.push(new RateProviderMock());
         rateProviders.push(new RateProviderMock());
 
@@ -73,6 +69,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 poolRoleAccounts,
                 swapFee,
+                address(0),
                 bytes32(0)
             )
         );
@@ -85,6 +82,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 poolRoleAccounts,
                 swapFee,
+                address(0),
                 bytes32(uint256(1))
             )
         );
@@ -131,9 +129,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
             bytes("")
         );
 
-        snapStart("exactInSnapshot");
         router.swapSingleTokenExactIn(address(weightedPool), wsteth, dai, amountOut, 0, MAX_UINT256, false, bytes(""));
-        snapEnd();
         vm.stopPrank();
     }
 
@@ -152,7 +148,6 @@ contract WeightedPoolSwaps is BaseVaultTest {
             bytes("")
         );
 
-        snapStart("exactInWithRateSnapshot");
         router.swapSingleTokenExactIn(
             address(weightedPoolWithRate),
             wsteth,
@@ -163,7 +158,6 @@ contract WeightedPoolSwaps is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
         vm.stopPrank();
     }
 
@@ -182,7 +176,6 @@ contract WeightedPoolSwaps is BaseVaultTest {
             bytes("")
         );
 
-        snapStart("exactOutSnapshot");
         router.swapSingleTokenExactOut(
             address(weightedPool),
             wsteth,
@@ -193,7 +186,6 @@ contract WeightedPoolSwaps is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
         vm.stopPrank();
     }
 
@@ -212,7 +204,6 @@ contract WeightedPoolSwaps is BaseVaultTest {
             bytes("")
         );
 
-        snapStart("exactOutWithRateSnapshot");
         router.swapSingleTokenExactOut(
             address(weightedPoolWithRate),
             wsteth,
@@ -223,7 +214,6 @@ contract WeightedPoolSwaps is BaseVaultTest {
             false,
             bytes("")
         );
-        snapEnd();
         vm.stopPrank();
     }
 

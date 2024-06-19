@@ -6,7 +6,7 @@ import { VaultState } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTy
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
-// @notice Config type to store entire configuration of the vault
+// @notice Config type to store entire configuration of the vault state.
 type VaultStateBits is bytes32;
 
 using VaultStateLib for VaultStateBits global;
@@ -23,30 +23,23 @@ library VaultStateLib {
         return VaultStateBits.unwrap(config).decodeBool(QUERY_DISABLED_OFFSET);
     }
 
+    function setQueryDisabled(VaultStateBits config, bool value) internal pure returns (VaultStateBits) {
+        return VaultStateBits.wrap(VaultStateBits.unwrap(config).insertBool(value, QUERY_DISABLED_OFFSET));
+    }
+
     function isVaultPaused(VaultStateBits config) internal pure returns (bool) {
         return VaultStateBits.unwrap(config).decodeBool(VAULT_PAUSED_OFFSET);
+    }
+
+    function setVaultPaused(VaultStateBits config, bool value) internal pure returns (VaultStateBits) {
+        return VaultStateBits.wrap(VaultStateBits.unwrap(config).insertBool(value, VAULT_PAUSED_OFFSET));
     }
 
     function areBuffersPaused(VaultStateBits config) internal pure returns (bool) {
         return VaultStateBits.unwrap(config).decodeBool(BUFFER_PAUSED_OFFSET);
     }
 
-    function fromVaultState(VaultState memory config) internal pure returns (VaultStateBits) {
-        return
-            VaultStateBits.wrap(
-                bytes32(0)
-                    .insertBool(config.isQueryDisabled, QUERY_DISABLED_OFFSET)
-                    .insertBool(config.isVaultPaused, VAULT_PAUSED_OFFSET)
-                    .insertBool(config.areBuffersPaused, BUFFER_PAUSED_OFFSET)
-            );
-    }
-
-    function toVaultState(VaultStateBits config) internal pure returns (VaultState memory) {
-        return
-            VaultState({
-                isQueryDisabled: config.isQueryDisabled(),
-                isVaultPaused: config.isVaultPaused(),
-                areBuffersPaused: config.areBuffersPaused()
-            });
+    function setBuffersPaused(VaultStateBits config, bool value) internal pure returns (VaultStateBits) {
+        return VaultStateBits.wrap(VaultStateBits.unwrap(config).insertBool(value, BUFFER_PAUSED_OFFSET));
     }
 }

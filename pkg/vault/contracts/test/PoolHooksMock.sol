@@ -19,7 +19,7 @@ import { RateProviderMock } from "./RateProviderMock.sol";
 import { BasePoolHooks } from "../BasePoolHooks.sol";
 
 contract PoolHooksMock is BasePoolHooks {
-    // using FixedPoint for uint256;
+    using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
     bool public failOnAfterInitialize;
@@ -41,6 +41,14 @@ contract PoolHooksMock is BasePoolHooks {
     bool public changePoolBalancesOnBeforeAddLiquidityHook;
     bool public changePoolBalancesOnBeforeRemoveLiquidityHook;
 
+    bool public shouldSettleDiscount;
+    uint256 public hookSwapFeePercentage;
+    uint256 public hookSwapDiscountPercentage;
+    uint256 public addLiquidityHookFeePercentage;
+    uint256 public addLiquidityHookDiscountPercentage;
+    uint256 public removeLiquidityHookFeePercentage;
+    uint256 public removeLiquidityHookDiscountPercentage;
+
     bool public swapReentrancyHookActive;
     address private _swapHookContract;
     bytes private _swapHookCalldata;
@@ -54,10 +62,10 @@ contract PoolHooksMock is BasePoolHooks {
 
     mapping(address => bool) private _allowedFactories;
 
-    HooksConfig private _hooksConfig;
+    HookFlags private _hookFlags;
 
     constructor(IVault vault) BasePoolHooks(vault) {
-        // solhint-disable-previous-line no-empty-blocks
+        shouldSettleDiscount = true;
     }
 
     function onRegister(
@@ -69,13 +77,12 @@ contract PoolHooksMock is BasePoolHooks {
         return _allowedFactories[factory];
     }
 
-    function getHooksConfig() external view override returns (HooksConfig memory) {
-        return _hooksConfig;
+    function getHookFlags() external view override returns (HookFlags memory) {
+        return _hookFlags;
     }
 
-    function setHooksConfig(HooksConfig memory hooksConfig) external {
-        _hooksConfig = hooksConfig;
-        _hooksConfig.hooksContract = address(this);
+    function setHookFlags(HookFlags memory hookFlags) external {
+        _hookFlags = hookFlags;
     }
 
     function onBeforeInitialize(uint256[] memory, bytes memory) external override returns (bool) {
@@ -91,7 +98,8 @@ contract PoolHooksMock is BasePoolHooks {
     }
 
     function onComputeDynamicSwapFee(
-        IBasePool.PoolSwapParams calldata params
+        IBasePool.PoolSwapParams calldata params,
+        uint256
     ) external view override returns (bool, uint256) {
         uint256 finalSwapFee = _dynamicSwapFee;
 
@@ -106,7 +114,7 @@ contract PoolHooksMock is BasePoolHooks {
         return (!failOnComputeDynamicSwapFeeHook, finalSwapFee);
     }
 
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata) external override returns (bool success) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata, address) external override returns (bool) {
         if (changeTokenRateOnBeforeSwapHook) {
             _updateTokenRate();
         }
@@ -125,50 +133,74 @@ contract PoolHooksMock is BasePoolHooks {
         return !failOnBeforeSwapHook;
     }
 
-    function onAfterSwap(
-        IHooks.AfterSwapParams calldata params,
-        uint256 amountCalculatedScaled18
-    ) external view override returns (bool success) {
+    function onAfterSwap(IHooks.AfterSwapParams calldata params) external override returns (bool, uint256) {
         // check that actual pool balances match
-        (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory scalingFactors) = _vault
-            .getPoolTokenInfo(_pool);
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = _vault.getPoolTokenInfo(params.pool);
 
-        uint256[] memory currentLiveBalances = IVaultMock(address(_vault)).getCurrentLiveBalances(_pool);
+        uint256[] memory currentLiveBalances = IVaultMock(address(_vault)).getCurrentLiveBalances(params.pool);
 
-        uint256[] memory rates = _vault.getPoolTokenRates(_pool);
+        (uint256[] memory scalingFactors, uint256[] memory rates) = _vault.getPoolTokenRates(params.pool);
 
-        for (uint256 i = 0; i < tokenConfig.length; ++i) {
-            if (tokenConfig[i].token == params.tokenIn) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            if (tokens[i] == params.tokenIn) {
                 if (params.tokenInBalanceScaled18 != currentLiveBalances[i]) {
-                    return false;
+                    return (false, params.amountCalculatedRaw);
                 }
                 uint256 expectedTokenInBalanceRaw = params.tokenInBalanceScaled18.toRawUndoRateRoundDown(
                     scalingFactors[i],
                     rates[i]
                 );
                 if (expectedTokenInBalanceRaw != balancesRaw[i]) {
-                    return false;
+                    return (false, params.amountCalculatedRaw);
                 }
-            } else if (tokenConfig[i].token == params.tokenOut) {
+            } else if (tokens[i] == params.tokenOut) {
                 if (params.tokenOutBalanceScaled18 != currentLiveBalances[i]) {
-                    return false;
+                    return (false, params.amountCalculatedRaw);
                 }
                 uint256 expectedTokenOutBalanceRaw = params.tokenOutBalanceScaled18.toRawUndoRateRoundDown(
                     scalingFactors[i],
                     rates[i]
                 );
                 if (expectedTokenOutBalanceRaw != balancesRaw[i]) {
-                    return false;
+                    return (false, params.amountCalculatedRaw);
                 }
             }
         }
 
-        return amountCalculatedScaled18 > 0 && !failOnAfterSwapHook;
+        uint256 hookAdjustedAmountCalculatedRaw = params.amountCalculatedRaw;
+        if (hookSwapFeePercentage > 0) {
+            uint256 hookFee = hookAdjustedAmountCalculatedRaw.mulDown(hookSwapFeePercentage);
+            if (params.kind == SwapKind.EXACT_IN) {
+                hookAdjustedAmountCalculatedRaw -= hookFee;
+                _vault.sendTo(params.tokenOut, address(this), hookFee);
+            } else {
+                hookAdjustedAmountCalculatedRaw += hookFee;
+                _vault.sendTo(params.tokenIn, address(this), hookFee);
+            }
+        } else if (hookSwapDiscountPercentage > 0) {
+            uint256 hookDiscount = hookAdjustedAmountCalculatedRaw.mulDown(hookSwapDiscountPercentage);
+            if (params.kind == SwapKind.EXACT_IN) {
+                hookAdjustedAmountCalculatedRaw += hookDiscount;
+                if (shouldSettleDiscount) {
+                    params.tokenOut.transfer(address(_vault), hookDiscount);
+                    _vault.settle(params.tokenOut);
+                }
+            } else {
+                hookAdjustedAmountCalculatedRaw -= hookDiscount;
+                if (shouldSettleDiscount) {
+                    params.tokenIn.transfer(address(_vault), hookDiscount);
+                    _vault.settle(params.tokenIn);
+                }
+            }
+        }
+
+        return (params.amountCalculatedScaled18 > 0 && !failOnAfterSwapHook, hookAdjustedAmountCalculatedRaw);
     }
 
     // Liquidity lifecycle hooks
 
     function onBeforeAddLiquidity(
+        address,
         address,
         AddLiquidityKind,
         uint256[] memory,
@@ -189,6 +221,7 @@ contract PoolHooksMock is BasePoolHooks {
 
     function onBeforeRemoveLiquidity(
         address,
+        address,
         RemoveLiquidityKind,
         uint256,
         uint256[] memory,
@@ -208,22 +241,64 @@ contract PoolHooksMock is BasePoolHooks {
 
     function onAfterAddLiquidity(
         address,
+        address pool,
+        AddLiquidityKind,
         uint256[] memory,
+        uint256[] memory amountsInRaw,
         uint256,
         uint256[] memory,
         bytes memory
-    ) external view override returns (bool) {
-        return !failOnAfterAddLiquidity;
+    ) external override returns (bool, uint256[] memory hookAdjustedAmountsInRaw) {
+        (IERC20[] memory tokens, , , ) = _vault.getPoolTokenInfo(pool);
+        hookAdjustedAmountsInRaw = amountsInRaw;
+
+        if (addLiquidityHookFeePercentage > 0) {
+            for (uint256 i = 0; i < amountsInRaw.length; i++) {
+                uint256 hookFee = amountsInRaw[i].mulDown(addLiquidityHookFeePercentage);
+                hookAdjustedAmountsInRaw[i] += hookFee;
+                _vault.sendTo(tokens[i], address(this), hookFee);
+            }
+        } else if (addLiquidityHookDiscountPercentage > 0) {
+            for (uint256 i = 0; i < amountsInRaw.length; i++) {
+                uint256 hookDiscount = amountsInRaw[i].mulDown(addLiquidityHookDiscountPercentage);
+                tokens[i].transfer(address(_vault), hookDiscount);
+                _vault.settle(tokens[i]);
+                hookAdjustedAmountsInRaw[i] -= hookDiscount;
+            }
+        }
+
+        return (!failOnAfterAddLiquidity, hookAdjustedAmountsInRaw);
     }
 
     function onAfterRemoveLiquidity(
         address,
+        address pool,
+        RemoveLiquidityKind,
         uint256,
         uint256[] memory,
+        uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) external view override returns (bool) {
-        return !failOnAfterRemoveLiquidity;
+    ) external override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+        (IERC20[] memory tokens, , , ) = _vault.getPoolTokenInfo(pool);
+        hookAdjustedAmountsOutRaw = amountsOutRaw;
+
+        if (removeLiquidityHookFeePercentage > 0) {
+            for (uint256 i = 0; i < amountsOutRaw.length; i++) {
+                uint256 hookFee = amountsOutRaw[i].mulDown(removeLiquidityHookFeePercentage);
+                hookAdjustedAmountsOutRaw[i] -= hookFee;
+                _vault.sendTo(tokens[i], address(this), hookFee);
+            }
+        } else if (removeLiquidityHookDiscountPercentage > 0) {
+            for (uint256 i = 0; i < amountsOutRaw.length; i++) {
+                uint256 hookDiscount = amountsOutRaw[i].mulDown(removeLiquidityHookDiscountPercentage);
+                tokens[i].transfer(address(_vault), hookDiscount);
+                _vault.settle(tokens[i]);
+                hookAdjustedAmountsOutRaw[i] += hookDiscount;
+            }
+        }
+
+        return (!failOnAfterRemoveLiquidity, hookAdjustedAmountsOutRaw);
     }
 
     /***********************************************************
@@ -352,6 +427,34 @@ contract PoolHooksMock is BasePoolHooks {
         _pool = pool;
     }
 
+    function setShouldSettleDiscount(bool shouldSettleDiscountFlag) external {
+        shouldSettleDiscount = shouldSettleDiscountFlag;
+    }
+
+    function setHookSwapFeePercentage(uint256 feePercentage) external {
+        hookSwapFeePercentage = feePercentage;
+    }
+
+    function setHookSwapDiscountPercentage(uint256 discountPercentage) external {
+        hookSwapDiscountPercentage = discountPercentage;
+    }
+
+    function setAddLiquidityHookFeePercentage(uint256 hookFeePercentage) public {
+        addLiquidityHookFeePercentage = hookFeePercentage;
+    }
+
+    function setAddLiquidityHookDiscountPercentage(uint256 hookDiscountPercentage) public {
+        addLiquidityHookDiscountPercentage = hookDiscountPercentage;
+    }
+
+    function setRemoveLiquidityHookFeePercentage(uint256 hookFeePercentage) public {
+        removeLiquidityHookFeePercentage = hookFeePercentage;
+    }
+
+    function setRemoveLiquidityHookDiscountPercentage(uint256 hookDiscountPercentage) public {
+        removeLiquidityHookDiscountPercentage = hookDiscountPercentage;
+    }
+
     function allowFactory(address factory) external {
         _allowedFactories[factory] = true;
     }
@@ -369,6 +472,7 @@ contract PoolHooksMock is BasePoolHooks {
 
     function _setBalancesInVault() private {
         IERC20[] memory poolTokens = _vault.getPoolTokens(_pool);
-        IVaultMock(address(_vault)).manualSetPoolTokenBalances(_pool, poolTokens, _newBalancesRaw);
+        // We don't care about last live balances here, so we just use the same raw balances
+        IVaultMock(address(_vault)).manualSetPoolTokenBalances(_pool, poolTokens, _newBalancesRaw, _newBalancesRaw);
     }
 }

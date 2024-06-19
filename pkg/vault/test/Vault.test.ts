@@ -107,8 +107,7 @@ describe('Vault', function () {
       expect(await vault.isPoolRegistered(poolA)).to.be.true;
       expect(await vault.isPoolRegistered(poolB)).to.be.false;
 
-      const [tokenConfig, balances] = await vault.getPoolTokenInfo(poolA);
-      const tokens = tokenConfig.map((config) => config.token);
+      const [tokens, , balances] = await vault.getPoolTokenInfo(poolA);
 
       expect(tokens).to.deep.equal(poolATokens);
       expect(balances).to.deep.equal(Array(tokens.length).fill(0));
@@ -144,7 +143,7 @@ describe('Vault', function () {
         swapFeePercentage: 0,
         pauseWindowEndTime: pauseWindowEndTime.toString(),
         roleAccounts: [ANY_ADDRESS, ZERO_ADDRESS, ANY_ADDRESS],
-        hooksConfig: [false, false, false, false, false, false, false, false, false, ZERO_ADDRESS],
+        hooksConfig: [false, false, false, false, false, false, false, false, false, false, ZERO_ADDRESS],
         liquidityManagement: [false, true, true],
       };
 
@@ -289,9 +288,9 @@ describe('Vault', function () {
       });
 
       it('has rate providers', async () => {
-        const [tokenConfig] = await vault.getPoolTokenInfo(poolC);
-        const poolProviders = tokenConfig.map((config) => config.rateProvider);
-        const tokenRates = await vault.getPoolTokenRates(poolC);
+        const [, tokenInfo] = await vault.getPoolTokenInfo(poolC);
+        const poolProviders = tokenInfo.map((config) => config.rateProvider);
+        const { tokenRates } = await vault.getPoolTokenRates(poolC);
 
         expect(poolProviders).to.deep.equal(rateProviders);
         expect(tokenRates).to.deep.equal(expectedRates);
@@ -303,7 +302,7 @@ describe('Vault', function () {
         await rateProvider.mockRate(newRate);
         expectedRates[0] = newRate;
 
-        const tokenRates = await vault.getPoolTokenRates(poolC);
+        const { tokenRates } = await vault.getPoolTokenRates(poolC);
         expect(tokenRates).to.deep.equal(expectedRates);
       });
     });
@@ -436,9 +435,9 @@ describe('Vault', function () {
       // Get them from the pool (mock), using ScalingHelpers
       const poolScalingFactors = await poolA.getDecimalScalingFactors();
       // Get them from the Vault (using PoolConfig)
-      const vaultScalingFactors = await vault.getDecimalScalingFactors(poolA);
+      const { decimalScalingFactors } = await vault.getPoolTokenRates(poolA);
 
-      expect(vaultScalingFactors).to.deep.equal(poolScalingFactors);
+      expect(decimalScalingFactors).to.deep.equal(poolScalingFactors);
     });
   });
 

@@ -127,6 +127,9 @@ interface IVaultErrors {
     /// @dev An amount in or out has exceeded the limit specified in the swap request.
     error SwapLimit(uint256 amount, uint256 limit);
 
+    /// @dev A hook adjusted amount in or out has exceeded the limit specified in the swap request.
+    error HookAdjustedSwapLimit(uint256 amount, uint256 limit);
+
     /*******************************************************************************
                                     Add Liquidity
     *******************************************************************************/
@@ -136,6 +139,9 @@ interface IVaultErrors {
 
     /// @dev A required amountIn exceeds the maximum limit specified for the operation.
     error AmountInAboveMax(IERC20 token, uint256 amount, uint256 limit);
+
+    /// @dev A hook adjusted amountIn exceeds the maximum limit specified for the operation.
+    error HookAdjustedAmountInAboveMax(IERC20 token, uint256 amount, uint256 limit);
 
     /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
     error BptAmountOutBelowMin(uint256 amount, uint256 limit);
@@ -153,6 +159,9 @@ interface IVaultErrors {
     /// @dev The actual amount out is below the minimum limit specified for the operation.
     error AmountOutBelowMin(IERC20 token, uint256 amount, uint256 limit);
 
+    /// @dev The hook adjusted amount out is below the minimum limit specified for the operation.
+    error HookAdjustedAmountOutBelowMin(IERC20 token, uint256 amount, uint256 limit);
+
     /// @dev The required BPT amount in exceeds the maximum limit specified for the operation.
     error BptAmountInAboveMax(uint256 amount, uint256 limit);
 
@@ -163,11 +172,8 @@ interface IVaultErrors {
                                      Fees
     *******************************************************************************/
 
-    /// @dev Error raised when the swap fee percentage exceeds the maximum allowed value.
-    error SwapFeePercentageTooHigh();
-
     /**
-     * @dev Error raised when the sum of the parts (aggregate protocol swap or yield fee)
+     * @dev Error raised when the sum of the parts (aggregate swap or yield fee)
      * is greater than the whole (total swap or yield fee). Also validated when the protocol fee
      * controller updates aggregate fee percentages in the Vault.
      */
@@ -175,16 +181,23 @@ interface IVaultErrors {
 
     /**
      * @dev  Error raised when the swap fee percentage is less than the minimum allowed value.
-     * The Vault itself does not impose a universal minimum. Rather, it asks each pool whether
-     * it supports the `IMinimumSwapFee` interface. If it does, the Vault validates against the
-     * minimum value returned by the pool.
+     * The Vault itself does not impose a universal minimum. Rather, it validates against the
+     * range specified by the `ISwapFeePercentageBounds` interface. and reverts with this error
+     * if it is below the minimum value returned by the pool.
      *
-     * Pools with dynamic fees do not check for a lower limit.
+     * Pools with dynamic fees do not check these limits.
      */
     error SwapFeePercentageTooLow();
 
-    /// @dev Error raised when the pool creator fee percentage exceeds the maximum allowed value.
-    error PoolCreatorFeePercentageTooHigh();
+    /**
+     * @dev  Error raised when the swap fee percentage is greater than the maximum allowed value.
+     * The Vault itself does not impose a universal minimum. Rather, it validates against the
+     * range specified by the `ISwapFeePercentageBounds` interface. and reverts with this error
+     * if it is above the maximum value returned by the pool.
+     *
+     * Pools with dynamic fees do not check these limits.
+     */
+    error SwapFeePercentageTooHigh();
 
     /*******************************************************************************
                                     Queries

@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolConfigBits } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
@@ -26,9 +26,12 @@ import {
     SwapKind
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { PoolConfigLib } from "../../../../contracts/lib/PoolConfigLib.sol";
+
 contract VaultMutationTest is BaseVaultTest {
     using ArrayHelpers for *;
     using ScalingHelpers for *;
+    using PoolConfigLib for PoolConfigBits;
 
     struct TestAddLiquidityParams {
         AddLiquidityParams addLiquidityParams;
@@ -189,12 +192,7 @@ contract VaultMutationTest is BaseVaultTest {
         vault.approve(params.removeLiquidityParams.from, address(this), params.expectedBPTAmountIn);
 
         vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
-        vault.manualReentrancyRemoveLiquidity(
-            poolData,
-            params.removeLiquidityParams,
-            params.minAmountsOutScaled18,
-            vaultState
-        );
+        vault.manualReentrancyRemoveLiquidity(poolData, params.removeLiquidityParams, params.minAmountsOutScaled18);
     }
 
     /// Helper functions
@@ -227,23 +225,24 @@ contract VaultMutationTest is BaseVaultTest {
         poolData.tokenRates = tokenRates;
         poolData.balancesRaw = initialBalances;
 
-        poolData.poolConfig.staticSwapFeePercentage = swapFeePercentage;
+        poolData.poolConfigBits = poolData.poolConfigBits.setStaticSwapFeePercentage(swapFeePercentage);
 
         poolData.balancesLiveScaled18 = new uint256[](initialBalances.length);
     }
 
     function _makeDefaultParams() internal view returns (PoolData memory poolData) {
-        poolData.poolConfig.staticSwapFeePercentage = swapFeePercentage;
+        poolData.poolConfigBits = poolData.poolConfigBits.setStaticSwapFeePercentage(swapFeePercentage);
 
         poolData.balancesLiveScaled18 = new uint256[](tokens.length);
         poolData.balancesRaw = new uint256[](tokens.length);
 
-        poolData.tokenConfig = new TokenConfig[](tokens.length);
+        poolData.tokenInfo = new TokenInfo[](tokens.length);
         poolData.decimalScalingFactors = new uint256[](tokens.length);
         poolData.tokenRates = new uint256[](tokens.length);
+        poolData.tokens = new IERC20[](tokens.length);
 
-        for (uint256 i = 0; i < poolData.tokenConfig.length; i++) {
-            poolData.tokenConfig[i].token = tokens[i];
+        for (uint256 i = 0; i < tokens.length; i++) {
+            poolData.tokens[i] = tokens[i];
             poolData.decimalScalingFactors[i] = 1e18;
             poolData.tokenRates[i] = 1e18 * (i + 1);
 

@@ -21,6 +21,11 @@ contract VaultAdminMutationTest is BaseVaultTest {
         BaseVaultTest.setUp();
     }
 
+    function testGetPoolTokenRatesWithoutRegisteredPool() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(0)));
+        vault.getPoolTokenRates(address(0));
+    }
+
     /*
       getPoolTokenRates
         [x] withRegisteredPool
@@ -28,12 +33,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     */
     function testGetPoolTokenRatesWhenNotVault() public {
         vm.expectRevert();
-        vaultAdmin.getPoolTokenRates(pool);
-    }
-
-    function testGetPoolTokenRatesWithoutRegisteredPool() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(0)));
-        vault.getPoolTokenRates(address(0));
+        vaultExtension.getPoolTokenRates(pool);
     }
 
     /*
@@ -148,34 +148,13 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     /*
-      setPoolCreatorFeePercentage
-        [x] withRegisteredPool
-        [x] authenticate
-        [x] onlyVault
-    */
-    function testSetPoolCreatorFeePercentageWithoutRegisteredPool() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(0)));
-        vault.setPoolCreatorFeePercentage(address(0), 1);
-    }
-
-    function testSetPoolCreatorFeePercentageWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
-        vault.setPoolCreatorFeePercentage(pool, 1);
-    }
-
-    function testSetPoolCreatorFeePercentageWhenNotVault() public {
-        vm.expectRevert();
-        vaultAdmin.setPoolCreatorFeePercentage(pool, 1);
-    }
-
-    /*
       collectProtocolFees
         [] nonReentrant
         [x] onlyVault
     */
     function testCollectProtocolFeesWhenNotVault() public {
         vm.expectRevert();
-        vaultAdmin.collectProtocolFees(pool);
+        vaultAdmin.collectAggregateFees(pool);
     }
 
     /*

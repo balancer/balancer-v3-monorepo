@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
@@ -42,11 +43,6 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
             invariant += balances[i];
         }
         return invariant;
-    }
-
-    /// @inheritdoc IBasePool
-    function getPoolTokens() public view returns (IERC20[] memory tokens) {
-        return getVault().getPoolTokens(address(this));
     }
 
     /// @inheritdoc IBasePool
@@ -95,11 +91,16 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
 
     /// @dev Even though pools do not handle scaling, we still need this for the tests.
     function getDecimalScalingFactors() external view returns (uint256[] memory scalingFactors) {
-        IERC20[] memory tokens = getPoolTokens();
-        scalingFactors = new uint256[](tokens.length);
+        (scalingFactors, ) = _vault.getPoolTokenRates(address(this));
+    }
 
-        for (uint256 i = 0; i < tokens.length; ++i) {
-            scalingFactors[i] = ScalingHelpers.computeScalingFactor(tokens[i]);
-        }
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMinimumSwapFeePercentage() external pure returns (uint256) {
+        return 0;
+    }
+
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMaximumSwapFeePercentage() external pure returns (uint256) {
+        return FixedPoint.ONE;
     }
 }

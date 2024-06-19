@@ -6,7 +6,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
-import { LiquidityManagement, HooksConfig, PoolRoleAccounts, TokenConfig } from "./VaultTypes.sol";
 import { IHooks } from "./IHooks.sol";
 import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import "./VaultTypes.sol";
@@ -28,7 +27,7 @@ interface IVaultEvents {
         address indexed factory,
         TokenConfig[] tokenConfig,
         uint256 swapFeePercentage,
-        uint256 pauseWindowEndTime,
+        uint32 pauseWindowEndTime,
         PoolRoleAccounts roleAccounts,
         HooksConfig hooksConfig,
         LiquidityManagement liquidityManagement
@@ -116,12 +115,6 @@ interface IVaultEvents {
      * @param swapFeePercentage The new swap fee percentage for the pool
      */
     event SwapFeePercentageChanged(address indexed pool, uint256 swapFeePercentage);
-
-    /**
-     * @notice Emitted when the pool creator fee percentage of a pool is updated.
-     * @param poolCreatorFeePercentage The new pool creator fee percentage for the pool
-     */
-    event PoolCreatorFeePercentageChanged(address indexed pool, uint256 poolCreatorFeePercentage);
 
     /**
      * @dev Recovery mode has been enabled or disabled for a pool.

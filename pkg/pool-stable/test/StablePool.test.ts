@@ -15,9 +15,11 @@ import { StablePoolFactory } from '../typechain-types';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { MAX_UINT256, MAX_UINT160, MAX_UINT48, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
-import { PoolConfigStructOutput } from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
+import {
+  PoolConfigStructOutput,
+  TokenConfigStruct,
+} from '@balancer-labs/v3-interfaces/typechain-types/contracts/vault/IVault';
 import { buildTokenConfig } from '@balancer-labs/v3-helpers/src/models/tokens/tokenConfig';
-import { TokenConfig } from '@balancer-labs/v3-helpers/src/models/types/types';
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
 
@@ -26,6 +28,7 @@ describe('StablePool', () => {
   const POOL_VERSION = 'Stable Pool v1';
 
   const TOKEN_AMOUNT = fp(1000);
+  const MIN_SWAP_FEE = 1e12;
 
   let permit2: IPermit2;
   let vault: IVaultMock;
@@ -67,15 +70,15 @@ describe('StablePool', () => {
   }
 
   async function deployPool(numTokens: number) {
-    const tokenConfig: TokenConfig[] = buildTokenConfig(poolTokens.slice(0, numTokens));
+    const tokenConfig: TokenConfigStruct[] = buildTokenConfig(poolTokens.slice(0, numTokens));
 
     const tx = await factory.create(
       'Stable Pool',
       `STABLE-${numTokens}`,
       tokenConfig,
       200n,
-      [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS],
-      0, // swap fee
+      { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS, poolCreator: ZERO_ADDRESS },
+      MIN_SWAP_FEE,
       ZERO_ADDRESS,
       TypesConverter.toBytes32(bn(numTokens))
     );
@@ -142,11 +145,10 @@ describe('StablePool', () => {
         });
 
         it('has the correct pool tokens and balances', async () => {
-          const tokensFromPool = await pool.getPoolTokens();
+          const tokensFromPool = await pool.getTokens();
           expect(tokensFromPool).to.deep.equal(poolTokens.slice(0, numTokens));
 
-          const [tokenConfigFromVault, balancesFromVault] = await vault.getPoolTokenInfo(pool);
-          const tokensFromVault = tokenConfigFromVault.map((config) => config.token);
+          const [tokensFromVault, , balancesFromVault] = await vault.getPoolTokenInfo(pool);
 
           expect(tokensFromVault).to.deep.equal(tokensFromPool);
           expect(balancesFromVault).to.deep.equal(initialBalances);

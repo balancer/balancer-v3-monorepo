@@ -69,6 +69,7 @@ interface IVaultExtension {
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
      * @param swapFeePercentage The initial static swap fee percentage of the pool
      * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
+     * @param protocolFeeExempt If true, the pool's initial aggregate fees will be set to 0
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param poolHooksContract Contract that implements the hooks for the pool
      * @param liquidityManagement Liquidity management flags with implemented methods
@@ -77,7 +78,8 @@ interface IVaultExtension {
         address pool,
         TokenConfig[] memory tokenConfig,
         uint256 swapFeePercentage,
-        uint256 pauseWindowEndTime,
+        uint32 pauseWindowEndTime,
+        bool protocolFeeExempt,
         PoolRoleAccounts calldata roleAccounts,
         address poolHooksContract,
         LiquidityManagement calldata liquidityManagement
@@ -129,8 +131,22 @@ interface IVaultExtension {
     function getPoolTokens(address pool) external view returns (IERC20[] memory);
 
     /**
+     * @notice Gets pool token rates.
+     * @dev This function performs external calls if tokens are yield-bearing. All returned arrays are in token
+     * registration order.
+     *
+     * @param pool Address of the pool
+     * @return decimalScalingFactors Token decimal scaling factors
+     * @return tokenRates Token rates for yield-bearing tokens, or FP(1) for standard tokens
+     */
+    function getPoolTokenRates(
+        address pool
+    ) external view returns (uint256[] memory decimalScalingFactors, uint256[] memory tokenRates);
+
+    /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
-     * @return tokenConfig Pool's token configuration
+     * @return tokens The pool tokens, in registration order
+     * @return tokenInfo Corresponding token info
      * @return balancesRaw Corresponding raw balances of the tokens
      * @return scalingFactors Corresponding scalingFactors of the tokens
      */
@@ -139,7 +155,20 @@ interface IVaultExtension {
     )
         external
         view
-        returns (TokenConfig[] memory tokenConfig, uint256[] memory balancesRaw, uint256[] memory scalingFactors);
+        returns (
+            IERC20[] memory tokens,
+            TokenInfo[] memory tokenInfo,
+            uint256[] memory balancesRaw,
+            uint256[] memory scalingFactors
+        );
+
+    /**
+     * @notice Gets current live balances of a given pool (fixed-point, 18 decimals), corresponding to its tokens in
+     * registration order.
+     * @param pool Address of the pool
+     * @return balancesLiveScaled18  Token balances after paying yield fees, applying decimal scaling and rates
+     */
+    function getCurrentLiveBalances(address pool) external view returns (uint256[] memory balancesLiveScaled18);
 
     /**
      * @notice Gets the configuration parameters of a pool.
@@ -249,27 +278,27 @@ interface IVaultExtension {
      * @return poolBufferPeriodEndTime The timestamp after which the Pool unpauses itself (if paused)
      * @return pauseManager The pause manager, or the zero address
      */
-    function getPoolPausedState(address pool) external view returns (bool, uint256, uint256, address);
+    function getPoolPausedState(address pool) external view returns (bool, uint32, uint32, address);
 
     /*******************************************************************************
                                    Fees
     *******************************************************************************/
 
     /**
-     * @notice Returns the accumulated swap fees (including aggregate protocol fees) in `token` collected by the pool.
-     * @param pool The address of the pool for which protocol fees have been collected
+     * @notice Returns the accumulated swap fees (including aggregate fees) in `token` collected by the pool.
+     * @param pool The address of the pool for which aggregate fees have been collected
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
      */
-    function getAggregateProtocolSwapFeeAmount(address pool, IERC20 token) external view returns (uint256);
+    function getAggregateSwapFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
     /**
-     * @notice Returns the accumulated yield fees (including aggregate protocol fees) in `token` collected by the pool.
-     * @param pool The address of the pool for which protocol fees have been collected
+     * @notice Returns the accumulated yield fees (including aggregate fees) in `token` collected by the pool.
+     * @param pool The address of the pool for which aggregate fees have been collected
      * @param token The address of the token in which fees have been accumulated
      * @return The total amount of fees accumulated in the specified token
      */
-    function getAggregateProtocolYieldFeeAmount(address pool, IERC20 token) external view returns (uint256);
+    function getAggregateYieldFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
     /**
      * @notice Fetches the static swap fee percentage for a given pool.
@@ -279,11 +308,11 @@ interface IVaultExtension {
     function getStaticSwapFeePercentage(address pool) external view returns (uint256);
 
     /**
-     * @notice Fetches the static swap fee manager for a given pool (or zero).
-     * @param pool The address of the pool whose static swap fee manager is being queried
-     * @return The current static swap fee manager for the specified pool
+     * @notice Fetches the role accounts for a given pool (pause manager, swap manager, pool creator)
+     * @param pool The address of the pool whose roles are being queried
+     * @return roleAccounts A struct containing the role accounts for the pool (or 0 if unassigned)
      */
-    function getStaticSwapFeeManager(address pool) external view returns (address);
+    function getPoolRoleAccounts(address pool) external view returns (PoolRoleAccounts memory);
 
     /**
      * @notice Query the current dynamic swap fee of a pool, given a set of swap parameters.
@@ -323,6 +352,16 @@ interface IVaultExtension {
         address from,
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut);
+
+    /*******************************************************************************
+                                    Buffer Operations
+    *******************************************************************************/
+
+    function calculateBufferAmounts(
+        SwapKind kind,
+        IERC4626 wrappedToken,
+        uint256 amountGiven
+    ) external returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped);
 
     /*******************************************************************************
                                     Queries

@@ -58,13 +58,13 @@ contract PoolDataTest is BaseVaultTest {
         // `loadPoolDataUpdatingBalancesAndYieldFees` and `getRawBalances` are functions in VaultMock.
 
         PoolData memory data = vault.loadPoolDataUpdatingBalancesAndYieldFees(
-            address(pool),
+            pool,
             roundUp ? Rounding.ROUND_UP : Rounding.ROUND_DOWN
         );
 
         // Compute decimal scaling factors from the tokens, in the mock.
         uint256[] memory expectedScalingFactors = PoolMock(pool).getDecimalScalingFactors();
-        uint256[] memory expectedRawBalances = vault.getRawBalances(address(pool));
+        uint256[] memory expectedRawBalances = vault.getRawBalances(pool);
         uint256[] memory expectedRates = new uint256[](2);
         expectedRates[0] = daiRate;
         expectedRates[1] = wstETHRate;
@@ -91,10 +91,10 @@ contract PoolDataTest is BaseVaultTest {
             assertEq(data.balancesLiveScaled18[i], expectedLiveBalance);
         }
 
-        assertEq(address(data.tokenConfig[0].token), address(dai));
-        assertEq(address(data.tokenConfig[1].token), address(wsteth));
+        assertEq(address(data.tokens[0]), address(dai));
+        assertEq(address(data.tokens[1]), address(wsteth));
 
-        assertEq(address(data.tokenConfig[0].rateProvider), address(daiRateProvider));
-        assertEq(address(data.tokenConfig[1].rateProvider), address(wstETHRateProvider));
+        assertEq(address(data.tokenInfo[0].rateProvider), address(daiRateProvider));
+        assertEq(address(data.tokenInfo[1].rateProvider), address(wstETHRateProvider));
     }
 }

@@ -10,7 +10,7 @@ contract RevertCodecTest is Test {
     error TestCustomError(uint256 code);
 
     function testcatchEncodedResultNoSelector() public {
-        vm.expectRevert(abi.encodeWithSelector(RevertCodec.ErrorSelectorNotFound.selector));
+        vm.expectRevert(RevertCodec.ErrorSelectorNotFound.selector);
         RevertCodec.catchEncodedResult("");
     }
 
@@ -29,7 +29,7 @@ contract RevertCodecTest is Test {
     }
 
     function testParseSelectorNoData() public {
-        vm.expectRevert(abi.encodeWithSelector(RevertCodec.ErrorSelectorNotFound.selector));
+        vm.expectRevert(RevertCodec.ErrorSelectorNotFound.selector);
         RevertCodec.parseSelector("");
     }
 

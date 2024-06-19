@@ -8,7 +8,7 @@ import { IVaultExtensionMock } from "@balancer-labs/v3-interfaces/contracts/test
 import "../VaultExtension.sol";
 
 contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
-    using PoolConfigLib for PoolConfig;
+    using PoolConfigLib for PoolConfigBits;
 
     constructor(IVault vault, IVaultAdmin vaultAdmin) VaultExtension(vault, vaultAdmin) {}
 
@@ -17,8 +17,6 @@ contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
     }
 
     function manuallySetSwapFee(address pool, uint256 newSwapFee) external {
-        PoolConfig memory config = PoolConfigLib.toPoolConfig(_poolConfig[pool]);
-        config.staticSwapFeePercentage = newSwapFee;
-        _poolConfig[pool] = config.fromPoolConfig();
+        _poolConfigBits[pool] = _poolConfigBits[pool].setStaticSwapFeePercentage(newSwapFee);
     }
 }

@@ -44,20 +44,6 @@ jobs:
       - name: Test
         run: yarn workspace @balancer-labs/v3-vault test:forge
 
-  test-fork-vault:
-    runs-on: ubuntu-latest
-    needs: lint-and-build
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up environment
-        uses: ./.github/actions/setup
-      - uses: actions/download-artifact@v4
-        with:
-          name: built-contracts
-          path: pkg/
-      - name: Fork Test
-        run: yarn workspace @balancer-labs/v3-vault test:fork
-
   test-hardhat-vault:
     runs-on: ubuntu-latest
     needs: lint-and-build
@@ -155,3 +141,45 @@ jobs:
           path: pkg/
       - name: Test
         run: yarn workspace @balancer-labs/v3-pool-stable test:forge
+
+  test-hardhat-pool-utils:
+    runs-on: ubuntu-latest
+    needs: lint-and-build
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
+      - name: Test
+        run: yarn workspace @balancer-labs/v3-pool-utils test:hardhat
+
+  test-forge-pool-utils:
+    runs-on: ubuntu-latest
+    needs: lint-and-build
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
+      - name: Test
+        run: yarn workspace @balancer-labs/v3-pool-utils test:forge
+
+  test-forge-pool-hooks:
+    runs-on: ubuntu-latest
+    needs: lint-and-build
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v4
+        with:
+          name: built-contracts
+          path: pkg/
+      - name: Test
+        run: yarn workspace @balancer-labs/v3-pool-hooks test:forge

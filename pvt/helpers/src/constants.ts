@@ -6,7 +6,7 @@ export const ONE = 1n;
 
 export const MAX_UINT256: bigint = maxUint(256);
 export const MAX_UINT160: bigint = maxUint(160);
-export const MAX_UINT112: bigint = maxUint(112);
+export const MAX_UINT128: bigint = maxUint(128);
 export const MAX_UINT96: bigint = maxUint(96);
 export const MAX_UINT64: bigint = maxUint(64);
 export const MAX_UINT48: bigint = maxUint(48);
