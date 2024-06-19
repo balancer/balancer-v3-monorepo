@@ -344,15 +344,15 @@ library HooksConfigLib {
 
         (bool success, uint256[] memory hookAdjustedAmountsInRaw) = IHooks(config.getHooksContract())
             .onAfterAddLiquidity(
-            router,
-            params.pool,
-            params.kind,
-            amountsInScaled18,
-            amountsInRaw,
-            bptAmountOut,
-            poolData.balancesLiveScaled18,
-            params.userData
-        );
+                router,
+                params.pool,
+                params.kind,
+                amountsInScaled18,
+                amountsInRaw,
+                bptAmountOut,
+                poolData.balancesLiveScaled18,
+                params.userData
+            );
 
         if (success == false) {
             revert IVaultErrors.AfterAddLiquidityHookFailed();
@@ -372,6 +372,8 @@ library HooksConfigLib {
                 );
             }
         }
+
+        return hookAdjustedAmountsInRaw;
     }
 
     /**
@@ -439,8 +441,9 @@ library HooksConfigLib {
             return (bptAmountIn, amountsOutRaw);
         }
 
-        (bool success, uint256[] memory hookAdjustedAmountsOutRaw) = IHooks(config.getHooksContract())
-            .onAfterRemoveLiquidity(
+        (bool success, uint256 hookAdjustedBptAmountIn, uint256[] memory hookAdjustedAmountsOutRaw) = IHooks(
+            config.getHooksContract()
+        ).onAfterRemoveLiquidity(
                 router,
                 params.pool,
                 params.kind,
@@ -457,7 +460,7 @@ library HooksConfigLib {
 
         // If hook adjusted amounts is not enabled, ignore amounts returned by the hook
         if (config.enableHookAdjustedAmounts() == false) {
-            return amountsOutRaw;
+            return (bptAmountIn, amountsOutRaw);
         }
 
         if (hookAdjustedBptAmountIn > params.maxBptAmountIn) {
@@ -491,6 +494,8 @@ library HooksConfigLib {
                 );
             }
         }
+
+        return (hookAdjustedBptAmountIn, hookAdjustedAmountsOutRaw);
     }
 
     /**
