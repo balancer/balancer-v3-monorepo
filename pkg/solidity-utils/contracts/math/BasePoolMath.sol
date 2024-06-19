@@ -99,7 +99,7 @@ library BasePoolMath {
      * applying swap fees if necessary, and then calculates the amount of BPT to mint based on the change
      * in the invariant.
      *
-     * @param currentBalances Current pool balances, in token registration order
+     * @param currentBalances Current pool balances, sorted in token registration order
      * @param exactAmounts Array of exact amounts for each token to be added to the pool
      * @param totalSupply Current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the transaction
@@ -178,7 +178,7 @@ library BasePoolMath {
      * of pool tokens they want to receive, and the function calculates the corresponding amount of the input token.
      * It considers the current pool balances, total supply, swap fee percentage, and the desired BPT amount.
      *
-     * @param currentBalances Array of current token balances in the pool, in token registration order
+     * @param currentBalances Array of current token balances in the pool, sorted in token registration order
      * @param tokenInIndex Index of the input token for which the amount needs to be calculated
      * @param exactBptAmountOut Exact amount of pool tokens (BPT) the user wants to receive
      * @param totalSupply Current total supply of the pool tokens (BPT)
@@ -227,7 +227,7 @@ library BasePoolMath {
 
     /**
      * @notice Computes the amount of pool tokens to burn to receive exact amount out.
-     * @param currentBalances Current pool balances, in token registration order
+     * @param currentBalances Current pool balances, sorted in token registration order
      * @param tokenOutIndex Index of the token to receive in exchange for pool tokens burned
      * @param exactAmountOut Exact amount of tokens to receive
      * @param totalSupply Current total supply of the pool tokens (BPT)
