@@ -47,7 +47,7 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
      * @param poolHooksContract Contract that implements the hooks for the pool
-     * @param supportsDonation if true, the pool will support a custom add liquidity which is a donation mechanism
+     * @param supportsDonation If true, the pool will support the custom add liquidity donation mechanism
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
