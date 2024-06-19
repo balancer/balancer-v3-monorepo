@@ -105,7 +105,7 @@ describe('WeightedPool', function () {
       await permit2.connect(bob).approve(token, router, MAX_UINT160, MAX_UINT48);
     }
 
-    await expect(await router.connect(bob).initialize(pool, poolTokens, INITIAL_BALANCES, FP_ZERO, '0x'))
+    await expect(await router.connect(bob).initialize(pool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x'))
       .to.emit(vault, 'PoolInitialized')
       .withArgs(pool);
   });
@@ -147,7 +147,7 @@ describe('WeightedPool', function () {
   });
 
   it('cannot be initialized twice', async () => {
-    await expect(router.connect(alice).initialize(pool, poolTokens, INITIAL_BALANCES, FP_ZERO, '0x'))
+    await expect(router.connect(alice).initialize(pool, poolTokens, INITIAL_BALANCES, FP_ZERO, false, '0x'))
       .to.be.revertedWithCustomError(vault, 'PoolAlreadyInitialized')
       .withArgs(await pool.getAddress());
   });

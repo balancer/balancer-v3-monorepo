@@ -124,7 +124,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         );
 
         uint256[] memory maxAmountsIn = [actualAmountIn + hookFee, actualAmountIn + hookFee].toMemoryArray();
-        router.addLiquidityProportional(pool, maxAmountsIn, expectedBptOut, bytes(""));
+        router.addLiquidityProportional(pool, maxAmountsIn, expectedBptOut, false, bytes(""));
 
         _checkAddLiquidityHookTestResults(vars, actualAmountsIn, expectedBptOut, int256(hookFee));
     }
@@ -170,7 +170,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
             )
         );
 
-        router.addLiquidityProportional(pool, actualAmountsIn, expectedBptOut, bytes(""));
+        router.addLiquidityProportional(pool, actualAmountsIn, expectedBptOut, false, bytes(""));
 
         _checkAddLiquidityHookTestResults(vars, actualAmountsIn, expectedBptOut, -(int256(hookDiscount)));
     }
@@ -199,7 +199,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
                 actualAmountIn
             )
         );
-        router.addLiquidityProportional(pool, actualAmountsIn, expectedBptOut, bytes(""));
+        router.addLiquidityProportional(pool, actualAmountsIn, expectedBptOut, false, bytes(""));
     }
 
     function testHookFeeAddLiquidityIgnoreHookAdjusted() public {
@@ -222,7 +222,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         vm.prank(bob);
         // Since hook charged the fee but the hook adjusted value was ignored, balances didn't settle
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BalanceNotSettled.selector));
-        router.addLiquidityProportional(pool, actualAmountsIn, expectedBptOut, bytes(""));
+        router.addLiquidityProportional(pool, actualAmountsIn, expectedBptOut, false, bytes(""));
     }
 
     function testHookFeeRemoveLiquidity__Fuzz(uint256 expectedBptIn, uint256 hookFeePercentage) public {
@@ -232,6 +232,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
             pool,
             [poolInitAmount, poolInitAmount].toMemoryArray(),
             2 * poolInitAmount,
+            false,
             bytes("")
         );
 
@@ -285,6 +286,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
             pool,
             [poolInitAmount, poolInitAmount].toMemoryArray(),
             2 * poolInitAmount,
+            false,
             bytes("")
         );
 
@@ -341,6 +343,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
             pool,
             [poolInitAmount, poolInitAmount].toMemoryArray(),
             2 * poolInitAmount,
+            false,
             bytes("")
         );
 
@@ -383,6 +386,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
             pool,
             [poolInitAmount, poolInitAmount].toMemoryArray(),
             2 * poolInitAmount,
+            false,
             bytes("")
         );
 

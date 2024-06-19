@@ -117,7 +117,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         amountsIn[daiIdx] = uint256(daiAmountIn);
 
         vm.startPrank(alice);
-        router.addLiquidityUnbalanced(address(liquidityPool), amountsIn, 0, bytes(""));
+        router.addLiquidityUnbalanced(address(liquidityPool), amountsIn, 0, false, bytes(""));
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(liquidityPool),
@@ -153,7 +153,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         amountsIn[daiIdx] = uint256(daiAmountIn);
 
         vm.startPrank(alice);
-        router.addLiquidityUnbalanced(address(liquidityPool), amountsIn, 0, bytes(""));
+        router.addLiquidityUnbalanced(address(liquidityPool), amountsIn, 0, false, bytes(""));
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(liquidityPool),
@@ -193,6 +193,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             dai,
             MAX_UINT128,
             exactBptAmountOut,
+            false,
             bytes("")
         );
 
@@ -232,6 +233,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             dai,
             MAX_UINT128,
             exactBptAmountOut,
+            false,
             bytes("")
         );
 
@@ -276,6 +278,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(liquidityPool),
             [MAX_UINT128, MAX_UINT128].toMemoryArray(),
             exactBptAmountOut,
+            false,
             bytes("")
         );
 
@@ -318,6 +321,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(liquidityPool),
             [uint256(MAX_UINT128), MAX_UINT128].toMemoryArray(),
             exactBptAmountOut,
+            false,
             bytes("")
         );
 
@@ -366,6 +370,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(liquidityPool),
             [uint256(MAX_UINT128), MAX_UINT128].toMemoryArray(),
             exactBptAmountOut,
+            false,
             bytes("")
         );
 
@@ -418,6 +423,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(liquidityPool),
             [MAX_UINT128, MAX_UINT128].toMemoryArray(),
             exactBptAmountOut,
+            false,
             bytes("")
         );
 
@@ -475,6 +481,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(liquidityPool),
             [maxAmount, maxAmount].toMemoryArray(),
             0,
+            false,
             bytes("")
         );
 
@@ -529,6 +536,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
             address(liquidityPool),
             [maxAmount, maxAmount].toMemoryArray(),
             0,
+            false,
             bytes("")
         );
 
@@ -581,7 +589,13 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         // Add liquidity so we have something to remove
         vm.prank(alice);
-        router.addLiquidityUnbalanced(address(liquidityPool), [maxAmount, maxAmount].toMemoryArray(), 0, bytes(""));
+        router.addLiquidityUnbalanced(
+            address(liquidityPool),
+            [maxAmount, maxAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("")
+        );
 
         vm.startPrank(alice);
         // test removeLiquiditySingleTokenExactIn
@@ -623,7 +637,13 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         // Add liquidity so we have something to remove
         vm.prank(alice);
-        router.addLiquidityUnbalanced(address(liquidityPool), [maxAmount, maxAmount].toMemoryArray(), 0, bytes(""));
+        router.addLiquidityUnbalanced(
+            address(liquidityPool),
+            [maxAmount, maxAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("")
+        );
 
         vm.startPrank(alice);
         // test removeLiquiditySingleTokenExactIn

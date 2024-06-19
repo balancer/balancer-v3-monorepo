@@ -73,7 +73,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         uint256 expectedBptAmountOut = (defaultAmount * 995) / 1000;
 
         vm.prank(alice);
-        bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, expectedBptAmountOut, bytes(""));
+        bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, expectedBptAmountOut, false, bytes(""));
 
         // should mint correct amount of BPT tokens
         assertEq(bptAmountOut, expectedBptAmountOut, "Invalid amount of BPT");
@@ -110,6 +110,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             // amount + (amount / ( 100% - swapFee%)) / 2 + 1
             defaultAmount + (defaultAmount / 99) / 2 + 1,
             bptAmountOut,
+            false,
             bytes("")
         );
 
@@ -280,6 +281,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             pool,
             [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray(),
             defaultAmount,
+            false,
             bytes("")
         );
 

@@ -59,6 +59,7 @@ contract RouterMutationTest is BaseVaultTest {
             tokens,
             amountsIn,
             0,
+            false,
             bytes("")
         );
 
@@ -78,6 +79,7 @@ contract RouterMutationTest is BaseVaultTest {
             amountsIn,
             0,
             AddLiquidityKind.PROPORTIONAL,
+            false,
             bytes("")
         );
 
@@ -154,6 +156,7 @@ contract RouterMutationTest is BaseVaultTest {
             amountsIn,
             0,
             AddLiquidityKind.PROPORTIONAL,
+            false,
             bytes("")
         );
 

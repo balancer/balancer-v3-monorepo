@@ -100,10 +100,17 @@ contract RouterTest is BaseVaultTest {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
 
         vm.prank(lp);
-        router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, "");
+        router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
 
         vm.prank(lp);
-        router.initialize{ value: ethAmountIn }(address(wethPool), wethDaiTokens, wethDaiAmountsIn, initBpt, bytes(""));
+        router.initialize{ value: ethAmountIn }(
+            address(wethPool),
+            wethDaiTokens,
+            wethDaiAmountsIn,
+            initBpt,
+            false,
+            bytes("")
+        );
     }
 
     function testQuerySwap() public {
@@ -138,6 +145,7 @@ contract RouterTest is BaseVaultTest {
             wethDaiTokens,
             [uint256(0), uint256(0)].toMemoryArray(),
             uint256(0),
+            false,
             bytes("")
         );
     }
@@ -148,14 +156,21 @@ contract RouterTest is BaseVaultTest {
         // Revert when sending ETH while wethIsEth is false (caller holds no weth).
         vm.expectRevert("TRANSFER_FROM_FAILED");
         vm.prank(broke);
-        router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, bytes(""));
+        router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, false, bytes(""));
     }
 
     function testInitializeWETH() public {
         checkAddLiquidityPreConditions();
 
         vm.prank(alice);
-        bptAmountOut = router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, bytes(""));
+        bptAmountOut = router.initialize(
+            address(wethPoolNoInit),
+            wethDaiTokens,
+            wethDaiAmountsIn,
+            initBpt,
+            false,
+            bytes("")
+        );
 
         // weth was deposited, pool tokens were minted to Alice.
         assertEq(weth.balanceOf(alice), defaultBalance - ethAmountIn, "Wrong WETH balance");
@@ -169,7 +184,7 @@ contract RouterTest is BaseVaultTest {
         // Caller does not have enough ETH, even if they hold weth.
         vm.expectRevert(RouterCommon.InsufficientEth.selector);
         vm.prank(alice);
-        router.initialize{ value: 1e12 }(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, bytes(""));
+        router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, true, bytes(""));
     }
 
     function testInitializeNative() public {
@@ -181,6 +196,7 @@ contract RouterTest is BaseVaultTest {
             wethDaiTokens,
             wethDaiAmountsIn,
             initBpt,
+            true,
             bytes("")
         );
 
@@ -199,6 +215,7 @@ contract RouterTest is BaseVaultTest {
             wethDaiTokens,
             wethDaiAmountsIn,
             initBpt,
+            true,
             bytes("")
         );
 
@@ -214,14 +231,14 @@ contract RouterTest is BaseVaultTest {
         // Revert when sending ETH while wethIsEth is false (caller holds no weth).
         vm.expectRevert("TRANSFER_FROM_FAILED");
         vm.prank(broke);
-        router.addLiquidityCustom(address(wethPool), wethDaiAmountsIn, bptAmountOut, bytes(""));
+        router.addLiquidityCustom(address(wethPool), wethDaiAmountsIn, bptAmountOut, false, bytes(""));
     }
 
     function testAddLiquidityWETH() public {
         checkAddLiquidityPreConditions();
 
         vm.prank(alice);
-        router.addLiquidityCustom(address(wethPool), wethDaiAmountsIn, bptAmountOut, bytes(""));
+        router.addLiquidityCustom(address(wethPool), wethDaiAmountsIn, bptAmountOut, false, bytes(""));
 
         // weth was deposited, pool tokens were minted to Alice.
         assertEq(defaultBalance - weth.balanceOf(alice), ethAmountIn, "Wrong ETH balance");
@@ -234,14 +251,20 @@ contract RouterTest is BaseVaultTest {
         // Caller does not have enough ETH, even if they hold weth.
         vm.expectRevert(RouterCommon.InsufficientEth.selector);
         vm.prank(alice);
-        router.addLiquidityCustom{ value: 1e12 }(address(wethPool), wethDaiAmountsIn, bptAmountOut, bytes(""));
+        router.addLiquidityCustom(address(wethPool), wethDaiAmountsIn, bptAmountOut, true, bytes(""));
     }
 
     function testAddLiquidityNative() public {
         checkAddLiquidityPreConditions();
 
         vm.prank(alice);
-        router.addLiquidityCustom{ value: ethAmountIn }(address(wethPool), wethDaiAmountsIn, bptAmountOut, bytes(""));
+        router.addLiquidityCustom{ value: ethAmountIn }(
+            address(wethPool),
+            wethDaiAmountsIn,
+            bptAmountOut,
+            true,
+            bytes("")
+        );
 
         // weth was deposited, pool tokens were minted to Alice.
         assertEq(address(alice).balance, defaultBalance - ethAmountIn, "Wrong ETH balance");
@@ -256,6 +279,7 @@ contract RouterTest is BaseVaultTest {
             address(wethPool),
             wethDaiAmountsIn,
             bptAmountOut,
+            true,
             bytes("")
         );
 
@@ -270,7 +294,13 @@ contract RouterTest is BaseVaultTest {
         bool wethIsEth = true;
         uint256 exactBptAmount = bptAmountOut;
 
-        router.addLiquidityCustom{ value: ethAmountIn }(address(wethPool), wethDaiAmountsIn, exactBptAmount, bytes(""));
+        router.addLiquidityCustom{ value: ethAmountIn }(
+            address(wethPool),
+            wethDaiAmountsIn,
+            exactBptAmount,
+            wethIsEth,
+            bytes("")
+        );
 
         checkRemoveLiquidityPreConditions();
 
@@ -288,7 +318,13 @@ contract RouterTest is BaseVaultTest {
         vm.startPrank(alice);
         bool wethIsEth = true;
         uint256 exactBptAmount = bptAmountOut;
-        router.addLiquidityCustom{ value: ethAmountIn }(address(wethPool), wethDaiAmountsIn, exactBptAmount, bytes(""));
+        router.addLiquidityCustom{ value: ethAmountIn }(
+            address(wethPool),
+            wethDaiAmountsIn,
+            exactBptAmount,
+            wethIsEth,
+            bytes("")
+        );
 
         uint256 aliceNativeBalanceBefore = address(alice).balance;
         checkRemoveLiquidityPreConditions();

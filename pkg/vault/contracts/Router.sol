@@ -44,6 +44,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         IERC20[] memory tokens,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
     ) external payable saveSenderAndValue returns (uint256 bptAmountOut) {
         return
@@ -57,6 +58,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                             tokens: tokens,
                             exactAmountsIn: exactAmountsIn,
                             minBptAmountOut: minBptAmountOut,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -83,7 +85,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             params.userData
         );
 
-        uint256 msgValue = _getMsgValueSlot().tload();
         uint256 ethAmountIn;
 
         for (uint256 i = 0; i < params.tokens.length; ++i) {
@@ -91,8 +92,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             uint256 amountIn = params.exactAmountsIn[i];
 
             // There can be only one WETH token in the pool
-            if (msgValue > 0 && address(token) == address(_weth)) {
-                if (msgValue < amountIn) {
+            if (params.wethIsEth && address(token) == address(_weth)) {
+                if (_getMsgValueSlot().tload() < amountIn) {
                     revert InsufficientEth();
                 }
                 _weth.deposit{ value: amountIn }();
@@ -116,6 +117,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address pool,
         uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
     ) external payable saveSenderAndValue returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
@@ -128,6 +130,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.PROPORTIONAL,
+                        wethIsEth: wethIsEth,
                         userData: userData
                     })
                 )
@@ -141,6 +144,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address pool,
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
     ) external payable saveSenderAndValue returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
@@ -153,6 +157,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         maxAmountsIn: exactAmountsIn,
                         minBptAmountOut: minBptAmountOut,
                         kind: AddLiquidityKind.UNBALANCED,
+                        wethIsEth: wethIsEth,
                         userData: userData
                     })
                 )
@@ -167,6 +172,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         IERC20 tokenIn,
         uint256 maxAmountIn,
         uint256 exactBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
     ) external payable saveSenderAndValue returns (uint256 amountIn) {
         (uint256[] memory maxAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
@@ -185,6 +191,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                        wethIsEth: wethIsEth,
                         userData: userData
                     })
                 )
@@ -200,6 +207,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address pool,
         uint256[] memory maxAmountsIn,
         uint256 minBptAmountOut,
+        bool wethIsEth,
         bytes memory userData
     )
         external
@@ -218,6 +226,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                             maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: AddLiquidityKind.CUSTOM,
+                            wethIsEth: wethIsEth,
                             userData: userData
                         })
                     )
@@ -254,7 +263,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         // maxAmountsIn length is checked against tokens length at the vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
-        uint256 msgValue = _getMsgValueSlot().tload();
         uint256 ethAmountIn;
 
         for (uint256 i = 0; i < tokens.length; ++i) {
@@ -262,8 +270,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             uint256 amountIn = amountsIn[i];
 
             // There can be only one WETH token in the pool
-            if (msgValue > 0 && address(token) == address(_weth)) {
-                if (msgValue < amountIn) {
+            if (params.wethIsEth && address(token) == address(_weth)) {
+                if (_getMsgValueSlot().tload() < amountIn) {
                     revert InsufficientEth();
                 }
 
@@ -800,6 +808,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.UNBALANCED,
+                        wethIsEth: false,
                         userData: userData
                     })
                 )
@@ -826,6 +835,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         maxAmountsIn: exactAmountsIn,
                         minBptAmountOut: 0,
                         kind: AddLiquidityKind.UNBALANCED,
+                        wethIsEth: false,
                         userData: userData
                     })
                 )
@@ -859,6 +869,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                        wethIsEth: false,
                         userData: userData
                     })
                 )
@@ -889,6 +900,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                             maxAmountsIn: maxAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             kind: AddLiquidityKind.CUSTOM,
+                            wethIsEth: false,
                             userData: userData
                         })
                     )

@@ -84,6 +84,7 @@ contract StablePoolTest is BaseVaultTest {
             amountsIn,
             // Account for the precision loss
             TOKEN_AMOUNT - DELTA - 1e6,
+            false,
             bytes("")
         );
     }
@@ -127,7 +128,7 @@ contract StablePoolTest is BaseVaultTest {
     function testAddLiquidity() public {
         uint256[] memory amountsIn = [uint256(TOKEN_AMOUNT), uint256(TOKEN_AMOUNT)].toMemoryArray();
         vm.prank(bob);
-        bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, TOKEN_AMOUNT - DELTA, bytes(""));
+        bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, TOKEN_AMOUNT - DELTA, false, bytes(""));
 
         // Tokens are transferred from Bob
         assertEq(defaultBalance - usdc.balanceOf(bob), TOKEN_AMOUNT, "LP: Wrong USDC balance");
@@ -153,6 +154,7 @@ contract StablePoolTest is BaseVaultTest {
             address(pool),
             [uint256(TOKEN_AMOUNT), uint256(TOKEN_AMOUNT)].toMemoryArray(),
             TOKEN_AMOUNT - DELTA,
+            false,
             bytes("")
         );
 
@@ -234,7 +236,7 @@ contract StablePoolTest is BaseVaultTest {
 
         uint256[] memory amountsIn = [TOKEN_AMOUNT, 0].toMemoryArray();
         vm.prank(bob);
-        uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, 0, bytes(""));
+        uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
 
         totalSupply += addLiquidityBptAmountOut;
         stableInvariant = StableMath.computeInvariant(
@@ -259,7 +261,7 @@ contract StablePoolTest is BaseVaultTest {
         uint256[] memory amountsIn = [uint256(1e2 * 1e18), uint256(TOKEN_AMOUNT)].toMemoryArray();
         vm.prank(bob);
 
-        router.addLiquidityUnbalanced(address(pool), amountsIn, 0, bytes(""));
+        router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
     }
 
     function testMaximumSwapFee() public {

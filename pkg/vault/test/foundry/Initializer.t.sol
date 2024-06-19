@@ -49,7 +49,14 @@ contract InitializerTest is BaseVaultTest {
         PoolHooksMock(poolHooksContract).setFailOnAfterInitializeHook(true);
 
         vm.prank(bob);
-        router.initialize(pool, standardPoolTokens, [defaultAmount, defaultAmount].toMemoryArray(), 0, bytes("0xff"));
+        router.initialize(
+            pool,
+            standardPoolTokens,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("0xff")
+        );
     }
 
     function testOnBeforeInitializeHook() public {
@@ -62,14 +69,28 @@ contract InitializerTest is BaseVaultTest {
                 bytes("0xff")
             )
         );
-        router.initialize(pool, standardPoolTokens, [defaultAmount, defaultAmount].toMemoryArray(), 0, bytes("0xff"));
+        router.initialize(
+            pool,
+            standardPoolTokens,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("0xff")
+        );
     }
 
     function testOnBeforeInitializeHookRevert() public {
         PoolHooksMock(poolHooksContract).setFailOnBeforeInitializeHook(true);
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.BeforeInitializeHookFailed.selector);
-        router.initialize(pool, standardPoolTokens, [defaultAmount, defaultAmount].toMemoryArray(), 0, bytes("0xff"));
+        router.initialize(
+            pool,
+            standardPoolTokens,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("0xff")
+        );
     }
 
     function testOnAfterInitializeHook() public {
@@ -83,13 +104,27 @@ contract InitializerTest is BaseVaultTest {
                 bytes("0xff")
             )
         );
-        router.initialize(pool, standardPoolTokens, [defaultAmount, defaultAmount].toMemoryArray(), 0, bytes("0xff"));
+        router.initialize(
+            pool,
+            standardPoolTokens,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("0xff")
+        );
     }
 
     function testOnAfterInitializeHookRevert() public {
         PoolHooksMock(poolHooksContract).setFailOnAfterInitializeHook(true);
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.AfterInitializeHookFailed.selector);
-        router.initialize(pool, standardPoolTokens, [defaultAmount, defaultAmount].toMemoryArray(), 0, bytes("0xff"));
+        router.initialize(
+            pool,
+            standardPoolTokens,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("0xff")
+        );
     }
 }

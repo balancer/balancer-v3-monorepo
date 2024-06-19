@@ -128,9 +128,9 @@ export class Benchmark {
         if (useEth) {
           tx = await router
             .connect(alice)
-            .initialize(this.pool, poolTokens, initialBalances, FP_ZERO, '0x', { value: TOKEN_AMOUNT });
+            .initialize(this.pool, poolTokens, initialBalances, FP_ZERO, true, '0x', { value: TOKEN_AMOUNT });
         } else {
-          tx = await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, '0x');
+          tx = await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
         }
 
         const receipt = await tx.wait();
@@ -161,7 +161,7 @@ export class Benchmark {
 
       sharedBeforeEach('initialize pool', async () => {
         initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
-        await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, '0x');
+        await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
         await actionAfterInit();
       });
 

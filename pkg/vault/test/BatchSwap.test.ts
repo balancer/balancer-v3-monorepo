@@ -122,23 +122,23 @@ describe('BatchSwap', function () {
   sharedBeforeEach('initialize pools', async () => {
     await basicRouter
       .connect(lp)
-      .initialize(poolA, poolATokens, Array(poolATokens.length).fill(fp(10000)), 0, '0x');
+      .initialize(poolA, poolATokens, Array(poolATokens.length).fill(fp(10000)), 0, false, '0x');
     await basicRouter
       .connect(lp)
-      .initialize(poolB, poolBTokens, Array(poolBTokens.length).fill(fp(10000)), 0, '0x');
+      .initialize(poolB, poolBTokens, Array(poolBTokens.length).fill(fp(10000)), 0, false, '0x');
     await basicRouter
       .connect(lp)
-      .initialize(poolC, poolCTokens, Array(poolCTokens.length).fill(fp(10000)), 0, '0x');
+      .initialize(poolC, poolCTokens, Array(poolCTokens.length).fill(fp(10000)), 0, false, '0x');
 
     await basicRouter
       .connect(lp)
-      .initialize(poolAB, poolABTokens, Array(poolABTokens.length).fill(fp(1000)), 0, '0x');
+      .initialize(poolAB, poolABTokens, Array(poolABTokens.length).fill(fp(1000)), 0, false, '0x');
     await basicRouter
       .connect(lp)
-      .initialize(poolAC, poolACTokens, Array(poolACTokens.length).fill(fp(1000)), 0, '0x');
+      .initialize(poolAC, poolACTokens, Array(poolACTokens.length).fill(fp(1000)), 0, false, '0x');
     await basicRouter
       .connect(lp)
-      .initialize(poolBC, poolBCTokens, Array(poolBCTokens.length).fill(fp(1000)), 0, '0x');
+      .initialize(poolBC, poolBCTokens, Array(poolBCTokens.length).fill(fp(1000)), 0, false, '0x');
 
     await poolA.connect(lp).transfer(sender, fp(100));
     await poolB.connect(lp).transfer(sender, fp(100));
