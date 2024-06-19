@@ -45,6 +45,7 @@ interface IBatchRouter {
         SwapPathExactAmountIn[] paths;
         uint256 deadline;
         bool wethIsEth;
+        uint256 msgValue;
         bytes userData;
     }
 
@@ -53,6 +54,7 @@ interface IBatchRouter {
         SwapPathExactAmountOut[] paths;
         uint256 deadline;
         bool wethIsEth;
+        uint256 msgValue;
         bytes userData;
     }
 
@@ -60,7 +62,7 @@ interface IBatchRouter {
      * @notice Executes a swap operation involving multiple paths (steps), specifying exact input token amounts.
      * @param paths Swap paths from token in to token out, specifying exact amounts in.
      * @param deadline Deadline for the swap
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH.
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for the swap
      * @return pathAmountsOut Calculated amounts of output tokens corresponding to the last step of each given path
      * @return tokensOut Calculated output token addresses
@@ -80,7 +82,7 @@ interface IBatchRouter {
      * @notice Executes a swap operation involving multiple paths (steps), specifying exact output token amounts.
      * @param paths Swap paths from token in to token out, specifying exact amounts out
      * @param deadline Deadline for the swap
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH.
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for the swap
      * @return pathAmountsIn Calculated amounts of input tokens corresponding to the first step of each given path
      * @return tokensIn Calculated input token addresses

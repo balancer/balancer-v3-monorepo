@@ -24,6 +24,7 @@ interface IRouter {
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param msgValue The amount of ETH passed into the function
      * @param userData Additional (optional) data required for adding initial liquidity
      */
     struct InitializeHookParams {
@@ -33,6 +34,7 @@ interface IRouter {
         uint256[] exactAmountsIn;
         uint256 minBptAmountOut;
         bool wethIsEth;
+        uint256 msgValue;
         bytes userData;
     }
 
@@ -67,6 +69,7 @@ interface IRouter {
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param kind Type of join (e.g., single or multi-token)
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param msgValue The amount of ETH passed into the function
      * @param userData Additional (optional) data required for adding liquidity
      */
     struct AddLiquidityHookParams {
@@ -76,6 +79,7 @@ interface IRouter {
         uint256 minBptAmountOut;
         AddLiquidityKind kind;
         bool wethIsEth;
+        uint256 msgValue;
         bytes userData;
     }
 
@@ -136,6 +140,7 @@ interface IRouter {
      * @notice Adds liquidity to a pool with a custom request.
      * @dev The given maximum and minimum amounts given may be interpreted as exact depending on the pool type.
      * In any case the caller can expect them to be hard boundaries for the request.
+     *
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
@@ -312,7 +317,8 @@ interface IRouter {
      * @param amountGiven Amount given based on kind of the swap (e.g., tokenIn for exact in)
      * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for exact out)
      * @param deadline Deadline for the swap
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH.
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
+     * @param msgValue The amount of ETH passed to the function
      * @param userData Additional (optional) data required for the swap
      */
     struct SwapSingleTokenHookParams {
@@ -325,6 +331,7 @@ interface IRouter {
         uint256 limit;
         uint256 deadline;
         bool wethIsEth;
+        uint256 msgValue;
         bytes userData;
     }
 
@@ -337,7 +344,7 @@ interface IRouter {
      * @param minAmountOut Minimum amount of tokens to be received
      * @param deadline Deadline for the swap
      * @param userData Additional (optional) data required for the swap
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH.
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @return amountOut Calculated amount of output tokens to be received in exchange for the given input tokens
      */
     function swapSingleTokenExactIn(
@@ -360,7 +367,7 @@ interface IRouter {
      * @param maxAmountIn Maximum amount of tokens to be sent
      * @param deadline Deadline for the swap
      * @param userData Additional (optional) data required for the swap
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH.
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @return amountIn Calculated amount of input tokens to be sent in exchange for the requested output tokens
      */
     function swapSingleTokenExactOut(

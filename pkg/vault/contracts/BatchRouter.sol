@@ -55,7 +55,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         BatchRouter.swapExactInHook.selector,
                         SwapExactInHookParams({
@@ -63,6 +63,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                             paths: paths,
                             deadline: deadline,
                             wethIsEth: wethIsEth,
+                            msgValue: msg.value,
                             userData: userData
                         })
                     )
@@ -85,7 +86,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         BatchRouter.swapExactOutHook.selector,
                         SwapExactOutHookParams({
@@ -93,6 +94,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                             paths: paths,
                             deadline: deadline,
                             wethIsEth: wethIsEth,
+                            msgValue: msg.value,
                             userData: userData
                         })
                     )
@@ -105,14 +107,13 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactInHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
         (pathAmountsOut, tokensOut, amountsOut) = _swapExactInHook(params);
 
-        _settlePaths(params.sender, params.wethIsEth);
+        _settlePaths(params.sender, params.wethIsEth, params.msgValue);
     }
 
     function _swapExactInHook(
@@ -339,14 +340,13 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactOutHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
         (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
 
-        _settlePaths(params.sender, params.wethIsEth);
+        _settlePaths(params.sender, params.wethIsEth, params.msgValue);
     }
 
     function _swapExactOutHook(
@@ -606,6 +606,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                             paths: paths,
                             deadline: type(uint256).max,
                             wethIsEth: false,
+                            msgValue: 0,
                             userData: userData
                         })
                     )
@@ -618,7 +619,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactInHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
@@ -649,6 +649,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                             paths: paths,
                             deadline: type(uint256).max,
                             wethIsEth: false,
+                            msgValue: 0,
                             userData: userData
                         })
                     )
@@ -661,7 +662,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactOutHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
@@ -669,7 +669,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
     }
 
-    function _settlePaths(address sender, bool wethIsEth) internal {
+    function _settlePaths(address sender, bool wethIsEth, uint256 msgValue) internal {
         // numTokensIn / Out may be 0 if the inputs and / or outputs are not transient.
         // For example, a swap starting with a 'remove liquidity' step will already have burned the input tokens,
         // in which case there is nothing to settle. Then, since we're iterating backwards below, we need to be able
@@ -695,6 +695,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         }
 
         // Return the rest of ETH to sender
-        _returnEth(sender, ethAmountIn);
+        _returnEth(sender, msgValue, ethAmountIn);
     }
 }
