@@ -13,7 +13,6 @@ import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/Bas
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { StablePool } from "./StablePool.sol";
-import { StablePoolWithDonation } from "./StablePoolWithDonation.sol";
 
 /**
  * @notice General Stable Pool factory
@@ -65,13 +64,9 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
             revert StandardPoolWithCreator();
         }
 
-        bytes memory creationCode;
         LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
         if (supportsDonation) {
-            creationCode = type(StablePoolWithDonation).creationCode;
             liquidityManagement.enableAddLiquidityCustom = true;
-        } else {
-            creationCode = type(StablePool).creationCode;
         }
 
         pool = _create(
@@ -84,7 +79,6 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
                 }),
                 getVault()
             ),
-            creationCode,
             salt
         );
 

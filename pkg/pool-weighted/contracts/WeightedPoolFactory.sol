@@ -13,7 +13,6 @@ import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/Bas
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { WeightedPool } from "./WeightedPool.sol";
-import { WeightedPoolWithDonation } from "./WeightedPoolWithDonation.sol";
 
 /**
  * @notice General Weighted Pool factory
@@ -29,7 +28,7 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion
-    ) BasePoolFactory(vault, pauseWindowDuration) Version(factoryVersion) {
+    ) BasePoolFactory(vault, pauseWindowDuration, type(WeightedPool).creationCode) Version(factoryVersion) {
         _poolVersion = poolVersion;
     }
 
@@ -66,13 +65,9 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
             revert StandardPoolWithCreator();
         }
 
-        bytes memory creationCode;
         LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
         if (supportsDonation) {
-            creationCode = type(WeightedPoolWithDonation).creationCode;
             liquidityManagement.enableAddLiquidityCustom = true;
-        } else {
-            creationCode = type(WeightedPool).creationCode;
         }
 
         pool = _create(
@@ -86,7 +81,6 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
                 }),
                 getVault()
             ),
-            creationCode,
             salt
         );
 
