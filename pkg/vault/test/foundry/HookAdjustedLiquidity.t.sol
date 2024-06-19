@@ -8,6 +8,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -15,6 +17,7 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
+import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -39,9 +42,32 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
 
     function createHook() internal override returns (address) {
         IHooks.HookFlags memory hookFlags;
+        hookFlags.enableHookAdjustedAmounts = true;
         hookFlags.shouldCallAfterAddLiquidity = true;
         hookFlags.shouldCallAfterRemoveLiquidity = true;
         return _createHook(hookFlags);
+    }
+
+    // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity)
+    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        vm.label(address(newPool), label);
+
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = address(lp);
+
+        LiquidityManagement memory liquidityManagement;
+        liquidityManagement.disableUnbalancedLiquidity = true;
+
+        factoryMock.registerPool(
+            address(newPool),
+            vault.buildTokenConfig(tokens.asIERC20()),
+            roleAccounts,
+            poolHooksContract,
+            liquidityManagement
+        );
+
+        return address(newPool);
     }
 
     function testHookFeeAddLiquidityExactIn__Fuzz(uint256 expectedBptOut, uint256 hookFeePercentage) public {
@@ -149,13 +175,63 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         _checkAddLiquidityHookTestResults(vars, actualAmountsIn, expectedBptOut, -(int256(hookDiscount)));
     }
 
+    function testHookFeeAddLiquidityLimitViolation() public {
+        // 10% fee
+        uint256 hookFeePercentage = 1e17;
+        PoolHooksMock(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
+
+        uint256 expectedBptOut = poolInitAmount / 100;
+
+        uint256[] memory actualAmountsIn = BasePoolMath.computeProportionalAmountsIn(
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            BalancerPoolToken(pool).totalSupply(),
+            expectedBptOut
+        );
+        uint256 actualAmountIn = actualAmountsIn[0];
+        uint256 hookFee = actualAmountIn.mulDown(hookFeePercentage);
+
+        vm.prank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.HookAdjustedAmountInAboveMax.selector,
+                address(dai),
+                actualAmountIn + hookFee,
+                actualAmountIn
+            )
+        );
+        router.addLiquidityProportional(pool, actualAmountsIn, expectedBptOut, false, bytes(""));
+    }
+
+    function testHookFeeAddLiquidityIgnoreHookAdjusted() public {
+        HooksConfig memory config = vault.getHooksConfig(pool);
+        config.enableHookAdjustedAmounts = false;
+        vault.setHooksConfig(pool, config);
+
+        // 10% fee
+        uint256 hookFeePercentage = 1e17;
+        PoolHooksMock(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
+
+        uint256 expectedBptOut = poolInitAmount / 100;
+
+        uint256[] memory actualAmountsIn = BasePoolMath.computeProportionalAmountsIn(
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            BalancerPoolToken(pool).totalSupply(),
+            expectedBptOut
+        );
+
+        vm.prank(bob);
+        // Since hook charged the fee but the hook adjusted value was ignored, balances didn't settle
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BalanceNotSettled.selector));
+        router.addLiquidityProportional(pool, actualAmountsIn, expectedBptOut, false, bytes(""));
+    }
+
     function testHookFeeRemoveLiquidityExactIn__Fuzz(uint256 expectedBptIn, uint256 hookFeePercentage) public {
         // Add liquidity so bob has BPT to remove liquidity
         vm.prank(bob);
-        router.addLiquidityUnbalanced(
+        router.addLiquidityProportional(
             pool,
             [poolInitAmount, poolInitAmount].toMemoryArray(),
-            poolInitAmount,
+            2 * poolInitAmount,
             false,
             bytes("")
         );
@@ -209,10 +285,10 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     ) public {
         // Add liquidity so bob has BPT to remove liquidity
         vm.prank(bob);
-        router.addLiquidityUnbalanced(
+        router.addLiquidityProportional(
             pool,
             [poolInitAmount, poolInitAmount].toMemoryArray(),
-            poolInitAmount,
+            2 * poolInitAmount,
             false,
             bytes("")
         );
@@ -266,10 +342,10 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     function testHookFeeRemoveLiquidityExactOut__Fuzz(uint256 expectedDaiOut, uint256 hookFeePercentage) public {
         // Add liquidity so bob has BPT to remove liquidity
         vm.prank(bob);
-        router.addLiquidityUnbalanced(
+        router.addLiquidityProportional(
             pool,
             [poolInitAmount, poolInitAmount].toMemoryArray(),
-            poolInitAmount,
+            2 * poolInitAmount,
             false,
             bytes("")
         );
@@ -325,10 +401,10 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     ) public {
         // Add liquidity so bob has BPT to remove liquidity
         vm.startPrank(bob);
-        router.addLiquidityUnbalanced(
+        router.addLiquidityProportional(
             pool,
             [poolInitAmount, poolInitAmount].toMemoryArray(),
-            poolInitAmount,
+            2 * poolInitAmount,
             false,
             bytes("")
         );
@@ -387,6 +463,56 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
             -(int256(hookDiscount)),
             true
         );
+    }
+
+    function testHookFeeAddLiquidityLimitViolation() public {
+        // 10% fee
+        uint256 hookFeePercentage = 1e17;
+        PoolHooksMock(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
+
+        uint256 expectedBptOut = poolInitAmount / 100;
+
+        uint256[] memory actualAmountsIn = BasePoolMath.computeProportionalAmountsIn(
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            BalancerPoolToken(pool).totalSupply(),
+            expectedBptOut
+        );
+        uint256 actualAmountIn = actualAmountsIn[0];
+        uint256 hookFee = actualAmountIn.mulDown(hookFeePercentage);
+
+        vm.prank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.HookAdjustedAmountInAboveMax.selector,
+                address(dai),
+                actualAmountIn + hookFee,
+                actualAmountIn
+            )
+        );
+        router.addLiquidityProportional(pool, actualAmountsIn, expectedBptOut, false, bytes(""));
+    }
+
+    function testHookFeeAddLiquidityIgnoreHookAdjusted() public {
+        HooksConfig memory config = vault.getHooksConfig(pool);
+        config.enableHookAdjustedAmounts = false;
+        vault.setHooksConfig(pool, config);
+
+        // 10% fee
+        uint256 hookFeePercentage = 1e17;
+        PoolHooksMock(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
+
+        uint256 expectedBptOut = poolInitAmount / 100;
+
+        uint256[] memory actualAmountsIn = BasePoolMath.computeProportionalAmountsIn(
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            BalancerPoolToken(pool).totalSupply(),
+            expectedBptOut
+        );
+
+        vm.prank(bob);
+        // Since hook charged the fee but the hook adjusted value was ignored, balances didn't settle
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BalanceNotSettled.selector));
+        router.addLiquidityProportional(pool, actualAmountsIn, expectedBptOut, false, bytes(""));
     }
 
     struct WalletState {
