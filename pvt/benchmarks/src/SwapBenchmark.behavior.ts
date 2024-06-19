@@ -113,25 +113,20 @@ export class Benchmark {
     });
 
     const itTestsInitialize = (useEth: boolean) => {
-      let ethStatus: string;
+      const ethStatus = useEth ? 'with ETH' : 'without ETH';
 
       sharedBeforeEach('deploy pool', async () => {
         this.pool = (await this.deployPool())!;
-        ethStatus = useEth ? 'with ETH' : 'without ETH';
       });
 
-      it(`measures initialization gas ${useEth ? 'with ETH' : 'without ETH'}`, async () => {
+      it(`measures initialization gas ${ethStatus}`, async () => {
         initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
-        let tx;
 
         // Measure
-        if (useEth) {
-          tx = await router
-            .connect(alice)
-            .initialize(this.pool, poolTokens, initialBalances, FP_ZERO, true, '0x', { value: TOKEN_AMOUNT });
-        } else {
-          tx = await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
-        }
+        const value = useEth ? TOKEN_AMOUNT : 0;
+        const tx = await router
+          .connect(alice)
+          .initialize(this.pool, poolTokens, initialBalances, FP_ZERO, useEth, '0x', { value });
 
         const receipt = await tx.wait();
 
