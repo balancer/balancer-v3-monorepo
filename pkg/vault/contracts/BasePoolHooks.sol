@@ -36,7 +36,7 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
     }
 
     /// @inheritdoc IHooks
-    function getHookFlags() external virtual returns (HookFlags memory);
+    function getHookFlags() external view virtual returns (HookFlags memory);
 
     /// @inheritdoc IHooks
     function onBeforeInitialize(uint256[] memory, bytes memory) external virtual onlyVault returns (bool) {
