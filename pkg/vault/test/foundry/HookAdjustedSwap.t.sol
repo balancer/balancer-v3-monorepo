@@ -39,31 +39,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
     function createHook() internal override returns (address) {
         // Sets all flags as false
         IHooks.HookFlags memory hookFlags;
-        hookFlags.enableHookAdjustedAmounts = true;
         hookFlags.shouldCallAfterSwap = true;
         return _createHook(hookFlags);
-    }
-
-    // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity)
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
-        vm.label(address(newPool), label);
-
-        PoolRoleAccounts memory roleAccounts;
-        roleAccounts.poolCreator = address(lp);
-
-        LiquidityManagement memory liquidityManagement;
-        liquidityManagement.disableUnbalancedLiquidity = true;
-
-        factoryMock.registerPool(
-            address(newPool),
-            vault.buildTokenConfig(tokens.asIERC20()),
-            roleAccounts,
-            poolHooksContract,
-            liquidityManagement
-        );
-
-        return address(newPool);
     }
 
     function testFeeExactIn__Fuzz(uint256 swapAmount, uint256 hookFeePercentage) public {

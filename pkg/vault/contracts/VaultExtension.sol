@@ -198,16 +198,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // Storing into hooksConfig first avoids stack-too-deep
             IHooks.HookFlags memory hookFlags = IHooks(params.poolHooksContract).getHookFlags();
 
-            // When enableHookAdjustedAmounts == true, hooks are able to modify the result of a liquidity or swap
-            // operation by implementing an after hook. For simplicity, the vault only supports modifying the
-            // calculated part of the operation. As such, when a hook supports adjusted amounts, it can not support
-            // unbalanced liquidity operations as this would introduce instances where the amount calculated is the
-            // input amount (EXACT_OUT).
-            if (hookFlags.enableHookAdjustedAmounts && params.liquidityManagement.disableUnbalancedLiquidity == false) {
-                revert HookRegistrationFailed(params.poolHooksContract, pool, msg.sender);
-            }
-
-            hooksConfig = hooksConfig.setHookAdjustedAmounts(hookFlags.enableHookAdjustedAmounts);
             hooksConfig = hooksConfig.setShouldCallBeforeInitialize(hookFlags.shouldCallBeforeInitialize);
             hooksConfig = hooksConfig.setShouldCallAfterInitialize(hookFlags.shouldCallAfterInitialize);
             hooksConfig = hooksConfig.setShouldCallComputeDynamicSwapFee(hookFlags.shouldCallComputeDynamicSwapFee);

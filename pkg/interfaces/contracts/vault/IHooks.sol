@@ -33,7 +33,6 @@ interface IHooks {
     ) external returns (bool);
 
     struct HookFlags {
-        bool enableHookAdjustedAmounts;
         bool shouldCallBeforeInitialize;
         bool shouldCallAfterInitialize;
         bool shouldCallComputeDynamicSwapFee;

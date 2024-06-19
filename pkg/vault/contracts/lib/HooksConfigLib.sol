@@ -20,8 +20,7 @@ library HooksConfigLib {
 
     // Bit offsets for pool config
     uint8 public constant BEFORE_INITIALIZE_OFFSET = 0;
-    uint8 public constant ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
-    uint8 public constant AFTER_INITIALIZE_OFFSET = ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET + 1;
+    uint8 public constant AFTER_INITIALIZE_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
     uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = AFTER_INITIALIZE_OFFSET + 1;
     uint8 public constant BEFORE_SWAP_OFFSET = DYNAMIC_SWAP_FEE_OFFSET + 1;
     uint8 public constant AFTER_SWAP_OFFSET = BEFORE_SWAP_OFFSET + 1;
@@ -30,15 +29,6 @@ library HooksConfigLib {
     uint8 public constant BEFORE_REMOVE_LIQUIDITY_OFFSET = AFTER_ADD_LIQUIDITY_OFFSET + 1;
     uint8 public constant AFTER_REMOVE_LIQUIDITY_OFFSET = BEFORE_REMOVE_LIQUIDITY_OFFSET + 1;
     uint8 public constant HOOKS_CONTRACT_OFFSET = AFTER_REMOVE_LIQUIDITY_OFFSET + 1;
-
-    function enableHookAdjustedAmounts(HooksConfigBits config) internal pure returns (bool) {
-        return HooksConfigBits.unwrap(config).decodeBool(ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET);
-    }
-
-    function setHookAdjustedAmounts(HooksConfigBits config, bool value) internal pure returns (HooksConfigBits) {
-        return
-            HooksConfigBits.wrap(HooksConfigBits.unwrap(config).insertBool(value, ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET));
-    }
 
     function shouldCallBeforeInitialize(HooksConfigBits config) internal pure returns (bool) {
         return HooksConfigBits.unwrap(config).decodeBool(BEFORE_INITIALIZE_OFFSET);
@@ -138,7 +128,6 @@ library HooksConfigLib {
     function toHooksConfig(HooksConfigBits config) internal pure returns (HooksConfig memory) {
         return
             HooksConfig({
-                enableHookAdjustedAmounts: config.enableHookAdjustedAmounts(),
                 shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
                 shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
                 shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
@@ -263,11 +252,6 @@ library HooksConfigLib {
             revert IVaultErrors.AfterSwapHookFailed();
         }
 
-        // If hook adjusted amounts is not enabled, ignore amounts returned by the hook
-        if (config.enableHookAdjustedAmounts() == false) {
-            return amountCalculatedRaw;
-        }
-
         if (
             (params.kind == SwapKind.EXACT_IN && hookAdjustedAmountCalculatedRaw < params.limitRaw) ||
             (params.kind == SwapKind.EXACT_OUT && hookAdjustedAmountCalculatedRaw > params.limitRaw)
@@ -356,11 +340,6 @@ library HooksConfigLib {
 
         if (success == false) {
             revert IVaultErrors.AfterAddLiquidityHookFailed();
-        }
-
-        // If hook adjusted amounts is not enabled, ignore amounts returned by the hook
-        if (config.enableHookAdjustedAmounts() == false) {
-            return amountsInRaw;
         }
 
         for (uint256 i = 0; i < hookAdjustedAmountsInRaw.length; i++) {
@@ -456,11 +435,6 @@ library HooksConfigLib {
 
         if (success == false) {
             revert IVaultErrors.AfterRemoveLiquidityHookFailed();
-        }
-
-        // If hook adjusted amounts is not enabled, ignore amounts returned by the hook
-        if (config.enableHookAdjustedAmounts() == false) {
-            return (bptAmountIn, amountsOutRaw);
         }
 
         if (hookAdjustedBptAmountIn > params.maxBptAmountIn) {
