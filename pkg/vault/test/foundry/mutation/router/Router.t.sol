@@ -60,7 +60,6 @@ contract RouterMutationTest is BaseVaultTest {
             amountsIn,
             0,
             false,
-            0,
             bytes("")
         );
 
@@ -81,7 +80,6 @@ contract RouterMutationTest is BaseVaultTest {
             0,
             AddLiquidityKind.PROPORTIONAL,
             false,
-            0,
             bytes("")
         );
 
@@ -116,7 +114,6 @@ contract RouterMutationTest is BaseVaultTest {
             amountsIn[0],
             block.timestamp + 10,
             false,
-            0,
             bytes("")
         );
 
@@ -140,7 +137,6 @@ contract RouterMutationTest is BaseVaultTest {
             0,
             block.timestamp + 10,
             false,
-            0,
             bytes("")
         );
 
@@ -161,7 +157,6 @@ contract RouterMutationTest is BaseVaultTest {
             0,
             AddLiquidityKind.PROPORTIONAL,
             false,
-            0,
             bytes("")
         );
 

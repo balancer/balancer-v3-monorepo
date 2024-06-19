@@ -43,7 +43,6 @@ contract RouterMock is Router {
                         limit: 0,
                         deadline: _MAX_AMOUNT,
                         wethIsEth: false,
-                        msgValue: 0,
                         userData: userData
                     })
                 )
