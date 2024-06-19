@@ -8,7 +8,7 @@ import { PoolDonation } from "@balancer-labs/v3-pool-utils/contracts/PoolDonatio
 
 import { StablePool } from "./StablePool.sol";
 
-/// @notice Basic Stable Pool with a donation mechanism.
+/// @notice Standard Stable Pool with a donation mechanism.
 contract StablePoolWithDonation is StablePool, PoolDonation {
     constructor(StablePool.NewPoolParams memory params, IVault vault) StablePool(params, vault) {
         // solhint-disable-previous-line no-empty-blocks
