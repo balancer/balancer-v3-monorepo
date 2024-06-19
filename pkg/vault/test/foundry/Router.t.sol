@@ -103,12 +103,13 @@ contract RouterTest is BaseVaultTest {
         router.initialize(address(pool), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
 
         vm.prank(lp);
+        bool wethIsEth = true;
         router.initialize{ value: ethAmountIn }(
             address(wethPool),
             wethDaiTokens,
             wethDaiAmountsIn,
             initBpt,
-            false,
+            wethIsEth,
             bytes("")
         );
     }
@@ -153,10 +154,12 @@ contract RouterTest is BaseVaultTest {
     function testInitializeWETHNoBalance() public {
         require(weth.balanceOf(broke) == 0, "Precondition: WETH balance non-zero");
 
+        bool wethIsEth = false;
+
         // Revert when sending ETH while wethIsEth is false (caller holds no weth).
         vm.expectRevert("TRANSFER_FROM_FAILED");
         vm.prank(broke);
-        router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, false, bytes(""));
+        router.initialize(address(wethPoolNoInit), wethDaiTokens, wethDaiAmountsIn, initBpt, wethIsEth, bytes(""));
     }
 
     function testInitializeWETH() public {
@@ -190,13 +193,14 @@ contract RouterTest is BaseVaultTest {
     function testInitializeNative() public {
         checkAddLiquidityPreConditions();
 
+        bool wethIsEth = true;
         vm.startPrank(alice);
         bptAmountOut = router.initialize{ value: ethAmountIn }(
             address(wethPoolNoInit),
             wethDaiTokens,
             wethDaiAmountsIn,
             initBpt,
-            true,
+            wethIsEth,
             bytes("")
         );
 
@@ -209,13 +213,14 @@ contract RouterTest is BaseVaultTest {
     function testInitializeNativeExcessEth() public {
         checkAddLiquidityPreConditions();
 
+        bool wethIsEth = true;
         vm.prank(alice);
         bptAmountOut = router.initialize{ value: defaultBalance }(
             address(wethPoolNoInit),
             wethDaiTokens,
             wethDaiAmountsIn,
             initBpt,
-            true,
+            wethIsEth,
             bytes("")
         );
 
