@@ -105,7 +105,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactInHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
@@ -339,7 +338,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactOutHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
@@ -618,7 +616,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactInHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
@@ -661,7 +658,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactOutHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
