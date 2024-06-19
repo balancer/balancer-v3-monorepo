@@ -6,7 +6,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { PoolDonation } from "@balancer-labs/v3-pool-utils/contracts/PoolDonation.sol";
 
-import { PoolMockCommon } from "./PoolMockCommon.sol";
+import { PoolMockCommon } from "@balancer-labs/v3-vault/contracts/test/PoolMockCommon.sol";
 
 contract PoolMockWithDonation is PoolMockCommon, PoolDonation {
     constructor(IVault vault, string memory name, string memory symbol) PoolMockCommon(vault, name, symbol) {
