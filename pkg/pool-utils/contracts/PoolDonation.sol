@@ -20,7 +20,7 @@ contract PoolDonation is IPoolLiquidity {
 
         // This is a donation mechanism. maxAmountsInScaled18 is the amount of tokens to be inserted in the pool,
         // with no BPTs out and no fees.
-        return (maxAmountsInScaled18, 0, new uint256[](maxAmountsInScaled18.length), bytes(""));
+        return (maxAmountsInScaled18, minBptAmountOut, new uint256[](maxAmountsInScaled18.length), userData);
     }
 
     /// @inheritdoc IPoolLiquidity
