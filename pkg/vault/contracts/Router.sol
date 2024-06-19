@@ -118,7 +118,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSenderAndValue returns (uint256[] memory amountsIn) {
+    ) external payable saveSenderAndMsgValue returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(
@@ -145,7 +145,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 minBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSenderAndValue returns (uint256 bptAmountOut) {
+    ) external payable saveSenderAndMsgValue returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(
@@ -173,7 +173,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSenderAndValue returns (uint256 amountIn) {
+    ) external payable saveSenderAndMsgValue returns (uint256 amountIn) {
         (uint256[] memory maxAmountsIn, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(
             pool,
             tokenIn,
@@ -211,7 +211,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     )
         external
         payable
-        saveSenderAndValue
+        saveSenderAndMsgValue
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
         return
@@ -512,7 +512,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable saveSenderAndValue returns (uint256) {
+    ) external payable saveSenderAndMsgValue returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
@@ -546,7 +546,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 deadline,
         bool wethIsEth,
         bytes calldata userData
-    ) external payable saveSenderAndValue returns (uint256) {
+    ) external payable saveSenderAndMsgValue returns (uint256) {
         return
             abi.decode(
                 _vault.unlock(
