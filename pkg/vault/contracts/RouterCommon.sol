@@ -55,26 +55,30 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     IPermit2 internal immutable _permit2;
 
     modifier saveSender() {
-        _saveSender(false);
+        _saveSender();
         _;
     }
 
     modifier saveSenderAndValue() {
-        _saveSender(true);
+        _saveSender();
+        _saveMsgValue();
         _;
     }
 
-    function _saveSender(bool saveMsgValue) internal {
+    function _saveSender() internal {
         address sender = _getSenderSlot().tload();
 
         // NOTE: This is a one-time operation. The sender can't be changed within the transaction.
         if (sender == address(0)) {
             _getSenderSlot().tstore(msg.sender);
+        }
+    }
 
-            // Guarantee this is written only once. We cannot check for 0, as that is a valid value.
-            if (saveMsgValue) {
-                _getMsgValueSlot().tstore(msg.value);
-            }
+    function _saveMsgValue() internal {
+        // Could be called multiple times in a transaction.
+        // Set if non-zero; clear if it was non-zero before.
+        if (msg.value > 0 || _getMsgValueSlot().tload() > 0) {
+            _getMsgValueSlot().tstore(msg.value);
         }
     }
 
