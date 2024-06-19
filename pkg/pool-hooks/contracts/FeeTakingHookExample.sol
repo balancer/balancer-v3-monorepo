@@ -130,22 +130,23 @@ contract FeeTakingHookExample is BasePoolHooks, Ownable {
         address,
         address pool,
         RemoveLiquidityKind kind,
-        uint256,
+        uint256 bptAmountIn,
         uint256[] memory,
         uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) external override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+    ) external override returns (bool, uint256, uint256[] memory) {
+        // TODO adjust to unbalanced liquidity
         // Our current architecture only supports fees on tokens. Since we must always respect exact `amountsOut`, and
         // non-proportional remove liquidity operations would require taking fees in BPT, we only support proportional
         // removeLiquidity.
         if (kind != RemoveLiquidityKind.PROPORTIONAL) {
             // Returning false will make the transaction revert, so the second argument does not matter.
-            return (false, amountsOutRaw);
+            return (false, bptAmountIn, amountsOutRaw);
         }
 
         IERC20[] memory tokens = _vault.getPoolTokens(pool);
-        hookAdjustedAmountsOutRaw = amountsOutRaw;
+        uint256[] memory hookAdjustedAmountsOutRaw = amountsOutRaw;
 
         if (removeLiquidityHookFeePercentage > 0) {
             // Charge fees proportional to amounts out of each token
@@ -157,7 +158,7 @@ contract FeeTakingHookExample is BasePoolHooks, Ownable {
             }
         }
 
-        return (true, hookAdjustedAmountsOutRaw);
+        return (true, bptAmountIn, hookAdjustedAmountsOutRaw);
     }
 
     // Setters

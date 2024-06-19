@@ -465,7 +465,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         );
     }
 
-    function testHookFeeAddLiquidityLimitViolation() public {
+    function testHookFeeRemoveLiquidityLimitViolation() public {
         // 10% fee
         uint256 hookFeePercentage = 1e17;
         PoolHooksMock(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
@@ -492,7 +492,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         router.addLiquidityProportional(pool, actualAmountsIn, expectedBptOut, false, bytes(""));
     }
 
-    function testHookFeeAddLiquidityIgnoreHookAdjusted() public {
+    function testHookFeeRemoveLiquidityIgnoreHookAdjusted() public {
         HooksConfig memory config = vault.getHooksConfig(pool);
         config.enableHookAdjustedAmounts = false;
         vault.setHooksConfig(pool, config);
