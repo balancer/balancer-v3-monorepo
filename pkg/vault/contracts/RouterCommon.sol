@@ -59,6 +59,11 @@ contract RouterCommon is IRouterCommon, VaultGuard {
         _;
     }
 
+    modifier saveMsgValue() {
+        _saveMsgValue();
+        _;
+    }
+
     modifier saveSenderAndValue() {
         _saveSender();
         _saveMsgValue();

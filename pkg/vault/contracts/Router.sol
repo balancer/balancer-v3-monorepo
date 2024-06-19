@@ -46,7 +46,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 minBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSenderAndValue returns (uint256 bptAmountOut) {
+    ) external payable saveMsgValue returns (uint256 bptAmountOut) {
         return
             abi.decode(
                 _vault.unlock(
