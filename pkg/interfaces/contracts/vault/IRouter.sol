@@ -24,7 +24,6 @@ interface IRouter {
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
-     * @param msgValue The amount of ETH passed into the function
      * @param userData Additional (optional) data required for adding initial liquidity
      */
     struct InitializeHookParams {
@@ -34,7 +33,6 @@ interface IRouter {
         uint256[] exactAmountsIn;
         uint256 minBptAmountOut;
         bool wethIsEth;
-        uint256 msgValue;
         bytes userData;
     }
 
@@ -69,7 +67,6 @@ interface IRouter {
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param kind Type of join (e.g., single or multi-token)
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
-     * @param msgValue The amount of ETH passed into the function
      * @param userData Additional (optional) data required for adding liquidity
      */
     struct AddLiquidityHookParams {
@@ -79,7 +76,6 @@ interface IRouter {
         uint256 minBptAmountOut;
         AddLiquidityKind kind;
         bool wethIsEth;
-        uint256 msgValue;
         bytes userData;
     }
 
@@ -318,7 +314,6 @@ interface IRouter {
      * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for exact out)
      * @param deadline Deadline for the swap
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param msgValue The amount of ETH passed to the function
      * @param userData Additional (optional) data required for the swap
      */
     struct SwapSingleTokenHookParams {
@@ -331,7 +326,6 @@ interface IRouter {
         uint256 limit;
         uint256 deadline;
         bool wethIsEth;
-        uint256 msgValue;
         bytes userData;
     }
 

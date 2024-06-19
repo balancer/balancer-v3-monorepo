@@ -57,7 +57,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                             exactAmountsIn: exactAmountsIn,
                             minBptAmountOut: minBptAmountOut,
                             wethIsEth: wethIsEth,
-                            msgValue: msg.value,
                             userData: userData
                         })
                     )
@@ -84,14 +83,18 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             params.userData
         );
 
+        // If we are depositing ETH, the contract balance will be reduced by the amount of the deposit (usually to 0),
+        // so we must pass the original value to preserve the semantics of `returnEth`
+        uint256 ethBalance = address(this).balance;
         uint256 ethAmountIn;
+
         for (uint256 i = 0; i < params.tokens.length; ++i) {
             IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
 
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
-                if (params.msgValue < amountIn) {
+                if (ethBalance < amountIn) {
                     revert InsufficientEth();
                 }
                 _weth.deposit{ value: amountIn }();
@@ -107,7 +110,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         }
 
         // return ETH dust
-        _returnEth(params.sender, params.msgValue, ethAmountIn);
+        _returnEth(params.sender, ethBalance, ethAmountIn);
     }
 
     /// @inheritdoc IRouter
@@ -129,7 +132,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.PROPORTIONAL,
                         wethIsEth: wethIsEth,
-                        msgValue: msg.value,
                         userData: userData
                     })
                 )
@@ -157,7 +159,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         minBptAmountOut: minBptAmountOut,
                         kind: AddLiquidityKind.UNBALANCED,
                         wethIsEth: wethIsEth,
-                        msgValue: msg.value,
                         userData: userData
                     })
                 )
@@ -192,7 +193,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: wethIsEth,
-                        msgValue: msg.value,
                         userData: userData
                     })
                 )
@@ -223,7 +223,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                             minBptAmountOut: minBptAmountOut,
                             kind: AddLiquidityKind.CUSTOM,
                             wethIsEth: wethIsEth,
-                            msgValue: msg.value,
                             userData: userData
                         })
                     )
@@ -261,14 +260,18 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         // maxAmountsIn length is checked against tokens length at the vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
+        // If we are depositing ETH, the contract balance will be reduced by the amount of the deposit (usually to 0),
+        // so we must pass the original value to preserve the semantics of `returnEth`
+        uint256 ethBalance = address(this).balance;
         uint256 ethAmountIn;
+
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
 
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
-                if (params.msgValue < amountIn) {
+                if (ethBalance < amountIn) {
                     revert InsufficientEth();
                 }
 
@@ -283,7 +286,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         }
 
         // Send remaining ETH to the user
-        _returnEth(params.sender, params.msgValue, ethAmountIn);
+        _returnEth(params.sender, ethBalance, ethAmountIn);
     }
 
     /// @inheritdoc IRouter
@@ -526,7 +529,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                             limit: minAmountOut,
                             deadline: deadline,
                             wethIsEth: wethIsEth,
-                            msgValue: msg.value,
                             userData: userData
                         })
                     )
@@ -561,7 +563,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                             limit: maxAmountIn,
                             deadline: deadline,
                             wethIsEth: wethIsEth,
-                            msgValue: msg.value,
                             userData: userData
                         })
                     )
@@ -584,12 +585,16 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         IERC20 tokenIn = params.tokenIn;
         bool wethIsEth = params.wethIsEth;
 
+        // If we are depositing ETH, the contract balance will be reduced by the amount of the deposit (usually to 0),
+        // so we must pass the original value to preserve the semantics of `returnEth`
+        uint256 ethBalance = address(this).balance;
+
         uint256 ethAmountIn = _takeTokenIn(params.sender, tokenIn, amountIn, wethIsEth);
         _sendTokenOut(params.sender, params.tokenOut, amountOut, wethIsEth);
 
         if (tokenIn == _weth) {
             // Return the rest of ETH to sender
-            _returnEth(params.sender, params.msgValue, ethAmountIn);
+            _returnEth(params.sender, ethBalance, ethAmountIn);
         }
 
         return amountCalculated;
@@ -735,7 +740,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                             limit: 0,
                             deadline: _MAX_AMOUNT,
                             wethIsEth: false,
-                            msgValue: 0,
                             userData: userData
                         })
                     )
@@ -767,7 +771,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                             limit: _MAX_AMOUNT,
                             deadline: type(uint256).max,
                             wethIsEth: false,
-                            msgValue: 0,
                             userData: userData
                         })
                     )
@@ -810,7 +813,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.UNBALANCED,
                         wethIsEth: false,
-                        msgValue: 0,
                         userData: userData
                     })
                 )
@@ -838,7 +840,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         minBptAmountOut: 0,
                         kind: AddLiquidityKind.UNBALANCED,
                         wethIsEth: false,
-                        msgValue: 0,
                         userData: userData
                     })
                 )
@@ -873,7 +874,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                         wethIsEth: false,
-                        msgValue: 0,
                         userData: userData
                     })
                 )
@@ -905,7 +905,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                             minBptAmountOut: minBptAmountOut,
                             kind: AddLiquidityKind.CUSTOM,
                             wethIsEth: false,
-                            msgValue: 0,
                             userData: userData
                         })
                     )

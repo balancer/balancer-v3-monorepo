@@ -63,7 +63,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                             paths: paths,
                             deadline: deadline,
                             wethIsEth: wethIsEth,
-                            msgValue: msg.value,
                             userData: userData
                         })
                     )
@@ -94,7 +93,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                             paths: paths,
                             deadline: deadline,
                             wethIsEth: wethIsEth,
-                            msgValue: msg.value,
                             userData: userData
                         })
                     )
@@ -113,7 +111,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     {
         (pathAmountsOut, tokensOut, amountsOut) = _swapExactInHook(params);
 
-        _settlePaths(params.sender, params.wethIsEth, params.msgValue);
+        _settlePaths(params.sender, params.wethIsEth);
     }
 
     function _swapExactInHook(
@@ -346,7 +344,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     {
         (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
 
-        _settlePaths(params.sender, params.wethIsEth, params.msgValue);
+        _settlePaths(params.sender, params.wethIsEth);
     }
 
     function _swapExactOutHook(
@@ -606,7 +604,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                             paths: paths,
                             deadline: type(uint256).max,
                             wethIsEth: false,
-                            msgValue: 0,
                             userData: userData
                         })
                     )
@@ -649,7 +646,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                             paths: paths,
                             deadline: type(uint256).max,
                             wethIsEth: false,
-                            msgValue: 0,
                             userData: userData
                         })
                     )
@@ -669,7 +665,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
     }
 
-    function _settlePaths(address sender, bool wethIsEth, uint256 msgValue) internal {
+    function _settlePaths(address sender, bool wethIsEth) internal {
         // numTokensIn / Out may be 0 if the inputs and / or outputs are not transient.
         // For example, a swap starting with a 'remove liquidity' step will already have burned the input tokens,
         // in which case there is nothing to settle. Then, since we're iterating backwards below, we need to be able
@@ -677,6 +673,10 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         int256 numTokensIn = int256(_currentSwapTokensIn().length());
         int256 numTokensOut = int256(_currentSwapTokensOut().length());
         uint256 ethAmountIn = 0;
+
+        // If we are depositing ETH, the contract balance will be reduced by the amount of the deposit (usually to 0),
+        // so we must pass the original value to preserve the semantics of `returnEth`
+        uint256 ethBalance = address(this).balance;
 
         // Iterate backwards, from the last element to 0 (included).
         // Removing the last element from a set is cheaper than removing the first one.
@@ -695,6 +695,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         }
 
         // Return the rest of ETH to sender
-        _returnEth(sender, msgValue, ethAmountIn);
+        _returnEth(sender, ethBalance, ethAmountIn);
     }
 }

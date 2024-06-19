@@ -45,7 +45,6 @@ interface IBatchRouter {
         SwapPathExactAmountIn[] paths;
         uint256 deadline;
         bool wethIsEth;
-        uint256 msgValue;
         bytes userData;
     }
 
@@ -54,7 +53,6 @@ interface IBatchRouter {
         SwapPathExactAmountOut[] paths;
         uint256 deadline;
         bool wethIsEth;
-        uint256 msgValue;
         bytes userData;
     }
 

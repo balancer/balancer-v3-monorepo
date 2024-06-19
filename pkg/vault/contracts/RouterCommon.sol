@@ -79,12 +79,12 @@ contract RouterCommon is IRouterCommon, VaultGuard {
      * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
      * returned ETH.
      */
-    function _returnEth(address sender, uint256 msgValue, uint256 amountUsed) internal {
-        if (msgValue < amountUsed) {
+    function _returnEth(address sender, uint256 ethBalance, uint256 amountUsed) internal {
+        if (ethBalance < amountUsed) {
             revert InsufficientEth();
         }
 
-        uint256 excess = msgValue - amountUsed;
+        uint256 excess = ethBalance - amountUsed;
         if (excess > 0) {
             payable(sender).sendValue(excess);
         }
