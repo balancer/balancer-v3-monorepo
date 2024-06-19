@@ -49,7 +49,6 @@ contract FeeTakingHookExample is BasePoolHooks, Ownable {
         // `enableHookAdjustedAmounts` must be true for all contracts that modify the `amountCalculated`
         // in after hooks. Otherwise, the Vault will ignore any "hookAdjusted" amounts, and the transaction
         // might not settle. (It should be false if the after hooks do something else.)
-        hookFlags.enableHookAdjustedAmounts = true;
         hookFlags.shouldCallAfterSwap = true;
         hookFlags.shouldCallAfterAddLiquidity = true;
         hookFlags.shouldCallAfterRemoveLiquidity = true;
