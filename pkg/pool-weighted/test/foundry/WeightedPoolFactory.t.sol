@@ -21,7 +21,7 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
-    WeightedPoolFactory weightedPoolFactory;
+    WeightedPoolFactory internal weightedPoolFactory;
 
     function setUp() public override {
         super.setUp();
