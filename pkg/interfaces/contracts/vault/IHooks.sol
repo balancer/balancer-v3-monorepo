@@ -15,8 +15,9 @@ interface IHooks {
     ***************************************************************************/
 
     /**
-     * @notice Hook to be executed when pool is registered. If it returns false, the registration
-     * is reverted.
+     * @notice Hook to be executed when pool is registered. Returns true if registration was successful, and false to
+     * revert the registration of the pool. Make sure this function is properly implemented (e.g. check the factory,
+     * and check that the given pool is from the factory).
      * @dev Vault address can be accessed with msg.sender.
      * @param factory Address of the pool factory
      * @param pool Address of the pool
@@ -32,6 +33,7 @@ interface IHooks {
     ) external returns (bool);
 
     struct HookFlags {
+        bool enableHookAdjustedAmounts;
         bool shouldCallBeforeInitialize;
         bool shouldCallAfterInitialize;
         bool shouldCallComputeDynamicSwapFee;
@@ -47,7 +49,7 @@ interface IHooks {
      * @notice Returns flags informing which hooks are implemented in the contract.
      * @return hookFlags Flags indicating which hooks the contract supports
      */
-    function getHookFlags() external returns (HookFlags memory hookFlags);
+    function getHookFlags() external view returns (HookFlags memory hookFlags);
 
     /***************************************************************************
                                    Initialize

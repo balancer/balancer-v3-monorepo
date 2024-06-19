@@ -127,6 +127,9 @@ interface IVaultErrors {
     /// @dev An amount in or out has exceeded the limit specified in the swap request.
     error SwapLimit(uint256 amount, uint256 limit);
 
+    /// @dev A hook adjusted amount in or out has exceeded the limit specified in the swap request.
+    error HookAdjustedSwapLimit(uint256 amount, uint256 limit);
+
     /*******************************************************************************
                                     Add Liquidity
     *******************************************************************************/
@@ -136,6 +139,9 @@ interface IVaultErrors {
 
     /// @dev A required amountIn exceeds the maximum limit specified for the operation.
     error AmountInAboveMax(IERC20 token, uint256 amount, uint256 limit);
+
+    /// @dev A hook adjusted amountIn exceeds the maximum limit specified for the operation.
+    error HookAdjustedAmountInAboveMax(IERC20 token, uint256 amount, uint256 limit);
 
     /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
     error BptAmountOutBelowMin(uint256 amount, uint256 limit);
@@ -152,6 +158,9 @@ interface IVaultErrors {
 
     /// @dev The actual amount out is below the minimum limit specified for the operation.
     error AmountOutBelowMin(IERC20 token, uint256 amount, uint256 limit);
+
+    /// @dev The hook adjusted amount out is below the minimum limit specified for the operation.
+    error HookAdjustedAmountOutBelowMin(IERC20 token, uint256 amount, uint256 limit);
 
     /// @dev The required BPT amount in exceeds the maximum limit specified for the operation.
     error BptAmountInAboveMax(uint256 amount, uint256 limit);

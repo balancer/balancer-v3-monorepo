@@ -69,7 +69,8 @@ contract VaultUnitLiquidityTest is BaseTest {
         vault.mintERC20(pool, address(this), initTotalSupply);
 
         uint256[] memory initialBalances = new uint256[](tokens.length);
-        vault.manualSetPoolTokenBalances(pool, tokens, initialBalances);
+        // We don't care about last live balances, so we set them equal to the raw ones.
+        vault.manualSetPoolTokenBalances(pool, tokens, initialBalances, initialBalances);
 
         vault.manualSetPoolRegistered(pool, true);
 
