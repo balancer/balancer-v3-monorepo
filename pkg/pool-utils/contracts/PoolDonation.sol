@@ -12,7 +12,7 @@ contract PoolDonation is IPoolLiquidity {
         uint256[] memory maxAmountsInScaled18,
         uint256 minBptAmountOut,
         uint256[] memory,
-        bytes memory
+        bytes memory userData
     ) external pure virtual returns (uint256[] memory, uint256, uint256[] memory, bytes memory) {
         if (minBptAmountOut > 0) {
             revert IVaultErrors.BptAmountOutBelowMin(0, minBptAmountOut);
