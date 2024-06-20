@@ -18,7 +18,7 @@ library PoolConfigLib {
 
     error InvalidSize(uint256 currentValue, uint256 expectedSize);
 
-    // Bit offsets for pool config
+    // Bit offsets for main pool config settings
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;
     uint8 public constant POOL_PAUSED_OFFSET = POOL_INITIALIZED_OFFSET + 1;
@@ -55,7 +55,7 @@ library PoolConfigLib {
 
     uint8 private constant _TIMESTAMP_BITLENGTH = 32;
 
-    // #region Bit offsets for pool config
+    // #region Bit offsets for main pool config settings
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
     }
