@@ -577,7 +577,7 @@ contract VaultMock is IVaultMainMock, Vault {
         return _tokenDeltas();
     }
 
-    function _getDefaultLiquidityManagement() private returns (LiquidityManagement memory) {
+    function _getDefaultLiquidityManagement() private pure returns (LiquidityManagement memory) {
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.enableAddLiquidityCustom = true;
         liquidityManagement.enableRemoveLiquidityCustom = true;
