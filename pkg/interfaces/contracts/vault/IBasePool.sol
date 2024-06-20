@@ -25,7 +25,7 @@ interface IBasePool is ISwapFeePercentageBounds {
      * @dev Computes the new balance of a token after an operation, given the invariant growth ratio and all other
      * balances.
      * @param balancesLiveScaled18 Current live balances (adjusted for decimals, rates, etc.)
-     * @param tokenInIndex The index of the token we're computing the balance for, in token registration order
+     * @param tokenInIndex The index of the token we're computing the balance for, sorted in token registration order
      * @param invariantRatio The ratio of the new invariant (after an operation) to the old
      * @return newBalance The new balance of the selected token, after the operation
      */

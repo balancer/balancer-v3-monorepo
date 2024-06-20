@@ -117,9 +117,7 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
 
     function testIsPoolPaused() public {
         PoolConfigBits config;
-        config = PoolConfigBits.wrap(
-            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigLib.POOL_PAUSED_OFFSET)
-        );
+        config = PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(true, PoolConfigLib.POOL_PAUSED_OFFSET));
         assertTrue(config.isPoolPaused(), "isPoolPaused is false");
     }
 
@@ -385,6 +383,7 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
         address hooksContract = address(0x1234567890123456789012345678901234567890);
 
         PoolConfigBits config;
+        config = config.setHookAdjustedAmounts(true);
         config = config.setShouldCallBeforeInitialize(true);
         config = config.setShouldCallAfterInitialize(true);
         config = config.setShouldCallComputeDynamicSwapFee(true);

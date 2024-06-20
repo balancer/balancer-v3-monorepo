@@ -11,11 +11,11 @@ interface IPoolLiquidity {
     /**
      * @notice Add liquidity to the pool with a custom hook.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
-     * @param maxAmountsInScaled18 Maximum input amounts in token registration order
+     * @param maxAmountsInScaled18 Maximum input amounts, sorted in token registration order
      * @param minBptAmountOut Minimum amount of output pool tokens
-     * @param balancesScaled18 Current pool balances in token registration order
+     * @param balancesScaled18 Current pool balances, sorted in token registration order
      * @param userData Arbitrary data with the encoded request
-     * @return amountsInScaled18 Input token amounts in token registration order
+     * @return amountsInScaled18 Input token amounts, sorted in token registration order
      * @return bptAmountOut Calculated pool token amount to receive
      * @return swapFeeAmountsScaled18 The amount of swap fees charged for each token
      * @return returnData Arbitrary data with encoded response from the pool
@@ -39,11 +39,11 @@ interface IPoolLiquidity {
      * @notice Remove liquidity from the pool with a custom hook.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param maxBptAmountIn Maximum amount of input pool tokens
-     * @param minAmountsOutScaled18 Minimum output amounts in token registration order
-     * @param balancesScaled18 Current pool balances in token registration order
+     * @param minAmountsOutScaled18 Minimum output amounts, sorted in token registration order
+     * @param balancesScaled18 Current pool balances, sorted in token registration order
      * @param userData Arbitrary data with the encoded request
      * @return bptAmountIn Calculated pool token amount to burn
-     * @return amountsOutScaled18 Amount of tokens to receive in token registration order
+     * @return amountsOutScaled18 Amount of tokens to receive, sorted in token registration order
      * @return swapFeeAmountsScaled18 The amount of swap fees charged for each token
      * @return returnData Arbitrary data with encoded response from the pool
      */

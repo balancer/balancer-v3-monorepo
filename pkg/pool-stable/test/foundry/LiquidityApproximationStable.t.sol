@@ -39,7 +39,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
                 vault.buildTokenConfig(tokens.asIERC20()),
                 DEFAULT_AMP_FACTOR,
                 roleAccounts,
-                0, // zero swap fee
+                MIN_SWAP_FEE,
                 poolHooksContract,
                 ZERO_BYTES32
             )
