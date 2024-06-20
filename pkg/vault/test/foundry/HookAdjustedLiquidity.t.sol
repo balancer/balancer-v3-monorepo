@@ -205,7 +205,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     function testHookFeeAddLiquidityIgnoreHookAdjusted() public {
         HooksConfig memory config = vault.getHooksConfig(pool);
         config.enableHookAdjustedAmounts = false;
-        vault.setHooksConfig(pool, config);
+        vault.manualSetHooksConfig(pool, config);
 
         // 10% fee
         uint256 hookFeePercentage = 1e17;
@@ -378,7 +378,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     function testHookFeeRemoveLiquidityIgnoreHookAdjusted() public {
         HooksConfig memory config = vault.getHooksConfig(pool);
         config.enableHookAdjustedAmounts = false;
-        vault.setHooksConfig(pool, config);
+        vault.manualSetHooksConfig(pool, config);
 
         // Add liquidity so bob has BPT to remove liquidity
         vm.prank(bob);

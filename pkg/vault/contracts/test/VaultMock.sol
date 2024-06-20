@@ -208,6 +208,7 @@ contract VaultMock is IVaultMainMock, Vault {
     function manualSetHooksConfig(address pool, HooksConfig memory hooksConfig) public {
         PoolConfigBits poolConfigBits = _poolConfigBits[pool];
 
+        poolConfigBits = poolConfigBits.setHookAdjustedAmounts(hooksConfig.enableHookAdjustedAmounts);
         poolConfigBits = poolConfigBits.setShouldCallBeforeInitialize(hooksConfig.shouldCallBeforeInitialize);
         poolConfigBits = poolConfigBits.setShouldCallAfterInitialize(hooksConfig.shouldCallAfterInitialize);
         poolConfigBits = poolConfigBits.setShouldCallComputeDynamicSwapFee(hooksConfig.shouldCallComputeDynamicSwapFee);

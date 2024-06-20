@@ -294,6 +294,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                     revert HookRegistrationFailed(params.poolHooksContract, pool, msg.sender);
                 }
 
+                poolConfigBits = poolConfigBits.setHookAdjustedAmounts(hookFlags.enableHookAdjustedAmounts);
                 poolConfigBits = poolConfigBits.setShouldCallBeforeInitialize(hookFlags.shouldCallBeforeInitialize);
                 poolConfigBits = poolConfigBits.setShouldCallAfterInitialize(hookFlags.shouldCallAfterInitialize);
                 poolConfigBits = poolConfigBits.setShouldCallComputeDynamicSwapFee(
@@ -386,7 +387,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         Cache.AddressCache memory hooksContractCache = Cache.initAddressCache(_hooksContracts[pool]);
 
         if (
-            poolData.poolConfigBits.callBeforeInitialize(exactAmountsInScaled18, userData, hooksContractCache) == true
+            poolData.poolConfigBits.callBeforeInitializeHook(exactAmountsInScaled18, userData, hooksContractCache) ==
+            true
         ) {
             // The before hook is reentrant, and could have changed token rates.
             // Updating balances here is unnecessary since they're 0, but we do not special case before init
@@ -402,7 +404,12 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         bptAmountOut = _initialize(pool, to, poolData, tokens, exactAmountsIn, exactAmountsInScaled18, minBptAmountOut);
 
-        poolData.poolConfigBits.callAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData, hooksContractCache);
+        poolData.poolConfigBits.callAfterInitializeHook(
+            exactAmountsInScaled18,
+            bptAmountOut,
+            userData,
+            hooksContractCache
+        );
     }
 
     function _initialize(

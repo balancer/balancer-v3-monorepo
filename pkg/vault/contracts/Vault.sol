@@ -523,8 +523,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         Cache.AddressCache memory hooksContractCache = Cache.initAddressCache(_hooksContracts[params.pool]);
         if (
             poolData.poolConfigBits.callBeforeAddLiquidityHook(
-                maxAmountsInScaled18,
                 msg.sender,
+                maxAmountsInScaled18,
                 params,
                 poolData,
                 hooksContractCache
