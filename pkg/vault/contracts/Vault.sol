@@ -114,16 +114,40 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function settle(IERC20 token) public nonReentrant onlyWhenUnlocked returns (uint256 paid) {
-        uint256 reservesBefore = _reservesOf[token];
-        _reservesOf[token] = token.balanceOf(address(this));
-        paid = _reservesOf[token] - reservesBefore;
+    function settle(IERC20 token, uint256 amountHint) external nonReentrant onlyWhenUnlocked returns (uint256 paid) {
+        paid = _syncReserves(token);
+        // If the given hint is equal or greater to the reserve difference, we just take the actual reserve difference
+        // as the paid amount; the actual balance of the tokens in the vault is what matters here.
+        if (paid > amountHint) {
+            // If the difference in reserves is higher than the amount claimed to be paid by the caller, there was some
+            // leftover that had been sent to the vault beforehand, which was not incorporated into the reserves.
+            // In that case, we simply discard the leftover by considering the given hint as the amount paid.
+            // In turn, this gives the caller credit for the given amount hint, which is what the caller is expecting.
+            paid = amountHint;
+        }
 
         _supplyCredit(token, paid);
     }
 
     /// @inheritdoc IVaultMain
-    function sendTo(IERC20 token, address to, uint256 amount) public nonReentrant onlyWhenUnlocked {
+    function settle(IERC20 token) external nonReentrant onlyWhenUnlocked returns (uint256 paid) {
+        paid = _syncReserves(token);
+        _supplyCredit(token, paid);
+    }
+
+    /**
+     * @dev Updates `_reservesOf[token]` with the current Vault balance for the token, and returns the difference
+     * between the old reserves and the current reserves.
+     */
+    function _syncReserves(IERC20 token) internal returns (uint256 reserveDifference) {
+        uint256 reservesBefore = _reservesOf[token];
+        uint256 currentReserves = token.balanceOf(address(this));
+        _reservesOf[token] = currentReserves;
+        return (currentReserves - reservesBefore);
+    }
+
+    /// @inheritdoc IVaultMain
+    function sendTo(IERC20 token, address to, uint256 amount) external nonReentrant onlyWhenUnlocked {
         _takeDebt(token, amount);
         _reservesOf[token] -= amount;
 

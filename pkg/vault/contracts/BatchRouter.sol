@@ -302,7 +302,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         // The token in for the next step is the token out of the current step.
                         stepTokenIn = step.tokenOut;
                         // If this is an intermediate step, BPT is minted to the vault so we just get the credit.
-                        _vault.settle(IERC20(step.pool));
+                        _vault.settle(IERC20(step.pool), bptAmountOut);
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact in
@@ -517,8 +517,9 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         stepExactAmountOut = bptAmountIn;
                         // Refund unused portion of BPT flashloan to the Vault
                         if (bptAmountIn < stepMaxAmountIn) {
-                            stepTokenIn.safeTransfer(address(_vault), stepMaxAmountIn - bptAmountIn);
-                            _vault.settle(stepTokenIn);
+                            uint256 refundAmount = stepMaxAmountIn - bptAmountIn;
+                            stepTokenIn.safeTransfer(address(_vault), refundAmount);
+                            _vault.settle(stepTokenIn, refundAmount);
                         }
                     }
                 } else if (address(step.tokenOut) == step.pool) {
@@ -556,7 +557,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         _currentSwapTokenOutAmounts().tSub(address(step.tokenOut), stepExactAmountOut);
                     } else {
                         // If it's not the first step, BPT is minted to the vault so we just get the credit.
-                        _vault.settle(IERC20(step.pool));
+                        _vault.settle(IERC20(step.pool), stepExactAmountOut);
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact out

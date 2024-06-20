@@ -32,6 +32,20 @@ interface IVaultMain {
     function settle(IERC20 token) external returns (uint256 paid);
 
     /**
+     * @notice Settles deltas for a token; must be successful for the current lock to be released.
+     * @dev This version protects the caller against leftover dust in the vault for the token being settled. The caller
+     * should know in advance how many tokens were paid to the Vault, so it can provide it as a hint to discard any
+     * excess in the Vault balance.
+     * If the given hint is equal to or higher than the difference in reserves, the difference in reserves is given as
+     * credit to the caller.
+     * If the given hint is lower than the difference in reserves, the hint is given as credit to the caller.
+     * @param token Token's address
+     * @param amountHint Amount paid as reported by the caller
+     * @return paid Amount paid during settlement
+     */
+    function settle(IERC20 token, uint256 amountHint) external returns (uint256 paid);
+
+    /**
      * @notice Sends tokens to a recipient.
      * @dev There is no inverse operation for this function. Transfer funds to the Vault and call `settle` to cancel
      * debts.
