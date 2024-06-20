@@ -207,7 +207,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bool wethIsEth,
         bytes memory userData
     ) external payable saveSender {
-        _vault.unlock{ value: msg.value }(
+        _vault.unlock(
             abi.encodeWithSelector(
                 Router.addLiquidityHook.selector,
                 AddLiquidityHookParams({
