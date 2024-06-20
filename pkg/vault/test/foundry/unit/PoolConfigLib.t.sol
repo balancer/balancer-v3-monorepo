@@ -156,6 +156,7 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
         config = config.setPoolInRecoveryMode(true);
         assertTrue(config.isPoolInRecoveryMode(), "isPoolInRecoveryMode is false (setter)");
     }
+
     // #endregion
 
     // #region Tests for liquidity operations
@@ -423,6 +424,7 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
         assertEq(hooksConfig.shouldCallAfterRemoveLiquidity, true, "shouldCallAfterRemoveLiquidity mismatch");
         assertEq(hooksConfig.hooksContract, hooksContract, "hooksContract mismatch");
     }
+
     // #region
 
     // #region Tests for uint values
@@ -548,6 +550,7 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
         config = config.setPauseWindowEndTime(value);
         assertEq(config.getPauseWindowEndTime(), value, "pauseWindowEndTime mismatch (testSetPauseWindowEndTime)");
     }
+
     // #endregion
 
     function testToTokenDecimalDiffs() public {
