@@ -776,7 +776,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData
         );
 
-        if (EVMCallModeHelpers.isStaticCall() == false || _vaultStateBits.isQueryDisabled()) {
+        if (_isQueryContext() == false) {
             // If not in query mode, transfer BPTs to the hook.
             if (hookAdjustedBptAmountIn > bptAmountIn) {
                 uint256 hookFee = hookAdjustedBptAmountIn - bptAmountIn;
