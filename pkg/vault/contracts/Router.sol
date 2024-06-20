@@ -200,6 +200,29 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     }
 
     /// @inheritdoc IRouter
+    function addLiquidityDonation(
+        address pool,
+        uint256[] memory amountsIn,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable saveSender {
+        _vault.unlock{ value: msg.value }(
+            abi.encodeWithSelector(
+                Router.addLiquidityHook.selector,
+                AddLiquidityHookParams({
+                    sender: msg.sender,
+                    pool: pool,
+                    maxAmountsIn: amountsIn,
+                    minBptAmountOut: 0,
+                    kind: AddLiquidityKind.DONATION,
+                    wethIsEth: wethIsEth,
+                    userData: userData
+                })
+            )
+        );
+    }
+
+    /// @inheritdoc IRouter
     function addLiquidityCustom(
         address pool,
         uint256[] memory maxAmountsIn,

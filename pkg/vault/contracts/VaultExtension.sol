@@ -303,6 +303,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolConfigBits = poolConfigBits.setRemoveLiquidityCustom(
                 params.liquidityManagement.enableRemoveLiquidityCustom
             );
+            poolConfigBits = poolConfigBits.setDonation(params.liquidityManagement.enableDonation);
             poolConfigBits = poolConfigBits.setTokenDecimalDiffs(PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs));
             poolConfigBits = poolConfigBits.setPauseWindowEndTime(params.pauseWindowEndTime);
             poolConfigBits = poolConfigBits.setAggregateSwapFeePercentage(aggregateSwapFeePercentage);

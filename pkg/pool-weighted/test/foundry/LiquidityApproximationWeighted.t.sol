@@ -50,6 +50,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
                 roleAccounts,
                 DEFAULT_SWAP_FEE,
                 poolHooksContract,
+                false,
                 // NOTE: sends a unique salt
                 bytes32(poolCreationNonce++)
             )

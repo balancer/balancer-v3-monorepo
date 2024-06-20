@@ -47,6 +47,7 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
      * @param poolHooksContract Contract that implements the hooks for the pool
+     * @param supportsDonation if true, the pool will support a custom add liquidity which is a donation mechanism
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
@@ -57,10 +58,16 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
         address poolHooksContract,
+        bool supportsDonation,
         bytes32 salt
     ) external returns (address pool) {
         if (roleAccounts.poolCreator != address(0)) {
             revert StandardPoolWithCreator();
+        }
+
+        LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
+        if (supportsDonation) {
+            liquidityManagement.enableDonation = true;
         }
 
         pool = _create(
@@ -84,7 +91,7 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
             false, // not exempt from protocol fees
             roleAccounts,
             poolHooksContract,
-            getDefaultLiquidityManagement()
+            liquidityManagement
         );
     }
 }
