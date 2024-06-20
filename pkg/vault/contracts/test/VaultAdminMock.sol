@@ -46,12 +46,7 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
         uint256 amountWrapped,
         address sharesOwner
     ) external nonReentrant {
-        IVault(address(this)).addLiquidityToBuffer(
-            wrappedToken,
-            amountUnderlying,
-            amountWrapped,
-            sharesOwner
-        );
+        IVault(address(this)).addLiquidityToBuffer(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
     }
 
     function manualReentrancyRemoveLiquidityFromBuffer(
@@ -59,10 +54,6 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
         uint256 sharesToRemove,
         address sharesOwner
     ) external nonReentrant {
-        IVault(address(this)).removeLiquidityFromBuffer(
-            wrappedToken,
-            sharesToRemove,
-            sharesOwner
-        );
+        IVault(address(this)).removeLiquidityFromBuffer(wrappedToken, sharesToRemove, sharesOwner);
     }
 }

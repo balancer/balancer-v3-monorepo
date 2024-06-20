@@ -348,6 +348,13 @@ contract VaultMock is IVaultMainMock, Vault {
         return _loadPoolDataUpdatingBalancesAndYieldFees(pool, roundingDirection);
     }
 
+    function loadPoolDataUpdatingBalancesAndYieldFeesReentrancy(
+        address pool,
+        Rounding roundingDirection
+    ) external nonReentrant returns (PoolData memory) {
+        return _loadPoolDataUpdatingBalancesAndYieldFees(pool, roundingDirection);
+    }
+
     function updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,
         uint256 newRawBalance,
@@ -625,5 +632,13 @@ contract VaultMock is IVaultMainMock, Vault {
         BufferWrapOrUnwrapParams memory params
     ) external nonReentrant returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw) {
         return IVault(address(this)).erc4626BufferWrapOrUnwrap(params);
+    }
+
+    function manualSettleReentrancy(IERC20 token) public nonReentrant returns (uint256 paid) {
+        return settle(token);
+    }
+
+    function manualSendToReentrancy(IERC20 token, address to, uint256 amount) public nonReentrant {
+        sendTo(token, to, amount);
     }
 }

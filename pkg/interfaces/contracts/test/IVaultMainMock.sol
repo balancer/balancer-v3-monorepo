@@ -73,6 +73,11 @@ interface IVaultMainMock {
         Rounding roundingDirection
     ) external returns (PoolData memory);
 
+    function loadPoolDataUpdatingBalancesAndYieldFeesReentrancy(
+        address pool,
+        Rounding roundingDirection
+    ) external returns (PoolData memory);
+
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw);
 
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances);
@@ -235,4 +240,8 @@ interface IVaultMainMock {
     function manualErc4626BufferWrapOrUnwrapReentrancy(
         BufferWrapOrUnwrapParams memory params
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
+
+    function manualSettleReentrancy(IERC20 token) external returns (uint256 paid);
+
+    function manualSendToReentrancy(IERC20 token, address to, uint256 amount) external;
 }

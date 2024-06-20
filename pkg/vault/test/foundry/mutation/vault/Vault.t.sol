@@ -69,14 +69,31 @@ contract VaultMutationTest is BaseVaultTest {
         vault.mintERC20(pool, address(this), initTotalSupply);
     }
 
+    function testLoadPoolDataUpdatingBalancesAndYieldFeesReentrancy() public {
+        vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
+        vault.loadPoolDataUpdatingBalancesAndYieldFeesReentrancy(pool, Rounding.ROUND_DOWN);
+    }
+
     function testSettleWithLockedVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultIsNotUnlocked.selector));
         vault.settle(dai);
     }
 
+    function testSettleReentrancy() public {
+        vault.manualSetIsUnlocked(true);
+        vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
+        vault.manualSettleReentrancy(dai);
+    }
+
     function testSendToWithLockedVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultIsNotUnlocked.selector));
         vault.sendTo(dai, address(0), 1);
+    }
+
+    function testSendToReentrancy() public {
+        vault.manualSetIsUnlocked(true);
+        vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
+        vault.manualSendToReentrancy(dai, address(0), 0);
     }
 
     function testSwapWithLockedVault() public {
