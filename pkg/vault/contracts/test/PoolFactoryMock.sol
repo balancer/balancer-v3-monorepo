@@ -32,11 +32,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             false,
             roleAccounts,
             address(0), // No hook contract
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
+            _getDefaultLiquidityManagement()
         );
     }
 
@@ -51,11 +47,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             false,
             roleAccounts,
             poolHooksContract,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
+            _getDefaultLiquidityManagement()
         );
     }
 
@@ -76,11 +68,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             false,
             roleAccounts,
             poolHooksContract,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
+            _getDefaultLiquidityManagement()
         );
     }
 
@@ -101,11 +89,7 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             protocolFeeExempt,
             roleAccounts,
             poolHooksContract,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
+            _getDefaultLiquidityManagement()
         );
     }
 
@@ -168,5 +152,12 @@ contract PoolFactoryMock is FactoryWidePauseWindow {
             poolHooksContract,
             liquidityManagement
         );
+    }
+
+    function _getDefaultLiquidityManagement() private returns (LiquidityManagement memory) {
+        LiquidityManagement memory liquidityManagement;
+        liquidityManagement.enableAddLiquidityCustom = true;
+        liquidityManagement.enableRemoveLiquidityCustom = true;
+        return liquidityManagement;
     }
 }

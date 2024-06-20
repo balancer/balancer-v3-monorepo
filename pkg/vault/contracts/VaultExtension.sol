@@ -488,7 +488,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                     // NOTE: supportUnbalancedLiquidity is inverted because false means it is supported
                     disableUnbalancedLiquidity: !config.supportsUnbalancedLiquidity(),
                     enableAddLiquidityCustom: config.supportsAddLiquidityCustom(),
-                    enableRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom()
+                    enableRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom(),
+                    enableDonation: config.supportsDonation()
                 })
             });
     }

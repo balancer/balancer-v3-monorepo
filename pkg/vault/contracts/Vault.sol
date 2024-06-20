@@ -602,6 +602,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 _totalSupply(params.pool),
                 bptAmountOut
             );
+        } else if (params.kind == AddLiquidityKind.DONATION) {
+            poolData.poolConfigBits.requireDonationEnabled();
+
+            swapFeeAmountsScaled18 = new uint256[](maxAmountsInScaled18.length);
+            bptAmountOut = 0;
+            amountsInScaled18 = maxAmountsInScaled18;
         } else if (params.kind == AddLiquidityKind.UNBALANCED) {
             poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
 
