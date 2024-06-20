@@ -55,7 +55,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         BatchRouter.swapExactInHook.selector,
                         SwapExactInHookParams({
@@ -85,7 +85,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         BatchRouter.swapExactOutHook.selector,
                         SwapExactOutHookParams({
@@ -105,7 +105,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactInHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
@@ -339,7 +338,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactOutHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
@@ -618,7 +616,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactInHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
@@ -661,7 +658,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactOutHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
@@ -695,6 +691,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         }
 
         // Return the rest of ETH to sender
-        _returnEth(sender, ethAmountIn);
+        _returnEth(sender);
     }
 }
