@@ -24,6 +24,7 @@ library Cache {
     ) internal pure returns (AddressCache memory cache) {
         bytes32 slot;
 
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             slot := addressSlot.slot
         }
@@ -36,6 +37,7 @@ library Cache {
             address _value;
             bytes32 slot = cache.slot;
 
+            // solhint-disable-next-line no-inline-assembly
             assembly {
                 _value := sload(slot)
             }
