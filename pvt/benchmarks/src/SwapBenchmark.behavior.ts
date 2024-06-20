@@ -21,7 +21,7 @@ import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
 import { IVault, ProtocolFeeController } from '@balancer-labs/v3-vault/typechain-types';
 import { WeightedPoolFactory } from '@balancer-labs/v3-pool-weighted/typechain-types';
-import { ERC20WithRateTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
+import { ERC20WithRateTestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { BaseContract } from 'ethers';
 
 export class Benchmark {
@@ -30,6 +30,7 @@ export class Benchmark {
   vault!: IVault;
   tokenA!: ERC20WithRateTestToken;
   tokenB!: ERC20WithRateTestToken;
+  WETH!: WETHTestToken;
   factory!: WeightedPoolFactory;
   pool!: BaseContract;
   tokenConfig!: TokenConfigStruct[];
@@ -61,6 +62,7 @@ export class Benchmark {
 
     let tokenAAddress: string;
     let tokenBAddress: string;
+    let wethAddress: string;
 
     let poolTokens: string[];
 
@@ -74,14 +76,15 @@ export class Benchmark {
         'v3-vault/ProtocolFeeController',
         await this.vault.getProtocolFeeController()
       )) as unknown as ProtocolFeeController;
-      const WETH = await deploy('v3-solidity-utils/WETHTestToken');
+      this.WETH = await deploy('v3-solidity-utils/WETHTestToken');
       permit2 = await deployPermit2();
-      router = await deploy('v3-vault/Router', { args: [this.vault, WETH, permit2] });
+      router = await deploy('v3-vault/Router', { args: [this.vault, this.WETH, permit2] });
       this.tokenA = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token C', 'TKNC', 18] });
       this.tokenB = await deploy('v3-solidity-utils/ERC20WithRateTestToken', { args: ['Token D', 'TKND', 18] });
 
       tokenAAddress = await this.tokenA.getAddress();
       tokenBAddress = await this.tokenB.getAddress();
+      wethAddress = await this.WETH.getAddress();
     });
 
     sharedBeforeEach('protocol fees configuration', async () => {
@@ -101,12 +104,35 @@ export class Benchmark {
     sharedBeforeEach('token setup', async () => {
       await this.tokenA.mint(alice, TOKEN_AMOUNT * 10n);
       await this.tokenB.mint(alice, TOKEN_AMOUNT * 10n);
+      await this.WETH.connect(alice).deposit({ value: TOKEN_AMOUNT });
 
-      for (const token of [this.tokenA, this.tokenB]) {
+      for (const token of [this.tokenA, this.tokenB, this.WETH]) {
         await token.connect(alice).approve(permit2, MAX_UINT256);
         await permit2.connect(alice).approve(token, router, MAX_UINT160, MAX_UINT48);
       }
     });
+
+    const itTestsInitialize = (useEth: boolean) => {
+      const ethStatus = useEth ? 'with ETH' : 'without ETH';
+
+      sharedBeforeEach('deploy pool', async () => {
+        this.pool = (await this.deployPool())!;
+      });
+
+      it(`measures initialization gas ${ethStatus}`, async () => {
+        initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
+
+        // Measure
+        const value = useEth ? TOKEN_AMOUNT : 0;
+        const tx = await router
+          .connect(alice)
+          .initialize(this.pool, poolTokens, initialBalances, FP_ZERO, useEth, '0x', { value });
+
+        const receipt = await tx.wait();
+
+        await saveSnap(this._testDirname, `[${this._poolType}] initialize ${ethStatus}`, receipt);
+      });
+    };
 
     const itTestsSwap = (
       gasTag: string,
@@ -114,7 +140,7 @@ export class Benchmark {
       actionAfterFirstTx: () => Promise<void>
     ) => {
       sharedBeforeEach('deploy pool', async () => {
-        this.pool = (await this.deployPool(this))!;
+        this.pool = (await this.deployPool())!;
       });
 
       sharedBeforeEach('set pool fee', async () => {
@@ -195,6 +221,16 @@ export class Benchmark {
           return;
         }
       );
+    });
+
+    describe('initialization', () => {
+      sharedBeforeEach(async () => {
+        poolTokens = sortAddresses([tokenAAddress, wethAddress]);
+        this.tokenConfig = buildTokenConfig(poolTokens, false);
+      });
+
+      itTestsInitialize(false);
+      itTestsInitialize(true);
     });
 
     describe('test yield pool', () => {
