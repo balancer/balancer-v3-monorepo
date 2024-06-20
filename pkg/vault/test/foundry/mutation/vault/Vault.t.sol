@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { PoolConfigBits } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
@@ -193,6 +194,31 @@ contract VaultMutationTest is BaseVaultTest {
 
         vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
         vault.manualReentrancyRemoveLiquidity(poolData, params.removeLiquidityParams, params.minAmountsOutScaled18);
+    }
+
+    function testErc4626BufferWrapOrUnwrapWhenNotUnlocked() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultIsNotUnlocked.selector));
+        BufferWrapOrUnwrapParams memory params;
+        vault.erc4626BufferWrapOrUnwrap(params);
+    }
+
+    function testErc4626BufferWrapOrUnwrapWhenBuffersArePaused() public {
+        vault.manualSetIsUnlocked(true);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
+        vm.prank(admin);
+        vault.pauseVaultBuffers();
+
+        vm.expectRevert(IVaultErrors.VaultBuffersArePaused.selector);
+        BufferWrapOrUnwrapParams memory params;
+        vault.erc4626BufferWrapOrUnwrap(params);
+    }
+
+    function testErc4626BufferWrapOrUnwrapReentrancy() public {
+        vault.manualSetIsUnlocked(true);
+
+        vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
+        BufferWrapOrUnwrapParams memory params;
+        vault.manualErc4626BufferWrapOrUnwrapReentrancy(params);
     }
 
     /// Helper functions

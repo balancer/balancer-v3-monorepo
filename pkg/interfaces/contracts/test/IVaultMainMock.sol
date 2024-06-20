@@ -231,4 +231,8 @@ interface IVaultMainMock {
     function manualTransfer(IERC20 token, address to, uint256 amount) external;
 
     function manualGetPoolConfigBits(address pool) external view returns (PoolConfigBits);
+
+    function manualErc4626BufferWrapOrUnwrapReentrancy(
+        BufferWrapOrUnwrapParams memory params
+    ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 }

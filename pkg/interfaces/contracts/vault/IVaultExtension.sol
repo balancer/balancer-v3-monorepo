@@ -144,7 +144,13 @@ interface IVaultExtension {
     ) external view returns (uint256[] memory decimalScalingFactors, uint256[] memory tokenRates);
 
     /**
+     * @notice Returns pool data for a given pool.
+     */
+    function getPoolData(address pool) external view returns (PoolData memory);
+
+    /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
+     * @param pool Address of the pool
      * @return tokens The pool tokens, in registration order
      * @return tokenInfo Corresponding token info
      * @return balancesRaw Corresponding raw balances of the tokens

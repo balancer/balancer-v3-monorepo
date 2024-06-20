@@ -4,12 +4,14 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 
 import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
 
@@ -18,201 +20,202 @@ contract VaultExtensionMutationTest is BaseVaultTest {
         BaseVaultTest.setUp();
     }
 
-    /*
-        isUnlocked
-            [x] onlyVault
-    */
     function testIsUnlockedWhenNotVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.NotVaultDelegateCall.selector));
         vaultExtension.isUnlocked();
     }
 
-    /*
-        getNonzeroDeltaCount
-            [x] onlyVault
-    */
     function testGetNonzeroDeltaCountWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.getTokenDelta(dai);
     }
 
-    /*
-        getTokenDelta
-            [x] onlyVault
-    */
     function testGetTokenDeltaWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.getTokenDelta(dai);
     }
 
-    /*
-        getReservesOf
-            [x] onlyVault
-    */
     function testGetReservesOfWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.getReservesOf(dai);
     }
 
-    /*
-        isPoolRegistered
-            [x] onlyVault
-    */
+    function testRegisterPoolWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        TokenConfig[] memory config;
+        PoolRoleAccounts memory roles;
+        LiquidityManagement memory liquidityManagement;
+        vaultExtension.registerPool(pool, config, 0, 0, false, roles, address(0), liquidityManagement);
+    }
+
     function testIsPoolRegisteredWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.isPoolRegistered(pool);
     }
 
-    /*
-        isPoolInitialized
-            [x] onlyVault
-    */
+    function testInitializeWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        IERC20[] memory tokens;
+        uint256[] memory exactAmountsIn;
+        vaultExtension.initialize(pool, address(0), tokens, exactAmountsIn, 0, "");
+    }
+
     function testIsPoolInitializedWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.isPoolInitialized(pool);
     }
 
-    /*
-        getPoolConfig
-            [x] onlyVault
-    */
     function testGetPoolConfigWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.getPoolConfig(pool);
     }
 
-    /*
-        getPoolTokens
-            [x] onlyVault
-    */
+    function testGetHooksConfigWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.getHooksConfig(pool);
+    }
+
     function testGetPoolTokensWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.getPoolTokens(pool);
     }
 
-    /*
-        getPoolTokenInfo
-            [x] onlyVault
-    */
+    function testGetPoolTokenRatesWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.getPoolTokenRates(pool);
+    }
+
+    function testGetPoolDataWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.getPoolData(pool);
+    }
+
     function testGetPoolTokenInfoWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.getPoolTokenInfo(pool);
     }
 
-    /*
-        totalSupply
-            [x] onlyVault
-    */
+    function testGetCurrentLiveBalancesWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.getCurrentLiveBalances(pool);
+    }
+
+    function testComputeDynamicSwapFeeWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        IBasePool.PoolSwapParams memory swapParams;
+        vaultExtension.computeDynamicSwapFee(pool, swapParams);
+    }
+
+    function testGetBptRateWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.getBptRate(pool);
+    }
+
     function testTotalSupplyWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.totalSupply(address(dai));
     }
 
-    /*
-        balanceOf
-            [x] onlyVault
-    */
     function testBalanceOfWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.balanceOf(address(dai), address(0));
     }
 
-    /*
-        allowance
-            [x] onlyVault
-    */
     function testAllowanceWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.allowance(address(dai), address(1), address(2));
     }
 
-    /*
-        transfer
-            [x] onlyVault
-    */
     function testTransferWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.transfer(address(0), address(1), 1);
     }
 
-    /*
-        approve
-            [x] onlyVault
-    */
     function testApproveWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.approve(address(0), address(1), 0);
     }
 
-    /*
-        transferFrom
-            [x] onlyVault
-    */
     function testTransferFromWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.transferFrom(address(0), address(1), address(2), 2);
     }
 
-    /*
-        isPoolPaused
-            [x] onlyVault
-    */
     function testIsPoolPausedWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.isPoolPaused(pool);
     }
 
-    /*
-        getPoolPausedState
-            [x] onlyVault
-    */
     function testGetPoolPausedStateWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.getPoolPausedState(pool);
     }
 
-    /*
-        getStaticSwapFeePercentage
-            [x] onlyVault
-    */
+    function testGetAggregateSwapFeeAmountWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.getAggregateSwapFeeAmount(pool, dai);
+    }
+
+    function testGetAggregateYieldFeeAmountWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.getAggregateYieldFeeAmount(pool, dai);
+    }
+
     function testGetStaticSwapFeePercentageWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.getStaticSwapFeePercentage(pool);
     }
 
-    /*
-        getStaticSwapFeeManager
-            [x] onlyVault
-    */
-    function testGetStaticSwapFeeManagerWhenNotVault() public {
-        vm.expectRevert();
+    function testGetPoolRoleAccountsWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.getPoolRoleAccounts(pool);
     }
 
-    /*
-        isPoolInRecoveryMode
-            [x] onlyVault
-    */
     function testIsPoolInRecoveryModeWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.isPoolInRecoveryMode(pool);
     }
 
-    /*
-        quote
-            [x] onlyVault
-    */
+    function testRemoveLiquidityRecoveryWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultExtension.removeLiquidityRecovery(pool, address(1), 0);
+    }
+
+    function testCalculateBufferAmountsWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vm.prank(address(0), address(0));
+        vaultExtension.calculateBufferAmounts(SwapKind.EXACT_IN, IERC4626(address(0)), 0);
+    }
+
     function testQuoteWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vm.prank(address(0), address(0));
         vaultExtension.quote(bytes(""));
     }
 
-    /*
-        isQueryDisabled
-            [x] onlyVault
-    */
+    function testQuoteWhenNotStaticCall() public {
+        vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
+        vaultExtension.quote(bytes(""));
+    }
+
+    function testQuoteAndRevertWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vm.prank(address(0), address(0));
+        vaultExtension.quoteAndRevert(bytes(""));
+    }
+
+    function testQuoteAndRevertWhenNotStaticCall() public {
+        vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
+        vaultExtension.quoteAndRevert(bytes(""));
+    }
+
+    function testCalculateBufferAmountsWhenNotStaticCall() public {
+        vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
+        vaultExtension.calculateBufferAmounts(SwapKind.EXACT_IN, IERC4626(address(0)), 0);
+    }
+
     function testIsQueryDisabledWhenNotVault() public {
-        vm.expectRevert();
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.isQueryDisabled();
     }
 }

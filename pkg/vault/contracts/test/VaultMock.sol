@@ -620,4 +620,10 @@ contract VaultMock is IVaultMainMock, Vault {
     function manualGetTokenDeltas() external view returns (TokenDeltaMappingSlotType slot) {
         return _tokenDeltas();
     }
+
+    function manualErc4626BufferWrapOrUnwrapReentrancy(
+        BufferWrapOrUnwrapParams memory params
+    ) external nonReentrant returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw) {
+        return IVault(address(this)).erc4626BufferWrapOrUnwrap(params);
+    }
 }
