@@ -208,6 +208,7 @@ contract VaultMock is IVaultMainMock, Vault {
         poolConfigBits = poolConfigBits.setRemoveLiquidityCustom(
             config.liquidityManagement.enableRemoveLiquidityCustom
         );
+        poolConfigBits = poolConfigBits.setDonation(config.liquidityManagement.enableDonation);
 
         _poolConfigBits[pool] = poolConfigBits;
     }
