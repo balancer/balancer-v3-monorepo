@@ -83,20 +83,17 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             params.userData
         );
 
-        // If we are depositing ETH, the contract balance will be reduced by the amount of the deposit (usually to 0),
-        // so we must pass the original value to preserve the semantics of `returnEth`
-        uint256 ethBalance = address(this).balance;
         uint256 ethAmountIn;
-
         for (uint256 i = 0; i < params.tokens.length; ++i) {
             IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
 
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
-                if (ethBalance < amountIn) {
+                if (address(this).balance < amountIn) {
                     revert InsufficientEth();
                 }
+
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
                 // transfer WETH from the router to the Vault
@@ -110,7 +107,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         }
 
         // return ETH dust
-        _returnEth(params.sender, ethBalance, ethAmountIn);
+        _returnEth(params.sender);
     }
 
     /// @inheritdoc IRouter
@@ -260,18 +257,14 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         // maxAmountsIn length is checked against tokens length at the vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
-        // If we are depositing ETH, the contract balance will be reduced by the amount of the deposit (usually to 0),
-        // so we must pass the original value to preserve the semantics of `returnEth`
-        uint256 ethBalance = address(this).balance;
         uint256 ethAmountIn;
-
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
 
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
-                if (ethBalance < amountIn) {
+                if (address(this).balance < amountIn) {
                     revert InsufficientEth();
                 }
 
@@ -286,7 +279,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         }
 
         // Send remaining ETH to the user
-        _returnEth(params.sender, ethBalance, ethAmountIn);
+        _returnEth(params.sender);
     }
 
     /// @inheritdoc IRouter
@@ -583,18 +576,13 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         IERC20 tokenIn = params.tokenIn;
-        bool wethIsEth = params.wethIsEth;
 
-        // If we are depositing ETH, the contract balance will be reduced by the amount of the deposit (usually to 0),
-        // so we must pass the original value to preserve the semantics of `returnEth`
-        uint256 ethBalance = address(this).balance;
-
-        uint256 ethAmountIn = _takeTokenIn(params.sender, tokenIn, amountIn, wethIsEth);
-        _sendTokenOut(params.sender, params.tokenOut, amountOut, wethIsEth);
+        _takeTokenIn(params.sender, tokenIn, amountIn, params.wethIsEth);
+        _sendTokenOut(params.sender, params.tokenOut, amountOut, params.wethIsEth);
 
         if (tokenIn == _weth) {
             // Return the rest of ETH to sender
-            _returnEth(params.sender, ethBalance, ethAmountIn);
+            _returnEth(params.sender);
         }
 
         return amountCalculated;

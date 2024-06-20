@@ -674,10 +674,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         int256 numTokensOut = int256(_currentSwapTokensOut().length());
         uint256 ethAmountIn = 0;
 
-        // If we are depositing ETH, the contract balance will be reduced by the amount of the deposit (usually to 0),
-        // so we must pass the original value to preserve the semantics of `returnEth`
-        uint256 ethBalance = address(this).balance;
-
         // Iterate backwards, from the last element to 0 (included).
         // Removing the last element from a set is cheaper than removing the first one.
         for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
@@ -695,6 +691,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         }
 
         // Return the rest of ETH to sender
-        _returnEth(sender, ethBalance, ethAmountIn);
+        _returnEth(sender);
     }
 }
