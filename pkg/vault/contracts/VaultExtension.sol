@@ -294,6 +294,18 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                     revert HookRegistrationFailed(params.poolHooksContract, pool, msg.sender);
                 }
 
+                bool isAfterHookEnabled = hookFlags.enableHookAdjustedAmounts ||
+                    hookFlags.shouldCallBeforeInitialize ||
+                    hookFlags.shouldCallAfterInitialize ||
+                    hookFlags.shouldCallComputeDynamicSwapFee ||
+                    hookFlags.shouldCallBeforeSwap ||
+                    hookFlags.shouldCallAfterSwap ||
+                    hookFlags.shouldCallBeforeAddLiquidity ||
+                    hookFlags.shouldCallAfterAddLiquidity ||
+                    hookFlags.shouldCallBeforeRemoveLiquidity ||
+                    hookFlags.shouldCallAfterRemoveLiquidity;
+
+                poolConfigBits = poolConfigBits.setAnyHookEnabled(isAfterHookEnabled);
                 poolConfigBits = poolConfigBits.setHookAdjustedAmounts(hookFlags.enableHookAdjustedAmounts);
                 poolConfigBits = poolConfigBits.setShouldCallBeforeInitialize(hookFlags.shouldCallBeforeInitialize);
                 poolConfigBits = poolConfigBits.setShouldCallAfterInitialize(hookFlags.shouldCallAfterInitialize);
@@ -617,7 +629,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             _poolConfigBits[pool].callComputeDynamicSwapFeeHook(
                 swapParams,
                 _poolConfigBits[pool].getStaticSwapFeePercentage(),
-                Cache.initAddressCache(_hooksContracts[pool])
+                _hooksContracts[pool].value
             );
     }
 

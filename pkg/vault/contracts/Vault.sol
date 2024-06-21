@@ -194,32 +194,38 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
 
-        Cache.AddressCache memory hooksContractCache = Cache.initAddressCache(_hooksContracts[params.pool]);
+        address hooksContract;
 
-        if (poolData.poolConfigBits.callBeforeSwapHook(swapParams, params.pool, hooksContractCache)) {
-            // The call to `onBeforeSwap` could potentially update token rates and balances.
-            // We update `poolData.tokenRates`, `poolData.rawBalances` and `poolData.balancesLiveScaled18`
-            // to ensure the `onSwap` and `onComputeDynamicSwapFee` are called with the current values.
-            poolData.reloadBalancesAndRates(_poolTokenBalances[params.pool], Rounding.ROUND_DOWN);
+        bool isAnyHookEnabled = poolData.poolConfigBits.isAnyHookEnabled();
 
-            // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
-            state.amountGivenScaled18 = _computeAmountGivenScaled18(params, poolData, state);
-
-            swapParams = _buildPoolSwapParams(params, state, poolData);
+        if (isAnyHookEnabled) {
+            hooksContract = _hooksContracts[params.pool].value;
         }
 
-        // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
-        // as those passed to the main operation.
-        // At this point, the static swap fee percentage is loaded in the swap state as the default,
-        // to be used unless the pool has a dynamic swap fee. It is also passed into the hook, to support common cases
-        // where the dynamic fee computation logic uses it.
-        (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = poolData.poolConfigBits.callComputeDynamicSwapFeeHook(
-            swapParams,
-            state.swapFeePercentage,
-            hooksContractCache
-        );
-        if (dynamicSwapFeeCalculated) {
-            state.swapFeePercentage = dynamicSwapFee;
+        if (isAnyHookEnabled) {
+            if (poolData.poolConfigBits.callBeforeSwapHook(swapParams, params.pool, hooksContract)) {
+                // The call to `onBeforeSwap` could potentially update token rates and balances.
+                // We update `poolData.tokenRates`, `poolData.rawBalances` and `poolData.balancesLiveScaled18`
+                // to ensure the `onSwap` and `onComputeDynamicSwapFee` are called with the current values.
+                poolData.reloadBalancesAndRates(_poolTokenBalances[params.pool], Rounding.ROUND_DOWN);
+
+                // Also update amountGivenScaled18, as it will now be used in the swap, and the rates might have changed.
+                state.amountGivenScaled18 = _computeAmountGivenScaled18(params, poolData, state);
+
+                swapParams = _buildPoolSwapParams(params, state, poolData);
+            }
+
+            // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
+            // as those passed to the main operation.
+            // At this point, the static swap fee percentage is loaded in the swap state as the default,
+            // to be used unless the pool has a dynamic swap fee. It is also passed into the hook, to support common cases
+            // where the dynamic fee computation logic uses it.
+            (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = poolData
+                .poolConfigBits
+                .callComputeDynamicSwapFeeHook(swapParams, state.swapFeePercentage, hooksContract);
+            if (dynamicSwapFeeCalculated) {
+                state.swapFeePercentage = dynamicSwapFee;
+            }
         }
 
         // Non-reentrant call that updates accounting.
@@ -228,18 +234,20 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountCalculatedScaled18;
         (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, swapParams);
 
-        // If the hook contract does not exist or does not implement onAfterSwap, PoolConfigLib returns the original
-        // amountCalculated. Otherwise, the new amount calculated is 'amountCalculated + delta'. If the underlying
-        // hook fails, or limits are violated, `onAfterSwap` will revert.
-        amountCalculated = poolData.poolConfigBits.callAfterSwapHook(
-            amountCalculatedScaled18,
-            amountCalculated,
-            msg.sender,
-            params,
-            state,
-            poolData,
-            hooksContractCache
-        );
+        if (isAnyHookEnabled) {
+            // If the hook contract does not exist or does not implement onAfterSwap, PoolConfigLib returns the original
+            // amountCalculated. Otherwise, the new amount calculated is 'amountCalculated + delta'. If the underlying
+            // hook fails, or limits are violated, `onAfterSwap` will revert.
+            amountCalculated = poolData.poolConfigBits.callAfterSwapHook(
+                amountCalculatedScaled18,
+                amountCalculated,
+                msg.sender,
+                params,
+                state,
+                poolData,
+                hooksContract
+            );
+        }
 
         if (params.kind == SwapKind.EXACT_IN) {
             amountOut = amountCalculated;

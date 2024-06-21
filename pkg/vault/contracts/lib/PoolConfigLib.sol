@@ -30,7 +30,8 @@ library PoolConfigLib {
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
 
     // Bit offsets for hooks config
-    uint8 public constant BEFORE_INITIALIZE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
+    uint8 public constant ANY_HOOK_ENABLED_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
+    uint8 public constant BEFORE_INITIALIZE_OFFSET = ANY_HOOK_ENABLED_OFFSET + 1;
     uint8 public constant ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
     uint8 public constant AFTER_INITIALIZE_OFFSET = ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET + 1;
     uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = AFTER_INITIALIZE_OFFSET + 1;
@@ -57,6 +58,14 @@ library PoolConfigLib {
     uint8 private constant _TIMESTAMP_BITLENGTH = 32;
 
     // #region Bit offsets for main pool config settings
+    function isAnyHookEnabled(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(ANY_HOOK_ENABLED_OFFSET);
+    }
+
+    function setAnyHookEnabled(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, ANY_HOOK_ENABLED_OFFSET));
+    }
+
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
     }
@@ -278,13 +287,13 @@ library PoolConfigLib {
         PoolConfigBits config,
         IBasePool.PoolSwapParams memory swapParams,
         uint256 staticSwapFeePercentage,
-        Cache.AddressCache memory hooksContractCache
+        address hooksContract
     ) internal view returns (bool, uint256) {
         if (config.shouldCallComputeDynamicSwapFee() == false) {
             return (false, staticSwapFeePercentage);
         }
 
-        (bool success, uint256 swapFeePercentage) = IHooks(hooksContractCache.getValue()).onComputeDynamicSwapFee(
+        (bool success, uint256 swapFeePercentage) = IHooks(hooksContract).onComputeDynamicSwapFee(
             swapParams,
             staticSwapFeePercentage
         );
@@ -308,14 +317,14 @@ library PoolConfigLib {
         PoolConfigBits config,
         IBasePool.PoolSwapParams memory swapParams,
         address pool,
-        Cache.AddressCache memory hooksContractCache
+        address hooksContract
     ) internal returns (bool) {
         if (config.shouldCallBeforeSwap() == false) {
             // Hook contract does not implement onBeforeSwap, so success is false (hook was not executed)
             return false;
         }
 
-        if (IHooks(hooksContractCache.getValue()).onBeforeSwap(swapParams, pool) == false) {
+        if (IHooks(hooksContract).onBeforeSwap(swapParams, pool) == false) {
             // Hook contract implements onBeforeSwap, but it has failed, so reverts the transaction.
             revert IVaultErrors.BeforeSwapHookFailed();
         }
@@ -343,7 +352,7 @@ library PoolConfigLib {
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData,
-        Cache.AddressCache memory hooksContractCache
+        address hooksContract
     ) internal returns (uint256) {
         if (config.shouldCallAfterSwap() == false) {
             // Hook contract does not implement onAfterSwap, so success is false (hook was not executed) and do not
@@ -356,7 +365,7 @@ library PoolConfigLib {
             ? (state.amountGivenScaled18, amountCalculatedScaled18)
             : (amountCalculatedScaled18, state.amountGivenScaled18);
 
-        (bool success, uint256 hookAdjustedAmountCalculatedRaw) = IHooks(hooksContractCache.getValue()).onAfterSwap(
+        (bool success, uint256 hookAdjustedAmountCalculatedRaw) = IHooks(hooksContract).onAfterSwap(
             IHooks.AfterSwapParams({
                 kind: params.kind,
                 tokenIn: params.tokenIn,
