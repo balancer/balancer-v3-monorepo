@@ -40,7 +40,7 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
     function testCreatePoolWithoutDonation() public {
         address weightedPool = _deployAndInitializeWeightedPool(false);
 
-        // Try to donate but fails because pool does not support add liquidity custom
+        // Try to donate but fails because pool does not support donations
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
         router.donate(weightedPool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));

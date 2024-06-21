@@ -42,7 +42,7 @@ contract StablePoolFactoryTest is BaseVaultTest {
     function testCreatePoolWithoutDonation() public {
         address stablePool = _deployAndInitializeStablePool(false);
 
-        // Try to donate but fails because pool does not support add liquidity custom
+        // Try to donate but fails because pool does not support donations
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
         router.donate(stablePool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
