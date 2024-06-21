@@ -5,6 +5,9 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
@@ -26,6 +29,7 @@ contract VaultUnitTest is BaseTest {
     using ScalingHelpers for *;
     using FixedPoint for *;
     using PoolConfigLib for PoolConfigBits;
+    using SafeCast for *;
 
     IVaultMock internal vault;
 
@@ -166,5 +170,38 @@ contract VaultUnitTest is BaseTest {
             poolData.balancesRaw[1].mulUp(poolData.decimalScalingFactors[1]).mulUp(poolData.tokenRates[1]),
             "Unexpected balancesLiveScaled18[1]"
         );
+    }
+
+    function testSettle__Fuzz(uint256 initialReserves, uint256 addedReserves, uint256 settleHint) public {
+        initialReserves = bound(initialReserves, 0, 1e12 * 1e18);
+        addedReserves = bound(addedReserves, 0, 1e12 * 1e18);
+        settleHint = bound(settleHint, 0, addedReserves * 2);
+
+        vault.manualSetIsUnlocked(true);
+        vault.manualSetReservesOf(dai, initialReserves);
+
+        dai.mint(address(vault), initialReserves);
+        uint256 daiReservesBefore = vault.getReservesOf(dai);
+        assertEq(daiReservesBefore, initialReserves, "Wrong initial reserves");
+        assertEq(vault.getTokenDelta(dai), 0, "Wrong initial credit");
+
+        dai.mint(address(vault), addedReserves);
+        assertEq(daiReservesBefore, vault.getReservesOf(dai), "Wrong reserves before settle");
+
+        uint256 settlementAmount = vault.settle(dai, settleHint);
+        uint256 reserveDiff = vault.getReservesOf(dai) - daiReservesBefore;
+        assertEq(reserveDiff, addedReserves, "Wrong reserves after settle");
+        assertEq(settlementAmount, Math.min(settleHint, reserveDiff), "Wrong settle return value");
+        assertEq(vault.getTokenDelta(dai), -settlementAmount.toInt256(), "Wrong credit after settle");
+    }
+
+    function testSettleNegative() public {
+        vault.manualSetIsUnlocked(true);
+        vault.manualSetReservesOf(dai, 100);
+        // Simulate balance decrease.
+        vm.mockCall(address(dai), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(99));
+
+        vm.expectRevert(stdError.arithmeticError);
+        vault.settle(dai, 0);
     }
 }
