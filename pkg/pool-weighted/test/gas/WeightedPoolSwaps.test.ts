@@ -8,7 +8,7 @@ import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { WeightedPoolFactory } from '@balancer-labs/v3-pool-weighted/typechain-types';
 import { PoolRoleAccountsStruct } from '@balancer-labs/v3-vault/typechain-types/contracts/Vault';
 
-import { Benchmark } from '@balancer-labs/v3-benchmarks/src/SwapBenchmark.behavior';
+import { Benchmark } from '@balancer-labs/v3-benchmarks/src/PoolBenchmark.behavior';
 
 class WeightedPoolBenchmark extends Benchmark {
   WEIGHTS = [fp(0.5), fp(0.5)];
