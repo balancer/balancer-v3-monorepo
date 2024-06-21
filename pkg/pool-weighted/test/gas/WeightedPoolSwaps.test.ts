@@ -28,6 +28,8 @@ class WeightedPoolBenchmark extends Benchmark {
       poolCreator: ZERO_ADDRESS,
     };
 
+    const enableDonation = true;
+
     const tx = await factory.create(
       'WeightedPool',
       'Test',
@@ -36,7 +38,7 @@ class WeightedPoolBenchmark extends Benchmark {
       poolRoleAccounts,
       fp(0.1),
       ZERO_ADDRESS,
-      false,
+      enableDonation,
       ZERO_BYTES32
     );
     const receipt = await tx.wait();
