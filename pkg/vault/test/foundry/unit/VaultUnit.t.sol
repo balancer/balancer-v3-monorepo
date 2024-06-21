@@ -172,29 +172,7 @@ contract VaultUnitTest is BaseTest {
         );
     }
 
-    function testSettle__Fuzz(uint256 initialReserves, uint256 addedReserves) public {
-        initialReserves = bound(initialReserves, 0, 1e12 * 1e18);
-        addedReserves = bound(addedReserves, 0, 1e12 * 1e18);
-
-        vault.manualSetIsUnlocked(true);
-        vault.manualSetReservesOf(dai, initialReserves);
-
-        dai.mint(address(vault), initialReserves);
-        uint256 daiReservesBefore = vault.getReservesOf(dai);
-        assertEq(daiReservesBefore, initialReserves, "Wrong initial reserves");
-        assertEq(vault.getTokenDelta(dai), 0, "Wrong initial credit");
-
-        dai.mint(address(vault), addedReserves);
-        assertEq(daiReservesBefore, vault.getReservesOf(dai), "Wrong reserves before settle");
-
-        uint256 settlementAmount = vault.settle(dai);
-        uint256 reserveDiff = vault.getReservesOf(dai) - daiReservesBefore;
-        assertEq(reserveDiff, addedReserves, "Wrong reserves after settle");
-        assertEq(reserveDiff, settlementAmount, "Wrong settle return value");
-        assertEq(vault.getTokenDelta(dai), -settlementAmount.toInt256(), "Wrong credit after settle");
-    }
-
-    function testSettleWithHint__Fuzz(uint256 initialReserves, uint256 addedReserves, uint256 settleHint) public {
+    function testSettle__Fuzz(uint256 initialReserves, uint256 addedReserves, uint256 settleHint) public {
         initialReserves = bound(initialReserves, 0, 1e12 * 1e18);
         addedReserves = bound(addedReserves, 0, 1e12 * 1e18);
         settleHint = bound(settleHint, 0, addedReserves * 2);

@@ -26,14 +26,7 @@ interface IVaultMain {
 
     /**
      * @notice Settles deltas for a token; must be successful for the current lock to be released.
-     * @param token Token's address
-     * @return paid Amount paid during settlement
-     */
-    function settle(IERC20 token) external returns (uint256 paid);
-
-    /**
-     * @notice Settles deltas for a token; must be successful for the current lock to be released.
-     * @dev This version protects the caller against leftover dust in the vault for the token being settled. The caller
+     * @dev Protects the caller against leftover dust in the vault for the token being settled. The caller
      * should know in advance how many tokens were paid to the Vault, so it can provide it as a hint to discard any
      * excess in the Vault balance.
      * If the given hint is equal to or higher than the difference in reserves, the difference in reserves is given as

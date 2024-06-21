@@ -128,12 +128,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _supplyCredit(token, paid);
     }
 
-    /// @inheritdoc IVaultMain
-    function settle(IERC20 token) external nonReentrant onlyWhenUnlocked returns (uint256 paid) {
-        paid = _syncReserves(token);
-        _supplyCredit(token, paid);
-    }
-
     /**
      * @dev Updates `_reservesOf[token]` with the current Vault balance for the token, and returns the difference
      * between the old reserves and the current reserves.
