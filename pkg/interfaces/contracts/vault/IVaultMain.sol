@@ -37,8 +37,10 @@ interface IVaultMain {
      * should know in advance how many tokens were paid to the Vault, so it can provide it as a hint to discard any
      * excess in the Vault balance.
      * If the given hint is equal to or higher than the difference in reserves, the difference in reserves is given as
-     * credit to the caller.
+     * credit to the caller. In this case, the caller did not send all the expected tokens, so settlement would fail.
      * If the given hint is lower than the difference in reserves, the hint is given as credit to the caller.
+     * In this case, the excess would be absorbed by the Vault (and reflected correctly in the reserves), but would
+     * not affect settlement.
      * @param token Token's address
      * @param amountHint Amount paid as reported by the caller
      * @return paid Amount paid during settlement
