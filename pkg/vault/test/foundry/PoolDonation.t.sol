@@ -39,7 +39,7 @@ contract PoolDonationTest is BaseVaultTest {
         HookTestLocals memory vars = _createHookTestLocals();
 
         vm.prank(bob);
-        router.addLiquidityDonation(pool, amountsToDonate, false, bytes(""));
+        router.donate(pool, amountsToDonate, false, bytes(""));
 
         _fillAfterHookTestLocals(vars);
 

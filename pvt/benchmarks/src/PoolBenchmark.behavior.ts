@@ -226,14 +226,9 @@ export class Benchmark {
 
       it('measures gas', async () => {
         // Warm up
-        let tx = await router.connect(alice).addLiquidityDonation(this.pool, [SWAP_AMOUNT, SWAP_AMOUNT], false, '0x');
-        let receipt = await tx.wait();
-        await saveSnap(this._testDirname, `[${this._poolType}] donation - cold slots`, receipt);
-
-        // Measure
-        tx = await router.connect(alice).addLiquidityDonation(this.pool, [SWAP_AMOUNT, SWAP_AMOUNT], false, '0x');
-        receipt = await tx.wait();
-        await saveSnap(this._testDirname, `[${this._poolType}] donation - warm slots`, receipt);
+        const tx = await router.connect(alice).donate(this.pool, [SWAP_AMOUNT, SWAP_AMOUNT], false, '0x');
+        const receipt = await tx.wait();
+        await saveSnap(this._testDirname, `[${this._poolType}] donation`, receipt);
       });
     };
 
