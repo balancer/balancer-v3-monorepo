@@ -183,13 +183,13 @@ contract PoolHooksMock is BasePoolHooks {
                 hookAdjustedAmountCalculatedRaw += hookDiscount;
                 if (shouldSettleDiscount) {
                     params.tokenOut.transfer(address(_vault), hookDiscount);
-                    _vault.settle(params.tokenOut);
+                    _vault.settle(params.tokenOut, hookDiscount);
                 }
             } else {
                 hookAdjustedAmountCalculatedRaw -= hookDiscount;
                 if (shouldSettleDiscount) {
                     params.tokenIn.transfer(address(_vault), hookDiscount);
-                    _vault.settle(params.tokenIn);
+                    _vault.settle(params.tokenIn, hookDiscount);
                 }
             }
         }
@@ -262,7 +262,7 @@ contract PoolHooksMock is BasePoolHooks {
             for (uint256 i = 0; i < amountsInRaw.length; i++) {
                 uint256 hookDiscount = amountsInRaw[i].mulDown(addLiquidityHookDiscountPercentage);
                 tokens[i].transfer(address(_vault), hookDiscount);
-                _vault.settle(tokens[i]);
+                _vault.settle(tokens[i], hookDiscount);
                 hookAdjustedAmountsInRaw[i] -= hookDiscount;
             }
         }
@@ -293,7 +293,7 @@ contract PoolHooksMock is BasePoolHooks {
             for (uint256 i = 0; i < amountsOutRaw.length; i++) {
                 uint256 hookDiscount = amountsOutRaw[i].mulDown(removeLiquidityHookDiscountPercentage);
                 tokens[i].transfer(address(_vault), hookDiscount);
-                _vault.settle(tokens[i]);
+                _vault.settle(tokens[i], hookDiscount);
                 hookAdjustedAmountsOutRaw[i] += hookDiscount;
             }
         }

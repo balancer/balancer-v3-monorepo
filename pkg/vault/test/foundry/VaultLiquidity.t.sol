@@ -42,6 +42,12 @@ contract VaultLiquidityTest is BaseVaultTest {
         assertAddLiquidity(addLiquidityProportional);
     }
 
+    function testAddLiquidityProportionalWithDust() public {
+        dai.mint(address(vault), 1);
+        usdc.mint(address(vault), 1);
+        assertAddLiquidity(addLiquidityProportional);
+    }
+
     function addLiquidityUnbalanced() public returns (uint256[] memory amountsIn, uint256 bptAmountOut) {
         amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 

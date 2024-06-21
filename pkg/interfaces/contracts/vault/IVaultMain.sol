@@ -22,14 +22,25 @@ interface IVaultMain {
      * @param data Contains function signature and args to be passed to the msg.sender
      * @return result Resulting data from the call
      */
-    function unlock(bytes calldata data) external payable returns (bytes memory result);
+    function unlock(bytes calldata data) external returns (bytes memory result);
 
     /**
      * @notice Settles deltas for a token; must be successful for the current lock to be released.
+     * @dev Protects the caller against leftover dust in the vault for the token being settled. The caller
+     * should know in advance how many tokens were paid to the Vault, so it can provide it as a hint to discard any
+     * excess in the Vault balance.
+     * If the given hint is equal to or higher than the difference in reserves, the difference in reserves is given as
+     * credit to the caller. If it's higher, the caller sent fewer tokens than expected, so settlement would fail.
+     * If the given hint is lower than the difference in reserves, the hint is given as credit to the caller.
+     * In this case, the excess would be absorbed by the Vault (and reflected correctly in the reserves), but would
+     * not affect settlement.
+     * The credit supplied by the Vault can be calculated as `min(reserveDifference, amountHint)`, where the reserve
+     * difference equals current balance of the token minus existing reserves of the token when the function is called.
      * @param token Token's address
-     * @return paid Amount paid during settlement
+     * @param amountHint Amount paid as reported by the caller
+     * @return credit Credit received in return of the payment
      */
-    function settle(IERC20 token) external returns (uint256 paid);
+    function settle(IERC20 token, uint256 amountHint) external returns (uint256 credit);
 
     /**
      * @notice Sends tokens to a recipient.

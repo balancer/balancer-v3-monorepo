@@ -47,7 +47,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable returns (uint256 bptAmountOut) {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         Router.initializeHook.selector,
                         InitializeHookParams({
@@ -73,7 +73,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      */
     function initializeHook(
         InitializeHookParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256 bptAmountOut) {
+    ) external nonReentrant onlyVault returns (uint256 bptAmountOut) {
         bptAmountOut = _vault.initialize(
             params.pool,
             params.sender,
@@ -90,23 +90,24 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
-                if (msg.value < amountIn) {
+                if (address(this).balance < amountIn) {
                     revert InsufficientEth();
                 }
+
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
                 // transfer WETH from the router to the Vault
                 _weth.transfer(address(_vault), amountIn);
-                _vault.settle(_weth);
+                _vault.settle(_weth, amountIn);
             } else {
                 // transfer tokens from the user to the Vault
                 _permit2.transferFrom(params.sender, address(_vault), uint160(amountIn), address(token));
-                _vault.settle(token);
+                _vault.settle(token, amountIn);
             }
         }
 
         // return ETH dust
-        _returnEth(params.sender, ethAmountIn);
+        _returnEth(params.sender);
     }
 
     /// @inheritdoc IRouter
@@ -118,7 +119,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bytes memory userData
     ) external payable saveSender returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
-            _vault.unlock{ value: msg.value }(
+            _vault.unlock(
                 abi.encodeWithSelector(
                     Router.addLiquidityHook.selector,
                     AddLiquidityHookParams({
@@ -145,7 +146,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bytes memory userData
     ) external payable saveSender returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
-            _vault.unlock{ value: msg.value }(
+            _vault.unlock(
                 abi.encodeWithSelector(
                     Router.addLiquidityHook.selector,
                     AddLiquidityHookParams({
@@ -179,7 +180,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         );
 
         (uint256[] memory amountsIn, , ) = abi.decode(
-            _vault.unlock{ value: msg.value }(
+            _vault.unlock(
                 abi.encodeWithSelector(
                     Router.addLiquidityHook.selector,
                     AddLiquidityHookParams({
@@ -209,7 +210,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable saveSender returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         Router.addLiquidityHook.selector,
                         AddLiquidityHookParams({
@@ -238,7 +239,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         AddLiquidityHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
@@ -264,22 +264,22 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
-                if (msg.value < amountIn) {
+                if (address(this).balance < amountIn) {
                     revert InsufficientEth();
                 }
 
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
                 _weth.transfer(address(_vault), amountIn);
-                _vault.settle(_weth);
+                _vault.settle(_weth, amountIn);
             } else {
                 _permit2.transferFrom(params.sender, address(_vault), uint160(amountIn), address(token));
-                _vault.settle(token);
+                _vault.settle(token, amountIn);
             }
         }
 
         // Send remaining ETH to the user
-        _returnEth(params.sender, ethAmountIn);
+        _returnEth(params.sender);
     }
 
     /// @inheritdoc IRouter
@@ -509,7 +509,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable saveSender returns (uint256) {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         Router.swapSingleTokenHook.selector,
                         SwapSingleTokenHookParams({
@@ -543,7 +543,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable saveSender returns (uint256) {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         Router.swapSingleTokenHook.selector,
                         SwapSingleTokenHookParams({
@@ -572,18 +572,17 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      */
     function swapSingleTokenHook(
         SwapSingleTokenHookParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256) {
+    ) external nonReentrant onlyVault returns (uint256) {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         IERC20 tokenIn = params.tokenIn;
-        bool wethIsEth = params.wethIsEth;
 
-        uint256 ethAmountIn = _takeTokenIn(params.sender, tokenIn, amountIn, wethIsEth);
-        _sendTokenOut(params.sender, params.tokenOut, amountOut, wethIsEth);
+        _takeTokenIn(params.sender, tokenIn, amountIn, params.wethIsEth);
+        _sendTokenOut(params.sender, params.tokenOut, amountOut, params.wethIsEth);
 
         if (tokenIn == _weth) {
             // Return the rest of ETH to sender
-            _returnEth(params.sender, ethAmountIn);
+            _returnEth(params.sender);
         }
 
         return amountCalculated;
