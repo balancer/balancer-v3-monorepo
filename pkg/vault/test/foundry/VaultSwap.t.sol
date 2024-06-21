@@ -482,8 +482,16 @@ contract VaultSwapTest is BaseVaultTest {
         }
 
         // assets are transferred to/from user
-        assertEq(usdc.balanceOf(alice), balancesBefore.userUsdc - defaultAmount - usdcFee, "Swap: User's USDC balance is wrong");
-        assertEq(dai.balanceOf(alice), balancesBefore.userDai + defaultAmount - daiFee, "Swap: User's DAI balance is wrong");
+        assertEq(
+            usdc.balanceOf(alice),
+            balancesBefore.userUsdc - defaultAmount - usdcFee,
+            "Swap: User's USDC balance is wrong"
+        );
+        assertEq(
+            dai.balanceOf(alice),
+            balancesBefore.userDai + defaultAmount - daiFee,
+            "Swap: User's DAI balance is wrong"
+        );
 
         // Tokens are adjusted in the pool
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(pool);
@@ -495,8 +503,16 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(protocolFee, actualFee, "Swap: Aggregate fee amount is wrong");
 
         // vault are adjusted balances
-        assertEq(balancesBefore.vaultDai - dai.balanceOf(address(vault)), defaultAmount - daiFee, "Swap: Vault's DAI balance is wrong");
-        assertEq(usdc.balanceOf(address(vault)) - balancesBefore.vaultUsdc, defaultAmount + usdcFee, "Swap: Vault's USDC balance is wrong");
+        assertEq(
+            balancesBefore.vaultDai - dai.balanceOf(address(vault)),
+            defaultAmount - daiFee,
+            "Swap: Vault's DAI balance is wrong"
+        );
+        assertEq(
+            usdc.balanceOf(address(vault)) - balancesBefore.vaultUsdc,
+            defaultAmount + usdcFee,
+            "Swap: Vault's USDC balance is wrong"
+        );
 
         // Ensure raw and last live balances are in sync after the operation
         uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);

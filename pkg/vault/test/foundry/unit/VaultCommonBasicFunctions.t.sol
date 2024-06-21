@@ -337,4 +337,32 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         assertEq(vault.getTokenDelta(dai), 0, "Incorrect token delta (token)");
         assertEq(vault.getNonzeroDeltaCount(), startingNonZeroDeltaCount - 1, "Incorrect non-zero delta count");
     }
+
+    function testSyncReserves__Fuzz(uint256 initialReserves, uint256 addedReserves) public {
+        initialReserves = bound(initialReserves, 0, 1e12 * 1e18);
+        addedReserves = bound(addedReserves, 0, 1e12 * 1e18);
+
+        vault.manualSetReservesOf(dai, initialReserves);
+
+        dai.mint(address(vault), initialReserves);
+        uint256 daiReservesBefore = vault.getReservesOf(dai);
+        assertEq(daiReservesBefore, initialReserves, "Wrong initial reserves");
+
+        dai.mint(address(vault), addedReserves);
+        assertEq(daiReservesBefore, vault.getReservesOf(dai), "Wrong reserves before sync");
+
+        uint256 expectedReserveDiff = vault.manualSyncReserves(dai);
+        uint256 reserveDiff = vault.getReservesOf(dai) - daiReservesBefore;
+        assertEq(reserveDiff, addedReserves, "Wrong reserves after sync");
+        assertEq(reserveDiff, expectedReserveDiff, "Wrong sync return value");
+    }
+
+    function testSyncReservesNegative() public {
+        vault.manualSetReservesOf(dai, 100);
+        // Simulate balance decrease.
+        vm.mockCall(address(dai), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(99));
+
+        vm.expectRevert();
+        vault.manualSyncReserves(dai);
+    }
 }

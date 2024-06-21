@@ -425,6 +425,14 @@ contract VaultMock is IVaultMainMock, Vault {
         _nonZeroDeltaCount().tstore(deltaCount);
     }
 
+    function manualSetReservesOf(IERC20 token, uint256 reserves) external {
+        _reservesOf[token] = reserves;
+    }
+
+    function manualSyncReserves(IERC20 token) external returns (uint256 reservesDiff) {
+        return _syncReserves(token);
+    }
+
     function manualInternalSwap(
         SwapParams memory params,
         SwapState memory state,
