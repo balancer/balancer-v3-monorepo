@@ -27,7 +27,7 @@ contract VaultExtensionMutationTest is BaseVaultTest {
 
     function testGetNonzeroDeltaCountWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.getTokenDelta(dai);
+        vaultExtension.getNonzeroDeltaCount();
     }
 
     function testGetTokenDeltaWhenNotVault() public {
@@ -41,10 +41,11 @@ contract VaultExtensionMutationTest is BaseVaultTest {
     }
 
     function testRegisterPoolWhenNotVault() public {
-        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         TokenConfig[] memory config;
         PoolRoleAccounts memory roles;
         LiquidityManagement memory liquidityManagement;
+
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.registerPool(pool, config, 0, 0, false, roles, address(0), liquidityManagement);
     }
 
@@ -54,9 +55,10 @@ contract VaultExtensionMutationTest is BaseVaultTest {
     }
 
     function testInitializeWhenNotVault() public {
-        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         IERC20[] memory tokens;
         uint256[] memory exactAmountsIn;
+
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.initialize(pool, address(0), tokens, exactAmountsIn, 0, "");
     }
 
@@ -182,14 +184,14 @@ contract VaultExtensionMutationTest is BaseVaultTest {
     }
 
     function testCalculateBufferAmountsWhenNotVault() public {
-        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vm.prank(address(0), address(0));
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.calculateBufferAmounts(SwapKind.EXACT_IN, IERC4626(address(0)), 0);
     }
 
     function testQuoteWhenNotVault() public {
-        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vm.prank(address(0), address(0));
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.quote(bytes(""));
     }
 

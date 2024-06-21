@@ -84,8 +84,8 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     function testUnpausePoolWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(0)));
-        vault.unpausePool(address(0));
+        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vault.unpausePool(pool);
     }
 
     function testSetStaticSwapFeePercentageWithoutRegisteredPool() public {
@@ -138,7 +138,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vaultAdmin.setProtocolFeeController(IProtocolFeeController(address(1)));
     }
 
-    function testUpdateAggregateYieldFeesWhenNotAuthenticated() public {
+    function testSetProtocolFeeControllerWhenNotAuthenticated() public {
         vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
         vault.setProtocolFeeController(IProtocolFeeController(address(1)));
     }
@@ -255,7 +255,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     function testGetBufferBalanceWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.getBufferTotalShares(dai);
+        vaultAdmin.getBufferBalance(dai);
     }
 
     function testSetAuthorizerWhenNotAuthenticated() public {

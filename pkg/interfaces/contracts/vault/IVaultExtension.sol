@@ -143,9 +143,7 @@ interface IVaultExtension {
         address pool
     ) external view returns (uint256[] memory decimalScalingFactors, uint256[] memory tokenRates);
 
-    /**
-     * @notice Returns pool data for a given pool.
-     */
+    /// @notice Returns pool data for a given pool.
     function getPoolData(address pool) external view returns (PoolData memory);
 
     /**

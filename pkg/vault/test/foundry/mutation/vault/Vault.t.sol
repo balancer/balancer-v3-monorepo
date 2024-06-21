@@ -75,8 +75,8 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testSettleWithLockedVault() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultIsNotUnlocked.selector));
-        vault.settle(dai);
+        vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
+        vault.settle(dai, 0);
     }
 
     function testSettleReentrancy() public {
@@ -86,7 +86,7 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testSendToWithLockedVault() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultIsNotUnlocked.selector));
+        vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
         vault.sendTo(dai, address(0), 1);
     }
 
@@ -99,7 +99,7 @@ contract VaultMutationTest is BaseVaultTest {
     function testSwapWithLockedVault() public {
         SwapParams memory params = SwapParams(SwapKind.EXACT_IN, address(pool), dai, usdc, 1, 0, bytes(""));
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultIsNotUnlocked.selector));
+        vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
         vault.swap(params);
     }
 
@@ -113,7 +113,7 @@ contract VaultMutationTest is BaseVaultTest {
             bytes("")
         );
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultIsNotUnlocked.selector));
+        vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
         vault.addLiquidity(params);
     }
 
@@ -127,7 +127,7 @@ contract VaultMutationTest is BaseVaultTest {
             bytes("")
         );
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultIsNotUnlocked.selector));
+        vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
         vault.removeLiquidity(params);
     }
 
@@ -161,7 +161,7 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testErc4626BufferWrapOrUnwrapWhenNotUnlocked() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultIsNotUnlocked.selector));
+        vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
         BufferWrapOrUnwrapParams memory params;
         vault.erc4626BufferWrapOrUnwrap(params);
     }

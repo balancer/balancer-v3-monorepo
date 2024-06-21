@@ -639,10 +639,10 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSettleReentrancy(IERC20 token) public nonReentrant returns (uint256 paid) {
-        return settle(token);
+        return IVault(address(this)).settle(token, 0);
     }
 
     function manualSendToReentrancy(IERC20 token, address to, uint256 amount) public nonReentrant {
-        sendTo(token, to, amount);
+        IVault(address(this)).sendTo(token, to, amount);
     }
 }

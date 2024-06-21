@@ -855,6 +855,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
     }
 
+    /// @inheritdoc IVaultExtension
     function calculateBufferAmounts(
         SwapKind kind,
         IERC4626 wrappedToken,
