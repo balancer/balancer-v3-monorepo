@@ -336,7 +336,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @inheritdoc IVaultAdmin
     function setProtocolFeeController(
         IProtocolFeeController newProtocolFeeController
-    ) external authenticate nonReentrant onlyVaultDelegateCall {
+    ) external authenticate onlyVaultDelegateCall {
         _protocolFeeController = newProtocolFeeController;
 
         emit ProtocolFeeControllerChanged(newProtocolFeeController);
@@ -407,17 +407,18 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /*******************************************************************************
                                 Yield-bearing token buffers
     *******************************************************************************/
-    /// @inheritdoc IVaultAdmin
-    function unpauseVaultBuffers() external authenticate onlyVaultDelegateCall {
-        VaultStateBits vaultState = _vaultStateBits;
-        vaultState = vaultState.setBuffersPaused(false);
-        _vaultStateBits = vaultState;
-    }
-
+ 
     /// @inheritdoc IVaultAdmin
     function pauseVaultBuffers() external authenticate onlyVaultDelegateCall {
         VaultStateBits vaultState = _vaultStateBits;
         vaultState = vaultState.setBuffersPaused(true);
+        _vaultStateBits = vaultState;
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function unpauseVaultBuffers() external authenticate onlyVaultDelegateCall {
+        VaultStateBits vaultState = _vaultStateBits;
+        vaultState = vaultState.setBuffersPaused(false);
         _vaultStateBits = vaultState;
     }
 
@@ -532,7 +533,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
-    function setAuthorizer(IAuthorizer newAuthorizer) external authenticate nonReentrant onlyVaultDelegateCall {
+    function setAuthorizer(IAuthorizer newAuthorizer) external authenticate onlyVaultDelegateCall {
         _authorizer = newAuthorizer;
 
         emit AuthorizerChanged(newAuthorizer);

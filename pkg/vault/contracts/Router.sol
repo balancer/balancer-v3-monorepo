@@ -914,7 +914,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     )
         external
         payable
-        nonReentrant
         onlyVault
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
@@ -1083,7 +1082,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         RemoveLiquidityHookParams calldata params
     )
         external
-        nonReentrant
         onlyVault
         returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
     {
@@ -1114,7 +1112,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         address pool,
         address sender,
         uint256 exactBptAmountIn
-    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
+    ) external onlyVault returns (uint256[] memory amountsOut) {
         return _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn);
     }
 
