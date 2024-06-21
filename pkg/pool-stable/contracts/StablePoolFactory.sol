@@ -57,7 +57,7 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
         PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
         address poolHooksContract,
-        bool supportsDonation,
+        bool enableDonation,
         bytes32 salt
     ) external returns (address pool) {
         if (roleAccounts.poolCreator != address(0)) {
@@ -65,7 +65,7 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
         }
 
         LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
-        liquidityManagement.enableDonation = enableDonation; // was supportsDonation
+        liquidityManagement.enableDonation = enableDonation;
 
         pool = _create(
             abi.encode(
