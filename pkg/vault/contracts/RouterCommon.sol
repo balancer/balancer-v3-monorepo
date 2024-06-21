@@ -71,20 +71,18 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     }
 
     /**
-     * @dev Returns excess ETH back to the contract caller, assuming `amountUsed` has been spent. Reverts
-     * if the caller sent less ETH than `amountUsed`.
+     * @dev Returns excess ETH back to the contract caller. Checks for sufficient ETH balance are made right before
+     * each deposit, ensuring it will revert with a friendly custom error. If there is any balance remaining when
+     * `_returnEth` is called, return it to the sender.
      *
      * Because the caller might not know exactly how much ETH a Vault action will require, they may send extra.
-     * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender are
-     * not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
+     * Note that this excess value is returned *to the contract caller* (msg.sender). If caller and e.g. swap sender
+     * are not the same (because the caller is a relayer for the sender), then it is up to the caller to manage this
      * returned ETH.
      */
-    function _returnEth(address sender, uint256 amountUsed) internal {
-        if (msg.value < amountUsed) {
-            revert InsufficientEth();
-        }
+    function _returnEth(address sender) internal {
+        uint256 excess = address(this).balance;
 
-        uint256 excess = msg.value - amountUsed;
         if (excess > 0) {
             payable(sender).sendValue(excess);
         }
@@ -114,6 +112,10 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     ) internal returns (uint256 ethAmountIn) {
         // If the tokenIn is ETH, then wrap `amountIn` into WETH.
         if (wethIsEth && tokenIn == _weth) {
+            if (address(this).balance < amountIn) {
+                revert InsufficientEth();
+            }
+
             ethAmountIn = amountIn;
             // wrap amountIn to WETH
             _weth.deposit{ value: amountIn }();
