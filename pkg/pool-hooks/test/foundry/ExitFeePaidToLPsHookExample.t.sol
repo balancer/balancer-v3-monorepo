@@ -18,12 +18,13 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { MeasureBalancesHelper } from "@balancer-labs/v3-vault/test/foundry/utils/MeasureBalancesHelper.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { ExitFeePaidToLPsHookExample } from "../../contracts/ExitFeePaidToLPsHookExample.sol";
 
-contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest {
+contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest, MeasureBalancesHelper {
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
@@ -32,6 +33,7 @@ contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest {
 
     function setUp() public override {
         super.setUp();
+        MeasureBalancesHelper.prepareMeasurement(dai, usdc, pool, poolHooksContract, address(bob), address(lp), vault);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
@@ -106,12 +108,12 @@ contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest {
         uint256 hookFee = amountOut.mulDown(exitFeePercentage);
         uint256[] memory minAmountsOut = [amountOut - hookFee, amountOut - hookFee].toMemoryArray();
 
-        HookTestLocals memory vars = _createHookTestLocals();
+        HookTestLocals memory vars = _measureBalancesBeforeOperation();
 
         vm.prank(lp);
         router.removeLiquidityProportional(pool, 2 * amountOut, minAmountsOut, false, bytes(""));
 
-        _fillAfterHookTestLocals(vars);
+        _measureBalancesAfterOperation(vars);
 
         assertEq(vars.lp.daiAfter - vars.lp.daiBefore, amountOut - hookFee, "LP's DAI amount is wrong");
         assertEq(vars.lp.usdcAfter - vars.lp.usdcBefore, amountOut - hookFee, "LP's USDC amount is wrong");
@@ -148,55 +150,5 @@ contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest {
         liquidityManagement.enableDonation = enableDonation;
 
         factoryMock.registerPool(exitFeePool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
-    }
-
-    struct WalletState {
-        uint256 daiBefore;
-        uint256 daiAfter;
-        uint256 usdcBefore;
-        uint256 usdcAfter;
-        uint256 bptBefore;
-        uint256 bptAfter;
-    }
-
-    struct HookTestLocals {
-        WalletState bob;
-        WalletState lp;
-        WalletState hook;
-        WalletState vault;
-        uint256[] poolBefore;
-        uint256[] poolAfter;
-        uint256 bptSupplyBefore;
-        uint256 bptSupplyAfter;
-    }
-
-    function _createHookTestLocals() private returns (HookTestLocals memory vars) {
-        vars.bob.daiBefore = dai.balanceOf(address(bob));
-        vars.bob.usdcBefore = usdc.balanceOf(address(bob));
-        vars.bob.bptBefore = BalancerPoolToken(pool).balanceOf(address(bob));
-        vars.lp.daiBefore = dai.balanceOf(address(lp));
-        vars.lp.usdcBefore = usdc.balanceOf(address(lp));
-        vars.lp.bptBefore = BalancerPoolToken(pool).balanceOf(address(lp));
-        vars.hook.daiBefore = dai.balanceOf(poolHooksContract);
-        vars.hook.usdcBefore = usdc.balanceOf(poolHooksContract);
-        vars.vault.daiBefore = dai.balanceOf(address(vault));
-        vars.vault.usdcBefore = usdc.balanceOf(address(vault));
-        vars.poolBefore = vault.getRawBalances(pool);
-        vars.bptSupplyBefore = BalancerPoolToken(pool).totalSupply();
-    }
-
-    function _fillAfterHookTestLocals(HookTestLocals memory vars) private {
-        vars.bob.daiAfter = dai.balanceOf(address(bob));
-        vars.bob.usdcAfter = usdc.balanceOf(address(bob));
-        vars.bob.bptAfter = BalancerPoolToken(pool).balanceOf(address(bob));
-        vars.lp.daiAfter = dai.balanceOf(address(lp));
-        vars.lp.usdcAfter = usdc.balanceOf(address(lp));
-        vars.lp.bptAfter = BalancerPoolToken(pool).balanceOf(address(lp));
-        vars.hook.daiAfter = dai.balanceOf(poolHooksContract);
-        vars.hook.usdcAfter = usdc.balanceOf(poolHooksContract);
-        vars.vault.daiAfter = dai.balanceOf(address(vault));
-        vars.vault.usdcAfter = usdc.balanceOf(address(vault));
-        vars.poolAfter = vault.getRawBalances(pool);
-        vars.bptSupplyAfter = BalancerPoolToken(pool).totalSupply();
     }
 }
