@@ -39,6 +39,6 @@ class PoolMockBenchmark extends Benchmark {
   }
 }
 
-describe.only('PoolMock Gas Benchmark', function () {
+describe('PoolMock Gas Benchmark', function () {
   new PoolMockBenchmark(__dirname).itBenchmarksSwap();
 });
