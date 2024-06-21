@@ -40,9 +40,9 @@ contract ExitFeePaidToLPsHookExample is BasePoolHooks, Ownable {
         // that the given pool is from the factory). Returning true allows any pool, with any configuration, to use
         // this hook
 
-        // This hook requires donation support to work, which requires the pool to accept add liquidity custom
-        if (liquidityManagement.enableAddLiquidityCustom == false) {
-            revert IVaultErrors.DoesNotSupportAddLiquidityCustom();
+        // This hook requires donation support to work
+        if (liquidityManagement.enableDonation == false) {
+            revert IVaultErrors.DoesNotSupportDonation();
         }
 
         return true;
@@ -88,8 +88,7 @@ contract ExitFeePaidToLPsHookExample is BasePoolHooks, Ownable {
                 uint256 hookFee = amountsOutRaw[i].mulDown(removeLiquidityHookFeePercentage);
                 accruedFees[i] = hookFee;
                 hookAdjustedAmountsOutRaw[i] -= hookFee;
-                // Sends the hook fee to the hook and registers the debt in the vault
-                _vault.sendTo(tokens[i], address(this), hookFee);
+                // Fees don't need to be transferred to the hook, because donation will reinsert them in the vault
             }
         }
 
@@ -100,7 +99,7 @@ contract ExitFeePaidToLPsHookExample is BasePoolHooks, Ownable {
                 to: msg.sender, // It would mint BPTs to router, but it's a donation so no BPT is minted
                 maxAmountsIn: accruedFees,
                 minBptAmountOut: 0,
-                kind: AddLiquidityKind.CUSTOM, // Custom is used to donate to pools that support donation
+                kind: AddLiquidityKind.DONATION,
                 userData: bytes("")
             })
         );
