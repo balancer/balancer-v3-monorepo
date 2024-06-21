@@ -65,9 +65,7 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
         }
 
         LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
-        if (supportsDonation) {
-            liquidityManagement.enableDonation = true;
-        }
+        liquidityManagement.enableDonation = enableDonation; // was supportsDonation
 
         pool = _create(
             abi.encode(
