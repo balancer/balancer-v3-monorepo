@@ -18,7 +18,7 @@ contract StablePoolFactoryTest is Test {
         factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
     }
 
-    function testFactoryPausedState() public {
+    function testFactoryPausedState() public view {
         uint32 pauseWindowDuration = factory.getPauseWindowDuration();
         assertEq(pauseWindowDuration, 365 days);
     }
