@@ -28,9 +28,8 @@ class PoolMockBenchmark extends Benchmark {
 
     const liquidityManagement: LiquidityManagementStruct = {
       disableUnbalancedLiquidity: false,
-      enableAddLiquidityCustom: false,
+      enableAddLiquidityCustom: true,
       enableRemoveLiquidityCustom: false,
-      enableDonation: true,
     };
 
     await factory.registerPool(pool, this.tokenConfig, roleAccounts, ZERO_ADDRESS, liquidityManagement);

@@ -221,17 +221,17 @@ export class Benchmark {
 
         expect(poolConfig.isPoolRegistered).to.be.true;
         expect(poolConfig.isPoolInitialized).to.be.true;
-        expect(poolConfig.liquidityManagement.enableDonation).to.be.true;
+        expect(poolConfig.liquidityManagement.enableAddLiquidityCustom).to.be.true;
       });
 
       it('measures gas', async () => {
         // Warm up
-        let tx = await router.connect(alice).addLiquidityDonation(this.pool, [SWAP_AMOUNT, SWAP_AMOUNT], false, '0x');
+        let tx = await router.connect(alice).addLiquidityCustom(this.pool, [SWAP_AMOUNT, SWAP_AMOUNT], 0, false, '0x');
         let receipt = await tx.wait();
         await saveSnap(this._testDirname, `[${this._poolType}] donation - cold slots`, receipt);
 
         // Measure
-        tx = await router.connect(alice).addLiquidityDonation(this.pool, [SWAP_AMOUNT, SWAP_AMOUNT], false, '0x');
+        tx = await router.connect(alice).addLiquidityCustom(this.pool, [SWAP_AMOUNT, SWAP_AMOUNT], 0, false, '0x');
         receipt = await tx.wait();
         await saveSnap(this._testDirname, `[${this._poolType}] donation - warm slots`, receipt);
       });

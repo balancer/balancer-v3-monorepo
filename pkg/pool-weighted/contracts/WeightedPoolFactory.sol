@@ -66,9 +66,7 @@ contract WeightedPoolFactory is IPoolVersion, BasePoolFactory, Version {
         }
 
         LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
-        if (supportsDonation) {
-            liquidityManagement.enableAddLiquidityCustom = true;
-        }
+        liquidityManagement.enableAddLiquidityCustom = supportsDonation || liquidityManagement.enableAddLiquidityCustom;
 
         pool = _create(
             abi.encode(
