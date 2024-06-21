@@ -98,11 +98,11 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 ethAmountIn = amountIn;
                 // transfer WETH from the router to the Vault
                 _weth.transfer(address(_vault), amountIn);
-                _vault.settle(_weth);
+                _vault.settle(_weth, amountIn);
             } else {
                 // transfer tokens from the user to the Vault
                 _permit2.transferFrom(params.sender, address(_vault), uint160(amountIn), address(token));
-                _vault.settle(token);
+                _vault.settle(token, amountIn);
             }
         }
 
@@ -271,10 +271,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
                 _weth.transfer(address(_vault), amountIn);
-                _vault.settle(_weth);
+                _vault.settle(_weth, amountIn);
             } else {
                 _permit2.transferFrom(params.sender, address(_vault), uint160(amountIn), address(token));
-                _vault.settle(token);
+                _vault.settle(token, amountIn);
             }
         }
 

@@ -119,6 +119,12 @@ contract VaultSwapTest is BaseVaultTest {
         assertSwap(swapSingleTokenExactIn, SwapKind.EXACT_IN);
     }
 
+    function testSwapSingleTokenExactInWithDust() public {
+        dai.mint(address(vault), 1);
+        usdc.mint(address(vault), 1);
+        assertSwap(swapSingleTokenExactIn, SwapKind.EXACT_IN);
+    }
+
     function swapSingleTokenExactIn() public returns (uint256 fee, uint256 protocolFee) {
         vm.prank(alice);
         router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, defaultAmount, MAX_UINT256, false, bytes(""));
@@ -126,6 +132,12 @@ contract VaultSwapTest is BaseVaultTest {
     }
 
     function testSwapSingleTokenExactOut() public {
+        assertSwap(swapSingleTokenExactOut, SwapKind.EXACT_OUT);
+    }
+
+    function testSwapSingleTokenExactOutWithDust() public {
+        dai.mint(address(vault), 1);
+        usdc.mint(address(vault), 1);
         assertSwap(swapSingleTokenExactOut, SwapKind.EXACT_OUT);
     }
 
@@ -439,16 +451,27 @@ contract VaultSwapTest is BaseVaultTest {
     }
 
     /// Utils
+    struct SwapBalances {
+        uint256 vaultDai;
+        uint256 vaultUsdc;
+        uint256 userDai;
+        uint256 userUsdc;
+    }
 
     function assertSwap(function() returns (uint256, uint256) testFunc, SwapKind kind) internal {
-        uint256 usdcBeforeSwap = usdc.balanceOf(alice);
-        uint256 daiBeforeSwap = dai.balanceOf(alice);
+        SwapBalances memory balancesBefore;
+        balancesBefore.vaultUsdc = usdc.balanceOf(address(vault));
+        balancesBefore.vaultDai = dai.balanceOf(address(vault));
 
-        (uint256 fee, uint256 protocolFee) = testFunc();
+        balancesBefore.userUsdc = usdc.balanceOf(alice);
+        balancesBefore.userDai = dai.balanceOf(alice);
+
         uint256 daiFee;
         uint256 usdcFee;
         uint256 daiProtocolFee;
         uint256 usdcProtocolFee;
+
+        (uint256 fee, uint256 protocolFee) = testFunc();
 
         if (kind == SwapKind.EXACT_OUT) {
             usdcFee = fee;
@@ -459,8 +482,16 @@ contract VaultSwapTest is BaseVaultTest {
         }
 
         // assets are transferred to/from user
-        assertEq(usdc.balanceOf(alice), usdcBeforeSwap - defaultAmount - usdcFee, "Swap: User's USDC balance is wrong");
-        assertEq(dai.balanceOf(alice), daiBeforeSwap + defaultAmount - daiFee, "Swap: User's DAI balance is wrong");
+        assertEq(
+            usdc.balanceOf(alice),
+            balancesBefore.userUsdc - defaultAmount - usdcFee,
+            "Swap: User's USDC balance is wrong"
+        );
+        assertEq(
+            dai.balanceOf(alice),
+            balancesBefore.userDai + defaultAmount - daiFee,
+            "Swap: User's DAI balance is wrong"
+        );
 
         // Tokens are adjusted in the pool
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(pool);
@@ -472,8 +503,16 @@ contract VaultSwapTest is BaseVaultTest {
         assertEq(protocolFee, actualFee, "Swap: Aggregate fee amount is wrong");
 
         // vault are adjusted balances
-        assertEq(dai.balanceOf(address(vault)), daiFee, "Swap: Vault's DAI balance is wrong");
-        assertEq(usdc.balanceOf(address(vault)), 2 * defaultAmount + usdcFee, "Swap: Vault's USDC balance is wrong");
+        assertEq(
+            balancesBefore.vaultDai - dai.balanceOf(address(vault)),
+            defaultAmount - daiFee,
+            "Swap: Vault's DAI balance is wrong"
+        );
+        assertEq(
+            usdc.balanceOf(address(vault)) - balancesBefore.vaultUsdc,
+            defaultAmount + usdcFee,
+            "Swap: Vault's USDC balance is wrong"
+        );
 
         // Ensure raw and last live balances are in sync after the operation
         uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
