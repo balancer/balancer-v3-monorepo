@@ -194,4 +194,14 @@ contract VaultUnitTest is BaseTest {
         assertEq(settlementAmount, Math.min(settleHint, reserveDiff), "Wrong settle return value");
         assertEq(vault.getTokenDelta(dai), -settlementAmount.toInt256(), "Wrong credit after settle");
     }
+
+    function testSettleNegative() public {
+        vault.manualSetIsUnlocked(true);
+        vault.manualSetReservesOf(dai, 100);
+        // Simulate balance decrease.
+        vm.mockCall(address(dai), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(99));
+
+        vm.expectRevert(stdError.arithmeticError);
+        vault.settle(dai, 0);
+    }
 }

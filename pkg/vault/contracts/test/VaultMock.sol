@@ -429,10 +429,6 @@ contract VaultMock is IVaultMainMock, Vault {
         _reservesOf[token] = reserves;
     }
 
-    function manualSyncReserves(IERC20 token) external returns (uint256 reservesDiff) {
-        return _syncReserves(token);
-    }
-
     function manualInternalSwap(
         SwapParams memory params,
         SwapState memory state,

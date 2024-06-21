@@ -131,8 +131,6 @@ interface IVaultMainMock {
 
     function manualSetReservesOf(IERC20 token, uint256 reserves) external;
 
-    function manualSyncReserves(IERC20 token) external returns (uint256 reservesDiff);
-
     function manualInternalSwap(
         SwapParams memory params,
         SwapState memory state,

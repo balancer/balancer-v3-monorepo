@@ -34,11 +34,13 @@ interface IVaultMain {
      * If the given hint is lower than the difference in reserves, the hint is given as credit to the caller.
      * In this case, the excess would be absorbed by the Vault (and reflected correctly in the reserves), but would
      * not affect settlement.
+     * The credit supplied by the Vault can be calculated as `min(reserveDifference, amountHint)`, where the reserve
+     * difference equals current balance of the token minus existing reserves of the token when the function is called.
      * @param token Token's address
      * @param amountHint Amount paid as reported by the caller
-     * @return paid Amount paid during settlement
+     * @return credit Credit received in return of the payment
      */
-    function settle(IERC20 token, uint256 amountHint) external returns (uint256 paid);
+    function settle(IERC20 token, uint256 amountHint) external returns (uint256 credit);
 
     /**
      * @notice Sends tokens to a recipient.

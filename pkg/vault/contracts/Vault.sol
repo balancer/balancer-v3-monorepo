@@ -113,30 +113,23 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function settle(IERC20 token, uint256 amountHint) external nonReentrant onlyWhenUnlocked returns (uint256 paid) {
-        paid = _syncReserves(token);
+    function settle(IERC20 token, uint256 amountHint) external nonReentrant onlyWhenUnlocked returns (uint256 credit) {
+        uint256 reservesBefore = _reservesOf[token];
+        uint256 currentReserves = token.balanceOf(address(this));
+        _reservesOf[token] = currentReserves;
+        credit = currentReserves - reservesBefore;
+
         // If the given hint is equal or greater to the reserve difference, we just take the actual reserve difference
         // as the paid amount; the actual balance of the tokens in the vault is what matters here.
-        if (paid > amountHint) {
+        if (credit > amountHint) {
             // If the difference in reserves is higher than the amount claimed to be paid by the caller, there was some
             // leftover that had been sent to the vault beforehand, which was not incorporated into the reserves.
             // In that case, we simply discard the leftover by considering the given hint as the amount paid.
             // In turn, this gives the caller credit for the given amount hint, which is what the caller is expecting.
-            paid = amountHint;
+            credit = amountHint;
         }
 
-        _supplyCredit(token, paid);
-    }
-
-    /**
-     * @dev Updates `_reservesOf[token]` with the current Vault balance for the token, and returns the difference
-     * between the old reserves and the current reserves.
-     */
-    function _syncReserves(IERC20 token) internal returns (uint256 reserveDifference) {
-        uint256 reservesBefore = _reservesOf[token];
-        uint256 currentReserves = token.balanceOf(address(this));
-        _reservesOf[token] = currentReserves;
-        return (currentReserves - reservesBefore);
+        _supplyCredit(token, credit);
     }
 
     /// @inheritdoc IVaultMain
