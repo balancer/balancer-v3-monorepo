@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-const SNAPS_DIR = 'contract-sizes';
+const SNAPS_DIR = '.contract-sizes';
 
 export async function saveSizeSnap(basePath: string, snap: string, deployedCodeSize: number, initCodeSize: number) {
   // see EIPs 170 and 3860 for more information
