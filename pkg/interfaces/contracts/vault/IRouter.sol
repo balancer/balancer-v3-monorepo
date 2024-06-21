@@ -140,12 +140,7 @@ interface IRouter {
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
      * @param userData Additional (optional) data required for adding liquidity
      */
-    function addLiquidityDonation(
-        address pool,
-        uint256[] memory amountsIn,
-        bool wethIsEth,
-        bytes memory userData
-    ) external payable;
+    function donate(address pool, uint256[] memory amountsIn, bool wethIsEth, bytes memory userData) external payable;
 
     /**
      * @notice Adds liquidity to a pool with a custom request.

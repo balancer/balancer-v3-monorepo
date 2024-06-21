@@ -45,7 +45,7 @@ contract StablePoolFactoryTest is BaseVaultTest {
         // Try to donate but fails because pool does not support add liquidity custom
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
-        router.addLiquidityDonation(stablePool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
+        router.donate(stablePool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
     }
 
     function testCreatePoolWithDonation() public {
@@ -57,7 +57,7 @@ contract StablePoolFactoryTest is BaseVaultTest {
 
         // Donates to pool successfully
         vm.prank(bob);
-        router.addLiquidityDonation(stablePool, [amountToDonate, amountToDonate].toMemoryArray(), false, bytes(""));
+        router.donate(stablePool, [amountToDonate, amountToDonate].toMemoryArray(), false, bytes(""));
 
         _fillAfterHookTestLocals(vars, stablePool);
 

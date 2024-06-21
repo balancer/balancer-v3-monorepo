@@ -43,7 +43,7 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
         // Try to donate but fails because pool does not support add liquidity custom
         vm.prank(bob);
         vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
-        router.addLiquidityDonation(weightedPool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
+        router.donate(weightedPool, [poolInitAmount, poolInitAmount].toMemoryArray(), false, bytes(""));
     }
 
     function testCreatePoolWithDonation() public {
@@ -55,7 +55,7 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
 
         // Donates to pool successfully
         vm.prank(bob);
-        router.addLiquidityDonation(weightedPool, [amountToDonate, amountToDonate].toMemoryArray(), false, bytes(""));
+        router.donate(weightedPool, [amountToDonate, amountToDonate].toMemoryArray(), false, bytes(""));
 
         _fillAfterHookTestLocals(vars, weightedPool);
 

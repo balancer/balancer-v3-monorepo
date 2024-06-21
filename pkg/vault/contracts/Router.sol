@@ -201,7 +201,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     }
 
     /// @inheritdoc IRouter
-    function addLiquidityDonation(
+    function donate(
         address pool,
         uint256[] memory amountsIn,
         bool wethIsEth,
