@@ -5,7 +5,7 @@ import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 
 import { Benchmark } from '@balancer-labs/v3-benchmarks/src/SwapBenchmark.behavior';
 import { PoolFactoryMock } from '@balancer-labs/v3-vault/typechain-types';
-import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
+import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { LiquidityManagementStruct, PoolRoleAccountsStruct } from '../../typechain-types/contracts/Vault';
 
 class PoolMockBenchmark extends Benchmark {
