@@ -22,11 +22,12 @@ library PoolDataLib {
     using PoolConfigLib for PoolConfigBits;
 
     function load(
+        PoolData memory poolData,
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
         PoolConfigBits poolConfigBits,
         mapping(IERC20 => TokenInfo) storage poolTokenInfo,
         Rounding roundingDirection
-    ) internal view returns (PoolData memory poolData) {
+    ) internal view {
         uint256 numTokens = poolTokenBalances.length();
 
         poolData.poolConfigBits = poolConfigBits;
