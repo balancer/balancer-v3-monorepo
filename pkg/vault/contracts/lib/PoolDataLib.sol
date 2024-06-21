@@ -67,22 +67,18 @@ library PoolDataLib {
 
             // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
             if (tokenSubjectToYieldFees) {
-                uint256 aggregateYieldFeeAmountRaw = 0;
+                uint256 aggregateYieldFeePercentage = poolData.poolConfigBits.getAggregateYieldFeePercentage();
+                uint256 balanceRaw = poolData.balancesRaw[i];
 
-                aggregateYieldFeeAmountRaw = _computeYieldFeesDue(
+                uint256 aggregateYieldFeeAmountRaw = _computeYieldFeesDue(
                     poolData,
                     packedBalance.getBalanceDerived(),
                     i,
-                    poolData.poolConfigBits.getAggregateYieldFeePercentage()
+                    aggregateYieldFeePercentage
                 );
 
                 if (aggregateYieldFeeAmountRaw > 0) {
-                    updateRawAndLiveBalance(
-                        poolData,
-                        i,
-                        poolData.balancesRaw[i] - aggregateYieldFeeAmountRaw,
-                        roundingDirection
-                    );
+                    updateRawAndLiveBalance(poolData, i, balanceRaw - aggregateYieldFeeAmountRaw, roundingDirection);
                 }
             }
         }
