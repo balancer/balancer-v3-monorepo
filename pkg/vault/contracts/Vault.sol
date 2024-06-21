@@ -175,7 +175,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function swap(
         SwapParams memory params
     )
-        public
+        external
         onlyWhenUnlocked
         withInitializedPool(params.pool)
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
@@ -994,7 +994,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function erc4626BufferWrapOrUnwrap(
         BufferWrapOrUnwrapParams memory params
     )
-        public
+        external
         onlyWhenUnlocked
         whenVaultBuffersAreNotPaused
         nonReentrant
