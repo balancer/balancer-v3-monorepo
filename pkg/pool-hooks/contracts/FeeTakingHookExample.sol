@@ -27,7 +27,7 @@ contract FeeTakingHookExample is BasePoolHooks, Ownable {
     uint64 public removeLiquidityHookFeePercentage;
 
     constructor(IVault vault) BasePoolHooks(vault) Ownable(msg.sender) {
-        // solhint-previous-line no-empty-blocks
+        // solhint-disable-previous-line no-empty-blocks
     }
 
     /// @inheritdoc IHooks

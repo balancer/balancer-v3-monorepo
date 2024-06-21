@@ -299,7 +299,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         uint256 bptSupplyAfter;
     }
 
-    function _checkPoolAndVaultBalancesAfterSwap(HookTestLocals memory vars, uint256 poolBalanceChange) private {
+    function _checkPoolAndVaultBalancesAfterSwap(HookTestLocals memory vars, uint256 poolBalanceChange) private view {
         // Considers swap fee = 0, so only hook fees were charged
         assertEq(vars.poolAfter[daiIdx] - vars.poolBefore[daiIdx], poolBalanceChange, "Pool DAI balance is wrong");
         assertEq(vars.poolBefore[usdcIdx] - vars.poolAfter[usdcIdx], poolBalanceChange, "Pool USDC balance is wrong");
@@ -312,7 +312,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         uint256[] memory actualAmountsIn,
         uint256 expectedBptOut,
         uint256 expectedHookFee
-    ) private {
+    ) private view {
         _fillAfterHookTestLocals(vars);
 
         assertEq(vars.bob.bptAfter - vars.bob.bptBefore, expectedBptOut, "Bob BPT balance is wrong");
@@ -352,7 +352,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         uint256[] memory actualAmountsOut,
         uint256 expectedBptIn,
         uint256 expectedHookFee
-    ) private {
+    ) private view {
         _fillAfterHookTestLocals(vars);
 
         assertEq(vars.bob.bptBefore - vars.bob.bptAfter, expectedBptIn, "Bob BPT balance is wrong");
@@ -391,7 +391,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         assertEq(vars.hook.usdcAfter - vars.hook.usdcBefore, expectedHookFee, "Hook USDC balance is wrong");
     }
 
-    function _createHookTestLocals() private returns (HookTestLocals memory vars) {
+    function _createHookTestLocals() private view returns (HookTestLocals memory vars) {
         vars.bob.daiBefore = dai.balanceOf(address(bob));
         vars.bob.usdcBefore = usdc.balanceOf(address(bob));
         vars.bob.bptBefore = BalancerPoolToken(pool).balanceOf(address(bob));
@@ -403,7 +403,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         vars.bptSupplyBefore = BalancerPoolToken(pool).totalSupply();
     }
 
-    function _fillAfterHookTestLocals(HookTestLocals memory vars) private {
+    function _fillAfterHookTestLocals(HookTestLocals memory vars) private view {
         vars.bob.daiAfter = dai.balanceOf(address(bob));
         vars.bob.usdcAfter = usdc.balanceOf(address(bob));
         vars.bob.bptAfter = BalancerPoolToken(pool).balanceOf(address(bob));
