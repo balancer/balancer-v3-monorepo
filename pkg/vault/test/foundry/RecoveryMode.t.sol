@@ -45,7 +45,7 @@ contract RecoveryModeTest is BaseVaultTest {
         assertRawAndLiveBalanceRelationship(true);
     }
 
-    function assertRawAndLiveBalanceRelationship(bool shouldBeEqual) internal {
+    function assertRawAndLiveBalanceRelationship(bool shouldBeEqual) internal view {
         // Ensure raw and last live balances are in sync after the operation
         uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
         uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);

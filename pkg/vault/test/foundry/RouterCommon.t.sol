@@ -32,7 +32,7 @@ contract RouterCommonTest is BaseTest {
         router.call(address(router), abi.encodeWithSelector(RouterCommonMock.emitSender.selector));
     }
 
-    function testSenderSlot() external {
+    function testSenderSlot() external view {
         assertEq(
             StorageSlot.AddressSlotType.unwrap(router.manualGetSenderSlot()),
             keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.RouterCommon.sender")) - 1)) &

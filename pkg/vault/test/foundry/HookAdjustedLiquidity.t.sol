@@ -434,7 +434,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256[] memory actualAmountsIn,
         uint256 expectedBptOut,
         int256 expectedHookDelta
-    ) private {
+    ) private view {
         _fillAfterHookTestLocals(vars);
 
         assertEq(vars.bptSupplyAfter - vars.bptSupplyBefore, expectedBptOut, "Pool Supply is wrong");
@@ -481,7 +481,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256[] memory actualAmountsOut,
         uint256 expectedBptIn,
         int256 expectedHookDelta
-    ) private {
+    ) private view {
         _fillAfterHookTestLocals(vars);
 
         assertEq(vars.bptSupplyBefore - vars.bptSupplyAfter, expectedBptIn, "Pool Supply is wrong");
@@ -527,7 +527,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         );
     }
 
-    function _createHookTestLocals() private returns (HookTestLocals memory vars) {
+    function _createHookTestLocals() private view returns (HookTestLocals memory vars) {
         vars.bob.daiBefore = dai.balanceOf(address(bob));
         vars.bob.usdcBefore = usdc.balanceOf(address(bob));
         vars.bob.bptBefore = IERC20(pool).balanceOf(address(bob));
@@ -539,7 +539,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         vars.bptSupplyBefore = BalancerPoolToken(pool).totalSupply();
     }
 
-    function _fillAfterHookTestLocals(HookTestLocals memory vars) private {
+    function _fillAfterHookTestLocals(HookTestLocals memory vars) private view {
         vars.bob.daiAfter = dai.balanceOf(address(bob));
         vars.bob.usdcAfter = usdc.balanceOf(address(bob));
         vars.bob.bptAfter = IERC20(pool).balanceOf(address(bob));

@@ -371,7 +371,6 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         uint256 hookDiscountPercentage = 1e16;
         PoolHooksMock(poolHooksContract).setHookSwapDiscountPercentage(hookDiscountPercentage);
         PoolHooksMock(poolHooksContract).setShouldSettleDiscount(false);
-        uint256 hookDiscount = _swapAmount.mulDown(hookDiscountPercentage);
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook
         vm.prank(bob);
@@ -426,7 +425,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         uint256[] poolAfter;
     }
 
-    function _createHookTestLocals() private returns (HookTestLocals memory vars) {
+    function _createHookTestLocals() private view returns (HookTestLocals memory vars) {
         vars.bob.daiBefore = dai.balanceOf(address(bob));
         vars.bob.usdcBefore = usdc.balanceOf(address(bob));
         vars.hook.daiBefore = dai.balanceOf(poolHooksContract);
@@ -436,7 +435,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         vars.poolBefore = vault.getRawBalances(pool);
     }
 
-    function _fillAfterSwapHookTestLocals(HookTestLocals memory vars) private {
+    function _fillAfterSwapHookTestLocals(HookTestLocals memory vars) private view {
         vars.bob.daiAfter = dai.balanceOf(address(bob));
         vars.bob.usdcAfter = usdc.balanceOf(address(bob));
         vars.hook.daiAfter = dai.balanceOf(poolHooksContract);
@@ -446,7 +445,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         vars.poolAfter = vault.getRawBalances(pool);
     }
 
-    function _checkPoolAndVaultBalances(HookTestLocals memory vars, uint256 poolBalanceChange) private {
+    function _checkPoolAndVaultBalances(HookTestLocals memory vars, uint256 poolBalanceChange) private view {
         // Considers swap fee = 0, so only hook fees and discounts occurred
         assertEq(vars.poolAfter[daiIdx] - vars.poolBefore[daiIdx], poolBalanceChange, "Pool DAI balance is wrong");
         assertEq(vars.poolBefore[usdcIdx] - vars.poolAfter[usdcIdx], poolBalanceChange, "Pool USDC balance is wrong");

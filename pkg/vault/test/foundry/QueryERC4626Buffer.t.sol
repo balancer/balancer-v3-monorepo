@@ -61,7 +61,7 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         _initializeUser();
     }
 
-    function testSwapPreconditions() public {
+    function testSwapPreconditions() public view {
         // bob should have the full boostedPool BPT.
         assertEq(IERC20(boostedPool).balanceOf(bob), boostedPoolAmount * 2 - MIN_BPT, "Wrong boosted pool BPT amount");
 

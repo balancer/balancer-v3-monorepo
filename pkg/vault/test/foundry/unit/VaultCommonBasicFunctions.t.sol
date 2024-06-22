@@ -147,7 +147,6 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         vault.manualSetPoolConfigBits(pool, originalPoolConfig);
 
         (uint256[] memory decimalScalingFactors, ) = vault.getPoolTokenRates(pool);
-        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
 
         assertEq(
             decimalScalingFactors.length,
