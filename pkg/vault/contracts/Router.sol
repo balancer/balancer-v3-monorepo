@@ -911,12 +911,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      */
     function queryAddLiquidityHook(
         AddLiquidityHookParams calldata params
-    )
-        external
-        payable
-        onlyVault
-        returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
-    {
+    ) external payable onlyVault returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData) {
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
@@ -1080,11 +1075,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      */
     function queryRemoveLiquidityHook(
         RemoveLiquidityHookParams calldata params
-    )
-        external
-        onlyVault
-        returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
-    {
+    ) external onlyVault returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData) {
         // If router is the sender, it has to approve itself.
         IERC20(params.pool).approve(address(this), type(uint256).max);
         return

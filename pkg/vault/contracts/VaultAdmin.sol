@@ -407,7 +407,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /*******************************************************************************
                                 Yield-bearing token buffers
     *******************************************************************************/
- 
+
     /// @inheritdoc IVaultAdmin
     function pauseVaultBuffers() external authenticate onlyVaultDelegateCall {
         VaultStateBits vaultState = _vaultStateBits;
