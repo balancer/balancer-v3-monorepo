@@ -92,19 +92,19 @@ contract ExitFeePaidToLPsHookExample is BasePoolHooks, Ownable {
                 hookAdjustedAmountsOutRaw[i] -= hookFee;
                 // Fees don't need to be transferred to the hook, because donation will reinsert them in the vault
             }
-        }
 
-        // Donates accrued fees back to LPs
-        _vault.addLiquidity(
-            AddLiquidityParams({
-                pool: pool,
-                to: msg.sender, // It would mint BPTs to router, but it's a donation so no BPT is minted
-                maxAmountsIn: accruedFees,
-                minBptAmountOut: 0,
-                kind: AddLiquidityKind.DONATION,
-                userData: bytes("")
-            })
-        );
+            // Donates accrued fees back to LPs
+            _vault.addLiquidity(
+                AddLiquidityParams({
+                    pool: pool,
+                    to: msg.sender, // It would mint BPTs to router, but it's a donation so no BPT is minted
+                    maxAmountsIn: accruedFees,
+                    minBptAmountOut: 0,
+                    kind: AddLiquidityKind.DONATION,
+                    userData: bytes("")
+                })
+            );
+        }
 
         return (true, hookAdjustedAmountsOutRaw);
     }
