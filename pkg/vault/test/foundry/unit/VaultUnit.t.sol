@@ -43,7 +43,7 @@ contract VaultUnitTest is BaseTest {
         vault = IVaultMock(address(VaultMockDeployer.deploy()));
     }
 
-    function testBuildPoolSwapParams() public {
+    function testBuildPoolSwapParams() public view {
         SwapParams memory params;
         params.kind = SwapKind.EXACT_IN;
         params.userData = new bytes(20);

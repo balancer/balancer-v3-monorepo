@@ -32,7 +32,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    function testPrerequisites() public {
+    function testPrerequisites() public view {
         assertTrue(swapFeePercentage > 0);
         assertTrue(protocolSwapFeePercentage > 0);
         assertTrue(poolCreatorFeePercentage > 0);

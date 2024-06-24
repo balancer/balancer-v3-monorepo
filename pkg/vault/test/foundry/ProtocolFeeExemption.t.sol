@@ -52,7 +52,7 @@ contract ProtocolFeeExemptionTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function testPrerequisites() public {
+    function testPrerequisites() public view {
         assertEq(feeController.getGlobalProtocolSwapFeePercentage(), GLOBAL_SWAP_FEE);
         assertEq(feeController.getGlobalProtocolYieldFeePercentage(), GLOBAL_YIELD_FEE);
     }

@@ -580,7 +580,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         IERC20 tokenFrom,
         IERC20 tokenTo,
         IERC20 wrappedToken
-    ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
+    ) private pure returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
 
@@ -600,7 +600,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         IERC20 tokenFrom,
         IERC20 tokenTo,
         IERC20 wrappedToken
-    ) private view returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
+    ) private pure returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
         paths = new IBatchRouter.SwapPathExactAmountOut[](1);
 

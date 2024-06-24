@@ -28,22 +28,22 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
     }
 
     // #region Init values
-    function testBalanceOfWithZeroValue() public {
+    function testBalanceOfWithZeroValue() public view {
         assertEq(token.balanceOf(POOL, OWNER), 0, "Unexpected balance");
     }
 
-    function testTotalSupplyWithZeroValue() public {
+    function testTotalSupplyWithZeroValue() public view {
         assertEq(token.totalSupply(POOL), 0, "Unexpected total supply");
     }
 
     // #endregion
 
     // #region Approve & Allowance & SpendAllowance
-    function testAllowanceForTokenContract() public {
+    function testAllowanceForTokenContract() public view {
         assertEq(token.allowance(POOL, OWNER, address(token)), type(uint256).max, "Unexpected allowance");
     }
 
-    function testAllowanceForNotTokenContractWithZeroValue() public {
+    function testAllowanceForNotTokenContractWithZeroValue() public view {
         assertEq(token.allowance(POOL, OWNER, SPENDER), 0, "Unexpected allowance");
     }
 

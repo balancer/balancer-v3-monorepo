@@ -43,7 +43,7 @@ contract PoolInfoTest is BaseTest {
         vault.manualRegisterPool(address(poolInfo), poolTokens);
     }
 
-    function testGetTokens() public {
+    function testGetTokens() public view {
         IERC20[] memory actualTokens = poolInfo.getTokens();
         assertEq(actualTokens.length, 2, "Incorrect token length");
         assertEq(address(actualTokens[0]), address(poolTokens[0]), "Incorrect token 0");

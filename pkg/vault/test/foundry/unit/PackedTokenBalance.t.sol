@@ -9,7 +9,7 @@ import { PackedTokenBalance } from "../../../contracts/lib/PackedTokenBalance.so
 contract PackedTokenBalanceTest is Test {
     using PackedTokenBalance for bytes32;
 
-    function testToFromPackedBalance__Fuzz(uint128 raw, uint128 live) public {
+    function testToFromPackedBalance__Fuzz(uint128 raw, uint128 live) public pure {
         bytes32 balance = PackedTokenBalance.toPackedBalance(raw, live);
 
         (uint256 recoveredRaw, uint256 recoveredLive) = balance.fromPackedBalance();
@@ -18,7 +18,7 @@ contract PackedTokenBalanceTest is Test {
         assertEq(recoveredLive, live);
     }
 
-    function testPackedTokenBalanceGetters__Fuzz(uint128 raw, uint128 live) public {
+    function testPackedTokenBalanceGetters__Fuzz(uint128 raw, uint128 live) public pure {
         bytes32 balance = PackedTokenBalance.toPackedBalance(raw, live);
 
         uint256 recoveredRaw = balance.getBalanceRaw();
@@ -28,7 +28,7 @@ contract PackedTokenBalanceTest is Test {
         assertEq(recoveredLive, live);
     }
 
-    function testPackedTokenBalanceSetters__Fuzz(bytes32 balance, uint128 newBalanceValue) public {
+    function testPackedTokenBalanceSetters__Fuzz(bytes32 balance, uint128 newBalanceValue) public pure {
         (, uint256 recoveredLive) = PackedTokenBalance.fromPackedBalance(balance);
 
         // Set new raw balance (should not change live).

@@ -69,6 +69,7 @@ contract StablePoolTest is BaseVaultTest {
                 roleAccounts,
                 MIN_SWAP_FEE,
                 poolHooksContract,
+                false,
                 ZERO_BYTES32
             )
         );
@@ -89,12 +90,12 @@ contract StablePoolTest is BaseVaultTest {
         );
     }
 
-    function testPoolAddress() public {
+    function testPoolAddress() public view {
         address calculatedPoolAddress = factory.getDeploymentAddress(ZERO_BYTES32);
         assertEq(address(stablePool), calculatedPoolAddress);
     }
 
-    function testPoolPausedState() public {
+    function testPoolPausedState() public view {
         (bool paused, uint256 pauseWindow, uint256 bufferPeriod, address pauseManager) = vault.getPoolPausedState(
             address(pool)
         );
@@ -105,7 +106,7 @@ contract StablePoolTest is BaseVaultTest {
         assertEq(pauseManager, address(0));
     }
 
-    function testInitialize() public {
+    function testInitialize() public view {
         // Tokens are transferred from lp
         assertEq(defaultBalance - usdc.balanceOf(lp), TOKEN_AMOUNT, "LP: Wrong USDC balance");
         assertEq(defaultBalance - dai.balanceOf(lp), TOKEN_AMOUNT, "LP: Wrong DAI balance");
@@ -264,7 +265,7 @@ contract StablePoolTest is BaseVaultTest {
         router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
     }
 
-    function testMaximumSwapFee() public {
+    function testMaximumSwapFee() public view {
         assertEq(stablePool.getMaximumSwapFeePercentage(), MAX_SWAP_FEE, "Maximum swap fee mismatch");
     }
 

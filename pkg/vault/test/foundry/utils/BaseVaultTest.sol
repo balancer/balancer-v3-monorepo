@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -22,7 +23,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
-import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { Router } from "../../../contracts/Router.sol";
 import { BatchRouter } from "../../../contracts/BatchRouter.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
@@ -43,7 +43,13 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     struct Balances {
         uint256[] userTokens;
         uint256 userBpt;
+        uint256[] hookTokens;
+        uint256 hookBpt;
+        uint256[] lpTokens;
+        uint256 lpBpt;
+        uint256[] vaultTokens;
         uint256[] poolTokens;
+        uint256 poolSupply;
     }
 
     uint256 constant MIN_BPT = 1e6;
@@ -54,7 +60,9 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Vault mock.
     IVaultMock internal vault;
     // Vault extension mock.
-    VaultExtensionMock internal vaultExtension;
+    IVaultExtension internal vaultExtension;
+    // Vault admin mock.
+    IVaultAdmin internal vaultAdmin;
     // Router mock.
     RouterMock internal router;
     // Batch router
@@ -98,6 +106,10 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
         vault = IVaultMock(address(VaultMockDeployer.deploy()));
         vm.label(address(vault), "vault");
+        vaultExtension = IVaultExtension(vault.getVaultExtension());
+        vm.label(address(vaultExtension), "vaultExtension");
+        vaultAdmin = IVaultAdmin(vault.getVaultAdmin());
+        vm.label(address(vaultAdmin), "vaultAxtension");
         authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
         vm.label(address(authorizer), "authorizer");
         factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
@@ -212,13 +224,23 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     function getBalances(address user) internal view returns (Balances memory balances) {
         balances.userBpt = IERC20(pool).balanceOf(user);
+        balances.hookBpt = IERC20(pool).balanceOf(poolHooksContract);
+        balances.lpBpt = IERC20(pool).balanceOf(lp);
+
+        balances.poolSupply = IERC20(pool).totalSupply();
 
         (IERC20[] memory tokens, , uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(pool);
         balances.poolTokens = poolBalances;
         balances.userTokens = new uint256[](poolBalances.length);
+        balances.hookTokens = new uint256[](poolBalances.length);
+        balances.lpTokens = new uint256[](poolBalances.length);
+        balances.vaultTokens = new uint256[](poolBalances.length);
         for (uint256 i = 0; i < poolBalances.length; ++i) {
             // Don't assume token ordering.
             balances.userTokens[i] = tokens[i].balanceOf(user);
+            balances.hookTokens[i] = tokens[i].balanceOf(poolHooksContract);
+            balances.lpTokens[i] = tokens[i].balanceOf(lp);
+            balances.vaultTokens[i] = tokens[i].balanceOf(address(vault));
         }
     }
 
