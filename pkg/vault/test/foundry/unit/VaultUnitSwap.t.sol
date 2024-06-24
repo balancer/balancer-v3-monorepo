@@ -57,13 +57,13 @@ contract VaultUnitSwapTest is BaseTest {
         vault.manualSetPoolRegistered(pool, true);
     }
 
-    function testMakeParams() public {
+    function testMakeParams() public view {
         uint256 limitRaw = 1000e18;
         uint256 swapFeePercentage = 1e16;
         uint256 protocolFeePercentage = 20e16;
         uint256 poolCreatorFeePercentage = 5e17;
 
-        (SwapParams memory params, SwapState memory state, PoolData memory poolData) = _makeParams(
+        (, SwapState memory state, PoolData memory poolData) = _makeParams(
             SwapKind.EXACT_IN,
             defaultAmountGivenRaw,
             limitRaw,
@@ -290,7 +290,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 swapFeePercentage,
         uint256 protocolFeePercentage,
         uint256 poolCreatorFeePercentage
-    ) internal returns (SwapParams memory params, SwapState memory swapState, PoolData memory poolData) {
+    ) internal view returns (SwapParams memory params, SwapState memory swapState, PoolData memory poolData) {
         params = SwapParams({
             kind: kind,
             pool: pool,
@@ -316,7 +316,7 @@ contract VaultUnitSwapTest is BaseTest {
         poolData.poolConfigBits = poolData
             .poolConfigBits
             .setStaticSwapFeePercentage(swapFeePercentage)
-            .setAggregateSwapFeePercentage(_getAggregateFeePercentage(swapFeePercentage, poolCreatorFeePercentage));
+            .setAggregateSwapFeePercentage(_getAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage));
 
         poolData.balancesLiveScaled18 = new uint256[](initialBalances.length);
     }
@@ -330,7 +330,7 @@ contract VaultUnitSwapTest is BaseTest {
         SwapParams memory params,
         SwapState memory swapState,
         PoolData memory poolData
-    ) internal {
+    ) internal view {
         // Check swap state
         assertEq(swapState.indexIn, 0, "Unexpected index in");
         assertEq(swapState.indexOut, 1, "Unexpected index out");
@@ -396,7 +396,7 @@ contract VaultUnitSwapTest is BaseTest {
         SwapParams memory params,
         SwapState memory swapState,
         PoolData memory poolData
-    ) internal {
+    ) internal view {
         // Check swap state
         assertEq(swapState.indexIn, 0, "Unexpected index in");
         assertEq(swapState.indexOut, 1, "Unexpected index out");
@@ -460,7 +460,7 @@ contract VaultUnitSwapTest is BaseTest {
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
-    ) internal {
+    ) internal view {
         uint256 feesOnAmountOut = params.kind == SwapKind.EXACT_IN ? totalFees : 0;
         uint256 feesOnAmountIn = params.kind == SwapKind.EXACT_IN ? 0 : totalFees;
 
@@ -535,7 +535,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 expectedIndexOut,
         uint256 expectedSwapFeePercentage,
         uint256 expectedAmountGivenScaled18
-    ) internal {
+    ) internal pure {
         assertEq(swapState.indexIn, expectedIndexIn, "index in changed");
         assertEq(swapState.indexOut, expectedIndexOut, "index out changed");
         assertEq(swapState.swapFeePercentage, expectedSwapFeePercentage, "swap fee percentage changed");

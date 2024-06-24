@@ -115,7 +115,7 @@ contract PoolPauseTest is BaseVaultTest {
         new PoolFactoryMock(vault, maxDuration + 1);
     }
 
-    function testHasPauseManager() public {
+    function testHasPauseManager() public view {
         (, , , address pauseManager) = vault.getPoolPausedState(pool);
         assertEq(pauseManager, admin, "Pause manager is not admin");
 

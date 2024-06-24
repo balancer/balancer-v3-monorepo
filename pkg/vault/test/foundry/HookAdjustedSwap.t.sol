@@ -419,7 +419,6 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         uint256 hookDiscountPercentage = 1e16;
         PoolHooksMock(poolHooksContract).setHookSwapDiscountPercentage(hookDiscountPercentage);
         PoolHooksMock(poolHooksContract).setShouldSettleDiscount(false);
-        uint256 hookDiscount = _swapAmount.mulDown(hookDiscountPercentage);
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook
         vm.prank(bob);
@@ -463,7 +462,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore,
         BaseVaultTest.Balances memory balancesAfter,
         uint256 poolBalanceChange
-    ) private {
+    ) private view {
         // Considers swap fee = 0, so only hook fees and discounts occurred
         assertEq(
             balancesAfter.poolTokens[daiIdx] - balancesBefore.poolTokens[daiIdx],

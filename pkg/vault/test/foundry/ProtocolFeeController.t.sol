@@ -49,7 +49,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    function testInitialization() public {
+    function testInitialization() public view {
         assertEq(address(feeController.vault()), address(vault));
 
         // Fees should initialize to 0
@@ -688,7 +688,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         pool = createPool();
     }
 
-    function _verifyPoolProtocolFeePercentages(address pool) internal {
+    function _verifyPoolProtocolFeePercentages(address pool) internal view {
         (uint256 feePercentage, bool isOverride) = feeController.getPoolProtocolSwapFeeInfo(pool);
 
         assertEq(feePercentage, MAX_PROTOCOL_SWAP_FEE);

@@ -15,21 +15,21 @@ contract VaultStorageTest is BaseVaultTest {
         BaseVaultTest.setUp();
     }
 
-    function testGetIsUnlockedSlot() external {
+    function testGetIsUnlockedSlot() external view {
         assertEq(
             StorageSlot.BooleanSlotType.unwrap(vault.manualGetIsUnlocked()),
             TransientStorageHelpers.calculateSlot("VaultStorage", "isUnlocked")
         );
     }
 
-    function testGetNonzeroDeltaCountSlot() external {
+    function testGetNonzeroDeltaCountSlot() external view {
         assertEq(
             StorageSlot.Uint256SlotType.unwrap(vault.manualGetNonzeroDeltaCount()),
             TransientStorageHelpers.calculateSlot("VaultStorage", "nonZeroDeltaCount")
         );
     }
 
-    function testGetTokenDeltasSlot() external {
+    function testGetTokenDeltasSlot() external view {
         assertEq(
             TokenDeltaMappingSlotType.unwrap(vault.manualGetTokenDeltas()),
             TransientStorageHelpers.calculateSlot("VaultStorage", "tokenDeltas")
