@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+
 interface IVaultAdminMock {
     function manualPauseVault() external;
 
@@ -14,4 +16,17 @@ interface IVaultAdminMock {
     function manualEnableRecoveryMode(address pool) external;
 
     function manualDisableRecoveryMode(address pool) external;
+
+    function manualReentrancyAddLiquidityToBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped,
+        address sharesOwner
+    ) external;
+
+    function manualReentrancyRemoveLiquidityFromBuffer(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove,
+        address sharesOwner
+    ) external;
 }
