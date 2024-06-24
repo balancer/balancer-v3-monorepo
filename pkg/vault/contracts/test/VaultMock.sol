@@ -208,6 +208,23 @@ contract VaultMock is IVaultMainMock, Vault {
     function manualSetHooksConfig(address pool, HooksConfig memory hooksConfig) public {
         PoolConfigBits poolConfigBits = _poolConfigBits[pool];
 
+        bool isAnyInitializeHookEnabled = hooksConfig.shouldCallBeforeInitialize ||
+            hooksConfig.shouldCallAfterInitialize;
+        poolConfigBits = poolConfigBits.setAnyInitializeHookEnabled(isAnyInitializeHookEnabled);
+
+        bool isAnySwapHookEnabled = hooksConfig.shouldCallComputeDynamicSwapFee ||
+            hooksConfig.shouldCallBeforeSwap ||
+            hooksConfig.shouldCallAfterSwap;
+        poolConfigBits = poolConfigBits.setAnySwapHookEnabled(isAnySwapHookEnabled);
+
+        bool isAnyAddLiquidityHookEnabled = hooksConfig.shouldCallBeforeAddLiquidity ||
+            hooksConfig.shouldCallAfterAddLiquidity;
+        poolConfigBits = poolConfigBits.setAnyAddLiquidityHookEnabled(isAnyAddLiquidityHookEnabled);
+
+        bool isAnyRemoveLiquidityHookEnabled = hooksConfig.shouldCallBeforeRemoveLiquidity ||
+            hooksConfig.shouldCallAfterRemoveLiquidity;
+        poolConfigBits = poolConfigBits.setAnyRemoveLiquidityHookEnabled(isAnyRemoveLiquidityHookEnabled);
+
         poolConfigBits = poolConfigBits.setHookAdjustedAmounts(hooksConfig.enableHookAdjustedAmounts);
         poolConfigBits = poolConfigBits.setShouldCallBeforeInitialize(hooksConfig.shouldCallBeforeInitialize);
         poolConfigBits = poolConfigBits.setShouldCallAfterInitialize(hooksConfig.shouldCallAfterInitialize);

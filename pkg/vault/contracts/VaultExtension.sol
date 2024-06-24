@@ -293,17 +293,23 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                     revert HookRegistrationFailed(params.poolHooksContract, pool, msg.sender);
                 }
 
+                bool isAnyInitializeHookEnabled = hookFlags.shouldCallBeforeInitialize ||
+                    hookFlags.shouldCallAfterInitialize;
+                poolConfigBits = poolConfigBits.setAnyInitializeHookEnabled(isAnyInitializeHookEnabled);
+
                 bool isAnySwapHookEnabled = hookFlags.shouldCallComputeDynamicSwapFee ||
                     hookFlags.shouldCallBeforeSwap ||
                     hookFlags.shouldCallAfterSwap;
+                poolConfigBits = poolConfigBits.setAnySwapHookEnabled(isAnySwapHookEnabled);
+
                 bool isAnyAddLiquidityHookEnabled = hookFlags.shouldCallBeforeAddLiquidity ||
                     hookFlags.shouldCallAfterAddLiquidity;
+                poolConfigBits = poolConfigBits.setAnyAddLiquidityHookEnabled(isAnyAddLiquidityHookEnabled);
+
                 bool isAnyRemoveLiquidityHookEnabled = hookFlags.shouldCallBeforeRemoveLiquidity ||
                     hookFlags.shouldCallAfterRemoveLiquidity;
-
-                poolConfigBits = poolConfigBits.setAnySwapHookEnabled(isAnySwapHookEnabled);
-                poolConfigBits = poolConfigBits.setAnyAddLiquidityHookEnabled(isAnyAddLiquidityHookEnabled);
                 poolConfigBits = poolConfigBits.setAnyRemoveLiquidityHookEnabled(isAnyRemoveLiquidityHookEnabled);
+
                 poolConfigBits = poolConfigBits.setHookAdjustedAmounts(hookFlags.enableHookAdjustedAmounts);
                 poolConfigBits = poolConfigBits.setShouldCallBeforeInitialize(hookFlags.shouldCallBeforeInitialize);
                 poolConfigBits = poolConfigBits.setShouldCallAfterInitialize(hookFlags.shouldCallAfterInitialize);

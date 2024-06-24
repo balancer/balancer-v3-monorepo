@@ -33,6 +33,10 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
         _checkBitsUsedOnce(PoolConfigLib.UNBALANCED_LIQUIDITY_OFFSET);
         _checkBitsUsedOnce(PoolConfigLib.ADD_LIQUIDITY_CUSTOM_OFFSET);
         _checkBitsUsedOnce(PoolConfigLib.REMOVE_LIQUIDITY_CUSTOM_OFFSET);
+        _checkBitsUsedOnce(PoolConfigLib.ANY_INITIALIZE_HOOK_ENABLED_OFFSET);
+        _checkBitsUsedOnce(PoolConfigLib.ANY_SWAP_HOOK_ENABLED_OFFSET);
+        _checkBitsUsedOnce(PoolConfigLib.ANY_ADD_LIQUIDITY_HOOK_ENABLED_OFFSET);
+        _checkBitsUsedOnce(PoolConfigLib.ANY_REMOVE_LIQUIDITY_HOOK_ENABLED_OFFSET);
         _checkBitsUsedOnce(PoolConfigLib.ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET);
         _checkBitsUsedOnce(PoolConfigLib.BEFORE_INITIALIZE_OFFSET);
         _checkBitsUsedOnce(PoolConfigLib.AFTER_INITIALIZE_OFFSET);
@@ -53,6 +57,14 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
     function testZeroConfigBytes() public {
         PoolConfigBits config;
 
+        assertEq(config.isAnyInitializeHookEnabled(), false, "isAnyInitializeHookEnabled mismatch (zero config)");
+        assertEq(config.isAnySwapHookEnabled(), false, "isAnySwapHookEnabled mismatch (zero config)");
+        assertEq(config.isAnyAddLiquidityHookEnabled(), false, "isAnyAddLiquidityHookEnabled mismatch (zero config)");
+        assertEq(
+            config.isAnyRemoveLiquidityHookEnabled(),
+            false,
+            "isAnyRemoveLiquidityHookEnabled mismatch (zero config)"
+        );
         assertEq(config.enableHookAdjustedAmounts(), false, "enableHookAdjustedAmounts mismatch (zero config)");
         assertEq(config.isPoolRegistered(), false, "isPoolRegistered mismatch (zero config)");
         assertEq(config.isPoolInitialized(), false, "isPoolInitialized mismatch (zero config)");
@@ -251,6 +263,62 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
     // #endregion
 
     // #region Tests for hooks config
+    function testIsAnyInitializeHookEnabled() public {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigLib.ANY_INITIALIZE_HOOK_ENABLED_OFFSET)
+        );
+        assertTrue(config.isAnyInitializeHookEnabled(), "isAnyInitializeHookEnabled is false (getter)");
+    }
+
+    function testSetAnyInitializeHookEnabled() public {
+        PoolConfigBits config;
+        config = config.setAnyInitializeHookEnabled(true);
+        assertTrue(config.isAnyInitializeHookEnabled(), "isAnyInitializeHookEnabled is false (setter)");
+    }
+
+    function testIsAnySwapHookEnabled() public {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigLib.ANY_SWAP_HOOK_ENABLED_OFFSET)
+        );
+        assertTrue(config.isAnySwapHookEnabled(), "isAnySwapHookEnabled is false (getter)");
+    }
+
+    function testSetAnySwapHookEnabled() public {
+        PoolConfigBits config;
+        config = config.setAnySwapHookEnabled(true);
+        assertTrue(config.isAnySwapHookEnabled(), "isAnySwapHookEnabled is false (setter)");
+    }
+
+    function testIsAnyAddLiquidityHookEnabled() public {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigLib.ANY_ADD_LIQUIDITY_HOOK_ENABLED_OFFSET)
+        );
+        assertTrue(config.isAnyAddLiquidityHookEnabled(), "isAnyAddLiquidityHookEnabled is false (getter)");
+    }
+
+    function testSetAnyAddLiquidityHookEnabled() public {
+        PoolConfigBits config;
+        config = config.setAnyAddLiquidityHookEnabled(true);
+        assertTrue(config.isAnyAddLiquidityHookEnabled(), "isAnyAddLiquidityHookEnabled is false (setter)");
+    }
+
+    function testIsAnyRemoveLiquidityHookEnabled() public {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigLib.ANY_REMOVE_LIQUIDITY_HOOK_ENABLED_OFFSET)
+        );
+        assertTrue(config.isAnyRemoveLiquidityHookEnabled(), "isAnyRemoveLiquidityHookEnabled is false (getter)");
+    }
+
+    function testSetAnyRemoveLiquidityHookEnabled() public {
+        PoolConfigBits config;
+        config = config.setAnyRemoveLiquidityHookEnabled(true);
+        assertTrue(config.isAnyRemoveLiquidityHookEnabled(), "isAnyRemoveLiquidityHookEnabled is false (setter)");
+    }
+
     function testShouldCallBeforeInitialize() public {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(

@@ -59,45 +59,6 @@ library PoolConfigLib {
     uint8 private constant _TIMESTAMP_BITLENGTH = 32;
 
     // #region Bit offsets for main pool config settings
-    function isAnyInitializeHookEnabled(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(ANY_INITIALIZE_HOOK_ENABLED_OFFSET);
-    }
-
-    function setAnyInitializeHookEnabled(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
-        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, ANY_INITIALIZE_HOOK_ENABLED_OFFSET));
-    }
-
-    function isAnySwapHookEnabled(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(ANY_SWAP_HOOK_ENABLED_OFFSET);
-    }
-
-    function setAnySwapHookEnabled(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
-        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, ANY_SWAP_HOOK_ENABLED_OFFSET));
-    }
-
-    function isAnyAddLiquidityHookEnabled(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(ANY_ADD_LIQUIDITY_HOOK_ENABLED_OFFSET);
-    }
-
-    function setAnyAddLiquidityHookEnabled(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
-        return
-            PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, ANY_ADD_LIQUIDITY_HOOK_ENABLED_OFFSET));
-    }
-
-    function isAnyRemoveLiquidityHookEnabled(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(ANY_REMOVE_LIQUIDITY_HOOK_ENABLED_OFFSET);
-    }
-
-    function setAnyRemoveLiquidityHookEnabled(
-        PoolConfigBits config,
-        bool value
-    ) internal pure returns (PoolConfigBits) {
-        return
-            PoolConfigBits.wrap(
-                PoolConfigBits.unwrap(config).insertBool(value, ANY_REMOVE_LIQUIDITY_HOOK_ENABLED_OFFSET)
-            );
-    }
-
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
     }
@@ -198,6 +159,45 @@ library PoolConfigLib {
     // #endregion
 
     // #region Bit offsets for hooks config
+    function isAnyInitializeHookEnabled(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(ANY_INITIALIZE_HOOK_ENABLED_OFFSET);
+    }
+
+    function setAnyInitializeHookEnabled(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, ANY_INITIALIZE_HOOK_ENABLED_OFFSET));
+    }
+
+    function isAnySwapHookEnabled(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(ANY_SWAP_HOOK_ENABLED_OFFSET);
+    }
+
+    function setAnySwapHookEnabled(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, ANY_SWAP_HOOK_ENABLED_OFFSET));
+    }
+
+    function isAnyAddLiquidityHookEnabled(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(ANY_ADD_LIQUIDITY_HOOK_ENABLED_OFFSET);
+    }
+
+    function setAnyAddLiquidityHookEnabled(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return
+            PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, ANY_ADD_LIQUIDITY_HOOK_ENABLED_OFFSET));
+    }
+
+    function isAnyRemoveLiquidityHookEnabled(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(ANY_REMOVE_LIQUIDITY_HOOK_ENABLED_OFFSET);
+    }
+
+    function setAnyRemoveLiquidityHookEnabled(
+        PoolConfigBits config,
+        bool value
+    ) internal pure returns (PoolConfigBits) {
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertBool(value, ANY_REMOVE_LIQUIDITY_HOOK_ENABLED_OFFSET)
+            );
+    }
+
     function enableHookAdjustedAmounts(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET);
     }
