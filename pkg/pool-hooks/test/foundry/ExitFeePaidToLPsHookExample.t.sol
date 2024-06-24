@@ -18,13 +18,12 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-import { MeasureBalancesHelper } from "@balancer-labs/v3-vault/test/foundry/utils/MeasureBalancesHelper.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { ExitFeePaidToLPsHookExample } from "../../contracts/ExitFeePaidToLPsHookExample.sol";
 
-contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest, MeasureBalancesHelper {
+contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest {
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
@@ -33,7 +32,6 @@ contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest, MeasureBalancesHelper
 
     function setUp() public override {
         super.setUp();
-        MeasureBalancesHelper.prepareMeasurement(dai, usdc, pool, poolHooksContract, address(bob), address(lp), vault);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
@@ -108,35 +106,55 @@ contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest, MeasureBalancesHelper
         uint256 hookFee = amountOut.mulDown(exitFeePercentage);
         uint256[] memory minAmountsOut = [amountOut - hookFee, amountOut - hookFee].toMemoryArray();
 
-        HookTestLocals memory vars = _measureBalancesBeforeOperation();
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(lp));
 
         vm.prank(lp);
         router.removeLiquidityProportional(pool, 2 * amountOut, minAmountsOut, false, bytes(""));
 
-        _measureBalancesAfterOperation(vars);
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(lp));
 
         // LP gets original liquidity minus hook fee
-        assertEq(vars.lp.daiAfter - vars.lp.daiBefore, amountOut - hookFee, "LP's DAI amount is wrong");
-        assertEq(vars.lp.usdcAfter - vars.lp.usdcBefore, amountOut - hookFee, "LP's USDC amount is wrong");
-        assertEq(vars.lp.bptBefore - vars.lp.bptAfter, 2 * amountOut, "LP's BPT amount is wrong");
+        assertEq(
+            balancesAfter.lpTokens[daiIdx] - balancesBefore.lpTokens[daiIdx],
+            amountOut - hookFee,
+            "LP's DAI amount is wrong"
+        );
+        assertEq(
+            balancesAfter.lpTokens[usdcIdx] - balancesBefore.lpTokens[usdcIdx],
+            amountOut - hookFee,
+            "LP's USDC amount is wrong"
+        );
+        assertEq(balancesBefore.lpBpt - balancesAfter.lpBpt, 2 * amountOut, "LP's BPT amount is wrong");
 
         // Pool balances decrease by amountOut, and receive hook fee
-        assertEq(vars.poolBefore[daiIdx] - vars.poolAfter[daiIdx], amountOut - hookFee, "Pool's DAI amount is wrong");
         assertEq(
-            vars.poolBefore[usdcIdx] - vars.poolAfter[usdcIdx],
+            balancesBefore.poolTokens[daiIdx] - balancesAfter.poolTokens[daiIdx],
+            amountOut - hookFee,
+            "Pool's DAI amount is wrong"
+        );
+        assertEq(
+            balancesBefore.poolTokens[usdcIdx] - balancesAfter.poolTokens[usdcIdx],
             amountOut - hookFee,
             "Pool's USDC amount is wrong"
         );
-        assertEq(vars.bptSupplyBefore - vars.bptSupplyAfter, 2 * amountOut, "BPT supply amount is wrong");
+        assertEq(balancesBefore.poolSupply - balancesAfter.poolSupply, 2 * amountOut, "BPT supply amount is wrong");
 
         // Same happens with Vault balances: decrease by amountOut, keep hook fee
-        assertEq(vars.vault.daiBefore - vars.vault.daiAfter, amountOut - hookFee, "Vault's DAI amount is wrong");
-        assertEq(vars.vault.usdcBefore - vars.vault.usdcAfter, amountOut - hookFee, "Vault's USDC amount is wrong");
+        assertEq(
+            balancesBefore.vaultTokens[daiIdx] - balancesAfter.vaultTokens[daiIdx],
+            amountOut - hookFee,
+            "Vault's DAI amount is wrong"
+        );
+        assertEq(
+            balancesBefore.vaultTokens[usdcIdx] - balancesAfter.vaultTokens[usdcIdx],
+            amountOut - hookFee,
+            "Vault's USDC amount is wrong"
+        );
 
         // Hook balances remain unchanged
-        assertEq(vars.hook.daiBefore, vars.hook.daiAfter, "Hook's DAI amount is wrong");
-        assertEq(vars.hook.usdcBefore, vars.hook.usdcAfter, "Hook's USDC amount is wrong");
-        assertEq(vars.hook.bptBefore, vars.hook.bptAfter, "Hook's BPT amount is wrong");
+        assertEq(balancesBefore.hookTokens[daiIdx], balancesAfter.hookTokens[daiIdx], "Hook's DAI amount is wrong");
+        assertEq(balancesBefore.hookTokens[usdcIdx], balancesAfter.hookTokens[usdcIdx], "Hook's USDC amount is wrong");
+        assertEq(balancesBefore.hookBpt, balancesAfter.hookBpt, "Hook's BPT amount is wrong");
     }
 
     // Registry tests require a new pool, because an existent pool may be already registered

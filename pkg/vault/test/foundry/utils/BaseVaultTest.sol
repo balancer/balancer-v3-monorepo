@@ -43,7 +43,13 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     struct Balances {
         uint256[] userTokens;
         uint256 userBpt;
+        uint256[] hookTokens;
+        uint256 hookBpt;
+        uint256[] lpTokens;
+        uint256 lpBpt;
+        uint256[] vaultTokens;
         uint256[] poolTokens;
+        uint256 poolSupply;
     }
 
     uint256 constant MIN_BPT = 1e6;
@@ -212,13 +218,23 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     function getBalances(address user) internal view returns (Balances memory balances) {
         balances.userBpt = IERC20(pool).balanceOf(user);
+        balances.hookBpt = IERC20(pool).balanceOf(poolHooksContract);
+        balances.lpBpt = IERC20(pool).balanceOf(lp);
+
+        balances.poolSupply = IERC20(pool).totalSupply();
 
         (IERC20[] memory tokens, , uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(pool);
         balances.poolTokens = poolBalances;
         balances.userTokens = new uint256[](poolBalances.length);
+        balances.hookTokens = new uint256[](poolBalances.length);
+        balances.lpTokens = new uint256[](poolBalances.length);
+        balances.vaultTokens = new uint256[](poolBalances.length);
         for (uint256 i = 0; i < poolBalances.length; ++i) {
             // Don't assume token ordering.
             balances.userTokens[i] = tokens[i].balanceOf(user);
+            balances.hookTokens[i] = tokens[i].balanceOf(poolHooksContract);
+            balances.lpTokens[i] = tokens[i].balanceOf(lp);
+            balances.vaultTokens[i] = tokens[i].balanceOf(address(vault));
         }
     }
 
