@@ -24,8 +24,9 @@ library PoolConfigLib {
     uint8 public constant UNBALANCED_LIQUIDITY_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
     uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = UNBALANCED_LIQUIDITY_OFFSET + 1;
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
+    uint8 public constant DONATION_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
 
-    uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
+    uint8 public constant STATIC_SWAP_FEE_OFFSET = DONATION_OFFSET + 1;
     uint256 public constant AGGREGATE_SWAP_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant AGGREGATE_YIELD_FEE_OFFSET = AGGREGATE_SWAP_FEE_OFFSET + FEE_BITLENGTH;
     uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = AGGREGATE_YIELD_FEE_OFFSET + FEE_BITLENGTH;
@@ -214,6 +215,20 @@ library PoolConfigLib {
     function requireRemoveCustomLiquidityEnabled(PoolConfigBits config) internal pure {
         if (config.supportsRemoveLiquidityCustom() == false) {
             revert IVaultErrors.DoesNotSupportRemoveLiquidityCustom();
+        }
+    }
+
+    function supportsDonation(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(DONATION_OFFSET);
+    }
+
+    function setDonation(PoolConfigBits config, bool enableDonation) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(enableDonation, DONATION_OFFSET));
+    }
+
+    function requireDonationEnabled(PoolConfigBits config) internal pure {
+        if (config.supportsDonation() == false) {
+            revert IVaultErrors.DoesNotSupportDonation();
         }
     }
 

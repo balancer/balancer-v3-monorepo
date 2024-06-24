@@ -41,6 +41,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
                 roleAccounts,
                 MIN_SWAP_FEE,
                 poolHooksContract,
+                false,
                 ZERO_BYTES32
             )
         );
