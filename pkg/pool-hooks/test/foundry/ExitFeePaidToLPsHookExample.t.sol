@@ -115,10 +115,12 @@ contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest, MeasureBalancesHelper
 
         _measureBalancesAfterOperation(vars);
 
+        // LP gets original liquidity minus hook fee
         assertEq(vars.lp.daiAfter - vars.lp.daiBefore, amountOut - hookFee, "LP's DAI amount is wrong");
         assertEq(vars.lp.usdcAfter - vars.lp.usdcBefore, amountOut - hookFee, "LP's USDC amount is wrong");
         assertEq(vars.lp.bptBefore - vars.lp.bptAfter, 2 * amountOut, "LP's BPT amount is wrong");
 
+        // Pool balances decrease by amountOut, and receive hook fee
         assertEq(vars.poolBefore[daiIdx] - vars.poolAfter[daiIdx], amountOut - hookFee, "Pool's DAI amount is wrong");
         assertEq(
             vars.poolBefore[usdcIdx] - vars.poolAfter[usdcIdx],
@@ -127,9 +129,11 @@ contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest, MeasureBalancesHelper
         );
         assertEq(vars.bptSupplyBefore - vars.bptSupplyAfter, 2 * amountOut, "BPT supply amount is wrong");
 
+        // Same happens with Vault balances: decrease by amountOut, keep hook fee
         assertEq(vars.vault.daiBefore - vars.vault.daiAfter, amountOut - hookFee, "Vault's DAI amount is wrong");
         assertEq(vars.vault.usdcBefore - vars.vault.usdcAfter, amountOut - hookFee, "Vault's USDC amount is wrong");
 
+        // Hook balances remain unchanged
         assertEq(vars.hook.daiBefore, vars.hook.daiAfter, "Hook's DAI amount is wrong");
         assertEq(vars.hook.usdcBefore, vars.hook.usdcAfter, "Hook's USDC amount is wrong");
         assertEq(vars.hook.bptBefore, vars.hook.bptAfter, "Hook's BPT amount is wrong");
