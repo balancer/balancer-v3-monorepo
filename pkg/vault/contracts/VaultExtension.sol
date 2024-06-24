@@ -590,7 +590,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function getCurrentLiveBalances(
         address pool
-    ) external view withInitializedPool(pool) onlyVaultDelegateCall returns (uint256[] memory balancesLiveScaled18) {
+    ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (uint256[] memory balancesLiveScaled18) {
         return _loadPoolData(pool, Rounding.ROUND_DOWN).balancesLiveScaled18;
     }
 
