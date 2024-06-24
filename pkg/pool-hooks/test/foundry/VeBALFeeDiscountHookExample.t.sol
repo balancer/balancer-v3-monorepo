@@ -35,6 +35,9 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         super.setUp();
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+
+        // Grants to LP the ability to change static swap fee percentage
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), lp);
     }
 
     function createHook() internal override returns (address) {
@@ -83,8 +86,97 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         assertEq(hooksConfig.shouldCallComputeDynamicSwapFee, true, "pool's shouldCallComputeDynamicSwapFee is wrong");
     }
 
-    // User without vebal
-    // User with vebal
+    function testSwapWithoutVeBal() public {
+        // Burn all veBAL tokens from bob
+        veBAL.burn(address(bob), veBAL.balanceOf(bob));
+        assertEq(veBAL.balanceOf(bob), 0, "Bob still has veBAL");
+
+        // 10% swap fee. Since vault does not have swap fee, the fee will stay in the pool
+        uint256 swapFeePercentage = 1e17;
+
+        vm.prank(lp);
+        vault.setStaticSwapFeePercentage(pool, swapFeePercentage);
+
+        uint256 swapAmount = poolInitAmount / 100;
+        uint256 hookFee = swapAmount.mulDown(swapFeePercentage);
+        uint256 expectedAmountOut = swapAmount - hookFee;
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
+
+        vm.prank(bob);
+        router.swapSingleTokenExactIn(pool, dai, usdc, swapAmount, expectedAmountOut, MAX_UINT256, false, bytes(""));
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
+
+        _checkSwapBalances(balancesBefore, balancesAfter, swapAmount, expectedAmountOut);
+    }
+
+    function testSwapWithVeBal() public {
+        assertGt(veBAL.balanceOf(bob), 0, "Bob does not have veBAL");
+
+        // 10% swap fee
+        uint256 swapFeePercentage = 1e17;
+
+        vm.prank(lp);
+        vault.setStaticSwapFeePercentage(pool, swapFeePercentage);
+
+        uint256 swapAmount = poolInitAmount / 100;
+        // Since bob has veBAL, he gets a 50% discount
+        uint256 hookFee = swapAmount.mulDown(swapFeePercentage) / 2;
+        uint256 expectedAmountOut = swapAmount - hookFee;
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
+
+        vm.prank(bob);
+        router.swapSingleTokenExactIn(pool, dai, usdc, swapAmount, expectedAmountOut, MAX_UINT256, false, bytes(""));
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
+
+        _checkSwapBalances(balancesBefore, balancesAfter, swapAmount, expectedAmountOut);
+    }
+
+    function _checkSwapBalances(
+        BaseVaultTest.Balances memory balancesBefore,
+        BaseVaultTest.Balances memory balancesAfter,
+        uint256 exactAmountIn,
+        uint256 expectedAmountOut
+    ) private {
+        // Bob
+        assertEq(
+            balancesBefore.userTokens[daiIdx] - balancesAfter.userTokens[daiIdx],
+            exactAmountIn,
+            "Bob's DAI balance is wrong"
+        );
+        assertEq(
+            balancesAfter.userTokens[usdcIdx] - balancesBefore.userTokens[usdcIdx],
+            expectedAmountOut,
+            "Bob's USDC balance is wrong"
+        );
+
+        // Vault
+        assertEq(
+            balancesAfter.vaultTokens[daiIdx] - balancesBefore.vaultTokens[daiIdx],
+            exactAmountIn,
+            "Vault's DAI balance is wrong"
+        );
+        assertEq(
+            balancesBefore.vaultTokens[usdcIdx] - balancesAfter.vaultTokens[usdcIdx],
+            expectedAmountOut,
+            "Vault's USDC balance is wrong"
+        );
+
+        // Pool
+        assertEq(
+            balancesAfter.poolTokens[daiIdx] - balancesBefore.poolTokens[daiIdx],
+            exactAmountIn,
+            "Pool's DAI balance is wrong"
+        );
+        assertEq(
+            balancesBefore.poolTokens[usdcIdx] - balancesAfter.poolTokens[usdcIdx],
+            expectedAmountOut,
+            "Pool's USDC balance is wrong"
+        );
+    }
 
     // Registry tests require a new pool, because an existent pool may be already registered
     function _createPoolToRegister() private returns (address newPool) {
