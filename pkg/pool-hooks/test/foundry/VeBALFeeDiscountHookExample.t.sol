@@ -99,6 +99,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
 
         uint256 swapAmount = poolInitAmount / 100;
         uint256 hookFee = swapAmount.mulDown(swapFeePercentage);
+        // Hook fee will remain in the pool, so the expected amount out discounts the fees
         uint256 expectedAmountOut = swapAmount - hookFee;
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
@@ -123,6 +124,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         uint256 swapAmount = poolInitAmount / 100;
         // Since bob has veBAL, he gets a 50% discount
         uint256 hookFee = swapAmount.mulDown(swapFeePercentage) / 2;
+        // Hook fee will remain in the pool, so the expected amount out discounts the fees
         uint256 expectedAmountOut = swapAmount - hookFee;
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
@@ -141,31 +143,33 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         uint256 exactAmountIn,
         uint256 expectedAmountOut
     ) private {
-        // Bob
+        // Bob's balance of DAI is supposed to decrease, since DAI is the token in
         assertEq(
             balancesBefore.userTokens[daiIdx] - balancesAfter.userTokens[daiIdx],
             exactAmountIn,
             "Bob's DAI balance is wrong"
         );
+        // Bob's balance of USDC is supposed to increase, since USDC is the token out
         assertEq(
             balancesAfter.userTokens[usdcIdx] - balancesBefore.userTokens[usdcIdx],
             expectedAmountOut,
             "Bob's USDC balance is wrong"
         );
 
-        // Vault
+        // Vault's balance of DAI is supposed to increase, since DAI was added by Bob
         assertEq(
             balancesAfter.vaultTokens[daiIdx] - balancesBefore.vaultTokens[daiIdx],
             exactAmountIn,
             "Vault's DAI balance is wrong"
         );
+        // Vault's balance of USDC is supposed to decrease, since USDC was given to Bob
         assertEq(
             balancesBefore.vaultTokens[usdcIdx] - balancesAfter.vaultTokens[usdcIdx],
             expectedAmountOut,
             "Vault's USDC balance is wrong"
         );
 
-        // Pool
+        // Pool deltas should equal vault's deltas
         assertEq(
             balancesAfter.poolTokens[daiIdx] - balancesBefore.poolTokens[daiIdx],
             exactAmountIn,
