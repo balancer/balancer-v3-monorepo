@@ -58,6 +58,9 @@ contract HooksTest is BaseVaultTest {
 
     function testOnRegisterNotAllowedFactory() public {
         PoolRoleAccounts memory roleAccounts;
+        LiquidityManagement memory liquidityManagement;
+        liquidityManagement.enableAddLiquidityCustom = true;
+        liquidityManagement.enableRemoveLiquidityCustom = true;
 
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
@@ -76,21 +79,13 @@ contract HooksTest is BaseVaultTest {
             tokenConfig,
             roleAccounts,
             poolHooksContract,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
+            liquidityManagement
         );
     }
 
     function testOnRegisterAllowedFactory() public {
         PoolRoleAccounts memory roleAccounts;
-        LiquidityManagement memory liquidityManagement = LiquidityManagement({
-            disableUnbalancedLiquidity: false,
-            enableAddLiquidityCustom: false,
-            enableRemoveLiquidityCustom: false
-        });
+        LiquidityManagement memory liquidityManagement;
 
         // Should succeed, since factory is allowed in the poolHooksContract
         PoolHooksMock(poolHooksContract).allowFactory(address(anotherFactory));
@@ -121,11 +116,7 @@ contract HooksTest is BaseVaultTest {
 
     function testOnRegisterHookAdjustedWithUnbalancedLiquidity() public {
         PoolRoleAccounts memory roleAccounts;
-        LiquidityManagement memory liquidityManagement = LiquidityManagement({
-            disableUnbalancedLiquidity: false,
-            enableAddLiquidityCustom: false,
-            enableRemoveLiquidityCustom: false
-        });
+        LiquidityManagement memory liquidityManagement;
 
         // Registers the factory, so the factory is not rejected by the hook.
         PoolHooksMock(poolHooksContract).allowFactory(address(anotherFactory));

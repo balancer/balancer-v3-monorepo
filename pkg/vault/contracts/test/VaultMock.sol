@@ -107,11 +107,7 @@ contract VaultMock is IVaultMainMock, Vault {
             buildTokenConfig(tokens),
             roleAccounts,
             address(0), // No hook contract
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
+            _getDefaultLiquidityManagement()
         );
     }
 
@@ -120,22 +116,22 @@ contract VaultMock is IVaultMainMock, Vault {
         IERC20[] memory tokens,
         uint256 swapFeePercentage
     ) external whenVaultNotPaused {
+        LiquidityManagement memory liquidityManagement = _getDefaultLiquidityManagement();
+        liquidityManagement.disableUnbalancedLiquidity = true;
+
         _poolFactoryMock.registerPoolWithSwapFee(
             pool,
             buildTokenConfig(tokens),
             swapFeePercentage,
             address(0), // No hook contract
-            LiquidityManagement({
-                disableUnbalancedLiquidity: true,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
+            liquidityManagement
         );
     }
 
     function manualRegisterPoolPassThruTokens(address pool, IERC20[] memory tokens) external {
         TokenConfig[] memory tokenConfig = new TokenConfig[](tokens.length);
         PoolRoleAccounts memory roleAccounts;
+
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
         }
@@ -145,11 +141,7 @@ contract VaultMock is IVaultMainMock, Vault {
             tokenConfig,
             roleAccounts,
             address(0), // No hook contract
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
+            _getDefaultLiquidityManagement()
         );
     }
 
@@ -165,11 +157,7 @@ contract VaultMock is IVaultMainMock, Vault {
             timestamp,
             roleAccounts,
             address(0), // No hook contract
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
+            _getDefaultLiquidityManagement()
         );
     }
 
@@ -220,6 +208,7 @@ contract VaultMock is IVaultMainMock, Vault {
         poolConfigBits = poolConfigBits.setRemoveLiquidityCustom(
             config.liquidityManagement.enableRemoveLiquidityCustom
         );
+        poolConfigBits = poolConfigBits.setDonation(config.liquidityManagement.enableDonation);
 
         _poolConfigBits[pool] = poolConfigBits;
     }
@@ -348,6 +337,13 @@ contract VaultMock is IVaultMainMock, Vault {
         return _loadPoolDataUpdatingBalancesAndYieldFees(pool, roundingDirection);
     }
 
+    function loadPoolDataUpdatingBalancesAndYieldFeesReentrancy(
+        address pool,
+        Rounding roundingDirection
+    ) external nonReentrant returns (PoolData memory) {
+        return _loadPoolDataUpdatingBalancesAndYieldFees(pool, roundingDirection);
+    }
+
     function updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,
         uint256 newRawBalance,
@@ -425,6 +421,10 @@ contract VaultMock is IVaultMainMock, Vault {
         _nonZeroDeltaCount().tstore(deltaCount);
     }
 
+    function manualSetReservesOf(IERC20 token, uint256 reserves) external {
+        _reservesOf[token] = reserves;
+    }
+
     function manualInternalSwap(
         SwapParams memory params,
         SwapState memory state,
@@ -451,6 +451,15 @@ contract VaultMock is IVaultMainMock, Vault {
         );
 
         return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut, params, state, poolData);
+    }
+
+    function manualReentrancySwap(
+        SwapParams memory params,
+        SwapState memory state,
+        PoolData memory poolData
+    ) external nonReentrant {
+        IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
+        _swap(params, state, poolData, swapParams);
     }
 
     function manualGetAggregateSwapFeeAmount(address pool, IERC20 token) external view returns (uint256) {
@@ -528,6 +537,14 @@ contract VaultMock is IVaultMainMock, Vault {
         updatedPoolData = poolData;
     }
 
+    function manualReentrancyAddLiquidity(
+        PoolData memory poolData,
+        AddLiquidityParams memory params,
+        uint256[] memory maxAmountsInScaled18
+    ) external nonReentrant {
+        _addLiquidity(poolData, params, maxAmountsInScaled18);
+    }
+
     function manualRemoveLiquidity(
         PoolData memory poolData,
         RemoveLiquidityParams memory params,
@@ -551,6 +568,14 @@ contract VaultMock is IVaultMainMock, Vault {
         updatedPoolData = poolData;
     }
 
+    function manualReentrancyRemoveLiquidity(
+        PoolData memory poolData,
+        RemoveLiquidityParams memory params,
+        uint256[] memory minAmountsOutScaled18
+    ) external nonReentrant {
+        _removeLiquidity(poolData, params, minAmountsOutScaled18);
+    }
+
     function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256) {
         bytes32 bufferBalance = _bufferTokenBalances[IERC20(address(wrappedToken))];
         return _getBufferUnderlyingSurplus(bufferBalance, wrappedToken);
@@ -572,6 +597,14 @@ contract VaultMock is IVaultMainMock, Vault {
         token.transfer(to, amount);
     }
 
+    function forceUnlock() public {
+        _isUnlocked().tstore(true);
+    }
+
+    function forceLock() public {
+        _isUnlocked().tstore(false);
+    }
+
     function manualGetPoolConfigBits(address pool) external view returns (PoolConfigBits) {
         return _poolConfigBits[pool];
     }
@@ -586,5 +619,26 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualGetTokenDeltas() external view returns (TokenDeltaMappingSlotType slot) {
         return _tokenDeltas();
+    }
+
+    function manualErc4626BufferWrapOrUnwrapReentrancy(
+        BufferWrapOrUnwrapParams memory params
+    ) external nonReentrant returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw) {
+        return IVault(address(this)).erc4626BufferWrapOrUnwrap(params);
+    }
+
+    function manualSettleReentrancy(IERC20 token) public nonReentrant returns (uint256 paid) {
+        return IVault(address(this)).settle(token, 0);
+    }
+
+    function manualSendToReentrancy(IERC20 token, address to, uint256 amount) public nonReentrant {
+        IVault(address(this)).sendTo(token, to, amount);
+    }
+
+    function _getDefaultLiquidityManagement() private pure returns (LiquidityManagement memory) {
+        LiquidityManagement memory liquidityManagement;
+        liquidityManagement.enableAddLiquidityCustom = true;
+        liquidityManagement.enableRemoveLiquidityCustom = true;
+        return liquidityManagement;
     }
 }

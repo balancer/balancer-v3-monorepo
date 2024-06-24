@@ -122,11 +122,11 @@ contract RouterCommon is IRouterCommon, VaultGuard {
             // send WETH to Vault
             _weth.safeTransfer(address(_vault), amountIn);
             // update Vault accounting
-            _vault.settle(_weth);
+            _vault.settle(_weth, amountIn);
         } else {
             // Send the tokenIn amount to the Vault
             _permit2.transferFrom(sender, address(_vault), uint160(amountIn), address(tokenIn));
-            _vault.settle(tokenIn);
+            _vault.settle(tokenIn, amountIn);
         }
     }
 
