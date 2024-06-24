@@ -10,6 +10,7 @@ struct LiquidityManagement {
     bool disableUnbalancedLiquidity;
     bool enableAddLiquidityCustom;
     bool enableRemoveLiquidityCustom;
+    bool enableDonation;
 }
 
 // @notice Config type to store entire configuration of the pool.
@@ -198,6 +199,7 @@ enum AddLiquidityKind {
     PROPORTIONAL,
     UNBALANCED,
     SINGLE_TOKEN_EXACT_OUT,
+    DONATION,
     CUSTOM
 }
 

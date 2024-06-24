@@ -107,11 +107,7 @@ contract VaultMock is IVaultMainMock, Vault {
             buildTokenConfig(tokens),
             roleAccounts,
             address(0), // No hook contract
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
+            _getDefaultLiquidityManagement()
         );
     }
 
@@ -120,22 +116,22 @@ contract VaultMock is IVaultMainMock, Vault {
         IERC20[] memory tokens,
         uint256 swapFeePercentage
     ) external whenVaultNotPaused {
+        LiquidityManagement memory liquidityManagement = _getDefaultLiquidityManagement();
+        liquidityManagement.disableUnbalancedLiquidity = true;
+
         _poolFactoryMock.registerPoolWithSwapFee(
             pool,
             buildTokenConfig(tokens),
             swapFeePercentage,
             address(0), // No hook contract
-            LiquidityManagement({
-                disableUnbalancedLiquidity: true,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
+            liquidityManagement
         );
     }
 
     function manualRegisterPoolPassThruTokens(address pool, IERC20[] memory tokens) external {
         TokenConfig[] memory tokenConfig = new TokenConfig[](tokens.length);
         PoolRoleAccounts memory roleAccounts;
+
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokenConfig[i].token = tokens[i];
         }
@@ -145,11 +141,7 @@ contract VaultMock is IVaultMainMock, Vault {
             tokenConfig,
             roleAccounts,
             address(0), // No hook contract
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
+            _getDefaultLiquidityManagement()
         );
     }
 
@@ -165,11 +157,7 @@ contract VaultMock is IVaultMainMock, Vault {
             timestamp,
             roleAccounts,
             address(0), // No hook contract
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
+            _getDefaultLiquidityManagement()
         );
     }
 
@@ -220,6 +208,7 @@ contract VaultMock is IVaultMainMock, Vault {
         poolConfigBits = poolConfigBits.setRemoveLiquidityCustom(
             config.liquidityManagement.enableRemoveLiquidityCustom
         );
+        poolConfigBits = poolConfigBits.setDonation(config.liquidityManagement.enableDonation);
 
         _poolConfigBits[pool] = poolConfigBits;
     }
@@ -590,5 +579,12 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualGetTokenDeltas() external view returns (TokenDeltaMappingSlotType slot) {
         return _tokenDeltas();
+    }
+
+    function _getDefaultLiquidityManagement() private pure returns (LiquidityManagement memory) {
+        LiquidityManagement memory liquidityManagement;
+        liquidityManagement.enableAddLiquidityCustom = true;
+        liquidityManagement.enableRemoveLiquidityCustom = true;
+        return liquidityManagement;
     }
 }

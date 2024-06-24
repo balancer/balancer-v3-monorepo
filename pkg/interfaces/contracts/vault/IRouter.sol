@@ -133,6 +133,16 @@ interface IRouter {
     ) external payable returns (uint256 amountIn);
 
     /**
+     * @notice Adds liquidity to a pool by donating the amounts in (no BPT out).
+     * @dev To support donation, the pool config `enableDonation` flag must be set to true.
+     * @param pool Address of the liquidity pool
+     * @param amountsIn Amounts of tokens to be donated, sorted in token registration order
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param userData Additional (optional) data required for adding liquidity
+     */
+    function donate(address pool, uint256[] memory amountsIn, bool wethIsEth, bytes memory userData) external payable;
+
+    /**
      * @notice Adds liquidity to a pool with a custom request.
      * @dev The given maximum and minimum amounts given may be interpreted as exact depending on the pool type.
      * In any case the caller can expect them to be hard boundaries for the request.
