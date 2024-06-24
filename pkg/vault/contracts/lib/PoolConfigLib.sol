@@ -170,6 +170,7 @@ library PoolConfigLib {
             revert IVaultErrors.DoesNotSupportDonation();
         }
     }
+
     // #endregion
 
     // #region Bit offsets for hooks config
