@@ -206,6 +206,32 @@ export class Benchmark {
       });
     };
 
+    const itTestsDonation = () => {
+      sharedBeforeEach('deploy pool', async () => {
+        this.pool = (await this.deployPool())!;
+      });
+
+      sharedBeforeEach('initialize pool', async () => {
+        initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
+        await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+      });
+
+      it('pool preconditions', async () => {
+        const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(this.pool);
+
+        expect(poolConfig.isPoolRegistered).to.be.true;
+        expect(poolConfig.isPoolInitialized).to.be.true;
+        expect(poolConfig.liquidityManagement.enableDonation).to.be.true;
+      });
+
+      it('measures gas', async () => {
+        // Warm up
+        const tx = await router.connect(alice).donate(this.pool, [SWAP_AMOUNT, SWAP_AMOUNT], false, '0x');
+        const receipt = await tx.wait();
+        await saveSnap(this._testDirname, `[${this._poolType}] donation`, receipt);
+      });
+    };
+
     describe('test standard pool', () => {
       sharedBeforeEach(async () => {
         poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
@@ -250,6 +276,10 @@ export class Benchmark {
           await this.tokenB.setRate(fp(1.2));
         }
       );
+    });
+
+    describe('test donation', () => {
+      itTestsDonation();
     });
   };
 }

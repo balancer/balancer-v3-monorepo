@@ -133,9 +133,20 @@ interface IRouter {
     ) external payable returns (uint256 amountIn);
 
     /**
+     * @notice Adds liquidity to a pool by donating the amounts in (no BPT out).
+     * @dev To support donation, the pool config `enableDonation` flag must be set to true.
+     * @param pool Address of the liquidity pool
+     * @param amountsIn Amounts of tokens to be donated, sorted in token registration order
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param userData Additional (optional) data required for adding liquidity
+     */
+    function donate(address pool, uint256[] memory amountsIn, bool wethIsEth, bytes memory userData) external payable;
+
+    /**
      * @notice Adds liquidity to a pool with a custom request.
      * @dev The given maximum and minimum amounts given may be interpreted as exact depending on the pool type.
      * In any case the caller can expect them to be hard boundaries for the request.
+     *
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
@@ -312,7 +323,7 @@ interface IRouter {
      * @param amountGiven Amount given based on kind of the swap (e.g., tokenIn for exact in)
      * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for exact out)
      * @param deadline Deadline for the swap
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH.
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for the swap
      */
     struct SwapSingleTokenHookParams {
@@ -337,7 +348,7 @@ interface IRouter {
      * @param minAmountOut Minimum amount of tokens to be received
      * @param deadline Deadline for the swap
      * @param userData Additional (optional) data required for the swap
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH.
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @return amountOut Calculated amount of output tokens to be received in exchange for the given input tokens
      */
     function swapSingleTokenExactIn(
@@ -360,7 +371,7 @@ interface IRouter {
      * @param maxAmountIn Maximum amount of tokens to be sent
      * @param deadline Deadline for the swap
      * @param userData Additional (optional) data required for the swap
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH.
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @return amountIn Calculated amount of input tokens to be sent in exchange for the requested output tokens
      */
     function swapSingleTokenExactOut(

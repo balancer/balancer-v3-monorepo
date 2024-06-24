@@ -28,9 +28,10 @@ library PoolConfigLib {
     uint8 public constant UNBALANCED_LIQUIDITY_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
     uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = UNBALANCED_LIQUIDITY_OFFSET + 1;
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
+    uint8 public constant DONATION_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
 
     // Bit offsets for hooks config
-    uint8 public constant BEFORE_INITIALIZE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
+    uint8 public constant BEFORE_INITIALIZE_OFFSET = DONATION_OFFSET + 1;
     uint8 public constant ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET = BEFORE_INITIALIZE_OFFSET + 1;
     uint8 public constant AFTER_INITIALIZE_OFFSET = ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET + 1;
     uint8 public constant DYNAMIC_SWAP_FEE_OFFSET = AFTER_INITIALIZE_OFFSET + 1;
@@ -752,6 +753,20 @@ library PoolConfigLib {
     }
 
     // #endregion
+
+    function supportsDonation(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(DONATION_OFFSET);
+    }
+
+    function setDonation(PoolConfigBits config, bool enableDonation) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(enableDonation, DONATION_OFFSET));
+    }
+
+    function requireDonationEnabled(PoolConfigBits config) internal pure {
+        if (config.supportsDonation() == false) {
+            revert IVaultErrors.DoesNotSupportDonation();
+        }
+    }
 
     // Convert from an array of decimal differences, to the encoded 24 bit value (only uses bottom 20 bits).
     function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint24) {

@@ -18,6 +18,7 @@ import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sortingHelper';
 import { deployPermit2 } from './Permit2Deployer';
 import { IPermit2 } from '../typechain-types/permit2/src/interfaces/IPermit2';
+import { IBatchRouter } from '@balancer-labs/v3-interfaces/typechain-types';
 
 describe('BatchSwap', function () {
   let permit2: IPermit2;
@@ -145,6 +146,12 @@ describe('BatchSwap', function () {
     await poolC.connect(lp).transfer(sender, fp(100));
   });
 
+  // This checks that the batch router is not susceptible to DDoS attacks by dusting the Vault.
+  sharedBeforeEach('add some dust to the vault (DDoS check)', async () => {
+    await tokens.mint({ to: vault, amount: 1234 });
+    await Promise.all(pools.map((pool) => pool.connect(lp).transfer(vault, 12345)));
+  });
+
   describe('batch swap given in', () => {
     let doSwap: () => Promise<unknown>;
     let doSwapStatic: () => Promise<{
@@ -164,7 +171,7 @@ describe('BatchSwap', function () {
 
     let totalAmountIn: bigint, totalAmountOut: bigint, pathAmountsOut: bigint[], amountsOut: bigint[];
     let balanceChange: BalanceChange[];
-    let paths: IRouter.SwapPathExactAmountInStruct[];
+    let paths: IBatchRouter.SwapPathExactAmountInStruct[];
 
     function setUp() {
       const _doSwap = async (isStatic: boolean) =>

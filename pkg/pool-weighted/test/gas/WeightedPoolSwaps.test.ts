@@ -8,7 +8,7 @@ import * as expectEvent from '@balancer-labs/v3-helpers/src/test/expectEvent';
 import { WeightedPoolFactory } from '@balancer-labs/v3-pool-weighted/typechain-types';
 import { PoolRoleAccountsStruct } from '@balancer-labs/v3-vault/typechain-types/contracts/Vault';
 
-import { Benchmark } from '@balancer-labs/v3-benchmarks/src/SwapBenchmark.behavior';
+import { Benchmark } from '@balancer-labs/v3-benchmarks/src/PoolBenchmark.behavior';
 
 class WeightedPoolBenchmark extends Benchmark {
   WEIGHTS = [fp(0.5), fp(0.5)];
@@ -28,6 +28,8 @@ class WeightedPoolBenchmark extends Benchmark {
       poolCreator: ZERO_ADDRESS,
     };
 
+    const enableDonation = true;
+
     const tx = await factory.create(
       'WeightedPool',
       'Test',
@@ -36,6 +38,7 @@ class WeightedPoolBenchmark extends Benchmark {
       poolRoleAccounts,
       fp(0.1),
       ZERO_ADDRESS,
+      enableDonation,
       ZERO_BYTES32
     );
     const receipt = await tx.wait();

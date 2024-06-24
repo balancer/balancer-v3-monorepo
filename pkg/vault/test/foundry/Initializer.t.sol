@@ -127,4 +127,19 @@ contract InitializerTest is BaseVaultTest {
             bytes("0xff")
         );
     }
+
+    function testInitializeWithDust() public {
+        dai.mint(address(vault), 1);
+        usdc.mint(address(vault), 1);
+
+        vm.prank(bob);
+        router.initialize(
+            pool,
+            standardPoolTokens,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("0xff")
+        );
+    }
 }

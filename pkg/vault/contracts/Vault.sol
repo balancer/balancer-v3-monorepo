@@ -109,22 +109,32 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultMain
-    function unlock(bytes calldata data) external payable transient returns (bytes memory result) {
-        // Executes the function call with value to the msg.sender (router).
-        return (msg.sender).functionCallWithValue(data, msg.value);
+    function unlock(bytes calldata data) external transient returns (bytes memory result) {
+        return (msg.sender).functionCall(data);
     }
 
     /// @inheritdoc IVaultMain
-    function settle(IERC20 token) public nonReentrant onlyWhenUnlocked returns (uint256 paid) {
+    function settle(IERC20 token, uint256 amountHint) external nonReentrant onlyWhenUnlocked returns (uint256 credit) {
         uint256 reservesBefore = _reservesOf[token];
-        _reservesOf[token] = token.balanceOf(address(this));
-        paid = _reservesOf[token] - reservesBefore;
+        uint256 currentReserves = token.balanceOf(address(this));
+        _reservesOf[token] = currentReserves;
+        credit = currentReserves - reservesBefore;
 
-        _supplyCredit(token, paid);
+        // If the given hint is equal or greater to the reserve difference, we just take the actual reserve difference
+        // as the paid amount; the actual balance of the tokens in the vault is what matters here.
+        if (credit > amountHint) {
+            // If the difference in reserves is higher than the amount claimed to be paid by the caller, there was some
+            // leftover that had been sent to the vault beforehand, which was not incorporated into the reserves.
+            // In that case, we simply discard the leftover by considering the given hint as the amount paid.
+            // In turn, this gives the caller credit for the given amount hint, which is what the caller is expecting.
+            credit = amountHint;
+        }
+
+        _supplyCredit(token, credit);
     }
 
     /// @inheritdoc IVaultMain
-    function sendTo(IERC20 token, address to, uint256 amount) public nonReentrant onlyWhenUnlocked {
+    function sendTo(IERC20 token, address to, uint256 amount) external nonReentrant onlyWhenUnlocked {
         _takeDebt(token, amount);
         _reservesOf[token] -= amount;
 
@@ -613,6 +623,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 _totalSupply(params.pool),
                 bptAmountOut
             );
+        } else if (params.kind == AddLiquidityKind.DONATION) {
+            poolData.poolConfigBits.requireDonationEnabled();
+
+            swapFeeAmountsScaled18 = new uint256[](maxAmountsInScaled18.length);
+            bptAmountOut = 0;
+            amountsInScaled18 = maxAmountsInScaled18;
         } else if (params.kind == AddLiquidityKind.UNBALANCED) {
             poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
 
