@@ -34,7 +34,6 @@ import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { Cache } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Cache.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -294,18 +293,17 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                     revert HookRegistrationFailed(params.poolHooksContract, pool, msg.sender);
                 }
 
-                bool isAfterHookEnabled = hookFlags.enableHookAdjustedAmounts ||
-                    hookFlags.shouldCallBeforeInitialize ||
-                    hookFlags.shouldCallAfterInitialize ||
-                    hookFlags.shouldCallComputeDynamicSwapFee ||
+                bool isAnySwapHookEnabled = hookFlags.shouldCallComputeDynamicSwapFee ||
                     hookFlags.shouldCallBeforeSwap ||
-                    hookFlags.shouldCallAfterSwap ||
-                    hookFlags.shouldCallBeforeAddLiquidity ||
-                    hookFlags.shouldCallAfterAddLiquidity ||
-                    hookFlags.shouldCallBeforeRemoveLiquidity ||
+                    hookFlags.shouldCallAfterSwap;
+                bool isAnyAddLiquidityHookEnabled = hookFlags.shouldCallBeforeAddLiquidity ||
+                    hookFlags.shouldCallAfterAddLiquidity;
+                bool isAnyRemoveLiquidityHookEnabled = hookFlags.shouldCallBeforeRemoveLiquidity ||
                     hookFlags.shouldCallAfterRemoveLiquidity;
 
-                poolConfigBits = poolConfigBits.setAnyHookEnabled(isAfterHookEnabled);
+                poolConfigBits = poolConfigBits.setAnySwapHookEnabled(isAnySwapHookEnabled);
+                poolConfigBits = poolConfigBits.setAnyAddLiquidityHookEnabled(isAnyAddLiquidityHookEnabled);
+                poolConfigBits = poolConfigBits.setAnyRemoveLiquidityHookEnabled(isAnyRemoveLiquidityHookEnabled);
                 poolConfigBits = poolConfigBits.setHookAdjustedAmounts(hookFlags.enableHookAdjustedAmounts);
                 poolConfigBits = poolConfigBits.setShouldCallBeforeInitialize(hookFlags.shouldCallBeforeInitialize);
                 poolConfigBits = poolConfigBits.setShouldCallAfterInitialize(hookFlags.shouldCallAfterInitialize);
@@ -325,7 +323,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
 
             _poolConfigBits[pool] = poolConfigBits;
-            _hooksContracts[pool].value = params.poolHooksContract;
+            _hooksContracts[pool] = IHooks(params.poolHooksContract);
         }
 
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
@@ -338,7 +336,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.swapFeePercentage,
             params.pauseWindowEndTime,
             params.roleAccounts,
-            poolConfigBits.toHooksConfig(params.poolHooksContract),
+            poolConfigBits.toHooksConfig(IHooks(params.poolHooksContract)),
             params.liquidityManagement
         );
     }
@@ -396,12 +394,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        Cache.AddressCache memory hooksContractCache = Cache.initAddressCache(_hooksContracts[pool]);
+        bool isAnyInitializeHookEnabled = poolData.poolConfigBits.isAnyInitializeHookEnabled();
+        IHooks hooksContract;
+        if (isAnyInitializeHookEnabled) {
+            hooksContract = _hooksContracts[pool];
+        }
 
-        if (
-            poolData.poolConfigBits.callBeforeInitializeHook(exactAmountsInScaled18, userData, hooksContractCache) ==
-            true
-        ) {
+        if (poolData.poolConfigBits.callBeforeInitializeHook(exactAmountsInScaled18, userData, hooksContract) == true) {
             // The before hook is reentrant, and could have changed token rates.
             // Updating balances here is unnecessary since they're 0, but we do not special case before init
             // for the sake of bytecode size.
@@ -416,12 +415,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         bptAmountOut = _initialize(pool, to, poolData, tokens, exactAmountsIn, exactAmountsInScaled18, minBptAmountOut);
 
-        poolData.poolConfigBits.callAfterInitializeHook(
-            exactAmountsInScaled18,
-            bptAmountOut,
-            userData,
-            hooksContractCache
-        );
+        poolData.poolConfigBits.callAfterInitializeHook(exactAmountsInScaled18, bptAmountOut, userData, hooksContract);
     }
 
     function _initialize(
@@ -523,7 +517,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function getHooksConfig(
         address pool
     ) external view withRegisteredPool(pool) onlyVaultDelegateCall returns (HooksConfig memory) {
-        return _poolConfigBits[pool].toHooksConfig(_hooksContracts[pool].value);
+        return _poolConfigBits[pool].toHooksConfig(_hooksContracts[pool]);
     }
 
     /// @inheritdoc IVaultExtension
@@ -629,7 +623,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             _poolConfigBits[pool].callComputeDynamicSwapFeeHook(
                 swapParams,
                 _poolConfigBits[pool].getStaticSwapFeePercentage(),
-                _hooksContracts[pool].value
+                _hooksContracts[pool]
             );
     }
 

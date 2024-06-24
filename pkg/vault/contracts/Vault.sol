@@ -31,7 +31,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
-import { Cache } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Cache.sol";
 
 import { VaultStateLib, VaultStateBits, VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -53,7 +52,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using BufferPackedTokenBalance for bytes32;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
-    using Cache for Cache.AddressCache;
     using PoolDataLib for PoolData;
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer, IProtocolFeeController protocolFeeController) {
@@ -194,15 +192,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
 
-        address hooksContract;
-
-        bool isAnyHookEnabled = poolData.poolConfigBits.isAnyHookEnabled();
-
-        if (isAnyHookEnabled) {
-            hooksContract = _hooksContracts[params.pool].value;
+        bool isAnySwapHookEnabled = poolData.poolConfigBits.isAnySwapHookEnabled();
+        IHooks hooksContract;
+        if (isAnySwapHookEnabled) {
+            hooksContract = _hooksContracts[params.pool];
         }
 
-        if (isAnyHookEnabled) {
+        if (isAnySwapHookEnabled) {
             if (poolData.poolConfigBits.callBeforeSwapHook(swapParams, params.pool, hooksContract)) {
                 // The call to `onBeforeSwap` could potentially update token rates and balances.
                 // We update `poolData.tokenRates`, `poolData.rawBalances` and `poolData.balancesLiveScaled18`
@@ -234,7 +230,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountCalculatedScaled18;
         (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, swapParams);
 
-        if (isAnyHookEnabled) {
+        if (isAnySwapHookEnabled) {
             // If the hook contract does not exist or does not implement onAfterSwap, PoolConfigLib returns the original
             // amountCalculated. Otherwise, the new amount calculated is 'amountCalculated + delta'. If the underlying
             // hook fails, or limits are violated, `onAfterSwap` will revert.
@@ -528,14 +524,20 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        Cache.AddressCache memory hooksContractCache = Cache.initAddressCache(_hooksContracts[params.pool]);
+        bool isAnyAddLiquidityHookEnabled = poolData.poolConfigBits.isAnyAddLiquidityHookEnabled();
+        IHooks hooksContract;
+        if (isAnyAddLiquidityHookEnabled) {
+            hooksContract = _hooksContracts[params.pool];
+        }
+
         if (
+            isAnyAddLiquidityHookEnabled &&
             poolData.poolConfigBits.callBeforeAddLiquidityHook(
                 msg.sender,
                 maxAmountsInScaled18,
                 params,
                 poolData,
-                hooksContractCache
+                hooksContract
             )
         ) {
             // If the hook library returns true, the hook code was executed, and might have altered the balances,
@@ -563,17 +565,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             maxAmountsInScaled18
         );
 
-        // AmountsIn can be changed by onAfterAddLiquidity if the hook charges fees or gives discounts
-        // Uses msg.sender as the router (the contract that called the vault)
-        amountsIn = poolData.poolConfigBits.callAfterAddLiquidityHook(
-            msg.sender,
-            amountsInScaled18,
-            amountsIn,
-            bptAmountOut,
-            params,
-            poolData,
-            hooksContractCache
-        );
+        if (isAnyAddLiquidityHookEnabled) {
+            // AmountsIn can be changed by onAfterAddLiquidity if the hook charges fees or gives discounts
+            // Uses msg.sender as the router (the contract that called the vault)
+            amountsIn = poolData.poolConfigBits.callAfterAddLiquidityHook(
+                msg.sender,
+                amountsInScaled18,
+                amountsIn,
+                bptAmountOut,
+                params,
+                poolData,
+                hooksContract
+            );
+        }
     }
 
     /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
@@ -756,17 +760,22 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        Cache.AddressCache memory hooksContractCache = Cache.initAddressCache(_hooksContracts[params.pool]);
+        bool isAnyRemoveLiquidityHookEnabled = poolData.poolConfigBits.isAnyRemoveLiquidityHookEnabled();
+        address hooksContract;
+        if (isAnyRemoveLiquidityHookEnabled) {
+            hooksContract = _hooksContracts[params.pool];
+        }
 
         // Uses msg.sender as the router (the contract that called the vault)
         if (
+            isAnyRemoveLiquidityHookEnabled &&
             poolData.poolConfigBits.callBeforeRemoveLiquidityHook(
                 minAmountsOutScaled18,
                 msg.sender,
                 params,
                 poolData,
-                hooksContractCache
-            ) == true
+                hooksContract
+            )
         ) {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
@@ -791,17 +800,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             minAmountsOutScaled18
         );
 
-        // AmountsOut can be changed by onAfterRemoveLiquidity if the hook charges fees or gives discounts
-        // Uses msg.sender as the router (the contract that called the vault)
-        amountsOut = poolData.poolConfigBits.callAfterRemoveLiquidityHook(
-            msg.sender,
-            amountsOutScaled18,
-            amountsOut,
-            bptAmountIn,
-            params,
-            poolData,
-            hooksContractCache
-        );
+        if (isAnyRemoveLiquidityHookEnabled) {
+            // AmountsOut can be changed by onAfterRemoveLiquidity if the hook charges fees or gives discounts
+            // Uses msg.sender as the router (the contract that called the vault)
+            amountsOut = poolData.poolConfigBits.callAfterRemoveLiquidityHook(
+                msg.sender,
+                amountsOutScaled18,
+                amountsOut,
+                bptAmountIn,
+                params,
+                poolData,
+                hooksContract
+            );
+        }
     }
 
     /**

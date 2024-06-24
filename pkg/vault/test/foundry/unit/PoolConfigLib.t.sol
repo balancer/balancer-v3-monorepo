@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
@@ -411,7 +412,7 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
         config = config.setShouldCallBeforeRemoveLiquidity(true);
         config = config.setShouldCallAfterRemoveLiquidity(true);
 
-        HooksConfig memory hooksConfig = config.toHooksConfig(hooksContract);
+        HooksConfig memory hooksConfig = config.toHooksConfig(IHooks(hooksContract));
         assertEq(hooksConfig.shouldCallBeforeInitialize, true, "shouldCallBeforeInitialize mismatch");
         assertEq(hooksConfig.shouldCallAfterInitialize, true, "shouldCallAfterInitialize mismatch");
         assertEq(hooksConfig.shouldCallComputeDynamicSwapFee, true, "shouldCallComputeDynamicSwapFee mismatch");
