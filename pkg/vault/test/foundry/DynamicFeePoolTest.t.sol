@@ -60,16 +60,16 @@ contract DynamicFeePoolTest is BaseVaultTest {
         hookFlags.shouldCallComputeDynamicSwapFee = true;
         PoolHooksMock(poolHooksContract).setHookFlags(hookFlags);
 
+        LiquidityManagement memory liquidityManagement;
+        liquidityManagement.enableAddLiquidityCustom = true;
+        liquidityManagement.enableRemoveLiquidityCustom = true;
+
         factoryMock.registerPool(
             address(newPool),
             vault.buildTokenConfig(tokens.asIERC20()),
             roleAccounts,
             poolHooksContract,
-            LiquidityManagement({
-                disableUnbalancedLiquidity: false,
-                enableAddLiquidityCustom: true,
-                enableRemoveLiquidityCustom: true
-            })
+            liquidityManagement
         );
 
         return address(newPool);

@@ -69,6 +69,7 @@ contract StablePoolTest is BaseVaultTest {
                 roleAccounts,
                 MIN_SWAP_FEE,
                 poolHooksContract,
+                false,
                 ZERO_BYTES32
             )
         );
