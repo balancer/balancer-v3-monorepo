@@ -74,7 +74,7 @@ contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest, MeasureBalancesHelper
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
-        vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
+        vm.expectRevert(ExitFeePaidToLPsHookExample.PoolDoesNotSupportDonation.selector);
         _registerPoolWithHook(exitFeePool, tokenConfig, false);
     }
 

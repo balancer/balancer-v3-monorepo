@@ -7,7 +7,6 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import {
     AddLiquidityKind,
     AddLiquidityParams,
@@ -24,6 +23,9 @@ contract ExitFeePaidToLPsHookExample is BasePoolHooks, Ownable {
 
     // Percentages are represented as 18-decimal FP, with maximum value of 1e18 (100%), so 60 bits are enough.
     uint64 public removeLiquidityHookFeePercentage;
+
+    /// @dev Pool does not support adding liquidity through donation.
+    error PoolDoesNotSupportDonation();
 
     constructor(IVault vault) BasePoolHooks(vault) Ownable(msg.sender) {
         // solhint-previous-line no-empty-blocks
@@ -42,7 +44,7 @@ contract ExitFeePaidToLPsHookExample is BasePoolHooks, Ownable {
 
         // This hook requires donation support to work
         if (liquidityManagement.enableDonation == false) {
-            revert IVaultErrors.DoesNotSupportDonation();
+            revert PoolDoesNotSupportDonation();
         }
 
         return true;
