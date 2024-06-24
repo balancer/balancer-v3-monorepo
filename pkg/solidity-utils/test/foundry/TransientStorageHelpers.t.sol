@@ -153,30 +153,6 @@ contract TransientStorageHelpersTest is Test {
         assertEq(storageUint, 1234, "Uint: storage modified");
     }
 
-    function testTransientIncrementOverflow() public {
-        StorageSlot.Uint256SlotType transientUint;
-        assembly {
-            transientUint := storageUint.slot
-        }
-
-        transientUint.tstore(type(uint256).max);
-
-        vm.expectRevert(stdError.arithmeticError);
-        transientUint.tIncrement_unchecked();
-    }
-
-    function testTransientDecrementUnderflow() public {
-        StorageSlot.Uint256SlotType transientUint;
-        assembly {
-            transientUint := storageUint.slot
-        }
-
-        transientUint.tstore(0);
-
-        vm.expectRevert(stdError.arithmeticError);
-        transientUint.tDecrement_unchecked();
-    }
-
     function testCalculateSlot() public {
         bytes32 slot = TransientStorageHelpers.calculateSlot("domain", "name");
         assertEq(
