@@ -36,64 +36,41 @@ contract PoolDonationTest is BaseVaultTest {
         uint256[] memory amountsToDonate = new uint256[](2);
         amountsToDonate[daiIdx] = amountToDonate;
 
-        HookTestLocals memory vars = _createHookTestLocals();
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
 
         vm.prank(bob);
         router.donate(pool, amountsToDonate, false, bytes(""));
 
-        _fillAfterHookTestLocals(vars);
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
 
         // Bob balances
-        assertEq(vars.bob.daiBefore - vars.bob.daiAfter, amountToDonate, "Bob DAI balance is wrong");
-        assertEq(vars.bob.usdcAfter, vars.bob.usdcBefore, "Bob USDC balance is wrong");
-        assertEq(vars.bob.bptAfter, vars.bob.bptBefore, "Bob BPT balance is wrong");
+        assertEq(
+            balancesBefore.userTokens[daiIdx] - balancesAfter.userTokens[daiIdx],
+            amountToDonate,
+            "Bob DAI balance is wrong"
+        );
+        assertEq(balancesAfter.userTokens[usdcIdx], balancesBefore.userTokens[usdcIdx], "Bob USDC balance is wrong");
+        assertEq(balancesAfter.userBpt, balancesBefore.userBpt, "Bob BPT balance is wrong");
 
         // Pool balances
-        assertEq(vars.poolAfter[daiIdx] - vars.poolBefore[daiIdx], amountToDonate, "Pool DAI balance is wrong");
-        assertEq(vars.poolAfter[usdcIdx], vars.poolBefore[usdcIdx], "Pool USDC balance is wrong");
-        assertEq(vars.bptSupplyAfter, vars.bptSupplyBefore, "Pool BPT supply is wrong");
+        assertEq(
+            balancesAfter.poolTokens[daiIdx] - balancesBefore.poolTokens[daiIdx],
+            amountToDonate,
+            "Pool DAI balance is wrong"
+        );
+        assertEq(balancesAfter.poolTokens[usdcIdx], balancesBefore.poolTokens[usdcIdx], "Pool USDC balance is wrong");
+        assertEq(balancesAfter.poolSupply, balancesBefore.poolSupply, "Pool BPT supply is wrong");
 
         // Vault Balances
-        assertEq(vars.vault.daiAfter - vars.vault.daiBefore, amountToDonate, "Vault DAI balance is wrong");
-        assertEq(vars.vault.usdcAfter, vars.vault.usdcBefore, "Vault USDC balance is wrong");
-    }
-
-    struct WalletState {
-        uint256 daiBefore;
-        uint256 daiAfter;
-        uint256 usdcBefore;
-        uint256 usdcAfter;
-        uint256 bptBefore;
-        uint256 bptAfter;
-    }
-
-    struct HookTestLocals {
-        WalletState bob;
-        WalletState hook;
-        WalletState vault;
-        uint256[] poolBefore;
-        uint256[] poolAfter;
-        uint256 bptSupplyBefore;
-        uint256 bptSupplyAfter;
-    }
-
-    function _createHookTestLocals() private view returns (HookTestLocals memory vars) {
-        vars.bob.daiBefore = dai.balanceOf(address(bob));
-        vars.bob.usdcBefore = usdc.balanceOf(address(bob));
-        vars.bob.bptBefore = IERC20(pool).balanceOf(address(bob));
-        vars.vault.daiBefore = dai.balanceOf(address(vault));
-        vars.vault.usdcBefore = usdc.balanceOf(address(vault));
-        vars.poolBefore = vault.getRawBalances(pool);
-        vars.bptSupplyBefore = BalancerPoolToken(pool).totalSupply();
-    }
-
-    function _fillAfterHookTestLocals(HookTestLocals memory vars) private view {
-        vars.bob.daiAfter = dai.balanceOf(address(bob));
-        vars.bob.usdcAfter = usdc.balanceOf(address(bob));
-        vars.bob.bptAfter = IERC20(pool).balanceOf(address(bob));
-        vars.vault.daiAfter = dai.balanceOf(address(vault));
-        vars.vault.usdcAfter = usdc.balanceOf(address(vault));
-        vars.poolAfter = vault.getRawBalances(pool);
-        vars.bptSupplyAfter = BalancerPoolToken(pool).totalSupply();
+        assertEq(
+            balancesAfter.vaultTokens[daiIdx] - balancesBefore.vaultTokens[daiIdx],
+            amountToDonate,
+            "Vault DAI balance is wrong"
+        );
+        assertEq(
+            balancesAfter.vaultTokens[usdcIdx],
+            balancesBefore.vaultTokens[usdcIdx],
+            "Vault USDC balance is wrong"
+        );
     }
 }

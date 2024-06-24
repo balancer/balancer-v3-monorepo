@@ -75,7 +75,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
-        HookTestLocals memory vars = _createHookTestLocals();
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
 
         vm.prank(bob);
         vm.expectCall(
@@ -101,14 +101,26 @@ contract HookAdjustedSwapTest is BaseVaultTest {
 
         router.swapSingleTokenExactIn(address(pool), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
 
-        _fillAfterSwapHookTestLocals(vars);
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
 
-        assertEq(vars.bob.daiBefore - vars.bob.daiAfter, swapAmount, "Bob DAI balance is wrong");
-        assertEq(vars.hook.daiBefore, vars.hook.daiAfter, "Hook DAI balance is wrong");
-        assertEq(vars.bob.usdcAfter - vars.bob.usdcBefore, swapAmount - hookFee, "Bob USDC balance is wrong");
-        assertEq(vars.hook.usdcAfter - vars.hook.usdcBefore, hookFee, "Hook USDC balance is wrong");
+        assertEq(
+            balancesBefore.userTokens[daiIdx] - balancesAfter.userTokens[daiIdx],
+            swapAmount,
+            "Bob DAI balance is wrong"
+        );
+        assertEq(balancesBefore.hookTokens[daiIdx], balancesAfter.hookTokens[daiIdx], "Hook DAI balance is wrong");
+        assertEq(
+            balancesAfter.userTokens[usdcIdx] - balancesBefore.userTokens[usdcIdx],
+            swapAmount - hookFee,
+            "Bob USDC balance is wrong"
+        );
+        assertEq(
+            balancesAfter.hookTokens[usdcIdx] - balancesBefore.hookTokens[usdcIdx],
+            hookFee,
+            "Hook USDC balance is wrong"
+        );
 
-        _checkPoolAndVaultBalances(vars, swapAmount);
+        _checkPoolAndVaultBalances(balancesBefore, balancesAfter, swapAmount);
     }
 
     function testDiscountExactIn__Fuzz(uint256 swapAmount, uint256 hookDiscountPercentage) public {
@@ -123,7 +135,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Hook needs to pay the discount to the pool. Since it's exact in, the discount is paid in tokenOut amount.
         usdc.mint(address(poolHooksContract), hookDiscount);
 
-        HookTestLocals memory vars = _createHookTestLocals();
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook
         vm.prank(bob);
@@ -151,14 +163,26 @@ contract HookAdjustedSwapTest is BaseVaultTest {
 
         router.swapSingleTokenExactIn(address(pool), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
 
-        _fillAfterSwapHookTestLocals(vars);
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
 
-        assertEq(vars.bob.daiBefore - vars.bob.daiAfter, swapAmount, "Bob DAI balance is wrong");
-        assertEq(vars.hook.daiBefore, vars.hook.daiAfter, "Hook DAI balance is wrong");
-        assertEq(vars.bob.usdcAfter - vars.bob.usdcBefore, swapAmount + hookDiscount, "Bob USDC balance is wrong");
-        assertEq(vars.hook.usdcBefore - vars.hook.usdcAfter, hookDiscount, "Hook USDC balance is wrong");
+        assertEq(
+            balancesBefore.userTokens[daiIdx] - balancesAfter.userTokens[daiIdx],
+            swapAmount,
+            "Bob DAI balance is wrong"
+        );
+        assertEq(balancesBefore.hookTokens[daiIdx], balancesAfter.hookTokens[daiIdx], "Hook DAI balance is wrong");
+        assertEq(
+            balancesAfter.userTokens[usdcIdx] - balancesBefore.userTokens[usdcIdx],
+            swapAmount + hookDiscount,
+            "Bob USDC balance is wrong"
+        );
+        assertEq(
+            balancesBefore.hookTokens[usdcIdx] - balancesAfter.hookTokens[usdcIdx],
+            hookDiscount,
+            "Hook USDC balance is wrong"
+        );
 
-        _checkPoolAndVaultBalances(vars, swapAmount);
+        _checkPoolAndVaultBalances(balancesBefore, balancesAfter, swapAmount);
     }
 
     function testFeeExactOut__Fuzz(uint256 swapAmount, uint256 hookFeePercentage) public {
@@ -170,7 +194,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
-        HookTestLocals memory vars = _createHookTestLocals();
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook
         vm.prank(bob);
@@ -207,14 +231,26 @@ contract HookAdjustedSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        _fillAfterSwapHookTestLocals(vars);
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
 
-        assertEq(vars.bob.usdcAfter - vars.bob.usdcBefore, swapAmount, "Bob USDC balance is wrong");
-        assertEq(vars.hook.usdcBefore, vars.hook.usdcAfter, "Hook USDC balance is wrong");
-        assertEq(vars.bob.daiBefore - vars.bob.daiAfter, swapAmount + hookFee, "Bob DAI balance is wrong");
-        assertEq(vars.hook.daiAfter - vars.hook.daiBefore, hookFee, "Hook DAI balance is wrong");
+        assertEq(
+            balancesAfter.userTokens[usdcIdx] - balancesBefore.userTokens[usdcIdx],
+            swapAmount,
+            "Bob USDC balance is wrong"
+        );
+        assertEq(balancesBefore.hookTokens[usdcIdx], balancesAfter.hookTokens[usdcIdx], "Hook USDC balance is wrong");
+        assertEq(
+            balancesBefore.userTokens[daiIdx] - balancesAfter.userTokens[daiIdx],
+            swapAmount + hookFee,
+            "Bob DAI balance is wrong"
+        );
+        assertEq(
+            balancesAfter.hookTokens[daiIdx] - balancesBefore.hookTokens[daiIdx],
+            hookFee,
+            "Hook DAI balance is wrong"
+        );
 
-        _checkPoolAndVaultBalances(vars, swapAmount);
+        _checkPoolAndVaultBalances(balancesBefore, balancesAfter, swapAmount);
     }
 
     function testDiscountExactOut__Fuzz(uint256 swapAmount, uint256 hookDiscountPercentage) public {
@@ -229,7 +265,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Hook needs to pay the discount to the pool. Since it's exact out, the discount is paid in tokenIn amount.
         dai.mint(address(poolHooksContract), hookDiscount);
 
-        HookTestLocals memory vars = _createHookTestLocals();
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook
         vm.prank(bob);
@@ -266,14 +302,26 @@ contract HookAdjustedSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        _fillAfterSwapHookTestLocals(vars);
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
 
-        assertEq(vars.bob.usdcAfter - vars.bob.usdcBefore, swapAmount, "Bob USDC balance is wrong");
-        assertEq(vars.hook.usdcBefore, vars.hook.usdcAfter, "Hook USDC balance is wrong");
-        assertEq(vars.bob.daiBefore - vars.bob.daiAfter, swapAmount - hookDiscount, "Bob DAI balance is wrong");
-        assertEq(vars.hook.daiBefore - vars.hook.daiAfter, hookDiscount, "Hook DAI balance is wrong");
+        assertEq(
+            balancesAfter.userTokens[usdcIdx] - balancesBefore.userTokens[usdcIdx],
+            swapAmount,
+            "Bob USDC balance is wrong"
+        );
+        assertEq(balancesBefore.hookTokens[usdcIdx], balancesAfter.hookTokens[usdcIdx], "Hook USDC balance is wrong");
+        assertEq(
+            balancesBefore.userTokens[daiIdx] - balancesAfter.userTokens[daiIdx],
+            swapAmount - hookDiscount,
+            "Bob DAI balance is wrong"
+        );
+        assertEq(
+            balancesBefore.hookTokens[daiIdx] - balancesAfter.hookTokens[daiIdx],
+            hookDiscount,
+            "Hook DAI balance is wrong"
+        );
 
-        _checkPoolAndVaultBalances(vars, swapAmount);
+        _checkPoolAndVaultBalances(balancesBefore, balancesAfter, swapAmount);
     }
 
     function testFeeExactInLimitViolation() public {
@@ -410,46 +458,31 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         );
     }
 
-    struct WalletState {
-        uint256 daiBefore;
-        uint256 daiAfter;
-        uint256 usdcBefore;
-        uint256 usdcAfter;
-    }
-
-    struct HookTestLocals {
-        WalletState bob;
-        WalletState hook;
-        WalletState vault;
-        uint256[] poolBefore;
-        uint256[] poolAfter;
-    }
-
-    function _createHookTestLocals() private view returns (HookTestLocals memory vars) {
-        vars.bob.daiBefore = dai.balanceOf(address(bob));
-        vars.bob.usdcBefore = usdc.balanceOf(address(bob));
-        vars.hook.daiBefore = dai.balanceOf(poolHooksContract);
-        vars.hook.usdcBefore = usdc.balanceOf(poolHooksContract);
-        vars.vault.daiBefore = dai.balanceOf(address(vault));
-        vars.vault.usdcBefore = usdc.balanceOf(address(vault));
-        vars.poolBefore = vault.getRawBalances(pool);
-    }
-
-    function _fillAfterSwapHookTestLocals(HookTestLocals memory vars) private view {
-        vars.bob.daiAfter = dai.balanceOf(address(bob));
-        vars.bob.usdcAfter = usdc.balanceOf(address(bob));
-        vars.hook.daiAfter = dai.balanceOf(poolHooksContract);
-        vars.hook.usdcAfter = usdc.balanceOf(poolHooksContract);
-        vars.vault.daiAfter = dai.balanceOf(address(vault));
-        vars.vault.usdcAfter = usdc.balanceOf(address(vault));
-        vars.poolAfter = vault.getRawBalances(pool);
-    }
-
-    function _checkPoolAndVaultBalances(HookTestLocals memory vars, uint256 poolBalanceChange) private view {
+    function _checkPoolAndVaultBalances(
+        BaseVaultTest.Balances memory balancesBefore,
+        BaseVaultTest.Balances memory balancesAfter,
+        uint256 poolBalanceChange
+    ) private view {
         // Considers swap fee = 0, so only hook fees and discounts occurred
-        assertEq(vars.poolAfter[daiIdx] - vars.poolBefore[daiIdx], poolBalanceChange, "Pool DAI balance is wrong");
-        assertEq(vars.poolBefore[usdcIdx] - vars.poolAfter[usdcIdx], poolBalanceChange, "Pool USDC balance is wrong");
-        assertEq(vars.vault.daiAfter - vars.vault.daiBefore, poolBalanceChange, "Vault DAI balance is wrong");
-        assertEq(vars.vault.usdcBefore - vars.vault.usdcAfter, poolBalanceChange, "Vault USDC balance is wrong");
+        assertEq(
+            balancesAfter.poolTokens[daiIdx] - balancesBefore.poolTokens[daiIdx],
+            poolBalanceChange,
+            "Pool DAI balance is wrong"
+        );
+        assertEq(
+            balancesBefore.poolTokens[usdcIdx] - balancesAfter.poolTokens[usdcIdx],
+            poolBalanceChange,
+            "Pool USDC balance is wrong"
+        );
+        assertEq(
+            balancesAfter.vaultTokens[daiIdx] - balancesBefore.vaultTokens[daiIdx],
+            poolBalanceChange,
+            "Vault DAI balance is wrong"
+        );
+        assertEq(
+            balancesBefore.vaultTokens[usdcIdx] - balancesAfter.vaultTokens[usdcIdx],
+            poolBalanceChange,
+            "Vault USDC balance is wrong"
+        );
     }
 }
