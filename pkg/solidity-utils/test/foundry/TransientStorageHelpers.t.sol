@@ -130,7 +130,7 @@ contract TransientStorageHelpersTest is Test {
 
         assertEq(transientUint.tload(), 0, "Uint: initial nonzero value");
         transientUint.tstore(value);
-        transientUint.tIncrement();
+        transientUint.tIncrement_unchecked();
         assertEq(transientUint.tload(), value + 1, "Uint: incorrect value after increment");
 
         assertEq(storageUint, 1234, "Uint: storage modified");
@@ -147,7 +147,7 @@ contract TransientStorageHelpersTest is Test {
 
         assertEq(transientUint.tload(), 0, "Uint: initial nonzero value");
         transientUint.tstore(value);
-        transientUint.tDecrement();
+        transientUint.tDecrement_unchecked();
         assertEq(transientUint.tload(), value - 1, "Uint: incorrect value after increment");
 
         assertEq(storageUint, 1234, "Uint: storage modified");
@@ -162,7 +162,7 @@ contract TransientStorageHelpersTest is Test {
         transientUint.tstore(type(uint256).max);
 
         vm.expectRevert(stdError.arithmeticError);
-        transientUint.tIncrement();
+        transientUint.tIncrement_unchecked();
     }
 
     function testTransientDecrementUnderflow() public {
@@ -174,7 +174,7 @@ contract TransientStorageHelpersTest is Test {
         transientUint.tstore(0);
 
         vm.expectRevert(stdError.arithmeticError);
-        transientUint.tDecrement();
+        transientUint.tDecrement_unchecked();
     }
 
     function testCalculateSlot() public {
