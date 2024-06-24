@@ -18,7 +18,7 @@ import {
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
 
-contract ExitFeePaidToLPsHookExample is BasePoolHooks, Ownable {
+contract ExitFeeHookExample is BasePoolHooks, Ownable {
     using FixedPoint for uint256;
 
     // Percentages are represented as 18-decimal FP, with maximum value of 1e18 (100%), so 60 bits are enough.

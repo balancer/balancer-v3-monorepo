@@ -21,9 +21,9 @@ import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVa
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
-import { ExitFeePaidToLPsHookExample } from "../../contracts/ExitFeePaidToLPsHookExample.sol";
+import { ExitFeeHookExample } from "../../contracts/ExitFeeHookExample.sol";
 
-contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest {
+contract ExitFeeHookExampleTest is BaseVaultTest {
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
@@ -39,7 +39,7 @@ contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest {
     function createHook() internal override returns (address) {
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
-        address exitFeeHook = address(new ExitFeePaidToLPsHookExample(IVault(address(vault))));
+        address exitFeeHook = address(new ExitFeeHookExample(IVault(address(vault))));
         vm.label(exitFeeHook, "Exit Fee Hook");
         return exitFeeHook;
     }
@@ -72,7 +72,7 @@ contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
-        vm.expectRevert(ExitFeePaidToLPsHookExample.PoolDoesNotSupportDonation.selector);
+        vm.expectRevert(ExitFeeHookExample.PoolDoesNotSupportDonation.selector);
         _registerPoolWithHook(exitFeePool, tokenConfig, false);
     }
 
@@ -101,7 +101,7 @@ contract ExitFeePaidToLPsHookExampleTest is BaseVaultTest {
         // 10% exit fee
         uint64 exitFeePercentage = 1e17;
         vm.prank(lp);
-        ExitFeePaidToLPsHookExample(poolHooksContract).setRemoveLiquidityHookFeePercentage(exitFeePercentage);
+        ExitFeeHookExample(poolHooksContract).setRemoveLiquidityHookFeePercentage(exitFeePercentage);
         uint256 amountOut = poolInitAmount / 2;
         uint256 hookFee = amountOut.mulDown(exitFeePercentage);
         uint256[] memory minAmountsOut = [amountOut - hookFee, amountOut - hookFee].toMemoryArray();
