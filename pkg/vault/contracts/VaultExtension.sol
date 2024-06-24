@@ -259,6 +259,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolConfigBits = poolConfigBits.setRemoveLiquidityCustom(
                 params.liquidityManagement.enableRemoveLiquidityCustom
             );
+            poolConfigBits = poolConfigBits.setDonation(params.liquidityManagement.enableDonation);
             poolConfigBits = poolConfigBits.setTokenDecimalDiffs(PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs));
             poolConfigBits = poolConfigBits.setPauseWindowEndTime(params.pauseWindowEndTime);
             poolConfigBits = poolConfigBits.setAggregateSwapFeePercentage(aggregateSwapFeePercentage);
@@ -514,7 +515,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                     // NOTE: supportUnbalancedLiquidity is inverted because false means it is supported
                     disableUnbalancedLiquidity: !config.supportsUnbalancedLiquidity(),
                     enableAddLiquidityCustom: config.supportsAddLiquidityCustom(),
-                    enableRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom()
+                    enableRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom(),
+                    enableDonation: config.supportsDonation()
                 })
             });
     }

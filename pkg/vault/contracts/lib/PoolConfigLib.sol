@@ -26,9 +26,10 @@ library PoolConfigLib {
     uint8 public constant UNBALANCED_LIQUIDITY_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
     uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = UNBALANCED_LIQUIDITY_OFFSET + 1;
     uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
+    uint8 public constant DONATION_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
 
     // Bit offsets for hooks config
-    uint8 public constant ANY_INITIALIZE_HOOK_ENABLED_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
+    uint8 public constant ANY_INITIALIZE_HOOK_ENABLED_OFFSET = DONATION_OFFSET + 1;
     uint8 public constant ANY_SWAP_HOOK_ENABLED_OFFSET = ANY_INITIALIZE_HOOK_ENABLED_OFFSET + 1;
     uint8 public constant ANY_ADD_LIQUIDITY_HOOK_ENABLED_OFFSET = ANY_SWAP_HOOK_ENABLED_OFFSET + 1;
     uint8 public constant ANY_REMOVE_LIQUIDITY_HOOK_ENABLED_OFFSET = ANY_ADD_LIQUIDITY_HOOK_ENABLED_OFFSET + 1;
@@ -156,6 +157,19 @@ library PoolConfigLib {
             );
     }
 
+    function supportsDonation(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(DONATION_OFFSET);
+    }
+
+    function setDonation(PoolConfigBits config, bool enableDonation) internal pure returns (PoolConfigBits) {
+        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(enableDonation, DONATION_OFFSET));
+    }
+
+    function requireDonationEnabled(PoolConfigBits config) internal pure {
+        if (config.supportsDonation() == false) {
+            revert IVaultErrors.DoesNotSupportDonation();
+        }
+    }
     // #endregion
 
     // #region Bit offsets for hooks config

@@ -55,7 +55,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         BatchRouter.swapExactInHook.selector,
                         SwapExactInHookParams({
@@ -85,7 +85,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     {
         return
             abi.decode(
-                _vault.unlock{ value: msg.value }(
+                _vault.unlock(
                     abi.encodeWithSelector(
                         BatchRouter.swapExactOutHook.selector,
                         SwapExactOutHookParams({
@@ -105,7 +105,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactInHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
@@ -302,7 +301,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         // The token in for the next step is the token out of the current step.
                         stepTokenIn = step.tokenOut;
                         // If this is an intermediate step, BPT is minted to the vault so we just get the credit.
-                        _vault.settle(IERC20(step.pool));
+                        _vault.settle(IERC20(step.pool), bptAmountOut);
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact in
@@ -339,7 +338,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactOutHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
@@ -517,8 +515,9 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         stepExactAmountOut = bptAmountIn;
                         // Refund unused portion of BPT flashloan to the Vault
                         if (bptAmountIn < stepMaxAmountIn) {
-                            stepTokenIn.safeTransfer(address(_vault), stepMaxAmountIn - bptAmountIn);
-                            _vault.settle(stepTokenIn);
+                            uint256 refundAmount = stepMaxAmountIn - bptAmountIn;
+                            stepTokenIn.safeTransfer(address(_vault), refundAmount);
+                            _vault.settle(stepTokenIn, refundAmount);
                         }
                     }
                 } else if (address(step.tokenOut) == step.pool) {
@@ -556,7 +555,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         _currentSwapTokenOutAmounts().tSub(address(step.tokenOut), stepExactAmountOut);
                     } else {
                         // If it's not the first step, BPT is minted to the vault so we just get the credit.
-                        _vault.settle(IERC20(step.pool));
+                        _vault.settle(IERC20(step.pool), stepExactAmountOut);
                     }
                 } else {
                     // No BPT involved in the operation: regular swap exact out
@@ -618,7 +617,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactInHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
@@ -661,7 +659,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapExactOutHookParams calldata params
     )
         external
-        payable
         nonReentrant
         onlyVault
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
@@ -695,6 +692,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         }
 
         // Return the rest of ETH to sender
-        _returnEth(sender, ethAmountIn);
+        _returnEth(sender);
     }
 }

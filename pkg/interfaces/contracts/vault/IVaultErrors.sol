@@ -149,6 +149,9 @@ interface IVaultErrors {
     /// @dev Pool does not support adding liquidity with a customized input.
     error DoesNotSupportAddLiquidityCustom();
 
+    /// @dev Pool does not support adding liquidity through donation.
+    error DoesNotSupportDonation();
+
     /*******************************************************************************
                                     Remove Liquidity
     *******************************************************************************/
