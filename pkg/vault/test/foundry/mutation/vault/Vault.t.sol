@@ -70,7 +70,7 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testLoadPoolDataUpdatingBalancesAndYieldFeesReentrancy() public {
-        vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         vault.loadPoolDataUpdatingBalancesAndYieldFeesReentrancy(pool, Rounding.ROUND_DOWN);
     }
 
@@ -81,7 +81,7 @@ contract VaultMutationTest is BaseVaultTest {
 
     function testSettleReentrancy() public {
         vault.manualSetIsUnlocked(true);
-        vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         vault.manualSettleReentrancy(dai);
     }
 
@@ -92,7 +92,7 @@ contract VaultMutationTest is BaseVaultTest {
 
     function testSendToReentrancy() public {
         vault.manualSetIsUnlocked(true);
-        vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         vault.manualSendToReentrancy(dai, address(0), 0);
     }
 
@@ -136,7 +136,7 @@ contract VaultMutationTest is BaseVaultTest {
         SwapState memory state;
         PoolData memory poolData;
 
-        vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         vault.manualReentrancySwap(params, state, poolData);
     }
 
@@ -145,7 +145,7 @@ contract VaultMutationTest is BaseVaultTest {
         AddLiquidityParams memory addLiquidityParams;
         uint256[] memory maxAmountsInScaled18;
 
-        vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         vault.manualReentrancyAddLiquidity(poolData, addLiquidityParams, maxAmountsInScaled18);
     }
 
@@ -156,7 +156,7 @@ contract VaultMutationTest is BaseVaultTest {
         RemoveLiquidityParams memory removeLiquidityParams;
         uint256[] memory minAmountsOutScaled18;
 
-        vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         vault.manualReentrancyRemoveLiquidity(poolData, removeLiquidityParams, minAmountsOutScaled18);
     }
 
@@ -180,7 +180,7 @@ contract VaultMutationTest is BaseVaultTest {
     function testErc4626BufferWrapOrUnwrapReentrancy() public {
         vault.manualSetIsUnlocked(true);
 
-        vm.expectRevert(abi.encodeWithSignature("ReentrancyGuardReentrantCall()"));
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         BufferWrapOrUnwrapParams memory params;
         vault.manualErc4626BufferWrapOrUnwrapReentrancy(params);
     }

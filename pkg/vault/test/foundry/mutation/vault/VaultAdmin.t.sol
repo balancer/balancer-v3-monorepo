@@ -44,7 +44,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     function testPauseVaultWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.pauseVault();
     }
 
@@ -54,7 +54,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     function testUnpauseVaultWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.unpauseVault();
     }
 
@@ -69,13 +69,13 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     function testPausePoolWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.pausePool(pool);
     }
 
     function testUnpausePoolWithoutRegisteredPool() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(0)));
-        vault.pausePool(address(0));
+        vault.unpausePool(address(0));
     }
 
     function testUnpausePoolWhenNotVault() public {
@@ -84,7 +84,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     function testUnpausePoolWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.unpausePool(pool);
     }
 
@@ -99,7 +99,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     function testSetStaticSwapFeePercentageWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.setStaticSwapFeePercentage(pool, 1);
     }
 
@@ -119,7 +119,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     function testUpdateAggregateSwapFeesWhenNotProtocolFeeController() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.updateAggregateSwapFeePercentage(pool, 1);
     }
 
@@ -129,7 +129,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     function testUpdateAggregateYieldFeesWhenNotProtocolFeeController() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.updateAggregateYieldFeePercentage(pool, 1);
     }
 
@@ -139,7 +139,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     function testSetProtocolFeeControllerWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.setProtocolFeeController(IProtocolFeeController(address(1)));
     }
 
@@ -158,13 +158,18 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.disableRecoveryMode(address(0));
     }
 
+    function testDisableRecoveryModeWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultAdmin.disableRecoveryMode(pool);
+    }
+
     function testDisableRecoveryModeWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.disableRecoveryMode(pool);
     }
 
     function testDisableQueryWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.disableQuery();
     }
 
@@ -174,7 +179,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     function testUnpauseVaultBuffersWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.unpauseVaultBuffers();
     }
 
@@ -184,7 +189,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     function testPauseVaultBuffersWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.pauseVaultBuffers();
     }
 
@@ -231,7 +236,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     function testRemoveLiquidityFromBufferWhenNonAuthenticated() public {
         vault.manualSetIsUnlocked(true);
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.removeLiquidityFromBuffer(IERC4626(address(0)), 0, address(0));
     }
 
@@ -259,7 +264,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     function testSetAuthorizerWhenNotAuthenticated() public {
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.setAuthorizer(_authorizer);
     }
 
