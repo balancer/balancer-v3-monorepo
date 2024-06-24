@@ -24,6 +24,12 @@ contract ExitFeePaidToLPsHookExample is BasePoolHooks, Ownable {
     // Percentages are represented as 18-decimal FP, with maximum value of 1e18 (100%), so 60 bits are enough.
     uint64 public removeLiquidityHookFeePercentage;
 
+    // Max fee of 10%
+    uint64 public constant MAX_EXIT_HOOK_FEE = 1e17;
+
+    /// @dev Exit hook fee above limit.
+    error ExitHookFeeAboveLimit(uint256 fee, uint256 limit);
+
     /// @dev Pool does not support adding liquidity through donation.
     error PoolDoesNotSupportDonation();
 
@@ -71,7 +77,7 @@ contract ExitFeePaidToLPsHookExample is BasePoolHooks, Ownable {
         uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) external override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+    ) external override onlyVault returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
         // Our current architecture only supports fees on tokens. Since we must always respect exact `amountsOut`, and
         // non-proportional remove liquidity operations would require taking fees in BPT, we only support proportional
         // removeLiquidity.
@@ -98,10 +104,10 @@ contract ExitFeePaidToLPsHookExample is BasePoolHooks, Ownable {
                 AddLiquidityParams({
                     pool: pool,
                     to: msg.sender, // It would mint BPTs to router, but it's a donation so no BPT is minted
-                    maxAmountsIn: accruedFees,
-                    minBptAmountOut: 0,
+                    maxAmountsIn: accruedFees, // Donate all accrued fees back to the pool (i.e. to the LPs)
+                    minBptAmountOut: 0, // Donation does not return BPTs, any number above 0 will revert
                     kind: AddLiquidityKind.DONATION,
-                    userData: bytes("")
+                    userData: bytes("") // User data is not used by donation, so we can set to an empty string
                 })
             );
         }
@@ -113,6 +119,9 @@ contract ExitFeePaidToLPsHookExample is BasePoolHooks, Ownable {
     // Sets the hook remove liquidity fee percentage, which will be accrued after a remove liquidity operation was
     // executed. This function must be permissioned.
     function setRemoveLiquidityHookFeePercentage(uint64 hookFeePercentage) public onlyOwner {
+        if (hookFeePercentage > MAX_EXIT_HOOK_FEE) {
+            revert ExitHookFeeAboveLimit(hookFeePercentage, MAX_EXIT_HOOK_FEE);
+        }
         removeLiquidityHookFeePercentage = hookFeePercentage;
     }
 }
