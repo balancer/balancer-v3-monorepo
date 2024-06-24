@@ -105,7 +105,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256[] memory expectedBalances = [poolInitAmount + actualAmountIn, poolInitAmount + actualAmountIn]
             .toMemoryArray();
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(lp));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
 
         vm.prank(bob);
         vm.expectCall(
@@ -152,7 +152,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256[] memory expectedBalances = [poolInitAmount + actualAmountIn, poolInitAmount + actualAmountIn]
             .toMemoryArray();
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(lp));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
 
         vm.prank(bob);
         vm.expectCall(
@@ -255,7 +255,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256[] memory expectedBalances = [2 * poolInitAmount - actualAmountOut, 2 * poolInitAmount - actualAmountOut]
             .toMemoryArray();
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(lp));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
 
         vm.prank(bob);
         vm.expectCall(
@@ -313,7 +313,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256[] memory expectedBalances = [2 * poolInitAmount - actualAmountOut, 2 * poolInitAmount - actualAmountOut]
             .toMemoryArray();
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(lp));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
 
         vm.prank(bob);
         vm.expectCall(
@@ -416,7 +416,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256 expectedBptOut,
         int256 expectedHookDelta
     ) private {
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(lp));
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
 
         assertEq(balancesAfter.poolSupply - balancesBefore.poolSupply, expectedBptOut, "Pool Supply is wrong");
         assertEq(
@@ -471,7 +471,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256 expectedBptIn,
         int256 expectedHookDelta
     ) private {
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(lp));
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
 
         assertEq(balancesBefore.poolSupply - balancesAfter.poolSupply, expectedBptIn, "Pool Supply is wrong");
         assertEq(
