@@ -65,7 +65,7 @@ contract VeBALFeeDiscountHookExample is BasePoolHooks {
         if (_veBAL.balanceOf(user) == 0) {
             return (true, staticSwapFeePercentage);
         }
-        // If user has veBAL, apply 50% discount in the current fee
+        // If user has veBAL, apply a 50% discount to the current fee
         return (true, staticSwapFeePercentage / 2);
     }
 

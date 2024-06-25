@@ -186,7 +186,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         );
     }
 
-    // Registry tests require a new pool, because an existent pool may be already registered
+    // Registry tests require a new pool, because an existing pool may be already registered
     function _createPoolToRegister() private returns (address newPool) {
         newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
         vm.label(newPool, "VeBAL Fee Pool");
