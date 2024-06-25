@@ -67,7 +67,6 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         uint32 pauseWindowDuration = pauseWindowEndTime - bufferPeriodDuration;
         address unauthorizedFactory = address(new PoolFactoryMock(IVault(address(vault)), pauseWindowDuration));
 
-        console.log("unauthorizedFactory", address(unauthorizedFactory));
 
         vm.expectRevert(
             abi.encodeWithSelector(
