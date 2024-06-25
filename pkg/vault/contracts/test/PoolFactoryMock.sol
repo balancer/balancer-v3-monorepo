@@ -4,21 +4,32 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { BasePoolFactory } from "../factories/BasePoolFactory.sol";
 import { FactoryWidePauseWindow } from "../factories/FactoryWidePauseWindow.sol";
 import { PoolConfigBits } from "../lib/PoolConfigLib.sol";
+import { PoolMock } from "./PoolMock.sol";
 
-contract PoolFactoryMock is FactoryWidePauseWindow {
+contract PoolFactoryMock is BasePoolFactory {
     uint256 private constant DEFAULT_SWAP_FEE = 0;
 
     IVault private immutable _vault;
 
-    constructor(IVault vault, uint32 pauseWindowDuration) FactoryWidePauseWindow(pauseWindowDuration) {
+    constructor(
+        IVault vault,
+        uint32 pauseWindowDuration
+    ) BasePoolFactory(vault, pauseWindowDuration, type(PoolMock).creationCode) {
         _vault = vault;
+    }
+
+    function createPool(string memory name, string memory symbol) external returns (address) {
+        PoolMock newPool = new PoolMock(IVault(address(_vault)), name, symbol);
+        _registerPoolWithFactory(address(newPool));
+        return address(newPool);
     }
 
     function registerTestPool(address pool, TokenConfig[] memory tokenConfig) external {

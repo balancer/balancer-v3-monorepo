@@ -67,6 +67,8 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         uint32 pauseWindowDuration = pauseWindowEndTime - bufferPeriodDuration;
         address unauthorizedFactory = address(new PoolFactoryMock(IVault(address(vault)), pauseWindowDuration));
 
+        console.log("unauthorizedFactory", address(unauthorizedFactory));
+
         vm.expectRevert(
             abi.encodeWithSelector(
                 IVaultErrors.HookRegistrationFailed.selector,
@@ -78,8 +80,26 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         _registerPoolWithHook(veBalFeePool, tokenConfig, unauthorizedFactory);
     }
 
-    function testSuccessfulRegistry() public {
+    function testCreationWithWrongFactory() public {
         address veBalFeePool = _createPoolToRegister();
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20()
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.HookRegistrationFailed.selector,
+                poolHooksContract,
+                veBalFeePool,
+                address(factoryMock)
+            )
+        );
+        _registerPoolWithHook(veBalFeePool, tokenConfig, address(factoryMock));
+    }
+
+    function testSuccessfulRegistry() public {
+        // Registering with allowed factory
+        address veBalFeePool = factoryMock.createPool("Test Pool", "TEST");
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
