@@ -18,7 +18,11 @@ contract VeBALFeeDiscountHookExample is BasePoolHooks {
     address private _trustedRouter;
     IERC20 private _veBAL;
 
-    /// @dev Router is not trusted by the hook.
+    /**
+     * @dev This hook checks the transaction sender's veBAL balance, using the address supplied by the router.
+     * Since routers are permissionless, and a malicious router might supply an incorrect address, we need to check
+     * that the router calling the hook is "trusted" to supply the correct sender.
+     */
     error RouterNotTrustedByHook(address hook, address router);
 
     constructor(IVault vault, address allowedFactory, address veBAL, address trustedRouter) BasePoolHooks(vault) {
