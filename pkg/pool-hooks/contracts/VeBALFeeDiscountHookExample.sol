@@ -47,10 +47,10 @@ contract VeBALFeeDiscountHookExample is BasePoolHooks {
     /// @inheritdoc IHooks
     function onRegister(
         address factory,
-        address pool,
-        TokenConfig[] memory tokenConfig,
-        LiquidityManagement calldata liquidityManagement
-    ) external override returns (bool) {
+        address,
+        TokenConfig[] memory,
+        LiquidityManagement calldata
+    ) external view override returns (bool) {
         // this hook can only be used by pools created from `_allowedFactory`
         return factory == _allowedFactory;
     }
