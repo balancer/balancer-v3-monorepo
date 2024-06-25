@@ -31,10 +31,10 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
-import { Cache } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Cache.sol";
 
 import { VaultStateLib, VaultStateBits, VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
+import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
 import { BufferPackedTokenBalance } from "./lib/BufferPackedBalance.sol";
@@ -49,11 +49,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using Address for *;
     using SafeERC20 for IERC20;
     using PoolConfigLib for PoolConfigBits;
+    using HooksConfigLib for PoolConfigBits;
     using ScalingHelpers for *;
     using BufferPackedTokenBalance for bytes32;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
-    using Cache for Cache.AddressCache;
     using PoolDataLib for PoolData;
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer, IProtocolFeeController protocolFeeController) {
@@ -204,9 +204,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
 
-        Cache.AddressCache memory hooksContractCache = Cache.initAddressCache(_hooksContracts[params.pool]);
-
-        if (poolData.poolConfigBits.callBeforeSwapHook(swapParams, params.pool, hooksContractCache)) {
+        StorageSlot.AddressSlot storage hooksContract = _hooksContracts[params.pool];
+        if (poolData.poolConfigBits.callBeforeSwapHook(swapParams, params.pool, hooksContract)) {
             // The call to `onBeforeSwap` could potentially update token rates and balances.
             // We update `poolData.tokenRates`, `poolData.rawBalances` and `poolData.balancesLiveScaled18`
             // to ensure the `onSwap` and `onComputeDynamicSwapFee` are called with the current values.
@@ -226,7 +225,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = poolData.poolConfigBits.callComputeDynamicSwapFeeHook(
             swapParams,
             state.swapFeePercentage,
-            hooksContractCache
+            hooksContract
         );
         if (dynamicSwapFeeCalculated) {
             state.swapFeePercentage = dynamicSwapFee;
@@ -248,7 +247,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             params,
             state,
             poolData,
-            hooksContractCache
+            hooksContract
         );
 
         if (params.kind == SwapKind.EXACT_IN) {
@@ -530,14 +529,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        Cache.AddressCache memory hooksContractCache = Cache.initAddressCache(_hooksContracts[params.pool]);
+        StorageSlot.AddressSlot storage hooksContract = _hooksContracts[params.pool];
         if (
             poolData.poolConfigBits.callBeforeAddLiquidityHook(
                 msg.sender,
                 maxAmountsInScaled18,
                 params,
                 poolData,
-                hooksContractCache
+                hooksContract
             )
         ) {
             // If the hook library returns true, the hook code was executed, and might have altered the balances,
@@ -574,7 +573,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             bptAmountOut,
             params,
             poolData,
-            hooksContractCache
+            hooksContract
         );
     }
 
@@ -764,8 +763,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        Cache.AddressCache memory hooksContractCache = Cache.initAddressCache(_hooksContracts[params.pool]);
-
+        StorageSlot.AddressSlot storage hooksContract = _hooksContracts[params.pool];
         // Uses msg.sender as the router (the contract that called the vault)
         if (
             poolData.poolConfigBits.callBeforeRemoveLiquidityHook(
@@ -773,8 +771,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 msg.sender,
                 params,
                 poolData,
-                hooksContractCache
-            ) == true
+                hooksContract
+            )
         ) {
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
@@ -808,7 +806,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             bptAmountIn,
             params,
             poolData,
-            hooksContractCache
+            hooksContract
         );
     }
 
