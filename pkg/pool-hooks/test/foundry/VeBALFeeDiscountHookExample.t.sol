@@ -107,7 +107,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
 
         HooksConfig memory hooksConfig = vault.getHooksConfig(veBalFeePool);
 
-        assertEq(hooksConfig.hooksContract, poolHooksContract, "pool's hooks contract is wrong");
+        assertEq(hooksConfig.hooksContract, poolHooksContract, "Wrong poolHooksContract");
         assertEq(hooksConfig.shouldCallComputeDynamicSwapFee, true, "pool's shouldCallComputeDynamicSwapFee is wrong");
     }
 
