@@ -44,7 +44,7 @@ contract HooksConfigLibTest is Test {
         );
     }
 
-    function testEnableHookAdjustedAmounts() public {
+    function testEnableHookAdjustedAmounts() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
             PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET)
@@ -52,7 +52,7 @@ contract HooksConfigLibTest is Test {
         assertTrue(config.enableHookAdjustedAmounts(), "enableHookAdjustedAmounts is false (getter)");
     }
 
-    function testSetHookAdjustedAmounts() public {
+    function testSetHookAdjustedAmounts() public pure {
         PoolConfigBits config;
         config = config.setHookAdjustedAmounts(true);
         assertTrue(config.enableHookAdjustedAmounts(), "enableHookAdjustedAmounts is false (setter)");
@@ -68,7 +68,7 @@ contract HooksConfigLibTest is Test {
 
     function testSetShouldCallBeforeInitialize() public pure {
         PoolConfigBits config;
-        config = config = config.setShouldCallBeforeInitialize(true);
+        config = config.setShouldCallBeforeInitialize(true);
         assertEq(config.shouldCallBeforeInitialize(), true, "shouldCallBeforeInitialize should be true (setter)");
     }
 

@@ -248,8 +248,6 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function testRevertIfBptAmountOutBelowMin() public {
-        VaultState memory vaultState;
-
         PoolData memory poolData = _makeDefaultParams();
         (AddLiquidityParams memory params, uint256[] memory maxAmountsInScaled18) = _makeAddLiquidityParams(
             poolData,
@@ -280,8 +278,6 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function testRevertIfAmountInAboveMax() public {
-        VaultState memory vaultState;
-
         PoolData memory poolData = _makeDefaultParams();
         (AddLiquidityParams memory params, uint256[] memory maxAmountsInScaled18) = _makeAddLiquidityParams(
             poolData,
@@ -321,8 +317,6 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function testRevertAddLiquidityUnbalancedIfUnbalancedLiquidityIsDisabled() public {
-        VaultState memory vaultState;
-
         PoolData memory poolData = _makeDefaultParams();
         (AddLiquidityParams memory params, uint256[] memory maxAmountsInScaled18) = _makeAddLiquidityParams(
             poolData,
@@ -337,8 +331,6 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function testRevertAddLiquiditySingleTokenExactOutIfUnbalancedLiquidityIsDisabled() public {
-        VaultState memory vaultState;
-
         PoolData memory poolData = _makeDefaultParams();
         (AddLiquidityParams memory params, uint256[] memory maxAmountsInScaled18) = _makeAddLiquidityParams(
             poolData,
@@ -353,8 +345,6 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function testRevertAddLiquidityCustomExactOutIfCustomLiquidityIsDisabled() public {
-        VaultState memory vaultState;
-
         PoolData memory poolData = _makeDefaultParams();
         (AddLiquidityParams memory params, uint256[] memory maxAmountsInScaled18) = _makeAddLiquidityParams(
             poolData,
@@ -569,8 +559,6 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function testRevertIfBptAmountInAboveMax() public {
-        VaultStateBits vaultState;
-
         PoolData memory poolData = _makeDefaultParams();
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
             poolData,
@@ -602,8 +590,6 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function testRevertIfAmountOutBelowMin() public {
-        VaultStateBits vaultState;
-
         PoolData memory poolData = _makeDefaultParams();
         uint256 defaultMinAmountOut = 1e18;
         (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) = _makeRemoveLiquidityParams(
@@ -692,7 +678,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         PoolData memory poolData,
         AddLiquidityKind kind,
         uint256 minBptAmountOut
-    ) internal returns (AddLiquidityParams memory params, uint256[] memory maxAmountsInScaled18) {
+    ) internal view returns (AddLiquidityParams memory params, uint256[] memory maxAmountsInScaled18) {
         params = AddLiquidityParams({
             pool: pool,
             to: address(this),
@@ -717,7 +703,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         RemoveLiquidityKind kind,
         uint256 maxBptAmountIn,
         uint256 defaultMinAmountOut
-    ) internal returns (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) {
+    ) internal view returns (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) {
         params = RemoveLiquidityParams({
             pool: pool,
             from: address(this),
@@ -737,7 +723,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         }
     }
 
-    function _makeDefaultParams() internal returns (PoolData memory poolData) {
+    function _makeDefaultParams() internal view returns (PoolData memory poolData) {
         poolData.poolConfigBits = poolData.poolConfigBits.setStaticSwapFeePercentage(swapFeePercentage);
 
         poolData.balancesLiveScaled18 = new uint256[](tokens.length);
@@ -923,13 +909,13 @@ contract VaultUnitLiquidityTest is BaseTest {
         address pool_,
         uint256 protocolSwapFeePercentage,
         uint256 expectSwapFeeAmountScaled18
-    ) internal returns (uint256 protocolSwapFeeAmountRaw) {
+    ) internal view returns (uint256 protocolSwapFeeAmountRaw) {
         protocolSwapFeeAmountRaw = expectSwapFeeAmountScaled18.mulUp(protocolSwapFeePercentage).toRawUndoRateRoundDown(
             poolData.decimalScalingFactors[tokenIndex],
             poolData.tokenRates[tokenIndex]
         );
         assertEq(
-            vault.getAggregateSwapFeeAmount(pool, poolData.tokens[tokenIndex]),
+            vault.getAggregateSwapFeeAmount(pool_, poolData.tokens[tokenIndex]),
             protocolSwapFeeAmountRaw,
             "Unexpected protocol fees"
         );
@@ -940,7 +926,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         uint256[] memory storagePoolBalances,
         uint256[] memory storageLastLiveBalances,
         PoolData memory updatedPoolData
-    ) internal {
+    ) internal pure {
         for (uint256 i = 0; i < poolData.tokens.length; i++) {
             assertEq(storagePoolBalances[i], updatedPoolData.balancesRaw[i], "Unexpected pool balance");
 

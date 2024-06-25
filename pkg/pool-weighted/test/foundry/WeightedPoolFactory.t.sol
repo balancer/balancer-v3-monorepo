@@ -32,7 +32,7 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    function testFactoryPausedState() public {
+    function testFactoryPausedState() public view {
         uint32 pauseWindowDuration = weightedPoolFactory.getPauseWindowDuration();
         assertEq(pauseWindowDuration, 365 days);
     }
@@ -117,7 +117,7 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
         uint256 bptSupplyAfter;
     }
 
-    function _createHookTestLocals(address pool) private returns (HookTestLocals memory vars) {
+    function _createHookTestLocals(address pool) private view returns (HookTestLocals memory vars) {
         vars.bob.daiBefore = dai.balanceOf(address(bob));
         vars.bob.usdcBefore = usdc.balanceOf(address(bob));
         vars.bob.bptBefore = IERC20(pool).balanceOf(address(bob));
@@ -127,7 +127,7 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
         vars.bptSupplyBefore = BalancerPoolToken(pool).totalSupply();
     }
 
-    function _fillAfterHookTestLocals(HookTestLocals memory vars, address pool) private {
+    function _fillAfterHookTestLocals(HookTestLocals memory vars, address pool) private view {
         vars.bob.daiAfter = dai.balanceOf(address(bob));
         vars.bob.usdcAfter = usdc.balanceOf(address(bob));
         vars.bob.bptAfter = IERC20(pool).balanceOf(address(bob));

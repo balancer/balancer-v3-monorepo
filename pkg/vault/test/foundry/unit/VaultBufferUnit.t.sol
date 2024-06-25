@@ -28,7 +28,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         _initializeBuffer();
     }
 
-    function testUnderlyingSurplusBalanceZero() public {
+    function testUnderlyingSurplusBalanceZero() public view {
         uint256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wUSDCNotInitialized)));
         assertEq(surplus, 0, "Wrong underlying surplus");
     }
@@ -77,7 +77,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         assertApproxEqAbs(surplus, _wrapAmount / 4, 1, "Wrong underlying surplus");
     }
 
-    function testWrappedSurplusBalanceZero() public {
+    function testWrappedSurplusBalanceZero() public view {
         uint256 surplus = vault.internalGetBufferWrappedSurplus(IERC4626(address(wUSDCNotInitialized)));
         assertEq(surplus, 0, "Wrong wrapped surplus");
     }
@@ -264,7 +264,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         IERC20 tokenFrom,
         IERC20 tokenTo,
         IERC20 wrappedToken
-    ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
+    ) private pure returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
 

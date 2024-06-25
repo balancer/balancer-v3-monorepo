@@ -338,6 +338,13 @@ contract VaultMock is IVaultMainMock, Vault {
         return _loadPoolDataUpdatingBalancesAndYieldFees(pool, roundingDirection);
     }
 
+    function loadPoolDataUpdatingBalancesAndYieldFeesReentrancy(
+        address pool,
+        Rounding roundingDirection
+    ) external nonReentrant returns (PoolData memory) {
+        return _loadPoolDataUpdatingBalancesAndYieldFees(pool, roundingDirection);
+    }
+
     function updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,
         uint256 newRawBalance,
@@ -447,6 +454,15 @@ contract VaultMock is IVaultMainMock, Vault {
         return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut, params, state, poolData);
     }
 
+    function manualReentrancySwap(
+        SwapParams memory params,
+        SwapState memory state,
+        PoolData memory poolData
+    ) external nonReentrant {
+        IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
+        _swap(params, state, poolData, swapParams);
+    }
+
     function manualGetAggregateSwapFeeAmount(address pool, IERC20 token) external view returns (uint256) {
         return _aggregateFeeAmounts[pool][token].getBalanceRaw();
     }
@@ -522,6 +538,14 @@ contract VaultMock is IVaultMainMock, Vault {
         updatedPoolData = poolData;
     }
 
+    function manualReentrancyAddLiquidity(
+        PoolData memory poolData,
+        AddLiquidityParams memory params,
+        uint256[] memory maxAmountsInScaled18
+    ) external nonReentrant {
+        _addLiquidity(poolData, params, maxAmountsInScaled18);
+    }
+
     function manualRemoveLiquidity(
         PoolData memory poolData,
         RemoveLiquidityParams memory params,
@@ -545,6 +569,14 @@ contract VaultMock is IVaultMainMock, Vault {
         updatedPoolData = poolData;
     }
 
+    function manualReentrancyRemoveLiquidity(
+        PoolData memory poolData,
+        RemoveLiquidityParams memory params,
+        uint256[] memory minAmountsOutScaled18
+    ) external nonReentrant {
+        _removeLiquidity(poolData, params, minAmountsOutScaled18);
+    }
+
     function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256) {
         bytes32 bufferBalance = _bufferTokenBalances[IERC20(address(wrappedToken))];
         return _getBufferUnderlyingSurplus(bufferBalance, wrappedToken);
@@ -566,6 +598,14 @@ contract VaultMock is IVaultMainMock, Vault {
         token.transfer(to, amount);
     }
 
+    function forceUnlock() public {
+        _isUnlocked().tstore(true);
+    }
+
+    function forceLock() public {
+        _isUnlocked().tstore(false);
+    }
+
     function manualGetPoolConfigBits(address pool) external view returns (PoolConfigBits) {
         return _poolConfigBits[pool];
     }
@@ -580,6 +620,20 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualGetTokenDeltas() external view returns (TokenDeltaMappingSlotType slot) {
         return _tokenDeltas();
+    }
+
+    function manualErc4626BufferWrapOrUnwrapReentrancy(
+        BufferWrapOrUnwrapParams memory params
+    ) external nonReentrant returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw) {
+        return IVault(address(this)).erc4626BufferWrapOrUnwrap(params);
+    }
+
+    function manualSettleReentrancy(IERC20 token) public nonReentrant returns (uint256 paid) {
+        return IVault(address(this)).settle(token, 0);
+    }
+
+    function manualSendToReentrancy(IERC20 token, address to, uint256 amount) public nonReentrant {
+        IVault(address(this)).sendTo(token, to, amount);
     }
 
     function _getDefaultLiquidityManagement() private pure returns (LiquidityManagement memory) {
