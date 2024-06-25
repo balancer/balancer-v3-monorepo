@@ -15,8 +15,8 @@ import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.s
 contract VeBALFeeDiscountHookExample is BasePoolHooks {
     // only pools from the allowedFactory are able to register and use this hook
     address private _allowedFactory;
-    IERC20 private _veBAL;
     address private _trustedRouter;
+    IERC20 private _veBAL;
 
     /// @dev Router is not trusted by the hook.
     error RouterNotTrustedByHook(address hook, address router);
