@@ -27,8 +27,8 @@ contract VeBALFeeDiscountHookExample is BasePoolHooks {
 
     constructor(IVault vault, address allowedFactory, address veBAL, address trustedRouter) BasePoolHooks(vault) {
         _allowedFactory = allowedFactory;
-        _veBAL = IERC20(veBAL);
         _trustedRouter = trustedRouter;
+        _veBAL = IERC20(veBAL);
     }
 
     /// @inheritdoc IHooks
