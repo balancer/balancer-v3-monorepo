@@ -407,17 +407,18 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /*******************************************************************************
                                 Yield-bearing token buffers
     *******************************************************************************/
-    /// @inheritdoc IVaultAdmin
-    function unpauseVaultBuffers() external onlyVaultDelegateCall authenticate {
-        VaultStateBits vaultState = _vaultStateBits;
-        vaultState = vaultState.setBuffersPaused(false);
-        _vaultStateBits = vaultState;
-    }
 
     /// @inheritdoc IVaultAdmin
     function pauseVaultBuffers() external onlyVaultDelegateCall authenticate {
         VaultStateBits vaultState = _vaultStateBits;
         vaultState = vaultState.setBuffersPaused(true);
+        _vaultStateBits = vaultState;
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function unpauseVaultBuffers() external onlyVaultDelegateCall authenticate {
+        VaultStateBits vaultState = _vaultStateBits;
+        vaultState = vaultState.setBuffersPaused(false);
         _vaultStateBits = vaultState;
     }
 
@@ -532,7 +533,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
-    function setAuthorizer(IAuthorizer newAuthorizer) external onlyVaultDelegateCall authenticate nonReentrant {
+    function setAuthorizer(IAuthorizer newAuthorizer) external onlyVaultDelegateCall authenticate {
         _authorizer = newAuthorizer;
 
         emit AuthorizerChanged(newAuthorizer);

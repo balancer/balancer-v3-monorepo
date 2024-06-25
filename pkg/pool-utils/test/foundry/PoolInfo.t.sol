@@ -127,6 +127,10 @@ contract PoolInfoTest is BaseTest {
         uint256[] memory expectedLastLiveBalances = [uint256(56), uint256(478)].toMemoryArray();
         vault.manualSetPoolTokenBalances(address(poolInfo), poolTokens, expectedRawBalances, expectedLastLiveBalances);
 
+        PoolConfig memory config;
+        config.isPoolRegistered = true;
+        vault.manualSetPoolConfig(address(poolInfo), config);
+
         // Expected == raw with this token config, for simplicity.
         uint256[] memory currentLiveBalances = poolInfo.getCurrentLiveBalances();
         assertEq(currentLiveBalances.length, 2, "Incorrect currentLiveBalances length");
