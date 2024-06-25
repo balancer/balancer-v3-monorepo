@@ -21,6 +21,7 @@ import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVa
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
+import { RouterMock } from "@balancer-labs/v3-vault/contracts/test/RouterMock.sol";
 
 import { VeBALFeeDiscountHookExample } from "../../contracts/VeBALFeeDiscountHookExample.sol";
 
@@ -44,7 +45,12 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
         address veBalFeeHook = address(
-            new VeBALFeeDiscountHookExample(IVault(address(vault)), address(factoryMock), address(veBAL))
+            new VeBALFeeDiscountHookExample(
+                IVault(address(vault)),
+                address(factoryMock),
+                address(veBAL),
+                address(router)
+            )
         );
         vm.label(veBalFeeHook, "VeBAL Fee Hook");
         return veBalFeeHook;
@@ -86,63 +92,61 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         assertEq(hooksConfig.shouldCallComputeDynamicSwapFee, true, "pool's shouldCallComputeDynamicSwapFee is wrong");
     }
 
+    function testUntrustedRouter() public {
+        // Create an untrusted router
+        RouterMock untrustedRouter = new RouterMock(IVault(address(vault)), weth, permit2);
+        vm.label(address(untrustedRouter), "untrusted router");
+
+        uint256 swapAmount = poolInitAmount / 100;
+
+        vm.prank(bob);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                VeBALFeeDiscountHookExample.RouterNotTrustedByHook.selector,
+                poolHooksContract,
+                address(untrustedRouter)
+            )
+        );
+        untrustedRouter.swapSingleTokenExactIn(pool, dai, usdc, swapAmount, swapAmount, MAX_UINT256, false, bytes(""));
+    }
+
     function testSwapWithoutVeBal() public {
         // Burn all veBAL tokens from bob
         veBAL.burn(address(bob), veBAL.balanceOf(bob));
         assertEq(veBAL.balanceOf(bob), 0, "Bob still has veBAL");
 
+        _doSwapAndCheckBalances();
+    }
+
+    function testSwapWithVeBal() public {
+        assertGt(veBAL.balanceOf(bob), 0, "Bob does not have veBAL");
+
+        _doSwapAndCheckBalances();
+    }
+
+    function _doSwapAndCheckBalances() private {
         // 10% swap fee. Since vault does not have swap fee, the fee will stay in the pool
         uint256 swapFeePercentage = 1e17;
 
         vm.prank(lp);
         vault.setStaticSwapFeePercentage(pool, swapFeePercentage);
 
-        uint256 swapAmount = poolInitAmount / 100;
-        uint256 hookFee = swapAmount.mulDown(swapFeePercentage);
+        uint256 exactAmountIn = poolInitAmount / 100;
+        // PoolMock uses a linear math with rate 1, so amountIn = amountOut if no fees are applied
+        uint256 expectedAmountOut = exactAmountIn;
+        // If bob has veBAL, he gets a 50% discount
+        bool bobHasVeBAL = veBAL.balanceOf(bob) > 0;
+        uint256 expectedHookFee = exactAmountIn.mulDown(swapFeePercentage) / (bobHasVeBAL ? 2 : 1);
         // Hook fee will remain in the pool, so the expected amount out discounts the fees
-        uint256 expectedAmountOut = swapAmount - hookFee;
+        expectedAmountOut -= expectedHookFee;
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
 
         vm.prank(bob);
-        router.swapSingleTokenExactIn(pool, dai, usdc, swapAmount, expectedAmountOut, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, expectedAmountOut, MAX_UINT256, false, bytes(""));
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
 
-        _checkSwapBalances(balancesBefore, balancesAfter, swapAmount, expectedAmountOut);
-    }
-
-    function testSwapWithVeBal() public {
-        assertGt(veBAL.balanceOf(bob), 0, "Bob does not have veBAL");
-
-        // 10% swap fee
-        uint256 swapFeePercentage = 1e17;
-
-        vm.prank(lp);
-        vault.setStaticSwapFeePercentage(pool, swapFeePercentage);
-
-        uint256 swapAmount = poolInitAmount / 100;
-        // Since bob has veBAL, he gets a 50% discount
-        uint256 hookFee = swapAmount.mulDown(swapFeePercentage) / 2;
-        // Hook fee will remain in the pool, so the expected amount out discounts the fees
-        uint256 expectedAmountOut = swapAmount - hookFee;
-
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
-
-        vm.prank(bob);
-        router.swapSingleTokenExactIn(pool, dai, usdc, swapAmount, expectedAmountOut, MAX_UINT256, false, bytes(""));
-
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
-
-        _checkSwapBalances(balancesBefore, balancesAfter, swapAmount, expectedAmountOut);
-    }
-
-    function _checkSwapBalances(
-        BaseVaultTest.Balances memory balancesBefore,
-        BaseVaultTest.Balances memory balancesAfter,
-        uint256 exactAmountIn,
-        uint256 expectedAmountOut
-    ) private {
         // Bob's balance of DAI is supposed to decrease, since DAI is the token in
         assertEq(
             balancesBefore.userTokens[daiIdx] - balancesAfter.userTokens[daiIdx],
