@@ -15,9 +15,11 @@ import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.s
 
 contract VeBALFeeDiscountHookExample is BasePoolHooks {
     // only pools from the allowedFactory are able to register and use this hook
-    address private _allowedFactory;
-    address private _trustedRouter;
-    IERC20 private _veBAL;
+    address private immutable _allowedFactory;
+    // only calls from a trusted routers are allowed to call this hook, because the hook relies on the getSender
+    // implementation to work properly
+    address private immutable _trustedRouter;
+    IERC20 private immutable _veBAL;
 
     /**
      * @dev This hook checks the transaction sender's veBAL balance, using the address supplied by the router.
