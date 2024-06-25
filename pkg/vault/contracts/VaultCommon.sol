@@ -141,19 +141,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
     }
 
-    /**
-     * @dev To save some gas, vault state variables are stored in a single word and are read only once.
-     * So, it's not possible to use the modifier whenPoolNotPaused , because it requires to read _vaultStateBits
-     * one more time. This function optimizes the check if vault and pool are paused and returns the vaultState
-     * struct to be used elsewhere
-     */
+    /// @dev Reverts if the Vault or the given pool are paused.
     function _ensureUnpaused(address pool) internal view {
-        // Check vault and pool paused inline, instead of using modifier, to save some gas reading the
-        // isVaultPaused state again in `_isVaultPaused`.
-        // solhint-disable-next-line not-rely-on-time
-        if (_isVaultPaused()) {
-            revert VaultPaused();
-        }
+        _ensureVaultNotPaused();
         _ensurePoolNotPaused(pool);
     }
 
