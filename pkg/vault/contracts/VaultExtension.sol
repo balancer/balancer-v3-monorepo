@@ -601,7 +601,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function computeDynamicSwapFee(
         address pool,
         IBasePool.PoolSwapParams memory swapParams
-    ) external view onlyVaultDelegateCall withRegisteredPool(pool) returns (bool success, uint256 dynamicSwapFee) {
+    ) external view onlyVaultDelegateCall withInitializedPool(pool) returns (bool success, uint256 dynamicSwapFee) {
         return
             _hooksConfigBits[pool].callComputeDynamicSwapFeeHook(
                 swapParams,
@@ -612,7 +612,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function getBptRate(
         address pool
-    ) external view onlyVaultDelegateCall withRegisteredPool(pool) returns (uint256 rate) {
+    ) external view onlyVaultDelegateCall withInitializedPool(pool) returns (uint256 rate) {
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
         uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18);
 
@@ -643,14 +643,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function transfer(address owner, address to, uint256 amount) external onlyVaultDelegateCall returns (bool) {
-        _transfer(msg.sender, owner, to, amount);
+    function approve(address owner, address spender, uint256 amount) external onlyVaultDelegateCall returns (bool) {
+        _approve(msg.sender, owner, spender, amount);
         return true;
     }
 
     /// @inheritdoc IVaultExtension
-    function approve(address owner, address spender, uint256 amount) external onlyVaultDelegateCall returns (bool) {
-        _approve(msg.sender, owner, spender, amount);
+    function transfer(address owner, address to, uint256 amount) external onlyVaultDelegateCall returns (bool) {
+        _transfer(msg.sender, owner, to, amount);
         return true;
     }
 

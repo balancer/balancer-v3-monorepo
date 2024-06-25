@@ -48,7 +48,7 @@ contract WeightedPool8020FactoryTest is Test {
         return WeightedPool(factory.create(tokenConfig[0], tokenConfig[1], roleAccounts, DEFAULT_SWAP_FEE));
     }
 
-    function testFactoryPausedState() public {
+    function testFactoryPausedState() public view {
         uint32 pauseWindowDuration = factory.getPauseWindowDuration();
         assertEq(pauseWindowDuration, 365 days);
     }

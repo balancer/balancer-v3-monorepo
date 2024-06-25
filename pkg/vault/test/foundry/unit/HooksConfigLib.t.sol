@@ -38,7 +38,7 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
         _checkBitsUsedOnce(HooksConfigLib.HOOKS_CONTRACT_OFFSET, ADDRESS_BITLENGTH);
     }
 
-    function testZeroConfigBytes() public {
+    function testZeroConfigBytes() public pure {
         HooksConfigBits config;
 
         assertFalse(config.shouldCallBeforeInitialize(), "shouldCallBeforeInitialize should be false");
@@ -54,7 +54,7 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
     }
 
     // #region test setters and getters
-    function testShouldCallBeforeInitialize() public {
+    function testShouldCallBeforeInitialize() public pure {
         HooksConfigBits config;
         config = HooksConfigBits.wrap(
             HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.BEFORE_INITIALIZE_OFFSET)
@@ -62,13 +62,13 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
         assertEq(config.shouldCallBeforeInitialize(), true, "shouldCallBeforeInitialize should be true (getter)");
     }
 
-    function testSetShouldCallBeforeInitialize() public {
+    function testSetShouldCallBeforeInitialize() public pure {
         HooksConfigBits config;
         config = config.setShouldCallBeforeInitialize(true);
         assertEq(config.shouldCallBeforeInitialize(), true, "shouldCallBeforeInitialize should be true (setter)");
     }
 
-    function testShouldCallAfterInitialize() public {
+    function testShouldCallAfterInitialize() public pure {
         HooksConfigBits config;
         config = HooksConfigBits.wrap(
             HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.AFTER_INITIALIZE_OFFSET)
@@ -76,13 +76,13 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
         assertEq(config.shouldCallAfterInitialize(), true, "shouldCallAfterInitialize should be true (getter)");
     }
 
-    function testSetShouldCallAfterInitialize() public {
+    function testSetShouldCallAfterInitialize() public pure {
         HooksConfigBits config;
         config = config.setShouldCallAfterInitialize(true);
         assertEq(config.shouldCallAfterInitialize(), true, "shouldCallAfterInitialize should be true (setter)");
     }
 
-    function testShouldCallComputeDynamicSwapFee() public {
+    function testShouldCallComputeDynamicSwapFee() public pure {
         HooksConfigBits config;
         config = HooksConfigBits.wrap(
             HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.DYNAMIC_SWAP_FEE_OFFSET)
@@ -94,7 +94,7 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
         );
     }
 
-    function testSetShouldCallComputeDynamicSwapFee() public {
+    function testSetShouldCallComputeDynamicSwapFee() public pure {
         HooksConfigBits config;
         config = config.setShouldCallComputeDynamicSwapFee(true);
         assertEq(
@@ -104,7 +104,7 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
         );
     }
 
-    function testShouldCallBeforeSwap() public {
+    function testShouldCallBeforeSwap() public pure {
         HooksConfigBits config;
         config = HooksConfigBits.wrap(
             HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.BEFORE_SWAP_OFFSET)
@@ -112,13 +112,13 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
         assertEq(config.shouldCallBeforeSwap(), true, "shouldCallBeforeSwap should be true (getter)");
     }
 
-    function testSetShouldCallBeforeSwap() public {
+    function testSetShouldCallBeforeSwap() public pure {
         HooksConfigBits config;
         config = config.setShouldCallBeforeSwap(true);
         assertEq(config.shouldCallBeforeSwap(), true, "shouldCallBeforeSwap should be true (setter)");
     }
 
-    function testShouldCallAfterSwap() public {
+    function testShouldCallAfterSwap() public pure {
         HooksConfigBits config;
         config = HooksConfigBits.wrap(
             HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.AFTER_SWAP_OFFSET)
@@ -126,13 +126,13 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
         assertEq(config.shouldCallAfterSwap(), true, "shouldCallAfterSwap should be true (getter)");
     }
 
-    function testSetShouldCallAfterSwap() public {
+    function testSetShouldCallAfterSwap() public pure {
         HooksConfigBits config;
         config = config.setShouldCallAfterSwap(true);
         assertEq(config.shouldCallAfterSwap(), true, "shouldCallAfterSwap should be true (setter)");
     }
 
-    function testShouldCallBeforeAddLiquidity() public {
+    function testShouldCallBeforeAddLiquidity() public pure {
         HooksConfigBits config;
         config = HooksConfigBits.wrap(
             HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET)
@@ -140,13 +140,13 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
         assertEq(config.shouldCallBeforeAddLiquidity(), true, "shouldCallBeforeAddLiquidity should be true (getter)");
     }
 
-    function testSetShouldCallBeforeAddLiquidity() public {
+    function testSetShouldCallBeforeAddLiquidity() public pure {
         HooksConfigBits config;
         config = config.setShouldCallBeforeAddLiquidity(true);
         assertEq(config.shouldCallBeforeAddLiquidity(), true, "shouldCallBeforeAddLiquidity should be true (setter)");
     }
 
-    function testShouldCallAfterAddLiquidity() public {
+    function testShouldCallAfterAddLiquidity() public pure {
         HooksConfigBits config;
         config = HooksConfigBits.wrap(
             HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.AFTER_ADD_LIQUIDITY_OFFSET)
@@ -154,13 +154,13 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
         assertEq(config.shouldCallAfterAddLiquidity(), true, "shouldCallAfterAddLiquidity should be true (getter)");
     }
 
-    function testSetShouldCallAfterAddLiquidity() public {
+    function testSetShouldCallAfterAddLiquidity() public pure {
         HooksConfigBits config;
         config = config.setShouldCallAfterAddLiquidity(true);
         assertEq(config.shouldCallAfterAddLiquidity(), true, "shouldCallAfterAddLiquidity should be true (setter)");
     }
 
-    function testShouldCallBeforeRemoveLiquidity() public {
+    function testShouldCallBeforeRemoveLiquidity() public pure {
         HooksConfigBits config;
         config = HooksConfigBits.wrap(
             HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.BEFORE_REMOVE_LIQUIDITY_OFFSET)
@@ -172,7 +172,7 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
         );
     }
 
-    function testSetShouldCallBeforeRemoveLiquidity() public {
+    function testSetShouldCallBeforeRemoveLiquidity() public pure {
         HooksConfigBits config;
         config = config.setShouldCallBeforeRemoveLiquidity(true);
         assertEq(
@@ -182,7 +182,7 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
         );
     }
 
-    function testShouldCallAfterRemoveLiquidity() public {
+    function testShouldCallAfterRemoveLiquidity() public pure {
         HooksConfigBits config;
         config = HooksConfigBits.wrap(
             HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.AFTER_REMOVE_LIQUIDITY_OFFSET)
@@ -194,7 +194,7 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
         );
     }
 
-    function testSetShouldCallAfterRemoveLiquidity() public {
+    function testSetShouldCallAfterRemoveLiquidity() public pure {
         HooksConfigBits config;
         config = config.setShouldCallAfterRemoveLiquidity(true);
         assertEq(
@@ -204,7 +204,7 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
         );
     }
 
-    function testGetHooksContract() public {
+    function testGetHooksContract() public view {
         HooksConfigBits config;
         config = HooksConfigBits.wrap(
             HooksConfigBits.unwrap(config).insertAddress(hooksContract, HooksConfigLib.HOOKS_CONTRACT_OFFSET)
@@ -212,7 +212,7 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
         assertEq(config.getHooksContract(), hooksContract, "getHooksContract should be hooksContract (getter)");
     }
 
-    function testSetHooksContract() public {
+    function testSetHooksContract() public view {
         HooksConfigBits config;
         config = config.setHooksContract(hooksContract);
         assertEq(config.getHooksContract(), hooksContract, "getHooksContract should be hooksContract (setter)");

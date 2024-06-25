@@ -415,7 +415,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256[] memory actualAmountsIn,
         uint256 expectedBptOut,
         int256 expectedHookDelta
-    ) private {
+    ) private view {
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
 
         assertEq(balancesAfter.poolSupply - balancesBefore.poolSupply, expectedBptOut, "Pool Supply is wrong");
@@ -470,7 +470,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256[] memory actualAmountsOut,
         uint256 expectedBptIn,
         int256 expectedHookDelta
-    ) private {
+    ) private view {
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
 
         assertEq(balancesBefore.poolSupply - balancesAfter.poolSupply, expectedBptIn, "Pool Supply is wrong");

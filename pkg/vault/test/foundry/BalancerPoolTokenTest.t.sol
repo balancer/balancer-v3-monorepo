@@ -42,7 +42,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         // no init
     }
 
-    function testMetadata() public {
+    function testMetadata() public view {
         assertEq(poolToken.name(), "ERC20 Pool", "name mismatch");
         assertEq(poolToken.symbol(), "ERC20POOL", "symbol mismatch");
         assertEq(poolToken.decimals(), 18, "decimals mismatch");
@@ -309,7 +309,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(usr, to, amount, deadline, v, r, s);
     }
 
-    function testSupportsIERC165() public {
+    function testSupportsIERC165() public view {
         assertTrue(poolToken.supportsInterface(type(IERC165).interfaceId), "IERC165 not supported");
     }
 }

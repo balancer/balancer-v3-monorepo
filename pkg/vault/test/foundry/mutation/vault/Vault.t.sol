@@ -151,7 +151,6 @@ contract VaultMutationTest is BaseVaultTest {
 
     function testRemoveLiquidityReentrancy() public {
         PoolData memory poolData;
-        VaultState memory vaultState;
 
         RemoveLiquidityParams memory removeLiquidityParams;
         uint256[] memory minAmountsOutScaled18;
