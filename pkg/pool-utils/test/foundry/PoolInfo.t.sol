@@ -128,7 +128,7 @@ contract PoolInfoTest is BaseTest {
         vault.manualSetPoolTokenBalances(address(poolInfo), poolTokens, expectedRawBalances, expectedLastLiveBalances);
 
         PoolConfig memory config;
-        config.isPoolInitialized = true;
+        config.isPoolRegistered = true;
         vault.manualSetPoolConfig(address(poolInfo), config);
 
         // Expected == raw with this token config, for simplicity.
