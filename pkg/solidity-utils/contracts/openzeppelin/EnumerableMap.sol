@@ -49,13 +49,13 @@ library EnumerableMap {
     // solhint-disable func-name-mixedcase
 
     struct IERC20ToBytes32MapEntry {
+        // NOTE: we store _length only in the first element, to save one SLOAD
+        uint8 _length;
         IERC20 key;
         bytes32 value;
     }
 
     struct IERC20ToBytes32Map {
-        // Number of entries in the map
-        uint256 _length;
         // Storage of map keys and values
         mapping(uint256 => IERC20ToBytes32MapEntry) entries;
         // Position of the entry defined by a key in the `entries` array, plus 1
@@ -76,9 +76,9 @@ library EnumerableMap {
         unchecked {
             // Equivalent to !contains(map, key)
             if (keyIndex == 0) {
-                uint256 previousLength = map._length;
-                map.entries[previousLength] = IERC20ToBytes32MapEntry({ key: key, value: value });
-                map._length = previousLength + 1;
+                uint8 previousLength = map.entries[0]._length;
+                map.entries[previousLength] = IERC20ToBytes32MapEntry({ key: key, value: value, _length: 0 });
+                map.entries[0]._length = previousLength + 1;
 
                 // The entry is stored at previousLength, but we add 1 to all indexes
                 // and use 0 as a sentinel value
@@ -118,11 +118,11 @@ library EnumerableMap {
             // This modifies the order of the pseudo-array, as noted in {at}.
 
             uint256 toDeleteIndex;
-            uint256 lastIndex;
+            uint8 lastIndex;
 
             unchecked {
                 toDeleteIndex = keyIndex - 1;
-                lastIndex = map._length - 1;
+                lastIndex = map.entries[0]._length - 1;
             }
 
             // The swap is only necessary if we're not removing the last element
@@ -137,7 +137,7 @@ library EnumerableMap {
 
             // Delete the slot where the moved entry was stored
             delete map.entries[lastIndex];
-            map._length = lastIndex;
+            map.entries[0]._length = lastIndex;
 
             // Delete the index for the deleted slot
             delete map.indexes[key];
@@ -159,7 +159,7 @@ library EnumerableMap {
      * @dev Returns the number of key-value pairs in the map. O(1).
      */
     function length(IERC20ToBytes32Map storage map) internal view returns (uint256) {
-        return map._length;
+        return uint256(map.entries[0]._length);
     }
 
     /**
@@ -173,7 +173,7 @@ library EnumerableMap {
      * - `index` must be strictly less than {length}.
      */
     function at(IERC20ToBytes32Map storage map, uint256 index) internal view returns (IERC20, bytes32) {
-        if (index >= map._length) {
+        if (index >= map.entries[0]._length) {
             revert IndexOutOfBounds();
         }
 
