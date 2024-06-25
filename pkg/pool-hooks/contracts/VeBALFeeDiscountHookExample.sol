@@ -56,7 +56,7 @@ contract VeBALFeeDiscountHookExample is BasePoolHooks {
         LiquidityManagement calldata
     ) external view override returns (bool) {
         // This hook can only be used by pools created from `_allowedFactory`.
-        return factory == _allowedFactory;
+        return factory == _allowedFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
     }
 
     /// @inheritdoc IHooks
