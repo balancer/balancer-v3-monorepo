@@ -16,11 +16,15 @@ contract VeBALFeeDiscountHookExample is BasePoolHooks {
     // only pools from the allowedFactory are able to register and use this hook
     address private _allowedFactory;
     IERC20 private _veBAL;
+    address private _trustedRouter;
 
-    constructor(IVault vault, address allowedFactory, address veBAL) BasePoolHooks(vault) {
-        // verify that this hook can only be used by pools created from `_allowedFactory`
+    /// @dev Router is not trusted by the hook.
+    error RouterNotTrustedByHook(address hook, address router);
+
+    constructor(IVault vault, address allowedFactory, address veBAL, address trustedRouter) BasePoolHooks(vault) {
         _allowedFactory = allowedFactory;
         _veBAL = IERC20(veBAL);
+        _trustedRouter = trustedRouter;
     }
 
     /// @inheritdoc IHooks
@@ -47,7 +51,7 @@ contract VeBALFeeDiscountHookExample is BasePoolHooks {
         TokenConfig[] memory tokenConfig,
         LiquidityManagement calldata liquidityManagement
     ) external override returns (bool) {
-        // reverts if the pool is not from the allowed factory
+        // this hook can only be used by pools created from `_allowedFactory`
         return factory == _allowedFactory;
     }
 
@@ -55,7 +59,7 @@ contract VeBALFeeDiscountHookExample is BasePoolHooks {
     function onComputeDynamicSwapFee(
         IBasePool.PoolSwapParams calldata params,
         uint256 staticSwapFeePercentage
-    ) external view override returns (bool, uint256) {
+    ) external view override onlyTrustedRouter(params.router) returns (bool, uint256) {
         address user = IRouterCommon(params.router).getSender();
 
         if (_veBAL.balanceOf(user) == 0) {
@@ -63,5 +67,14 @@ contract VeBALFeeDiscountHookExample is BasePoolHooks {
         }
         // If user has veBAL, apply 50% discount in the current fee
         return (true, staticSwapFeePercentage / 2);
+    }
+
+    modifier onlyTrustedRouter(address router) {
+        // Since the router passes the user address through getSender(), the hook must trust it. Otherwise, any router
+        // could implement a getSender() returning an address that holds veBAL.
+        if (router != _trustedRouter) {
+            revert RouterNotTrustedByHook(address(this), router);
+        }
+        _;
     }
 }
