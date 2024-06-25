@@ -33,19 +33,7 @@ contract VeBALFeeDiscountHookExample is BasePoolHooks {
 
     /// @inheritdoc IHooks
     function getHookFlags() external pure override returns (IHooks.HookFlags memory hookFlags) {
-        return
-            IHooks.HookFlags({
-                enableHookAdjustedAmounts: false,
-                shouldCallBeforeInitialize: false,
-                shouldCallAfterInitialize: false,
-                shouldCallComputeDynamicSwapFee: true,
-                shouldCallBeforeSwap: false,
-                shouldCallAfterSwap: false,
-                shouldCallBeforeAddLiquidity: false,
-                shouldCallAfterAddLiquidity: false,
-                shouldCallBeforeRemoveLiquidity: false,
-                shouldCallAfterRemoveLiquidity: false
-            });
+        hookFlags.shouldCallComputeDynamicSwapFee = true;
     }
 
     /// @inheritdoc IHooks

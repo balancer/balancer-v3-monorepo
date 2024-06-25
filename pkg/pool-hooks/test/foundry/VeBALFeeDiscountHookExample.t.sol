@@ -111,14 +111,14 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
     }
 
     function testSwapWithoutVeBal() public {
-        // Burn all veBAL tokens from bob
-        veBAL.burn(address(bob), veBAL.balanceOf(bob));
         assertEq(veBAL.balanceOf(bob), 0, "Bob still has veBAL");
 
         _doSwapAndCheckBalances();
     }
 
     function testSwapWithVeBal() public {
+        // Mint 1 veBAL to bob, so he's able to receive the fee discount
+        veBAL.mint(address(bob), 1);
         assertGt(veBAL.balanceOf(bob), 0, "Bob does not have veBAL");
 
         _doSwapAndCheckBalances();

@@ -77,7 +77,6 @@ abstract contract BaseTest is Test, GasSnapshot {
         tokens.push(usdc);
         tokens.push(weth);
         tokens.push(wsteth);
-        tokens.push(veBAL);
 
         // Create users for testing.
         (admin, adminKey) = createUser("admin");
