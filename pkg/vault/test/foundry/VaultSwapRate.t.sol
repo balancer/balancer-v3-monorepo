@@ -52,7 +52,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         return newPool;
     }
 
-    function testInitializePoolWithRate() public {
+    function testInitializePoolWithRate() public view {
         // mock pool invariant is just a sum of all balances
         assertEq(
             PoolMock(pool).balanceOf(lp),
@@ -61,7 +61,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         );
     }
 
-    function testInitialRateProviderState() public {
+    function testInitialRateProviderState() public view {
         (, TokenInfo[] memory tokenInfo, , ) = vault.getPoolTokenInfo(pool);
 
         assertEq(address(tokenInfo[wstethIdx].rateProvider), address(rateProvider), "Wrong rate provider");

@@ -20,7 +20,7 @@ contract VaultStateLibTest is BaseBitsConfigTest {
         _checkBitsUsedOnce(VaultStateLib.BUFFER_PAUSED_OFFSET);
     }
 
-    function testZeroConfigBytes() public {
+    function testZeroConfigBytes() public pure {
         VaultStateBits state;
 
         assertFalse(state.isQueryDisabled(), "isQueryDisabled should be false");
@@ -28,37 +28,37 @@ contract VaultStateLibTest is BaseBitsConfigTest {
         assertFalse(state.areBuffersPaused(), "areBuffersPaused should be false");
     }
 
-    function testIsQueryDisabled() public {
+    function testIsQueryDisabled() public pure {
         VaultStateBits state;
         state = VaultStateBits.wrap(VaultStateBits.unwrap(state).insertBool(true, VaultStateLib.QUERY_DISABLED_OFFSET));
         assertEq(state.isQueryDisabled(), true, "isQueryDisabled should be true");
     }
 
-    function testSetQueryDisabled() public {
+    function testSetQueryDisabled() public pure {
         VaultStateBits state;
         state = state.setQueryDisabled(true);
         assertEq(state.isQueryDisabled(), true, "isQueryDisabled should be true");
     }
 
-    function testIsVaultPaused() public {
+    function testIsVaultPaused() public pure {
         VaultStateBits state;
         state = VaultStateBits.wrap(VaultStateBits.unwrap(state).insertBool(true, VaultStateLib.VAULT_PAUSED_OFFSET));
         assertEq(state.isVaultPaused(), true, "isVaultPaused should be true");
     }
 
-    function testSetVaultPaused() public {
+    function testSetVaultPaused() public pure {
         VaultStateBits state;
         state = state.setVaultPaused(true);
         assertEq(state.isVaultPaused(), true, "isVaultPaused should be true");
     }
 
-    function testAreBuffersPaused() public {
+    function testAreBuffersPaused() public pure {
         VaultStateBits state;
         state = VaultStateBits.wrap(VaultStateBits.unwrap(state).insertBool(true, VaultStateLib.BUFFER_PAUSED_OFFSET));
         assertEq(state.areBuffersPaused(), true, "areBuffersPaused should be true");
     }
 
-    function testSetBuffersPaused() public {
+    function testSetBuffersPaused() public pure {
         VaultStateBits state;
         state = state.setBuffersPaused(true);
         assertEq(state.areBuffersPaused(), true, "areBuffersPaused should be true");

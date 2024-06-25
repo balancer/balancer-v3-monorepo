@@ -81,7 +81,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
         factory = new PoolFactoryMock(IVault(address(vault)), 365 days);
     }
 
-    function testHasSwapFeeManager() public {
+    function testHasSwapFeeManager() public view {
         address swapFeeManager = vault.getPoolRoleAccounts(pool).swapFeeManager;
         assertEq(swapFeeManager, admin, "swapFeeManager is not admin");
 

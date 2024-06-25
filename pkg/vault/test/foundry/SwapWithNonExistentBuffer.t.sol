@@ -93,7 +93,7 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function testSwapPreconditions() public {
+    function testSwapPreconditions() public view {
         // bob should have the full boostedPool BPT.
         assertEq(IERC20(boostedPool).balanceOf(bob), boostedPoolAmount * 2 - MIN_BPT, "Wrong boosted pool BPT amount");
 
@@ -188,7 +188,7 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         uint256[] memory amounts,
         uint256 expectedDelta,
         SwapKind kind
-    ) private {
+    ) private view {
         assertEq(paths.length, 1, "Incorrect output array length");
 
         assertEq(paths.length, tokens.length, "Output array length mismatch");

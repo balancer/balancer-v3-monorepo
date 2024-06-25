@@ -20,35 +20,35 @@ contract BatchRouterStorageTest is BaseVaultTest {
         BaseVaultTest.setUp();
     }
 
-    function testCurrentSwapTokensInSlot() external {
+    function testCurrentSwapTokensInSlot() external view {
         assertEq(
             batchRouter.manualGetCurrentSwapTokensInSlot(),
             TransientStorageHelpers.calculateSlot(DOMAIN, "currentSwapTokensIn")
         );
     }
 
-    function testCurrentSwapTokensOutSlot() external {
+    function testCurrentSwapTokensOutSlot() external view {
         assertEq(
             batchRouter.manualGetCurrentSwapTokensOutSlot(),
             TransientStorageHelpers.calculateSlot(DOMAIN, "currentSwapTokensOut")
         );
     }
 
-    function testCurrentSwapTokenInAmountsSlot() external {
+    function testCurrentSwapTokenInAmountsSlot() external view {
         assertEq(
             AddressMappingSlot.unwrap(batchRouter.manualGetCurrentSwapTokenInAmounts()),
             TransientStorageHelpers.calculateSlot(DOMAIN, "currentSwapTokenInAmounts")
         );
     }
 
-    function testCurrentSwapTokenOutAmountsSlot() external {
+    function testCurrentSwapTokenOutAmountsSlot() external view {
         assertEq(
             AddressMappingSlot.unwrap(batchRouter.manualGetCurrentSwapTokenOutAmounts()),
             TransientStorageHelpers.calculateSlot(DOMAIN, "currentSwapTokenOutAmounts")
         );
     }
 
-    function testSettledTokenAmountsSlot() external {
+    function testSettledTokenAmountsSlot() external view {
         assertEq(
             AddressMappingSlot.unwrap(batchRouter.manualGetSettledTokenAmounts()),
             TransientStorageHelpers.calculateSlot(DOMAIN, "settledTokenAmounts")

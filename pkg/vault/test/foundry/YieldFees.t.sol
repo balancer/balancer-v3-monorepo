@@ -167,7 +167,7 @@ contract YieldFeesTest is BaseVaultTest {
         uint8 decimals,
         uint256 tokenRate,
         bool roundUp
-    ) public {
+    ) public view {
         balanceRaw = bound(balanceRaw, 0, 2 ** 120);
         decimals = uint8(bound(uint256(decimals), 2, 18));
         tokenRate = bound(tokenRate, 0, 100_000e18);
@@ -198,7 +198,7 @@ contract YieldFeesTest is BaseVaultTest {
         uint256 tokenRate,
         uint256 lastLiveBalance,
         uint256 yieldFeePercentage
-    ) public {
+    ) public view {
         uint256 MAX_PROTOCOL_YIELD_FEE_PERCENTAGE = 50e16; // 50%
 
         balanceRaw = bound(balanceRaw, 0, 2 ** 120);
@@ -356,7 +356,7 @@ contract YieldFeesTest is BaseVaultTest {
     function _initializeFees(
         uint256 protocolFeePercentage,
         uint256 creatorFeePercentage
-    ) private returns (uint256 finalProtocolFeePercentage, uint256 finalCreatorFeePercentage) {
+    ) private pure returns (uint256 finalProtocolFeePercentage, uint256 finalCreatorFeePercentage) {
         // Fees are stored as a 24 bits variable (from 0 to (2^24)-1, or 0% to ~167%) in vaultConfig and poolConfigBits
         // Multiplying by FEE_SCALING_FACTOR (1e11) makes it 18 decimals scaled again
 

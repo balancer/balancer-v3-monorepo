@@ -22,11 +22,12 @@ library PoolDataLib {
     using PoolConfigLib for PoolConfigBits;
 
     function load(
+        PoolData memory poolData,
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
         PoolConfigBits poolConfigBits,
         mapping(IERC20 => TokenInfo) storage poolTokenInfo,
         Rounding roundingDirection
-    ) internal view returns (PoolData memory poolData) {
+    ) internal view {
         uint256 numTokens = poolTokenBalances.length();
 
         poolData.poolConfigBits = poolConfigBits;
@@ -66,22 +67,18 @@ library PoolDataLib {
 
             // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
             if (tokenSubjectToYieldFees) {
-                uint256 aggregateYieldFeeAmountRaw = 0;
+                uint256 aggregateYieldFeePercentage = poolData.poolConfigBits.getAggregateYieldFeePercentage();
+                uint256 balanceRaw = poolData.balancesRaw[i];
 
-                aggregateYieldFeeAmountRaw = _computeYieldFeesDue(
+                uint256 aggregateYieldFeeAmountRaw = _computeYieldFeesDue(
                     poolData,
                     packedBalance.getBalanceDerived(),
                     i,
-                    poolData.poolConfigBits.getAggregateYieldFeePercentage()
+                    aggregateYieldFeePercentage
                 );
 
                 if (aggregateYieldFeeAmountRaw > 0) {
-                    updateRawAndLiveBalance(
-                        poolData,
-                        i,
-                        poolData.balancesRaw[i] - aggregateYieldFeeAmountRaw,
-                        roundingDirection
-                    );
+                    updateRawAndLiveBalance(poolData, i, balanceRaw - aggregateYieldFeeAmountRaw, roundingDirection);
                 }
             }
         }

@@ -238,7 +238,7 @@ contract ProtocolFeeController is
         address pool,
         address poolCreator,
         bool protocolFeeExempt
-    ) public onlyVault returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) {
+    ) external onlyVault returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) {
         _poolCreators[pool] = poolCreator;
 
         // Set local storage of the actual percentages for the pool (default to global).

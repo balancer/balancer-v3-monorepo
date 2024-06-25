@@ -120,7 +120,7 @@ contract BoostedPoolWithEmptyBufferTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function testSwapPreconditions__Fork() public {
+    function testSwapPreconditions__Fork() public view {
         // bob should have the full boostedPool BPT.
         assertGt(
             IERC20(boostedPool).balanceOf(bob),
@@ -300,7 +300,7 @@ contract BoostedPoolWithEmptyBufferTest is BaseVaultTest {
         address[] memory tokens,
         uint256[] memory amounts,
         SwapResultLocals memory vars
-    ) private {
+    ) private view {
         assertEq(paths.length, 1, "Incorrect output array length");
 
         assertEq(paths.length, tokens.length, "Output array length mismatch");
