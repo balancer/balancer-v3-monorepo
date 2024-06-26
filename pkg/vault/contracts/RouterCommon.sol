@@ -24,6 +24,7 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     using Address for address payable;
     using SafeERC20 for IWETH;
     using StorageSlot for *;
+    using TransientStorageHelpers for StorageSlot.Uint256SlotType;
 
     // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used
     // by what is written after =. If you use immutable, the value is first calculated and
@@ -31,6 +32,8 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     // they will be executed every time the constant is used.
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
+    bytes32 private immutable _SENDER_COUNTER_SLOT =
+        TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender_counter");
 
     /// @dev Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
@@ -53,14 +56,28 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     modifier saveSender() {
         _saveSender();
         _;
+        _discardSender();
     }
 
     function _saveSender() internal {
         address sender = _getSenderSlot().tload();
 
-        // NOTE: This is a one-time operation. The sender can't be changed within the transaction.
+        // NOTE: Only the most external sender will be saved by the router.
         if (sender == address(0)) {
             _getSenderSlot().tstore(msg.sender);
+        }
+
+        // Sender counter stores the difference between _saveSender and _discardSender calls. If this difference is 0,
+        // sender address is discarded and router allows a new sender to call it in the same transaction.
+        _getSenderCounterSlot().tIncrement();
+    }
+
+    function _discardSender() internal {
+        uint256 senderCounter = _getSenderCounterSlot().tDecrement();
+        // If _saveSender and _discardSender were called the same number of times (senderCounter == 0), discard the
+        // sender address, so the router is able to store a new sender in the next call.
+        if (senderCounter == 0) {
+            _getSenderSlot().tstore(address(0));
         }
     }
 
@@ -168,5 +185,9 @@ contract RouterCommon is IRouterCommon, VaultGuard {
 
     function _getSenderSlot() internal view returns (StorageSlot.AddressSlotType) {
         return _SENDER_SLOT.asAddress();
+    }
+
+    function _getSenderCounterSlot() internal view returns (StorageSlot.Uint256SlotType) {
+        return _SENDER_COUNTER_SLOT.asUint256();
     }
 }

@@ -34,7 +34,7 @@ contract LotteryHookExampleTest is BaseVaultTest {
     uint256 private constant _minSwapAmount = 1e6;
     uint256 private constant _minBptOut = 1e6;
 
-    uint256 private constant MAX_ITERATIONS = 100;
+    uint256 private constant MAX_ITERATIONS = 10000;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -46,13 +46,13 @@ contract LotteryHookExampleTest is BaseVaultTest {
     function createHook() internal override returns (address) {
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
-        LotteryHookExample hook = new LotteryHookExample(IVault(address(vault)));
+        LotteryHookExample hook = new LotteryHookExample(IVault(address(vault)), address(router));
         return address(hook);
     }
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity)
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "Lottery Pool", "LOTTERYPOOL");
         vm.label(address(newPool), label);
 
         PoolRoleAccounts memory roleAccounts;
@@ -84,17 +84,19 @@ contract LotteryHookExampleTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
 
         uint256 accruedFees = 0;
+        uint256 luckyNumber = LotteryHookExample(poolHooksContract).LUCKY_NUMBER();
         uint256 it;
 
         for (it = 1; it < MAX_ITERATIONS; ++it) {
-            uint8 randomNumber = LotteryHookExample(poolHooksContract).getRandomNumber();
+            bool isWinner = LotteryHookExample(poolHooksContract).getRandomNumber() == luckyNumber;
 
             // Bob is the paying user, Alice is the user that'll be the winner of the lottery (so we can measure the
             // amount of fees sent)
-            vm.prank(randomNumber == LotteryHookExample(poolHooksContract).LUCKY_NUMBER() ? alice : bob);
+            vm.startPrank(isWinner ? alice : bob);
             router.swapSingleTokenExactIn(address(pool), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
+            vm.stopPrank();
 
-            if (randomNumber == LotteryHookExample(poolHooksContract).LUCKY_NUMBER()) {
+            if (isWinner) {
                 break;
             } else {
                 accruedFees += hookFee;
@@ -170,14 +172,21 @@ contract LotteryHookExampleTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
 
-        uint256 aliceDiscount = accruedFees > swapAmount ? swapAmount : accruedFees;
-
         // TODO explain
-        assertEq(
-            balancesBefore.aliceTokens[daiIdx] - balancesAfter.aliceTokens[daiIdx],
-            swapAmount - aliceDiscount,
-            "Alice DAI balance is wrong"
-        );
+        if (accruedFees > swapAmount) {
+            assertEq(
+                balancesAfter.aliceTokens[daiIdx] - balancesBefore.aliceTokens[daiIdx],
+                accruedFees - swapAmount,
+                "Alice DAI balance is wrong"
+            );
+        } else {
+            assertEq(
+                balancesBefore.aliceTokens[daiIdx] - balancesAfter.aliceTokens[daiIdx],
+                swapAmount - accruedFees,
+                "Alice DAI balance is wrong"
+            );
+        }
+
         // TODO explain
         assertEq(
             balancesBefore.bobTokens[daiIdx] - balancesAfter.bobTokens[daiIdx],
@@ -185,11 +194,7 @@ contract LotteryHookExampleTest is BaseVaultTest {
             "Bob DAI balance is wrong"
         );
         // TODO explain
-        assertEq(
-            balancesAfter.hookTokens[daiIdx] - balancesBefore.hookTokens[daiIdx],
-            accruedFees - aliceDiscount,
-            "Hook DAI balance is wrong"
-        );
+        assertEq(balancesBefore.hookTokens[daiIdx], balancesAfter.hookTokens[daiIdx], "Hook DAI balance is wrong");
 
         assertEq(
             balancesAfter.aliceTokens[usdcIdx] - balancesBefore.aliceTokens[usdcIdx],

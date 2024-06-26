@@ -2,12 +2,11 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
     AddLiquidityKind,
@@ -23,16 +22,24 @@ import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.s
 contract LotteryHookExample is BasePoolHooks, Ownable {
     using FixedPoint for uint256;
 
+    // Trusted router is needed since we rely on getSender() to know which user should receive the prize.
+    address private immutable _trustedRouter;
+
+    // When calling onAfterSwap, a random number is generated. If the number is equal to LUCKY_NUMBER, the user will
+    // get the accrued fees.
+    uint8 public constant LUCKY_NUMBER = 17;
+    uint8 public constant MAX_NUMBER = 100;
+
     // Percentages are represented as 18-decimal FP, with maximum value of 1e18 (100%), so 60 bits are enough.
     uint64 public hookSwapFeePercentage;
 
-    uint8 public constant LUCKY_NUMBER = 3;
-    uint8 public constant MAX_NUMBER = 5;
-
     uint256 private _counter = 0;
 
-    constructor(IVault vault) BasePoolHooks(vault) Ownable(msg.sender) {
-        // solhint-disable-previous-line no-empty-blocks
+    // This hook relies on the implementation of router's getSender() to deposit fees to the winner of the lottery.
+    error RouterNotTrustedByHook(address hook, address router);
+
+    constructor(IVault vault, address router) BasePoolHooks(vault) Ownable(msg.sender) {
+        _trustedRouter = router;
     }
 
     /// @inheritdoc IHooks
@@ -63,7 +70,15 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
     function onAfterSwap(
         AfterSwapParams calldata params
     ) external override onlyVault returns (bool success, uint256 hookAdjustedAmountCalculatedRaw) {
+        if (params.router != _trustedRouter) {
+            // If router is not trusted, the hook can't rely on the implementation of getSender(), so the transaction
+            // must revert.
+            revert RouterNotTrustedByHook(address(this), params.router);
+        }
+
+        // Draws a number to see if the user will pay fees or receive all accrued fees.
         uint8 drawnNumber = _getRandomNumber();
+        // Increment counter to modify the drawn number in the next swap.
         _counter++;
 
         hookAdjustedAmountCalculatedRaw = params.amountCalculatedRaw;
@@ -78,16 +93,9 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
                 // on settlement. This call to `sendTo` pulls `hookFee` tokens of `tokenOut` from the Vault to this
                 // contract, and registers the additional debt, so that the total debts match the credits and
                 // settlement succeeds.
-                (bool isWinner, uint256 delta) = _chargeFeeOrGiveDiscount(
-                    drawnNumber,
-                    params.tokenIn,
-                    type(uint256).max,
-                    hookFee
-                );
-                if (isWinner) {
-                    hookAdjustedAmountCalculatedRaw += delta;
-                } else {
-                    hookAdjustedAmountCalculatedRaw -= delta;
+                uint256 feeToPay = _chargeFeeOrPayWinner(params.router, drawnNumber, params.tokenOut, hookFee);
+                if (feeToPay > 0) {
+                    hookAdjustedAmountCalculatedRaw -= feeToPay;
                 }
             } else {
                 // For EXACT_OUT swaps, the `amountCalculated` is the amount of `tokenIn`. The fee must be taken
@@ -99,16 +107,9 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
                 // this contract, and registers the additional debt, so that the total debts match the credits and
                 // settlement succeeds.
 
-                (bool isWinner, uint256 delta) = _chargeFeeOrGiveDiscount(
-                    drawnNumber,
-                    params.tokenIn,
-                    hookAdjustedAmountCalculatedRaw,
-                    hookFee
-                );
-                if (isWinner) {
-                    hookAdjustedAmountCalculatedRaw -= delta;
-                } else {
-                    hookAdjustedAmountCalculatedRaw += delta;
+                uint256 feeToPay = _chargeFeeOrPayWinner(params.router, drawnNumber, params.tokenIn, hookFee);
+                if (feeToPay > 0) {
+                    hookAdjustedAmountCalculatedRaw += feeToPay;
                 }
             }
         }
@@ -125,23 +126,24 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
         return _getRandomNumber();
     }
 
-    function _chargeFeeOrGiveDiscount(
+    // @notice
+    function _chargeFeeOrPayWinner(
+        address router,
         uint8 drawnNumber,
         IERC20 token,
-        uint256 maxPrize,
         uint256 hookFee
-    ) private returns (bool isWinner, uint256 delta) {
-        isWinner = drawnNumber == LUCKY_NUMBER;
-        if (isWinner) {
-            delta = token.balanceOf(address(this));
-            if (delta > maxPrize) {
-                delta = maxPrize;
-            }
-            token.transfer(address(_vault), delta);
-            _vault.settle(token, delta);
+    ) private returns (uint256) {
+        if (drawnNumber == LUCKY_NUMBER) {
+            address user = IRouterCommon(router).getSender();
+            // The total accrued fees may be higher than the amountIn, so we can't use deltas to pay the fees to the
+            // winner when the swap is EXACT_OUT (To pay the fees, we'd need to give a discount, and the max discount
+            // is 100%, which is amountsIn).
+            // To avoid this limitation, we transfer the tokens to the user directly.
+            token.transfer(user, token.balanceOf(address(this)));
+            return 0;
         } else {
-            delta = hookFee;
-            _vault.sendTo(token, address(this), delta);
+            _vault.sendTo(token, address(this), hookFee);
+            return hookFee;
         }
     }
 
