@@ -61,7 +61,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
     ) external view override onlyVault returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
         // that the given pool is from the factory). Returning true allows any pool, with any configuration, to use
-        // this hook
+        // this hook.
         return true;
     }
 
