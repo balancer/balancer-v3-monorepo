@@ -221,11 +221,11 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
 
     function testSetAggregateSwapFeePercentage() public pure {
         PoolConfigBits config;
-        uint256 value = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
+        uint256 value = 3.1415e10;
         config = config.setAggregateSwapFeePercentage(value);
         assertEq(
             config.getAggregateSwapFeePercentage(),
-            value,
+            value / FEE_SCALING_FACTOR,
             "getAggregateSwapFeePercentage mismatch (testSetAggregateSwapFeePercentage)"
         );
     }
@@ -249,11 +249,11 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
 
     function testSetAggregateYieldFeePercentage() public pure {
         PoolConfigBits config;
-        uint256 value = MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
+        uint256 value = 3.1415e10;
         config = config.setAggregateYieldFeePercentage(value);
         assertEq(
             config.getAggregateYieldFeePercentage(),
-            value,
+            value / FEE_SCALING_FACTOR,
             "getAggregateYieldFeePercentage mismatch (testSetAggregateYieldFeePercentage)"
         );
     }

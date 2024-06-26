@@ -14,8 +14,8 @@ library PoolConfigLib {
     using WordCodec for bytes32;
     using PoolConfigLib for PoolConfigBits;
 
+    /// @dev Given percentage is above FP(1) (1e18 wei).
     error InvalidPercentage(uint256 value);
-    error InvalidSize(uint256 currentValue, uint256 expectedSize);
 
     // Bit offsets for pool config
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
