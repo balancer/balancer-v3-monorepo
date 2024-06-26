@@ -21,13 +21,6 @@ contract VeBALFeeDiscountHookExample is BasePoolHooks {
     address private immutable _trustedRouter;
     IERC20 private immutable _veBAL;
 
-    /**
-     * @dev This hook checks the transaction sender's veBAL balance, using the address supplied by the router.
-     * Since routers are permissionless, and a malicious router might supply an incorrect address, we need to check
-     * that the router calling the hook is "trusted" to supply the correct sender.
-     */
-    error RouterNotTrustedByHook(address hook, address router);
-
     constructor(IVault vault, address allowedFactory, address veBAL, address trustedRouter) BasePoolHooks(vault) {
         _allowedFactory = allowedFactory;
         _trustedRouter = trustedRouter;
@@ -46,7 +39,9 @@ contract VeBALFeeDiscountHookExample is BasePoolHooks {
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) external view override returns (bool) {
-        // This hook can only be used by pools created from `_allowedFactory`.
+        // This hook implements a restrictive approach, where we check if the factory is an allowed factory and if
+        // the pool was created by the allowed factory. Since we only use onComputeDynamicSwapFee, this might be an
+        // overkill in real applications because the pool math doesn't play a role in the discount calculation.
         return factory == _allowedFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
     }
 
@@ -54,22 +49,20 @@ contract VeBALFeeDiscountHookExample is BasePoolHooks {
     function onComputeDynamicSwapFee(
         IBasePool.PoolSwapParams calldata params,
         uint256 staticSwapFeePercentage
-    ) external view override onlyTrustedRouter(params.router) returns (bool, uint256) {
-        address user = IRouterCommon(params.router).getSender();
-
-        if (_veBAL.balanceOf(user) == 0) {
+    ) external view override returns (bool, uint256) {
+        // If the router is not trusted, does not apply the veBAL discount because getSender() may be manipulated by a
+        // malicious router.
+        if (params.router != _trustedRouter) {
             return (true, staticSwapFeePercentage);
         }
-        // If user has veBAL, apply a 50% discount to the current fee
-        return (true, staticSwapFeePercentage / 2);
-    }
 
-    modifier onlyTrustedRouter(address router) {
-        // Since the router passes the user address through getSender(), the hook must trust it. Otherwise, any router
-        // could implement a getSender() returning an address that holds veBAL.
-        if (router != _trustedRouter) {
-            revert RouterNotTrustedByHook(address(this), router);
+        address user = IRouterCommon(params.router).getSender();
+
+        // If user has veBAL, apply a 50% discount to the current fee (divides fees by 2)
+        if (_veBAL.balanceOf(user) > 0) {
+            return (true, staticSwapFeePercentage / 2);
         }
-        _;
+
+        return (true, staticSwapFeePercentage);
     }
 }

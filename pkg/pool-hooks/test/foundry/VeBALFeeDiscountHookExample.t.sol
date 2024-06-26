@@ -32,6 +32,8 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
+    address payable internal trustedRouter;
+
     function setUp() public override {
         super.setUp();
 
@@ -42,15 +44,12 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
     }
 
     function createHook() internal override returns (address) {
+        trustedRouter = payable(router);
+
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
         address veBalFeeHook = address(
-            new VeBALFeeDiscountHookExample(
-                IVault(address(vault)),
-                address(factoryMock),
-                address(veBAL),
-                address(router)
-            )
+            new VeBALFeeDiscountHookExample(IVault(address(vault)), address(factoryMock), address(veBAL), trustedRouter)
         );
         vm.label(veBalFeeHook, "VeBAL Fee Hook");
         return veBalFeeHook;
@@ -110,28 +109,10 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         assertEq(hooksConfig.shouldCallComputeDynamicSwapFee, true, "shouldCallComputeDynamicSwapFee is false");
     }
 
-    function testUntrustedRouter() public {
-        // Create an untrusted router
-        RouterMock untrustedRouter = new RouterMock(IVault(address(vault)), weth, permit2);
-        vm.label(address(untrustedRouter), "untrusted router");
-
-        uint256 swapAmount = poolInitAmount / 100;
-
-        vm.prank(bob);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                VeBALFeeDiscountHookExample.RouterNotTrustedByHook.selector,
-                poolHooksContract,
-                address(untrustedRouter)
-            )
-        );
-        untrustedRouter.swapSingleTokenExactIn(pool, dai, usdc, swapAmount, swapAmount, MAX_UINT256, false, bytes(""));
-    }
-
     function testSwapWithoutVeBal() public {
         assertEq(veBAL.balanceOf(bob), 0, "Bob still has veBAL");
 
-        _doSwapAndCheckBalances();
+        _doSwapAndCheckBalances(trustedRouter);
     }
 
     function testSwapWithVeBal() public {
@@ -139,10 +120,27 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         veBAL.mint(address(bob), 1);
         assertGt(veBAL.balanceOf(bob), 0, "Bob does not have veBAL");
 
-        _doSwapAndCheckBalances();
+        _doSwapAndCheckBalances(trustedRouter);
     }
 
-    function _doSwapAndCheckBalances() private {
+    function testSwapWithVeBalAndUntrustedRouter() public {
+        // Mint 1 veBAL to bob, so he's able to receive the fee discount
+        veBAL.mint(address(bob), 1);
+        assertGt(veBAL.balanceOf(bob), 0, "Bob does not have veBAL");
+
+        // Create an untrusted router
+        address payable untrustedRouter = payable(new RouterMock(IVault(address(vault)), weth, permit2));
+        vm.label(untrustedRouter, "untrusted router");
+
+        // Allows permit2 to move DAI tokens from bob to untrustedRouter
+        vm.prank(bob);
+        permit2.approve(address(dai), untrustedRouter, type(uint160).max, type(uint48).max);
+
+        // Even if bob has veBAL, since he is using an untrusted router, he will get no discounts
+        _doSwapAndCheckBalances(untrustedRouter);
+    }
+
+    function _doSwapAndCheckBalances(address payable routerToUse) private {
         // 10% swap fee. Since vault does not have swap fee, the fee will stay in the pool
         uint256 swapFeePercentage = 1e17;
 
@@ -152,16 +150,25 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         uint256 exactAmountIn = poolInitAmount / 100;
         // PoolMock uses a linear math with rate 1, so amountIn = amountOut if no fees are applied
         uint256 expectedAmountOut = exactAmountIn;
-        // If bob has veBAL, he gets a 50% discount
-        bool bobHasVeBAL = veBAL.balanceOf(bob) > 0;
-        uint256 expectedHookFee = exactAmountIn.mulDown(swapFeePercentage) / (bobHasVeBAL ? 2 : 1);
+        // If bob has veBAL and router is trusted, bob gets a 50% discount
+        bool shouldGetDiscount = routerToUse == trustedRouter && veBAL.balanceOf(bob) > 0;
+        uint256 expectedHookFee = exactAmountIn.mulDown(swapFeePercentage) / (shouldGetDiscount ? 2 : 1);
         // Hook fee will remain in the pool, so the expected amount out discounts the fees
         expectedAmountOut -= expectedHookFee;
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
 
         vm.prank(bob);
-        router.swapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, expectedAmountOut, MAX_UINT256, false, bytes(""));
+        RouterMock(routerToUse).swapSingleTokenExactIn(
+            pool,
+            dai,
+            usdc,
+            exactAmountIn,
+            expectedAmountOut,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
 
