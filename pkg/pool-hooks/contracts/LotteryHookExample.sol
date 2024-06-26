@@ -16,7 +16,9 @@ import {
     TokenConfig
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
 import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
 
 // In this example, every time a swap is executed in a pool registered with this hook, a "random" number is drawn.
@@ -24,6 +26,7 @@ import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.s
 // drawn number is equal to LUCKY_NUMBER, the user won't pay hook fees and will receive all fees accrued by the hook.
 contract LotteryHookExample is BasePoolHooks, Ownable {
     using FixedPoint for uint256;
+    using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
 
     // Trusted router is needed since we rely on getSender() to know which user should receive the prize.
     address private immutable _trustedRouter;
@@ -38,15 +41,12 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
     uint64 public hookSwapFeePercentage;
 
     // Tokens with accrued fees
-    address[] private _tokensWithAccruedFees;
-    // Map with tokens that are already in the array;
-    mapping(address => bool) private _tokensInTheArray;
+    EnumerableMap.IERC20ToUint256Map private _tokensWithAccruedFees;
 
     uint256 private _counter = 0;
 
     constructor(IVault vault, address router) BasePoolHooks(vault) Ownable(msg.sender) {
         _trustedRouter = router;
-        _tokensWithAccruedFees = new address[](0);
     }
 
     /// @inheritdoc IHooks
@@ -145,13 +145,9 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
         if (drawnNumber == LUCKY_NUMBER) {
             address user = IRouterCommon(router).getSender();
 
-            for (uint256 i = _tokensWithAccruedFees.length; i > 0; i--) {
-                // Gets the last token from the array;
-                IERC20 feeToken = IERC20(_tokensWithAccruedFees[uint256(i - 1)]);
-
-                // Deletes the last token in the array
-                _tokensWithAccruedFees.pop();
-                _tokensInTheArray[address(feeToken)] = false;
+            for (uint256 i = _tokensWithAccruedFees.size; i > 0; i--) {
+                (IERC20 feeToken, ) = _tokensWithAccruedFees.at(i - 1);
+                _tokensWithAccruedFees.remove(feeToken);
 
                 // There are multiple reasons to use a direct transfer of hook fees to the user instead of hook
                 // adjusted amounts:
@@ -165,14 +161,8 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
             // Winner pays no fees
             return 0;
         } else {
-            // If current token is not listed as a token with accrued fees, add to the list
-            if (_tokensInTheArray[address(token)] == false) {
-                _tokensWithAccruedFees.push(address(token));
-                // Next line throws a false positive, because "transfer" is called previously in the function, but it's
-                // not in this branch of execution
-                // solhint-disable-next-line reentrancy
-                _tokensInTheArray[address(token)] = true;
-            }
+            // add token to map of tokens with accrued fees
+            _tokensWithAccruedFees.set(token, 1);
 
             // Collect fees from the vault (user will pay it when the router settles the swap)
             _vault.sendTo(token, address(this), hookFee);
