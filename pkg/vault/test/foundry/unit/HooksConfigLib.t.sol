@@ -4,8 +4,6 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
-
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
