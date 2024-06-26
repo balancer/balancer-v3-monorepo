@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
     AddLiquidityKind,
@@ -74,41 +75,14 @@ contract LotteryHookExampleTest is BaseVaultTest {
     }
 
     function testLotterySwapExactIn() public {
-        uint256 swapAmount = poolInitAmount / 100;
-
-        // 10% fee
-        uint64 hookFeePercentage = 1e17;
-        vm.prank(lp);
-        LotteryHookExample(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
-        uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
-
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
-
-        uint256 accruedFees = 0;
-        uint256 luckyNumber = LotteryHookExample(poolHooksContract).LUCKY_NUMBER();
-        uint256 it;
-
-        for (it = 1; it < MAX_ITERATIONS; ++it) {
-            bool isWinner = LotteryHookExample(poolHooksContract).getRandomNumber() == luckyNumber;
-
-            // Bob is the paying user, Alice is the user that'll be the winner of the lottery (so we can measure the
-            // amount of fees sent)
-            vm.startPrank(isWinner ? alice : bob);
-            router.swapSingleTokenExactIn(address(pool), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
-            vm.stopPrank();
-
-            if (isWinner) {
-                break;
-            } else {
-                accruedFees += hookFee;
-            }
-        }
-
-        // If one of the conditions below fails, change the LUCKY_NUMBER in the LotteryHookExample contract
-        assertNotEq(it, 1, "Only 1 iteration");
-        assertNotEq(it, MAX_ITERATIONS, "Max iterations reached, no winner");
-
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
+        (
+            BaseVaultTest.Balances memory balancesBefore,
+            BaseVaultTest.Balances memory balancesAfter,
+            uint256 swapAmount,
+            uint256 hookFee,
+            uint256 accruedFees,
+            uint256 iterations
+        ) = _executeLotterySwap(IRouter.swapSingleTokenExactIn.selector);
 
         // Alice paid `swapAmount` (in the last iteration, as the winner)
         assertEq(
@@ -120,11 +94,9 @@ contract LotteryHookExampleTest is BaseVaultTest {
         // was executed by Alice)
         assertEq(
             balancesBefore.bobTokens[daiIdx] - balancesAfter.bobTokens[daiIdx],
-            (it - 1) * swapAmount,
+            (iterations - 1) * swapAmount,
             "Bob DAI balance is wrong"
         );
-        // All accrued fees are paid to Alice, so the hook balance must be the same
-        assertEq(balancesBefore.hookTokens[daiIdx], balancesAfter.hookTokens[daiIdx], "Hook DAI balance is wrong");
 
         // Alice receives `swapAmount` USDC + accrued fees in USDC
         assertEq(
@@ -135,58 +107,22 @@ contract LotteryHookExampleTest is BaseVaultTest {
         // Bob paid hookFee in every swap that it executed
         assertEq(
             balancesAfter.bobTokens[usdcIdx] - balancesBefore.bobTokens[usdcIdx],
-            (it - 1) * (swapAmount - hookFee),
+            (iterations - 1) * (swapAmount - hookFee),
             "Bob USDC balance is wrong"
         );
-        // All accrued fees are paid to Alice, so the hook balance must be the same
-        assertEq(balancesBefore.hookTokens[usdcIdx], balancesAfter.hookTokens[usdcIdx], "Hook USDC balance is wrong");
 
-        _checkPoolAndVaultBalancesAfterSwap(balancesBefore, balancesAfter, it * swapAmount);
+        _checkHookPoolAndVaultBalancesAfterSwap(balancesBefore, balancesAfter, iterations * swapAmount);
     }
 
     function testLotterySwapExactOut() public {
-        uint256 swapAmount = poolInitAmount / 100;
-
-        // 10% fee
-        uint64 hookFeePercentage = 1e17;
-        vm.prank(lp);
-        LotteryHookExample(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
-        uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
-
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
-
-        uint256 accruedFees = 0;
-        uint256 it;
-
-        for (it = 1; it < MAX_ITERATIONS; ++it) {
-            uint8 randomNumber = LotteryHookExample(poolHooksContract).getRandomNumber();
-
-            // Bob is the paying user, Alice is the user that'll be the winner of the lottery (so we can measure the
-            // amount of fees sent)
-            vm.prank(randomNumber == LotteryHookExample(poolHooksContract).LUCKY_NUMBER() ? alice : bob);
-            router.swapSingleTokenExactOut(
-                address(pool),
-                dai,
-                usdc,
-                swapAmount,
-                swapAmount + hookFee,
-                MAX_UINT256,
-                false,
-                bytes("")
-            );
-
-            if (randomNumber == LotteryHookExample(poolHooksContract).LUCKY_NUMBER()) {
-                break;
-            } else {
-                accruedFees += hookFee;
-            }
-        }
-
-        // If one of the conditions below fails, change the LUCKY_NUMBER in the LotteryHookExample contract
-        assertNotEq(it, 1, "Only 1 iteration");
-        assertNotEq(it, MAX_ITERATIONS, "Max iterations reached, no winner");
-
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
+        (
+            BaseVaultTest.Balances memory balancesBefore,
+            BaseVaultTest.Balances memory balancesAfter,
+            uint256 swapAmount,
+            uint256 hookFee,
+            uint256 accruedFees,
+            uint256 iterations
+        ) = _executeLotterySwap(IRouter.swapSingleTokenExactOut.selector);
 
         // Alice paid swapAmount in the last iteration, but received accruedFees as the winner of the lottery.
         // If accruedFees > swapAmount, Alice has more DAI than before
@@ -208,11 +144,9 @@ contract LotteryHookExampleTest is BaseVaultTest {
         // was executed by Alice)
         assertEq(
             balancesBefore.bobTokens[daiIdx] - balancesAfter.bobTokens[daiIdx],
-            (it - 1) * (swapAmount + hookFee),
+            (iterations - 1) * (swapAmount + hookFee),
             "Bob DAI balance is wrong"
         );
-        // All accrued fees are paid to Alice, so the hook balance must be the same
-        assertEq(balancesBefore.hookTokens[daiIdx], balancesAfter.hookTokens[daiIdx], "Hook DAI balance is wrong");
 
         // Alice received swapAmount USDC in the last iteration
         assertEq(
@@ -223,17 +157,82 @@ contract LotteryHookExampleTest is BaseVaultTest {
         // Bob received swapAmount in all iterations but the last one
         assertEq(
             balancesAfter.bobTokens[usdcIdx] - balancesBefore.bobTokens[usdcIdx],
-            (it - 1) * swapAmount,
+            (iterations - 1) * swapAmount,
             "Bob USDC balance is wrong"
         );
-        // All accrued fees are paid to Alice, so the hook balance must be the same
-        assertEq(balancesBefore.hookTokens[usdcIdx], balancesAfter.hookTokens[usdcIdx], "Hook USDC balance is wrong");
 
-        _checkPoolAndVaultBalancesAfterSwap(balancesBefore, balancesAfter, it * swapAmount);
+        _checkHookPoolAndVaultBalancesAfterSwap(balancesBefore, balancesAfter, iterations * swapAmount);
+    }
+
+    function _executeLotterySwap(
+        bytes4 routerMethod
+    )
+        private
+        returns (
+            BaseVaultTest.Balances memory balancesBefore,
+            BaseVaultTest.Balances memory balancesAfter,
+            uint256 swapAmount,
+            uint256 hookFee,
+            uint256 accruedFees,
+            uint256 iterations
+        )
+    {
+        swapAmount = poolInitAmount / 100;
+
+        // 10% fee
+        uint64 hookFeePercentage = 1e17;
+        vm.prank(lp);
+        LotteryHookExample(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
+        hookFee = swapAmount.mulDown(hookFeePercentage);
+
+        balancesBefore = getBalances(address(bob));
+
+        accruedFees = 0;
+        iterations = 0;
+
+        for (iterations = 1; iterations < MAX_ITERATIONS; ++iterations) {
+            uint8 randomNumber = LotteryHookExample(poolHooksContract).getRandomNumber();
+
+            uint256 amountGiven = swapAmount;
+            uint256 amountCalculated = routerMethod == IRouter.swapSingleTokenExactIn.selector
+                ? swapAmount - hookFee // If EXACT_IN, amount calculated is amount out, user receives less
+                : swapAmount + hookFee; // If EXACT_IN, amount calculated is amount in, user pays more
+
+            // Bob is the paying user, Alice is the user that'll be the winner of the lottery (so we can measure the
+            // amount of fees sent)
+            vm.prank(randomNumber == LotteryHookExample(poolHooksContract).LUCKY_NUMBER() ? alice : bob);
+            (bool success, ) = address(router).call(
+                abi.encodeWithSelector(
+                    routerMethod,
+                    address(pool),
+                    dai,
+                    usdc,
+                    amountGiven,
+                    amountCalculated,
+                    MAX_UINT256,
+                    false,
+                    bytes("")
+                )
+            );
+
+            assertTrue(success, "Swap has failed");
+
+            if (randomNumber == LotteryHookExample(poolHooksContract).LUCKY_NUMBER()) {
+                break;
+            } else {
+                accruedFees += hookFee;
+            }
+        }
+
+        // If one of the conditions below fails, change the LUCKY_NUMBER in the LotteryHookExample contract
+        assertNotEq(iterations, 1, "Only 1 iteration");
+        assertNotEq(iterations, MAX_ITERATIONS, "Max iterations reached, no winner");
+
+        balancesAfter = getBalances(address(bob));
     }
 
     // @dev Check if pool balances and vault reserves reflect all swaps
-    function _checkPoolAndVaultBalancesAfterSwap(
+    function _checkHookPoolAndVaultBalancesAfterSwap(
         BaseVaultTest.Balances memory balancesBefore,
         BaseVaultTest.Balances memory balancesAfter,
         uint256 expectedBalanceChange
@@ -273,5 +272,9 @@ contract LotteryHookExampleTest is BaseVaultTest {
             expectedBalanceChange,
             "Vault USDC reserve is wrong"
         );
+
+        // All accrued fees are paid to Alice, so the hook balance must be the same
+        assertEq(balancesBefore.hookTokens[daiIdx], balancesAfter.hookTokens[daiIdx], "Hook DAI balance is wrong");
+        assertEq(balancesBefore.hookTokens[usdcIdx], balancesAfter.hookTokens[usdcIdx], "Hook USDC balance is wrong");
     }
 }
