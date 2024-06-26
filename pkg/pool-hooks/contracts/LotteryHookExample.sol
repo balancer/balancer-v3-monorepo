@@ -58,7 +58,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
     ) external view override onlyVault returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
         // that the given pool is from the factory). Returning true allows any pool, with any configuration, to use
-        // this hook
+        // this hook.
         return true;
     }
 
@@ -80,7 +80,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
         uint8 drawnNumber;
         if (params.router == _trustedRouter) {
             // If router is trusted, draws a number to be able to get the accrued fees. (If router is not trusted, the
-            // user can do the swap and pay the fees, but is not able to be the winner and get all accrued fees)
+            // user can perform swaps and contribute to the pot, but is not eligible to win.)
             drawnNumber = _getRandomNumber();
         }
 
@@ -129,9 +129,8 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
     }
 
     // @dev This external function was created to allow the test to access the same random number that will be used by
-    // onAfterSwap hook, so we can predict if the call is a winning call or not. In real applications, this function
-    // should not exist (or even if it existed, should return a different number every time, even if called in the same
-    // transaction)
+    // onAfterSwap hook, so we can predict whether the current call is a winner. In real applications, this function
+    // should not exist, or should return a different number every time, even if called in the same transaction.
     function getRandomNumber() external view returns (uint8) {
         return _getRandomNumber();
     }
@@ -163,7 +162,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
                 //   transferring tokens to the user directly.
                 feeToken.transfer(user, feeToken.balanceOf(address(this)));
             }
-            // No fees were applied to the winner
+            // Winner pays no fees
             return 0;
         } else {
             // If current token is not listed as a token with accrued fees, add to the list
