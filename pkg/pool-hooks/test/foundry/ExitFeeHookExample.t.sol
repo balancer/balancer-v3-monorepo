@@ -93,6 +93,7 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
             true,
             "pool's disableUnbalancedLiquidity is wrong"
         );
+        assertEq(hooksConfig.hooksContract, poolHooksContract, "pool's hooks contract is wrong");
         assertEq(hooksConfig.enableHookAdjustedAmounts, true, "hook's enableHookAdjustedAmounts is wrong");
     }
 

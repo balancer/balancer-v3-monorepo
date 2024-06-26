@@ -183,17 +183,17 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     }
 
     function _createPool(address[] memory tokens, string memory label) internal virtual returns (address) {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
-        vm.label(address(newPool), label);
+        address newPool = factoryMock.createPool("ERC20 Pool", "ERC20POOL");
+        vm.label(newPool, label);
 
         factoryMock.registerTestPool(
-            address(newPool),
+            newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             poolHooksContract,
             address(lp)
         );
 
-        return address(newPool);
+        return newPool;
     }
 
     function createHook() internal virtual returns (address) {
