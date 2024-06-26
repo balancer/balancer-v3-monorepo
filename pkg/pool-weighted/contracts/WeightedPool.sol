@@ -190,7 +190,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken, PoolInfo, Version {
      * Get relevant dynamic pool data required for swap/add/remove calculations.
      */
     function getWeightedPoolDynamicData()
-        public
+        external
         view
         returns (WeightedPoolDynamicData memory data)
     {

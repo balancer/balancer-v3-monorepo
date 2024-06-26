@@ -308,7 +308,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Poo
      * Get relevant dynamic pool data required for swap/add/remove calculations.
      */
     function getStablePoolDynamicData()
-        public
+        external
         view
         returns (StablePoolDynamicData memory data)
     {
