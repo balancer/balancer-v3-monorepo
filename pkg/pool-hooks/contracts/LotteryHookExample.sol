@@ -165,7 +165,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
                 //   transferring tokens to the user directly.
                 feeToken.transfer(user, feeToken.balanceOf(address(this)));
             }
-            // No fees were applied to the winner
+            // Winner pays no fees
             return 0;
         } else {
             // If current token is not listed as a token with accrued fees, add to the list
