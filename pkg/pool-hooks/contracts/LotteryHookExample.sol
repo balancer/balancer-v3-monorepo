@@ -172,6 +172,9 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
             // If current token is not listed as a token with accrued fees, add to the list
             if (_tokensInTheArray[address(token)] == false) {
                 _tokensWithAccruedFees.push(address(token));
+                // Next line throws a false positive, because "transfer" is called previously in the function, but it's
+                // not in this branch of execution
+                // solhint-disable-next-line reentrancy
                 _tokensInTheArray[address(token)] = true;
             }
 
