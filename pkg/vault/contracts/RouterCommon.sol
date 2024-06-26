@@ -34,7 +34,7 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _SENDER_COUNTER_SLOT =
-        TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender_counter");
+        TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "senderCounter");
 
     /// @dev Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
