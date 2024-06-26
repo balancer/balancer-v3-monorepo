@@ -232,6 +232,18 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Poo
         precision = StableMath.AMP_PRECISION;
     }
 
+    /**
+     * Get relevant immutable pool data required for swap/add/remove calculations.
+     * @return tokens 
+     * @return decimalScalingFactors 
+     * @return amplificationParameter 
+     */
+    function getImmutableData() external view returns (IERC20[] memory tokens, uint256[] memory decimalScalingFactors, uint256 amplificationParameter) {
+        tokens = _vault.getPoolTokens(address(this));
+        (decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
+        (amplificationParameter, ) = _getAmplificationParameter();
+    }
+
     function _getAmplificationParameter() internal view returns (uint256 value, bool isUpdating) {
         AmplificationState memory state = _amplificationState;
 

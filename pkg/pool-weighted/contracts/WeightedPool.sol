@@ -106,6 +106,18 @@ contract WeightedPool is IBasePool, BalancerPoolToken, PoolInfo, Version {
         return _getNormalizedWeights();
     }
 
+    /**
+     * Get relevant immutable pool data required for swap/add/remove calculations.
+     * @return tokens 
+     * @return decimalScalingFactors 
+     * @return normalizedWeights 
+     */
+    function getImmutableData() external view returns (IERC20[] memory tokens, uint256[] memory decimalScalingFactors, uint256[] memory normalizedWeights) {
+        tokens = _vault.getPoolTokens(address(this));
+        (decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
+        normalizedWeights = _getNormalizedWeights();
+    }
+
     /// @inheritdoc IBasePool
     function onSwap(IBasePool.PoolSwapParams memory request) public view onlyVault returns (uint256) {
         uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];

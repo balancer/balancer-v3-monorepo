@@ -44,4 +44,18 @@ contract PoolInfo is IPoolInfo {
     function getStaticSwapFeePercentage() external view returns (uint256) {
         return _vault.getStaticSwapFeePercentage((address(this)));
     }
+
+    /**
+     * Get relevant mutable pool data required for swap/add/remove calculations.
+     * @return currentLiveBalances 
+     * @return tokenRates 
+     * @return staticSwapFee 
+     * @return totalSupply 
+     */
+    function getMutableData() public view returns (uint256[] memory currentLiveBalances, uint256[] memory tokenRates, uint256 staticSwapFee, uint256 totalSupply) {
+        currentLiveBalances = _vault.getCurrentLiveBalances(address(this));
+        (, tokenRates) = _vault.getPoolTokenRates(address(this));
+        staticSwapFee = _vault.getStaticSwapFeePercentage((address(this)));
+        totalSupply = _vault.totalSupply((address(this)));
+    }
 }
