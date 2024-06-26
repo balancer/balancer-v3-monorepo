@@ -80,14 +80,13 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
     function onAfterSwap(
         AfterSwapParams calldata params
     ) external override onlyVault returns (bool success, uint256 hookAdjustedAmountCalculatedRaw) {
-        if (params.router != _trustedRouter) {
-            // If router is not trusted, the hook can't rely on the implementation of getSender(), so the transaction
-            // must revert.
-            revert RouterNotTrustedByHook(address(this), params.router);
+        uint8 drawnNumber;
+        if (params.router == _trustedRouter) {
+            // If router is trusted, draws a number to be able to get the accrued fees. (If router is not trusted, the
+            // user can do the swap and pay the fees, but is not able to be the winner and get all accrued fees)
+            drawnNumber = _getRandomNumber();
         }
 
-        // Draws a number to see if the user will pay fees or receive all accrued fees.
-        uint8 drawnNumber = _getRandomNumber();
         // Increment counter to modify the drawn number in the next swap.
         _counter++;
 
