@@ -297,8 +297,8 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
 
         uint256[] memory scalingFactors = config.getDecimalScalingFactors(2);
 
-        assertEq(scalingFactors[0], 1e23, "scalingFactors[0] mismatch");
-        assertEq(scalingFactors[1], 1e38, "scalingFactors[1] mismatch");
+        assertEq(scalingFactors[0], 1e18 * 10 ** valueOne, "scalingFactors[0] mismatch");
+        assertEq(scalingFactors[1], 1e18 * 10 ** valueTwo, "scalingFactors[1] mismatch");
     }
 
     function testGetPauseWindowEndTime() public pure {
