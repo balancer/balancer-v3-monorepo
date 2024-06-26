@@ -106,18 +106,6 @@ contract WeightedPool is IBasePool, BalancerPoolToken, PoolInfo, Version {
         return _getNormalizedWeights();
     }
 
-    /**
-     * Get relevant immutable pool data required for swap/add/remove calculations.
-     * @return tokens 
-     * @return decimalScalingFactors 
-     * @return normalizedWeights 
-     */
-    function getImmutableData() external view returns (IERC20[] memory tokens, uint256[] memory decimalScalingFactors, uint256[] memory normalizedWeights) {
-        tokens = _vault.getPoolTokens(address(this));
-        (decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
-        normalizedWeights = _getNormalizedWeights();
-    }
-
     /// @inheritdoc IBasePool
     function onSwap(IBasePool.PoolSwapParams memory request) public view onlyVault returns (uint256) {
         uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
@@ -188,5 +176,43 @@ contract WeightedPool is IBasePool, BalancerPoolToken, PoolInfo, Version {
     /// @inheritdoc ISwapFeePercentageBounds
     function getMaximumSwapFeePercentage() external pure returns (uint256) {
         return _MAX_SWAP_FEE_PERCENTAGE;
+    }
+
+    struct WeightedPoolDynamicData {
+        uint256[] liveBalances;
+        uint256[] tokenRates;
+        uint256 staticSwapFeePercentage;
+        uint256 totalSupply;
+        uint256 bptRate;
+    }
+
+    /**
+     * Get relevant dynamic pool data required for swap/add/remove calculations.
+     */
+    function getWeightedPoolDynamicData()
+        public
+        view
+        returns (WeightedPoolDynamicData memory data)
+    {
+        data.liveBalances = getCurrentLiveBalances();
+        (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
+        data.staticSwapFeePercentage = getStaticSwapFeePercentage();
+        data.totalSupply = totalSupply();
+        data.bptRate = getRate();
+    }
+
+    struct WeightedPoolImmutableData {
+        IERC20[] tokens;
+        uint256[] decimalScalingFactors;
+        uint256[] normalizedWeights;
+    }
+
+    /**
+     * Get relevant immutable pool data required for swap/add/remove calculations.
+     */
+    function getWeightedPoolImmutableData() external view returns (WeightedPoolImmutableData memory data) {
+        data.tokens = getTokens();
+        (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
+        data.normalizedWeights = _getNormalizedWeights();
     }
 }

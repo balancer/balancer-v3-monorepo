@@ -305,4 +305,45 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Poo
     function getMaximumSwapFeePercentage() external pure returns (uint256) {
         return _MAX_SWAP_FEE_PERCENTAGE;
     }
+
+    struct StablePoolDynamicData {
+        uint256[] liveBalances;
+        uint256[] tokenRates;
+        uint256 staticSwapFeePercentage;
+        uint256 totalSupply;
+        uint256 bptRate;
+        uint256 amp;
+        bool isAmpUpdating;
+    }
+
+    /**
+     * Get relevant dynamic pool data required for swap/add/remove calculations.
+     */
+    function getStablePoolDynamicData()
+        public
+        view
+        returns (StablePoolDynamicData memory data)
+    {
+        data.liveBalances = getCurrentLiveBalances();
+        (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
+        data.staticSwapFeePercentage = getStaticSwapFeePercentage();
+        data.totalSupply = totalSupply();
+        data.bptRate = getRate();
+        (data.amp, data.isAmpUpdating) = _getAmplificationParameter();
+    }
+
+    struct StablePoolImmutableData {
+        IERC20[] tokens;
+        uint256[] decimalScalingFactors;
+        uint256 ampPrecision;
+    }
+
+    /**
+     * Get relevant immutable pool data required for swap/add/remove calculations.
+     */
+    function getStablePoolImmutableData() external view returns (StablePoolImmutableData memory data) {
+        data.tokens = getTokens();
+        (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
+        data.ampPrecision = StableMath.AMP_PRECISION;
+    }
 }
