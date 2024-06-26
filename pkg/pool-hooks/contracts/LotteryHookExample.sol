@@ -135,7 +135,8 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
         return _getRandomNumber();
     }
 
-    // @notice
+    // @notice If drawnNumber = LUCKY_NUMBER, user wins the pot and pay no fees. Else, user adds the hook fee to the
+    // pot.
     function _chargeFeeOrPayWinner(
         address router,
         uint8 drawnNumber,
