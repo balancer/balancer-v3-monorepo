@@ -83,7 +83,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
         uint8 drawnNumber;
         if (params.router == _trustedRouter) {
             // If router is trusted, draws a number to be able to get the accrued fees. (If router is not trusted, the
-            // user can do the swap and pay the fees, but is not able to be the winner and get all accrued fees)
+            // user can perform swaps and contribute to the pot, but is not eligible to win.)
             drawnNumber = _getRandomNumber();
         }
 
