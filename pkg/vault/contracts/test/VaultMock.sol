@@ -196,7 +196,7 @@ contract VaultMock is IVaultMainMock, Vault {
         poolConfigBits = poolConfigBits.setPoolInitialized(config.isPoolInitialized);
         poolConfigBits = poolConfigBits.setPoolInRecoveryMode(config.isPoolInRecoveryMode);
         poolConfigBits = poolConfigBits.setPoolPaused(config.isPoolPaused);
-        poolConfigBits = poolConfigBits.setStaticSwapFeePercentage(config.staticSwapFeePercentage);
+        poolConfigBits = poolConfigBits._setStaticSwapFeePercentage(config.staticSwapFeePercentage);
         poolConfigBits = poolConfigBits.setAggregateSwapFeePercentage(config.aggregateSwapFeePercentage);
         poolConfigBits = poolConfigBits.setAggregateYieldFeePercentage(config.aggregateYieldFeePercentage);
         poolConfigBits = poolConfigBits.setTokenDecimalDiffs(config.tokenDecimalDiffs);

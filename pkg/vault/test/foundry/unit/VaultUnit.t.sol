@@ -204,4 +204,8 @@ contract VaultUnitTest is BaseTest {
         vm.expectRevert(stdError.arithmeticError);
         vault.settle(dai, 0);
     }
+
+    function testFeeConstants() public {
+        assertLt(MAX_FEE_PERCENTAGE / FEE_SCALING_FACTOR, 2 ** FEE_BITLENGTH, "Fee constants are not consistent");
+    }
 }

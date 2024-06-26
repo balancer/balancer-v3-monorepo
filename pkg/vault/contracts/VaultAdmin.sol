@@ -277,7 +277,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     ) external onlyVaultDelegateCall withRegisteredPool(pool) authenticateByRole(pool) {
         // Saving bits by not implementing a new modifier
         _ensureUnpaused(pool);
-        _setStaticSwapFeePercentage(pool, swapFeePercentage);
+        PoolConfigLib.setStaticSwapFeePercentage(_poolConfigBits, pool, swapFeePercentage);
     }
 
     /// @inheritdoc IVaultAdmin

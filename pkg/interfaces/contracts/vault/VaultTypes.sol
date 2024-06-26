@@ -280,5 +280,5 @@ struct BufferWrapOrUnwrapParams {
 // Protocol Fees are 24-bit values. We transform them by multiplying by 1e11, so
 // they can be set to any value between 0% and 100% (step 0.00001%).
 uint256 constant FEE_BITLENGTH = 24;
-uint256 constant MAX_FEE_VALUE = type(uint24).max;
+uint256 constant MAX_FEE_PERCENTAGE = 1e18;
 uint256 constant FEE_SCALING_FACTOR = 1e11;

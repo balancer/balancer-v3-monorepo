@@ -724,7 +724,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function _makeDefaultParams() internal view returns (PoolData memory poolData) {
-        poolData.poolConfigBits = poolData.poolConfigBits.setStaticSwapFeePercentage(swapFeePercentage);
+        poolData.poolConfigBits = poolData.poolConfigBits._setStaticSwapFeePercentage(swapFeePercentage);
 
         poolData.balancesLiveScaled18 = new uint256[](tokens.length);
         poolData.balancesRaw = new uint256[](tokens.length);
