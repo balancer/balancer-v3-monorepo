@@ -131,6 +131,10 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
         hookSwapFeePercentage = feePercentage;
     }
 
+    // @dev This external function was created to allow the test to access the same random number that will be used by
+    // onAfterSwap hook, so we can predict if the call is a winning call or not. In real applications, this function
+    // should not exist (or even if it existed, should return a different number every time, even if called in the same
+    // transaction)
     function getRandomNumber() external view returns (uint8) {
         return _getRandomNumber();
     }
