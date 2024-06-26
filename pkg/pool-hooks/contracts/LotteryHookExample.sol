@@ -19,6 +19,9 @@ import {
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
 
+// In this example, every time a swap is executed in a pool registered with this hook, a "random" number is drawn.
+// If the drawn number is not equal to the LUCKY_NUMBER, the user will pay fees to the hook contract. But, if the
+// drawn number is equal to LUCKY_NUMBER, the user won't pay hook fees and will receive all fees accrued by the hook.
 contract LotteryHookExample is BasePoolHooks, Ownable {
     using FixedPoint for uint256;
 
@@ -33,6 +36,11 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
     // Percentages are represented as 18-decimal FP, with maximum value of 1e18 (100%), so 60 bits are enough.
     uint64 public hookSwapFeePercentage;
 
+    // Tokens with accrued fees
+    address[] private tokensWithAccruedFees;
+    // Map with tokens that are already in the array;
+    mapping(address => bool) private tokensInTheArray;
+
     uint256 private _counter = 0;
 
     // This hook relies on the implementation of router's getSender() to deposit fees to the winner of the lottery.
@@ -40,6 +48,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
 
     constructor(IVault vault, address router) BasePoolHooks(vault) Ownable(msg.sender) {
         _trustedRouter = router;
+        tokensWithAccruedFees = new address[](0);
     }
 
     /// @inheritdoc IHooks
@@ -135,14 +144,32 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
     ) private returns (uint256) {
         if (drawnNumber == LUCKY_NUMBER) {
             address user = IRouterCommon(router).getSender();
-            // The total accrued fees may be higher than the amountIn, so we can't use deltas to pay the fees to the
-            // winner when the swap is EXACT_OUT (To pay the fees, we'd need to give a discount, and the max discount
-            // is 100%, which is amountsIn).
-            // To avoid this limitation, we transfer the tokens to the user directly.
-            token.transfer(user, token.balanceOf(address(this)));
+
+            for (uint256 i = tokensWithAccruedFees.length; i > 0; i--) {
+                // Gets the last token from the array;
+                IERC20 feeToken = IERC20(tokensWithAccruedFees[uint256(i - 1)]);
+
+                // There are multiple reasons to use a direct transfer of hook fees to the user instead of hook
+                // adjusted amounts:
+                // * We can transfer all fees from all tokens;
+                // * For EXACT_OUT transactions, the maximum prize we might give is amountsIn, because the maximum
+                //   discount is 100%;
+                // * We don't need to send tokens to the vault and then settle, which would be more expensive than
+                //   transferring tokens to the user directly.
+                feeToken.transfer(user, feeToken.balanceOf(address(this)));
+
+                // Deletes the last token in the array
+                tokensWithAccruedFees.pop();
+                tokensInTheArray[address(feeToken)] = false;
+            }
+            // No fees were applied to the winner
             return 0;
         } else {
             _vault.sendTo(token, address(this), hookFee);
+            if (tokensInTheArray[address(token)] == false) {
+                tokensWithAccruedFees.push(address(token));
+                tokensInTheArray[address(token)] = true;
+            }
             return hookFee;
         }
     }

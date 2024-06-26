@@ -34,6 +34,7 @@ contract LotteryHookExampleTest is BaseVaultTest {
     uint256 private constant _minSwapAmount = 1e6;
     uint256 private constant _minBptOut = 1e6;
 
+    // Maximum number of swaps executed on each test, to try to be the winner of the lottery hook
     uint256 private constant MAX_ITERATIONS = 10000;
 
     function setUp() public virtual override {
