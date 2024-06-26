@@ -98,8 +98,8 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
                 // from `amountCalculated`, so we decrease the amount of tokens the Vault will send to the caller.
                 //
                 // The preceding swap operation has already credited the original `amountCalculated`. Since we're
-                // returning `amountCalculated - hookFee` here, it will only register debt for that reduced amount
-                // on settlement. This call to `sendTo` pulls `hookFee` tokens of `tokenOut` from the Vault to this
+                // returning `amountCalculated - feeToPay` here, it will only register debt for that reduced amount
+                // on settlement. This call to `sendTo` pulls `feeToPay` tokens of `tokenOut` from the Vault to this
                 // contract, and registers the additional debt, so that the total debts match the credits and
                 // settlement succeeds.
                 uint256 feeToPay = _chargeFeeOrPayWinner(params.router, drawnNumber, params.tokenOut, hookFee);
@@ -111,8 +111,8 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
                 // from `amountCalculated`, so we increase the amount of tokens the Vault will ask from the user.
                 //
                 // The preceding swap operation has already registered debt for the original `amountCalculated`.
-                // Since we're returning `amountCalculated + hookFee` here, it will supply credit for that increased
-                // amount on settlement. This call to `sendTo` pulls `hookFee` tokens of `tokenIn` from the Vault to
+                // Since we're returning `amountCalculated + feeToPay` here, it will supply credit for that increased
+                // amount on settlement. This call to `sendTo` pulls `feeToPay` tokens of `tokenIn` from the Vault to
                 // this contract, and registers the additional debt, so that the total debts match the credits and
                 // settlement succeeds.
 
