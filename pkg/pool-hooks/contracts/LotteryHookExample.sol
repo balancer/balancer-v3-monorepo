@@ -38,9 +38,9 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
     uint64 public hookSwapFeePercentage;
 
     // Tokens with accrued fees
-    address[] private tokensWithAccruedFees;
+    address[] private _tokensWithAccruedFees;
     // Map with tokens that are already in the array;
-    mapping(address => bool) private tokensInTheArray;
+    mapping(address => bool) private _tokensInTheArray;
 
     uint256 private _counter = 0;
 
@@ -49,7 +49,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
 
     constructor(IVault vault, address router) BasePoolHooks(vault) Ownable(msg.sender) {
         _trustedRouter = router;
-        tokensWithAccruedFees = new address[](0);
+        _tokensWithAccruedFees = new address[](0);
     }
 
     /// @inheritdoc IHooks
@@ -149,9 +149,13 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
         if (drawnNumber == LUCKY_NUMBER) {
             address user = IRouterCommon(router).getSender();
 
-            for (uint256 i = tokensWithAccruedFees.length; i > 0; i--) {
+            for (uint256 i = _tokensWithAccruedFees.length; i > 0; i--) {
                 // Gets the last token from the array;
-                IERC20 feeToken = IERC20(tokensWithAccruedFees[uint256(i - 1)]);
+                IERC20 feeToken = IERC20(_tokensWithAccruedFees[uint256(i - 1)]);
+
+                // Deletes the last token in the array
+                _tokensWithAccruedFees.pop();
+                _tokensInTheArray[address(feeToken)] = false;
 
                 // There are multiple reasons to use a direct transfer of hook fees to the user instead of hook
                 // adjusted amounts:
@@ -161,19 +165,18 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
                 // * We don't need to send tokens to the vault and then settle, which would be more expensive than
                 //   transferring tokens to the user directly.
                 feeToken.transfer(user, feeToken.balanceOf(address(this)));
-
-                // Deletes the last token in the array
-                tokensWithAccruedFees.pop();
-                tokensInTheArray[address(feeToken)] = false;
             }
             // No fees were applied to the winner
             return 0;
         } else {
-            _vault.sendTo(token, address(this), hookFee);
-            if (tokensInTheArray[address(token)] == false) {
-                tokensWithAccruedFees.push(address(token));
-                tokensInTheArray[address(token)] = true;
+            // If current token is not listed as a token with accrued fees, add to the list
+            if (_tokensInTheArray[address(token)] == false) {
+                _tokensWithAccruedFees.push(address(token));
+                _tokensInTheArray[address(token)] = true;
             }
+
+            // Collect fees from the vault (user will pay it when the router settles the swap)
+            _vault.sendTo(token, address(this), hookFee);
             return hookFee;
         }
     }
