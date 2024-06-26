@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
-
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -132,7 +130,7 @@ library HooksConfigLib {
             );
     }
 
-    function toHooksConfig(PoolConfigBits config, address hooksContract) internal pure returns (HooksConfig memory) {
+    function toHooksConfig(PoolConfigBits config, IHooks hooksContract) internal pure returns (HooksConfig memory) {
         return
             HooksConfig({
                 enableHookAdjustedAmounts: config.enableHookAdjustedAmounts(),
@@ -145,7 +143,7 @@ library HooksConfigLib {
                 shouldCallComputeDynamicSwapFee: config.shouldCallComputeDynamicSwapFee(),
                 shouldCallBeforeSwap: config.shouldCallBeforeSwap(),
                 shouldCallAfterSwap: config.shouldCallAfterSwap(),
-                hooksContract: hooksContract
+                hooksContract: address(hooksContract)
             });
     }
 
@@ -168,13 +166,9 @@ library HooksConfigLib {
         PoolConfigBits config,
         IBasePool.PoolSwapParams memory swapParams,
         uint256 staticSwapFeePercentage,
-        StorageSlot.AddressSlot storage hooksContract
+        IHooks hooksContract
     ) internal view returns (bool, uint256) {
-        if (config.shouldCallComputeDynamicSwapFee() == false) {
-            return (false, staticSwapFeePercentage);
-        }
-
-        (bool success, uint256 swapFeePercentage) = IHooks(hooksContract.value).onComputeDynamicSwapFee(
+        (bool success, uint256 swapFeePercentage) = hooksContract.onComputeDynamicSwapFee(
             swapParams,
             staticSwapFeePercentage
         );
@@ -193,24 +187,17 @@ library HooksConfigLib {
      * @param swapParams The swap parameters used in the hook
      * @param pool Pool address
      * @param hooksContract Storage slot with the address of the hooks contract
-     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
     function callBeforeSwapHook(
         PoolConfigBits config,
         IBasePool.PoolSwapParams memory swapParams,
         address pool,
-        StorageSlot.AddressSlot storage hooksContract
-    ) internal returns (bool) {
-        if (config.shouldCallBeforeSwap() == false) {
-            // Hook contract does not implement onBeforeSwap, so success is false (hook was not executed)
-            return false;
-        }
-
-        if (IHooks(hooksContract.value).onBeforeSwap(swapParams, pool) == false) {
+        IHooks hooksContract
+    ) internal {
+        if (hooksContract.onBeforeSwap(swapParams, pool) == false) {
             // Hook contract implements onBeforeSwap, but it has failed, so reverts the transaction.
             revert IVaultErrors.BeforeSwapHookFailed();
         }
-        return true;
     }
 
     /**
@@ -235,20 +222,14 @@ library HooksConfigLib {
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData,
-        StorageSlot.AddressSlot storage hooksContract
+        IHooks hooksContract
     ) internal returns (uint256) {
-        if (config.shouldCallAfterSwap() == false) {
-            // Hook contract does not implement onAfterSwap, so success is false (hook was not executed) and do not
-            // change amountCalculatedRaw (no deltas)
-            return amountCalculatedRaw;
-        }
-
         // Adjust balances for the AfterSwap hook.
         (uint256 amountInScaled18, uint256 amountOutScaled18) = params.kind == SwapKind.EXACT_IN
             ? (state.amountGivenScaled18, amountCalculatedScaled18)
             : (amountCalculatedScaled18, state.amountGivenScaled18);
 
-        (bool success, uint256 hookAdjustedAmountCalculatedRaw) = IHooks(hooksContract.value).onAfterSwap(
+        (bool success, uint256 hookAdjustedAmountCalculatedRaw) = hooksContract.onAfterSwap(
             IHooks.AfterSwapParams({
                 kind: params.kind,
                 tokenIn: params.tokenIn,
@@ -295,7 +276,6 @@ library HooksConfigLib {
      * @param params The add liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
      * @param hooksContract Storage slot with the address of the hooks contract
-     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
     function callBeforeAddLiquidityHook(
         PoolConfigBits config,
@@ -303,14 +283,10 @@ library HooksConfigLib {
         uint256[] memory maxAmountsInScaled18,
         AddLiquidityParams memory params,
         PoolData memory poolData,
-        StorageSlot.AddressSlot storage hooksContract
-    ) internal returns (bool) {
-        if (config.shouldCallBeforeAddLiquidity() == false) {
-            return false;
-        }
-
+        IHooks hooksContract
+    ) internal {
         if (
-            IHooks(hooksContract.value).onBeforeAddLiquidity(
+            hooksContract.onBeforeAddLiquidity(
                 router,
                 params.pool,
                 params.kind,
@@ -322,7 +298,6 @@ library HooksConfigLib {
         ) {
             revert IVaultErrors.BeforeAddLiquidityHookFailed();
         }
-        return true;
     }
 
     /**
@@ -347,13 +322,9 @@ library HooksConfigLib {
         uint256 bptAmountOut,
         AddLiquidityParams memory params,
         PoolData memory poolData,
-        StorageSlot.AddressSlot storage hooksContract
+        IHooks hooksContract
     ) internal returns (uint256[] memory) {
-        if (config.shouldCallAfterAddLiquidity() == false) {
-            return amountsInRaw;
-        }
-
-        (bool success, uint256[] memory hookAdjustedAmountsInRaw) = IHooks(hooksContract.value).onAfterAddLiquidity(
+        (bool success, uint256[] memory hookAdjustedAmountsInRaw) = hooksContract.onAfterAddLiquidity(
             router,
             params.pool,
             params.kind,
@@ -391,13 +362,11 @@ library HooksConfigLib {
      * fails to execute the hook.
      *
      * @param config The encoded hooks configuration
-     * @param minAmountsOutScaled18 An array with minimum amounts for each output token of the remove liquidity
-     * operation
+     * @param minAmountsOutScaled18 Minimum amounts for each output token of the remove liquidity operation
      * @param router Router address
      * @param params The remove liquidity parameters
      * @param poolData Struct containing balance and token information of the pool
      * @param hooksContract Storage slot with the address of the hooks contract
-     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
     function callBeforeRemoveLiquidityHook(
         PoolConfigBits config,
@@ -405,14 +374,10 @@ library HooksConfigLib {
         address router,
         RemoveLiquidityParams memory params,
         PoolData memory poolData,
-        StorageSlot.AddressSlot storage hooksContract
-    ) internal returns (bool) {
-        if (config.shouldCallBeforeRemoveLiquidity() == false) {
-            return false;
-        }
-
+        IHooks hooksContract
+    ) internal {
         if (
-            IHooks(hooksContract.value).onBeforeRemoveLiquidity(
+            hooksContract.onBeforeRemoveLiquidity(
                 router,
                 params.pool,
                 params.kind,
@@ -424,12 +389,12 @@ library HooksConfigLib {
         ) {
             revert IVaultErrors.BeforeRemoveLiquidityHookFailed();
         }
-        return true;
     }
 
     /**
      * @dev Check if after remove liquidity hook should be called and call it. Throws an error if the hook contract
      * fails to execute the hook.
+     *
      * @param config The encoded hooks configuration
      * @param router Router address
      * @param amountsOutScaled18 Scaled amount of tokens to receive, sorted in token registration order
@@ -448,13 +413,9 @@ library HooksConfigLib {
         uint256 bptAmountIn,
         RemoveLiquidityParams memory params,
         PoolData memory poolData,
-        StorageSlot.AddressSlot storage hooksContract
+        IHooks hooksContract
     ) internal returns (uint256[] memory) {
-        if (config.shouldCallAfterRemoveLiquidity() == false) {
-            return amountsOutRaw;
-        }
-
-        (bool success, uint256[] memory hookAdjustedAmountsOutRaw) = IHooks(hooksContract.value).onAfterRemoveLiquidity(
+        (bool success, uint256[] memory hookAdjustedAmountsOutRaw) = hooksContract.onAfterRemoveLiquidity(
             router,
             params.pool,
             params.kind,
@@ -495,22 +456,16 @@ library HooksConfigLib {
      * @param exactAmountsInScaled18 An array with the initial liquidity of the pool
      * @param userData Additional (optional) data required for adding initial liquidity
      * @param hooksContract Storage slot with the address of the hooks contract
-     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      */
     function callBeforeInitializeHook(
         PoolConfigBits config,
         uint256[] memory exactAmountsInScaled18,
         bytes memory userData,
-        StorageSlot.AddressSlot storage hooksContract
-    ) internal returns (bool) {
-        if (config.shouldCallBeforeInitialize() == false) {
-            return false;
-        }
-
-        if (IHooks(hooksContract.value).onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
+        IHooks hooksContract
+    ) internal {
+        if (hooksContract.onBeforeInitialize(exactAmountsInScaled18, userData) == false) {
             revert IVaultErrors.BeforeInitializeHookFailed();
         }
-        return true;
     }
 
     /**
@@ -528,13 +483,9 @@ library HooksConfigLib {
         uint256[] memory exactAmountsInScaled18,
         uint256 bptAmountOut,
         bytes memory userData,
-        StorageSlot.AddressSlot storage hooksContract
+        IHooks hooksContract
     ) internal {
-        if (config.shouldCallAfterInitialize() == false) {
-            return;
-        }
-
-        if (IHooks(hooksContract.value).onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
+        if (hooksContract.onAfterInitialize(exactAmountsInScaled18, bptAmountOut, userData) == false) {
             revert IVaultErrors.AfterInitializeHookFailed();
         }
     }

@@ -221,7 +221,7 @@ contract HooksConfigLibTest is Test {
         config = config.setShouldCallBeforeRemoveLiquidity(true);
         config = config.setShouldCallAfterRemoveLiquidity(true);
 
-        HooksConfig memory hooksConfig = config.toHooksConfig(hooksContract);
+        HooksConfig memory hooksConfig = config.toHooksConfig(IHooks(hooksContract));
         assertEq(hooksConfig.shouldCallBeforeInitialize, true, "shouldCallBeforeInitialize mismatch");
         assertEq(hooksConfig.shouldCallAfterInitialize, true, "shouldCallAfterInitialize mismatch");
         assertEq(hooksConfig.shouldCallComputeDynamicSwapFee, true, "shouldCallComputeDynamicSwapFee mismatch");

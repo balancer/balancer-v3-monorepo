@@ -211,7 +211,7 @@ contract VaultMock is IVaultMainMock, Vault {
         poolConfigBits = poolConfigBits.setShouldCallAfterRemoveLiquidity(hooksConfig.shouldCallAfterRemoveLiquidity);
 
         _poolConfigBits[pool] = poolConfigBits;
-        _hooksContracts[pool] = StorageSlot.AddressSlot({ value: hooksConfig.hooksContract });
+        _hooksContracts[pool] = IHooks(hooksConfig.hooksContract);
     }
 
     function manualSetPoolConfigBits(address pool, PoolConfigBits config) public {

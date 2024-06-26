@@ -315,7 +315,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
 
             _poolConfigBits[pool] = poolConfigBits;
-            _hooksContracts[pool].value = params.poolHooksContract;
+            _hooksContracts[pool] = IHooks(params.poolHooksContract);
         }
 
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
@@ -328,7 +328,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             params.swapFeePercentage,
             params.pauseWindowEndTime,
             params.roleAccounts,
-            poolConfigBits.toHooksConfig(params.poolHooksContract),
+            poolConfigBits.toHooksConfig(IHooks(params.poolHooksContract)),
             params.liquidityManagement
         );
     }
@@ -386,8 +386,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        StorageSlot.AddressSlot storage hooksContract = _hooksContracts[pool];
-        if (poolData.poolConfigBits.callBeforeInitializeHook(exactAmountsInScaled18, userData, hooksContract)) {
+        if (poolData.poolConfigBits.shouldCallBeforeInitialize()) {
+            poolData.poolConfigBits.callBeforeInitializeHook(exactAmountsInScaled18, userData, _hooksContracts[pool]);
             // The before hook is reentrant, and could have changed token rates.
             // Updating balances here is unnecessary since they're 0, but we do not special case before init
             // for the sake of bytecode size.
@@ -402,7 +402,17 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         bptAmountOut = _initialize(pool, to, poolData, tokens, exactAmountsIn, exactAmountsInScaled18, minBptAmountOut);
 
-        poolData.poolConfigBits.callAfterInitializeHook(exactAmountsInScaled18, bptAmountOut, userData, hooksContract);
+        if (poolData.poolConfigBits.shouldCallAfterInitialize()) {
+            // fix stack too deep
+            IHooks hooksContract = _hooksContracts[pool];
+
+            poolData.poolConfigBits.callAfterInitializeHook(
+                exactAmountsInScaled18,
+                bptAmountOut,
+                userData,
+                hooksContract
+            );
+        }
     }
 
     function _initialize(
@@ -505,7 +515,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function getHooksConfig(
         address pool
     ) external view onlyVaultDelegateCall withRegisteredPool(pool) returns (HooksConfig memory) {
-        return _poolConfigBits[pool].toHooksConfig(_hooksContracts[pool].value);
+        return _poolConfigBits[pool].toHooksConfig(_hooksContracts[pool]);
     }
 
     /// @inheritdoc IVaultExtension
