@@ -67,7 +67,6 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         uint32 pauseWindowDuration = pauseWindowEndTime - bufferPeriodDuration;
         address unauthorizedFactory = address(new PoolFactoryMock(IVault(address(vault)), pauseWindowDuration));
 
-
         vm.expectRevert(
             abi.encodeWithSelector(
                 IVaultErrors.HookRegistrationFailed.selector,
@@ -108,7 +107,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         HooksConfig memory hooksConfig = vault.getHooksConfig(veBalFeePool);
 
         assertEq(hooksConfig.hooksContract, poolHooksContract, "Wrong poolHooksContract");
-        assertEq(hooksConfig.shouldCallComputeDynamicSwapFee, true, "pool's shouldCallComputeDynamicSwapFee is wrong");
+        assertEq(hooksConfig.shouldCallComputeDynamicSwapFee, true, "shouldCallComputeDynamicSwapFee is false");
     }
 
     function testUntrustedRouter() public {
@@ -207,7 +206,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
 
     // Registry tests require a new pool, because an existing pool may be already registered
     function _createPoolToRegister() private returns (address newPool) {
-        newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
+        newPool = address(new PoolMock(IVault(address(vault)), "VeBAL Fee Pool", "veBALFeePool"));
         vm.label(newPool, "VeBAL Fee Pool");
     }
 
