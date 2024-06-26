@@ -32,6 +32,7 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     // they will be executed every time the constant is used.
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
+    // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _SENDER_COUNTER_SLOT =
         TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender_counter");
 
