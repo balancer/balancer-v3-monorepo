@@ -52,6 +52,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         uint256[] lpTokens;
         uint256 lpBpt;
         uint256[] vaultTokens;
+        uint256[] vaultReserves;
         uint256[] poolTokens;
         uint256 poolSupply;
     }
@@ -243,6 +244,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         balances.hookTokens = new uint256[](poolBalances.length);
         balances.lpTokens = new uint256[](poolBalances.length);
         balances.vaultTokens = new uint256[](poolBalances.length);
+        balances.vaultReserves = new uint256[](poolBalances.length);
         for (uint256 i = 0; i < poolBalances.length; ++i) {
             // Don't assume token ordering.
             balances.userTokens[i] = tokens[i].balanceOf(user);
@@ -251,6 +253,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
             balances.hookTokens[i] = tokens[i].balanceOf(poolHooksContract);
             balances.lpTokens[i] = tokens[i].balanceOf(lp);
             balances.vaultTokens[i] = tokens[i].balanceOf(address(vault));
+            balances.vaultReserves[i] = vault.getReservesOf(tokens[i]);
         }
     }
 

@@ -30,8 +30,9 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
 
     // When calling onAfterSwap, a random number is generated. If the number is equal to LUCKY_NUMBER, the user will
     // get the accrued fees.
-    uint8 public constant LUCKY_NUMBER = 17;
-    uint8 public constant MAX_NUMBER = 100;
+    uint8 public constant LUCKY_NUMBER = 10;
+    // The chance of winning is 1/MAX_NUMBER (i.e. 5%)
+    uint8 public constant MAX_NUMBER = 20;
 
     // Percentages are represented as 18-decimal FP, with maximum value of 1e18 (100%), so 60 bits are enough.
     uint64 public hookSwapFeePercentage;

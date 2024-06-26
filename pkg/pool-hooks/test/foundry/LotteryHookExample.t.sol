@@ -35,7 +35,7 @@ contract LotteryHookExampleTest is BaseVaultTest {
     uint256 private constant _minBptOut = 1e6;
 
     // Maximum number of swaps executed on each test, to try to be the winner of the lottery hook
-    uint256 private constant MAX_ITERATIONS = 10000;
+    uint256 private constant MAX_ITERATIONS = 100;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -104,30 +104,41 @@ contract LotteryHookExampleTest is BaseVaultTest {
             }
         }
 
+        // If one of the conditions below fails, change the LUCKY_NUMBER in the LotteryHookExample contract
+        assertNotEq(it, 1, "Only 1 iteration");
+        assertNotEq(it, MAX_ITERATIONS, "Max iterations reached, no winner");
+
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
 
+        // Alice paid `swapAmount` (in the last iteration, as the winner)
         assertEq(
             balancesBefore.aliceTokens[daiIdx] - balancesAfter.aliceTokens[daiIdx],
             swapAmount,
             "Alice DAI balance is wrong"
         );
+        // Bob paid `swapAmount` in all iterations, but the last one (last one is the winner iteration and
+        // was executed by Alice)
         assertEq(
             balancesBefore.bobTokens[daiIdx] - balancesAfter.bobTokens[daiIdx],
             (it - 1) * swapAmount,
             "Bob DAI balance is wrong"
         );
+        // All accrued fees are paid to Alice, so the hook balance must be the same
         assertEq(balancesBefore.hookTokens[daiIdx], balancesAfter.hookTokens[daiIdx], "Hook DAI balance is wrong");
 
+        // Alice receives `swapAmount` USDC + accrued fees in USDC
         assertEq(
             balancesAfter.aliceTokens[usdcIdx] - balancesBefore.aliceTokens[usdcIdx],
             swapAmount + accruedFees,
             "Alice USDC balance is wrong"
         );
+        // Bob paid hookFee in every swap that it executed
         assertEq(
             balancesAfter.bobTokens[usdcIdx] - balancesBefore.bobTokens[usdcIdx],
-            (it - 1) * swapAmount - accruedFees,
+            (it - 1) * (swapAmount - hookFee),
             "Bob USDC balance is wrong"
         );
+        // All accrued fees are paid to Alice, so the hook balance must be the same
         assertEq(balancesBefore.hookTokens[usdcIdx], balancesAfter.hookTokens[usdcIdx], "Hook USDC balance is wrong");
 
         _checkPoolAndVaultBalancesAfterSwap(balancesBefore, balancesAfter, it * swapAmount);
@@ -171,9 +182,14 @@ contract LotteryHookExampleTest is BaseVaultTest {
             }
         }
 
+        // If one of the conditions below fails, change the LUCKY_NUMBER in the LotteryHookExample contract
+        assertNotEq(it, 1, "Only 1 iteration");
+        assertNotEq(it, MAX_ITERATIONS, "Max iterations reached, no winner");
+
         BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
 
-        // TODO explain
+        // Alice paid swapAmount in the last iteration, but received accruedFees as the winner of the lottery.
+        // If accruedFees > swapAmount, Alice has more DAI than before
         if (accruedFees > swapAmount) {
             assertEq(
                 balancesAfter.aliceTokens[daiIdx] - balancesBefore.aliceTokens[daiIdx],
@@ -188,55 +204,74 @@ contract LotteryHookExampleTest is BaseVaultTest {
             );
         }
 
-        // TODO explain
+        // Bob paid swapAmount + hookFee in all iterations but the last one (last one is the winner iteration and
+        // was executed by Alice)
         assertEq(
             balancesBefore.bobTokens[daiIdx] - balancesAfter.bobTokens[daiIdx],
             (it - 1) * (swapAmount + hookFee),
             "Bob DAI balance is wrong"
         );
-        // TODO explain
+        // All accrued fees are paid to Alice, so the hook balance must be the same
         assertEq(balancesBefore.hookTokens[daiIdx], balancesAfter.hookTokens[daiIdx], "Hook DAI balance is wrong");
 
+        // Alice received swapAmount USDC in the last iteration
         assertEq(
             balancesAfter.aliceTokens[usdcIdx] - balancesBefore.aliceTokens[usdcIdx],
             swapAmount,
             "Alice USDC balance is wrong"
         );
+        // Bob received swapAmount in all iterations but the last one
         assertEq(
             balancesAfter.bobTokens[usdcIdx] - balancesBefore.bobTokens[usdcIdx],
             (it - 1) * swapAmount,
             "Bob USDC balance is wrong"
         );
+        // All accrued fees are paid to Alice, so the hook balance must be the same
         assertEq(balancesBefore.hookTokens[usdcIdx], balancesAfter.hookTokens[usdcIdx], "Hook USDC balance is wrong");
 
         _checkPoolAndVaultBalancesAfterSwap(balancesBefore, balancesAfter, it * swapAmount);
     }
 
+    // @dev Check if pool balances and vault reserves reflect all swaps
     function _checkPoolAndVaultBalancesAfterSwap(
         BaseVaultTest.Balances memory balancesBefore,
         BaseVaultTest.Balances memory balancesAfter,
-        uint256 poolBalanceChange
+        uint256 expectedBalanceChange
     ) private view {
-        // Considers swap fee = 0, so only hook fees were charged
+        // Check if pool balances are correct after all swaps
         assertEq(
             balancesAfter.poolTokens[daiIdx] - balancesBefore.poolTokens[daiIdx],
-            poolBalanceChange,
+            expectedBalanceChange,
             "Pool DAI balance is wrong"
         );
         assertEq(
             balancesBefore.poolTokens[usdcIdx] - balancesAfter.poolTokens[usdcIdx],
-            poolBalanceChange,
+            expectedBalanceChange,
             "Pool USDC balance is wrong"
         );
+
+        // Check if vault balances are correct after all swaps
         assertEq(
             balancesAfter.vaultTokens[daiIdx] - balancesBefore.vaultTokens[daiIdx],
-            poolBalanceChange,
+            expectedBalanceChange,
             "Vault DAI balance is wrong"
         );
         assertEq(
             balancesBefore.vaultTokens[usdcIdx] - balancesAfter.vaultTokens[usdcIdx],
-            poolBalanceChange,
+            expectedBalanceChange,
             "Vault USDC balance is wrong"
+        );
+
+        // Check if vault reserves are correct after all swaps
+        assertEq(
+            balancesAfter.vaultReserves[daiIdx] - balancesBefore.vaultReserves[daiIdx],
+            expectedBalanceChange,
+            "Vault DAI reserve is wrong"
+        );
+        assertEq(
+            balancesBefore.vaultReserves[usdcIdx] - balancesAfter.vaultReserves[usdcIdx],
+            expectedBalanceChange,
+            "Vault USDC reserve is wrong"
         );
     }
 }
