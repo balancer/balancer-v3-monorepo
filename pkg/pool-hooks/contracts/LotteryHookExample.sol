@@ -29,7 +29,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
     address private immutable _trustedRouter;
 
     // When calling onAfterSwap, a random number is generated. If the number is equal to LUCKY_NUMBER, the user will
-    // get the accrued fees.
+    // get the accrued fees. It must be a number between 1 and MAX_NUMBER, or else nobody will win.
     uint8 public constant LUCKY_NUMBER = 10;
     // The chance of winning is 1/MAX_NUMBER (i.e. 5%)
     uint8 public constant MAX_NUMBER = 20;
@@ -43,9 +43,6 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
     mapping(address => bool) private _tokensInTheArray;
 
     uint256 private _counter = 0;
-
-    // This hook relies on the implementation of router's getSender() to deposit fees to the winner of the lottery.
-    error RouterNotTrustedByHook(address hook, address router);
 
     constructor(IVault vault, address router) BasePoolHooks(vault) Ownable(msg.sender) {
         _trustedRouter = router;
