@@ -117,7 +117,7 @@ contract PoolConfigLibTest is BaseBitsConfigTest {
         config = PoolConfigBits.wrap(
             PoolConfigBits.unwrap(config).insertBool(true, PoolConfigLib.UNBALANCED_LIQUIDITY_OFFSET)
         );
-        // NOTE: assertFalse is here because supportsUnbalancedLiquidity reverse value
+        // NOTE: assertFalse because the sense of supportsUnbalancedLiquidity is reversed
         assertFalse(config.supportsUnbalancedLiquidity(), "supportsUnbalancedLiquidity is true (getter)");
     }
 
