@@ -331,11 +331,6 @@ export class Benchmark {
     });
 
     describe('test liquidity', () => {
-      sharedBeforeEach(async () => {
-        poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
-        this.tokenConfig = buildTokenConfig(poolTokens, true);
-      });
-
       itTestsLiquidity();
     });
   };
