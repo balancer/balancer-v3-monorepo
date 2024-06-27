@@ -164,7 +164,6 @@ contract LotteryHookExampleTest is BaseVaultTest {
 
     function testLotterySwapBothInAndOut() public {
         // If we execute swaps with EXACT_IN and EXACT_OUT, Alice should receive all accrued fees for all tokens
-
         (
             BaseVaultTest.Balances memory balancesBefore,
             BaseVaultTest.Balances memory balancesAfter,
