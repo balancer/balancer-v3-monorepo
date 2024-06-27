@@ -43,6 +43,7 @@ library EnumerableMap {
     // The original OpenZeppelin implementation uses a generic Map type with bytes32 keys: this was replaced with
     // IERC20ToBytes32Map and IERC20ToUint256Map, resulting in more dense bytecode (as long as each contract only uses
     // one of these - there'll otherwise be duplicated code).
+    // NOTE: IERC20ToBytes32Map has a limit of entries, as it uses a uint96 (max value = 79228162514264337593543950335) for the length of the entries array.
 
     // IERC20ToBytes32Map
 
@@ -50,7 +51,7 @@ library EnumerableMap {
 
     struct IERC20ToBytes32MapEntry {
         // NOTE: we store _length only in the first element, to save one SLOAD
-        uint8 _length;
+        uint96 _length;
         IERC20 key;
         bytes32 value;
     }
@@ -76,7 +77,7 @@ library EnumerableMap {
         unchecked {
             // Equivalent to !contains(map, key)
             if (keyIndex == 0) {
-                uint8 previousLength = map.entries[0]._length;
+                uint96 previousLength = map.entries[0]._length;
                 map.entries[previousLength] = IERC20ToBytes32MapEntry({ key: key, value: value, _length: 0 });
                 map.entries[0]._length = previousLength + 1;
 
@@ -118,7 +119,7 @@ library EnumerableMap {
             // This modifies the order of the pseudo-array, as noted in {at}.
 
             uint256 toDeleteIndex;
-            uint8 lastIndex;
+            uint96 lastIndex;
 
             unchecked {
                 toDeleteIndex = keyIndex - 1;
