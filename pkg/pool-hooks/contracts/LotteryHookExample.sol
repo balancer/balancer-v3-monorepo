@@ -36,13 +36,13 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
     // When calling onAfterSwap, a random number is generated. If the number is equal to LUCKY_NUMBER, the user will
     // get the accrued fees. It must be a number between 1 and MAX_NUMBER, or else nobody will win.
     uint8 public constant LUCKY_NUMBER = 10;
-    // The chance of winning is 1/MAX_NUMBER (i.e. 5%)
+    // The chance of winning is 1/MAX_NUMBER (i.e. 5%).
     uint8 public constant MAX_NUMBER = 20;
 
     // Percentages are represented as 18-decimal FP, with maximum value of 1e18 (100%), so 60 bits are enough.
     uint64 public hookSwapFeePercentage;
 
-    // Tokens with accrued fees
+    // Tokens with accrued fees.
     EnumerableMap.IERC20ToUint256Map private _tokensWithAccruedFees;
 
     uint256 private _counter = 0;
@@ -148,7 +148,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
         if (drawnNumber == LUCKY_NUMBER) {
             address user = IRouterCommon(router).getSender();
 
-            // Iterating backwards is more efficient since the last element is removed from the map on each iteration
+            // Iterating backwards is more efficient since the last element is removed from the map on each iteration.
             for (uint256 i = _tokensWithAccruedFees.size; i > 0; i--) {
                 (IERC20 feeToken, ) = _tokensWithAccruedFees.at(i - 1);
                 _tokensWithAccruedFees.remove(feeToken);
@@ -162,7 +162,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
                 //   transferring tokens to the user directly.
                 feeToken.safeTransfer(user, feeToken.balanceOf(address(this)));
             }
-            // Winner pays no fees
+            // Winner pays no fees.
             return 0;
         } else {
             // Add token to map of tokens with accrued fees.
