@@ -75,6 +75,7 @@ contract YieldFeesTest is BaseVaultTest {
                 poolRoleAccounts,
                 swapFee,
                 address(0),
+                false,
                 bytes32(0)
             )
         );
