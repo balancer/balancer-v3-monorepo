@@ -5,10 +5,10 @@ pragma solidity ^0.8.24;
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
-
 import { BaseBitsConfigTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseBitsConfigTest.sol";
+
+import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
 
 contract PoolConfigLibTest is BaseBitsConfigTest {
     using WordCodec for bytes32;

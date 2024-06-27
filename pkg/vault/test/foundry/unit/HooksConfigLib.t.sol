@@ -9,12 +9,11 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { HooksConfigLib, HooksConfigBits } from "@balancer-labs/v3-vault/contracts/lib/HooksConfigLib.sol";
-
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-
 import { BaseBitsConfigTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseBitsConfigTest.sol";
+
+import { HooksConfigLib, HooksConfigBits } from "../../../contracts/lib/HooksConfigLib.sol";
 
 contract HooksConfigLibTest is BaseBitsConfigTest {
     using WordCodec for bytes32;
