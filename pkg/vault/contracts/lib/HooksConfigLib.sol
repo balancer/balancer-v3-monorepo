@@ -155,7 +155,7 @@ library HooksConfigLib {
      * @dev Check if dynamic swap fee hook should be called and call it. Throws an error if the hook contract fails to
      * execute the hook.
      *
-     * @param config The encoded hooks configuration
+     * @param config config The encoded pool configuration
      * @param swapParams The swap parameters used to calculate the fee
      * @param staticSwapFeePercentage Value of the static swap fee, for reference
      * @param hooksContract Storage slot with the address of the hooks contract
@@ -183,7 +183,7 @@ library HooksConfigLib {
      * @dev Check if before swap hook should be called and call it. Throws an error if the hook contract fails to
      * execute the hook.
      *
-     * @param config The encoded hooks configuration
+     * @param config The encoded pool configuration
      * @param swapParams The swap parameters used in the hook
      * @param pool Pool address
      * @param hooksContract Storage slot with the address of the hooks contract
@@ -204,7 +204,7 @@ library HooksConfigLib {
      * @dev Check if after swap hook should be called and call it. Throws an error if the hook contract fails to
      * execute the hook.
      *
-     * @param config The encoded hooks configuration
+     * @param config The encoded pool configuration
      * @param amountCalculatedScaled18 Token amount calculated by the swap
      * @param amountCalculatedRaw Token amount calculated by the swap
      * @param router Router address
@@ -270,7 +270,7 @@ library HooksConfigLib {
      * @dev Check if before add liquidity hook should be called and call it. Throws an error if the hook contract fails
      * to execute the hook.
      *
-     * @param config The encoded hooks configuration
+     * @param config The encoded pool configuration
      * @param router Router address
      * @param maxAmountsInScaled18 An array with maximum amounts for each input token of the add liquidity operation
      * @param params The add liquidity parameters
@@ -304,7 +304,7 @@ library HooksConfigLib {
      * @dev Check if after add liquidity hook should be called and call it. Throws an error if the hook contract fails
      * to execute the hook.
      *
-     * @param config The encoded hooks configuration
+     * @param config The encoded pool configuration
      * @param router Router address
      * @param amountsInScaled18 An array with amounts for each input token of the add liquidity operation
      * @param amountsInRaw An array with amounts for each input token of the add liquidity operation
@@ -361,7 +361,7 @@ library HooksConfigLib {
      * @dev Check if before remove liquidity hook should be called and call it. Throws an error if the hook contract
      * fails to execute the hook.
      *
-     * @param config The encoded hooks configuration
+     * @param config The encoded pool configuration
      * @param minAmountsOutScaled18 Minimum amounts for each output token of the remove liquidity operation
      * @param router Router address
      * @param params The remove liquidity parameters
@@ -395,7 +395,7 @@ library HooksConfigLib {
      * @dev Check if after remove liquidity hook should be called and call it. Throws an error if the hook contract
      * fails to execute the hook.
      *
-     * @param config The encoded hooks configuration
+     * @param config The encoded pool configuration
      * @param router Router address
      * @param amountsOutScaled18 Scaled amount of tokens to receive, sorted in token registration order
      * @param amountsOutRaw Actual amount of tokens to receive, sorted in token registration order
@@ -452,7 +452,7 @@ library HooksConfigLib {
      * @dev Check if before initialization hook should be called and call it. Throws an error if the hook contract
      * fails to execute the hook.
      *
-     * @param config The encoded hooks configuration
+     * @param config The encoded pool configuration
      * @param exactAmountsInScaled18 An array with the initial liquidity of the pool
      * @param userData Additional (optional) data required for adding initial liquidity
      * @param hooksContract Storage slot with the address of the hooks contract
@@ -472,7 +472,7 @@ library HooksConfigLib {
      * @dev Check if after initialization hook should be called and call it. Throws an error if the hook contract
      * fails to execute the hook.
      *
-     * @param config The encoded hooks configuration
+     * @param config The encoded pool configuration
      * @param exactAmountsInScaled18 An array with the initial liquidity of the pool
      * @param bptAmountOut The BPT amount a user will receive after initialization operation succeeds
      * @param userData Additional (optional) data required for adding initial liquidity

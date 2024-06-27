@@ -242,6 +242,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // If the hook contract does not exist or does not implement onAfterSwap, PoolConfigLib returns the original
         // amountCalculated. Otherwise, the new amount calculated is 'amountCalculated + delta'. If the underlying
         // hook fails, or limits are violated, `onAfterSwap` will revert.
+        // Uses msg.sender as the router (the contract that called the vault)
         if (poolData.poolConfigBits.shouldCallAfterSwap()) {
             // fix stack too deep
             IHooks hooksContract = _hooksContracts[params.pool];
