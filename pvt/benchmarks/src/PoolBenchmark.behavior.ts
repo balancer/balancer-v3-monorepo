@@ -23,6 +23,7 @@ import { IVault, ProtocolFeeController } from '@balancer-labs/v3-vault/typechain
 import { WeightedPoolFactory } from '@balancer-labs/v3-pool-weighted/typechain-types';
 import { ERC20WithRateTestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { BaseContract } from 'ethers';
+import { IERC20 } from '@balancer-labs/v3-interfaces/typechain-types';
 
 export class Benchmark {
   _testDirname: string;
@@ -232,21 +233,142 @@ export class Benchmark {
       });
     };
 
+    const itTestsRemoveLiquidity = (
+      gasTag: string,
+      actionAfterInit: () => Promise<void>,
+      actionAfterFirstTx: () => Promise<void>
+    ) => {
+      sharedBeforeEach('deploy pool', async () => {
+        this.pool = (await this.deployPool())!;
+      });
+
+      sharedBeforeEach('set pool fee', async () => {
+        const setPoolSwapFeeAction = await actionId(this.vault, 'setStaticSwapFeePercentage');
+
+        const authorizerAddress = await this.vault.getAuthorizer();
+        const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
+
+        await authorizer.grantRole(setPoolSwapFeeAction, admin.address);
+
+        await this.vault.connect(admin).setStaticSwapFeePercentage(this.pool, SWAP_FEE);
+      });
+
+      sharedBeforeEach('initialize pool', async () => {
+        initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
+        await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+        await actionAfterInit();
+      });
+
+      sharedBeforeEach('approve router to spend BPT', async () => {
+        const bpt: IERC20 = await TypesConverter.toIERC20(this.pool);
+        await bpt.connect(alice).approve(router, MAX_UINT256);
+      });
+
+      it('pool and protocol fee preconditions', async () => {
+        const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(this.pool);
+
+        expect(poolConfig.isPoolRegistered).to.be.true;
+        expect(poolConfig.isPoolInitialized).to.be.true;
+
+        expect(await this.vault.getStaticSwapFeePercentage(this.pool)).to.eq(SWAP_FEE);
+      });
+
+      it('measures gas (proportional)', async () => {
+        const bptBalance = await this.vault.balanceOf(this.pool, alice);
+        const tx = await router
+          .connect(alice)
+          .removeLiquidityProportional(this.pool, bptBalance / 2n, Array(poolTokens.length).fill(0n), false, '0x');
+
+        const receipt = await tx.wait();
+        await saveSnap(this._testDirname, `[${this._poolType} - ${gasTag}] remove liquidity proportional`, receipt);
+      });
+
+      it('measures gas (single token exact in)', async () => {
+        const bptBalance = await this.vault.balanceOf(this.pool, alice);
+        // Warm up
+        await router
+          .connect(alice)
+          .removeLiquiditySingleTokenExactIn(this.pool, bptBalance / 10n, poolTokens[0], 1, false, '0x');
+
+        await actionAfterFirstTx();
+
+        // Measure
+        const tx = await router
+          .connect(alice)
+          .removeLiquiditySingleTokenExactIn(this.pool, bptBalance / 10n, poolTokens[1], 1, false, '0x');
+        const receipt = await tx.wait();
+        await saveSnap(
+          this._testDirname,
+          `[${this._poolType} - ${gasTag}] remove liquidity single token exact in - warm slots`,
+          receipt
+        );
+      });
+
+      it('measures gas (single token exact out)', async () => {
+        const bptBalance = await this.vault.balanceOf(this.pool, alice);
+        // Warm up
+        await router
+          .connect(alice)
+          .removeLiquiditySingleTokenExactOut(
+            this.pool,
+            bptBalance / 2n,
+            poolTokens[0],
+            TOKEN_AMOUNT / 1000n,
+            false,
+            '0x'
+          );
+
+        await actionAfterFirstTx();
+
+        // Measure
+        const tx = await router
+          .connect(alice)
+          .removeLiquiditySingleTokenExactOut(
+            this.pool,
+            bptBalance / 2n,
+            poolTokens[1],
+            TOKEN_AMOUNT / 1000n,
+            false,
+            '0x'
+          );
+        const receipt = await tx.wait();
+        await saveSnap(
+          this._testDirname,
+          `[${this._poolType} - ${gasTag}] remove liquidity single token exact out - warm slots`,
+          receipt
+        );
+      });
+    };
+
     describe('test standard pool', () => {
       sharedBeforeEach(async () => {
         poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
         this.tokenConfig = buildTokenConfig(poolTokens, false);
       });
 
-      itTestsSwap(
-        'Standard',
-        async () => {
-          return;
-        },
-        async () => {
-          return;
-        }
-      );
+      context('swap', () => {
+        itTestsSwap(
+          'Standard',
+          async () => {
+            return;
+          },
+          async () => {
+            return;
+          }
+        );
+      });
+
+      context('remove liquidity', () => {
+        itTestsRemoveLiquidity(
+          'Standard',
+          async () => {
+            return;
+          },
+          async () => {
+            return;
+          }
+        );
+      });
     });
 
     describe('initialization', () => {
@@ -265,17 +387,33 @@ export class Benchmark {
         this.tokenConfig = buildTokenConfig(poolTokens, true);
       });
 
-      itTestsSwap(
-        'With rate',
-        async () => {
-          await this.tokenA.setRate(fp(1.1));
-          await this.tokenB.setRate(fp(1.1));
-        },
-        async () => {
-          await this.tokenA.setRate(fp(1.2));
-          await this.tokenB.setRate(fp(1.2));
-        }
-      );
+      context('swap', () => {
+        itTestsSwap(
+          'With rate',
+          async () => {
+            await this.tokenA.setRate(fp(1.1));
+            await this.tokenB.setRate(fp(1.1));
+          },
+          async () => {
+            await this.tokenA.setRate(fp(1.2));
+            await this.tokenB.setRate(fp(1.2));
+          }
+        );
+      });
+
+      context('remove liquidity', async () => {
+        itTestsRemoveLiquidity(
+          'With rate',
+          async () => {
+            await this.tokenA.setRate(fp(1.1));
+            await this.tokenB.setRate(fp(1.1));
+          },
+          async () => {
+            await this.tokenA.setRate(fp(1.2));
+            await this.tokenB.setRate(fp(1.2));
+          }
+        );
+      });
     });
 
     describe('test donation', () => {
