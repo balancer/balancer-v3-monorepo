@@ -49,6 +49,7 @@ abstract contract BaseTest is Test, GasSnapshot {
     ERC20TestToken internal usdc;
     WETHTestToken internal weth;
     ERC20TestToken internal wsteth;
+    ERC20TestToken internal veBAL;
 
     // List of all ERC20 tokens
     IERC20[] internal tokens;
@@ -69,6 +70,7 @@ abstract contract BaseTest is Test, GasSnapshot {
         wsteth = createERC20("WSTETH", 18);
         weth = new WETHTestToken();
         vm.label(address(weth), "WETH");
+        veBAL = createERC20("veBAL", 18);
 
         // Fill the token list.
         tokens.push(dai);

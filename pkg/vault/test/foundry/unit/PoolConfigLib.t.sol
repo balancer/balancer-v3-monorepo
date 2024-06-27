@@ -17,7 +17,7 @@ contract PoolConfigLibTest is Test {
     uint256 private constant _MAX_UINT32_VALUE = type(uint32).max;
     uint256 private constant _MAX_UINT24_VALUE = type(uint24).max;
 
-    function testZeroConfigBytes() public {
+    function testZeroConfigBytes() public pure {
         PoolConfigBits config;
 
         assertEq(config.isPoolRegistered(), false, "isPoolRegistered mismatch (zero config)");
@@ -36,7 +36,7 @@ contract PoolConfigLibTest is Test {
 
     // #region Tests for main pool config settings
 
-    function testIsPoolRegistered() public {
+    function testIsPoolRegistered() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
             PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.POOL_REGISTERED_OFFSET)
@@ -44,13 +44,13 @@ contract PoolConfigLibTest is Test {
         assertTrue(config.isPoolRegistered(), "isPoolRegistered is false (getter)");
     }
 
-    function testSetPoolRegistered() public {
+    function testSetPoolRegistered() public pure {
         PoolConfigBits config;
         config = config.setPoolRegistered(true);
         assertTrue(config.isPoolRegistered(), "isPoolRegistered is false (setter)");
     }
 
-    function testIsPoolInitialized() public {
+    function testIsPoolInitialized() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
             PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.POOL_INITIALIZED_OFFSET)
@@ -58,13 +58,13 @@ contract PoolConfigLibTest is Test {
         assertTrue(config.isPoolInitialized(), "isPoolInitialized is false (getter)");
     }
 
-    function testSetPoolInitialized() public {
+    function testSetPoolInitialized() public pure {
         PoolConfigBits config;
         config = config.setPoolInitialized(true);
         assertTrue(config.isPoolInitialized(), "isPoolInitialized is false (setter)");
     }
 
-    function testIsPoolPaused() public {
+    function testIsPoolPaused() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
             PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.POOL_PAUSED_OFFSET)
@@ -72,13 +72,13 @@ contract PoolConfigLibTest is Test {
         assertTrue(config.isPoolPaused(), "isPoolPaused is false (getter)");
     }
 
-    function testSetPoolPaused() public {
+    function testSetPoolPaused() public pure {
         PoolConfigBits config;
         config = config.setPoolPaused(true);
         assertTrue(config.isPoolPaused(), "isPoolPaused is false (setter)");
     }
 
-    function testIsPoolInRecoveryMode() public {
+    function testIsPoolInRecoveryMode() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
             PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.POOL_RECOVERY_MODE_OFFSET)
@@ -86,7 +86,7 @@ contract PoolConfigLibTest is Test {
         assertTrue(config.isPoolInRecoveryMode(), "isPoolInRecoveryMode is false (getter)");
     }
 
-    function testSetPoolInRecoveryMode() public {
+    function testSetPoolInRecoveryMode() public pure {
         PoolConfigBits config;
         config = config.setPoolInRecoveryMode(true);
         assertTrue(config.isPoolInRecoveryMode(), "isPoolInRecoveryMode is false (setter)");
@@ -95,7 +95,7 @@ contract PoolConfigLibTest is Test {
     // #endregion
 
     // #region Tests for liquidity operations
-    function testSupportsUnbalancedLiquidity() public {
+    function testSupportsUnbalancedLiquidity() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
             PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.UNBALANCED_LIQUIDITY_OFFSET)
@@ -104,7 +104,7 @@ contract PoolConfigLibTest is Test {
         assertFalse(config.supportsUnbalancedLiquidity(), "supportsUnbalancedLiquidity is true (getter)");
     }
 
-    function testSetDisableUnbalancedLiquidity() public {
+    function testSetDisableUnbalancedLiquidity() public pure {
         PoolConfigBits config;
         config = config.setDisableUnbalancedLiquidity(true);
         // NOTE: assertFalse is here because supportsUnbalancedLiquidity reverse value
@@ -126,7 +126,7 @@ contract PoolConfigLibTest is Test {
         config.requireUnbalancedLiquidityEnabled();
     }
 
-    function testSupportsAddLiquidityCustom() public {
+    function testSupportsAddLiquidityCustom() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
             PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.ADD_LIQUIDITY_CUSTOM_OFFSET)
@@ -134,7 +134,7 @@ contract PoolConfigLibTest is Test {
         assertTrue(config.supportsAddLiquidityCustom(), "supportsAddLiquidityCustom is false (getter)");
     }
 
-    function testSetAddLiquidityCustom() public {
+    function testSetAddLiquidityCustom() public pure {
         PoolConfigBits config;
         config = config.setAddLiquidityCustom(true);
         assertTrue(config.supportsAddLiquidityCustom(), "supportsAddLiquidityCustom is false (setter)");
@@ -154,7 +154,7 @@ contract PoolConfigLibTest is Test {
         config.requireAddCustomLiquidityEnabled();
     }
 
-    function testSupportsRemoveLiquidityCustom() public {
+    function testSupportsRemoveLiquidityCustom() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
             PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.REMOVE_LIQUIDITY_CUSTOM_OFFSET)
@@ -162,7 +162,7 @@ contract PoolConfigLibTest is Test {
         assertTrue(config.supportsRemoveLiquidityCustom(), "supportsRemoveLiquidityCustom is false (getter)");
     }
 
-    function testSetRemoveLiquidityCustom() public {
+    function testSetRemoveLiquidityCustom() public pure {
         PoolConfigBits config;
         config = config.setRemoveLiquidityCustom(true);
         assertTrue(config.supportsRemoveLiquidityCustom(), "supportsRemoveLiquidityCustom is false (setter)");
@@ -185,7 +185,7 @@ contract PoolConfigLibTest is Test {
     // #endregion
 
     // #region Tests for uint values
-    function testGetAggregateSwapFeePercentage() public {
+    function testGetAggregateSwapFeePercentage() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
             PoolConfigBits.unwrap(config).insertUint(
@@ -202,7 +202,7 @@ contract PoolConfigLibTest is Test {
         );
     }
 
-    function testSetAggregateSwapFeePercentage() public {
+    function testSetAggregateSwapFeePercentage() public pure {
         PoolConfigBits config;
         uint256 value = _MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
         config = config.setAggregateSwapFeePercentage(value);
@@ -213,7 +213,7 @@ contract PoolConfigLibTest is Test {
         );
     }
 
-    function testGetAggregateYieldFeePercentage() public {
+    function testGetAggregateYieldFeePercentage() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
             PoolConfigBits.unwrap(config).insertUint(
@@ -230,7 +230,7 @@ contract PoolConfigLibTest is Test {
         );
     }
 
-    function testSetAggregateYieldFeePercentage() public {
+    function testSetAggregateYieldFeePercentage() public pure {
         PoolConfigBits config;
         uint256 value = _MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
         config = config.setAggregateYieldFeePercentage(value);
@@ -241,7 +241,7 @@ contract PoolConfigLibTest is Test {
         );
     }
 
-    function testGetTokenDecimalDiffs() public {
+    function testGetTokenDecimalDiffs() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
             PoolConfigBits.unwrap(config).insertUint(
@@ -257,14 +257,14 @@ contract PoolConfigLibTest is Test {
         );
     }
 
-    function testSetTokenDecimalDiffs() public {
+    function testSetTokenDecimalDiffs() public pure {
         PoolConfigBits config;
         uint24 value = uint24(_MAX_UINT24_VALUE);
         config = config.setTokenDecimalDiffs(value);
         assertEq(config.getTokenDecimalDiffs(), value, "tokenDecimalDiffs mismatch (testSetTokenDecimalDiffs)");
     }
 
-    function testGetDecimalScalingFactors() public {
+    function testGetDecimalScalingFactors() public pure {
         PoolConfigBits config;
         uint256 valueOne = 5;
         uint256 valueTwo = 20;
@@ -284,7 +284,7 @@ contract PoolConfigLibTest is Test {
         assertEq(scalingFactors[1], 1e38, "scalingFactors[1] mismatch");
     }
 
-    function testGetPauseWindowEndTime() public {
+    function testGetPauseWindowEndTime() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
             PoolConfigBits.unwrap(config).insertUint(
@@ -300,7 +300,7 @@ contract PoolConfigLibTest is Test {
         );
     }
 
-    function testSetPauseWindowEndTime() public {
+    function testSetPauseWindowEndTime() public pure {
         PoolConfigBits config;
         uint32 value = uint32(_MAX_UINT32_VALUE);
         config = config.setPauseWindowEndTime(value);
@@ -309,7 +309,7 @@ contract PoolConfigLibTest is Test {
 
     // #endregion
 
-    function testToTokenDecimalDiffs() public {
+    function testToTokenDecimalDiffs() public pure {
         uint8[] memory tokenDecimalDiffs = new uint8[](2);
         tokenDecimalDiffs[0] = 1;
         tokenDecimalDiffs[1] = 2;
