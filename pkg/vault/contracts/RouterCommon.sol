@@ -54,8 +54,21 @@ contract RouterCommon is IRouterCommon, VaultGuard {
 
     IPermit2 internal immutable _permit2;
 
+    /**
+     * @notice Saves the most external user/contract that called the router. There may be other nested calls to the
+     * router, but the sender will always be the most external user/contract that called it.
+     * @dev There are some transactions that requires the router to identify multiple senders. Consider the example:
+     * - ContractA has a function that calls the router, and calls contractB with the output of the router;
+     * - ContractB calls the router too;
+     * - The pool used by ContractA has a hook which calls the router.
+     * When the user calls the function of ContractA, there are three calls to the router in the same transaction:
+     * - 1st call: When ContractA calls the router directly, the sender is ContractA;
+     * - 2nd call: When the hook calls the router, the sender is still ContractA (nested in the first call);
+     * - 3rd call: When contractB calls the router, the sender is ContractB (this call is not nested in the first call).
+     */
     modifier saveSender() {
-        // Saves only the most external sender that called the router.
+        // isSenderLocked = false means that the sender is the most external one, so lock the sender slot and save the
+        // sender in the transient storage
         bool isSenderLocked = _getSenderLockedSlot().tload();
         if (isSenderLocked == false) {
             _getSenderLockedSlot().tstore(true);
@@ -65,6 +78,9 @@ contract RouterCommon is IRouterCommon, VaultGuard {
         _;
 
         if (isSenderLocked == false) {
+            // isSenderLocked = false means that the sender is the most external one, which means that the router
+            // operation is over. Discard the sender (so sender can be used in the same transaction by another router
+            // call) and unlock the sender slot.
             _discardSender();
             _getSenderLockedSlot().tstore(false);
         }
