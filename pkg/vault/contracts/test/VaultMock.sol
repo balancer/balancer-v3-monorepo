@@ -33,7 +33,6 @@ import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
 import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
 import { PoolDataLib } from "../lib/PoolDataLib.sol";
-import { BufferPackedTokenBalance } from "../lib/BufferPackedBalance.sol";
 
 struct SwapInternalStateLocals {
     SwapParams params;
@@ -50,7 +49,6 @@ contract VaultMock is IVaultMainMock, Vault {
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
-    using BufferPackedTokenBalance for bytes32;
 
     PoolFactoryMock private immutable _poolFactoryMock;
     InputHelpersMock private immutable _inputHelpersMock;

@@ -37,7 +37,6 @@ import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { HooksConfigLib, HooksConfigBits } from "./lib/HooksConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
-import { BufferPackedTokenBalance } from "./lib/BufferPackedBalance.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
@@ -50,7 +49,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using SafeERC20 for IERC20;
     using PoolConfigLib for PoolConfigBits;
     using ScalingHelpers for *;
-    using BufferPackedTokenBalance for bytes32;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
