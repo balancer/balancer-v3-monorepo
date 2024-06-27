@@ -148,6 +148,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
         if (drawnNumber == LUCKY_NUMBER) {
             address user = IRouterCommon(router).getSender();
 
+            // Iterating backwards is more efficient since the last element is removed from the map on each iteration
             for (uint256 i = _tokensWithAccruedFees.size; i > 0; i--) {
                 (IERC20 feeToken, ) = _tokensWithAccruedFees.at(i - 1);
                 _tokensWithAccruedFees.remove(feeToken);
