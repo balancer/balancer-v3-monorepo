@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
@@ -27,6 +28,7 @@ import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.s
 contract LotteryHookExample is BasePoolHooks, Ownable {
     using FixedPoint for uint256;
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
+    using SafeERC20 for IERC20;
 
     // Trusted router is needed since we rely on getSender() to know which user should receive the prize.
     address private immutable _trustedRouter;
