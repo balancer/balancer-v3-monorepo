@@ -84,7 +84,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
             drawnNumber = _getRandomNumber();
         }
 
-        // Increment counter to modify the drawn number in the next swap.
+        // Increment counter to help randomize the drawn number in the next swap.
         _counter++;
 
         hookAdjustedAmountCalculatedRaw = params.amountCalculatedRaw;
