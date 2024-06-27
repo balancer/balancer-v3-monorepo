@@ -66,16 +66,16 @@ contract RouterCommon is IRouterCommon, VaultGuard {
      *
      * When the user calls the function on ContractA, there are three calls to the router in the same transaction:
      * - 1st call: When ContractA calls the router directly, to initiate an operation on the pool (say, a swap).
-     * (Sender is contractA, initiator of the operation.)
+     *             (Sender is contractA, initiator of the operation.)
      *
      * - 2nd call: When the pool operation invokes a hook (say onBeforeSwap), which calls back into the router.
      *             This is a "nested" call within the original pool operation. The nested call returns, then the
      *             before hook returns, the router completes the operation, and finally returns back to ContractA
      *             with the result (e.g., a calculated amount of tokens).
-     * (Nested call; sender is still ContractA through all of this.)
+     *             (Nested call; sender is still ContractA through all of this.)
      *
      * - 3rd call: When the first operation is complete, ContractA calls ContractB, which in turn calls the router.
-     * (Not nested, as the original router call from contractA has returned. Sender is now ContractB.)
+     *             (Not nested, as the original router call from contractA has returned. Sender is now ContractB.)
      */
     modifier saveSender() {
         // isSenderLocked = false means that the sender is the most external one, so lock the sender slot and save the
