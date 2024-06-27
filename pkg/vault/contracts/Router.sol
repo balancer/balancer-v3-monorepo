@@ -1186,7 +1186,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         return results;
     }
 
-    function _getSignatureParts(bytes memory signature) private returns (SignatureParts memory signatureParts) {
+    function _getSignatureParts(bytes memory signature) private pure returns (SignatureParts memory signatureParts) {
         bytes32 r;
         bytes32 s;
         uint8 v;

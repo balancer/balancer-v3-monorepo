@@ -33,8 +33,8 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
     // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _SENDER_UNLOCKED_SLOT =
-        TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "senderUnlocked");
+    bytes32 private immutable _SENDER_LOCKED_SLOT =
+        TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "senderLocked");
 
     /// @dev Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
@@ -55,18 +55,18 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     IPermit2 internal immutable _permit2;
 
     modifier saveSender() {
-        bool isSenderUnlocked = _getSenderUnlockedSlot().tload();
-
-        if (isSenderUnlocked == false) {
-            _getSenderUnlockedSlot().tstore(true);
+        // Saves only the most external sender that called the router.
+        bool isSenderLocked = _getSenderLockedSlot().tload();
+        if (isSenderLocked == false) {
+            _getSenderLockedSlot().tstore(true);
         }
 
         _saveSender();
         _;
 
-        if (isSenderUnlocked == false) {
+        if (isSenderLocked == false) {
             _discardSender();
-            _getSenderUnlockedSlot().tstore(false);
+            _getSenderLockedSlot().tstore(false);
         }
     }
 
@@ -189,7 +189,7 @@ contract RouterCommon is IRouterCommon, VaultGuard {
         return _SENDER_SLOT.asAddress();
     }
 
-    function _getSenderUnlockedSlot() internal view returns (StorageSlot.BooleanSlotType) {
-        return _SENDER_UNLOCKED_SLOT.asBoolean();
+    function _getSenderLockedSlot() internal view returns (StorageSlot.BooleanSlotType) {
+        return _SENDER_LOCKED_SLOT.asBoolean();
     }
 }
