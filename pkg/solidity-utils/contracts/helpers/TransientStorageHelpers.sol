@@ -108,13 +108,11 @@ library TransientStorageHelpers {
 
     // Uint256
 
-    function tIncrement(StorageSlot.Uint256SlotType slot) internal returns (uint256 newValue) {
-        newValue = slot.tload() + 1;
-        slot.tstore(newValue);
+    function tIncrement(StorageSlot.Uint256SlotType slot) internal {
+        slot.tstore(slot.tload() + 1);
     }
 
-    function tDecrement(StorageSlot.Uint256SlotType slot) internal returns (uint256 newValue) {
-        newValue = slot.tload() - 1;
-        slot.tstore(newValue);
+    function tDecrement(StorageSlot.Uint256SlotType slot) internal {
+        slot.tstore(slot.tload() - 1);
     }
 }
