@@ -157,7 +157,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
                 //   discount is 100%;
                 // * We don't need to send tokens to the vault and then settle, which would be more expensive than
                 //   transferring tokens to the user directly.
-                feeToken.transfer(user, feeToken.balanceOf(address(this)));
+                feeToken.safeTransfer(user, feeToken.balanceOf(address(this)));
             }
             // Winner pays no fees
             return 0;
