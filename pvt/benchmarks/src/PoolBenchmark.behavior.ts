@@ -6,7 +6,7 @@ import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { saveSnap } from '@balancer-labs/v3-helpers/src/gas';
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
-import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
+import { FP_ZERO, fp, printGas } from '@balancer-labs/v3-helpers/src/numbers';
 import { MAX_UINT256, MAX_UINT160, MAX_UINT48, MAX_UINT128 } from '@balancer-labs/v3-helpers/src/constants';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
@@ -340,6 +340,94 @@ export class Benchmark {
       });
     };
 
+    const itTestsAddLiquidity = (
+      gasTag: string,
+      actionAfterInit: () => Promise<void>,
+      actionAfterFirstTx: () => Promise<void>
+    ) => {
+      sharedBeforeEach('deploy pool', async () => {
+        this.pool = (await this.deployPool())!;
+      });
+
+      sharedBeforeEach('set pool fee', async () => {
+        const setPoolSwapFeeAction = await actionId(this.vault, 'setStaticSwapFeePercentage');
+
+        const authorizerAddress = await this.vault.getAuthorizer();
+        const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
+
+        await authorizer.grantRole(setPoolSwapFeeAction, admin.address);
+
+        await this.vault.connect(admin).setStaticSwapFeePercentage(this.pool, SWAP_FEE);
+      });
+
+      sharedBeforeEach('initialize pool', async () => {
+        initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
+        await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+        await actionAfterInit();
+      });
+
+      it('pool and protocol fee preconditions', async () => {
+        const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(this.pool);
+
+        expect(poolConfig.isPoolRegistered).to.be.true;
+        expect(poolConfig.isPoolInitialized).to.be.true;
+
+        expect(await this.vault.getStaticSwapFeePercentage(this.pool)).to.eq(SWAP_FEE);
+      });
+
+      it('measures gas (proportional)', async () => {
+        const bptBalance = await this.vault.balanceOf(this.pool, alice);
+        const tx = await router
+          .connect(alice)
+          .addLiquidityProportional(this.pool, Array(poolTokens.length).fill(TOKEN_AMOUNT), bptBalance, false, '0x');
+
+        const receipt = await tx.wait();
+        await saveSnap(this._testDirname, `[${this._poolType} - ${gasTag}] add liquidity proportional`, receipt);
+      });
+
+      it('measures gas (unbalanced)', async () => {
+        const exactAmountsIn = Array(poolTokens.length)
+          .fill(TOKEN_AMOUNT)
+          .map((amount, index) => BigInt(amount / BigInt(index + 1)));
+
+        // Warm up
+        await router.connect(alice).addLiquidityUnbalanced(this.pool, exactAmountsIn, 0, false, '0x');
+
+        await actionAfterFirstTx();
+
+        // Measure
+        const tx = await router.connect(alice).addLiquidityUnbalanced(this.pool, exactAmountsIn, 0, false, '0x');
+        const receipt = await tx.wait();
+        await saveSnap(
+          this._testDirname,
+          `[${this._poolType} - ${gasTag}] add liquidity unbalanced - warm slots`,
+          receipt
+        );
+      });
+
+      it('measures gas (single token exact out)', async () => {
+        const bptBalance = await this.vault.balanceOf(this.pool, alice);
+        // Warm up
+        await router
+          .connect(alice)
+          .addLiquiditySingleTokenExactOut(this.pool, poolTokens[0], TOKEN_AMOUNT, bptBalance / 1000n, false, '0x');
+
+        await actionAfterFirstTx();
+
+        // Measure
+        const tx = await router
+          .connect(alice)
+          .addLiquiditySingleTokenExactOut(this.pool, poolTokens[1], TOKEN_AMOUNT, bptBalance / 1000n, false, '0x');
+
+        const receipt = await tx.wait();
+        await saveSnap(
+          this._testDirname,
+          `[${this._poolType} - ${gasTag}] add liquidity single token exact out - warm slots`,
+          receipt
+        );
+      });
+    };
+
     describe('test standard pool', () => {
       sharedBeforeEach(async () => {
         poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
@@ -359,6 +447,18 @@ export class Benchmark {
       });
 
       context('remove liquidity', () => {
+        itTestsRemoveLiquidity(
+          'Standard',
+          async () => {
+            return;
+          },
+          async () => {
+            return;
+          }
+        );
+      });
+
+      context('add liquidity', () => {
         itTestsRemoveLiquidity(
           'Standard',
           async () => {
@@ -403,6 +503,20 @@ export class Benchmark {
 
       context('remove liquidity', async () => {
         itTestsRemoveLiquidity(
+          'With rate',
+          async () => {
+            await this.tokenA.setRate(fp(1.1));
+            await this.tokenB.setRate(fp(1.1));
+          },
+          async () => {
+            await this.tokenA.setRate(fp(1.2));
+            await this.tokenB.setRate(fp(1.2));
+          }
+        );
+      });
+
+      context('add liquidity', async () => {
+        itTestsAddLiquidity(
           'With rate',
           async () => {
             await this.tokenA.setRate(fp(1.1));
