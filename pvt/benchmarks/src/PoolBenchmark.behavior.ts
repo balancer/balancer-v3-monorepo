@@ -20,7 +20,7 @@ import { sortAddresses } from '@balancer-labs/v3-helpers/src/models/tokens/sorti
 import { deployPermit2 } from '@balancer-labs/v3-vault/test/Permit2Deployer';
 import { IPermit2 } from '@balancer-labs/v3-vault/typechain-types/permit2/src/interfaces/IPermit2';
 import { IVault, ProtocolFeeController } from '@balancer-labs/v3-vault/typechain-types';
-import { WeightedPoolFactory } from '@balancer-labs/v3-pool-weighted/typechain-types';
+import { WeightedPool, WeightedPoolFactory } from '@balancer-labs/v3-pool-weighted/typechain-types';
 import { ERC20WithRateTestToken, WETHTestToken } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { BaseContract } from 'ethers';
 
@@ -32,7 +32,7 @@ export class Benchmark {
   tokenB!: ERC20WithRateTestToken;
   WETH!: WETHTestToken;
   factory!: WeightedPoolFactory;
-  pool!: BaseContract;
+  pool!: WeightedPool;
   tokenConfig!: TokenConfigStruct[];
 
   constructor(dirname: string, poolType: string) {
@@ -51,6 +51,7 @@ export class Benchmark {
     const TOKEN_AMOUNT = fp(100);
 
     const SWAP_AMOUNT = fp(20);
+    const LIQUIDITY_BPT_AMOUNT = fp(2);
     const SWAP_FEE = fp(0.01);
 
     let permit2: IPermit2;
@@ -232,6 +233,54 @@ export class Benchmark {
       });
     };
 
+    const itTestsLiquidity = () => {
+      sharedBeforeEach('deploy pool', async () => {
+        this.pool = (await this.deployPool())!;
+      });
+
+      sharedBeforeEach('set pool fee', async () => {
+        const setPoolSwapFeeAction = await actionId(this.vault, 'setStaticSwapFeePercentage');
+
+        const authorizerAddress = await this.vault.getAuthorizer();
+        const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
+
+        await authorizer.grantRole(setPoolSwapFeeAction, admin.address);
+
+        await this.vault.connect(admin).setStaticSwapFeePercentage(this.pool, SWAP_FEE);
+      });
+
+      sharedBeforeEach('initialize pool', async () => {
+        initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
+        await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+      });
+
+      it('pool and protocol fee preconditions', async () => {
+        const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(this.pool);
+
+        expect(poolConfig.isPoolRegistered).to.be.true;
+        expect(poolConfig.isPoolInitialized).to.be.true;
+
+        expect(await this.vault.getStaticSwapFeePercentage(this.pool)).to.eq(SWAP_FEE);
+      });
+
+      it('measures gas add liquidity proportional', async () => {
+        const tx = await router
+          .connect(alice)
+          .addLiquidityProportional(this.pool, [TOKEN_AMOUNT, TOKEN_AMOUNT], LIQUIDITY_BPT_AMOUNT, false, '0x');
+
+        await saveSnap(this._testDirname, `[${this._poolType}] add liquidity proportional`, await tx.wait());
+      });
+
+      it('measures gas remove liquidity proportional', async () => {
+        const amount = await this.vault.balanceOf(this.pool, alice);
+        await (await this.pool.connect(alice).approve(await router.getAddress(), amount)).wait();
+
+        const tx = await router.connect(alice).removeLiquidityProportional(this.pool, amount, [1, 1], false, '0x');
+
+        await saveSnap(this._testDirname, `[${this._poolType}] remove liquidity proportional`, await tx.wait());
+      });
+    };
+
     describe('test standard pool', () => {
       sharedBeforeEach(async () => {
         poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
@@ -280,6 +329,15 @@ export class Benchmark {
 
     describe('test donation', () => {
       itTestsDonation();
+    });
+
+    describe('test liquidity', () => {
+      sharedBeforeEach(async () => {
+        poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
+        this.tokenConfig = buildTokenConfig(poolTokens, true);
+      });
+
+      itTestsLiquidity();
     });
   };
 }
