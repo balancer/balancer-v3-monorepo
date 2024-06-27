@@ -168,7 +168,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
             // add token to map of tokens with accrued fees
             _tokensWithAccruedFees.set(token, 1);
 
-            // Collect fees from the vault (user will pay it when the router settles the swap)
+            // Collect fees from the vault; user will pay them when the router settles the swap.
             _vault.sendTo(token, address(this), hookFee);
             return hookFee;
         }
