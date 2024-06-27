@@ -55,16 +55,27 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     IPermit2 internal immutable _permit2;
 
     /**
-     * @notice Saves the most external user/contract that called the router. There may be other nested calls to the
-     * router, but the sender will always be the most external user/contract that called it.
-     * @dev There are some transactions that requires the router to identify multiple senders. Consider the example:
-     * - ContractA has a function that calls the router, and calls contractB with the output of the router;
-     * - ContractB calls the router too;
-     * - The pool used by ContractA has a hook which calls the router.
-     * When the user calls the function of ContractA, there are three calls to the router in the same transaction:
-     * - 1st call: When ContractA calls the router directly, the sender is ContractA;
-     * - 2nd call: When the hook calls the router, the sender is still ContractA (nested in the first call);
-     * - 3rd call: When contractB calls the router, the sender is ContractB (this call is not nested in the first call).
+     * @notice Saves the user or contract that initiated the current operation.
+     * @dev It is possible to nest router calls (e.g., with reentrant hooks), but the sender returned by the router's
+     * `getSender` function will always be the "outermost" caller. Some transactions require the router to identify
+     * multiple senders. Consider the following example:
+     *
+     * - ContractA has a function that calls the router, then calls ContractB with the output. ContractB in turn
+     * calls back into the router.
+     * - Imagine further that ContractA is a pool with a "before" hook that also calls the router.
+     *
+     * When the user calls the function on ContractA, there are three calls to the router in the same transaction:
+     * - 1st call: When ContractA calls the router directly, to initiate an operation on the pool (say, a swap).
+     * (Sender is contractA, initiator of the operation.)
+     *
+     * - 2nd call: When the pool operation invokes a hook (say onBeforeSwap), which calls back into the router.
+     *             This is a "nested" call within the original pool operation. The nested call returns, then the
+     *             before hook returns, the router completes the operation, and finally returns back to ContractA
+     *             with the result (e.g., a calculated amount of tokens).
+     * (Nested call; sender is still ContractA through all of this.)
+     *
+     * - 3rd call: When the first operation is complete, ContractA calls ContractB, which in turn calls the router.
+     * (Not nested, as the original router call from contractA has returned. Sender is now ContractB.)
      */
     modifier saveSender() {
         // isSenderLocked = false means that the sender is the most external one, so lock the sender slot and save the
