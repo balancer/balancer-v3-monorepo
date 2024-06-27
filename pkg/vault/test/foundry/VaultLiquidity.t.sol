@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolConfig, HooksConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -266,6 +266,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         // Disable unbalanced liquidity
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
         poolConfigBits.liquidityManagement.disableUnbalancedLiquidity = true;
+
         vault.manualSetPoolConfig(pool, poolConfigBits);
 
         vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
@@ -295,6 +296,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         // Disable remove custom liquidity
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
         poolConfigBits.liquidityManagement.enableRemoveLiquidityCustom = false;
+
         vault.manualSetPoolConfig(pool, poolConfigBits);
 
         vm.expectRevert(IVaultErrors.DoesNotSupportRemoveLiquidityCustom.selector);
