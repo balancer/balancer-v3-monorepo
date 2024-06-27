@@ -7,12 +7,8 @@ import "forge-std/Test.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import {
-    FEE_SCALING_FACTOR,
-    PoolData,
-    Rounding,
-    PoolRoleAccounts
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { FEE_SCALING_FACTOR, PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
@@ -79,7 +75,6 @@ contract YieldFeesTest is BaseVaultTest {
                 poolRoleAccounts,
                 swapFee,
                 address(0),
-                false,
                 bytes32(0)
             )
         );
