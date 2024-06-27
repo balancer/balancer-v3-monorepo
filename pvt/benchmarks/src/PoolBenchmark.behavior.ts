@@ -135,32 +135,7 @@ export class Benchmark {
       });
     };
 
-    const itTestsSwap = (
-      gasTag: string,
-      actionAfterInit: () => Promise<void>,
-      actionAfterFirstTx: () => Promise<void>
-    ) => {
-      sharedBeforeEach('deploy pool', async () => {
-        this.pool = (await this.deployPool())!;
-      });
-
-      sharedBeforeEach('set pool fee', async () => {
-        const setPoolSwapFeeAction = await actionId(this.vault, 'setStaticSwapFeePercentage');
-
-        const authorizerAddress = await this.vault.getAuthorizer();
-        const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
-
-        await authorizer.grantRole(setPoolSwapFeeAction, admin.address);
-
-        await this.vault.connect(admin).setStaticSwapFeePercentage(this.pool, SWAP_FEE);
-      });
-
-      sharedBeforeEach('initialize pool', async () => {
-        initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
-        await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
-        await actionAfterInit();
-      });
-
+    const itTestsSwap = (gasTag: string, actionAfterFirstTx: () => Promise<void>) => {
       it('pool and protocol fee preconditions', async () => {
         const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(this.pool);
 
@@ -233,32 +208,7 @@ export class Benchmark {
       });
     };
 
-    const itTestsRemoveLiquidity = (
-      gasTag: string,
-      actionAfterInit: () => Promise<void>,
-      actionAfterFirstTx: () => Promise<void>
-    ) => {
-      sharedBeforeEach('deploy pool', async () => {
-        this.pool = (await this.deployPool())!;
-      });
-
-      sharedBeforeEach('set pool fee', async () => {
-        const setPoolSwapFeeAction = await actionId(this.vault, 'setStaticSwapFeePercentage');
-
-        const authorizerAddress = await this.vault.getAuthorizer();
-        const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
-
-        await authorizer.grantRole(setPoolSwapFeeAction, admin.address);
-
-        await this.vault.connect(admin).setStaticSwapFeePercentage(this.pool, SWAP_FEE);
-      });
-
-      sharedBeforeEach('initialize pool', async () => {
-        initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
-        await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
-        await actionAfterInit();
-      });
-
+    const itTestsRemoveLiquidity = (gasTag: string, actionAfterFirstTx: () => Promise<void>) => {
       sharedBeforeEach('approve router to spend BPT', async () => {
         const bpt: IERC20 = await TypesConverter.toIERC20(this.pool);
         await bpt.connect(alice).approve(router, MAX_UINT256);
@@ -340,32 +290,7 @@ export class Benchmark {
       });
     };
 
-    const itTestsAddLiquidity = (
-      gasTag: string,
-      actionAfterInit: () => Promise<void>,
-      actionAfterFirstTx: () => Promise<void>
-    ) => {
-      sharedBeforeEach('deploy pool', async () => {
-        this.pool = (await this.deployPool())!;
-      });
-
-      sharedBeforeEach('set pool fee', async () => {
-        const setPoolSwapFeeAction = await actionId(this.vault, 'setStaticSwapFeePercentage');
-
-        const authorizerAddress = await this.vault.getAuthorizer();
-        const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
-
-        await authorizer.grantRole(setPoolSwapFeeAction, admin.address);
-
-        await this.vault.connect(admin).setStaticSwapFeePercentage(this.pool, SWAP_FEE);
-      });
-
-      sharedBeforeEach('initialize pool', async () => {
-        initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
-        await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
-        await actionAfterInit();
-      });
-
+    const itTestsAddLiquidity = (gasTag: string, actionAfterFirstTx: () => Promise<void>) => {
       it('pool and protocol fee preconditions', async () => {
         const poolConfig: PoolConfigStructOutput = await this.vault.getPoolConfig(this.pool);
 
@@ -428,46 +353,42 @@ export class Benchmark {
       });
     };
 
+    const deployAndInitializePool = async () => {
+      this.pool = (await this.deployPool())!;
+
+      const setPoolSwapFeeAction = await actionId(this.vault, 'setStaticSwapFeePercentage');
+      const authorizerAddress = await this.vault.getAuthorizer();
+      const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
+      await authorizer.grantRole(setPoolSwapFeeAction, admin.address);
+      await this.vault.connect(admin).setStaticSwapFeePercentage(this.pool, SWAP_FEE);
+
+      initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
+      await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+    };
+
     describe('test standard pool', () => {
-      sharedBeforeEach(async () => {
+      sharedBeforeEach('deploy and initialize pool', async () => {
         poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
         this.tokenConfig = buildTokenConfig(poolTokens, false);
+        await deployAndInitializePool();
       });
 
       context('swap', () => {
-        itTestsSwap(
-          'Standard',
-          async () => {
-            return;
-          },
-          async () => {
-            return;
-          }
-        );
+        itTestsSwap('Standard', async () => {
+          return;
+        });
       });
 
       context('remove liquidity', () => {
-        itTestsRemoveLiquidity(
-          'Standard',
-          async () => {
-            return;
-          },
-          async () => {
-            return;
-          }
-        );
+        itTestsRemoveLiquidity('Standard', async () => {
+          return;
+        });
       });
 
       context('add liquidity', () => {
-        itTestsAddLiquidity(
-          'Standard',
-          async () => {
-            return;
-          },
-          async () => {
-            return;
-          }
-        );
+        itTestsAddLiquidity('Standard', async () => {
+          return;
+        });
       });
     });
 
@@ -485,48 +406,30 @@ export class Benchmark {
       sharedBeforeEach(async () => {
         poolTokens = sortAddresses([tokenAAddress, tokenBAddress]);
         this.tokenConfig = buildTokenConfig(poolTokens, true);
+        await deployAndInitializePool();
+        await this.tokenA.setRate(fp(1.1));
+        await this.tokenB.setRate(fp(1.1));
       });
 
       context('swap', () => {
-        itTestsSwap(
-          'With rate',
-          async () => {
-            await this.tokenA.setRate(fp(1.1));
-            await this.tokenB.setRate(fp(1.1));
-          },
-          async () => {
-            await this.tokenA.setRate(fp(1.2));
-            await this.tokenB.setRate(fp(1.2));
-          }
-        );
+        itTestsSwap('With rate', async () => {
+          await this.tokenA.setRate(fp(1.2));
+          await this.tokenB.setRate(fp(1.2));
+        });
       });
 
       context('remove liquidity', async () => {
-        itTestsRemoveLiquidity(
-          'With rate',
-          async () => {
-            await this.tokenA.setRate(fp(1.1));
-            await this.tokenB.setRate(fp(1.1));
-          },
-          async () => {
-            await this.tokenA.setRate(fp(1.2));
-            await this.tokenB.setRate(fp(1.2));
-          }
-        );
+        itTestsRemoveLiquidity('With rate', async () => {
+          await this.tokenA.setRate(fp(1.2));
+          await this.tokenB.setRate(fp(1.2));
+        });
       });
 
       context('add liquidity', async () => {
-        itTestsAddLiquidity(
-          'With rate',
-          async () => {
-            await this.tokenA.setRate(fp(1.1));
-            await this.tokenB.setRate(fp(1.1));
-          },
-          async () => {
-            await this.tokenA.setRate(fp(1.2));
-            await this.tokenB.setRate(fp(1.2));
-          }
-        );
+        itTestsAddLiquidity('With rate', async () => {
+          await this.tokenA.setRate(fp(1.2));
+          await this.tokenB.setRate(fp(1.2));
+        });
       });
     });
 
