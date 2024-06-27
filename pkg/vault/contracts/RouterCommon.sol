@@ -33,8 +33,8 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
     // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _SENDER_COUNTER_SLOT =
-        TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "senderCounter");
+    bytes32 private immutable _SENDER_UNLOCKED_SLOT =
+        TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "senderUnlocked");
 
     /// @dev Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
@@ -55,9 +55,19 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     IPermit2 internal immutable _permit2;
 
     modifier saveSender() {
+        bool isSenderUnlocked = _getSenderUnlockedSlot().tload();
+
+        if (isSenderUnlocked == false) {
+            _getSenderUnlockedSlot().tstore(true);
+        }
+
         _saveSender();
         _;
-        _discardSender();
+
+        if (isSenderUnlocked == false) {
+            _discardSender();
+            _getSenderUnlockedSlot().tstore(false);
+        }
     }
 
     function _saveSender() internal {
@@ -67,19 +77,10 @@ contract RouterCommon is IRouterCommon, VaultGuard {
         if (sender == address(0)) {
             _getSenderSlot().tstore(msg.sender);
         }
-
-        // Sender counter stores the difference between _saveSender and _discardSender calls. If this difference is 0,
-        // sender address is discarded and router allows a new sender to call it in the same transaction.
-        _getSenderCounterSlot().tIncrement();
     }
 
     function _discardSender() internal {
-        uint256 senderCounter = _getSenderCounterSlot().tDecrement();
-        // If _saveSender and _discardSender were called the same number of times (senderCounter == 0), discard the
-        // sender address, so the router is able to store a new sender in the next call.
-        if (senderCounter == 0) {
-            _getSenderSlot().tstore(address(0));
-        }
+        _getSenderSlot().tstore(address(0));
     }
 
     constructor(IVault vault, IWETH weth, IPermit2 permit2) VaultGuard(vault) {
@@ -188,7 +189,7 @@ contract RouterCommon is IRouterCommon, VaultGuard {
         return _SENDER_SLOT.asAddress();
     }
 
-    function _getSenderCounterSlot() internal view returns (StorageSlot.Uint256SlotType) {
-        return _SENDER_COUNTER_SLOT.asUint256();
+    function _getSenderUnlockedSlot() internal view returns (StorageSlot.BooleanSlotType) {
+        return _SENDER_UNLOCKED_SLOT.asBoolean();
     }
 }
