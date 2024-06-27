@@ -43,7 +43,8 @@ library EnumerableMap {
     // The original OpenZeppelin implementation uses a generic Map type with bytes32 keys: this was replaced with
     // IERC20ToBytes32Map and IERC20ToUint256Map, resulting in more dense bytecode (as long as each contract only uses
     // one of these - there'll otherwise be duplicated code).
-    // NOTE: IERC20ToBytes32Map has a limit of entries, as it uses a uint96 (max value = 79228162514264337593543950335) for the length of the entries array.
+    // NOTE: IERC20ToBytes32Map has a limit of entries, as it uses a uint96 (max value = 79228162514264337593543950335) for
+    // the length of the entries array.
 
     // IERC20ToBytes32Map
 
