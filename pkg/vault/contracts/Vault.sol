@@ -223,6 +223,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // where the dynamic fee computation logic uses it.
         (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = hooksConfig.callComputeDynamicSwapFeeHook(
             swapParams,
+            params.pool,
             state.swapFeePercentage
         );
         if (dynamicSwapFeeCalculated) {

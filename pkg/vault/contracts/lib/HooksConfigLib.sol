@@ -158,6 +158,7 @@ library HooksConfigLib {
      *
      * @param config The encoded hooks configuration
      * @param swapParams The swap parameters used to calculate the fee
+     * @param pool Pool address
      * @param staticSwapFeePercentage Value of the static swap fee, for reference
      * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
      * @return swapFeePercentage the calculated swap fee percentage. 0 if hook is disabled
@@ -165,6 +166,7 @@ library HooksConfigLib {
     function callComputeDynamicSwapFeeHook(
         HooksConfigBits config,
         IBasePool.PoolSwapParams memory swapParams,
+        address pool,
         uint256 staticSwapFeePercentage
     ) internal view returns (bool, uint256) {
         if (config.shouldCallComputeDynamicSwapFee() == false) {
@@ -173,6 +175,7 @@ library HooksConfigLib {
 
         (bool success, uint256 swapFeePercentage) = IHooks(config.getHooksContract()).onComputeDynamicSwapFee(
             swapParams,
+            pool,
             staticSwapFeePercentage
         );
 
