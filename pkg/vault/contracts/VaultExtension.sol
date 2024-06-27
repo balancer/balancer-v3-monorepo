@@ -394,7 +394,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolData.reloadBalancesAndRates(_poolTokenBalances[pool], Rounding.ROUND_DOWN);
 
             // Also update exactAmountsInScaled18, in case the underlying rates changed.
-            exactAmountsInScaled18 = exactAmountsIn.copyToScaled18ApplyRateRoundDownArray(
+            exactAmountsInScaled18.updateToScaled18ApplyRateRoundDownArray(
+                exactAmountsIn,
                 poolData.decimalScalingFactors,
                 poolData.tokenRates
             );

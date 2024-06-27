@@ -551,7 +551,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.reloadBalancesAndRates(_poolTokenBalances[params.pool], Rounding.ROUND_UP);
 
             // Also update maxAmountsInScaled18, as the rates might have changed.
-            maxAmountsInScaled18 = params.maxAmountsIn.copyToScaled18ApplyRateRoundDownArray(
+            maxAmountsInScaled18.updateToScaled18ApplyRateRoundDownArray(
+                params.maxAmountsIn,
                 poolData.decimalScalingFactors,
                 poolData.tokenRates
             );
@@ -790,7 +791,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.reloadBalancesAndRates(_poolTokenBalances[params.pool], Rounding.ROUND_DOWN);
 
             // Also update minAmountsOutScaled18, as the rates might have changed.
-            minAmountsOutScaled18 = params.minAmountsOut.copyToScaled18ApplyRateRoundUpArray(
+            minAmountsOutScaled18.updateToScaled18ApplyRateRoundUpArray(
+                params.minAmountsOut,
                 poolData.decimalScalingFactors,
                 poolData.tokenRates
             );

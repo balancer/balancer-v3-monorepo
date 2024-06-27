@@ -148,15 +148,24 @@ library ScalingHelpers {
         uint256[] memory scalingFactors,
         uint256[] memory tokenRates
     ) internal pure returns (uint256[] memory) {
-        uint256 length = amounts.length;
+        uint256[] memory amountsScaled18 = new uint256[](amounts.length);
+        updateToScaled18ApplyRateRoundDownArray(amountsScaled18, amounts, scalingFactors, tokenRates);
+
+        return amountsScaled18;
+    }
+
+    function updateToScaled18ApplyRateRoundDownArray(
+        uint256[] memory amountsScaled18,
+        uint256[] memory amounts,
+        uint256[] memory scalingFactors,
+        uint256[] memory tokenRates
+    ) internal pure {
+        uint256 length = amountsScaled18.length;
         InputHelpers.ensureInputLengthMatch(length, scalingFactors.length, tokenRates.length);
-        uint256[] memory amountsScaled18 = new uint256[](length);
 
         for (uint256 i = 0; i < length; ++i) {
             amountsScaled18[i] = amounts[i].toScaled18ApplyRateRoundDown(scalingFactors[i], tokenRates[i]);
         }
-
-        return amountsScaled18;
     }
 
     /**
@@ -197,15 +206,24 @@ library ScalingHelpers {
         uint256[] memory scalingFactors,
         uint256[] memory tokenRates
     ) internal pure returns (uint256[] memory) {
-        uint256 length = amounts.length;
+        uint256[] memory amountsScaled18 = new uint256[](amounts.length);
+        updateToScaled18ApplyRateRoundUpArray(amountsScaled18, amounts, scalingFactors, tokenRates);
+
+        return amountsScaled18;
+    }
+
+    function updateToScaled18ApplyRateRoundUpArray(
+        uint256[] memory amountsScaled18,
+        uint256[] memory amounts,
+        uint256[] memory scalingFactors,
+        uint256[] memory tokenRates
+    ) internal pure {
+        uint256 length = amountsScaled18.length;
         InputHelpers.ensureInputLengthMatch(length, scalingFactors.length, tokenRates.length);
-        uint256[] memory amountsScaled18 = new uint256[](length);
 
         for (uint256 i = 0; i < length; ++i) {
             amountsScaled18[i] = amounts[i].toScaled18ApplyRateRoundUp(scalingFactors[i], tokenRates[i]);
         }
-
-        return amountsScaled18;
     }
 
     /**
