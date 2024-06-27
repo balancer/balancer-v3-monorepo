@@ -67,6 +67,22 @@ export class Benchmark {
 
     let poolTokens: string[];
 
+    const setStaticSwapFeePercentage = async () => {
+      const setPoolSwapFeeAction = await actionId(this.vault, 'setStaticSwapFeePercentage');
+
+      const authorizerAddress = await this.vault.getAuthorizer();
+      const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
+
+      await authorizer.grantRole(setPoolSwapFeeAction, admin.address);
+
+      await this.vault.connect(admin).setStaticSwapFeePercentage(this.pool, SWAP_FEE);
+    };
+
+    const initializePool = async () => {
+      initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
+      await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+    };
+
     before('setup signers', async () => {
       [, alice, admin] = await ethers.getSigners();
     });
@@ -145,19 +161,11 @@ export class Benchmark {
       });
 
       sharedBeforeEach('set pool fee', async () => {
-        const setPoolSwapFeeAction = await actionId(this.vault, 'setStaticSwapFeePercentage');
-
-        const authorizerAddress = await this.vault.getAuthorizer();
-        const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
-
-        await authorizer.grantRole(setPoolSwapFeeAction, admin.address);
-
-        await this.vault.connect(admin).setStaticSwapFeePercentage(this.pool, SWAP_FEE);
+        await setStaticSwapFeePercentage();
       });
 
       sharedBeforeEach('initialize pool', async () => {
-        initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
-        await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+        await initializePool();
         await actionAfterInit();
       });
 
@@ -213,8 +221,7 @@ export class Benchmark {
       });
 
       sharedBeforeEach('initialize pool', async () => {
-        initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
-        await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+        await initializePool();
       });
 
       it('pool preconditions', async () => {
@@ -239,19 +246,11 @@ export class Benchmark {
       });
 
       sharedBeforeEach('set pool fee', async () => {
-        const setPoolSwapFeeAction = await actionId(this.vault, 'setStaticSwapFeePercentage');
-
-        const authorizerAddress = await this.vault.getAuthorizer();
-        const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
-
-        await authorizer.grantRole(setPoolSwapFeeAction, admin.address);
-
-        await this.vault.connect(admin).setStaticSwapFeePercentage(this.pool, SWAP_FEE);
+        await setStaticSwapFeePercentage();
       });
 
       sharedBeforeEach('initialize pool', async () => {
-        initialBalances = Array(poolTokens.length).fill(TOKEN_AMOUNT);
-        await router.connect(alice).initialize(this.pool, poolTokens, initialBalances, FP_ZERO, false, '0x');
+        await initializePool();
       });
 
       it('pool and protocol fee preconditions', async () => {
