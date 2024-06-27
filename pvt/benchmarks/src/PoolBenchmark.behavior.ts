@@ -459,7 +459,7 @@ export class Benchmark {
       });
 
       context('add liquidity', () => {
-        itTestsRemoveLiquidity(
+        itTestsAddLiquidity(
           'Standard',
           async () => {
             return;
