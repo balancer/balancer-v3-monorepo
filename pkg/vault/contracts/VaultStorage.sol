@@ -20,10 +20,10 @@ import {
     AddressArraySlotType,
     TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
-import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 
 // solhint-disable max-states-count
 
