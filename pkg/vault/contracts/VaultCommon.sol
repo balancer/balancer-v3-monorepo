@@ -315,6 +315,29 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         return _upOrDown(newRawBalance, poolData.decimalScalingFactors[tokenIndex], poolData.tokenRates[tokenIndex]);
     }
 
+
+    function _setStaticSwapFeePercentage(
+        address pool,
+        uint256 swapFeePercentage
+    ) internal {
+        // These cannot be called during pool construction. Pools must be deployed first, then registered.
+        if (swapFeePercentage < ISwapFeePercentageBounds(pool).getMinimumSwapFeePercentage()) {
+            revert IVaultErrors.SwapFeePercentageTooLow();
+        }
+
+        // Still has to be a valid percentage, regardless of what the pool defines.
+        if (
+            swapFeePercentage > ISwapFeePercentageBounds(pool).getMaximumSwapFeePercentage() ||
+            swapFeePercentage > FixedPoint.ONE
+        ) {
+            revert IVaultErrors.SwapFeePercentageTooHigh();
+        }
+
+        _poolConfigBits[pool] = _poolConfigBits[pool].setStaticSwapFeePercentage(swapFeePercentage);
+
+        emit IVaultEvents.SwapFeePercentageChanged(pool, swapFeePercentage);
+    }
+
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/

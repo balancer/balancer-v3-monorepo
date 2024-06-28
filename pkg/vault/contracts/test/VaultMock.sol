@@ -196,7 +196,7 @@ contract VaultMock is IVaultMainMock, Vault {
         poolConfigBits = poolConfigBits.setPoolInitialized(config.isPoolInitialized);
         poolConfigBits = poolConfigBits.setPoolInRecoveryMode(config.isPoolInRecoveryMode);
         poolConfigBits = poolConfigBits.setPoolPaused(config.isPoolPaused);
-        poolConfigBits = poolConfigBits._setStaticSwapFeePercentage(config.staticSwapFeePercentage);
+        poolConfigBits = poolConfigBits.setStaticSwapFeePercentage(config.staticSwapFeePercentage);
         poolConfigBits = poolConfigBits.setAggregateSwapFeePercentage(config.aggregateSwapFeePercentage);
         poolConfigBits = poolConfigBits.setAggregateYieldFeePercentage(config.aggregateYieldFeePercentage);
         poolConfigBits = poolConfigBits.setTokenDecimalDiffs(config.tokenDecimalDiffs);
@@ -211,6 +211,10 @@ contract VaultMock is IVaultMainMock, Vault {
         poolConfigBits = poolConfigBits.setDonation(config.liquidityManagement.enableDonation);
 
         _poolConfigBits[pool] = poolConfigBits;
+    }
+
+    function manualSetStaticSwapFeePercentage(address pool, uint256 value) public {
+        _setStaticSwapFeePercentage(pool, value);
     }
 
     function manualSetPoolConfigBits(address pool, PoolConfigBits config) public {

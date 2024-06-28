@@ -312,7 +312,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             _poolConfigBits[pool] = poolConfigBits;
         }
 
-        PoolConfigLib.setStaticSwapFeePercentage(_poolConfigBits, pool, params.swapFeePercentage);
+        // Static swap fee percentage has special limits, so we don't use the library function directly.
+        _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
         emit PoolRegistered(

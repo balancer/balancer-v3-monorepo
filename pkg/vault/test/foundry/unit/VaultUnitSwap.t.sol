@@ -315,7 +315,7 @@ contract VaultUnitSwapTest is BaseTest {
 
         poolData.poolConfigBits = poolData
             .poolConfigBits
-            ._setStaticSwapFeePercentage(swapFeePercentage)
+            .setStaticSwapFeePercentage(swapFeePercentage)
             .setAggregateSwapFeePercentage(_getAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage));
 
         poolData.balancesLiveScaled18 = new uint256[](initialBalances.length);

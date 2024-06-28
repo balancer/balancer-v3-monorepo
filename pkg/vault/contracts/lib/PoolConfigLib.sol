@@ -79,8 +79,7 @@ library PoolConfigLib {
         return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
     }
 
-    // solhint-disable-next-line private-vars-leading-underscore
-    function _setStaticSwapFeePercentage(PoolConfigBits config, uint256 value) internal pure returns (PoolConfigBits) {
+    function setStaticSwapFeePercentage(PoolConfigBits config, uint256 value) internal pure returns (PoolConfigBits) {
         if (value > MAX_FEE_PERCENTAGE) {
             revert InvalidPercentage(value);
         }
@@ -260,28 +259,5 @@ library PoolConfigLib {
         }
 
         return scalingFactors;
-    }
-
-    function setStaticSwapFeePercentage(
-        mapping(address => PoolConfigBits) storage poolConfigBits,
-        address pool,
-        uint256 swapFeePercentage
-    ) internal {
-        // These cannot be called during pool construction. Pools must be deployed first, then registered.
-        if (swapFeePercentage < ISwapFeePercentageBounds(pool).getMinimumSwapFeePercentage()) {
-            revert IVaultErrors.SwapFeePercentageTooLow();
-        }
-
-        // Still has to be a valid percentage, regardless of what the pool defines.
-        if (
-            swapFeePercentage > ISwapFeePercentageBounds(pool).getMaximumSwapFeePercentage() ||
-            swapFeePercentage > FixedPoint.ONE
-        ) {
-            revert IVaultErrors.SwapFeePercentageTooHigh();
-        }
-
-        poolConfigBits[pool] = poolConfigBits[pool]._setStaticSwapFeePercentage(swapFeePercentage);
-
-        emit IVaultEvents.SwapFeePercentageChanged(pool, swapFeePercentage);
     }
 }

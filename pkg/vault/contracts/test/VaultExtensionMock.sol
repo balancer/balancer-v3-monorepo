@@ -17,7 +17,7 @@ contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
     }
 
     function manuallySetSwapFee(address pool, uint256 newSwapFee) external {
-        _poolConfigBits[pool] = _poolConfigBits[pool]._setStaticSwapFeePercentage(newSwapFee);
+        _poolConfigBits[pool] = _poolConfigBits[pool].setStaticSwapFeePercentage(newSwapFee);
     }
 
     function manualRegisterPoolReentrancy(

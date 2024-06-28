@@ -8,6 +8,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 
@@ -25,6 +26,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
 
     // The balance and live balance are stored in the same bytes32 word, each uses 128 bits
     uint256 private constant _MAX_RAW_BALANCE = 2 ** 128 - 1;
+    uint256 private constant MAX_TEST_SWAP_FEE = 1e17;
+    uint256 private constant MIN_TEST_SWAP_FEE = 1e10;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -335,5 +338,57 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
 
         assertEq(vault.getTokenDelta(dai), 0, "Incorrect token delta (token)");
         assertEq(vault.getNonzeroDeltaCount(), startingNonZeroDeltaCount - 1, "Incorrect non-zero delta count");
+    }
+
+    function testSetStaticSwapFeePercentage__Fuzz(uint256 fee) public {
+        vault.manualSetPoolRegistered(pool, true);
+        fee = bound(fee, MIN_TEST_SWAP_FEE, MAX_TEST_SWAP_FEE);
+        vm.mockCall(
+            address(pool),
+            abi.encodeWithSelector(ISwapFeePercentageBounds.getMinimumSwapFeePercentage.selector),
+            abi.encode(MIN_TEST_SWAP_FEE)
+        );
+        vm.mockCall(
+            address(pool),
+            abi.encodeWithSelector(ISwapFeePercentageBounds.getMaximumSwapFeePercentage.selector),
+            abi.encode(MAX_TEST_SWAP_FEE)
+        );
+
+        vm.expectEmit();
+        emit IVaultEvents.SwapFeePercentageChanged(pool, fee);
+
+        vault.manualSetStaticSwapFeePercentage(pool, fee);
+        uint256 feeTruncated = (fee / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
+        assertEq(vault.getStaticSwapFeePercentage(pool), feeTruncated, "Wrong static swap fee percentage");
+    }
+
+    function testSetStaticSwapFeePercentageOutsideBounds() public {
+        vault.manualSetPoolRegistered(pool, true);
+        vm.mockCall(
+            address(pool),
+            abi.encodeWithSelector(ISwapFeePercentageBounds.getMinimumSwapFeePercentage.selector),
+            abi.encode(MIN_TEST_SWAP_FEE)
+        );
+        vm.mockCall(
+            address(pool),
+            abi.encodeWithSelector(ISwapFeePercentageBounds.getMaximumSwapFeePercentage.selector),
+            abi.encode(MAX_TEST_SWAP_FEE)
+        );
+
+        vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
+        vault.manualSetStaticSwapFeePercentage(pool, MIN_TEST_SWAP_FEE - 1);
+
+        vm.expectRevert(IVaultErrors.SwapFeePercentageTooHigh.selector);
+        vault.manualSetStaticSwapFeePercentage(pool, MAX_TEST_SWAP_FEE + 1);
+
+        vm.mockCall(
+            address(pool),
+            abi.encodeWithSelector(ISwapFeePercentageBounds.getMaximumSwapFeePercentage.selector),
+            abi.encode(MAX_FEE_PERCENTAGE + 10)
+        );
+
+        // Also revert if it's above the maximum limit
+        vm.expectRevert(IVaultErrors.SwapFeePercentageTooHigh.selector);
+        vault.manualSetStaticSwapFeePercentage(pool, MAX_FEE_PERCENTAGE + 1);
     }
 }
