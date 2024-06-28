@@ -32,7 +32,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
 
         HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeSwap = true;
-        vault.setHooksConfig(pool, config);
+        vault.manualSetHooksConfig(pool, config);
 
         // Sets the pool address in the hook, so we can change pool balances inside the hook
         PoolHooksMock(poolHooksContract).setPool(pool);
@@ -103,7 +103,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
     function testOnBeforeAddLiquidityHookAltersBalances() public {
         HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeAddLiquidity = true;
-        vault.setHooksConfig(pool, config);
+        vault.manualSetHooksConfig(pool, config);
 
         uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
         // newBalances are raw and scaled18, because rate is 1 and decimals are 18
@@ -147,7 +147,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
     function testOnBeforeRemoveLiquidityHookAlterBalance() public {
         HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeRemoveLiquidity = true;
-        vault.setHooksConfig(pool, config);
+        vault.manualSetHooksConfig(pool, config);
 
         uint256[] memory amountsOut = [defaultAmount, defaultAmount].toMemoryArray();
 

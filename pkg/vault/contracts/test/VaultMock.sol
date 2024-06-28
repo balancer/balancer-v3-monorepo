@@ -26,8 +26,8 @@ import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzepp
 import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
 
 import { VaultStateLib, VaultStateBits, VaultStateBits } from "../lib/VaultStateLib.sol";
-import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
-import { HooksConfigLib, HooksConfigBits } from "../lib/HooksConfigLib.sol";
+import { PoolConfigLib } from "../lib/PoolConfigLib.sol";
+import { HooksConfigLib } from "../lib/HooksConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
@@ -46,6 +46,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using ScalingHelpers for uint256;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for *;
+    using HooksConfigLib for *;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
@@ -74,24 +75,6 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function mintERC20(address token, address to, uint256 amount) external {
         _mint(token, to, amount);
-    }
-
-    function setHooksConfig(address pool, HooksConfig calldata config) external {
-        HooksConfigBits hooksConfig = _hooksConfigBits[pool];
-
-        hooksConfig = hooksConfig.setHookAdjustedAmounts(config.enableHookAdjustedAmounts);
-        hooksConfig = hooksConfig.setShouldCallBeforeInitialize(config.shouldCallBeforeInitialize);
-        hooksConfig = hooksConfig.setShouldCallAfterInitialize(config.shouldCallAfterInitialize);
-        hooksConfig = hooksConfig.setShouldCallComputeDynamicSwapFee(config.shouldCallComputeDynamicSwapFee);
-        hooksConfig = hooksConfig.setShouldCallBeforeSwap(config.shouldCallBeforeSwap);
-        hooksConfig = hooksConfig.setShouldCallAfterSwap(config.shouldCallAfterSwap);
-        hooksConfig = hooksConfig.setShouldCallBeforeAddLiquidity(config.shouldCallBeforeAddLiquidity);
-        hooksConfig = hooksConfig.setShouldCallAfterAddLiquidity(config.shouldCallAfterAddLiquidity);
-        hooksConfig = hooksConfig.setShouldCallBeforeRemoveLiquidity(config.shouldCallBeforeRemoveLiquidity);
-        hooksConfig = hooksConfig.setShouldCallAfterRemoveLiquidity(config.shouldCallAfterRemoveLiquidity);
-        hooksConfig = hooksConfig.setHooksContract(config.hooksContract);
-
-        _hooksConfigBits[pool] = hooksConfig;
     }
 
     // Used for testing pool registration, which is ordinarily done in the pool factory.
@@ -209,6 +192,24 @@ contract VaultMock is IVaultMainMock, Vault {
         poolConfigBits = poolConfigBits.setDonation(config.liquidityManagement.enableDonation);
 
         _poolConfigBits[pool] = poolConfigBits;
+    }
+
+    function manualSetHooksConfig(address pool, HooksConfig memory hooksConfig) public {
+        PoolConfigBits poolConfigBits = _poolConfigBits[pool];
+
+        poolConfigBits = poolConfigBits.setHookAdjustedAmounts(hooksConfig.enableHookAdjustedAmounts);
+        poolConfigBits = poolConfigBits.setShouldCallBeforeInitialize(hooksConfig.shouldCallBeforeInitialize);
+        poolConfigBits = poolConfigBits.setShouldCallAfterInitialize(hooksConfig.shouldCallAfterInitialize);
+        poolConfigBits = poolConfigBits.setShouldCallComputeDynamicSwapFee(hooksConfig.shouldCallComputeDynamicSwapFee);
+        poolConfigBits = poolConfigBits.setShouldCallBeforeSwap(hooksConfig.shouldCallBeforeSwap);
+        poolConfigBits = poolConfigBits.setShouldCallAfterSwap(hooksConfig.shouldCallAfterSwap);
+        poolConfigBits = poolConfigBits.setShouldCallBeforeAddLiquidity(hooksConfig.shouldCallBeforeAddLiquidity);
+        poolConfigBits = poolConfigBits.setShouldCallAfterAddLiquidity(hooksConfig.shouldCallAfterAddLiquidity);
+        poolConfigBits = poolConfigBits.setShouldCallBeforeRemoveLiquidity(hooksConfig.shouldCallBeforeRemoveLiquidity);
+        poolConfigBits = poolConfigBits.setShouldCallAfterRemoveLiquidity(hooksConfig.shouldCallAfterRemoveLiquidity);
+
+        _poolConfigBits[pool] = poolConfigBits;
+        _hooksContracts[pool] = IHooks(hooksConfig.hooksContract);
     }
 
     function manualSetPoolConfigBits(address pool, PoolConfigBits config) public {
