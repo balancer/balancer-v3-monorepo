@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { PackedTokenBalance } from "../../../contracts/helpers/PackedTokenBalance.sol";
+import { PackedTokenBalance } from "../../../contracts/lib/PackedTokenBalance.sol";
 
 contract PackedTokenBalanceTest is Test {
     using PackedTokenBalance for bytes32;

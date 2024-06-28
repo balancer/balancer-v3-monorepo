@@ -31,8 +31,8 @@ import { HooksConfigLib } from "../lib/HooksConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
-import { PoolDataLib } from "../lib/PoolDataLib.sol";
 import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
+import { PoolDataLib } from "../lib/PoolDataLib.sol";
 
 struct SwapInternalStateLocals {
     SwapParams params;

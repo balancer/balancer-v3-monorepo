@@ -11,8 +11,8 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
-import { PoolConfigBits, PoolConfigLib } from "./PoolConfigLib.sol";
 import { PackedTokenBalance } from "./PackedTokenBalance.sol";
+import { PoolConfigBits, PoolConfigLib } from "./PoolConfigLib.sol";
 
 library PoolDataLib {
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;

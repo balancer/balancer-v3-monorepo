@@ -25,8 +25,8 @@ import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultStorage } from "./VaultStorage.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
-import { PoolDataLib } from "./lib/PoolDataLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
+import { PoolDataLib } from "./lib/PoolDataLib.sol";
 
 /**
  * @dev Storage layout for Vault. This contract has no code except for common utilities in the inheritance chain

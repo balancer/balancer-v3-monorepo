@@ -40,8 +40,8 @@ import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
-import { PoolDataLib } from "./lib/PoolDataLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
+import { PoolDataLib } from "./lib/PoolDataLib.sol";
 
 /**
  * @dev Bytecode extension for Vault.
