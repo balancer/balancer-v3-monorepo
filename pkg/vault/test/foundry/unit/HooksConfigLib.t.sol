@@ -5,87 +5,89 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { HooksConfigLib, HooksConfigBits } from "@balancer-labs/v3-vault/contracts/lib/HooksConfigLib.sol";
-
+import { PoolConfigConst } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigConst.sol";
+import { HooksConfigLib } from "@balancer-labs/v3-vault/contracts/lib/HooksConfigLib.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
-import { BaseBitsConfigTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseBitsConfigTest.sol";
-
-contract HooksConfigLibTest is BaseBitsConfigTest {
+contract HooksConfigLibTest is Test {
     using WordCodec for bytes32;
-    using ArrayHelpers for *;
-
-    uint256 public constant ADDRESS_BITLENGTH = 160;
-
-    uint256 public staticSwapFeePercentage = 5e18;
-    address public hooksContract = address(0x05);
-
-    function testOffsets() public {
-        _checkBitsUsedOnce(HooksConfigLib.BEFORE_INITIALIZE_OFFSET);
-        _checkBitsUsedOnce(HooksConfigLib.AFTER_INITIALIZE_OFFSET);
-        _checkBitsUsedOnce(HooksConfigLib.DYNAMIC_SWAP_FEE_OFFSET);
-        _checkBitsUsedOnce(HooksConfigLib.BEFORE_SWAP_OFFSET);
-        _checkBitsUsedOnce(HooksConfigLib.AFTER_SWAP_OFFSET);
-        _checkBitsUsedOnce(HooksConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET);
-        _checkBitsUsedOnce(HooksConfigLib.AFTER_ADD_LIQUIDITY_OFFSET);
-        _checkBitsUsedOnce(HooksConfigLib.BEFORE_REMOVE_LIQUIDITY_OFFSET);
-        _checkBitsUsedOnce(HooksConfigLib.AFTER_REMOVE_LIQUIDITY_OFFSET);
-        _checkBitsUsedOnce(HooksConfigLib.HOOKS_CONTRACT_OFFSET, ADDRESS_BITLENGTH);
-    }
+    using HooksConfigLib for PoolConfigBits;
 
     function testZeroConfigBytes() public pure {
-        HooksConfigBits config;
+        PoolConfigBits config;
 
-        assertFalse(config.shouldCallBeforeInitialize(), "shouldCallBeforeInitialize should be false");
-        assertFalse(config.shouldCallAfterInitialize(), "shouldCallAfterInitialize should be false");
-        assertFalse(config.shouldCallComputeDynamicSwapFee(), "shouldCallComputeDynamicSwapFee should be false");
-        assertFalse(config.shouldCallBeforeSwap(), "shouldCallBeforeSwap should be false");
-        assertFalse(config.shouldCallAfterSwap(), "shouldCallAfterSwap should be false");
-        assertFalse(config.shouldCallBeforeAddLiquidity(), "shouldCallBeforeAddLiquidity should be false");
-        assertFalse(config.shouldCallAfterAddLiquidity(), "shouldCallAfterAddLiquidity should be false");
-        assertFalse(config.shouldCallBeforeRemoveLiquidity(), "shouldCallBeforeRemoveLiquidity should be false");
-        assertFalse(config.shouldCallAfterRemoveLiquidity(), "shouldCallAfterRemoveLiquidity should be false");
-        assertEq(config.getHooksContract(), address(0), "getHooksContract should be address(0)");
+        assertEq(config.enableHookAdjustedAmounts(), false, "enableHookAdjustedAmounts mismatch (zero config)");
+        assertEq(config.shouldCallBeforeInitialize(), false, "shouldCallBeforeInitialize mismatch (zero config)");
+        assertEq(config.shouldCallAfterInitialize(), false, "shouldCallAfterInitialize mismatch (zero config)");
+        assertEq(
+            config.shouldCallComputeDynamicSwapFee(),
+            false,
+            "shouldCallComputeDynamicSwapFee mismatch (zero config)"
+        );
+        assertEq(config.shouldCallBeforeSwap(), false, "shouldCallBeforeSwap mismatch (zero config)");
+        assertEq(config.shouldCallAfterSwap(), false, "shouldCallAfterSwap mismatch (zero config)");
+        assertEq(config.shouldCallBeforeAddLiquidity(), false, "shouldCallBeforeAddLiquidity mismatch (zero config)");
+        assertEq(config.shouldCallAfterAddLiquidity(), false, "shouldCallAfterAddLiquidity mismatch (zero config)");
+        assertEq(
+            config.shouldCallBeforeRemoveLiquidity(),
+            false,
+            "shouldCallBeforeRemoveLiquidity mismatch (zero config)"
+        );
+        assertEq(
+            config.shouldCallAfterRemoveLiquidity(),
+            false,
+            "shouldCallAfterRemoveLiquidity mismatch (zero config)"
+        );
     }
 
-    // #region test setters and getters
+    function testEnableHookAdjustedAmounts() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET)
+        );
+        assertTrue(config.enableHookAdjustedAmounts(), "enableHookAdjustedAmounts is false (getter)");
+    }
+
+    function testSetHookAdjustedAmounts() public pure {
+        PoolConfigBits config;
+        config = config.setHookAdjustedAmounts(true);
+        assertTrue(config.enableHookAdjustedAmounts(), "enableHookAdjustedAmounts is false (setter)");
+    }
+
     function testShouldCallBeforeInitialize() public pure {
-        HooksConfigBits config;
-        config = HooksConfigBits.wrap(
-            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.BEFORE_INITIALIZE_OFFSET)
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.BEFORE_INITIALIZE_OFFSET)
         );
         assertEq(config.shouldCallBeforeInitialize(), true, "shouldCallBeforeInitialize should be true (getter)");
     }
 
     function testSetShouldCallBeforeInitialize() public pure {
-        HooksConfigBits config;
+        PoolConfigBits config;
         config = config.setShouldCallBeforeInitialize(true);
         assertEq(config.shouldCallBeforeInitialize(), true, "shouldCallBeforeInitialize should be true (setter)");
     }
 
     function testShouldCallAfterInitialize() public pure {
-        HooksConfigBits config;
-        config = HooksConfigBits.wrap(
-            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.AFTER_INITIALIZE_OFFSET)
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.AFTER_INITIALIZE_OFFSET)
         );
         assertEq(config.shouldCallAfterInitialize(), true, "shouldCallAfterInitialize should be true (getter)");
     }
 
     function testSetShouldCallAfterInitialize() public pure {
-        HooksConfigBits config;
+        PoolConfigBits config;
         config = config.setShouldCallAfterInitialize(true);
         assertEq(config.shouldCallAfterInitialize(), true, "shouldCallAfterInitialize should be true (setter)");
     }
 
     function testShouldCallComputeDynamicSwapFee() public pure {
-        HooksConfigBits config;
-        config = HooksConfigBits.wrap(
-            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.DYNAMIC_SWAP_FEE_OFFSET)
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.DYNAMIC_SWAP_FEE_OFFSET)
         );
         assertEq(
             config.shouldCallComputeDynamicSwapFee(),
@@ -95,7 +97,7 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
     }
 
     function testSetShouldCallComputeDynamicSwapFee() public pure {
-        HooksConfigBits config;
+        PoolConfigBits config;
         config = config.setShouldCallComputeDynamicSwapFee(true);
         assertEq(
             config.shouldCallComputeDynamicSwapFee(),
@@ -105,65 +107,63 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
     }
 
     function testShouldCallBeforeSwap() public pure {
-        HooksConfigBits config;
-        config = HooksConfigBits.wrap(
-            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.BEFORE_SWAP_OFFSET)
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.BEFORE_SWAP_OFFSET)
         );
         assertEq(config.shouldCallBeforeSwap(), true, "shouldCallBeforeSwap should be true (getter)");
     }
 
     function testSetShouldCallBeforeSwap() public pure {
-        HooksConfigBits config;
+        PoolConfigBits config;
         config = config.setShouldCallBeforeSwap(true);
         assertEq(config.shouldCallBeforeSwap(), true, "shouldCallBeforeSwap should be true (setter)");
     }
 
     function testShouldCallAfterSwap() public pure {
-        HooksConfigBits config;
-        config = HooksConfigBits.wrap(
-            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.AFTER_SWAP_OFFSET)
-        );
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.AFTER_SWAP_OFFSET));
         assertEq(config.shouldCallAfterSwap(), true, "shouldCallAfterSwap should be true (getter)");
     }
 
     function testSetShouldCallAfterSwap() public pure {
-        HooksConfigBits config;
+        PoolConfigBits config;
         config = config.setShouldCallAfterSwap(true);
         assertEq(config.shouldCallAfterSwap(), true, "shouldCallAfterSwap should be true (setter)");
     }
 
     function testShouldCallBeforeAddLiquidity() public pure {
-        HooksConfigBits config;
-        config = HooksConfigBits.wrap(
-            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.BEFORE_ADD_LIQUIDITY_OFFSET)
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.BEFORE_ADD_LIQUIDITY_OFFSET)
         );
         assertEq(config.shouldCallBeforeAddLiquidity(), true, "shouldCallBeforeAddLiquidity should be true (getter)");
     }
 
     function testSetShouldCallBeforeAddLiquidity() public pure {
-        HooksConfigBits config;
+        PoolConfigBits config;
         config = config.setShouldCallBeforeAddLiquidity(true);
         assertEq(config.shouldCallBeforeAddLiquidity(), true, "shouldCallBeforeAddLiquidity should be true (setter)");
     }
 
     function testShouldCallAfterAddLiquidity() public pure {
-        HooksConfigBits config;
-        config = HooksConfigBits.wrap(
-            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.AFTER_ADD_LIQUIDITY_OFFSET)
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.AFTER_ADD_LIQUIDITY_OFFSET)
         );
         assertEq(config.shouldCallAfterAddLiquidity(), true, "shouldCallAfterAddLiquidity should be true (getter)");
     }
 
     function testSetShouldCallAfterAddLiquidity() public pure {
-        HooksConfigBits config;
+        PoolConfigBits config;
         config = config.setShouldCallAfterAddLiquidity(true);
         assertEq(config.shouldCallAfterAddLiquidity(), true, "shouldCallAfterAddLiquidity should be true (setter)");
     }
 
     function testShouldCallBeforeRemoveLiquidity() public pure {
-        HooksConfigBits config;
-        config = HooksConfigBits.wrap(
-            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.BEFORE_REMOVE_LIQUIDITY_OFFSET)
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.BEFORE_REMOVE_LIQUIDITY_OFFSET)
         );
         assertEq(
             config.shouldCallBeforeRemoveLiquidity(),
@@ -173,7 +173,7 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
     }
 
     function testSetShouldCallBeforeRemoveLiquidity() public pure {
-        HooksConfigBits config;
+        PoolConfigBits config;
         config = config.setShouldCallBeforeRemoveLiquidity(true);
         assertEq(
             config.shouldCallBeforeRemoveLiquidity(),
@@ -183,9 +183,9 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
     }
 
     function testShouldCallAfterRemoveLiquidity() public pure {
-        HooksConfigBits config;
-        config = HooksConfigBits.wrap(
-            HooksConfigBits.unwrap(config).insertBool(true, HooksConfigLib.AFTER_REMOVE_LIQUIDITY_OFFSET)
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.AFTER_REMOVE_LIQUIDITY_OFFSET)
         );
         assertEq(
             config.shouldCallAfterRemoveLiquidity(),
@@ -195,7 +195,7 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
     }
 
     function testSetShouldCallAfterRemoveLiquidity() public pure {
-        HooksConfigBits config;
+        PoolConfigBits config;
         config = config.setShouldCallAfterRemoveLiquidity(true);
         assertEq(
             config.shouldCallAfterRemoveLiquidity(),
@@ -204,18 +204,32 @@ contract HooksConfigLibTest is BaseBitsConfigTest {
         );
     }
 
-    function testGetHooksContract() public view {
-        HooksConfigBits config;
-        config = HooksConfigBits.wrap(
-            HooksConfigBits.unwrap(config).insertAddress(hooksContract, HooksConfigLib.HOOKS_CONTRACT_OFFSET)
-        );
-        assertEq(config.getHooksContract(), hooksContract, "getHooksContract should be hooksContract (getter)");
-    }
+    function testToHooksConfig() public pure {
+        address hooksContract = address(0x1234567890123456789012345678901234567890);
 
-    function testSetHooksContract() public view {
-        HooksConfigBits config;
-        config = config.setHooksContract(hooksContract);
-        assertEq(config.getHooksContract(), hooksContract, "getHooksContract should be hooksContract (setter)");
+        PoolConfigBits config;
+        config = config.setHookAdjustedAmounts(true);
+        config = config.setShouldCallBeforeInitialize(true);
+        config = config.setShouldCallAfterInitialize(true);
+        config = config.setShouldCallComputeDynamicSwapFee(true);
+        config = config.setShouldCallBeforeSwap(true);
+        config = config.setShouldCallAfterSwap(true);
+        config = config.setShouldCallBeforeAddLiquidity(true);
+        config = config.setShouldCallAfterAddLiquidity(true);
+        config = config.setShouldCallBeforeRemoveLiquidity(true);
+        config = config.setShouldCallAfterRemoveLiquidity(true);
+
+        HooksConfig memory hooksConfig = config.toHooksConfig(IHooks(hooksContract));
+        assertEq(hooksConfig.shouldCallBeforeInitialize, true, "shouldCallBeforeInitialize mismatch");
+        assertEq(hooksConfig.shouldCallAfterInitialize, true, "shouldCallAfterInitialize mismatch");
+        assertEq(hooksConfig.shouldCallComputeDynamicSwapFee, true, "shouldCallComputeDynamicSwapFee mismatch");
+
+        assertEq(hooksConfig.shouldCallBeforeSwap, true, "shouldCallBeforeSwap mismatch");
+        assertEq(hooksConfig.shouldCallAfterSwap, true, "shouldCallAfterSwap mismatch");
+        assertEq(hooksConfig.shouldCallBeforeAddLiquidity, true, "shouldCallBeforeAddLiquidity mismatch");
+        assertEq(hooksConfig.shouldCallAfterAddLiquidity, true, "shouldCallAfterAddLiquidity mismatch");
+        assertEq(hooksConfig.shouldCallBeforeRemoveLiquidity, true, "shouldCallBeforeRemoveLiquidity mismatch");
+        assertEq(hooksConfig.shouldCallAfterRemoveLiquidity, true, "shouldCallAfterRemoveLiquidity mismatch");
+        assertEq(hooksConfig.hooksContract, hooksContract, "hooksContract mismatch");
     }
-    // #endregion
 }
