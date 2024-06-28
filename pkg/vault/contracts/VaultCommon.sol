@@ -318,7 +318,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     function _setStaticSwapFeePercentage(address pool, uint256 swapFeePercentage) internal {
         // These cannot be called during pool construction. Pools must be deployed first, then registered.
         if (swapFeePercentage < ISwapFeePercentageBounds(pool).getMinimumSwapFeePercentage()) {
-            revert IVaultErrors.SwapFeePercentageTooLow();
+            revert SwapFeePercentageTooLow();
         }
 
         // Still has to be a valid percentage, regardless of what the pool defines.
@@ -326,12 +326,12 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             swapFeePercentage > ISwapFeePercentageBounds(pool).getMaximumSwapFeePercentage() ||
             swapFeePercentage > FixedPoint.ONE
         ) {
-            revert IVaultErrors.SwapFeePercentageTooHigh();
+            revert SwapFeePercentageTooHigh();
         }
 
         _poolConfigBits[pool] = _poolConfigBits[pool].setStaticSwapFeePercentage(swapFeePercentage);
 
-        emit IVaultEvents.SwapFeePercentageChanged(pool, swapFeePercentage);
+        emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
 
     /*******************************************************************************
