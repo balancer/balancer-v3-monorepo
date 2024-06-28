@@ -154,7 +154,7 @@ library HooksConfigLib {
     /**
      * @dev Check if dynamic swap fee hook should be called and call it. Throws an error if the hook contract fails to
      * execute the hook. The initial PoolConfigBits argument is unused, but required to call this function on a
-     * PoolConfigBits, with `using HooksConfigLib for PoolConfigBits`.
+     * PoolConfigBits with `using HooksConfigLib for PoolConfigBits`.
      *
      * @param swapParams The swap parameters used to calculate the fee
      * @param staticSwapFeePercentage Value of the static swap fee, for reference
@@ -182,7 +182,7 @@ library HooksConfigLib {
     /**
      * @dev Check if before swap hook should be called and call it. Throws an error if the hook contract fails to
      * execute the hook. The initial PoolConfigBits argument is unused, but required to call this function on a
-     * PoolConfigBits, with `using HooksConfigLib for PoolConfigBits`.
+     * PoolConfigBits with `using HooksConfigLib for PoolConfigBits`.
      *
      * @param swapParams The swap parameters used in the hook
      * @param pool Pool address
@@ -269,7 +269,7 @@ library HooksConfigLib {
     /**
      * @dev Check if before add liquidity hook should be called and call it. Throws an error if the hook contract fails
      * to execute the hook. The initial PoolConfigBits argument is unused, but required to call this function on a
-     * PoolConfigBits, with `using HooksConfigLib for PoolConfigBits`.
+     * PoolConfigBits with `using HooksConfigLib for PoolConfigBits`.
      *
      * @param router Router address
      * @param maxAmountsInScaled18 An array with maximum amounts for each input token of the add liquidity operation
@@ -360,7 +360,7 @@ library HooksConfigLib {
     /**
      * @dev Check if before remove liquidity hook should be called and call it. Throws an error if the hook contract
      * fails to execute the hook. The initial PoolConfigBits argument is unused, but required to call this function on a
-     * PoolConfigBits, with `using HooksConfigLib for PoolConfigBits`.
+     * PoolConfigBits with `using HooksConfigLib for PoolConfigBits`.
      *
      * @param minAmountsOutScaled18 Minimum amounts for each output token of the remove liquidity operation
      * @param router Router address
@@ -451,7 +451,7 @@ library HooksConfigLib {
     /**
      * @dev Check if before initialization hook should be called and call it. Throws an error if the hook contract
      * fails to execute the hook. The initial PoolConfigBits argument is unused, but required to call this function on a
-     * PoolConfigBits, with `using HooksConfigLib for PoolConfigBits`.
+     * PoolConfigBits with `using HooksConfigLib for PoolConfigBits`.
      *
      * @param exactAmountsInScaled18 An array with the initial liquidity of the pool
      * @param userData Additional (optional) data required for adding initial liquidity
@@ -471,7 +471,7 @@ library HooksConfigLib {
     /**
      * @dev Check if after initialization hook should be called and call it. Throws an error if the hook contract
      * fails to execute the hook. The initial PoolConfigBits argument is unused, but required to call this function on a
-     * PoolConfigBits, with `using HooksConfigLib for PoolConfigBits`.
+     * PoolConfigBits with `using HooksConfigLib for PoolConfigBits`.
      *
      * @param exactAmountsInScaled18 An array with the initial liquidity of the pool
      * @param bptAmountOut The BPT amount a user will receive after initialization operation succeeds
