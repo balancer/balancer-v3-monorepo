@@ -32,7 +32,7 @@ contract InitializerTest is BaseVaultTest {
         HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeInitialize = true;
         config.shouldCallAfterInitialize = true;
-        vault.setHooksConfig(pool, config);
+        vault.manualSetHooksConfig(pool, config);
 
         standardPoolTokens = InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20());
     }
@@ -43,7 +43,7 @@ contract InitializerTest is BaseVaultTest {
         HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeInitialize = false;
         config.shouldCallAfterInitialize = false;
-        vault.setHooksConfig(pool, config);
+        vault.manualSetHooksConfig(pool, config);
 
         PoolHooksMock(poolHooksContract).setFailOnBeforeInitializeHook(true);
         PoolHooksMock(poolHooksContract).setFailOnAfterInitializeHook(true);
