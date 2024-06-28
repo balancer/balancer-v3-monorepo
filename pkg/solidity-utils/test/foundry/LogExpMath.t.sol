@@ -24,7 +24,7 @@ contract LogExpMathTest is Test {
         mock = new LogExpMathMock();
     }
 
-    function testPow() external {
+    function testPow() external pure {
         assertApproxEqAbs(LogExpMath.pow(2e18, 2e18), 4e18, 100);
     }
 

@@ -24,7 +24,6 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
-import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { VaultStateLib, VaultStateBits, VaultStateBits } from "../lib/VaultStateLib.sol";
 import { PoolConfigLib } from "../lib/PoolConfigLib.sol";
@@ -33,6 +32,7 @@ import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
 import { PoolDataLib } from "../lib/PoolDataLib.sol";
+import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
 
 struct SwapInternalStateLocals {
     SwapParams params;
