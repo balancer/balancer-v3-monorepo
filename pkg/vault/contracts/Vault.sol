@@ -37,6 +37,7 @@ import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
+import { TokenInfoLib } from "./lib/TokenInfoLib.sol";
 import { BufferPackedTokenBalance } from "./lib/BufferPackedBalance.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
@@ -49,6 +50,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using Address for *;
     using SafeERC20 for IERC20;
     using PoolConfigLib for PoolConfigBits;
+    using TokenInfoLib for *;
     using HooksConfigLib for PoolConfigBits;
     using ScalingHelpers for *;
     using BufferPackedTokenBalance for bytes32;
@@ -268,13 +270,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _loadSwapState(
         SwapParams memory params,
         PoolData memory poolData
-    ) private view returns (SwapState memory state) {
-        // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
+    ) private pure returns (SwapState memory state) {
+        uint256 indexIn;
+        uint256 indexOut;
+        for (uint256 i = 0; i < poolData.tokens.length; i++) {
+            if (address(poolData.tokens[i]) == address(params.tokenIn)) {
+                indexIn = i + 1;
+            } else if (address(poolData.tokens[i]) == address(params.tokenOut)) {
+                indexOut = i + 1;
+            }
+        }
 
         // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value for non-existence.
-        uint256 indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
-        uint256 indexOut = poolBalances.unchecked_indexOf(params.tokenOut);
 
         // If either are zero, revert because the token wasn't registered to this pool.
         if (indexIn == 0 || indexOut == 0) {

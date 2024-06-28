@@ -25,7 +25,8 @@ library PoolDataLib {
         PoolData memory poolData,
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
         PoolConfigBits poolConfigBits,
-        mapping(IERC20 => TokenInfo) storage poolTokenInfo,
+        address[] memory tokens,
+        TokenInfo[] memory tokenInfos,
         Rounding roundingDirection
     ) internal view {
         uint256 numTokens = poolTokenBalances.length();
@@ -43,10 +44,10 @@ library PoolDataLib {
             poolData.poolConfigBits.isPoolInRecoveryMode() == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            (IERC20 token, bytes32 packedBalance) = poolTokenBalances.unchecked_at(i);
-            TokenInfo memory tokenInfo = poolTokenInfo[token];
+            bytes32 packedBalance = poolTokenBalances.unchecked_valueAt(i);
+            TokenInfo memory tokenInfo = tokenInfos[i];
 
-            poolData.tokens[i] = token;
+            poolData.tokens[i] = IERC20(tokens[i]);
             poolData.tokenInfo[i] = tokenInfo;
             poolData.tokenRates[i] = getTokenRate(tokenInfo);
             updateRawAndLiveBalance(poolData, i, packedBalance.getBalanceRaw(), roundingDirection);

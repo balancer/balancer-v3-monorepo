@@ -23,6 +23,7 @@ import {
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits, PoolConfigLib } from "./lib/PoolConfigLib.sol";
+import { TokenInfoLib } from "./lib/TokenInfoLib.sol";
 import { VaultStorage } from "./VaultStorage.sol";
 import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
 import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
@@ -36,6 +37,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfigBits;
+    using TokenInfoLib for *;
     using ScalingHelpers for *;
     using SafeCast for *;
     using FixedPoint for *;
@@ -269,7 +271,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     function _loadPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
-        poolData.load(_poolTokenBalances[pool], _poolConfigBits[pool], _poolTokenInfo[pool], roundingDirection);
+        (, address[] memory tokenAddresses, TokenInfo[] memory tokenInfo) = _tokenInfoBox[pool].load();
+
+        poolData.load(_poolTokenBalances[pool], _poolConfigBits[pool], tokenAddresses, tokenInfo, roundingDirection);
     }
 
     /**
@@ -282,8 +286,9 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         address pool,
         Rounding roundingDirection
     ) internal nonReentrant returns (PoolData memory poolData) {
+        (, address[] memory tokenAddresses, TokenInfo[] memory tokenInfo) = _tokenInfoBox[pool].load();
         // Initialize poolData with base information for subsequent calculations.
-        poolData.load(_poolTokenBalances[pool], _poolConfigBits[pool], _poolTokenInfo[pool], roundingDirection);
+        poolData.load(_poolTokenBalances[pool], _poolConfigBits[pool], tokenAddresses, tokenInfo, roundingDirection);
 
         PoolDataLib.syncPoolBalancesAndFees(poolData, _poolTokenBalances[pool], _aggregateFeeAmounts[pool]);
     }

@@ -27,6 +27,7 @@ import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/tes
 
 import { VaultStateLib, VaultStateBits, VaultStateBits } from "../lib/VaultStateLib.sol";
 import { PoolConfigLib } from "../lib/PoolConfigLib.sol";
+import { TokenInfoLib } from "../lib/TokenInfoLib.sol";
 import { HooksConfigLib } from "../lib/HooksConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
@@ -220,17 +221,20 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualSetPoolTokenInfo(address pool, TokenConfig[] memory tokenConfig) public {
         for (uint256 i = 0; i < tokenConfig.length; ++i) {
-            _poolTokenInfo[pool][tokenConfig[i].token] = TokenInfo({
-                tokenType: tokenConfig[i].tokenType,
-                rateProvider: tokenConfig[i].rateProvider,
-                paysYieldFees: tokenConfig[i].paysYieldFees
-            });
+            _tokenInfoBox[pool] = TokenInfoLib.set(tokenConfig);
         }
     }
 
     function manualSetPoolTokenInfo(address pool, IERC20[] memory tokens, TokenInfo[] memory tokenInfo) public {
         for (uint256 i = 0; i < tokens.length; ++i) {
-            _poolTokenInfo[pool][tokens[i]] = tokenInfo[i];
+            TokenConfig[] memory tokenConfig = new TokenConfig[](tokens.length);
+            for (uint256 j = 0; j < tokens.length; ++j) {
+                tokenConfig[j].token = tokens[j];
+                tokenConfig[j].tokenType = tokenInfo[j].tokenType;
+                tokenConfig[j].rateProvider = tokenInfo[j].rateProvider;
+                tokenConfig[j].paysYieldFees = tokenInfo[j].paysYieldFees;
+            }
+            _tokenInfoBox[pool] = TokenInfoLib.set(tokenConfig);
         }
     }
 

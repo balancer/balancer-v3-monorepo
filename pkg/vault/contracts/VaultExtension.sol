@@ -37,6 +37,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
+import { TokenInfoLib } from "./lib/TokenInfoLib.sol";
 import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
@@ -62,6 +63,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfigBits;
     using HooksConfigLib for PoolConfigBits;
+    using TokenInfoLib for *;
     using InputHelpers for uint256;
     using ScalingHelpers for *;
     using VaultExtensionsLib for IVault;
@@ -218,12 +220,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
 
-            _poolTokenInfo[pool][token] = TokenInfo({
-                tokenType: tokenData.tokenType,
-                rateProvider: tokenData.rateProvider,
-                paysYieldFees: tokenData.paysYieldFees
-            });
-
             if (tokenData.tokenType == TokenType.STANDARD) {
                 if (hasRateProvider || tokenData.paysYieldFees) {
                     revert InvalidTokenConfiguration();
@@ -238,6 +234,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
             tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
         }
+
+        _tokenInfoBox[pool] = TokenInfoLib.set(params.tokenConfig);
 
         // Store the role account addresses (for getters).
         _poolRoleAccounts[pool] = params.roleAccounts;
@@ -553,14 +551,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolConfig, numTokens);
         tokenRates = new uint256[](numTokens);
+        (, , TokenInfo[] memory tokenInfo) = _tokenInfoBox[pool].load();
 
         for (uint256 i = 0; i < numTokens; ++i) {
             // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
-            IERC20 token = poolTokenBalances.unchecked_keyAt(i);
-            TokenInfo memory tokenInfo = _poolTokenInfo[pool][token];
-            tokenRates[i] = PoolDataLib.getTokenRate(tokenInfo);
+            tokenRates[i] = PoolDataLib.getTokenRate(tokenInfo[i]);
         }
     }
 
@@ -586,6 +583,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             uint256[] memory lastLiveBalances
         )
     {
+        (, , tokenInfo) = _tokenInfoBox[pool].load();
+
         // Retrieve the mapping of tokens and their balances for the specified pool.
         EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
         uint256 numTokens = poolTokenBalances.length();
@@ -600,7 +599,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
             // storage reads.
             (tokens[i], packedBalance) = poolTokenBalances.unchecked_at(i);
-            tokenInfo[i] = _poolTokenInfo[pool][tokens[i]];
             balancesRaw[i] = packedBalance.getBalanceRaw();
             lastLiveBalances[i] = packedBalance.getBalanceDerived();
         }
