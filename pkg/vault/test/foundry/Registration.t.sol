@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
@@ -16,12 +17,12 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-import { HooksConfigLib, HooksConfigBits } from "../../contracts/lib/HooksConfigLib.sol";
+import { HooksConfigLib } from "../../contracts/lib/HooksConfigLib.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RegistrationTest is BaseVaultTest {
     using ArrayHelpers for *;
-    using HooksConfigLib for HooksConfigBits;
+    using HooksConfigLib for PoolConfigBits;
 
     IERC20[] standardPoolTokens;
     TokenConfig[] standardTokenConfig;
@@ -228,7 +229,8 @@ contract RegistrationTest is BaseVaultTest {
             enableRemoveLiquidityCustom: false,
             enableDonation: true
         });
-        HooksConfigBits hookConfigBits;
+
+        PoolConfigBits config;
 
         vm.expectEmit();
         emit IVaultEvents.SwapFeePercentageChanged(pool, swapFeePercentage);
@@ -240,7 +242,7 @@ contract RegistrationTest is BaseVaultTest {
             swapFeePercentage,
             pauseWindowEndTime,
             roleAccounts,
-            hookConfigBits.toHooksConfig(),
+            config.toHooksConfig(IHooks(address(0))),
             liquidityManagement
         );
         vault.registerPool(

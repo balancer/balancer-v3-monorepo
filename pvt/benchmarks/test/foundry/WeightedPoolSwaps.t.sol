@@ -70,6 +70,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 poolRoleAccounts,
                 swapFee,
                 address(0),
+                false,
                 bytes32(0)
             )
         );
@@ -83,6 +84,7 @@ contract WeightedPoolSwaps is BaseVaultTest {
                 poolRoleAccounts,
                 swapFee,
                 address(0),
+                false,
                 bytes32(uint256(1))
             )
         );
