@@ -318,6 +318,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             _hooksContracts[pool] = IHooks(params.poolHooksContract);
         }
 
+        // Static swap fee percentage has special limits, so we don't use the library function directly.
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)

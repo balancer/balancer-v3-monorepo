@@ -16,6 +16,7 @@ contract PoolConfigLibTest is Test {
 
     uint256 private constant _MAX_UINT32_VALUE = type(uint32).max;
     uint256 private constant _MAX_UINT24_VALUE = type(uint24).max;
+    uint256 private constant _ARBITRARY_FEE_PCT = 3.14e16;
 
     function testZeroConfigBytes() public pure {
         PoolConfigBits config;
@@ -204,13 +205,18 @@ contract PoolConfigLibTest is Test {
 
     function testSetAggregateSwapFeePercentage() public pure {
         PoolConfigBits config;
-        uint256 value = _MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
-        config = config.setAggregateSwapFeePercentage(value);
+        config = config.setAggregateSwapFeePercentage(_ARBITRARY_FEE_PCT);
         assertEq(
             config.getAggregateSwapFeePercentage(),
-            value,
+            _ARBITRARY_FEE_PCT,
             "getAggregateSwapFeePercentage mismatch (testSetAggregateSwapFeePercentage)"
         );
+    }
+
+    function testSetAggregateSwapFeePercentageAboveMax() public {
+        PoolConfigBits config;
+        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
+        config.setAggregateSwapFeePercentage(MAX_FEE_PERCENTAGE + 1);
     }
 
     function testGetAggregateYieldFeePercentage() public pure {
@@ -232,13 +238,51 @@ contract PoolConfigLibTest is Test {
 
     function testSetAggregateYieldFeePercentage() public pure {
         PoolConfigBits config;
-        uint256 value = _MAX_UINT24_VALUE * FEE_SCALING_FACTOR;
-        config = config.setAggregateYieldFeePercentage(value);
+        config = config.setAggregateYieldFeePercentage(_ARBITRARY_FEE_PCT);
         assertEq(
             config.getAggregateYieldFeePercentage(),
-            value,
+            _ARBITRARY_FEE_PCT,
             "getAggregateYieldFeePercentage mismatch (testSetAggregateYieldFeePercentage)"
         );
+    }
+
+    function testSetAggregateYieldFeePercentageAboveMax() public {
+        PoolConfigBits config;
+        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
+        config.setAggregateYieldFeePercentage(MAX_FEE_PERCENTAGE + 1);
+    }
+
+    function testGetStaticSwapFeePercentage() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertUint(
+                _MAX_UINT24_VALUE,
+                PoolConfigConst.STATIC_SWAP_FEE_OFFSET,
+                FEE_BITLENGTH
+            )
+        );
+
+        assertEq(
+            config.getStaticSwapFeePercentage(),
+            _MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
+            "getStaticSwapFeePercentage mismatch (testGetStaticSwapFeePercentage)"
+        );
+    }
+
+    function testSetStaticSwapFeePercentage() public pure {
+        PoolConfigBits config;
+        config = config.setStaticSwapFeePercentage(_ARBITRARY_FEE_PCT);
+        assertEq(
+            config.getStaticSwapFeePercentage(),
+            _ARBITRARY_FEE_PCT,
+            "getStaticSwapFeePercentage mismatch (testSetStaticSwapFeePercentage)"
+        );
+    }
+
+    function testSetStaticSwapFeePercentageAboveMax() public {
+        PoolConfigBits config;
+        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
+        config.setStaticSwapFeePercentage(MAX_FEE_PERCENTAGE + 1);
     }
 
     function testGetTokenDecimalDiffs() public pure {

@@ -194,6 +194,10 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolConfigBits[pool] = poolConfigBits;
     }
 
+    function manualSetStaticSwapFeePercentage(address pool, uint256 value) public {
+        _setStaticSwapFeePercentage(pool, value);
+    }
+
     function manualSetHooksConfig(address pool, HooksConfig memory hooksConfig) public {
         PoolConfigBits poolConfigBits = _poolConfigBits[pool];
 
