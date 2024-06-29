@@ -103,6 +103,24 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.setStaticSwapFeePercentage(pool, 1);
     }
 
+    function testSetStaticSwapFeePercentageWhenPoolPaused() public {
+        vault.manualPausePool(pool);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), admin);
+        vm.prank(admin);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, pool));
+        vault.setStaticSwapFeePercentage(pool, 1);
+    }
+
+    function testSetStaticSwapFeePercentageWhenVaultPaused() public {
+        vault.manualPauseVault();
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), admin);
+        vm.prank(admin);
+
+        vm.expectRevert(IVaultErrors.VaultPaused.selector);
+        vault.setStaticSwapFeePercentage(pool, 1);
+    }
+
     function testCollectAggregateFeesWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultAdmin.collectAggregateFees(pool);
