@@ -153,8 +153,7 @@ library HooksConfigLib {
 
     /**
      * @dev Check if dynamic swap fee hook should be called and call it. Throws an error if the hook contract fails to
-     * execute the hook. The initial PoolConfigBits argument is unused, but required to call this function on a
-     * PoolConfigBits with `using HooksConfigLib for PoolConfigBits`.
+     * execute the hook.
      *
      * @param swapParams The swap parameters used to calculate the fee
      * @param staticSwapFeePercentage Value of the static swap fee, for reference
@@ -163,7 +162,6 @@ library HooksConfigLib {
      * @return swapFeePercentage the calculated swap fee percentage. 0 if hook is disabled
      */
     function callComputeDynamicSwapFeeHook(
-        PoolConfigBits,
         IBasePool.PoolSwapParams memory swapParams,
         uint256 staticSwapFeePercentage,
         IHooks hooksContract
@@ -181,15 +179,13 @@ library HooksConfigLib {
 
     /**
      * @dev Check if before swap hook should be called and call it. Throws an error if the hook contract fails to
-     * execute the hook. The initial PoolConfigBits argument is unused, but required to call this function on a
-     * PoolConfigBits with `using HooksConfigLib for PoolConfigBits`.
+     * execute the hook.
      *
      * @param swapParams The swap parameters used in the hook
      * @param pool Pool address
      * @param hooksContract Storage slot with the address of the hooks contract
      */
     function callBeforeSwapHook(
-        PoolConfigBits,
         IBasePool.PoolSwapParams memory swapParams,
         address pool,
         IHooks hooksContract
@@ -268,8 +264,7 @@ library HooksConfigLib {
 
     /**
      * @dev Check if before add liquidity hook should be called and call it. Throws an error if the hook contract fails
-     * to execute the hook. The initial PoolConfigBits argument is unused, but required to call this function on a
-     * PoolConfigBits with `using HooksConfigLib for PoolConfigBits`.
+     * to execute the hook.
      *
      * @param router Router address
      * @param maxAmountsInScaled18 An array with maximum amounts for each input token of the add liquidity operation
@@ -278,7 +273,6 @@ library HooksConfigLib {
      * @param hooksContract Storage slot with the address of the hooks contract
      */
     function callBeforeAddLiquidityHook(
-        PoolConfigBits,
         address router,
         uint256[] memory maxAmountsInScaled18,
         AddLiquidityParams memory params,
@@ -359,8 +353,7 @@ library HooksConfigLib {
 
     /**
      * @dev Check if before remove liquidity hook should be called and call it. Throws an error if the hook contract
-     * fails to execute the hook. The initial PoolConfigBits argument is unused, but required to call this function on a
-     * PoolConfigBits with `using HooksConfigLib for PoolConfigBits`.
+     * fails to execute the hook.
      *
      * @param minAmountsOutScaled18 Minimum amounts for each output token of the remove liquidity operation
      * @param router Router address
@@ -369,7 +362,6 @@ library HooksConfigLib {
      * @param hooksContract Storage slot with the address of the hooks contract
      */
     function callBeforeRemoveLiquidityHook(
-        PoolConfigBits,
         uint256[] memory minAmountsOutScaled18,
         address router,
         RemoveLiquidityParams memory params,
@@ -450,15 +442,13 @@ library HooksConfigLib {
 
     /**
      * @dev Check if before initialization hook should be called and call it. Throws an error if the hook contract
-     * fails to execute the hook. The initial PoolConfigBits argument is unused, but required to call this function on a
-     * PoolConfigBits with `using HooksConfigLib for PoolConfigBits`.
+     * fails to execute the hook.
      *
      * @param exactAmountsInScaled18 An array with the initial liquidity of the pool
      * @param userData Additional (optional) data required for adding initial liquidity
      * @param hooksContract Storage slot with the address of the hooks contract
      */
     function callBeforeInitializeHook(
-        PoolConfigBits,
         uint256[] memory exactAmountsInScaled18,
         bytes memory userData,
         IHooks hooksContract
@@ -470,8 +460,7 @@ library HooksConfigLib {
 
     /**
      * @dev Check if after initialization hook should be called and call it. Throws an error if the hook contract
-     * fails to execute the hook. The initial PoolConfigBits argument is unused, but required to call this function on a
-     * PoolConfigBits with `using HooksConfigLib for PoolConfigBits`.
+     * fails to execute the hook.
      *
      * @param exactAmountsInScaled18 An array with the initial liquidity of the pool
      * @param bptAmountOut The BPT amount a user will receive after initialization operation succeeds
@@ -479,7 +468,6 @@ library HooksConfigLib {
      * @param hooksContract Storage slot with the address of the hooks contract
      */
     function callAfterInitializeHook(
-        PoolConfigBits,
         uint256[] memory exactAmountsInScaled18,
         uint256 bptAmountOut,
         bytes memory userData,
