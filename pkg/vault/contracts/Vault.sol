@@ -224,7 +224,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (poolData.poolConfigBits.shouldCallComputeDynamicSwapFee()) {
             (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = poolData
                 .poolConfigBits
-                .callComputeDynamicSwapFeeHook(swapParams, state.swapFeePercentage, _hooksContracts[params.pool]);
+                .callComputeDynamicSwapFeeHook(
+                    swapParams,
+                    params.pool,
+                    state.swapFeePercentage,
+                    _hooksContracts[params.pool]
+                );
 
             if (dynamicSwapFeeCalculated) {
                 state.swapFeePercentage = dynamicSwapFee;

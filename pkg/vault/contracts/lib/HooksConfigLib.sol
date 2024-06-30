@@ -167,7 +167,7 @@ library HooksConfigLib {
         PoolConfigBits config,
         IBasePool.PoolSwapParams memory swapParams,
         address pool,
-        uint256 staticSwapFeePercentage
+        uint256 staticSwapFeePercentage,
         IHooks hooksContract
     ) internal view returns (bool, uint256) {
         (bool success, uint256 swapFeePercentage) = hooksContract.onComputeDynamicSwapFee(
