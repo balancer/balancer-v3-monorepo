@@ -12,15 +12,15 @@ import { LiquidityManagement, TokenConfig } from "@balancer-labs/v3-interfaces/c
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
+import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
-contract DirectionalFeeHookExample is BasePoolHooks {
+contract DirectionalFeeHookExample is BaseHooks {
     using FixedPoint for uint256;
 
     // only stable pools from the allowed factory are able to register and use this hook
     address private immutable _allowedStablePoolFactory;
 
-    constructor(IVault vault, address allowedStablePoolFactory) BasePoolHooks(vault) {
+    constructor(IVault vault, address allowedStablePoolFactory) BaseHooks(vault) {
         _allowedStablePoolFactory = allowedStablePoolFactory;
     }
 
