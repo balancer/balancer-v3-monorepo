@@ -7,27 +7,19 @@ import "forge-std/Test.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { PoolConfigBits } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
+
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
-import {
-    AddLiquidityParams,
-    AddLiquidityKind,
-    RemoveLiquidityParams,
-    RemoveLiquidityKind,
-    SwapParams,
-    SwapKind
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 
 import { PoolConfigLib } from "../../../../contracts/lib/PoolConfigLib.sol";
+import { BalancerPoolToken } from "../../../../contracts/BalancerPoolToken.sol";
+import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
 
 contract VaultMutationTest is BaseVaultTest {
     using ArrayHelpers for *;

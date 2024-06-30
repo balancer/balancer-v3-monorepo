@@ -10,7 +10,6 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasePoolFactory } from "../factories/BasePoolFactory.sol";
-import { FactoryWidePauseWindow } from "../factories/FactoryWidePauseWindow.sol";
 import { PoolConfigBits } from "../lib/PoolConfigLib.sol";
 import { PoolMock } from "./PoolMock.sol";
 

@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+
 import { IRateProvider } from "./IRateProvider.sol";
 
 struct LiquidityManagement {
@@ -280,5 +281,5 @@ struct BufferWrapOrUnwrapParams {
 // Protocol Fees are 24-bit values. We transform them by multiplying by 1e11, so
 // they can be set to any value between 0% and 100% (step 0.00001%).
 uint256 constant FEE_BITLENGTH = 24;
-uint256 constant MAX_FEE_VALUE = type(uint24).max;
+uint256 constant MAX_FEE_PERCENTAGE = 1e18;
 uint256 constant FEE_SCALING_FACTOR = 1e11;
