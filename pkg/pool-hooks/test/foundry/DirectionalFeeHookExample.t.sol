@@ -50,8 +50,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
         address directionalFeeHook = address(
-            new DirectionalFeeHookExample(IVault(address(vault))),
-            address(stablePoolFactory)
+            new DirectionalFeeHookExample(IVault(address(vault)), address(stablePoolFactory))
         );
         vm.label(directionalFeeHook, "Exit Fee Hook");
         return directionalFeeHook;
@@ -60,11 +59,11 @@ contract DirectionalHookExampleTest is BaseVaultTest {
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
         PoolRoleAccounts memory roleAccounts;
 
-        stablePool = StablePool(
-            factory.create(
+        address newPool = address(
+            stablePoolFactory.create(
                 "Stable Pool Test",
                 "STABLETEST",
-                inputHelpersMock.sortTokenConfig(tokens),
+                vault.buildTokenConfig(tokens.asIERC20()),
                 DEFAULT_AMP_FACTOR,
                 roleAccounts,
                 MIN_SWAP_FEE,
@@ -74,38 +73,35 @@ contract DirectionalHookExampleTest is BaseVaultTest {
             )
         );
         vm.label(newPool, label);
-        return address(stablePool);
+        return newPool;
     }
 
     function testRegistryWithWrongFactory() public {
-        address exitFeePool = _createPoolToRegister();
+        address directionalFeePool = _createPoolToRegister();
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
-        //        vm.expectRevert(ExitFeeHookExample.PoolDoesNotSupportDonation.selector);
-        _registerPoolWithHook(exitFeePool, tokenConfig, false);
+
+        // Registration fails because factory is not allowed to register hook
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.HookRegistrationFailed.selector,
+                poolHooksContract,
+                directionalFeePool,
+                address(factoryMock)
+            )
+        );
+        _registerPoolWithHook(directionalFeePool, tokenConfig, false);
     }
 
-    //    function testSuccessfulRegistry() public {
-    //        address exitFeePool = _createPoolToRegister();
-    //        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
-    //            [address(dai), address(usdc)].toMemoryArray().asIERC20()
-    //        );
-    //
-    //        _registerPoolWithHook(exitFeePool, tokenConfig, true);
-    //
-    //        PoolConfig memory poolConfig = vault.getPoolConfig(exitFeePool);
-    //        HooksConfig memory hooksConfig = vault.getHooksConfig(exitFeePool);
-    //
-    //        assertEq(poolConfig.liquidityManagement.enableDonation, true, "pool's enableDonation is wrong");
-    //        assertEq(
-    //            poolConfig.liquidityManagement.disableUnbalancedLiquidity,
-    //            true,
-    //            "pool's disableUnbalancedLiquidity is wrong"
-    //        );
-    //        assertEq(hooksConfig.hooksContract, poolHooksContract, "pool's hooks contract is wrong");
-    //        assertEq(hooksConfig.enableHookAdjustedAmounts, true, "hook's enableHookAdjustedAmounts is wrong");
-    //    }
+    function testSuccessfulRegistry() public {
+        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+
+        assertEq(hooksConfig.hooksContract, poolHooksContract, "pool's hooks contract is wrong");
+        assertTrue(hooksConfig.shouldCallComputeDynamicSwapFee, "hook's shouldCallComputeDynamicSwapFee is wrong");
+    }
+
     //
     //    // Exit fee returns to LPs
     //    function testExitFeeReturnToLPs() public {
@@ -174,14 +170,16 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         vm.label(newPool, "Exit Fee Pool");
     }
 
-    function _registerPoolWithHook(address exitFeePool, TokenConfig[] memory tokenConfig, bool enableDonation) private {
+    function _registerPoolWithHook(
+        address directionalFeePool,
+        TokenConfig[] memory tokenConfig,
+        bool enableDonation
+    ) private {
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = address(lp);
 
         LiquidityManagement memory liquidityManagement;
-        liquidityManagement.disableUnbalancedLiquidity = true;
-        liquidityManagement.enableDonation = enableDonation;
 
-        factoryMock.registerPool(exitFeePool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
+        factoryMock.registerPool(directionalFeePool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
     }
 }

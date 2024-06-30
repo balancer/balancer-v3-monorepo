@@ -10,9 +10,13 @@ import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol"
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { LiquidityManagement, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
 import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
 
 contract DirectionalFeeHookExample is BasePoolHooks {
+    using FixedPoint for uint256;
+
     // only stable pools from the allowed factory are able to register and use this hook
     address private immutable _allowedStablePoolFactory;
 
@@ -52,7 +56,7 @@ contract DirectionalFeeHookExample is BasePoolHooks {
         if (finalBalanceTokenIn > finalBalanceTokenOut) {
             // pool is farther from equilibrium
             // TODO explain
-            uint256 diff = balancesTokenIn - balancesTokenOut;
+            uint256 diff = finalBalanceTokenIn - finalBalanceTokenOut;
             // If diff is close to totalLiquidity, we charge a very large swap fee because the swap is moving the pool
             // balances to the edge
             uint256 feePercentage = diff.divDown(totalLiquidity);
