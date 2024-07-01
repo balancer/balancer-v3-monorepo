@@ -44,7 +44,7 @@ const contractSettings: ContractSettings = {
   },
   '@balancer-labs/v3-vault/contracts/Vault.sol': {
     version: '0.8.24',
-    runs: 500,
+    runs: 200,
     viaIR: true,
   },
   '@balancer-labs/v3-vault/contracts/VaultExtension.sol': {

@@ -7,9 +7,10 @@ import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-import { WETHTestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/WETHTestToken.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+
+import { ERC20TestToken } from "../../../contracts/test/ERC20TestToken.sol";
+import { WETHTestToken } from "../../../contracts/test/WETHTestToken.sol";
+import { ArrayHelpers } from "../../../contracts/helpers/ArrayHelpers.sol";
 
 abstract contract BaseTest is Test, GasSnapshot {
     using ArrayHelpers for *;
@@ -49,6 +50,7 @@ abstract contract BaseTest is Test, GasSnapshot {
     ERC20TestToken internal usdc;
     WETHTestToken internal weth;
     ERC20TestToken internal wsteth;
+    ERC20TestToken internal veBAL;
 
     // List of all ERC20 tokens
     IERC20[] internal tokens;
@@ -69,6 +71,7 @@ abstract contract BaseTest is Test, GasSnapshot {
         wsteth = createERC20("WSTETH", 18);
         weth = new WETHTestToken();
         vm.label(address(weth), "WETH");
+        veBAL = createERC20("veBAL", 18);
 
         // Fill the token list.
         tokens.push(dai);

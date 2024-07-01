@@ -6,7 +6,6 @@ import "forge-std/Test.sol";
 
 import { StableMath } from "../../contracts/math/StableMath.sol";
 import { FixedPoint } from "../../contracts/math/FixedPoint.sol";
-
 import { StableMathMock } from "../../contracts/test/StableMathMock.sol";
 
 // In the `StableMath` functions, the protocol aims for computing a value either as small as possible or as large as possible

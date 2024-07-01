@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+
 import "./ERC20TestToken.sol";
 
 contract ERC20WithRateTestToken is IRateProvider, ERC20TestToken {

@@ -21,7 +21,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { BalancerPoolToken } from "../BalancerPoolToken.sol";
-import { BasePoolHooks } from "../BasePoolHooks.sol";
+import { BaseHooks } from "../BaseHooks.sol";
 
 contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
     using FixedPoint for uint256;

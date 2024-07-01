@@ -1,248 +1,376 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 pragma solidity ^0.8.24;
+import "forge-std/Test.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { PoolConfigConst } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigConst.sol";
+import { PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-library PoolConfigLib {
+contract PoolConfigLibTest is Test {
     using WordCodec for bytes32;
     using PoolConfigLib for PoolConfigBits;
 
-    error InvalidSize(uint256 currentValue, uint256 expectedSize);
+    uint256 private constant _MAX_UINT32_VALUE = type(uint32).max;
+    uint256 private constant _MAX_UINT24_VALUE = type(uint24).max;
+    uint256 private constant _ARBITRARY_FEE_PCT = 3.14e16;
 
-    // Bit offsets for pool config
-    uint8 public constant POOL_REGISTERED_OFFSET = 0;
-    uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;
-    uint8 public constant POOL_PAUSED_OFFSET = POOL_INITIALIZED_OFFSET + 1;
-    uint8 public constant POOL_RECOVERY_MODE_OFFSET = POOL_PAUSED_OFFSET + 1;
+    function testZeroConfigBytes() public pure {
+        PoolConfigBits config;
 
-    // Supported liquidity API bit offsets
-    uint8 public constant UNBALANCED_LIQUIDITY_OFFSET = POOL_RECOVERY_MODE_OFFSET + 1;
-    uint8 public constant ADD_LIQUIDITY_CUSTOM_OFFSET = UNBALANCED_LIQUIDITY_OFFSET + 1;
-    uint8 public constant REMOVE_LIQUIDITY_CUSTOM_OFFSET = ADD_LIQUIDITY_CUSTOM_OFFSET + 1;
-
-    uint8 public constant STATIC_SWAP_FEE_OFFSET = REMOVE_LIQUIDITY_CUSTOM_OFFSET + 1;
-    uint256 public constant AGGREGATE_SWAP_FEE_OFFSET = STATIC_SWAP_FEE_OFFSET + FEE_BITLENGTH;
-    uint256 public constant AGGREGATE_YIELD_FEE_OFFSET = AGGREGATE_SWAP_FEE_OFFSET + FEE_BITLENGTH;
-    uint256 public constant DECIMAL_SCALING_FACTORS_OFFSET = AGGREGATE_YIELD_FEE_OFFSET + FEE_BITLENGTH;
-    uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
-        DECIMAL_SCALING_FACTORS_OFFSET + _TOKEN_DECIMAL_DIFFS_BITLENGTH;
-
-    // Uses a uint24 (3 bytes): least significant 20 bits to store the values, and a 4-bit pad.
-    // This maximum token count is also hard-coded in the Vault.
-    uint8 private constant _TOKEN_DECIMAL_DIFFS_BITLENGTH = 24;
-    uint8 private constant _DECIMAL_DIFF_BITLENGTH = 5;
-
-    uint8 private constant _TIMESTAMP_BITLENGTH = 32;
-
-    function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(POOL_REGISTERED_OFFSET);
+        assertEq(config.isPoolRegistered(), false, "isPoolRegistered mismatch (zero config)");
+        assertEq(config.isPoolInitialized(), false, "isPoolInitialized mismatch (zero config)");
+        assertEq(config.isPoolPaused(), false, "isPoolPaused mismatch (zero config)");
+        assertEq(config.isPoolInRecoveryMode(), false, "isPoolInRecoveryMode mismatch (zero config)");
+        assertEq(config.supportsUnbalancedLiquidity(), true, "supportsUnbalancedLiquidity mismatch (zero config)");
+        assertEq(config.supportsAddLiquidityCustom(), false, "supportsAddLiquidityCustom mismatch (zero config)");
+        assertEq(config.supportsRemoveLiquidityCustom(), false, "supportsRemoveLiquidityCustom mismatch (zero config)");
+        assertEq(config.getStaticSwapFeePercentage(), 0, "getStaticSwapFeePercentage mismatch (zero config)");
+        assertEq(config.getAggregateSwapFeePercentage(), 0, "getAggregateSwapFeePercentage mismatch (zero config)");
+        assertEq(config.getAggregateYieldFeePercentage(), 0, "getAggregateYieldFeePercentage mismatch (zero config)");
+        assertEq(config.getTokenDecimalDiffs(), 0, "getTokenDecimalDiffs mismatch (zero config)");
+        assertEq(config.getPauseWindowEndTime(), 0, "getPauseWindowEndTime mismatch (zero config)");
     }
 
-    function setPoolRegistered(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
-        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, POOL_REGISTERED_OFFSET));
+    // #region Tests for main pool config settings
+
+    function testIsPoolRegistered() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.POOL_REGISTERED_OFFSET)
+        );
+        assertTrue(config.isPoolRegistered(), "isPoolRegistered is false (getter)");
     }
 
-    function isPoolInitialized(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(POOL_INITIALIZED_OFFSET);
+    function testSetPoolRegistered() public pure {
+        PoolConfigBits config;
+        config = config.setPoolRegistered(true);
+        assertTrue(config.isPoolRegistered(), "isPoolRegistered is false (setter)");
     }
 
-    function setPoolInitialized(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
-        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, POOL_INITIALIZED_OFFSET));
+    function testIsPoolInitialized() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.POOL_INITIALIZED_OFFSET)
+        );
+        assertTrue(config.isPoolInitialized(), "isPoolInitialized is false (getter)");
     }
 
-    function isPoolInRecoveryMode(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(POOL_RECOVERY_MODE_OFFSET);
+    function testSetPoolInitialized() public pure {
+        PoolConfigBits config;
+        config = config.setPoolInitialized(true);
+        assertTrue(config.isPoolInitialized(), "isPoolInitialized is false (setter)");
     }
 
-    function setPoolInRecoveryMode(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
-        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, POOL_RECOVERY_MODE_OFFSET));
+    function testIsPoolPaused() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.POOL_PAUSED_OFFSET)
+        );
+        assertTrue(config.isPoolPaused(), "isPoolPaused is false (getter)");
     }
 
-    function isPoolPaused(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(POOL_PAUSED_OFFSET);
+    function testSetPoolPaused() public pure {
+        PoolConfigBits config;
+        config = config.setPoolPaused(true);
+        assertTrue(config.isPoolPaused(), "isPoolPaused is false (setter)");
     }
 
-    function setPoolPaused(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
-        return PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(value, POOL_PAUSED_OFFSET));
+    function testIsPoolInRecoveryMode() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.POOL_RECOVERY_MODE_OFFSET)
+        );
+        assertTrue(config.isPoolInRecoveryMode(), "isPoolInRecoveryMode is false (getter)");
     }
 
-    function getStaticSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
-        return PoolConfigBits.unwrap(config).decodeUint(STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
+    function testSetPoolInRecoveryMode() public pure {
+        PoolConfigBits config;
+        config = config.setPoolInRecoveryMode(true);
+        assertTrue(config.isPoolInRecoveryMode(), "isPoolInRecoveryMode is false (setter)");
     }
 
-    function setStaticSwapFeePercentage(PoolConfigBits config, uint256 value) internal pure returns (PoolConfigBits) {
-        value /= FEE_SCALING_FACTOR;
+    // #endregion
 
-        if (value > MAX_FEE_VALUE) {
-            revert InvalidSize(value, FEE_BITLENGTH);
-        }
-
-        return
-            PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertUint(value, STATIC_SWAP_FEE_OFFSET, FEE_BITLENGTH));
+    // #region Tests for liquidity operations
+    function testSupportsUnbalancedLiquidity() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.UNBALANCED_LIQUIDITY_OFFSET)
+        );
+        // NOTE: assertFalse is here because supportsUnbalancedLiquidity reverse value
+        assertFalse(config.supportsUnbalancedLiquidity(), "supportsUnbalancedLiquidity is true (getter)");
     }
 
-    function getAggregateSwapFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
-        return PoolConfigBits.unwrap(config).decodeUint(AGGREGATE_SWAP_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
+    function testSetDisableUnbalancedLiquidity() public pure {
+        PoolConfigBits config;
+        config = config.setDisableUnbalancedLiquidity(true);
+        // NOTE: assertFalse is here because supportsUnbalancedLiquidity reverse value
+        assertFalse(config.supportsUnbalancedLiquidity(), "supportsUnbalancedLiquidity is true (setter)");
     }
 
-    function setAggregateSwapFeePercentage(
-        PoolConfigBits config,
-        uint256 value
-    ) internal pure returns (PoolConfigBits) {
-        value /= FEE_SCALING_FACTOR;
+    function testRequireUnbalancedLiquidityEnabled() public pure {
+        PoolConfigBits config;
 
-        if (value > MAX_FEE_VALUE) {
-            revert InvalidSize(value, FEE_BITLENGTH);
-        }
-
-        return
-            PoolConfigBits.wrap(
-                PoolConfigBits.unwrap(config).insertUint(value, AGGREGATE_SWAP_FEE_OFFSET, FEE_BITLENGTH)
-            );
+        // It's enabled by default
+        config.requireUnbalancedLiquidityEnabled();
     }
 
-    function getAggregateYieldFeePercentage(PoolConfigBits config) internal pure returns (uint256) {
-        return PoolConfigBits.unwrap(config).decodeUint(AGGREGATE_YIELD_FEE_OFFSET, FEE_BITLENGTH) * FEE_SCALING_FACTOR;
+    function testRequireUnbalancedLiquidityRevertIfIsDisabled() public {
+        PoolConfigBits config;
+        config = config.setDisableUnbalancedLiquidity(true);
+
+        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
+        config.requireUnbalancedLiquidityEnabled();
     }
 
-    function setAggregateYieldFeePercentage(
-        PoolConfigBits config,
-        uint256 value
-    ) internal pure returns (PoolConfigBits) {
-        value /= FEE_SCALING_FACTOR;
-
-        if (value > MAX_FEE_VALUE) {
-            revert InvalidSize(value, FEE_BITLENGTH);
-        }
-
-        return
-            PoolConfigBits.wrap(
-                PoolConfigBits.unwrap(config).insertUint(value, AGGREGATE_YIELD_FEE_OFFSET, FEE_BITLENGTH)
-            );
+    function testSupportsAddLiquidityCustom() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.ADD_LIQUIDITY_CUSTOM_OFFSET)
+        );
+        assertTrue(config.supportsAddLiquidityCustom(), "supportsAddLiquidityCustom is false (getter)");
     }
 
-    function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint24) {
-        return
-            uint24(
-                PoolConfigBits.unwrap(config).decodeUint(DECIMAL_SCALING_FACTORS_OFFSET, _TOKEN_DECIMAL_DIFFS_BITLENGTH)
-            );
+    function testSetAddLiquidityCustom() public pure {
+        PoolConfigBits config;
+        config = config.setAddLiquidityCustom(true);
+        assertTrue(config.supportsAddLiquidityCustom(), "supportsAddLiquidityCustom is false (setter)");
     }
 
-    function setTokenDecimalDiffs(PoolConfigBits config, uint24 value) internal pure returns (PoolConfigBits) {
-        return
-            PoolConfigBits.wrap(
-                PoolConfigBits.unwrap(config).insertUint(
-                    value,
-                    DECIMAL_SCALING_FACTORS_OFFSET,
-                    _TOKEN_DECIMAL_DIFFS_BITLENGTH
-                )
-            );
+    function testRequireAddCustomLiquidityEnabled() public pure {
+        PoolConfigBits config;
+        config = config.setAddLiquidityCustom(true);
+
+        config.requireAddCustomLiquidityEnabled();
     }
 
-    function getPauseWindowEndTime(PoolConfigBits config) internal pure returns (uint32) {
-        return uint32(PoolConfigBits.unwrap(config).decodeUint(PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH));
+    function testRequireAddCustomLiquidityRevertIfIsDisabled() public {
+        PoolConfigBits config;
+
+        vm.expectRevert(IVaultErrors.DoesNotSupportAddLiquidityCustom.selector);
+        config.requireAddCustomLiquidityEnabled();
     }
 
-    function setPauseWindowEndTime(PoolConfigBits config, uint32 value) internal pure returns (PoolConfigBits) {
-        return
-            PoolConfigBits.wrap(
-                PoolConfigBits.unwrap(config).insertUint(value, PAUSE_WINDOW_END_TIME_OFFSET, _TIMESTAMP_BITLENGTH)
-            );
+    function testSupportsRemoveLiquidityCustom() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.REMOVE_LIQUIDITY_CUSTOM_OFFSET)
+        );
+        assertTrue(config.supportsRemoveLiquidityCustom(), "supportsRemoveLiquidityCustom is false (getter)");
     }
 
-    function supportsUnbalancedLiquidity(PoolConfigBits config) internal pure returns (bool) {
-        // NOTE: The unbalanced liquidity flag is default-on (false means it is supported).
-        // This function returns the inverted value.
-        return !PoolConfigBits.unwrap(config).decodeBool(UNBALANCED_LIQUIDITY_OFFSET);
+    function testSetRemoveLiquidityCustom() public pure {
+        PoolConfigBits config;
+        config = config.setRemoveLiquidityCustom(true);
+        assertTrue(config.supportsRemoveLiquidityCustom(), "supportsRemoveLiquidityCustom is false (setter)");
     }
 
-    function setDisableUnbalancedLiquidity(
-        PoolConfigBits config,
-        bool disableUnbalancedLiquidity
-    ) internal pure returns (PoolConfigBits) {
-        return
-            PoolConfigBits.wrap(
-                PoolConfigBits.unwrap(config).insertBool(disableUnbalancedLiquidity, UNBALANCED_LIQUIDITY_OFFSET)
-            );
+    function testRequireRemoveCustomLiquidityEnabled() public pure {
+        PoolConfigBits config;
+        config = config.setRemoveLiquidityCustom(true);
+
+        config.requireRemoveCustomLiquidityEnabled();
     }
 
-    function requireUnbalancedLiquidityEnabled(PoolConfigBits config) internal pure {
-        if (config.supportsUnbalancedLiquidity() == false) {
-            revert IVaultErrors.DoesNotSupportUnbalancedLiquidity();
-        }
+    function testRequireRemoveCustomLiquidityReveryIfIsDisabled() public {
+        PoolConfigBits config;
+
+        vm.expectRevert(IVaultErrors.DoesNotSupportRemoveLiquidityCustom.selector);
+        config.requireRemoveCustomLiquidityEnabled();
     }
 
-    function supportsAddLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(ADD_LIQUIDITY_CUSTOM_OFFSET);
+    // #endregion
+
+    // #region Tests for uint values
+    function testGetAggregateSwapFeePercentage() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertUint(
+                _MAX_UINT24_VALUE,
+                PoolConfigConst.AGGREGATE_SWAP_FEE_OFFSET,
+                FEE_BITLENGTH
+            )
+        );
+
+        assertEq(
+            config.getAggregateSwapFeePercentage(),
+            _MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
+            "getAggregateSwapFeePercentage mismatch (testGetAggregateSwapFeePercentage)"
+        );
     }
 
-    function setAddLiquidityCustom(
-        PoolConfigBits config,
-        bool enableAddLiquidityCustom
-    ) internal pure returns (PoolConfigBits) {
-        return
-            PoolConfigBits.wrap(
-                PoolConfigBits.unwrap(config).insertBool(enableAddLiquidityCustom, ADD_LIQUIDITY_CUSTOM_OFFSET)
-            );
+    function testSetAggregateSwapFeePercentage() public pure {
+        PoolConfigBits config;
+        config = config.setAggregateSwapFeePercentage(_ARBITRARY_FEE_PCT);
+        assertEq(
+            config.getAggregateSwapFeePercentage(),
+            _ARBITRARY_FEE_PCT,
+            "getAggregateSwapFeePercentage mismatch (testSetAggregateSwapFeePercentage)"
+        );
     }
 
-    function requireAddCustomLiquidityEnabled(PoolConfigBits config) internal pure {
-        if (config.supportsAddLiquidityCustom() == false) {
-            revert IVaultErrors.DoesNotSupportAddLiquidityCustom();
-        }
+    function testSetAggregateSwapFeePercentageAboveMax() public {
+        PoolConfigBits config;
+        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
+        config.setAggregateSwapFeePercentage(MAX_FEE_PERCENTAGE + 1);
     }
 
-    function supportsRemoveLiquidityCustom(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(REMOVE_LIQUIDITY_CUSTOM_OFFSET);
+    function testGetAggregateYieldFeePercentage() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertUint(
+                _MAX_UINT24_VALUE,
+                PoolConfigConst.AGGREGATE_YIELD_FEE_OFFSET,
+                FEE_BITLENGTH
+            )
+        );
+
+        assertEq(
+            config.getAggregateYieldFeePercentage(),
+            _MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
+            "getAggregateYieldFeePercentage mismatch (testGetAggregateYieldFeePercentage)"
+        );
     }
 
-    function setRemoveLiquidityCustom(
-        PoolConfigBits config,
-        bool enableRemoveLiquidityCustom
-    ) internal pure returns (PoolConfigBits) {
-        return
-            PoolConfigBits.wrap(
-                PoolConfigBits.unwrap(config).insertBool(enableRemoveLiquidityCustom, REMOVE_LIQUIDITY_CUSTOM_OFFSET)
-            );
+    function testSetAggregateYieldFeePercentage() public pure {
+        PoolConfigBits config;
+        config = config.setAggregateYieldFeePercentage(_ARBITRARY_FEE_PCT);
+        assertEq(
+            config.getAggregateYieldFeePercentage(),
+            _ARBITRARY_FEE_PCT,
+            "getAggregateYieldFeePercentage mismatch (testSetAggregateYieldFeePercentage)"
+        );
     }
 
-    function requireRemoveCustomLiquidityEnabled(PoolConfigBits config) internal pure {
-        if (config.supportsRemoveLiquidityCustom() == false) {
-            revert IVaultErrors.DoesNotSupportRemoveLiquidityCustom();
-        }
+    function testSetAggregateYieldFeePercentageAboveMax() public {
+        PoolConfigBits config;
+        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
+        config.setAggregateYieldFeePercentage(MAX_FEE_PERCENTAGE + 1);
     }
 
-    // Convert from an array of decimal differences, to the encoded 24 bit value (only uses bottom 20 bits).
-    function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint24) {
-        bytes32 value;
+    function testGetStaticSwapFeePercentage() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertUint(
+                _MAX_UINT24_VALUE,
+                PoolConfigConst.STATIC_SWAP_FEE_OFFSET,
+                FEE_BITLENGTH
+            )
+        );
 
-        for (uint256 i = 0; i < tokenDecimalDiffs.length; ++i) {
-            value = value.insertUint(tokenDecimalDiffs[i], i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
-        }
-
-        return uint24(uint256(value));
+        assertEq(
+            config.getStaticSwapFeePercentage(),
+            _MAX_UINT24_VALUE * FEE_SCALING_FACTOR,
+            "getStaticSwapFeePercentage mismatch (testGetStaticSwapFeePercentage)"
+        );
     }
 
-    function getDecimalScalingFactors(
-        PoolConfigBits config,
-        uint256 numTokens
-    ) internal pure returns (uint256[] memory) {
-        uint256[] memory scalingFactors = new uint256[](numTokens);
+    function testSetStaticSwapFeePercentage() public pure {
+        PoolConfigBits config;
+        config = config.setStaticSwapFeePercentage(_ARBITRARY_FEE_PCT);
+        assertEq(
+            config.getStaticSwapFeePercentage(),
+            _ARBITRARY_FEE_PCT,
+            "getStaticSwapFeePercentage mismatch (testSetStaticSwapFeePercentage)"
+        );
+    }
 
-        bytes32 tokenDecimalDiffs = bytes32(uint256(config.getTokenDecimalDiffs()));
+    function testSetStaticSwapFeePercentageAboveMax() public {
+        PoolConfigBits config;
+        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
+        config.setStaticSwapFeePercentage(MAX_FEE_PERCENTAGE + 1);
+    }
 
-        for (uint256 i = 0; i < numTokens; ++i) {
-            uint256 decimalDiff = tokenDecimalDiffs.decodeUint(i * _DECIMAL_DIFF_BITLENGTH, _DECIMAL_DIFF_BITLENGTH);
+    function testGetTokenDecimalDiffs() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertUint(
+                _MAX_UINT24_VALUE,
+                PoolConfigConst.DECIMAL_SCALING_FACTORS_OFFSET,
+                PoolConfigConst.TOKEN_DECIMAL_DIFFS_BITLENGTH
+            )
+        );
+        assertEq(
+            config.getTokenDecimalDiffs(),
+            _MAX_UINT24_VALUE,
+            "tokenDecimalDiffs mismatch (testGetTokenDecimalDiffs)"
+        );
+    }
 
-            // This is equivalent to `10**(18+decimalsDifference)` but this form optimizes for 18 decimal tokens.
-            scalingFactors[i] = FixedPoint.ONE * 10 ** decimalDiff;
-        }
+    function testSetTokenDecimalDiffs() public pure {
+        PoolConfigBits config;
+        uint24 value = uint24(_MAX_UINT24_VALUE);
+        config = config.setTokenDecimalDiffs(value);
+        assertEq(config.getTokenDecimalDiffs(), value, "tokenDecimalDiffs mismatch (testSetTokenDecimalDiffs)");
+    }
 
-        return scalingFactors;
+    function testGetDecimalScalingFactors() public pure {
+        PoolConfigBits config;
+        uint256 valueOne = 5;
+        uint256 valueTwo = 20;
+
+        bytes32 value = bytes32(0);
+        value = value.insertUint(valueOne, 0, PoolConfigConst.DECIMAL_DIFF_BITLENGTH).insertUint(
+            valueTwo,
+            PoolConfigConst.DECIMAL_DIFF_BITLENGTH,
+            PoolConfigConst.DECIMAL_DIFF_BITLENGTH
+        );
+
+        config = config.setTokenDecimalDiffs(uint24(uint256(value)));
+
+        uint256[] memory scalingFactors = config.getDecimalScalingFactors(2);
+
+        assertEq(scalingFactors[0], 1e23, "scalingFactors[0] mismatch");
+        assertEq(scalingFactors[1], 1e38, "scalingFactors[1] mismatch");
+    }
+
+    function testGetPauseWindowEndTime() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertUint(
+                _MAX_UINT32_VALUE,
+                PoolConfigConst.PAUSE_WINDOW_END_TIME_OFFSET,
+                PoolConfigConst.TIMESTAMP_BITLENGTH
+            )
+        );
+        assertEq(
+            config.getPauseWindowEndTime(),
+            _MAX_UINT32_VALUE,
+            "pauseWindowEndTime mismatch (testGetPauseWindowEndTime)"
+        );
+    }
+
+    function testSetPauseWindowEndTime() public pure {
+        PoolConfigBits config;
+        uint32 value = uint32(_MAX_UINT32_VALUE);
+        config = config.setPauseWindowEndTime(value);
+        assertEq(config.getPauseWindowEndTime(), value, "pauseWindowEndTime mismatch (testSetPauseWindowEndTime)");
+    }
+
+    // #endregion
+
+    function testToTokenDecimalDiffs() public pure {
+        uint8[] memory tokenDecimalDiffs = new uint8[](2);
+        tokenDecimalDiffs[0] = 1;
+        tokenDecimalDiffs[1] = 2;
+
+        uint256 value = uint256(
+            bytes32(0).insertUint(tokenDecimalDiffs[0], 0, PoolConfigConst.DECIMAL_DIFF_BITLENGTH).insertUint(
+                tokenDecimalDiffs[1],
+                PoolConfigConst.DECIMAL_DIFF_BITLENGTH,
+                PoolConfigConst.DECIMAL_DIFF_BITLENGTH
+            )
+        );
+
+        assertEq(
+            PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs),
+            value,
+            "tokenDecimalDiffs mismatch (testToTokenDecimalDiffs)"
+        );
     }
 }

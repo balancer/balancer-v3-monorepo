@@ -31,13 +31,12 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { VaultStateLib, VaultStateBits, VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
-import { HooksConfigLib, HooksConfigBits } from "./lib/HooksConfigLib.sol";
-import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
+import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
-import { BufferPackedTokenBalance } from "./lib/BufferPackedBalance.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
@@ -49,8 +48,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using Address for *;
     using SafeERC20 for IERC20;
     using PoolConfigLib for PoolConfigBits;
+    using HooksConfigLib for PoolConfigBits;
     using ScalingHelpers for *;
-    using BufferPackedTokenBalance for bytes32;
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
@@ -181,7 +180,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut)
     {
         _ensureUnpaused(params.pool);
-        HooksConfigBits hooksConfig = _hooksConfigBits[params.pool];
 
         if (params.amountGivenRaw == 0) {
             revert AmountGivenZero();
@@ -204,7 +202,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
 
-        if (hooksConfig.callBeforeSwapHook(swapParams, params.pool)) {
+        if (poolData.poolConfigBits.shouldCallBeforeSwap()) {
+            HooksConfigLib.callBeforeSwapHook(swapParams, params.pool, _hooksContracts[params.pool]);
+
             // The call to `onBeforeSwap` could potentially update token rates and balances.
             // We update `poolData.tokenRates`, `poolData.rawBalances` and `poolData.balancesLiveScaled18`
             // to ensure the `onSwap` and `onComputeDynamicSwapFee` are called with the current values.
@@ -221,12 +221,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // At this point, the static swap fee percentage is loaded in the swap state as the default,
         // to be used unless the pool has a dynamic swap fee. It is also passed into the hook, to support common cases
         // where the dynamic fee computation logic uses it.
-        (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = hooksConfig.callComputeDynamicSwapFeeHook(
-            swapParams,
-            state.swapFeePercentage
-        );
-        if (dynamicSwapFeeCalculated) {
-            state.swapFeePercentage = dynamicSwapFee;
+        if (poolData.poolConfigBits.shouldCallComputeDynamicSwapFee()) {
+            (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = HooksConfigLib.callComputeDynamicSwapFeeHook(
+                swapParams,
+                state.swapFeePercentage,
+                _hooksContracts[params.pool]
+            );
+
+            if (dynamicSwapFeeCalculated) {
+                state.swapFeePercentage = dynamicSwapFee;
+            }
         }
 
         // Non-reentrant call that updates accounting.
@@ -235,18 +239,24 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountCalculatedScaled18;
         (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, swapParams);
 
-        // If the hook contract does not exist or does not implement onAfterSwap, HooksConfigLib returns the original
+        // If the hook contract does not exist or does not implement onAfterSwap, PoolConfigLib returns the original
         // amountCalculated. Otherwise, the new amount calculated is 'amountCalculated + delta'. If the underlying
         // hook fails, or limits are violated, `onAfterSwap` will revert.
         // Uses msg.sender as the router (the contract that called the vault)
-        amountCalculated = hooksConfig.callAfterSwapHook(
-            amountCalculatedScaled18,
-            amountCalculated,
-            msg.sender,
-            params,
-            state,
-            poolData
-        );
+        if (poolData.poolConfigBits.shouldCallAfterSwap()) {
+            // fix stack too deep
+            IHooks hooksContract = _hooksContracts[params.pool];
+
+            amountCalculated = poolData.poolConfigBits.callAfterSwapHook(
+                amountCalculatedScaled18,
+                amountCalculated,
+                msg.sender,
+                params,
+                state,
+                poolData,
+                hooksContract
+            );
+        }
 
         if (params.kind == SwapKind.EXACT_IN) {
             amountOut = amountCalculated;
@@ -508,7 +518,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // bptOut = supply * (ratio - 1), so lower ratio = less bptOut, favoring the pool.
 
         _ensureUnpaused(params.pool);
-        HooksConfigBits hooksConfig = _hooksConfigBits[params.pool];
 
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the add liquidity hooks are reentrant and could do anything,
@@ -528,8 +537,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.tokenRates
         );
 
-        // Uses msg.sender as the router (the contract that called the vault)
-        if (hooksConfig.callBeforeAddLiquidityHook(msg.sender, maxAmountsInScaled18, params, poolData)) {
+        if (poolData.poolConfigBits.shouldCallBeforeAddLiquidity()) {
+            HooksConfigLib.callBeforeAddLiquidityHook(
+                msg.sender,
+                maxAmountsInScaled18,
+                params,
+                poolData,
+                _hooksContracts[params.pool]
+            );
             // If the hook library returns true, the hook code was executed, and might have altered the balances,
             // so we need to read them again to ensure that the data is fresh moving forward.
             // We also need to upscale (adding liquidity, so round up) again.
@@ -557,14 +572,20 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // AmountsIn can be changed by onAfterAddLiquidity if the hook charges fees or gives discounts
         // Uses msg.sender as the router (the contract that called the vault)
-        amountsIn = hooksConfig.callAfterAddLiquidityHook(
-            msg.sender,
-            amountsInScaled18,
-            amountsIn,
-            bptAmountOut,
-            params,
-            poolData
-        );
+        if (poolData.poolConfigBits.shouldCallAfterAddLiquidity()) {
+            // fix stack too deep
+            IHooks hooksContract = _hooksContracts[params.pool];
+
+            amountsIn = poolData.poolConfigBits.callAfterAddLiquidityHook(
+                msg.sender,
+                amountsInScaled18,
+                amountsIn,
+                bptAmountOut,
+                params,
+                poolData,
+                hooksContract
+            );
+        }
     }
 
     /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
@@ -736,8 +757,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // bptIn = supply * (1 - ratio), so lower ratio = more bptIn, favoring the pool.
         _ensureUnpaused(params.pool);
 
-        HooksConfigBits hooksConfig = _hooksConfigBits[params.pool];
-
         // `_loadPoolDataUpdatingBalancesAndYieldFees` is non-reentrant, as it updates storage as well
         // as filling in poolData in memory. Since the swap hooks are reentrant and could do anything, including
         // change these balances, we cannot defer settlement until `_removeLiquidity`.
@@ -756,7 +775,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         // Uses msg.sender as the router (the contract that called the vault)
-        if (hooksConfig.callBeforeRemoveLiquidityHook(minAmountsOutScaled18, msg.sender, params, poolData)) {
+        if (poolData.poolConfigBits.shouldCallBeforeRemoveLiquidity()) {
+            HooksConfigLib.callBeforeRemoveLiquidityHook(
+                minAmountsOutScaled18,
+                msg.sender,
+                params,
+                poolData,
+                _hooksContracts[params.pool]
+            );
+
             // The hook might alter the balances, so we need to read them again to ensure that the data is
             // fresh moving forward.
             // We also need to upscale (removing liquidity, so round down) again.
@@ -782,14 +809,20 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // AmountsOut can be changed by onAfterRemoveLiquidity if the hook charges fees or gives discounts
         // Uses msg.sender as the router (the contract that called the vault)
-        amountsOut = hooksConfig.callAfterRemoveLiquidityHook(
-            msg.sender,
-            amountsOutScaled18,
-            amountsOut,
-            bptAmountIn,
-            params,
-            poolData
-        );
+        if (poolData.poolConfigBits.shouldCallAfterRemoveLiquidity()) {
+            // fix stack too deep
+            IHooks hooksContract = _hooksContracts[params.pool];
+
+            amountsOut = poolData.poolConfigBits.callAfterRemoveLiquidityHook(
+                msg.sender,
+                amountsOutScaled18,
+                amountsOut,
+                bptAmountIn,
+                params,
+                poolData,
+                hooksContract
+            );
+        }
     }
 
     /**

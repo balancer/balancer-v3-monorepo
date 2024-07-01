@@ -13,7 +13,6 @@ import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IV
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
@@ -43,11 +42,16 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     struct Balances {
         uint256[] userTokens;
         uint256 userBpt;
+        uint256[] aliceTokens;
+        uint256 aliceBpt;
+        uint256[] bobTokens;
+        uint256 bobBpt;
         uint256[] hookTokens;
         uint256 hookBpt;
         uint256[] lpTokens;
         uint256 lpBpt;
         uint256[] vaultTokens;
+        uint256[] vaultReserves;
         uint256[] poolTokens;
         uint256 poolSupply;
     }
@@ -179,17 +183,17 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     }
 
     function _createPool(address[] memory tokens, string memory label) internal virtual returns (address) {
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
-        vm.label(address(newPool), label);
+        address newPool = factoryMock.createPool("ERC20 Pool", "ERC20POOL");
+        vm.label(newPool, label);
 
         factoryMock.registerTestPool(
-            address(newPool),
+            newPool,
             vault.buildTokenConfig(tokens.asIERC20()),
             poolHooksContract,
             address(lp)
         );
 
-        return address(newPool);
+        return newPool;
     }
 
     function createHook() internal virtual returns (address) {
@@ -224,6 +228,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     function getBalances(address user) internal view returns (Balances memory balances) {
         balances.userBpt = IERC20(pool).balanceOf(user);
+        balances.aliceBpt = IERC20(pool).balanceOf(alice);
+        balances.bobBpt = IERC20(pool).balanceOf(bob);
         balances.hookBpt = IERC20(pool).balanceOf(poolHooksContract);
         balances.lpBpt = IERC20(pool).balanceOf(lp);
 
@@ -232,15 +238,21 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         (IERC20[] memory tokens, , uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(pool);
         balances.poolTokens = poolBalances;
         balances.userTokens = new uint256[](poolBalances.length);
+        balances.aliceTokens = new uint256[](poolBalances.length);
+        balances.bobTokens = new uint256[](poolBalances.length);
         balances.hookTokens = new uint256[](poolBalances.length);
         balances.lpTokens = new uint256[](poolBalances.length);
         balances.vaultTokens = new uint256[](poolBalances.length);
+        balances.vaultReserves = new uint256[](poolBalances.length);
         for (uint256 i = 0; i < poolBalances.length; ++i) {
             // Don't assume token ordering.
             balances.userTokens[i] = tokens[i].balanceOf(user);
+            balances.aliceTokens[i] = tokens[i].balanceOf(alice);
+            balances.bobTokens[i] = tokens[i].balanceOf(bob);
             balances.hookTokens[i] = tokens[i].balanceOf(poolHooksContract);
             balances.lpTokens[i] = tokens[i].balanceOf(lp);
             balances.vaultTokens[i] = tokens[i].balanceOf(address(vault));
+            balances.vaultReserves[i] = vault.getReservesOf(tokens[i]);
         }
     }
 

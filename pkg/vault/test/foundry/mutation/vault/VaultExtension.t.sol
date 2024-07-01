@@ -12,6 +12,9 @@ import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
 
@@ -47,6 +50,15 @@ contract VaultExtensionMutationTest is BaseVaultTest {
 
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.registerPool(pool, config, 0, 0, false, roles, address(0), liquidityManagement);
+    }
+
+    function testRegisterPoolReentrancy() public {
+        TokenConfig[] memory config;
+        PoolRoleAccounts memory roles;
+        LiquidityManagement memory liquidityManagement;
+
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        vault.manualRegisterPoolReentrancy(pool, config, 0, 0, false, roles, address(0), liquidityManagement);
     }
 
     function testIsPoolRegisteredWhenNotVault() public {

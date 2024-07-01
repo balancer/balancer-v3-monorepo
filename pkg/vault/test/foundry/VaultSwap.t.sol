@@ -423,7 +423,7 @@ contract VaultSwapTest is BaseVaultTest {
         // Enable before swap
         HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeSwap = true;
-        vault.setHooksConfig(pool, config);
+        vault.manualSetHooksConfig(pool, config);
 
         // Enable reentrancy hook
         PoolHooksMock(poolHooksContract).setSwapReentrancyHookActive(true);
