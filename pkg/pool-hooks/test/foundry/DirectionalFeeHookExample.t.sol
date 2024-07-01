@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -14,6 +15,7 @@ import {
     LiquidityManagement,
     PoolConfig,
     PoolRoleAccounts,
+    SwapKind,
     TokenConfig
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -100,11 +102,10 @@ contract DirectionalHookExampleTest is BaseVaultTest {
                 address(factoryMock)
             )
         );
-        _registerPoolWithHook(directionalFeePool, tokenConfig, false);
+        _registerPoolWithHook(directionalFeePool, tokenConfig);
     }
 
-    function testSuccessfulRegistry() public {
-        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
+    function testSuccessfulRegistry() public view {
         HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
 
         assertEq(hooksConfig.hooksContract, poolHooksContract, "pool's hooks contract is wrong");
@@ -204,26 +205,36 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         uint256 daiExactAmountIn = poolInitAmount / 2;
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(lp));
+        // Since there's no rate providers, and all tokens are 18 decimals, scaled18 and raw values are equal.
+        uint256[] memory balancesScaled18 = balancesBefore.poolTokens;
 
-        // Calculate the expected amoutn out (amount out without fees)
+        // Calculate the expected amount out (amount out without fees).
         uint256 poolInvariant = StableMath.computeInvariant(
             DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
-            balancesBefore.poolTokens
+            balancesScaled18
         );
         uint256 expectedAmountOut = StableMath.computeOutGivenExactIn(
             DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
-            balancesBefore.poolTokens,
+            balancesScaled18,
             daiIdx,
             usdcIdx,
             daiExactAmountIn,
             poolInvariant
         );
 
-        uint256 expectedSwapFeePercentage = _calculatedExpectedSwapFeePercentage(
-            balancesBefore.poolTokens,
-            daiExactAmountIn,
-            daiIdx,
-            usdcIdx
+        // Call dynamic fee hook to fetch the expected swap fee percentage
+        (, uint256 expectedSwapFeePercentage) = DirectionalFeeHookExample(poolHooksContract).onComputeDynamicSwapFee(
+            IBasePool.PoolSwapParams({
+                kind: SwapKind.EXACT_IN,
+                amountGivenScaled18: daiExactAmountIn,
+                balancesScaled18: balancesScaled18,
+                indexIn: daiIdx,
+                indexOut: usdcIdx,
+                router: address(0), // The router is not used by the hook
+                userData: bytes("") // User data is not used by the hook
+            }),
+            pool,
+            SWAP_FEE_PERCENTAGE
         );
 
         // Swap DAI for USDC, bringing pool nearer balance
@@ -297,43 +308,12 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         vm.label(newPool, "Directional Fee Pool");
     }
 
-    function _registerPoolWithHook(
-        address directionalFeePool,
-        TokenConfig[] memory tokenConfig,
-        bool enableDonation
-    ) private {
+    function _registerPoolWithHook(address directionalFeePool, TokenConfig[] memory tokenConfig) private {
         PoolRoleAccounts memory roleAccounts;
         roleAccounts.poolCreator = address(lp);
 
         LiquidityManagement memory liquidityManagement;
 
         factoryMock.registerPool(directionalFeePool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
-    }
-
-    // @notice Directional fee hook, for simplicity, assumes that the pool math is linear and that final balances of
-    //         token in and out are changed proportionally, with a rate 1:1. Then, the charged fee percentage is
-    //         (distance between balances of token in and token out) / (total liquidity of both tokens).
-    //         For example, if token in has a final balance of 100, and token out has a final balance of 40, the
-    //         charged swap fee percentage is (100 - 40) / (140) = 60/140 = 42.85%
-    function _calculatedExpectedSwapFeePercentage(
-        uint256[] memory poolBalances,
-        uint256 swapAmount,
-        uint256 indexIn,
-        uint256 indexOut
-    ) private pure returns (uint256 feePercentage) {
-        uint256 finalBalanceTokenIn = poolBalances[indexIn] + swapAmount;
-        uint256 finalBalanceTokenOut = poolBalances[indexOut] - swapAmount;
-        uint256 feePercentage;
-
-        // pool is farther from equilibrium, charge calculated fee
-        if (finalBalanceTokenIn > finalBalanceTokenOut) {
-            uint256 diff = finalBalanceTokenIn - finalBalanceTokenOut;
-            uint256 totalLiquidity = finalBalanceTokenIn + finalBalanceTokenOut;
-            // If diff is close to totalLiquidity, we charge a very large swap fee because the swap is moving the pool
-            // balances to the edge
-            feePercentage = diff.divDown(totalLiquidity);
-        }
-
-        return feePercentage;
     }
 }
