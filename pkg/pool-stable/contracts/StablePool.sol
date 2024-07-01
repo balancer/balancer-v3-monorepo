@@ -305,13 +305,9 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Poo
     }
 
     /**
-     * Get relevant dynamic pool data required for swap/add/remove calculations.
+     * @notice Get relevant dynamic pool data required for swap/add/remove calculations.
      */
-    function getStablePoolDynamicData()
-        external
-        view
-        returns (StablePoolDynamicData memory data)
-    {
+    function getStablePoolDynamicData() external view returns (StablePoolDynamicData memory data) {
         data.liveBalances = getCurrentLiveBalances();
         (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
         data.staticSwapFeePercentage = getStaticSwapFeePercentage();
@@ -327,7 +323,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Poo
     }
 
     /**
-     * Get relevant immutable pool data required for swap/add/remove calculations.
+     * @notice Get relevant immutable pool data required for swap / add / remove calculations.
      */
     function getStablePoolImmutableData() external view returns (StablePoolImmutableData memory data) {
         data.tokens = getTokens();

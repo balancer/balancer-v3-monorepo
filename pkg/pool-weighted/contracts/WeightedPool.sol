@@ -187,13 +187,9 @@ contract WeightedPool is IBasePool, BalancerPoolToken, PoolInfo, Version {
     }
 
     /**
-     * Get relevant dynamic pool data required for swap/add/remove calculations.
+     * @notice Get relevant dynamic pool data required for swap / add / remove calculations.
      */
-    function getWeightedPoolDynamicData()
-        external
-        view
-        returns (WeightedPoolDynamicData memory data)
-    {
+    function getWeightedPoolDynamicData() external view returns (WeightedPoolDynamicData memory data) {
         data.liveBalances = getCurrentLiveBalances();
         (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
         data.staticSwapFeePercentage = getStaticSwapFeePercentage();
@@ -208,7 +204,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken, PoolInfo, Version {
     }
 
     /**
-     * Get relevant immutable pool data required for swap/add/remove calculations.
+     * @notice Get relevant immutable pool data required for swap / add / remove calculations.
      */
     function getWeightedPoolImmutableData() external view returns (WeightedPoolImmutableData memory data) {
         data.tokens = getTokens();
