@@ -49,21 +49,46 @@ contract DirectionalFeeHookExample is BaseHooks {
         // Get pool balances
         (IERC20[] memory tokens, , , uint256[] memory lastLiveBalances) = _vault.getPoolTokenInfo(pool);
 
-        uint256 finalBalanceTokenIn = lastLiveBalances[params.indexIn] + params.amountGivenScaled18;
-        uint256 finalBalanceTokenOut = lastLiveBalances[params.indexOut] - params.amountGivenScaled18;
-        uint256 totalLiquidity = finalBalanceTokenIn + finalBalanceTokenOut;
+        uint256 calculatedSwapFeePercentage = _calculatedExpectedSwapFeePercentage(
+            lastLiveBalances,
+            params.amountGivenScaled18,
+            params.indexIn,
+            params.indexOut
+        );
 
+        // If calculated fee is higher than static fee, charges calculated fee.
+        return (
+            true,
+            calculatedSwapFeePercentage > staticSwapFeePercentage
+                ? calculatedSwapFeePercentage
+                : staticSwapFeePercentage
+        );
+    }
+
+    // @notice Directional fee hook, for simplicity, assumes that the pool math is linear and that final balances of
+    //         token in and out are changed proportionally, with a rate 1:1. Then, the charged fee percentage is
+    //         (distance between balances of token in and token out) / (total liquidity of both tokens).
+    //         For example, if token in has a final balance of 100, and token out has a final balance of 40, the
+    //         charged swap fee percentage is (100 - 40) / (140) = 60/140 = 42.85%
+    function _calculatedExpectedSwapFeePercentage(
+        uint256[] memory poolBalances,
+        uint256 swapAmount,
+        uint256 indexIn,
+        uint256 indexOut
+    ) private pure returns (uint256 feePercentage) {
+        uint256 finalBalanceTokenIn = poolBalances[indexIn] + swapAmount;
+        uint256 finalBalanceTokenOut = poolBalances[indexOut] - swapAmount;
+        uint256 feePercentage;
+
+        // pool is farther from equilibrium, charge calculated fee
         if (finalBalanceTokenIn > finalBalanceTokenOut) {
-            // pool is farther from equilibrium
-            // TODO explain
             uint256 diff = finalBalanceTokenIn - finalBalanceTokenOut;
+            uint256 totalLiquidity = finalBalanceTokenIn + finalBalanceTokenOut;
             // If diff is close to totalLiquidity, we charge a very large swap fee because the swap is moving the pool
             // balances to the edge
-            uint256 feePercentage = diff.divDown(totalLiquidity);
-            return (true, feePercentage > staticSwapFeePercentage ? feePercentage : staticSwapFeePercentage);
+            feePercentage = diff.divDown(totalLiquidity);
         }
 
-        // pool is nearer equilibrium, so charge the usual staticSwapFeePercentage
-        return (true, staticSwapFeePercentage);
+        return feePercentage;
     }
 }

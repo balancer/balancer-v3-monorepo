@@ -310,16 +310,30 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         factoryMock.registerPool(directionalFeePool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
     }
 
+    // @notice Directional fee hook, for simplicity, assumes that the pool math is linear and that final balances of
+    //         token in and out are changed proportionally, with a rate 1:1. Then, the charged fee percentage is
+    //         (distance between balances of token in and token out) / (total liquidity of both tokens).
+    //         For example, if token in has a final balance of 100, and token out has a final balance of 40, the
+    //         charged swap fee percentage is (100 - 40) / (140) = 60/140 = 42.85%
     function _calculatedExpectedSwapFeePercentage(
         uint256[] memory poolBalances,
         uint256 swapAmount,
         uint256 indexIn,
         uint256 indexOut
-    ) private returns (uint256 feePercentage) {
+    ) private pure returns (uint256 feePercentage) {
         uint256 finalBalanceTokenIn = poolBalances[indexIn] + swapAmount;
         uint256 finalBalanceTokenOut = poolBalances[indexOut] - swapAmount;
-        uint256 diff = finalBalanceTokenIn - finalBalanceTokenOut;
-        uint256 totalLiquidity = finalBalanceTokenIn + finalBalanceTokenOut;
-        return diff.divDown(totalLiquidity);
+        uint256 feePercentage;
+
+        // pool is farther from equilibrium, charge calculated fee
+        if (finalBalanceTokenIn > finalBalanceTokenOut) {
+            uint256 diff = finalBalanceTokenIn - finalBalanceTokenOut;
+            uint256 totalLiquidity = finalBalanceTokenIn + finalBalanceTokenOut;
+            // If diff is close to totalLiquidity, we charge a very large swap fee because the swap is moving the pool
+            // balances to the edge
+            feePercentage = diff.divDown(totalLiquidity);
+        }
+
+        return feePercentage;
     }
 }
