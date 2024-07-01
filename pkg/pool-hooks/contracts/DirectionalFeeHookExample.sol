@@ -65,11 +65,17 @@ contract DirectionalFeeHookExample is BaseHooks {
         );
     }
 
-    // @notice Directional fee hook, for simplicity, assumes that the pool math is linear and that final balances of
-    //         token in and out are changed proportionally, with a rate 1:1. Then, the charged fee percentage is
-    //         (distance between balances of token in and token out) / (total liquidity of both tokens).
-    //         For example, if token in has a final balance of 100, and token out has a final balance of 40, the
-    //         charged swap fee percentage is (100 - 40) / (140) = 60/140 = 42.85%
+    /** @notice This example assumes that the pool math is linear and that final balances of token in and out are
+     *          changed proportionally. This approximation is just to illustrate this hook in a simple manner, but is
+     *          also reasonable since stable pools behave linearly near the equilibrium. Also, this example requires
+     *          the rates to be 1:1, which is common among assets that are pegged around the same value, such as USD.
+     *          The charged fee percentage is:
+     *
+     *          (distance between balances of token in and token out) / (total liquidity of both tokens)
+     *
+     *          For example, if token in has a final balance of 100, and token out has a final balance of 40, the
+     *          charged swap fee percentage is (100 - 40) / (140) = 60/140 = 42.85%
+     */
     function _calculatedExpectedSwapFeePercentage(
         uint256[] memory poolBalances,
         uint256 swapAmount,
