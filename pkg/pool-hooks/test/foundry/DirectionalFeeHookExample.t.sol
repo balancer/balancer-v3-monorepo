@@ -56,7 +56,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         address directionalFeeHook = address(
             new DirectionalFeeHookExample(IVault(address(vault)), address(stablePoolFactory))
         );
-        vm.label(directionalFeeHook, "Exit Fee Hook");
+        vm.label(directionalFeeHook, "Directional Fee Hook");
         return directionalFeeHook;
     }
 
