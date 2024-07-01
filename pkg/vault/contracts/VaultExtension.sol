@@ -236,17 +236,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
 
         // O(n^2) loop, but n is capped at 4
-        for (uint256 i = 0; i < numTokens; ++i) {
-            for (uint256 j = 0; j < numTokens; ++i) {
+        for (uint256 i = 0; i < numTokens; i++) {
+            for (uint256 j = 0; j < numTokens; j++) {
                 if (i != j && tokens[i] == tokens[j]) {
                     // Register the token with an initial balance of zero.
                     // Ensure the token isn't already registered for the pool.
                     revert TokenAlreadyRegistered(tokens[i]);
                 }
             }
+            _poolTokens[pool].push(tokens[i]);
         }
-
-        _poolTokens[pool] = tokens;
 
         // Store the role account addresses (for getters).
         _poolRoleAccounts[pool] = params.roleAccounts;
