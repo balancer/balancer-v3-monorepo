@@ -19,4 +19,26 @@ contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
     function manuallySetSwapFee(address pool, uint256 newSwapFee) external {
         _poolConfigBits[pool] = _poolConfigBits[pool].setStaticSwapFeePercentage(newSwapFee);
     }
+
+    function manualRegisterPoolReentrancy(
+        address pool,
+        TokenConfig[] memory tokenConfig,
+        uint256 swapFeePercentage,
+        uint32 pauseWindowEndTime,
+        bool protocolFeeExempt,
+        PoolRoleAccounts calldata roleAccounts,
+        address poolHooksContract,
+        LiquidityManagement calldata liquidityManagement
+    ) external nonReentrant {
+        IVault(address(this)).registerPool(
+            pool,
+            tokenConfig,
+            swapFeePercentage,
+            pauseWindowEndTime,
+            protocolFeeExempt,
+            roleAccounts,
+            poolHooksContract,
+            liquidityManagement
+        );
+    }
 }

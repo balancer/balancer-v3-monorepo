@@ -16,9 +16,9 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
+import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
-contract FeeTakingHookExample is BasePoolHooks, Ownable {
+contract FeeTakingHookExample is BaseHooks, Ownable {
     using FixedPoint for uint256;
 
     // Percentages are represented as 18-decimal FP, with maximum value of 1e18 (100%), so 60 bits are enough.
@@ -26,7 +26,7 @@ contract FeeTakingHookExample is BasePoolHooks, Ownable {
     uint64 public addLiquidityHookFeePercentage;
     uint64 public removeLiquidityHookFeePercentage;
 
-    constructor(IVault vault) BasePoolHooks(vault) Ownable(msg.sender) {
+    constructor(IVault vault) BaseHooks(vault) Ownable(msg.sender) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

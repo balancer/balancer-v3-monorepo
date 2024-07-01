@@ -20,12 +20,12 @@ import {
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
+import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 // In this example, every time a swap is executed in a pool registered with this hook, a "random" number is drawn.
 // If the drawn number is not equal to the LUCKY_NUMBER, the user will pay fees to the hook contract. But, if the
 // drawn number is equal to LUCKY_NUMBER, the user won't pay hook fees and will receive all fees accrued by the hook.
-contract LotteryHookExample is BasePoolHooks, Ownable {
+contract LotteryHookExample is BaseHooks, Ownable {
     using FixedPoint for uint256;
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using SafeERC20 for IERC20;
@@ -47,7 +47,7 @@ contract LotteryHookExample is BasePoolHooks, Ownable {
 
     uint256 private _counter = 0;
 
-    constructor(IVault vault, address router) BasePoolHooks(vault) Ownable(msg.sender) {
+    constructor(IVault vault, address router) BaseHooks(vault) Ownable(msg.sender) {
         _trustedRouter = router;
     }
 
