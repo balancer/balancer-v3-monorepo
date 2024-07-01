@@ -29,7 +29,7 @@ contract DirectionalFeeHookExample is BaseHooks {
         address factory,
         address pool,
         TokenConfig[] memory,
-        LiquidityManagement calldata liquidityManagement
+        LiquidityManagement calldata
     ) external view override onlyVault returns (bool) {
         // This hook allows only stable pools to implement it
         return factory == _allowedStablePoolFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
@@ -47,7 +47,7 @@ contract DirectionalFeeHookExample is BaseHooks {
         uint256 staticSwapFeePercentage
     ) external view override returns (bool, uint256) {
         // Get pool balances
-        (IERC20[] memory tokens, , , uint256[] memory lastLiveBalances) = _vault.getPoolTokenInfo(pool);
+        (, , , uint256[] memory lastLiveBalances) = _vault.getPoolTokenInfo(pool);
 
         uint256 calculatedSwapFeePercentage = _calculatedExpectedSwapFeePercentage(
             lastLiveBalances,
@@ -78,7 +78,6 @@ contract DirectionalFeeHookExample is BaseHooks {
     ) private pure returns (uint256 feePercentage) {
         uint256 finalBalanceTokenIn = poolBalances[indexIn] + swapAmount;
         uint256 finalBalanceTokenOut = poolBalances[indexOut] - swapAmount;
-        uint256 feePercentage;
 
         // pool is farther from equilibrium, charge calculated fee
         if (finalBalanceTokenIn > finalBalanceTokenOut) {
@@ -88,7 +87,5 @@ contract DirectionalFeeHookExample is BaseHooks {
             // balances to the edge
             feePercentage = diff.divDown(totalLiquidity);
         }
-
-        return feePercentage;
     }
 }
