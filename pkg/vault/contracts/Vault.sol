@@ -203,7 +203,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
 
         if (poolData.poolConfigBits.shouldCallBeforeSwap()) {
-            poolData.poolConfigBits.callBeforeSwapHook(swapParams, params.pool, _hooksContracts[params.pool]);
+            HooksConfigLib.callBeforeSwapHook(swapParams, params.pool, _hooksContracts[params.pool]);
 
             // The call to `onBeforeSwap` could potentially update token rates and balances.
             // We update `poolData.tokenRates`, `poolData.rawBalances` and `poolData.balancesLiveScaled18`
@@ -222,10 +222,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // to be used unless the pool has a dynamic swap fee. It is also passed into the hook, to support common cases
         // where the dynamic fee computation logic uses it.
         if (poolData.poolConfigBits.shouldCallComputeDynamicSwapFee()) {
-            (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = poolData
-                .poolConfigBits
-                .callComputeDynamicSwapFeeHook(
-                    swapParams,
+            (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = HooksConfigLib.callComputeDynamicSwapFeeHook(
+                swapParams,
                     params.pool,
                     state.swapFeePercentage,
                     _hooksContracts[params.pool]
@@ -541,7 +539,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         if (poolData.poolConfigBits.shouldCallBeforeAddLiquidity()) {
-            poolData.poolConfigBits.callBeforeAddLiquidityHook(
+            HooksConfigLib.callBeforeAddLiquidityHook(
                 msg.sender,
                 maxAmountsInScaled18,
                 params,
@@ -779,7 +777,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Uses msg.sender as the router (the contract that called the vault)
         if (poolData.poolConfigBits.shouldCallBeforeRemoveLiquidity()) {
-            poolData.poolConfigBits.callBeforeRemoveLiquidityHook(
+            HooksConfigLib.callBeforeRemoveLiquidityHook(
                 minAmountsOutScaled18,
                 msg.sender,
                 params,

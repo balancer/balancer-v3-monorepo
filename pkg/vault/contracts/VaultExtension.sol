@@ -388,7 +388,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         );
 
         if (poolData.poolConfigBits.shouldCallBeforeInitialize()) {
-            poolData.poolConfigBits.callBeforeInitializeHook(exactAmountsInScaled18, userData, _hooksContracts[pool]);
+            HooksConfigLib.callBeforeInitializeHook(exactAmountsInScaled18, userData, _hooksContracts[pool]);
             // The before hook is reentrant, and could have changed token rates.
             // Updating balances here is unnecessary since they're 0, but we do not special case before init
             // for the sake of bytecode size.
@@ -407,12 +407,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // fix stack too deep
             IHooks hooksContract = _hooksContracts[pool];
 
-            poolData.poolConfigBits.callAfterInitializeHook(
-                exactAmountsInScaled18,
-                bptAmountOut,
-                userData,
-                hooksContract
-            );
+            HooksConfigLib.callAfterInitializeHook(exactAmountsInScaled18, bptAmountOut, userData, hooksContract);
         }
     }
 
@@ -620,7 +615,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         IBasePool.PoolSwapParams memory swapParams
     ) external view onlyVaultDelegateCall withInitializedPool(pool) returns (bool success, uint256 dynamicSwapFee) {
         return
-            _poolConfigBits[pool].callComputeDynamicSwapFeeHook(
+            HooksConfigLib.callComputeDynamicSwapFeeHook(
                 swapParams,
                 pool,
                 _poolConfigBits[pool].getStaticSwapFeePercentage(),
