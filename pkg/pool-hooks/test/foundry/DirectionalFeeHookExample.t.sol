@@ -111,7 +111,6 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         assertTrue(hooksConfig.shouldCallComputeDynamicSwapFee, "hook's shouldCallComputeDynamicSwapFee is wrong");
     }
 
-    // Test fee when pool is coming back to balance
     function testSwapBalancingPoolFee() public {
         // Make a first swap to unbalance the pool meaningfully (Much more USDC than DAI)
         vm.prank(bob);
@@ -200,7 +199,97 @@ contract DirectionalHookExampleTest is BaseVaultTest {
     }
 
     // Test fee when pool is getting unbalanced
-    // Test fee when balance point passes
+    function testSwapUnbalancingPoolFee() public {
+        // Swap to meaningfully take the pool out of equilibrium
+        uint256 daiExactAmountIn = poolInitAmount / 2;
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(address(lp));
+
+        // Calculate the expected amoutn out (amount out without fees)
+        uint256 poolInvariant = StableMath.computeInvariant(
+            DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
+            balancesBefore.poolTokens
+        );
+        uint256 expectedAmountOut = StableMath.computeOutGivenExactIn(
+            DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
+            balancesBefore.poolTokens,
+            daiIdx,
+            usdcIdx,
+            daiExactAmountIn,
+            poolInvariant
+        );
+
+        uint256 expectedSwapFeePercentage = _calculatedExpectedSwapFeePercentage(
+            balancesBefore.poolTokens,
+            daiExactAmountIn,
+            daiIdx,
+            usdcIdx
+        );
+
+        // Swap DAI for USDC, bringing pool nearer balance
+        vm.prank(bob);
+        router.swapSingleTokenExactIn(pool, dai, usdc, daiExactAmountIn, 0, MAX_UINT256, false, bytes(""));
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(address(lp));
+
+        // Measure actual amount out, which is expectedAmountOut - swapFeeAmount
+        uint256 actualAmountOut = balancesAfter.bobTokens[usdcIdx] - balancesBefore.bobTokens[usdcIdx];
+        uint256 actualSwapFeeAmount = expectedAmountOut - actualAmountOut;
+
+        // Check if swap fee percentage applied is expected swap fee percentage (since pool was taken farther from
+        // equilibrium)
+        assertEq(actualSwapFeeAmount, expectedAmountOut.mulUp(expectedSwapFeePercentage), "Swap Fee Amount is wrong");
+        assertGt(expectedSwapFeePercentage, SWAP_FEE_PERCENTAGE, "Expected Swap Fee Percentage not greater than 10%");
+
+        // Bob balances (Bob deposited DAI to receive USDC)
+        assertEq(
+            balancesBefore.bobTokens[daiIdx] - balancesAfter.bobTokens[daiIdx],
+            daiExactAmountIn,
+            "Bob DAI balance is wrong"
+        );
+        assertEq(
+            balancesAfter.bobTokens[usdcIdx] - balancesBefore.bobTokens[usdcIdx],
+            expectedAmountOut - actualSwapFeeAmount,
+            "Bob USDC balance is wrong"
+        );
+
+        // Pool balances (Pool received DAI and returned USDC)
+        assertEq(
+            balancesAfter.poolTokens[daiIdx] - balancesBefore.poolTokens[daiIdx],
+            daiExactAmountIn,
+            "Pool DAI balance is wrong"
+        );
+        // Since Protocol Swap Fee is 0 (was not set in this test) all swap fee amount returned to the pool
+        assertEq(
+            balancesBefore.poolTokens[usdcIdx] - balancesAfter.poolTokens[usdcIdx],
+            expectedAmountOut - actualSwapFeeAmount,
+            "Pool USDC balance is wrong"
+        );
+
+        // Vault Balances (Must reflect pool)
+        assertEq(
+            balancesAfter.vaultTokens[daiIdx] - balancesBefore.vaultTokens[daiIdx],
+            daiExactAmountIn,
+            "Vault DAI balance is wrong"
+        );
+        assertEq(
+            balancesBefore.vaultTokens[usdcIdx] - balancesAfter.vaultTokens[usdcIdx],
+            expectedAmountOut - actualSwapFeeAmount,
+            "Vault USDC balance is wrong"
+        );
+
+        // Vault Reserves (Must reflect vault balances)
+        assertEq(
+            balancesAfter.vaultReserves[daiIdx] - balancesBefore.vaultReserves[daiIdx],
+            daiExactAmountIn,
+            "Vault DAI reserve is wrong"
+        );
+        assertEq(
+            balancesBefore.vaultReserves[usdcIdx] - balancesAfter.vaultReserves[usdcIdx],
+            expectedAmountOut - actualSwapFeeAmount,
+            "Vault USDC reserve is wrong"
+        );
+    }
 
     // Registry tests require a new pool, because an existent pool may be already registered
     function _createPoolToRegister() private returns (address newPool) {
@@ -219,5 +308,18 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
 
         factoryMock.registerPool(directionalFeePool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
+    }
+
+    function _calculatedExpectedSwapFeePercentage(
+        uint256[] memory poolBalances,
+        uint256 swapAmount,
+        uint256 indexIn,
+        uint256 indexOut
+    ) private returns (uint256 feePercentage) {
+        uint256 finalBalanceTokenIn = poolBalances[indexIn] + swapAmount;
+        uint256 finalBalanceTokenOut = poolBalances[indexOut] - swapAmount;
+        uint256 diff = finalBalanceTokenIn - finalBalanceTokenOut;
+        uint256 totalLiquidity = finalBalanceTokenIn + finalBalanceTokenOut;
+        return diff.divDown(totalLiquidity);
     }
 }
