@@ -6,10 +6,10 @@ import "forge-std/Test.sol";
 
 import { VaultState } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { VaultStateLib, VaultStateBits, VaultStateBits } from "@balancer-labs/v3-vault/contracts/lib/VaultStateLib.sol";
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
-
 import { BaseBitsConfigTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseBitsConfigTest.sol";
+
+import { VaultStateLib, VaultStateBits, VaultStateBits } from "../../../contracts/lib/VaultStateLib.sol";
 
 contract VaultStateLibTest is BaseBitsConfigTest {
     using WordCodec for bytes32;

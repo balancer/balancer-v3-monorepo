@@ -48,6 +48,8 @@ interface IVaultMainMock {
 
     function manualSetHooksConfig(address pool, HooksConfig memory config) external;
 
+    function manualSetStaticSwapFeePercentage(address pool, uint256 value) external;
+
     function manualSetPoolTokenBalances(address, IERC20[] memory, uint256[] memory, uint256[] memory) external;
 
     function manualSetPoolConfigBits(address pool, PoolConfigBits config) external;
