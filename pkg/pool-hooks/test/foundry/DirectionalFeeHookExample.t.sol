@@ -66,7 +66,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         address newPool = address(
             stablePoolFactory.create(
                 "Stable Pool Test",
-                "STABLETEST",
+                "STABLE-TEST",
                 vault.buildTokenConfig(tokens.asIERC20()),
                 DEFAULT_AMP_FACTOR,
                 roleAccounts,
