@@ -5,6 +5,11 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
+import {
+    IWeightedPool,
+    WeightedPoolDynamicData,
+    WeightedPoolImmutableData
+} from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -19,7 +24,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 /// @notice Basic Weighted Pool with immutable weights.
-contract WeightedPool is IBasePool, BalancerPoolToken, PoolInfo, Version {
+contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     // Fees are 18-decimal, floating point values, which will be stored in the Vault using 24 bits.
     // This means they have 0.00001% resolution (i.e., any non-zero bits < 1e11 will cause precision loss).
     // Minimum values help make the math well-behaved (i.e., the swap fee should overwhelm any rounding error).
@@ -98,10 +103,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken, PoolInfo, Version {
             );
     }
 
-    /**
-     * @dev Get the normalized weights.
-     * @return An array of normalized weights, corresponding to the pool tokens
-     */
+    /// @inheritdoc IWeightedPool
     function getNormalizedWeights() external view returns (uint256[] memory) {
         return _getNormalizedWeights();
     }
@@ -178,17 +180,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken, PoolInfo, Version {
         return _MAX_SWAP_FEE_PERCENTAGE;
     }
 
-    struct WeightedPoolDynamicData {
-        uint256[] liveBalances;
-        uint256[] tokenRates;
-        uint256 staticSwapFeePercentage;
-        uint256 totalSupply;
-        uint256 bptRate;
-    }
-
-    /**
-     * @notice Get relevant dynamic pool data required for swap / add / remove calculations.
-     */
+    /// @inheritdoc IWeightedPool
     function getWeightedPoolDynamicData() external view returns (WeightedPoolDynamicData memory data) {
         data.liveBalances = getCurrentLiveBalances();
         (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
@@ -197,15 +189,7 @@ contract WeightedPool is IBasePool, BalancerPoolToken, PoolInfo, Version {
         data.bptRate = getRate();
     }
 
-    struct WeightedPoolImmutableData {
-        IERC20[] tokens;
-        uint256[] decimalScalingFactors;
-        uint256[] normalizedWeights;
-    }
-
-    /**
-     * @notice Get relevant immutable pool data required for swap / add / remove calculations.
-     */
+    /// @inheritdoc IWeightedPool
     function getWeightedPoolImmutableData() external view returns (WeightedPoolImmutableData memory data) {
         data.tokens = getTokens();
         (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
