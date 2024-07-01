@@ -31,11 +31,11 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { VaultStateLib, VaultStateBits, VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
-import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
@@ -202,7 +202,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
 
         if (poolData.poolConfigBits.shouldCallBeforeSwap()) {
-            poolData.poolConfigBits.callBeforeSwapHook(swapParams, params.pool, _hooksContracts[params.pool]);
+            HooksConfigLib.callBeforeSwapHook(swapParams, params.pool, _hooksContracts[params.pool]);
 
             // The call to `onBeforeSwap` could potentially update token rates and balances.
             // We update `poolData.tokenRates`, `poolData.rawBalances` and `poolData.balancesLiveScaled18`
@@ -221,9 +221,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // to be used unless the pool has a dynamic swap fee. It is also passed into the hook, to support common cases
         // where the dynamic fee computation logic uses it.
         if (poolData.poolConfigBits.shouldCallComputeDynamicSwapFee()) {
-            (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = poolData
-                .poolConfigBits
-                .callComputeDynamicSwapFeeHook(swapParams, state.swapFeePercentage, _hooksContracts[params.pool]);
+            (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = HooksConfigLib.callComputeDynamicSwapFeeHook(
+                swapParams,
+                state.swapFeePercentage,
+                _hooksContracts[params.pool]
+            );
 
             if (dynamicSwapFeeCalculated) {
                 state.swapFeePercentage = dynamicSwapFee;
@@ -265,10 +267,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _loadSwapState(
         SwapParams memory params,
         PoolData memory poolData
-    ) private view returns (SwapState memory state) {
-        // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
-        mapping(uint256 => bytes32) storage poolBalances = _poolTokenBalances[params.pool];
-
+    ) private pure returns (SwapState memory state) {
         int indexIn = _findTokenIndex(poolData.tokens, params.tokenIn);
         int indexOut = _findTokenIndex(poolData.tokens, params.tokenOut);
 
@@ -522,7 +521,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         if (poolData.poolConfigBits.shouldCallBeforeAddLiquidity()) {
-            poolData.poolConfigBits.callBeforeAddLiquidityHook(
+            HooksConfigLib.callBeforeAddLiquidityHook(
                 msg.sender,
                 maxAmountsInScaled18,
                 params,
@@ -760,7 +759,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // Uses msg.sender as the router (the contract that called the vault)
         if (poolData.poolConfigBits.shouldCallBeforeRemoveLiquidity()) {
-            poolData.poolConfigBits.callBeforeRemoveLiquidityHook(
+            HooksConfigLib.callBeforeRemoveLiquidityHook(
                 minAmountsOutScaled18,
                 msg.sender,
                 params,
