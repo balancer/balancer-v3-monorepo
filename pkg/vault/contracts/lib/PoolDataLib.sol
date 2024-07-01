@@ -15,7 +15,6 @@ import { PackedTokenBalance } from "./PackedTokenBalance.sol";
 import { PoolConfigBits, PoolConfigLib } from "./PoolConfigLib.sol";
 
 library PoolDataLib {
-    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using PackedTokenBalance for bytes32;
     using FixedPoint for *;
     using ScalingHelpers for *;
@@ -23,15 +22,16 @@ library PoolDataLib {
 
     function load(
         PoolData memory poolData,
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
+        mapping(uint => bytes32) storage poolTokenBalances,
         PoolConfigBits poolConfigBits,
         mapping(IERC20 => TokenInfo) storage poolTokenInfo,
+        IERC20[] storage tokens,
         Rounding roundingDirection
     ) internal view {
-        uint256 numTokens = poolTokenBalances.length();
+        uint256 numTokens = tokens.length;
 
         poolData.poolConfigBits = poolConfigBits;
-        poolData.tokens = new IERC20[](numTokens);
+        poolData.tokens = tokens;
         poolData.tokenInfo = new TokenInfo[](numTokens);
         poolData.balancesRaw = new uint256[](numTokens);
         poolData.balancesLiveScaled18 = new uint256[](numTokens);
@@ -43,10 +43,9 @@ library PoolDataLib {
             poolData.poolConfigBits.isPoolInRecoveryMode() == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            (IERC20 token, bytes32 packedBalance) = poolTokenBalances.unchecked_at(i);
-            TokenInfo memory tokenInfo = poolTokenInfo[token];
+            TokenInfo memory tokenInfo = poolTokenInfo[poolData.tokens[i]];
+            bytes32 packedBalance = poolTokenBalances[i];
 
-            poolData.tokens[i] = token;
             poolData.tokenInfo[i] = tokenInfo;
             poolData.tokenRates[i] = getTokenRate(tokenInfo);
             updateRawAndLiveBalance(poolData, i, packedBalance.getBalanceRaw(), roundingDirection);
@@ -86,14 +85,14 @@ library PoolDataLib {
 
     function syncPoolBalancesAndFees(
         PoolData memory poolData,
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
+        mapping(uint256 => bytes32) storage poolTokenBalances,
         mapping(IERC20 => bytes32) storage poolAggregateProtocolFeeAmounts
     ) internal {
         uint256 numTokens = poolData.balancesRaw.length;
 
         for (uint256 i = 0; i < numTokens; ++i) {
             IERC20 token = poolData.tokens[i];
-            bytes32 packedBalances = poolTokenBalances.unchecked_valueAt(i);
+            bytes32 packedBalances = poolTokenBalances[i];
             uint256 storedBalanceRaw = packedBalances.getBalanceRaw();
 
             // poolData has balances updated with yield fees now.
@@ -107,9 +106,9 @@ library PoolDataLib {
                 );
             }
 
-            poolTokenBalances.unchecked_setAt(
-                i,
-                PackedTokenBalance.toPackedBalance(poolData.balancesRaw[i], poolData.balancesLiveScaled18[i])
+            poolTokenBalances[i] = PackedTokenBalance.toPackedBalance(
+                poolData.balancesRaw[i],
+                poolData.balancesLiveScaled18[i]
             );
         }
     }
@@ -123,7 +122,7 @@ library PoolDataLib {
      */
     function reloadBalancesAndRates(
         PoolData memory poolData,
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances,
+        mapping(uint256 => bytes32) storage poolTokenBalances,
         Rounding roundingDirection
     ) internal view {
         uint256 numTokens = poolData.tokens.length;
@@ -135,7 +134,7 @@ library PoolDataLib {
         for (uint256 i = 0; i < numTokens; ++i) {
             poolData.tokenRates[i] = getTokenRate(poolData.tokenInfo[i]);
 
-            (, packedBalance) = poolTokenBalances.unchecked_at(i);
+            packedBalance = poolTokenBalances[i];
 
             // Note the order dependency. This requires up-to-date tokenRate for the token at index `i` in `poolData`
             updateRawAndLiveBalance(poolData, i, packedBalance.getBalanceRaw(), roundingDirection);

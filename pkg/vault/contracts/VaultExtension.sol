@@ -57,7 +57,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using Address for *;
     using ArrayHelpers for uint256[];
     using FixedPoint for uint256;
-    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfigBits;
@@ -180,6 +179,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert PoolAlreadyRegistered(pool);
         }
 
+        if (_poolTokens[pool].length > 0) {
+            revert TokensAlreadyRegistered(_poolTokens[pool]);
+        }
+
         uint256 numTokens = params.tokenConfig.length;
         if (numTokens < _MIN_TOKENS) {
             revert MinTokens();
@@ -189,14 +192,17 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
 
         // Retrieve or create the pool's token balances mapping.
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
 
         uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
         IERC20 previousToken;
 
+        IERC20[] memory tokens = new IERC20[](numTokens);
+
         for (uint256 i = 0; i < numTokens; ++i) {
             TokenConfig memory tokenData = params.tokenConfig[i];
             IERC20 token = tokenData.token;
+            tokens[i] = token;
 
             // Enforce token sorting. (`previousToken` will be the zero address on the first iteration.)
             if (token < previousToken) {
@@ -207,13 +213,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // Ensure that the token address is valid
             if (address(token) == address(0) || address(token) == pool) {
                 revert InvalidToken();
-            }
-
-            // Register the token with an initial balance of zero.
-            // Ensure the token isn't already registered for the pool.
-            // Note: EnumerableMaps require an explicit initial value when creating a key-value pair.
-            if (poolTokenBalances.set(token, bytes32(0)) == false) {
-                revert TokenAlreadyRegistered(token);
             }
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
@@ -238,6 +237,19 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
             tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
         }
+
+        // O(n^2) loop, but n is capped at 4
+        for (uint256 i = 0; i < numTokens; ++i) {
+            for (uint256 j = 0; j < numTokens; ++i) {
+                if (i != j && tokens[i] == tokens[j]) {
+                    // Register the token with an initial balance of zero.
+                    // Ensure the token isn't already registered for the pool.
+                    revert TokenAlreadyRegistered(tokens[i]);
+                }
+            }
+        }
+
+        _poolTokens[pool] = tokens;
 
         // Store the role account addresses (for getters).
         _poolRoleAccounts[pool] = params.roleAccounts;
@@ -425,7 +437,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256[] memory exactAmountsInScaled18,
         uint256 minBptAmountOut
     ) internal nonReentrant returns (uint256 bptAmountOut) {
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
+        mapping(uint256 => bytes32) storage poolBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < poolData.tokens.length; ++i) {
             IERC20 actualToken = poolData.tokens[i];
@@ -439,10 +451,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             _takeDebt(actualToken, exactAmountsIn[i]);
 
             // Store the new Pool balances (and initial last live balances).
-            poolBalances.unchecked_setAt(
-                i,
-                PackedTokenBalance.toPackedBalance(exactAmountsIn[i], exactAmountsInScaled18[i])
-            );
+            poolBalances[i] = PackedTokenBalance.toPackedBalance(exactAmountsIn[i], exactAmountsInScaled18[i]);
         }
 
         emit PoolBalanceChanged(pool, to, exactAmountsIn.unsafeCastToInt256(true));
@@ -523,18 +532,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function getPoolTokens(
         address pool
     ) external view onlyVaultDelegateCall withRegisteredPool(pool) returns (IERC20[] memory tokens) {
-        // Retrieve the mapping of tokens and their balances for the specified pool.
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        uint256 numTokens = poolTokenBalances.length();
-        // Initialize arrays to store tokens based on the number of tokens in the pool.
-        tokens = new IERC20[](numTokens);
-
-        for (uint256 i = 0; i < numTokens; ++i) {
-            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
-            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
-            // storage reads.
-            tokens[i] = poolTokenBalances.unchecked_keyAt(i);
-        }
+        return _poolTokens[pool];
     }
 
     /// @inheritdoc IVaultExtension
@@ -548,19 +546,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         returns (uint256[] memory decimalScalingFactors, uint256[] memory tokenRates)
     {
         // Retrieve the mapping of tokens and their balances for the specified pool.
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        uint256 numTokens = poolTokenBalances.length();
         PoolConfigBits poolConfig = _poolConfigBits[pool];
 
+        IERC20[] memory tokens = _poolTokens[pool];
+        uint256 numTokens = tokens.length;
         decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolConfig, numTokens);
         tokenRates = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
-            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
-            // storage reads.
-            IERC20 token = poolTokenBalances.unchecked_keyAt(i);
-            TokenInfo memory tokenInfo = _poolTokenInfo[pool][token];
+            TokenInfo memory tokenInfo = _poolTokenInfo[pool][tokens[i]];
             tokenRates[i] = PoolDataLib.getTokenRate(tokenInfo);
         }
     }
@@ -588,19 +582,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         )
     {
         // Retrieve the mapping of tokens and their balances for the specified pool.
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        uint256 numTokens = poolTokenBalances.length();
-        tokens = new IERC20[](numTokens);
+        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
+        tokens = _poolTokens[pool];
+        uint256 numTokens = tokens.length;
         tokenInfo = new TokenInfo[](numTokens);
         balancesRaw = new uint256[](numTokens);
         lastLiveBalances = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            bytes32 packedBalance;
-            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
-            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
-            // storage reads.
-            (tokens[i], packedBalance) = poolTokenBalances.unchecked_at(i);
+            bytes32 packedBalance = poolTokenBalances[i];
             tokenInfo[i] = _poolTokenInfo[pool][tokens[i]];
             balancesRaw[i] = packedBalance.getBalanceRaw();
             lastLiveBalances[i] = packedBalance.getBalanceDerived();
@@ -772,20 +762,17 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         returns (uint256[] memory amountsOutRaw)
     {
         // Retrieve the mapping of tokens and their balances for the specified pool.
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        uint256 numTokens = poolTokenBalances.length();
+        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
 
         // Initialize arrays to store tokens and balances based on the number of tokens in the pool.
-        IERC20[] memory tokens = new IERC20[](numTokens);
+        IERC20[] memory tokens = _poolTokens[pool];
+        uint256 numTokens = tokens.length;
+
         uint256[] memory balancesRaw = new uint256[](numTokens);
         bytes32 packedBalances;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            // Because the iteration is bounded by `tokens.length`, which matches the EnumerableMap's length,
-            // we can safely use `unchecked_at`. This ensures that `i` is a valid token index and minimizes
-            // storage reads.
-            (tokens[i], packedBalances) = poolTokenBalances.unchecked_at(i);
-            balancesRaw[i] = packedBalances.getBalanceRaw();
+            balancesRaw[i] = poolTokenBalances[i].getBalanceRaw();
         }
 
         amountsOutRaw = BasePoolMath.computeProportionalAmountsOut(balancesRaw, _totalSupply(pool), exactBptAmountIn);
@@ -802,11 +789,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Store the new pool balances - raw only, since we don't have rates in Recovery Mode.
         // In Recovery Mode, raw and last live balances will get out of sync. This is corrected when the pool is taken
         // out of Recovery Mode.
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
+        mapping(uint256 => bytes32) storage poolBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            packedBalances = poolBalances.unchecked_valueAt(i);
-            poolBalances.unchecked_setAt(i, packedBalances.setBalanceRaw(balancesRaw[i]));
+            packedBalances = poolBalances[i];
+            poolBalances[i] = packedBalances.setBalanceRaw(balancesRaw[i]);
         }
 
         _spendAllowance(address(pool), from, msg.sender, exactBptAmountIn);

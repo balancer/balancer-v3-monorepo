@@ -29,7 +29,6 @@ contract VaultUnitLiquidityTest is BaseTest {
     using ArrayHelpers for *;
     using ScalingHelpers for *;
     using FixedPoint for *;
-    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using PoolConfigLib for PoolConfigBits;
 
     // #region Test structs
@@ -68,7 +67,7 @@ contract VaultUnitLiquidityTest is BaseTest {
 
         uint256[] memory initialBalances = new uint256[](tokens.length);
         // We don't care about last live balances, so we set them equal to the raw ones.
-        vault.manualSetPoolTokenBalances(pool, tokens, initialBalances, initialBalances);
+        vault.manualSetPoolTokensAndBalances(pool, tokens, initialBalances, initialBalances);
 
         vault.manualSetPoolRegistered(pool, true);
 
