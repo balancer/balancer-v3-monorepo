@@ -17,7 +17,7 @@ export const compilers: [SolcConfig] = [
   {
     version: '0.8.24',
     settings: {
-      viaIR: true,
+      viaIR: false,
       evmVersion: 'cancun',
       optimizer: {
         enabled: true,
@@ -40,17 +40,17 @@ const contractSettings: ContractSettings = {
   '@balancer-labs/v3-vault/contracts': {
     version: compilers[0].version,
     runs: compilers[0].settings.optimizer.runs,
-    viaIR: true,
+    viaIR: false,
   },
   '@balancer-labs/v3-vault/contracts/Vault.sol': {
     version: '0.8.24',
     runs: 200,
-    viaIR: true,
+    viaIR: false,
   },
   '@balancer-labs/v3-vault/contracts/VaultExtension.sol': {
     version: '0.8.24',
     runs: 500,
-    viaIR: true,
+    viaIR: false,
   },
 };
 
