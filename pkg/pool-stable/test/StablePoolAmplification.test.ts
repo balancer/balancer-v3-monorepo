@@ -59,7 +59,10 @@ describe('StablePoolAmplification', () => {
 
   async function deployPool(amp: bigint) {
     pool = await deploy('StablePool', {
-      args: [{ name: 'Stable Pool', symbol: 'STABLE', amplificationParameter: amp }, await vault.getAddress()],
+      args: [
+        { name: 'Stable Pool', symbol: 'STABLE', amplificationParameter: amp, version: 'Stable Pool v1' },
+        await vault.getAddress(),
+      ],
     });
 
     await grantPermission();

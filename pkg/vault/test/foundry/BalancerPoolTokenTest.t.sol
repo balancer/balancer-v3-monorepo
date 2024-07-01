@@ -4,12 +4,16 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import { IEIP712 } from "permit2/src/interfaces/IEIP712.sol";
 
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { BalancerPoolToken } from "vault/contracts/BalancerPoolToken.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
@@ -23,6 +27,9 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     uint256 private constant CURRENT_NONCE = 0;
+
+    uint256 internal constant MINIMUM_TOTAL_SUPPLY = 1e6;
+
     uint256 internal privateKey = 0xBEEF;
     address user = vm.addr(privateKey);
 
@@ -36,130 +43,102 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     function testMetadata() public {
-        assertEq(poolToken.name(), "ERC20 Pool");
-        assertEq(poolToken.symbol(), "ERC20POOL");
-        assertEq(poolToken.decimals(), 18);
+        assertEq(poolToken.name(), "ERC20 Pool", "name mismatch");
+        assertEq(poolToken.symbol(), "ERC20POOL", "symbol mismatch");
+        assertEq(poolToken.decimals(), 18, "decimals mismatch");
     }
 
     function testMint() public {
-        vault.mintERC20(address(poolToken), address(0xBEEF), defaultAmount);
+        vm.expectEmit();
+        emit IERC20.Transfer(address(0), user, defaultAmount);
 
-        assertEq(poolToken.balanceOf(address(0xBEEF)), defaultAmount);
-    }
+        vault.mintERC20(address(poolToken), user, defaultAmount);
 
-    function testMintMinimum() public {
-        vm.expectRevert(abi.encodeWithSelector(IERC20MultiToken.TotalSupplyTooLow.selector, 1, 1e6));
-        vault.mintERC20(address(pool), address(0xBEEF), 1);
+        assertEq(poolToken.balanceOf(user), defaultAmount, "balance mismatch");
     }
 
     function testBurn() public {
-        vault.mintERC20(address(pool), address(0xBEEF), defaultAmount);
-        vault.burnERC20(address(pool), address(0xBEEF), defaultAmount - 1e6);
+        uint256 burnAmount = defaultAmount - MINIMUM_TOTAL_SUPPLY;
 
-        assertEq(poolToken.balanceOf(address(0xBEEF)), 1e6);
-    }
+        vault.mintERC20(pool, user, defaultAmount);
 
-    function testBurnMinimum() public {
-        vault.mintERC20(address(pool), address(0xBEEF), defaultAmount);
+        vm.expectEmit();
+        emit IERC20.Transfer(user, address(0), burnAmount);
+        vault.burnERC20(pool, user, burnAmount);
 
-        vm.expectRevert(abi.encodeWithSelector(IERC20MultiToken.TotalSupplyTooLow.selector, 0, 1e6));
-        vault.burnERC20(address(pool), address(0xBEEF), defaultAmount);
+        assertEq(poolToken.balanceOf(user), MINIMUM_TOTAL_SUPPLY, "balance mismatch");
     }
 
     function testApprove() public {
-        vault.mintERC20(address(pool), address(this), defaultAmount);
+        vault.mintERC20(pool, address(this), defaultAmount);
 
-        poolToken.approve(address(0xBEEF), defaultAmount);
+        vm.expectEmit();
+        emit IERC20.Approval(address(this), user, defaultAmount);
+        poolToken.approve(user, defaultAmount);
 
-        assertEq(poolToken.allowance(address(this), address(0xBEEF)), defaultAmount);
+        assertEq(poolToken.allowance(address(this), user), defaultAmount, "allowance mismatch");
     }
 
     function testTransfer() public {
-        vault.mintERC20(address(pool), address(this), defaultAmount);
+        vault.mintERC20(pool, address(this), defaultAmount);
 
-        assertTrue(poolToken.transfer(address(0xBEEF), defaultAmount));
-        assertEq(poolToken.totalSupply(), defaultAmount);
+        vm.expectEmit();
+        emit IERC20.Transfer(address(this), user, defaultAmount);
+        assertTrue(poolToken.transfer(user, defaultAmount), "transfer failed");
+        assertEq(poolToken.totalSupply(), defaultAmount, "total supply mismatch");
 
-        assertEq(poolToken.balanceOf(address(this)), 0);
-        assertEq(poolToken.balanceOf(address(0xBEEF)), defaultAmount);
+        assertEq(poolToken.balanceOf(address(this)), 0, "address(this) balance mismatch");
+        assertEq(poolToken.balanceOf(user), defaultAmount, "user balance mismatch");
     }
 
     function testTransferFrom() public {
         address from = address(0xABCD);
 
-        vault.mintERC20(address(pool), address(from), defaultAmount);
+        vault.mintERC20(pool, address(from), defaultAmount);
 
         vm.prank(from);
         poolToken.approve(address(this), defaultAmount);
 
-        poolToken.transferFrom(from, address(0xBEEF), defaultAmount);
+        vm.expectEmit();
+        emit IERC20.Approval(from, address(this), 0);
 
-        assertEq(poolToken.allowance(from, address(0xBEEF)), 0);
-        assertEq(poolToken.balanceOf(address(0xBEEF)), defaultAmount);
-        assertEq(poolToken.balanceOf(from), 0);
-    }
+        vm.expectEmit();
+        emit IERC20.Transfer(from, user, defaultAmount);
 
-    function testMintToZero() public {
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InvalidReceiver.selector, 0));
-        vault.mintERC20(address(pool), address(0), defaultAmount);
-    }
+        poolToken.transferFrom(from, user, defaultAmount);
 
-    function testTransferFromToZero() public {
-        vault.mintERC20(address(pool), address(this), defaultAmount);
-
-        vm.expectRevert(
-            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(this), 0, defaultAmount)
-        );
-        poolToken.transferFrom(address(this), address(0), defaultAmount);
+        assertEq(poolToken.allowance(from, user), 0, "allowance(from, user) isn't 0");
+        assertEq(poolToken.balanceOf(user), defaultAmount, "user balance mismatch");
+        assertEq(poolToken.balanceOf(from), 0, "sender balance mismatch");
     }
 
     function testPermit() public {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            privateKey,
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(
-                        abi.encode(
-                            PERMIT_TYPEHASH,
-                            user,
-                            address(0xCAFE),
-                            defaultAmount,
-                            CURRENT_NONCE,
-                            block.timestamp
-                        )
-                    )
-                )
-            )
+        (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
+            IEIP712(address(poolToken)),
+            user,
+            address(0xCAFE),
+            defaultAmount,
+            CURRENT_NONCE,
+            block.timestamp,
+            privateKey
         );
 
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
 
-        assertEq(poolToken.allowance(user, address(0xCAFE)), defaultAmount);
-        assertEq(poolToken.nonces(user), CURRENT_NONCE + 1);
+        assertEq(poolToken.allowance(user, address(0xCAFE)), defaultAmount, "allowance mismatch");
+        assertEq(poolToken.nonces(user), CURRENT_NONCE + 1, "nonce mismatch");
     }
 
     // @dev Just test for general fail as it is hard to compute error arguments
     function testFailPermitBadNonce() public {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            privateKey,
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(
-                        abi.encode(
-                            PERMIT_TYPEHASH,
-                            user,
-                            address(0xCAFE),
-                            defaultAmount,
-                            CURRENT_NONCE + 1,
-                            block.timestamp
-                        )
-                    )
-                )
-            )
+        (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
+            IEIP712(address(poolToken)),
+            user,
+            address(0xCAFE),
+            defaultAmount,
+            CURRENT_NONCE + 1,
+            block.timestamp,
+            privateKey
         );
 
         vm.expectRevert(bytes(""));
@@ -168,24 +147,14 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
     // @dev Just test for general fail as it is hard to compute error arguments
     function testFailPermitBadDeadline() public {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            privateKey,
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(
-                        abi.encode(
-                            PERMIT_TYPEHASH,
-                            user,
-                            address(0xCAFE),
-                            defaultAmount,
-                            CURRENT_NONCE,
-                            block.timestamp
-                        )
-                    )
-                )
-            )
+        (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
+            IEIP712(address(poolToken)),
+            user,
+            address(0xCAFE),
+            defaultAmount,
+            CURRENT_NONCE,
+            block.timestamp,
+            privateKey
         );
 
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp + 1, v, r, s);
@@ -193,44 +162,29 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
     // @dev Just test for general fail as it is hard to compute error arguments
     function testFailPermitPastDeadline() public {
-        uint256 oldTimestamp = block.timestamp;
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            privateKey,
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(
-                        abi.encode(PERMIT_TYPEHASH, user, address(0xCAFE), defaultAmount, CURRENT_NONCE, oldTimestamp)
-                    )
-                )
-            )
+        (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
+            IEIP712(address(poolToken)),
+            user,
+            address(0xCAFE),
+            defaultAmount,
+            CURRENT_NONCE,
+            block.timestamp,
+            privateKey
         );
 
-        vm.warp(block.timestamp + 1);
-        poolToken.permit(user, address(0xCAFE), defaultAmount, oldTimestamp, v, r, s);
+        poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp - 1, v, r, s);
     }
 
     // @dev Just test for general fail as it is hard to compute error arguments
     function testFailPermitReplay() public {
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            privateKey,
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(
-                        abi.encode(
-                            PERMIT_TYPEHASH,
-                            user,
-                            address(0xCAFE),
-                            defaultAmount,
-                            CURRENT_NONCE,
-                            block.timestamp
-                        )
-                    )
-                )
-            )
+        (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
+            IEIP712(address(poolToken)),
+            user,
+            address(0xCAFE),
+            defaultAmount,
+            CURRENT_NONCE,
+            block.timestamp,
+            privateKey
         );
 
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
@@ -247,21 +201,20 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         vm.assume(to != address(usr));
         vm.assume(to != address(vault));
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            privKey,
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, usr, to, amount, CURRENT_NONCE, deadline))
-                )
-            )
+        (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
+            IEIP712(address(poolToken)),
+            usr,
+            to,
+            amount,
+            CURRENT_NONCE,
+            deadline,
+            privKey
         );
 
         poolToken.permit(usr, to, amount, deadline, v, r, s);
 
-        assertEq(poolToken.allowance(usr, to), amount);
-        assertEq(poolToken.nonces(usr), CURRENT_NONCE + 1);
+        assertEq(poolToken.allowance(usr, to), amount, "allowance mismatch");
+        assertEq(poolToken.nonces(usr), CURRENT_NONCE + 1, "nonce mismatch");
     }
 
     // @dev Just test for general fail as it is hard to compute error arguments
@@ -279,15 +232,14 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
         address usr = vm.addr(privKey);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            privKey,
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, usr, to, amount, nonce, deadline))
-                )
-            )
+        (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
+            IEIP712(address(poolToken)),
+            usr,
+            to,
+            amount,
+            nonce,
+            deadline,
+            privKey
         );
 
         poolToken.permit(usr, to, amount, deadline, v, r, s);
@@ -301,15 +253,14 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
         address usr = vm.addr(privKey);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            privKey,
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, usr, to, amount, CURRENT_NONCE, deadline))
-                )
-            )
+        (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
+            IEIP712(address(poolToken)),
+            usr,
+            to,
+            amount,
+            CURRENT_NONCE,
+            deadline,
+            privKey
         );
 
         poolToken.permit(usr, to, amount, deadline + 1, v, r, s);
@@ -322,18 +273,17 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
         address usr = vm.addr(privKey);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            privKey,
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, usr, to, amount, CURRENT_NONCE, deadline))
-                )
-            )
+        (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
+            IEIP712(address(poolToken)),
+            usr,
+            to,
+            amount,
+            CURRENT_NONCE,
+            deadline,
+            privKey
         );
 
-        vm.expectRevert(abi.encodeWithSelector(BalancerPoolToken.ERC2612ExpiredSignature.selector, deadline));
+        vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612ExpiredSignature.selector, deadline));
         poolToken.permit(usr, to, amount, deadline, v, r, s);
     }
 
@@ -345,18 +295,21 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
         address usr = vm.addr(privKey);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
-            privKey,
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    poolToken.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, usr, to, amount, CURRENT_NONCE, deadline))
-                )
-            )
+        (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
+            IEIP712(address(poolToken)),
+            usr,
+            to,
+            amount,
+            CURRENT_NONCE,
+            deadline,
+            privKey
         );
 
         poolToken.permit(usr, to, amount, deadline, v, r, s);
         poolToken.permit(usr, to, amount, deadline, v, r, s);
+    }
+
+    function testSupportsIERC165() public {
+        assertTrue(poolToken.supportsInterface(type(IERC165).interfaceId), "IERC165 not supported");
     }
 }

@@ -5,24 +5,35 @@ pragma solidity ^0.8.24;
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasePoolFactory } from "@balancer-labs/v3-vault/contracts/factories/BasePoolFactory.sol";
+import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { WeightedPool } from "./WeightedPool.sol";
 
 /**
  * @notice Weighted Pool factory for 80/20 pools.
  */
-contract WeightedPool8020Factory is BasePoolFactory {
+contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
     uint256 private constant _EIGHTY = 8e17; // 80%
     uint256 private constant _TWENTY = 2e17; // 20%
 
+    string private _poolVersion;
+
     constructor(
         IVault vault,
-        uint256 pauseWindowDuration
-    ) BasePoolFactory(vault, pauseWindowDuration, type(WeightedPool).creationCode) {
-        // solhint-disable-previous-line no-empty-blocks
+        uint32 pauseWindowDuration,
+        string memory factoryVersion,
+        string memory poolVersion
+    ) BasePoolFactory(vault, pauseWindowDuration, type(WeightedPool).creationCode) Version(factoryVersion) {
+        _poolVersion = poolVersion;
+    }
+
+    /// @inheritdoc IPoolVersion
+    function getPoolVersion() external view returns (string memory) {
+        return _poolVersion;
     }
 
     /**
@@ -30,28 +41,33 @@ contract WeightedPool8020Factory is BasePoolFactory {
      * @dev Since tokens must be sorted, pass in explicit 80/20 token config structs.
      * @param highWeightTokenConfig The token configuration of the high weight token
      * @param lowWeightTokenConfig The token configuration of the low weight token
+     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
+     * @param swapFeePercentage Initial swap fee percentage
      */
     function create(
         TokenConfig memory highWeightTokenConfig,
-        TokenConfig memory lowWeightTokenConfig
+        TokenConfig memory lowWeightTokenConfig,
+        PoolRoleAccounts memory roleAccounts,
+        uint256 swapFeePercentage
     ) external returns (address pool) {
+        if (roleAccounts.poolCreator != address(0)) {
+            revert StandardPoolWithCreator();
+        }
+
         IERC20 highWeightToken = highWeightTokenConfig.token;
         IERC20 lowWeightToken = lowWeightTokenConfig.token;
 
-        // Tokens must be sorted.
-        uint256 highWeightTokenIdx = highWeightToken > lowWeightToken ? 1 : 0;
-        uint256 lowWeightTokenIdx = highWeightTokenIdx == 0 ? 1 : 0;
-
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         uint256[] memory weights = new uint256[](2);
+
+        // Tokens must be sorted.
+        (uint256 highWeightTokenIdx, uint256 lowWeightTokenIdx) = highWeightToken > lowWeightToken ? (1, 0) : (0, 1);
 
         weights[highWeightTokenIdx] = _EIGHTY;
         weights[lowWeightTokenIdx] = _TWENTY;
 
         tokenConfig[highWeightTokenIdx] = highWeightTokenConfig;
         tokenConfig[lowWeightTokenIdx] = lowWeightTokenConfig;
-
-        bytes32 salt = _calculateSalt(highWeightToken, lowWeightToken);
 
         string memory highWeightTokenSymbol = IERC20Metadata(address(highWeightToken)).symbol();
         string memory lowWeightTokenSymbol = IERC20Metadata(address(lowWeightToken)).symbol();
@@ -62,32 +78,24 @@ contract WeightedPool8020Factory is BasePoolFactory {
                     name: string.concat("Balancer 80 ", highWeightTokenSymbol, " 20 ", lowWeightTokenSymbol),
                     symbol: string.concat("B-80", highWeightTokenSymbol, "-20", lowWeightTokenSymbol),
                     numTokens: tokenConfig.length,
-                    normalizedWeights: weights
+                    normalizedWeights: weights,
+                    version: _poolVersion
                 }),
                 getVault()
             ),
-            salt
+            _calculateSalt(highWeightToken, lowWeightToken)
         );
 
-        getVault().registerPool(
+        // Using empty pool hooks for standard 80/20 pool
+        _registerPoolWithVault(
             pool,
             tokenConfig,
-            getNewPoolPauseWindowEndTime(),
-            address(0), // no pause manager
-            PoolHooks({
-                shouldCallBeforeInitialize: false,
-                shouldCallAfterInitialize: false,
-                shouldCallBeforeAddLiquidity: false,
-                shouldCallAfterAddLiquidity: false,
-                shouldCallBeforeRemoveLiquidity: false,
-                shouldCallAfterRemoveLiquidity: false,
-                shouldCallBeforeSwap: false,
-                shouldCallAfterSwap: false
-            }),
-            LiquidityManagement({ supportsAddLiquidityCustom: false, supportsRemoveLiquidityCustom: false })
+            swapFeePercentage,
+            false, // not exempt from protocol fees
+            roleAccounts,
+            getDefaultPoolHooksContract(),
+            getDefaultLiquidityManagement()
         );
-
-        _registerPoolWithFactory(pool);
     }
 
     /**
@@ -102,5 +110,13 @@ contract WeightedPool8020Factory is BasePoolFactory {
 
     function _calculateSalt(IERC20 highWeightToken, IERC20 lowWeightToken) internal view returns (bytes32 salt) {
         salt = keccak256(abi.encode(block.chainid, highWeightToken, lowWeightToken));
+    }
+
+    /**
+     * @dev By default, the BasePoolFactory adds the sender and chainId to compute a final salt.
+     * Override this to make it use the canonical address salt directly.
+     */
+    function _computeFinalSalt(bytes32 salt) internal pure override returns (bytes32) {
+        return salt;
     }
 }

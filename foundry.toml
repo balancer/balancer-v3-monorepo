@@ -14,6 +14,7 @@ remappings = [
     'ds-test/=../../node_modules/forge-std/lib/ds-test/src/',
     'forge-std/=../../node_modules/forge-std/src/',
     '@openzeppelin/=../../node_modules/@openzeppelin/',
+    'permit2/=../../node_modules/permit2/',
     '@balancer-labs/=../../node_modules/@balancer-labs/',
     'forge-gas-snapshot/=../../node_modules/forge-gas-snapshot/src/'
 ]
@@ -21,6 +22,8 @@ optimizer = true
 optimizer_runs = 999
 solc_version = '0.8.24'
 auto_detect_solc = false
+evm_version = 'cancun'
+ignored_error_codes = [2394] # Transient storage
 
 [fuzz]
 runs = 10000

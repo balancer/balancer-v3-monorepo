@@ -38,7 +38,7 @@ contract VaultFactoryTest is Test {
         IVault vault = IVault(vaultAddress);
         assertEq(address(vault.getAuthorizer()), address(authorizer));
 
-        (bool isPaused, uint256 pauseWindowEndTime, uint256 bufferWindowEndTime) = vault.getVaultPausedState();
+        (bool isPaused, uint32 pauseWindowEndTime, uint32 bufferWindowEndTime) = vault.getVaultPausedState();
         assertEq(isPaused, false);
         assertEq(pauseWindowEndTime, block.timestamp + 90 days, "Wrong pause window end time");
         assertEq(bufferWindowEndTime, block.timestamp + 90 days + 30 days, "Wrong buffer window end time");
@@ -46,7 +46,7 @@ contract VaultFactoryTest is Test {
 
     function testCreateNotAuthorized() public {
         vm.prank(deployer);
-        vm.expectRevert(abi.encodeWithSelector(IAuthentication.SenderNotAllowed.selector));
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         factory.create(bytes32(0), address(0));
     }
 
@@ -56,7 +56,7 @@ contract VaultFactoryTest is Test {
 
         address vaultAddress = factory.getDeploymentAddress(salt);
         vm.prank(deployer);
-        vm.expectRevert(abi.encodeWithSelector(VaultFactory.VaultAddressMismatch.selector));
+        vm.expectRevert(VaultFactory.VaultAddressMismatch.selector);
         factory.create(bytes32(uint256(salt) + 1), vaultAddress);
     }
 
@@ -67,7 +67,7 @@ contract VaultFactoryTest is Test {
         address vaultAddress = factory.getDeploymentAddress(salt);
         vm.startPrank(deployer);
         factory.create(salt, vaultAddress);
-        vm.expectRevert(abi.encodeWithSelector(VaultFactory.VaultAlreadyCreated.selector));
+        vm.expectRevert(VaultFactory.VaultAlreadyCreated.selector);
         factory.create(salt, vaultAddress);
     }
 }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LicenseRef-Gyro-1.0
-// for information on licensing please see the README in the GitHub repository <https://github.com/gyrostable/concentrated-lps>.
-
+// for information on licensing please see the README in the GitHub repository
+// <https://github.com/gyrostable/concentrated-lps>.
 
 pragma solidity ^0.8.24;
 
@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -19,15 +20,12 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
 
     uint256 private immutable _sqrtAlpha;
     uint256 private immutable _sqrtBeta;
-    IERC20 private immutable _token0;
-    IERC20 private immutable _token1;
 
-    bytes32 private constant POOL_TYPE = "2CLP";
+    bytes32 private constant _POOL_TYPE = "2CLP";
 
     struct GyroParams {
         string name;
         string symbol;
-        IERC20[] tokens;
         uint256 sqrtAlpha; // A: Should already be upscaled
         uint256 sqrtBeta; // A: Should already be upscaled. Could be passed as an array[](2)
     }
@@ -41,14 +39,8 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
             revert SqrtParamsWrong();
         }
 
-        if (params.tokens.length != 2) {
-            revert SupportsOnlyTwoTokens();
-        }
-
         _sqrtAlpha = params.sqrtAlpha;
         _sqrtBeta = params.sqrtBeta;
-        _token0 = params.tokens[0];
-        _token1 = params.tokens[1];
     }
 
     /// @inheritdoc IBasePool
@@ -63,27 +55,53 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
         return Gyro2CLPMath._calculateInvariant(balancesLiveScaled18, sqrtParams[0], sqrtParams[1]);
     }
 
-
     /// @inheritdoc IBasePool
     function computeBalance(
         uint256[] memory balancesLiveScaled18,
         uint256 tokenInIndex,
         uint256 invariantRatio
     ) external view returns (uint256 newBalance) {
-        _sqrtParameters();
+        /**********************************************************************************************
+        // Gyro invariant formula is:
+        //                                    Lˆ2 = (x + a)(y + b)
+        // where:
+        //   a = L / _sqrtBeta
+        //   b = L * _sqrtAlpha
+        //
+        // In computeBalance, we want to know what's the new balance of a token, given that invariant
+        // changed and the other token balance didn't change. To calculate that for "x", we use:
+        //
+        //            (L*Lratio)ˆ2 = (newX + (L*Lratio) / _sqrtBeta)(y + (L*Lratio) * _sqrtAlpha)
+        //
+        // To simplify, let's rename a few terms:
+        //
+        //                                       squareNewInv = (newX + a)(y + b)
+        //
+        // Isolating newX:                       newX = (squareNewInv/(y + b)) - a
+        // For newY:                             newY = (squareNewInv/(x + a)) - b
+        **********************************************************************************************/
 
-        /* return
-            WeightedMath.computeBalanceOutGivenInvariant(
-                balancesLiveScaled18[tokenInIndex],
-                _getNormalizedWeights()[tokenInIndex],
-                invariantRatio
-            ); */
+        uint256[2] memory sqrtParams = _sqrtParameters();
+        uint256 invariant = Gyro2CLPMath._calculateInvariant(balancesLiveScaled18, sqrtParams[0], sqrtParams[1]);
+        // New invariant
+        invariant = invariant.mulUp(invariantRatio);
+        uint256 squareNewInv = invariant * invariant;
+        // L / sqrt(beta)
+        uint256 a = invariant.divUp(sqrtParams[1]);
+        // L * sqrt(alpha)
+        uint256 b = invariant.mulUp(sqrtParams[0]);
 
-        revert NotImplemented();
+        if (tokenInIndex == 0) {
+            // if newBalance = newX
+            newBalance = squareNewInv.divUpRaw(b + balancesLiveScaled18[1]) - a;
+        } else {
+            // if newBalance = newY
+            newBalance = squareNewInv.divUpRaw(a + balancesLiveScaled18[0]) - b;
+        }
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(IBasePool.PoolSwapParams memory request) public view onlyVault returns (uint256) {
+    function onSwap(PoolSwapParams calldata request) public view onlyVault returns (uint256) {
         bool tokenInIsToken0 = request.indexIn == 0;
         uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
@@ -129,13 +147,10 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
         return parameter0 ? _sqrtAlpha : _sqrtBeta;
     }
 
-   
-    function _getVirtualParameters(uint256[2] memory sqrtParams, uint256 invariant)
-        internal
-        view
-        virtual
-        returns (uint256[2] memory virtualParameters)
-    {
+    function _getVirtualParameters(
+        uint256[2] memory sqrtParams,
+        uint256 invariant
+    ) internal view virtual returns (uint256[2] memory virtualParameters) {
         virtualParameters[0] = _virtualParameters(true, sqrtParams[1], invariant);
         virtualParameters[1] = _virtualParameters(false, sqrtParams[0], invariant);
         return virtualParameters;
@@ -153,21 +168,13 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
     }
 
     function _calculateCurrentValues(
-        uint256 balanceTokenIn, // scaled
-        uint256 balanceTokenOut, // scaled
+        uint256 balanceTokenInScaled18,
+        uint256 balanceTokenOutScaled18,
         bool tokenInIsToken0
-    )
-        internal
-        view
-        returns (
-            uint256 currentInvariant,
-            uint256 virtualParamIn,
-            uint256 virtualParamOut
-        )
-    {
+    ) internal view returns (uint256 currentInvariant, uint256 virtualParamIn, uint256 virtualParamOut) {
         uint256[] memory balances = new uint256[](2);
-        balances[0] = tokenInIsToken0 ? balanceTokenIn : balanceTokenOut;
-        balances[1] = tokenInIsToken0 ? balanceTokenOut : balanceTokenIn;
+        balances[0] = tokenInIsToken0 ? balanceTokenInScaled18 : balanceTokenOutScaled18;
+        balances[1] = tokenInIsToken0 ? balanceTokenOutScaled18 : balanceTokenInScaled18;
 
         uint256[2] memory sqrtParams = _sqrtParameters();
 
@@ -177,5 +184,15 @@ contract Gyro2CLPPool is IBasePool, BalancerPoolToken {
 
         virtualParamIn = tokenInIsToken0 ? virtualParam[0] : virtualParam[1];
         virtualParamOut = tokenInIsToken0 ? virtualParam[1] : virtualParam[0];
+    }
+
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMinimumSwapFeePercentage() external pure returns (uint256) {
+        return 0;
+    }
+
+    /// @inheritdoc ISwapFeePercentageBounds
+    function getMaximumSwapFeePercentage() external pure returns (uint256) {
+        return 1e18;
     }
 }

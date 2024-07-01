@@ -50,16 +50,7 @@ library Gyro2CLPMath {
         uint256[] memory balances,
         uint256 sqrtAlpha,
         uint256 sqrtBeta
-    )
-        internal
-        pure
-        returns (
-            uint256 a,
-            uint256 mb,
-            uint256 bSquare,
-            uint256 mc
-        )
-    {
+    ) internal pure returns (uint256 a, uint256 mb, uint256 bSquare, uint256 mc) {
         {
             a = FixedPoint.ONE - sqrtAlpha.divDown(sqrtBeta);
             uint256 bterm0 = balances[1].divDown(sqrtBeta);
@@ -70,7 +61,9 @@ library Gyro2CLPMath {
         // For better fixed point precision, calculate in expanded form w/ re-ordering of multiplications
         // b^2 = x^2 * alpha + x*y*2*sqrt(alpha/beta) + y^2 / beta
         bSquare = (balances[0].mulDown(balances[0])).mulDown(sqrtAlpha).mulDown(sqrtAlpha);
-        uint256 bSq2 = (balances[0].mulDown(balances[1])).mulDown(2 * FixedPoint.ONE).mulDown(sqrtAlpha).divDown(sqrtBeta);
+        uint256 bSq2 = (balances[0].mulDown(balances[1])).mulDown(2 * FixedPoint.ONE).mulDown(sqrtAlpha).divDown(
+            sqrtBeta
+        );
         uint256 bSq3 = (balances[1].mulDown(balances[1])).divDown(sqrtBeta.mulUp(sqrtBeta));
         bSquare = bSquare + bSq2 + bSq3;
     }
@@ -95,7 +88,7 @@ library Gyro2CLPMath {
         uint256 addTerm = (mc.mulDown(4 * FixedPoint.ONE)).mulDown(a);
         // The minus sign in the radicand cancels out in this special case, so we add
         uint256 radicand = bSquare + addTerm;
-        uint256 sqrResult = GyroPoolMath._sqrt(radicand, 5);
+        uint256 sqrResult = GyroPoolMath.sqrt(radicand, 5);
         // The minus sign in the numerator cancels out in this special case
         uint256 numerator = mb + sqrResult;
         invariant = numerator.divDown(denominator);
@@ -206,8 +199,8 @@ library Gyro2CLPMath {
 
     /** @dev Calculates the spot price of token A in units of token B.
      *
-     * The spot price is bounded by pool parameters due to virtual reserves. Aside from being instantaneously manipulable
-     * within a transaction, it may also not be accurate if the true price is outside of these bounds.
+     * The spot price is bounded by pool parameters due to virtual reserves. Aside from being instantaneously
+     * manipulable within a transaction, it may also not be accurate if the true price is outside of these bounds.
      */
     function _calcSpotPriceAinB(
         uint256 balanceA,

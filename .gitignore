@@ -41,3 +41,6 @@ slither/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Mac
+.DS_Store

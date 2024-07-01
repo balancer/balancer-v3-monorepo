@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.24;
+
+import "forge-std/Test.sol";
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
@@ -8,42 +10,46 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+
 import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     using PoolConfigLib for PoolConfig;
-    using SafeCast for uint256;
+    using SafeCast for *;
+    using ArrayHelpers for *;
 
     // The balance and live balance are stored in the same bytes32 word, each uses 128 bits
     uint256 private constant _MAX_RAW_BALANCE = 2 ** 128 - 1;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-    }
-
-    function createPool() internal override returns (address) {
         // Generates a "random" address for a non-existent pool
-        return address(bytes20(keccak256(abi.encode(block.timestamp))));
+        pool = address(bytes20(keccak256(abi.encode(block.timestamp))));
     }
 
-    function initPool() internal override {}
+    function createPool() internal pure override returns (address) {
+        return address(0);
+    }
+
+    function initPool() internal pure override {}
 
     /*******************************************************************************
                                   _getPoolTokenInfo
     *******************************************************************************/
 
     function testEmptyPoolTokenConfig() public {
-        (TokenConfig[] memory newTokenConfig, , , ) = vault.internalGetPoolTokenInfo(pool);
-        assertEq(newTokenConfig.length, 0, "newTokenConfig should be empty");
+        (, TokenInfo[] memory newTokenInfo, , , ) = vault.internalGetPoolTokenInfo(pool);
+        assertEq(newTokenInfo.length, 0, "newTokenInfo should be empty");
     }
 
     function testNonEmptyPoolTokenBalance() public {
-        IERC20[] memory tokens = new IERC20[](3);
-        tokens[0] = usdc;
-        tokens[1] = dai;
-        tokens[2] = wsteth;
+        IERC20[] memory tokens = InputHelpers.sortTokens(
+            [address(usdc), address(dai), address(wsteth)].toMemoryArray().asIERC20()
+        );
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
         vault.manualSetPoolTokenConfig(pool, tokens, tokenConfig);
         uint256[] memory originalBalancesRaw = new uint256[](3);
@@ -52,29 +58,31 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         originalBalancesRaw[2] = 3000;
         vault.manualSetPoolTokenBalances(pool, tokens, originalBalancesRaw);
 
-        (TokenConfig[] memory newTokenConfig, uint256[] memory balancesRaw, , ) = vault.internalGetPoolTokenInfo(pool);
-        assertEq(newTokenConfig.length, 3);
+        (IERC20[] memory newTokens, TokenInfo[] memory newTokenInfo, uint256[] memory balancesRaw, , ) = vault
+            .internalGetPoolTokenInfo(pool);
+        assertEq(newTokens.length, 3);
+        assertEq(newTokenInfo.length, 3);
         assertEq(balancesRaw.length, 3);
-        for (uint256 i = 0; i < newTokenConfig.length; i++) {
+        for (uint256 i = 0; i < newTokens.length; ++i) {
             assertEq(
-                address(newTokenConfig[i].token),
+                address(newTokens[i]),
                 address(tokens[i]),
                 string.concat("token", Strings.toString(i), "address is not correct")
             );
             assertEq(
-                uint256(newTokenConfig[i].tokenType),
+                uint256(newTokenInfo[i].tokenType),
                 uint256(TokenType.STANDARD),
                 string.concat("token", Strings.toString(i), "should be STANDARD type")
             );
             assertEq(
-                address(newTokenConfig[i].rateProvider),
+                address(newTokenInfo[i].rateProvider),
                 address(0),
                 string.concat("token", Strings.toString(i), "should have no rate provider")
             );
             assertEq(
-                newTokenConfig[i].yieldFeeExempt,
+                newTokenInfo[i].paysYieldFees,
                 false,
-                string.concat("token", Strings.toString(i), "yieldFeeExempt flag should be false")
+                string.concat("token", Strings.toString(i), "paysYieldFees flag should be false")
             );
 
             assertEq(
@@ -88,22 +96,21 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     function testEmptyPoolConfig() public {
         PoolConfig memory emptyPoolConfig;
 
-        (, , uint256[] memory decimalScalingFactors, PoolConfig memory poolConfig) = vault.internalGetPoolTokenInfo(
+        (, , , uint256[] memory decimalScalingFactors, PoolConfig memory poolConfig) = vault.internalGetPoolTokenInfo(
             pool
         );
         assertEq(decimalScalingFactors.length, 0, "should have no decimalScalingFactors");
         assertEq(
-            bytes32(sha256(abi.encodePacked(poolConfig.fromPoolConfig()))),
-            bytes32(sha256(abi.encodePacked(emptyPoolConfig.fromPoolConfig()))),
+            keccak256(abi.encode(poolConfig)),
+            keccak256(abi.encode(emptyPoolConfig)),
             "poolConfig should match empty pool config"
         );
     }
 
     function testNonEmptyPoolConfig() public {
-        IERC20[] memory tokens = new IERC20[](3);
-        tokens[0] = usdc;
-        tokens[1] = dai;
-        tokens[2] = wsteth;
+        IERC20[] memory tokens = InputHelpers.sortTokens(
+            [address(usdc), address(dai), address(wsteth)].toMemoryArray().asIERC20()
+        );
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
         vault.manualSetPoolTokenConfig(pool, tokens, tokenConfig);
 
@@ -122,24 +129,24 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         originalPoolConfig.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         vault.manualSetPoolConfig(pool, originalPoolConfig);
 
-        (, , uint256[] memory decimalScalingFactors, PoolConfig memory newPoolConfig) = vault.internalGetPoolTokenInfo(
-            pool
-        );
+        (, , , uint256[] memory decimalScalingFactors, PoolConfig memory newPoolConfig) = vault
+            .internalGetPoolTokenInfo(pool);
         assertEq(
             decimalScalingFactors.length,
             3,
             "length of decimalScalingFactors should be equal to amount of tokens"
         );
-        for (uint256 i = 0; i < decimalScalingFactors.length; i++) {
+        for (uint256 i = 0; i < decimalScalingFactors.length; ++i) {
             assertEq(
                 decimalScalingFactors[i],
                 10 ** (18 + tokenDecimalDiffs[i]),
                 string.concat("decimalScalingFactors of token", Strings.toString(i), "should match tokenDecimalDiffs")
             );
         }
+
         assertEq(
-            bytes32(sha256(abi.encodePacked(newPoolConfig.fromPoolConfig()))),
-            bytes32(sha256(abi.encodePacked(originalPoolConfig.fromPoolConfig()))),
+            keccak256(abi.encode(newPoolConfig)),
+            keccak256(abi.encode(originalPoolConfig)),
             "original and new poolConfigs should be the same"
         );
     }
@@ -159,10 +166,9 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         decimalDiff2 = bound(decimalDiff2, 0, 18).toUint8();
         decimalDiff3 = bound(decimalDiff3, 0, 18).toUint8();
 
-        IERC20[] memory tokens = new IERC20[](3);
-        tokens[0] = usdc;
-        tokens[1] = dai;
-        tokens[2] = wsteth;
+        IERC20[] memory tokens = InputHelpers.sortTokens(
+            [address(usdc), address(dai), address(wsteth)].toMemoryArray().asIERC20()
+        );
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
         vault.manualSetPoolTokenConfig(pool, tokens, tokenConfig);
 
@@ -182,36 +188,38 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         vault.manualSetPoolConfig(pool, originalPoolConfig);
 
         (
-            TokenConfig[] memory newTokenConfig,
+            IERC20[] memory newTokens,
+            TokenInfo[] memory newTokenInfo,
             uint256[] memory balancesRaw,
             uint256[] memory decimalScalingFactors,
             PoolConfig memory newPoolConfig
         ) = vault.internalGetPoolTokenInfo(pool);
 
-        assertEq(newTokenConfig.length, 3);
+        assertEq(newTokens.length, 3);
+        assertEq(newTokenInfo.length, 3);
         assertEq(balancesRaw.length, 3);
         assertEq(decimalScalingFactors.length, 3);
 
-        for (uint256 i = 0; i < newTokenConfig.length; i++) {
+        for (uint256 i = 0; i < newTokens.length; ++i) {
             assertEq(
-                address(newTokenConfig[i].token),
+                address(newTokens[i]),
                 address(tokens[i]),
                 string.concat("token", Strings.toString(i), "address is not correct")
             );
             assertEq(
-                uint256(newTokenConfig[i].tokenType),
+                uint256(newTokenInfo[i].tokenType),
                 uint256(TokenType.STANDARD),
                 string.concat("token", Strings.toString(i), "should be STANDARD type")
             );
             assertEq(
-                address(newTokenConfig[i].rateProvider),
+                address(newTokenInfo[i].rateProvider),
                 address(0),
                 string.concat("token", Strings.toString(i), "should have no rate provider")
             );
             assertEq(
-                newTokenConfig[i].yieldFeeExempt,
+                newTokenInfo[i].paysYieldFees,
                 false,
-                string.concat("token", Strings.toString(i), "yieldFeeExempt flag should be false")
+                string.concat("token", Strings.toString(i), "paysYieldFees flag should be false")
             );
 
             assertEq(
@@ -227,9 +235,97 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         }
 
         assertEq(
-            bytes32(sha256(abi.encodePacked(newPoolConfig.fromPoolConfig()))),
-            bytes32(sha256(abi.encodePacked(originalPoolConfig.fromPoolConfig()))),
+            keccak256(abi.encode(newPoolConfig)),
+            keccak256(abi.encode(originalPoolConfig)),
             "original and new poolConfigs should be the same"
         );
+    }
+
+    function testAccountDeltaNonZeroUp__Fuzz(int256 delta) public {
+        vm.assume(delta != 0);
+        int256 startingTokenDelta = vault.getTokenDelta(dai);
+        uint256 startingNonzeroDeltaCount = vault.getNonzeroDeltaCount();
+
+        vm.prank(alice);
+        vault.accountDelta(dai, delta);
+
+        assertEq(vault.getTokenDelta(dai), startingTokenDelta + delta, "Incorrect token delta (token)");
+        assertEq(vault.getNonzeroDeltaCount(), startingNonzeroDeltaCount + 1, "Incorrect non-zero delta count");
+    }
+
+    function testSupplyCreditNonZeroUp__Fuzz(uint256 delta) public {
+        delta = bound(delta, 1, MAX_UINT128);
+        int256 startingTokenDelta = vault.getTokenDelta(dai);
+        uint256 startingNonzeroDeltaCount = vault.getNonzeroDeltaCount();
+
+        vm.prank(alice);
+        vault.supplyCredit(dai, delta);
+
+        assertEq(vault.getTokenDelta(dai), startingTokenDelta - delta.toInt256(), "Incorrect token delta (token)");
+        assertEq(vault.getNonzeroDeltaCount(), startingNonzeroDeltaCount + 1, "Incorrect non-zero delta count");
+    }
+
+    function testTakeDebtNonZeroUp__Fuzz(uint256 delta) public {
+        delta = bound(delta, 1, MAX_UINT128);
+        int256 startingTokenDelta = vault.getTokenDelta(dai);
+        uint256 startingNonzeroDeltaCount = vault.getNonzeroDeltaCount();
+
+        vm.prank(alice);
+        vault.takeDebt(dai, delta);
+
+        assertEq(vault.getTokenDelta(dai), startingTokenDelta + delta.toInt256(), "Incorrect token delta (token)");
+        assertEq(vault.getNonzeroDeltaCount(), startingNonzeroDeltaCount + 1, "Incorrect non-zero delta count");
+    }
+
+    function testAccountDeltaNonZeroDown__Fuzz(int256 delta, uint256 startingNonZeroDeltaCount) public {
+        delta = bound(delta, -MAX_UINT128.toInt256(), MAX_UINT128.toInt256());
+        startingNonZeroDeltaCount = bound(startingNonZeroDeltaCount, 1, 10000);
+        vm.assume(delta != 0);
+
+        vault.manualSetAccountDelta(dai, delta);
+        vault.manualSetNonZeroDeltaCount(startingNonZeroDeltaCount);
+
+        require(vault.getNonzeroDeltaCount() == startingNonZeroDeltaCount, "Starting non-zero delta count incorrect");
+        require(vault.getTokenDelta(dai) == delta, "Starting token delta incorrect");
+
+        vm.prank(alice);
+        vault.accountDelta(dai, -delta);
+
+        assertEq(vault.getTokenDelta(dai), 0, "Incorrect token delta (token)");
+        assertEq(vault.getNonzeroDeltaCount(), startingNonZeroDeltaCount - 1, "Incorrect non-zero delta count");
+    }
+
+    function testSupplyCreditNonZeroDown__Fuzz(int256 delta, uint256 startingNonZeroDeltaCount) public {
+        delta = bound(delta, int256(1), MAX_UINT128.toInt256());
+        startingNonZeroDeltaCount = bound(startingNonZeroDeltaCount, 1, 10000);
+
+        vault.manualSetAccountDelta(dai, delta);
+        vault.manualSetNonZeroDeltaCount(startingNonZeroDeltaCount);
+
+        require(vault.getNonzeroDeltaCount() == startingNonZeroDeltaCount, "Starting non-zero delta count incorrect");
+        require(vault.getTokenDelta(dai) == delta, "Starting token delta incorrect");
+
+        vm.prank(alice);
+        vault.supplyCredit(dai, delta.toUint256());
+
+        assertEq(vault.getTokenDelta(dai), 0, "Incorrect token delta (token)");
+        assertEq(vault.getNonzeroDeltaCount(), startingNonZeroDeltaCount - 1, "Incorrect non-zero delta count");
+    }
+
+    function testTakeDebtNonZeroDown__Fuzz(int256 delta, uint256 startingNonZeroDeltaCount) public {
+        delta = bound(delta, int256(1), MAX_UINT128.toInt256());
+        startingNonZeroDeltaCount = bound(startingNonZeroDeltaCount, 1, 10000);
+
+        vault.manualSetAccountDelta(dai, -delta);
+        vault.manualSetNonZeroDeltaCount(startingNonZeroDeltaCount);
+
+        require(vault.getNonzeroDeltaCount() == startingNonZeroDeltaCount, "Starting non-zero delta count incorrect");
+        require(vault.getTokenDelta(dai) == -delta, "Starting token delta incorrect");
+
+        vm.prank(alice);
+        vault.takeDebt(dai, delta.toUint256());
+
+        assertEq(vault.getTokenDelta(dai), 0, "Incorrect token delta (token)");
+        assertEq(vault.getNonzeroDeltaCount(), startingNonZeroDeltaCount - 1, "Incorrect non-zero delta count");
     }
 }
