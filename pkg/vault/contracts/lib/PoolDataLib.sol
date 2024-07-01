@@ -29,7 +29,7 @@ library PoolDataLib {
         TokenInfo[] memory tokenInfos,
         Rounding roundingDirection
     ) internal view {
-        uint256 numTokens = poolTokenBalances.length();
+        uint256 numTokens = tokenInfos.length;
 
         poolData.poolConfigBits = poolConfigBits;
         poolData.tokens = new IERC20[](numTokens);
