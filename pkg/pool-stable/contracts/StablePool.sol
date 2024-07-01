@@ -222,7 +222,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Poo
     }
 
     /**
-     * @notice Get all the amplifcation parameters.
+     * @notice Get all the amplification parameters.
      * @return value Current amplification parameter value (could be in the middle of an update)
      * @return isUpdating True if an amp update is in progress
      * @return precision The raw value is multiplied by this number for greater precision during updates
@@ -249,7 +249,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Poo
 
             // We can skip checked arithmetic as:
             //  - block.timestamp is always larger or equal to startTime
-            //  - endTime is alawys larger than startTime
+            //  - endTime is always larger than startTime
             //  - the value delta is bounded by the largest amplification parameter, which never causes the
             //    multiplication to overflow.
             // This also means that the following computation will never revert nor yield invalid results.

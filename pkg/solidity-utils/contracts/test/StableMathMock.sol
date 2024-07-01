@@ -264,6 +264,6 @@ contract StableMathMock {
             }
         }
 
-        revert StableMath.StableGetBalanceDidntConverge();
+        revert StableMath.StableGetBalanceDidNotConverge();
     }
 }

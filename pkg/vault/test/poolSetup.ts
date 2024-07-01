@@ -39,13 +39,13 @@ export async function setupEnvironment(pauseWindowDuration: number): Promise<{
   const poolATokens = sortAddresses([tokenAAddress, tokenBAddress, tokenCAddress]);
 
   const poolA: PoolMock = await deploy('v3-vault/PoolMock', {
-    args: [vaultAddress, 'Pool A', 'POOLA'],
+    args: [vaultAddress, 'Pool A', 'POOL-A'],
   });
 
   await factory.registerTestPool(poolA, buildTokenConfig(poolATokens));
   // Don't register PoolB.
   const poolB: PoolMock = await deploy('v3-vault/PoolMock', {
-    args: [vaultAddress, 'Pool B', 'POOLB'],
+    args: [vaultAddress, 'Pool B', 'POOL-B'],
   });
 
   return { vault: await TypesConverter.toIVaultMock(vault), tokens: [tokenA, tokenB, tokenC], pools: [poolA, poolB] };

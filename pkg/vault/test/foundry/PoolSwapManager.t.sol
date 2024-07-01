@@ -121,7 +121,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
 
         assertEq(vault.getStaticSwapFeePercentage(address(unmanagedPool)), NEW_SWAP_FEE, "Could not set swap fee");
 
-        // Granting speciic permission to bob on unmanagedPool doesn't grant it on otherPool
+        // Granting specific permission to bob on unmanagedPool doesn't grant it on otherPool
         vm.prank(bob);
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.setStaticSwapFeePercentage(address(otherPool), NEW_SWAP_FEE);

@@ -31,7 +31,7 @@ abstract contract BaseTest is Test, GasSnapshot {
     // Default user.
     address payable internal alice;
     uint256 internal aliceKey;
-    // Default counterparty.
+    // Default counterpart.
     address payable internal bob;
     uint256 internal bobKey;
     // Malicious user.
