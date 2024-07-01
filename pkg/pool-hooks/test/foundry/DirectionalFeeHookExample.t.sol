@@ -120,7 +120,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(address(lp));
 
-        // Calculate the expected amoutn out (amount out without fees)
+        // Calculate the expected amount out (amount out without fees)
         uint256 poolInvariant = StableMath.computeInvariant(
             DEFAULT_AMP_FACTOR * StableMath.AMP_PRECISION,
             balancesBefore.poolTokens
