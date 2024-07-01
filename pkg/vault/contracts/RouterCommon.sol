@@ -32,9 +32,6 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     // they will be executed every time the constant is used.
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
-    // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _SENDER_LOCKED_SLOT =
-        TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "senderLocked");
 
     /// @dev Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
@@ -78,36 +75,27 @@ contract RouterCommon is IRouterCommon, VaultGuard {
      *             (Not nested, as the original router call from contractA has returned. Sender is now ContractB.)
      */
     modifier saveSender() {
-        // isSenderLocked = false means that the sender is the most external one, so lock the sender slot and save the
-        // sender in the transient storage
-        bool isSenderLocked = _getSenderLockedSlot().tload();
-        if (isSenderLocked == false) {
-            _getSenderLockedSlot().tstore(true);
-        }
-
-        _saveSender();
+        bool isExternalSender = _saveSender();
         _;
-
-        if (isSenderLocked == false) {
-            // isSenderLocked = false means that the sender is the most external one, which means that the router
-            // operation is over. Discard the sender (so sender can be used in the same transaction by another router
-            // call) and unlock the sender slot.
-            _discardSender();
-            _getSenderLockedSlot().tstore(false);
-        }
+        _discardSenderIfRequired(isExternalSender);
     }
 
-    function _saveSender() internal {
+    function _saveSender() internal returns (bool isExternalSender) {
         address sender = _getSenderSlot().tload();
 
         // NOTE: Only the most external sender will be saved by the router.
         if (sender == address(0)) {
             _getSenderSlot().tstore(msg.sender);
+            isExternalSender = true;
         }
     }
 
-    function _discardSender() internal {
-        _getSenderSlot().tstore(address(0));
+    function _discardSenderIfRequired(bool isExternalSender) internal {
+        // Only the external sender shall be cleaned up; if it's not an external sender it means that
+        // the value was not saved in this modifier.
+        if (isExternalSender) {
+            _getSenderSlot().tstore(address(0));
+        }
     }
 
     constructor(IVault vault, IWETH weth, IPermit2 permit2) VaultGuard(vault) {
@@ -214,9 +202,5 @@ contract RouterCommon is IRouterCommon, VaultGuard {
 
     function _getSenderSlot() internal view returns (StorageSlot.AddressSlotType) {
         return _SENDER_SLOT.asAddress();
-    }
-
-    function _getSenderLockedSlot() internal view returns (StorageSlot.BooleanSlotType) {
-        return _SENDER_LOCKED_SLOT.asBoolean();
     }
 }
