@@ -13,11 +13,14 @@ type SolcConfig = {
   };
 };
 
+// Coverage report don't work well with via-ir flags, so we disable it
+const viaIR = !process.env.COVERAGE;
+
 export const compilers: [SolcConfig] = [
   {
     version: '0.8.24',
     settings: {
-      viaIR: false,
+      viaIR,
       evmVersion: 'cancun',
       optimizer: {
         enabled: true,
@@ -40,17 +43,17 @@ const contractSettings: ContractSettings = {
   '@balancer-labs/v3-vault/contracts': {
     version: compilers[0].version,
     runs: compilers[0].settings.optimizer.runs,
-    viaIR: false,
+    viaIR,
   },
   '@balancer-labs/v3-vault/contracts/Vault.sol': {
     version: '0.8.24',
     runs: 200,
-    viaIR: false,
+    viaIR,
   },
   '@balancer-labs/v3-vault/contracts/VaultExtension.sol': {
     version: '0.8.24',
     runs: 500,
-    viaIR: false,
+    viaIR,
   },
 };
 

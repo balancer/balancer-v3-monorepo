@@ -17,7 +17,7 @@ sed 's/\.\.\/vault\///g' lcov.info > lcov-clearvault.info
 sed 's/\.\.\/pool-weighted\///g' lcov-clearvault.info > lcov-clearfolders.info
 
 # generates coverage/lcov.info
-yarn hardhat coverage
+COVERAGE=true yarn hardhat coverage
 
 # Foundry uses relative paths but Hardhat uses absolute paths.
 # Convert absolute paths to relative paths for consistency.

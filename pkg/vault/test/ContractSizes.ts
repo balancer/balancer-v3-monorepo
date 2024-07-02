@@ -3,6 +3,11 @@ import { saveSizeSnap } from '@balancer-labs/v3-helpers/src/contract-size';
 
 describe('ContractSizes', function () {
   it('calculates and stores contract sizes', async () => {
+    if (process.env.COVERAGE) {
+      // When coverage reports are running Via-IR flag is disabled, so contract-size measurement is not reliable
+      return;
+    }
+
     // List of contracts to monitor
     for (const contractName of ['Vault', 'VaultExtension', 'VaultAdmin', 'Router', 'BatchRouter']) {
       const artifact = getArtifact(`v3-vault/${contractName}`);
