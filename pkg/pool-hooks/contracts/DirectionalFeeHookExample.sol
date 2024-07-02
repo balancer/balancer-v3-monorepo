@@ -74,7 +74,7 @@ contract DirectionalFeeHookExample is BaseHooks {
      *          (distance between balances of token in and token out) / (total liquidity of both tokens)
      *
      *          For example, if token in has a final balance of 100, and token out has a final balance of 40, the
-     *          charged swap fee percentage is (100 - 40) / (140) = 60/140 = 42.85%
+     *          calculated swap fee percentage is (100 - 40) / (140) = 60/140 = 42.85%
      */
     function _calculatedExpectedSwapFeePercentage(
         uint256[] memory poolBalances,
