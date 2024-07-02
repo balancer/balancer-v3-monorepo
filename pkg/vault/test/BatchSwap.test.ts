@@ -62,17 +62,17 @@ describe('BatchSwap', function () {
 
     // Pool A has tokens 0 and 1.
     poolA = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool A', 'POOLA'],
+      args: [vaultAddress, 'Pool A', 'POOL-A'],
     });
 
     // Pool A has tokens 1 and 2.
     poolB = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool B', 'POOLB'],
+      args: [vaultAddress, 'Pool B', 'POOL-B'],
     });
 
     // Pool C has tokens 0 and 2.
     poolC = await deploy('v3-vault/PoolMock', {
-      args: [vaultAddress, 'Pool C', 'POOLC'],
+      args: [vaultAddress, 'Pool C', 'POOL-C'],
     });
 
     await factory.registerTestPool(poolA, buildTokenConfig(poolATokens));
