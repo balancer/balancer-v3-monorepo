@@ -67,15 +67,15 @@ contract DirectionalFeeHookExample is BaseHooks {
     }
 
     /** @notice This example assumes that the pool math is linear and that final balances of token in and out are
-     *          changed proportionally. This approximation is just to illustrate this hook in a simple manner, but is
-     *          also reasonable, since stable pools behave linearly near the equilibrium. Also, this example requires
-     *          the rates to be 1:1, which is common among assets that are pegged around the same value, such as USD.
-     *          The charged fee percentage is:
+     *  changed proportionally. This approximation is just to illustrate this hook in a simple manner, but is
+     *  also reasonable, since stable pools behave linearly near the equilibrium. Also, this example requires
+     *  the rates to be 1:1, which is common among assets that are pegged around the same value, such as USD.
+     *  The charged fee percentage is:
      *
-     *          (distance between balances of token in and token out) / (total liquidity of both tokens)
+     *  (distance between balances of token in and token out) / (total liquidity of both tokens)
      *
-     *          For example, if token in has a final balance of 100, and token out has a final balance of 40, the
-     *          calculated swap fee percentage is (100 - 40) / (140) = 60/140 = 42.85%
+     *  For example, if token in has a final balance of 100, and token out has a final balance of 40, the
+     *  calculated swap fee percentage is (100 - 40) / (140) = 60/140 = 42.85%
      */
     function _calculatedExpectedSwapFeePercentage(
         uint256[] memory poolBalances,
@@ -90,8 +90,8 @@ contract DirectionalFeeHookExample is BaseHooks {
         if (finalBalanceTokenIn > finalBalanceTokenOut) {
             uint256 diff = finalBalanceTokenIn - finalBalanceTokenOut;
             uint256 totalLiquidity = finalBalanceTokenIn + finalBalanceTokenOut;
-            // If `diff` is close to `totalLiquidity`, we charge a very large swap fee because the swap is moving the pool
-            // balances to the edge.
+            // If `diff` is close to `totalLiquidity`, we charge a very large swap fee because the swap is moving the
+            // pool balances to the edge.
             feePercentage = diff.divDown(totalLiquidity);
         }
     }
