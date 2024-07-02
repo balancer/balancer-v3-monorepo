@@ -22,7 +22,7 @@ Active development occurs in this repository, which means some contracts in it m
 - [`v3-pool-utils`](./pkg/pool-utils/): Solidity utilities used to develop Pool contracts.
 - [`v3-pool-stable`](./pkg/pool-stable/): contains [`StablePool`](./pkg/pool-stable/contracts/StablePool.sol), along with its associated factory.
 - [`v3-pool-weighted`](./pkg/pool-weighted): contains [`WeightedPool`](./pkg/pool-weighted/contracts/WeightedPool.sol), along with its associated factory.
-- [`v3-vault`](./pkg/vault): contains the main [`Vault`](./pkg/vault/contracts/Vault.sol) contract and extensions, which are the cornerstone of Balancer V3. Also includes the standard [`Router`](./pkg/vault/contracts/Router.sol) and [`BatchRouter`](./pkg/vault/contracts/BatchRouter.sol) to interact with it.
+- [`v3-vault`](./pkg/vault): contains the main [`Vault`](./pkg/vault/contracts/Vault.sol) contract, which is the cornerstone of Balancer V3, and its extensions. Also includes the standard [`Router`](./pkg/vault/contracts/Router.sol) and [`BatchRouter`](./pkg/vault/contracts/BatchRouter.sol), which supports end-user interactions with the Vault.
 
 ## Pre-requisites
 
