@@ -10,6 +10,11 @@ export async function saveSnap(basePath: string, snap: string, receipt: Contract
     throw new Error('Save snap: null receipt');
   }
 
+  if (process.env.COVERAGE) {
+    // When coverage reports are running Via-IR flag is disabled, so gas measurement is not reliable
+    return;
+  }
+
   const gasUsed = printGas(receipt.gasUsed);
 
   try {
