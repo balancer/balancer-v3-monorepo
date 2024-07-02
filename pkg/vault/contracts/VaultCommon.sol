@@ -270,8 +270,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         poolData.load(
             _poolTokenBalances[pool],
             _poolConfigBits[pool],
-            _poolTokenInfo[pool],
-            _poolTokens[pool],
+            _poolTokenInfoContracts[pool],
             roundingDirection
         );
     }
@@ -290,8 +289,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         poolData.load(
             _poolTokenBalances[pool],
             _poolConfigBits[pool],
-            _poolTokenInfo[pool],
-            _poolTokens[pool],
+            _poolTokenInfoContracts[pool],
             roundingDirection
         );
 

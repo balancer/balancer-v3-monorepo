@@ -1473,14 +1473,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         address pool,
         IERC20 token
     ) external view withRegisteredPool(pool) returns (uint256, uint256) {
-        IERC20[] memory poolTokens = _poolTokens[pool];
+        (IERC20[] memory tokens, ) = _poolTokenInfoContracts[pool].getTokenInfo();
 
-        int index = _findTokenIndex(poolTokens, token);
+        int index = _findTokenIndex(tokens, token);
         if (index == -1) {
             revert TokenNotRegistered();
         }
 
-        return (poolTokens.length, uint(index));
+        return (tokens.length, uint(index));
     }
 
     /*******************************************************************************

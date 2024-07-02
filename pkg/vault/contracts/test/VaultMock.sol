@@ -33,6 +33,7 @@ import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
 import { PoolDataLib } from "../lib/PoolDataLib.sol";
+import { TokenInfoConst } from "../TokenInfoConst.sol";
 
 struct SwapInternalStateLocals {
     SwapParams params;
@@ -221,32 +222,33 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualSetPoolTokenInfo(address pool, TokenConfig[] memory tokenConfig) public {
         for (uint256 i = 0; i < tokenConfig.length; ++i) {
-            _poolTokenInfo[pool][tokenConfig[i].token] = TokenInfo({
-                tokenType: tokenConfig[i].tokenType,
-                rateProvider: tokenConfig[i].rateProvider,
-                paysYieldFees: tokenConfig[i].paysYieldFees
-            });
+            _poolTokenInfoContracts[pool] = new TokenInfoConst(tokenConfig);
         }
     }
 
     function manualSetPoolTokenInfo(address pool, IERC20[] memory tokens, TokenInfo[] memory tokenInfo) public {
+        TokenConfig[] memory tokenConfig = new TokenConfig[](tokens.length);
         for (uint256 i = 0; i < tokens.length; ++i) {
-            _poolTokenInfo[pool][tokens[i]] = tokenInfo[i];
+            tokenConfig[i].token = tokens[i];
+            tokenConfig[i].tokenType = tokenInfo[i].tokenType;
+            tokenConfig[i].rateProvider = tokenInfo[i].rateProvider;
+            tokenConfig[i].paysYieldFees = tokenInfo[i].paysYieldFees;
         }
+
+        _poolTokenInfoContracts[pool] = new TokenInfoConst(tokenConfig);
     }
 
     function manualSetPoolTokensAndBalances(
         address pool,
-        IERC20[] memory tokens,
         uint256[] memory tokenBalanceRaw,
         uint256[] memory tokenBalanceLiveScaled18
     ) public {
         mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
+        (IERC20[] memory tokens, ) = _poolTokenInfoContracts[pool].getTokenInfo();
+
         for (uint256 i = 0; i < tokens.length; ++i) {
             poolTokenBalances[i] = PackedTokenBalance.toPackedBalance(tokenBalanceRaw[i], tokenBalanceLiveScaled18[i]);
         }
-
-        _poolTokens[pool] = tokens;
     }
 
     function mockIsUnlocked() public view onlyWhenUnlocked {}
@@ -367,10 +369,10 @@ contract VaultMock is IVaultMainMock, Vault {
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
         mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
 
-        uint256 numTokens = _poolTokens[pool].length;
-        balancesRaw = new uint256[](numTokens);
+        (IERC20[] memory tokens, ) = _poolTokenInfoContracts[pool].getTokenInfo();
+        balancesRaw = new uint256[](tokens.length);
 
-        for (uint256 i = 0; i < numTokens; ++i) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             balancesRaw[i] = poolTokenBalances[i].getBalanceRaw();
         }
     }
@@ -378,10 +380,10 @@ contract VaultMock is IVaultMainMock, Vault {
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances) {
         mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
 
-        uint256 numTokens = _poolTokens[pool].length;
-        lastLiveBalances = new uint256[](numTokens);
+        (IERC20[] memory tokens, ) = _poolTokenInfoContracts[pool].getTokenInfo();
+        lastLiveBalances = new uint256[](tokens.length);
 
-        for (uint256 i = 0; i < numTokens; ++i) {
+        for (uint256 i = 0; i < tokens.length; ++i) {
             lastLiveBalances[i] = poolTokenBalances[i].getBalanceDerived();
         }
     }

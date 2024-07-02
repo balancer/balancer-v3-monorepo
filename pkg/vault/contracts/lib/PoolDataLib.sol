@@ -13,6 +13,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./PoolConfigLib.sol";
+import { TokenInfoConst } from "../TokenInfoConst.sol";
 
 library PoolDataLib {
     using PackedTokenBalance for bytes32;
@@ -24,10 +25,11 @@ library PoolDataLib {
         PoolData memory poolData,
         mapping(uint => bytes32) storage poolTokenBalances,
         PoolConfigBits poolConfigBits,
-        mapping(IERC20 => TokenInfo) storage poolTokenInfo,
-        IERC20[] storage tokens,
+        TokenInfoConst tokenInfoContract,
         Rounding roundingDirection
     ) internal view {
+        (IERC20[] memory tokens, TokenInfo[] memory poolTokenInfo) = tokenInfoContract.getTokenInfo();
+
         uint256 numTokens = tokens.length;
 
         poolData.poolConfigBits = poolConfigBits;
@@ -43,7 +45,7 @@ library PoolDataLib {
             poolData.poolConfigBits.isPoolInRecoveryMode() == false;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            TokenInfo memory tokenInfo = poolTokenInfo[poolData.tokens[i]];
+            TokenInfo memory tokenInfo = poolTokenInfo[i];
             bytes32 packedBalance = poolTokenBalances[i];
 
             poolData.tokenInfo[i] = tokenInfo;
