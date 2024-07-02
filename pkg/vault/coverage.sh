@@ -60,6 +60,4 @@ genhtml \
 open coverage-genhtml/index.html
 
 # Delete temp files
-rm lcov-*.info
-
-
+rm -rf lcov-*.info coverage/ lcov.info coverage.json
