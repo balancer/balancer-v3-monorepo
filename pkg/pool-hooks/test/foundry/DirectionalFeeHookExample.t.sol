@@ -237,7 +237,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
             SWAP_FEE_PERCENTAGE
         );
 
-        // Swap DAI for USDC, bringing pool nearer balance
+        // Brings pool nearer equilibrium by swapping DAI for USDC
         vm.prank(bob);
         router.swapSingleTokenExactIn(pool, dai, usdc, daiExactAmountIn, 0, MAX_UINT256, false, bytes(""));
 
