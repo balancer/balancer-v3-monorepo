@@ -85,7 +85,7 @@ contract DirectionalFeeHookExample is BaseHooks {
         uint256 finalBalanceTokenIn = poolBalances[indexIn] + swapAmount;
         uint256 finalBalanceTokenOut = poolBalances[indexOut] - swapAmount;
 
-        // pool is farther from equilibrium, charge calculated fee
+        // Pool is farther from equilibrium, charge calculated fee.
         if (finalBalanceTokenIn > finalBalanceTokenOut) {
             uint256 diff = finalBalanceTokenIn - finalBalanceTokenOut;
             uint256 totalLiquidity = finalBalanceTokenIn + finalBalanceTokenOut;
