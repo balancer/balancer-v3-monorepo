@@ -617,6 +617,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return
             HooksConfigLib.callComputeDynamicSwapFeeHook(
                 swapParams,
+                pool,
                 _poolConfigBits[pool].getStaticSwapFeePercentage(),
                 _hooksContracts[pool]
             );

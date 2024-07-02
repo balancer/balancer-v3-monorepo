@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 import "../../contracts/helpers/WordCodec.sol";
 
 contract WordCodecTest is Test {
-    function testEncodeUint255Bits__Fuzz(uint256 input) external {
+    function testEncodeUint255Bits__Fuzz(uint256 input) external pure {
         vm.assume(input < (1 << (255 - 1)));
 
         bytes32 data = WordCodec.encodeUint(input, 0, 255);
@@ -16,7 +16,7 @@ contract WordCodecTest is Test {
         assertEq(decoded, input);
     }
 
-    function testEncodeUintMultiBits__Fuzz(uint256 input, uint8 bits, uint256 offset) external {
+    function testEncodeUintMultiBits__Fuzz(uint256 input, uint8 bits, uint256 offset) external pure {
         (input, bits, offset) = _getAdjustedValues(input, bits, offset);
 
         bytes32 data = WordCodec.encodeUint(input, offset, bits);
@@ -25,7 +25,7 @@ contract WordCodecTest is Test {
         assertEq(decoded, input);
     }
 
-    function testEncodeUintOtherBitsFree__Fuzz(uint256 input, uint8 bits, uint256 offset) external {
+    function testEncodeUintOtherBitsFree__Fuzz(uint256 input, uint8 bits, uint256 offset) external pure {
         (input, bits, offset) = _getAdjustedValues(input, bits, offset);
 
         bytes32 data = WordCodec.encodeUint(input, offset, bits);
@@ -88,7 +88,7 @@ contract WordCodecTest is Test {
         }
     }
 
-    function testInsertBool__Fuzz(bytes32 word, bool value, uint256 offset) external {
+    function testInsertBool__Fuzz(bytes32 word, bool value, uint256 offset) external pure {
         bytes32 clearedWord = bytes32(uint256(word) & ~(1 << offset));
         bytes32 referenceInsertBool = clearedWord | bytes32(uint256(value ? 1 : 0) << offset);
 
@@ -97,7 +97,7 @@ contract WordCodecTest is Test {
         assertEq(insertBool, referenceInsertBool);
     }
 
-    function testDecodeUint__Fuzz(bytes32 word, uint256 offset, uint8 bitLength) external {
+    function testDecodeUint__Fuzz(bytes32 word, uint256 offset, uint8 bitLength) external pure {
         vm.assume(bitLength > 0);
         uint256 referenceDecodeUint = uint256(word >> offset) & ((1 << bitLength) - 1);
         uint256 decodeUint = WordCodec.decodeUint(word, offset, bitLength);
@@ -105,7 +105,7 @@ contract WordCodecTest is Test {
         assertEq(decodeUint, referenceDecodeUint);
     }
 
-    function testDecodeInt__Fuzz(bytes32 word, uint256 offset, uint8 bitLength) external {
+    function testDecodeInt__Fuzz(bytes32 word, uint256 offset, uint8 bitLength) external pure {
         vm.assume(bitLength > 0);
         int256 maxInt = int256((1 << (bitLength - 1)) - 1);
         uint256 mask = (1 << bitLength) - 1;
@@ -117,7 +117,7 @@ contract WordCodecTest is Test {
         assertEq(decodeInt, referenceDecodeInt);
     }
 
-    function testDecodeBool__Fuzz(bytes32 word, uint256 offset) external {
+    function testDecodeBool__Fuzz(bytes32 word, uint256 offset) external pure {
         bool referenceDecodeBool = (uint256(word >> offset) & 1) == 1;
         bool decodeBool = WordCodec.decodeBool(word, offset);
 
