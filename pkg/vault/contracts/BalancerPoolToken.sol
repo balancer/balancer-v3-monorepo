@@ -99,7 +99,7 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonc
     /// Accounting is centralized in the MultiToken contract, and the actual transfers and approvals
     /// are done there. Operations can be initiated from either the token contract or the MultiToken.
     ///
-    /// To maintain compliance with the ERC-20 standard, and conform to the expections of off-chain processes,
+    /// To maintain compliance with the ERC-20 standard, and conform to the expectations of off-chain processes,
     /// the MultiToken calls `emitTransfer` and `emitApproval` during those operations, so that the event is emitted
     /// only from the token contract. These events are NOT defined in the MultiToken contract.
 

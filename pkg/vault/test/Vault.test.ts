@@ -87,11 +87,11 @@ describe('Vault', function () {
     unsortedTokens.reverse();
 
     expect(await poolA.name()).to.equal('Pool A');
-    expect(await poolA.symbol()).to.equal('POOLA');
+    expect(await poolA.symbol()).to.equal('POOL-A');
     expect(await poolA.decimals()).to.equal(18);
 
     expect(await poolB.name()).to.equal('Pool B');
-    expect(await poolB.symbol()).to.equal('POOLB');
+    expect(await poolB.symbol()).to.equal('POOL-B');
     expect(await poolB.decimals()).to.equal(18);
   });
 

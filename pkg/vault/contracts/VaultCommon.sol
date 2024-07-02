@@ -215,7 +215,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         _;
     }
 
-    /// @dev Reverts unless `pool` corresponds to an intialized Pool.
+    /// @dev Reverts unless `pool` corresponds to an initialized Pool.
     modifier withInitializedPool(address pool) {
         _ensureInitializedPool(pool);
         _;
