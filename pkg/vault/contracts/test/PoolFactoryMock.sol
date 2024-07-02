@@ -220,7 +220,7 @@ contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWi
             revert Disabled();
         }
     }
-    
+
     function _computeFinalSalt(bytes32 salt) internal view virtual returns (bytes32) {
         return keccak256(abi.encode(msg.sender, block.chainid, salt));
     }
