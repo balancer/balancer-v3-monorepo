@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -16,15 +17,15 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import {
     TransientStorageHelpers
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
-import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
 
 contract RouterCommon is IRouterCommon, VaultGuard {
     using Address for address payable;
     using SafeERC20 for IWETH;
-    using StorageSlot for *;
-    using TransientStorageHelpers for StorageSlot.Uint256SlotType;
+    using StorageSlotExtension for *;
+    using TransientStorageHelpers for StorageSlotExtension.Uint256SlotType;
 
     // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used
     // by what is written after =. If you use immutable, the value is first calculated and
@@ -200,7 +201,7 @@ contract RouterCommon is IRouterCommon, VaultGuard {
         return _getSenderSlot().tload();
     }
 
-    function _getSenderSlot() internal view returns (StorageSlot.AddressSlotType) {
+    function _getSenderSlot() internal view returns (StorageSlotExtension.AddressSlotType) {
         return _SENDER_SLOT.asAddress();
     }
 }

@@ -12,7 +12,7 @@ import {
     AddressMappingSlot,
     TransientStorageHelpers
 } from "../helpers/TransientStorageHelpers.sol";
-import "./StorageSlot.sol";
+import "./StorageSlotExtension.sol";
 
 /**
  * @dev Library for managing sets of primitive types.
@@ -37,7 +37,7 @@ import "./StorageSlot.sol";
  */
 library TransientEnumerableSet {
     using TransientStorageHelpers for *;
-    using StorageSlot for StorageSlot.Uint256SlotType;
+    using StorageSlotExtension for StorageSlotExtension.Uint256SlotType;
 
     // The original OpenZeppelin implementation uses a generic Set type with bytes32 values: this was replaced with
     // AddressSet, which uses address keys natively, resulting in more dense bytecode.

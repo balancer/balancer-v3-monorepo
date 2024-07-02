@@ -30,8 +30,8 @@ import {
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
-import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 
 import { VaultStateLib, VaultStateBits, VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -51,7 +51,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using HooksConfigLib for PoolConfigBits;
     using ScalingHelpers for *;
     using TransientStorageHelpers for *;
-    using StorageSlot for *;
+    using StorageSlotExtension for *;
     using PoolDataLib for PoolData;
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer, IProtocolFeeController protocolFeeController) {
