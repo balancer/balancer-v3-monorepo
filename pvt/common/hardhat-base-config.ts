@@ -13,7 +13,7 @@ type SolcConfig = {
   };
 };
 
-// Coverage report don't work well with via-ir flags, so we disable it
+// The coverage report doesn't work well with via-ir flags, so we disable it
 const viaIR = !process.env.COVERAGE;
 
 export const compilers: [SolcConfig] = [
