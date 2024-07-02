@@ -171,6 +171,7 @@ contract HooksTest is BaseVaultTest {
                     router: address(router),
                     userData: bytes("")
                 }),
+                pool,
                 0
             )
         );
@@ -202,6 +203,7 @@ contract HooksTest is BaseVaultTest {
                     router: address(router),
                     userData: bytes("")
                 }),
+                pool,
                 staticSwapFeePercentage
             )
         );

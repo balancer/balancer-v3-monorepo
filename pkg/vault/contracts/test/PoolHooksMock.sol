@@ -102,6 +102,7 @@ contract PoolHooksMock is BaseHooks {
 
     function onComputeDynamicSwapFee(
         IBasePool.PoolSwapParams calldata params,
+        address,
         uint256
     ) external view override returns (bool, uint256) {
         uint256 finalSwapFee = _dynamicSwapFee;
