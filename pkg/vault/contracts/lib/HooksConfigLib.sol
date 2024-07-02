@@ -329,7 +329,7 @@ library HooksConfigLib {
             params.userData
         );
 
-        if (success == false) {
+        if (success == false || hookAdjustedAmountsInRaw.length != amountsInRaw.length) {
             revert IVaultErrors.AfterAddLiquidityHookFailed();
         }
 
@@ -418,7 +418,7 @@ library HooksConfigLib {
             params.userData
         );
 
-        if (success == false) {
+        if (success == false || hookAdjustedAmountsOutRaw.length != amountsOutRaw.length) {
             revert IVaultErrors.AfterRemoveLiquidityHookFailed();
         }
 

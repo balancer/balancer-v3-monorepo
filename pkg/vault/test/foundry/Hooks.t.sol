@@ -355,6 +355,25 @@ contract HooksTest is BaseVaultTest {
         );
     }
 
+    function testOnBeforeAddLiquidityHookRevert() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeAddLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        // Force failure on AfterRemoveLiquidityHook
+        PoolHooksMock(poolHooksContract).setFailOnBeforeAddLiquidityHook(true);
+
+        vm.prank(bob);
+        vm.expectRevert(IVaultErrors.BeforeAddLiquidityHookFailed.selector);
+        router.addLiquidityUnbalanced(
+            pool,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmountRoundDown,
+            false,
+            bytes("")
+        );
+    }
+
     // Before remove
 
     function testOnBeforeRemoveLiquidityFlag() public {
@@ -416,6 +435,35 @@ contract HooksTest is BaseVaultTest {
         );
     }
 
+    function testOnBeforeRemoveLiquidityHookRevert() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeRemoveLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        // Add liquidity first, so Alice can remove it later
+        vm.prank(alice);
+        router.addLiquidityUnbalanced(
+            pool,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmount,
+            false,
+            bytes("")
+        );
+
+        // Force failure on AfterRemoveLiquidityHook
+        PoolHooksMock(poolHooksContract).setFailOnBeforeRemoveLiquidityHook(true);
+
+        vm.prank(alice);
+        vm.expectRevert(IVaultErrors.BeforeRemoveLiquidityHookFailed.selector);
+        router.removeLiquidityProportional(
+            pool,
+            bptAmount,
+            [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
+            false,
+            bytes("")
+        );
+    }
+
     // After add
 
     function testOnAfterAddLiquidityFlag() public {
@@ -452,6 +500,44 @@ contract HooksTest is BaseVaultTest {
                 bytes("")
             )
         );
+        router.addLiquidityUnbalanced(
+            pool,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmountRoundDown,
+            false,
+            bytes("")
+        );
+    }
+
+    function testOnAfterAddLiquidityHookRevert() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallAfterAddLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        // Force failure on AfterRemoveLiquidityHook
+        PoolHooksMock(poolHooksContract).setFailOnAfterAddLiquidityHook(true);
+
+        vm.prank(bob);
+        vm.expectRevert(IVaultErrors.AfterAddLiquidityHookFailed.selector);
+        router.addLiquidityUnbalanced(
+            pool,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmountRoundDown,
+            false,
+            bytes("")
+        );
+    }
+
+    function testOnAfterAddLiquidityHookEmptyHookAdjustedAmounts() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallAfterAddLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        // Return empty hook adjusted amounts
+        PoolHooksMock(poolHooksContract).enableForcedHookAdjustedAmountsLiquidity(new uint256[](0));
+
+        vm.prank(bob);
+        vm.expectRevert(IVaultErrors.AfterAddLiquidityHookFailed.selector);
         router.addLiquidityUnbalanced(
             pool,
             [defaultAmount, defaultAmount].toMemoryArray(),
@@ -515,6 +601,64 @@ contract HooksTest is BaseVaultTest {
         );
 
         vm.prank(alice);
+        router.removeLiquidityProportional(
+            pool,
+            bptAmount,
+            [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
+            false,
+            bytes("")
+        );
+    }
+
+    function testOnAfterRemoveLiquidityHookRevert() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallAfterRemoveLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        // Add liquidity first, so Alice can remove it later
+        vm.prank(alice);
+        router.addLiquidityUnbalanced(
+            pool,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmount,
+            false,
+            bytes("")
+        );
+
+        // Force failure on AfterRemoveLiquidityHook
+        PoolHooksMock(poolHooksContract).setFailOnAfterRemoveLiquidityHook(true);
+
+        vm.prank(alice);
+        vm.expectRevert(IVaultErrors.AfterRemoveLiquidityHookFailed.selector);
+        router.removeLiquidityProportional(
+            pool,
+            bptAmount,
+            [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
+            false,
+            bytes("")
+        );
+    }
+
+    function testOnAfterRemoveLiquidityHookEmptyHookAdjustedAmounts() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallAfterRemoveLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        // Add liquidity first, so Alice can remove it later
+        vm.prank(alice);
+        router.addLiquidityUnbalanced(
+            pool,
+            [defaultAmount, defaultAmount].toMemoryArray(),
+            bptAmount,
+            false,
+            bytes("")
+        );
+
+        // Return empty hook adjusted amounts
+        PoolHooksMock(poolHooksContract).enableForcedHookAdjustedAmountsLiquidity(new uint256[](0));
+
+        vm.prank(alice);
+        vm.expectRevert(IVaultErrors.AfterRemoveLiquidityHookFailed.selector);
         router.removeLiquidityProportional(
             pool,
             bptAmount,

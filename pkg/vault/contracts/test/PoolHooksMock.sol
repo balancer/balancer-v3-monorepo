@@ -32,6 +32,10 @@ contract PoolHooksMock is BaseHooks {
     bool public failOnBeforeRemoveLiquidity;
     bool public failOnAfterRemoveLiquidity;
 
+    bool public shouldForceHookAdjustedAmounts;
+    uint256 public forcedHookAdjustedAmountsSwap;
+    uint256[] public forcedHookAdjustedAmountsLiquidity;
+
     bool public changeTokenRateOnBeforeSwapHook;
     bool public changeTokenRateOnBeforeInitialize;
     bool public changeTokenRateOnBeforeAddLiquidity;
@@ -134,6 +138,11 @@ contract PoolHooksMock is BaseHooks {
     }
 
     function onAfterSwap(IHooks.AfterSwapParams calldata params) external override returns (bool, uint256) {
+        // Forces the hook answer to test HooksConfigLib
+        if (shouldForceHookAdjustedAmounts) {
+            return (true, forcedHookAdjustedAmountsSwap);
+        }
+
         // check that actual pool balances match
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = _vault.getPoolTokenInfo(params.pool);
 
@@ -249,6 +258,11 @@ contract PoolHooksMock is BaseHooks {
         uint256[] memory,
         bytes memory
     ) external override returns (bool, uint256[] memory hookAdjustedAmountsInRaw) {
+        // Forces the hook answer to test HooksConfigLib
+        if (shouldForceHookAdjustedAmounts) {
+            return (true, forcedHookAdjustedAmountsLiquidity);
+        }
+
         (IERC20[] memory tokens, , , ) = _vault.getPoolTokenInfo(pool);
         hookAdjustedAmountsInRaw = amountsInRaw;
 
@@ -280,6 +294,11 @@ contract PoolHooksMock is BaseHooks {
         uint256[] memory,
         bytes memory
     ) external override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+        // Forces the hook answer to test HooksConfigLib
+        if (shouldForceHookAdjustedAmounts) {
+            return (true, forcedHookAdjustedAmountsLiquidity);
+        }
+
         (IERC20[] memory tokens, , , ) = _vault.getPoolTokenInfo(pool);
         hookAdjustedAmountsOutRaw = amountsOutRaw;
 
@@ -453,6 +472,20 @@ contract PoolHooksMock is BaseHooks {
 
     function setRemoveLiquidityHookDiscountPercentage(uint256 hookDiscountPercentage) public {
         removeLiquidityHookDiscountPercentage = hookDiscountPercentage;
+    }
+
+    function enableForcedHookAdjustedAmountsLiquidity(uint256[] memory hookAdjustedAmountsLiquidity) public {
+        shouldForceHookAdjustedAmounts = true;
+        forcedHookAdjustedAmountsLiquidity = hookAdjustedAmountsLiquidity;
+    }
+
+    function enableForcedHookAdjustedAmountsSwap(uint256 hookAdjustedAmountsSwap) public {
+        shouldForceHookAdjustedAmounts = true;
+        forcedHookAdjustedAmountsSwap = hookAdjustedAmountsSwap;
+    }
+
+    function disableForcedHookAdjustedAmounts() public {
+        shouldForceHookAdjustedAmounts = false;
     }
 
     function allowFactory(address factory) external {
