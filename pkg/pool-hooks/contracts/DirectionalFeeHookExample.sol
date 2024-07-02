@@ -89,8 +89,8 @@ contract DirectionalFeeHookExample is BaseHooks {
         if (finalBalanceTokenIn > finalBalanceTokenOut) {
             uint256 diff = finalBalanceTokenIn - finalBalanceTokenOut;
             uint256 totalLiquidity = finalBalanceTokenIn + finalBalanceTokenOut;
-            // If diff is close to totalLiquidity, we charge a very large swap fee because the swap is moving the pool
-            // balances to the edge
+            // If `diff` is close to `totalLiquidity`, we charge a very large swap fee because the swap is moving the pool
+            // balances to the edge.
             feePercentage = diff.divDown(totalLiquidity);
         }
     }
