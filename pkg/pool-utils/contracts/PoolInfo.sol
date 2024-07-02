@@ -17,7 +17,7 @@ contract PoolInfo is IPoolInfo {
     }
 
     /// @inheritdoc IPoolInfo
-    function getTokens() public view returns (IERC20[] memory tokens) {
+    function getTokens() external view returns (IERC20[] memory tokens) {
         return _vault.getPoolTokens(address(this));
     }
 

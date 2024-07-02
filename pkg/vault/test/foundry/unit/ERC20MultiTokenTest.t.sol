@@ -95,6 +95,13 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
         assertEq(token.allowance(POOL, OWNER, SPENDER), type(uint256).max, "Unexpected allowance");
     }
 
+    function testSpendAllowanceWhenOwnerIsSender() public {
+        assertEq(token.allowance(POOL, OWNER, OWNER), type(uint256).max, "Unexpected allowance");
+
+        token.manualSpendAllowance(POOL, OWNER, OWNER, 1);
+        assertEq(token.allowance(POOL, OWNER, OWNER), type(uint256).max, "Unexpected allowance");
+    }
+
     function testSpendAllowanceRevertIfInsufficientAllowance() public {
         uint256 initialAllowance = DEFAULT_AMOUNT;
         uint256 spendAmount = initialAllowance + 1;

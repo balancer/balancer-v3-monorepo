@@ -19,7 +19,7 @@ const config: HardhatUserConfig = {
     },
   },
   solidity: {
-    compilers: hardhatBaseConfig.compilers,
+    compilers: [...hardhatBaseConfig.compilers],
     overrides: { ...hardhatBaseConfig.overrides(name) },
   },
   warnings,

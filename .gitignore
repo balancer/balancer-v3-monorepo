@@ -35,6 +35,7 @@ coverage/
 coverage-genhtml/
 coverage.json
 lcov*.info
+lcov*.info-e
 
 # Slither
 slither/
