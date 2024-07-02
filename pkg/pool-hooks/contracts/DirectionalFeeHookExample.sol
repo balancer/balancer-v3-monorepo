@@ -17,7 +17,7 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 contract DirectionalFeeHookExample is BaseHooks {
     using FixedPoint for uint256;
 
-    // only stable pools from the allowed factory are able to register and use this hook
+    // Only stable pools from the allowed factory are able to register and use this hook.
     address private immutable _allowedStablePoolFactory;
 
     constructor(IVault vault, address allowedStablePoolFactory) BaseHooks(vault) {
