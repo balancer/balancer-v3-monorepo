@@ -241,7 +241,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
 
             // We can skip checked arithmetic as:
             //  - block.timestamp is always larger or equal to startTime
-            //  - endTime is alawys larger than startTime
+            //  - endTime is always larger than startTime
             //  - the value delta is bounded by the largest amplification parameter, which never causes the
             //    multiplication to overflow.
             // This also means that the following computation will never revert nor yield invalid results.

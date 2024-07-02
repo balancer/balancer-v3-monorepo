@@ -7,7 +7,7 @@ import "../vault/VaultTypes.sol";
 
 /**
  * @notice Convenience interface for pools, to get easy access to information stored in the Vault.
- * Intended mostly for offchain requests; pools do not need to implement this to work properly.
+ * Intended mostly for off-chain requests; pools do not need to implement this to work properly.
  */
 interface IPoolInfo {
     /**
