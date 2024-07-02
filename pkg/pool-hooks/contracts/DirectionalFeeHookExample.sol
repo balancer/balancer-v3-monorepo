@@ -56,7 +56,7 @@ contract DirectionalFeeHookExample is BaseHooks {
             params.indexOut
         );
 
-        // If calculated fee is higher than static fee, charges calculated fee.
+        // Charge the static or calculated fee, whichever is greater.
         return (
             true,
             calculatedSwapFeePercentage > staticSwapFeePercentage
