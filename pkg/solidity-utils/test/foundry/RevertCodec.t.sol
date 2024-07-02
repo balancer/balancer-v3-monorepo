@@ -19,7 +19,7 @@ contract RevertCodecTest is Test {
         RevertCodec.catchEncodedResult(bytes(abi.encodeWithSelector(TestCustomError.selector, uint256(123))));
     }
 
-    function testCatchEncodedResultOk() public {
+    function testCatchEncodedResultOk() public pure {
         bytes memory encodedError = abi.encodeWithSelector(RevertCodec.Result.selector, abi.encode(uint256(987), true));
         bytes memory result = RevertCodec.catchEncodedResult(encodedError);
         (uint256 decodedResultInt, bool decodedResultBool) = abi.decode(result, (uint256, bool));
@@ -33,7 +33,7 @@ contract RevertCodecTest is Test {
         RevertCodec.parseSelector("");
     }
 
-    function testParseSelector() public {
+    function testParseSelector() public pure {
         bytes4 selector = RevertCodec.parseSelector(abi.encodePacked(hex"112233445566778899aabbccddeeff"));
         assertEq(selector, bytes4(0x11223344), "Incorrect selector");
     }
