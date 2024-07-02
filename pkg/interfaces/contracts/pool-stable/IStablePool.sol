@@ -12,14 +12,14 @@ struct StablePoolDynamicData {
     uint256 staticSwapFeePercentage;
     uint256 totalSupply;
     uint256 bptRate;
-    uint256 amp;
+    uint256 amplificationParameter;
     bool isAmpUpdating;
 }
 
 struct StablePoolImmutableData {
     IERC20[] tokens;
     uint256[] decimalScalingFactors;
-    uint256 ampPrecision;
+    uint256 amplificationParameterPrecision;
 }
 
 /// @notice Full Stable pool interface.
@@ -33,7 +33,7 @@ interface IStablePool is IBasePool {
      */
     function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external;
 
-     /// @dev Stops the amplification parameter change process, keeping the current value.
+    /// @dev Stops the amplification parameter change process, keeping the current value.
     function stopAmplificationParameterUpdate() external;
 
     /**
@@ -44,9 +44,9 @@ interface IStablePool is IBasePool {
      */
     function getAmplificationParameter() external view returns (uint256 value, bool isUpdating, uint256 precision);
 
-     /// @notice Get relevant dynamic pool data required for swap/add/remove calculations.
+    /// @notice Get relevant dynamic pool data required for swap/add/remove calculations.
     function getStablePoolDynamicData() external view returns (StablePoolDynamicData memory data);
 
-     /// @notice Get relevant immutable pool data required for swap / add / remove calculations.
+    /// @notice Get relevant immutable pool data required for swap / add / remove calculations.
     function getStablePoolImmutableData() external view returns (StablePoolImmutableData memory data);
 }

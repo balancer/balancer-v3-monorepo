@@ -288,18 +288,18 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
 
     /// @inheritdoc IStablePool
     function getStablePoolDynamicData() external view returns (StablePoolDynamicData memory data) {
-        data.liveBalances = getCurrentLiveBalances();
+        data.liveBalances = _vault.getCurrentLiveBalances(address(this));
         (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
-        data.staticSwapFeePercentage = getStaticSwapFeePercentage();
+        data.staticSwapFeePercentage = _vault.getStaticSwapFeePercentage((address(this)));
         data.totalSupply = totalSupply();
         data.bptRate = getRate();
-        (data.amp, data.isAmpUpdating) = _getAmplificationParameter();
+        (data.amplificationParameter, data.isAmpUpdating) = _getAmplificationParameter();
     }
 
     /// @inheritdoc IStablePool
     function getStablePoolImmutableData() external view returns (StablePoolImmutableData memory data) {
-        data.tokens = getTokens();
+        data.tokens = _vault.getPoolTokens(address(this));
         (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
-        data.ampPrecision = StableMath.AMP_PRECISION;
+        data.amplificationParameterPrecision = StableMath.AMP_PRECISION;
     }
 }

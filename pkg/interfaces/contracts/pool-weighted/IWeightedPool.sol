@@ -28,9 +28,9 @@ interface IWeightedPool is IBasePool {
      */
     function getNormalizedWeights() external view returns (uint256[] memory);
 
-     /// @notice Get relevant dynamic pool data required for swap / add / remove calculations.
+    /// @notice Get relevant dynamic pool data required for swap / add / remove calculations.
     function getWeightedPoolDynamicData() external view returns (WeightedPoolDynamicData memory data);
 
-     /// @notice Get relevant immutable pool data required for swap / add / remove calculations.
+    /// @notice Get relevant immutable pool data required for swap / add / remove calculations.
     function getWeightedPoolImmutableData() external view returns (WeightedPoolImmutableData memory data);
 }

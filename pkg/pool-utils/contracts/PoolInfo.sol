@@ -17,7 +17,7 @@ contract PoolInfo is IPoolInfo {
     }
 
     /// @inheritdoc IPoolInfo
-    function getTokens() public view returns (IERC20[] memory tokens) {
+    function getTokens() external view returns (IERC20[] memory tokens) {
         return _vault.getPoolTokens(address(this));
     }
 
@@ -36,12 +36,12 @@ contract PoolInfo is IPoolInfo {
     }
 
     /// @inheritdoc IPoolInfo
-    function getCurrentLiveBalances() public view returns (uint256[] memory balancesLiveScaled18) {
+    function getCurrentLiveBalances() external view returns (uint256[] memory balancesLiveScaled18) {
         return _vault.getCurrentLiveBalances(address(this));
     }
 
     /// @inheritdoc IPoolInfo
-    function getStaticSwapFeePercentage() public view returns (uint256) {
+    function getStaticSwapFeePercentage() external view returns (uint256) {
         return _vault.getStaticSwapFeePercentage((address(this)));
     }
 }

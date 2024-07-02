@@ -182,16 +182,16 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
 
     /// @inheritdoc IWeightedPool
     function getWeightedPoolDynamicData() external view returns (WeightedPoolDynamicData memory data) {
-        data.liveBalances = getCurrentLiveBalances();
+        data.liveBalances = _vault.getCurrentLiveBalances(address(this));
         (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
-        data.staticSwapFeePercentage = getStaticSwapFeePercentage();
+        data.staticSwapFeePercentage = _vault.getStaticSwapFeePercentage((address(this)));
         data.totalSupply = totalSupply();
         data.bptRate = getRate();
     }
 
     /// @inheritdoc IWeightedPool
     function getWeightedPoolImmutableData() external view returns (WeightedPoolImmutableData memory data) {
-        data.tokens = getTokens();
+        data.tokens = _vault.getPoolTokens(address(this));
         (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
         data.normalizedWeights = _getNormalizedWeights();
     }
