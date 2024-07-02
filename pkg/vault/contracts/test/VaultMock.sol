@@ -33,6 +33,7 @@ import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
 import { PoolDataLib } from "../lib/PoolDataLib.sol";
+import { TokenInfoLib } from "../lib/TokenInfoLib.sol";
 import { TokenInfoConst } from "../TokenInfoConst.sol";
 
 struct SwapInternalStateLocals {
@@ -50,6 +51,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
+    using TokenInfoLib for *;
 
     PoolFactoryMock private immutable _poolFactoryMock;
     InputHelpersMock private immutable _inputHelpersMock;
@@ -221,9 +223,9 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetPoolTokenInfo(address pool, TokenConfig[] memory tokenConfig) public {
-        for (uint256 i = 0; i < tokenConfig.length; ++i) {
-            _poolTokenInfoContracts[pool] = new TokenInfoConst(tokenConfig);
-        }
+        // for (uint256 i = 0; i < tokenConfig.length; ++i) {
+        //     _poolTokenInfoContracts[pool] = new TokenInfoConst(tokenConfig);
+        // }
     }
 
     function manualSetPoolTokenInfo(address pool, IERC20[] memory tokens, TokenInfo[] memory tokenInfo) public {
@@ -234,8 +236,7 @@ contract VaultMock is IVaultMainMock, Vault {
             tokenConfig[i].rateProvider = tokenInfo[i].rateProvider;
             tokenConfig[i].paysYieldFees = tokenInfo[i].paysYieldFees;
         }
-
-        _poolTokenInfoContracts[pool] = new TokenInfoConst(tokenConfig);
+        _poolTokenInfoContracts[pool] = TokenInfoLib.set(tokenConfig);
     }
 
     function manualSetPoolTokensAndBalances(

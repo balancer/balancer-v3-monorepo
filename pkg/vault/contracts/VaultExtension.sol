@@ -40,6 +40,7 @@ import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
+import { TokenInfoLib } from "./lib/TokenInfoLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
 import { TokenInfoConst } from "./TokenInfoConst.sol";
@@ -68,6 +69,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
+    using TokenInfoLib for *;
 
     IVault private immutable _vault;
     IVaultAdmin private immutable _vaultAdmin;
@@ -180,9 +182,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert PoolAlreadyRegistered(pool);
         }
 
-        if (address(_poolTokenInfoContracts[pool]) != address(0)) {
-            (IERC20[] memory existingTokens, ) = _poolTokenInfoContracts[pool].getTokenInfo();
-            revert TokensAlreadyRegistered(existingTokens);
+        if (_poolTokenInfoContracts[pool] != address(0)) {
+            // TODO:
+            // (IERC20[] memory existingTokens, ) = _poolTokenInfoContracts[pool].getTokenInfo();
+            // revert TokensAlreadyRegistered(existingTokens);
         }
 
         uint256 numTokens = params.tokenConfig.length;
@@ -242,7 +245,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
         }
 
-        _poolTokenInfoContracts[pool] = new TokenInfoConst(params.tokenConfig);
+        _poolTokenInfoContracts[pool] = TokenInfoLib.set(params.tokenConfig);
 
         // Store the role account addresses (for getters).
         _poolRoleAccounts[pool] = params.roleAccounts;

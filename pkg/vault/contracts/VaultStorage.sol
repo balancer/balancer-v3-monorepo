@@ -78,7 +78,7 @@ contract VaultStorage {
     // as scaled 18-decimal FP values. Each value takes up half the storage slot (i.e., 128 bits).
     mapping(address => mapping(uint256 => bytes32)) internal _poolTokenBalances;
 
-    mapping(address => TokenInfoConst) internal _poolTokenInfoContracts;
+    mapping(address => address) internal _poolTokenInfoContracts;
 
     // Pool -> (Token -> fee): aggregate protocol swap/yield fees accumulated in the Vault for harvest.
     // Reusing PackedTokenBalance to save bytecode (despite differing semantics).
