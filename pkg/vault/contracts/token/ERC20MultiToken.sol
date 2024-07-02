@@ -58,7 +58,8 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
 
     function _allowance(address pool, address owner, address spender) internal view returns (uint256) {
         // The Vault grants infinite allowance to all pool tokens (BPT)
-        if (spender == address(this)) {
+        // Owner can spend anything without approval
+        if (spender == address(this) || owner == spender) {
             return type(uint256).max;
         } else {
             return _allowances[pool][owner][spender];
