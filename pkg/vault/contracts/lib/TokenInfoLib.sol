@@ -6,6 +6,8 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
+type TokenInfoContract is address;
+
 library TokenInfoLib {
     using WordCodec for bytes32;
 
@@ -18,7 +20,7 @@ library TokenInfoLib {
     uint8 public constant RATE_PROVIDER_OFFSET = TOKEN_TYPE_OFFSET + UINT8_BITLENGTH;
     uint8 public constant PAYS_YIELD_FEES_OFFSET = RATE_PROVIDER_OFFSET + ADDRESS_BITLENGTH;
 
-    function set(TokenConfig[] memory tokenInfo) internal returns (address box) {
+    function set(TokenConfig[] memory tokenInfo) internal returns (TokenInfoContract tokenInfoContract) {
         uint256 length = tokenInfo.length;
         uint8 totalBytes = uint8(length * 2 * 32);
         uint256 deployScriptSize = DEPLOY_CODE_BYTE_SIZE + totalBytes;
@@ -54,19 +56,19 @@ library TokenInfoLib {
             }
         }
         assembly {
-            box := create(0, add(result, 32), deployScriptSize)
+            tokenInfoContract := create(0, add(result, 32), deployScriptSize)
         }
     }
 
-    function getTokenInfo(
-        address box
-    ) internal view returns (IERC20[] memory tokenAddresses, TokenInfo[] memory tokenInfo) {
-        bytes memory data = box.code;
+    function getTokensAndTokenInfo(
+        TokenInfoContract tokenInfoContract
+    ) internal view returns (IERC20[] memory tokens, TokenInfo[] memory tokensInfo) {
+        bytes memory data = TokenInfoContract.unwrap(tokenInfoContract).code;
 
         uint length = data.length / 64;
 
-        tokenAddresses = new IERC20[](length);
-        tokenInfo = new TokenInfo[](length);
+        tokens = new IERC20[](length);
+        tokensInfo = new TokenInfo[](length);
 
         for (uint256 i = 0; i < length; i++) {
             bytes32 tokenAddress;
@@ -78,10 +80,10 @@ library TokenInfoLib {
                 tokenInfoBits := mload(add(data, two))
             }
 
-            tokenAddresses[i] = IERC20(tokenAddress.decodeAddress(0));
-            tokenInfo[i].tokenType = TokenType(tokenInfoBits.decodeUint(TOKEN_TYPE_OFFSET, UINT8_BITLENGTH));
-            tokenInfo[i].rateProvider = IRateProvider(tokenInfoBits.decodeAddress(RATE_PROVIDER_OFFSET));
-            tokenInfo[i].paysYieldFees = tokenInfoBits.decodeBool(PAYS_YIELD_FEES_OFFSET);
+            tokens[i] = IERC20(tokenAddress.decodeAddress(0));
+            tokensInfo[i].tokenType = TokenType(tokenInfoBits.decodeUint(TOKEN_TYPE_OFFSET, UINT8_BITLENGTH));
+            tokensInfo[i].rateProvider = IRateProvider(tokenInfoBits.decodeAddress(RATE_PROVIDER_OFFSET));
+            tokensInfo[i].paysYieldFees = tokenInfoBits.decodeBool(PAYS_YIELD_FEES_OFFSET);
         }
     }
 }

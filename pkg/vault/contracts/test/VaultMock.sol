@@ -33,8 +33,7 @@ import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
 import { PoolDataLib } from "../lib/PoolDataLib.sol";
-import { TokenInfoLib } from "../lib/TokenInfoLib.sol";
-import { TokenInfoConst } from "../TokenInfoConst.sol";
+import { TokenInfoLib, TokenInfoContract } from "../lib/TokenInfoLib.sol";
 
 struct SwapInternalStateLocals {
     SwapParams params;
@@ -51,7 +50,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
-    using TokenInfoLib for *;
+    using TokenInfoLib for TokenInfoContract;
 
     PoolFactoryMock private immutable _poolFactoryMock;
     InputHelpersMock private immutable _inputHelpersMock;
@@ -223,9 +222,9 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualSetPoolTokenInfo(address pool, TokenConfig[] memory tokenConfig) public {
-        // for (uint256 i = 0; i < tokenConfig.length; ++i) {
-        //     _poolTokenInfoContracts[pool] = new TokenInfoConst(tokenConfig);
-        // }
+        for (uint256 i = 0; i < tokenConfig.length; ++i) {
+            _poolTokenInfoContracts[pool] = TokenInfoLib.set(tokenConfig);
+        }
     }
 
     function manualSetPoolTokenInfo(address pool, IERC20[] memory tokens, TokenInfo[] memory tokenInfo) public {
@@ -245,7 +244,7 @@ contract VaultMock is IVaultMainMock, Vault {
         uint256[] memory tokenBalanceLiveScaled18
     ) public {
         mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
-        (IERC20[] memory tokens, ) = _poolTokenInfoContracts[pool].getTokenInfo();
+        (IERC20[] memory tokens, ) = _poolTokenInfoContracts[pool].getTokensAndTokenInfo();
 
         for (uint256 i = 0; i < tokens.length; ++i) {
             poolTokenBalances[i] = PackedTokenBalance.toPackedBalance(tokenBalanceRaw[i], tokenBalanceLiveScaled18[i]);
@@ -370,7 +369,7 @@ contract VaultMock is IVaultMainMock, Vault {
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
         mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
 
-        (IERC20[] memory tokens, ) = _poolTokenInfoContracts[pool].getTokenInfo();
+        (IERC20[] memory tokens, ) = _poolTokenInfoContracts[pool].getTokensAndTokenInfo();
         balancesRaw = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
@@ -381,7 +380,7 @@ contract VaultMock is IVaultMainMock, Vault {
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances) {
         mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
 
-        (IERC20[] memory tokens, ) = _poolTokenInfoContracts[pool].getTokenInfo();
+        (IERC20[] memory tokens, ) = _poolTokenInfoContracts[pool].getTokensAndTokenInfo();
         lastLiveBalances = new uint256[](tokens.length);
 
         for (uint256 i = 0; i < tokens.length; ++i) {

@@ -37,8 +37,8 @@ import { VaultStateLib, VaultStateBits, VaultStateBits } from "./lib/VaultStateL
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
-import { TokenInfoLib } from "./lib/TokenInfoLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
+import { TokenInfoLib, TokenInfoContract } from "./lib/TokenInfoLib.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
     using PackedTokenBalance for bytes32;
@@ -53,7 +53,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
-    using TokenInfoLib for *;
+    using TokenInfoLib for TokenInfoContract;
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer, IProtocolFeeController protocolFeeController) {
         if (address(vaultExtension.vault()) != address(this)) {
@@ -1475,7 +1475,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         address pool,
         IERC20 token
     ) external view withRegisteredPool(pool) returns (uint256, uint256) {
-        (IERC20[] memory tokens, ) = _poolTokenInfoContracts[pool].getTokenInfo();
+        (IERC20[] memory tokens, ) = _poolTokenInfoContracts[pool].getTokensAndTokenInfo();
 
         int index = _findTokenIndex(tokens, token);
         if (index == -1) {

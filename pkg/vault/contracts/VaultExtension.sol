@@ -40,10 +40,9 @@ import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
-import { TokenInfoLib } from "./lib/TokenInfoLib.sol";
+import { TokenInfoLib, TokenInfoContract } from "./lib/TokenInfoLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
-import { TokenInfoConst } from "./TokenInfoConst.sol";
 
 /**
  * @dev Bytecode extension for Vault.
@@ -69,7 +68,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
-    using TokenInfoLib for *;
+    using TokenInfoLib for TokenInfoContract;
 
     IVault private immutable _vault;
     IVaultAdmin private immutable _vaultAdmin;
@@ -182,10 +181,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert PoolAlreadyRegistered(pool);
         }
 
-        if (_poolTokenInfoContracts[pool] != address(0)) {
-            // TODO:
-            // (IERC20[] memory existingTokens, ) = _poolTokenInfoContracts[pool].getTokenInfo();
-            // revert TokensAlreadyRegistered(existingTokens);
+        if (TokenInfoContract.unwrap(_poolTokenInfoContracts[pool]) != address(0)) {
+            (IERC20[] memory existingTokens, ) = _poolTokenInfoContracts[pool].getTokensAndTokenInfo();
+            revert TokensAlreadyRegistered(existingTokens);
         }
 
         uint256 numTokens = params.tokenConfig.length;
@@ -523,7 +521,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function getPoolTokens(
         address pool
     ) external view onlyVaultDelegateCall withRegisteredPool(pool) returns (IERC20[] memory tokens) {
-        (tokens, ) = _poolTokenInfoContracts[pool].getTokenInfo();
+        (tokens, ) = _poolTokenInfoContracts[pool].getTokensAndTokenInfo();
     }
 
     /// @inheritdoc IVaultExtension
@@ -539,7 +537,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Retrieve the mapping of tokens and their balances for the specified pool.
         PoolConfigBits poolConfig = _poolConfigBits[pool];
 
-        (IERC20[] memory tokens, TokenInfo[] memory tokenInfo) = _poolTokenInfoContracts[pool].getTokenInfo();
+        (IERC20[] memory tokens, TokenInfo[] memory tokenInfo) = _poolTokenInfoContracts[pool].getTokensAndTokenInfo();
 
         uint256 numTokens = tokens.length;
         decimalScalingFactors = PoolConfigLib.getDecimalScalingFactors(poolConfig, numTokens);
@@ -574,7 +572,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     {
         // Retrieve the mapping of tokens and their balances for the specified pool.
         mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
-        (tokens, tokenInfo) = _poolTokenInfoContracts[pool].getTokenInfo();
+        (tokens, tokenInfo) = _poolTokenInfoContracts[pool].getTokensAndTokenInfo();
 
         uint256 numTokens = tokens.length;
         tokenInfo = new TokenInfo[](numTokens);
@@ -757,7 +755,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Initialize arrays to store tokens and balances based on the number of tokens in the pool.
 
-        (IERC20[] memory tokens, ) = _poolTokenInfoContracts[pool].getTokenInfo();
+        (IERC20[] memory tokens, ) = _poolTokenInfoContracts[pool].getTokensAndTokenInfo();
         uint256 numTokens = tokens.length;
 
         uint256[] memory balancesRaw = new uint256[](numTokens);

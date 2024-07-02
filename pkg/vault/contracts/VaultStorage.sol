@@ -23,7 +23,7 @@ import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/h
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
-import { TokenInfoConst } from "./TokenInfoConst.sol";
+import { TokenInfoContract } from "./lib/TokenInfoLib.sol";
 
 // solhint-disable max-states-count
 
@@ -78,7 +78,7 @@ contract VaultStorage {
     // as scaled 18-decimal FP values. Each value takes up half the storage slot (i.e., 128 bits).
     mapping(address => mapping(uint256 => bytes32)) internal _poolTokenBalances;
 
-    mapping(address => address) internal _poolTokenInfoContracts;
+    mapping(address => TokenInfoContract) internal _poolTokenInfoContracts;
 
     // Pool -> (Token -> fee): aggregate protocol swap/yield fees accumulated in the Vault for harvest.
     // Reusing PackedTokenBalance to save bytecode (despite differing semantics).
