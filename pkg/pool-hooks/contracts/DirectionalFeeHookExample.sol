@@ -21,6 +21,7 @@ contract DirectionalFeeHookExample is BaseHooks {
     address private immutable _allowedStablePoolFactory;
 
     constructor(IVault vault, address allowedStablePoolFactory) BaseHooks(vault) {
+        // Although the hook allows any factory to be registered during deployment, it should be a stable pool factory.
         _allowedStablePoolFactory = allowedStablePoolFactory;
     }
 
@@ -31,7 +32,7 @@ contract DirectionalFeeHookExample is BaseHooks {
         TokenConfig[] memory,
         LiquidityManagement calldata
     ) external view override onlyVault returns (bool) {
-        // This hook allows only stable pools to implement it
+        // This hook allows only pools deployed by the registered factory to register it.
         return factory == _allowedStablePoolFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
     }
 
