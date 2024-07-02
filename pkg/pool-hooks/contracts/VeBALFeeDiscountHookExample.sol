@@ -48,6 +48,7 @@ contract VeBALFeeDiscountHookExample is BaseHooks {
     /// @inheritdoc IHooks
     function onComputeDynamicSwapFee(
         IBasePool.PoolSwapParams calldata params,
+        address,
         uint256 staticSwapFeePercentage
     ) external view override returns (bool, uint256) {
         // If the router is not trusted, does not apply the veBAL discount because getSender() may be manipulated by a
