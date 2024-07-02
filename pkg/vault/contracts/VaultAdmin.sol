@@ -202,7 +202,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
         PoolFunctionPermission memory roleAssignment = _poolFunctionPermissions[pool][actionId];
 
-        // If there is no role assigment, fall through and delegate to governance.
+        // If there is no role assignment, fall through and delegate to governance.
         if (roleAssignment.account != address(0)) {
             // If the sender matches the permissioned account, all good; just return.
             if (msg.sender == roleAssignment.account) {

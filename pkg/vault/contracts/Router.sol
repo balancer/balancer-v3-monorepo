@@ -1148,7 +1148,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bytes calldata permit2Signature,
         bytes[] calldata multicallData
     ) external virtual saveSender returns (bytes[] memory results) {
-        // Use Permit (ERC-2612) to grant allowances to Permit2 for swapable tokens,
+        // Use Permit (ERC-2612) to grant allowances to Permit2 for tokens to swap,
         // and grant allowances to Vault for BPT tokens.
         for (uint256 i = 0; i < permitBatch.length; ++i) {
             bytes memory signature = permitSignatures[i];

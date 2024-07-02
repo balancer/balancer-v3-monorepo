@@ -21,11 +21,11 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 /**
- * @notice Liquidity operations that are unproportional allow for indirect swaps. It is
+ * @notice Liquidity operations that are unbalanced allow for indirect swaps. It is
  * crucial to guarantee that the swap fees for indirect swaps facilitated
  * through liquidity operations are not lower than those for direct swaps.
  * To ensure this, we analyze the results of two different operations:
- * unproportional liquidity operation (addLiquidityUnbalanced) combined with
+ * unbalanced liquidity operation (addLiquidityUnbalanced) combined with
  * add/remove liquidity proportionally, and swapExactIn. Consider the following scenario:
  *
  * Pool begins with balances of [100, 100].
@@ -43,7 +43,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
  *      But the difference should never be too much, i.e. we don't want to steal from users on liquidity operations.
  *      This implies that Alice's balance [..., 33] should be less than or at most equal to Bob's [..., 34].
  *
- * This methodology and evaluation criteria are applicable to all unproportional liquidity operations and pool types.
+ * This methodology and evaluation criteria are applicable to all unbalanced liquidity operations and pool types.
  * Furthermore, this approach validates the correct amount of BPT minted/burned for liquidity operations.
  * If more BPT were minted or fewer BPT were burned than required,
  * it would result in Alice having more assets at the end than Bob, which we have verified to be untrue.
