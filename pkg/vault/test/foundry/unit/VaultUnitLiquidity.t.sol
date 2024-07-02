@@ -63,8 +63,8 @@ contract VaultUnitLiquidityTest is BaseTest {
         BaseTest.setUp();
         vault = IVaultMock(address(VaultMockDeployer.deploy()));
 
-        _mockMintCallback(address(this), initTotalSupply);
-        vault.mintERC20(pool, address(this), initTotalSupply);
+        _mockMintCallback(alice, initTotalSupply);
+        vault.mintERC20(pool, alice, initTotalSupply);
 
         uint256[] memory initialBalances = new uint256[](tokens.length);
         // We don't care about last live balances, so we set them equal to the raw ones.
@@ -224,7 +224,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             address(params.pool),
             abi.encodeWithSelector(
                 IPoolLiquidity.onAddLiquidityCustom.selector,
-                params.to,
+                address(this), // Router
                 maxAmountsInScaled18,
                 params.minBptAmountOut,
                 poolData.balancesLiveScaled18,
@@ -260,7 +260,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             address(params.pool),
             abi.encodeWithSelector(
                 IPoolLiquidity.onAddLiquidityCustom.selector,
-                params.to,
+                address(this), // Router
                 maxAmountsInScaled18,
                 params.minBptAmountOut,
                 poolData.balancesLiveScaled18,
@@ -294,7 +294,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             address(params.pool),
             abi.encodeWithSelector(
                 IPoolLiquidity.onAddLiquidityCustom.selector,
-                params.to,
+                address(this), // Router
                 maxAmountsInScaled18,
                 params.minBptAmountOut,
                 poolData.balancesLiveScaled18,
@@ -535,7 +535,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             address(params.pool),
             abi.encodeWithSelector(
                 IPoolLiquidity.onRemoveLiquidityCustom.selector,
-                params.from,
+                address(this), // router
                 params.maxBptAmountIn,
                 minAmountsOutScaled18,
                 poolData.balancesLiveScaled18,
@@ -572,7 +572,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             address(params.pool),
             abi.encodeWithSelector(
                 IPoolLiquidity.onRemoveLiquidityCustom.selector,
-                params.from,
+                address(this), // Router
                 params.maxBptAmountIn,
                 minAmountsOutScaled18,
                 poolData.balancesLiveScaled18,
@@ -608,7 +608,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             address(params.pool),
             abi.encodeWithSelector(
                 IPoolLiquidity.onRemoveLiquidityCustom.selector,
-                params.from,
+                address(this), // Router
                 params.maxBptAmountIn,
                 minAmountsOutScaled18,
                 poolData.balancesLiveScaled18,
@@ -679,7 +679,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     ) internal view returns (AddLiquidityParams memory params, uint256[] memory maxAmountsInScaled18) {
         params = AddLiquidityParams({
             pool: pool,
-            to: address(this),
+            to: alice,
             kind: kind,
             maxAmountsIn: new uint256[](tokens.length),
             minBptAmountOut: minBptAmountOut,
@@ -704,7 +704,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     ) internal view returns (RemoveLiquidityParams memory params, uint256[] memory minAmountsOutScaled18) {
         params = RemoveLiquidityParams({
             pool: pool,
-            from: address(this),
+            from: alice,
             maxBptAmountIn: maxBptAmountIn,
             minAmountsOut: new uint256[](tokens.length),
             kind: kind,
@@ -763,7 +763,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             );
         }
 
-        _mockMintCallback(address(this), params.expectedBPTAmountOut);
+        _mockMintCallback(params.addLiquidityParams.to, params.expectedBPTAmountOut);
 
         vm.expectEmit();
         emit IVaultEvents.PoolBalanceChanged(
@@ -782,7 +782,7 @@ contract VaultUnitLiquidityTest is BaseTest {
 
         assertEq(bptAmountOut, params.expectedBPTAmountOut, "Unexpected BPT amount out");
         assertEq(
-            vault.balanceOf(address(params.addLiquidityParams.pool), address(this)),
+            vault.balanceOf(address(params.addLiquidityParams.pool), alice),
             initTotalSupply + bptAmountOut,
             "Token minted with unexpected amount"
         );
@@ -852,7 +852,7 @@ contract VaultUnitLiquidityTest is BaseTest {
 
         assertEq(bptAmountIn, params.expectedBPTAmountIn, "Unexpected BPT amount in");
         assertEq(
-            vault.balanceOf(address(params.removeLiquidityParams.pool), address(this)),
+            vault.balanceOf(address(params.removeLiquidityParams.pool), alice),
             initTotalSupply - bptAmountIn,
             "Token burned with unexpected amount"
         );
