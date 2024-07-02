@@ -23,6 +23,7 @@ import {
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 
 import { RouterCommon } from "./RouterCommon.sol";
 import { BatchRouterStorage } from "./BatchRouterStorage.sol";
@@ -35,10 +36,16 @@ struct SwapStepLocals {
 contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, ReentrancyGuardTransient {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
+    using StorageSlot for *;
     using SafeERC20 for IERC20;
 
     constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
         // solhint-disable-previous-line no-empty-blocks
+    }
+
+    modifier computeCallIndex() {
+        _callIndex().tIncrement();
+        _;
     }
 
     /// @inheritdoc IBatchRouter
@@ -51,6 +58,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         external
         payable
         saveSender
+        computeCallIndex
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
         return
@@ -81,6 +89,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         external
         payable
         saveSender
+        computeCallIndex
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
         return
@@ -117,6 +126,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     function _swapExactInHook(
         SwapExactInHookParams calldata params
     ) internal returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) {
+        uint256 callIndex = _callIndex().tload();
+
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
@@ -127,19 +138,21 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
         // The hook writes current swap token and token amounts out.
         // We copy that information to memory to return it before it is deleted during settlement.
-        tokensOut = _currentSwapTokensOut().values();
+        tokensOut = _currentSwapTokensOut(callIndex).values();
         amountsOut = new uint256[](tokensOut.length);
         for (uint256 i = 0; i < tokensOut.length; ++i) {
             amountsOut[i] =
-                _currentSwapTokenOutAmounts().tGet(tokensOut[i]) +
-                _settledTokenAmounts().tGet(tokensOut[i]);
-            _settledTokenAmounts().tSet(tokensOut[i], 0);
+                _currentSwapTokenOutAmounts(callIndex).tGet(tokensOut[i]) +
+                _settledTokenAmounts(callIndex).tGet(tokensOut[i]);
+            _settledTokenAmounts(callIndex).tSet(tokensOut[i], 0);
         }
     }
 
     function _computePathAmountsOut(
         SwapExactInHookParams calldata params
     ) internal returns (uint256[] memory pathAmountsOut) {
+        uint256 callIndex = _callIndex().tload();
+
         pathAmountsOut = new uint256[](params.paths.length);
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
@@ -153,13 +166,13 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             if (path.steps[0].isBuffer && EVMCallModeHelpers.isStaticCall() == false) {
                 // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
                 _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, false);
-                _settledTokenAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
+                _settledTokenAmounts(callIndex).tAdd(address(stepTokenIn), stepExactAmountIn);
             } else {
                 // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses
                 // in a set with unique addresses that can be iterated later on.
                 // For example, if all paths share the same token in, the set will end up with only one entry.
-                _currentSwapTokensIn().add(address(stepTokenIn));
-                _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
+                _currentSwapTokensIn(callIndex).add(address(stepTokenIn));
+                _currentSwapTokenInAmounts(callIndex).tAdd(address(stepTokenIn), stepExactAmountIn);
             }
 
             for (uint256 j = 0; j < path.steps.length; ++j) {
@@ -195,8 +208,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         // The amount out for the last step of the path should be recorded for the return value, and the
                         // amount for the token should be sent back to the sender later on.
                         pathAmountsOut[i] = amountOut;
-                        _currentSwapTokensOut().add(address(step.tokenOut));
-                        _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), amountOut);
+                        _currentSwapTokensOut(callIndex).add(address(step.tokenOut));
+                        _currentSwapTokenOutAmounts(callIndex).tAdd(address(step.tokenOut), amountOut);
                     } else {
                         // Input for the next step is output of current step.
                         stepExactAmountIn = amountOut;
@@ -229,8 +242,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                     }
 
                     // BPT is burnt instantly, so we don't need to send it back later.
-                    if (_currentSwapTokenInAmounts().tGet(address(stepTokenIn)) > 0) {
-                        _currentSwapTokenInAmounts().tSub(address(stepTokenIn), stepExactAmountIn);
+                    if (_currentSwapTokenInAmounts(callIndex).tGet(address(stepTokenIn)) > 0) {
+                        _currentSwapTokenInAmounts(callIndex).tSub(address(stepTokenIn), stepExactAmountIn);
                     }
 
                     // minAmountOut cannot be 0 in this case, as that would send an array of 0s to the Vault, which
@@ -261,8 +274,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         // The amount out for the last step of the path should be recorded for the return value, and the
                         // amount for the token should be sent back to the sender later on.
                         pathAmountsOut[i] = amountsOut[tokenIndex];
-                        _currentSwapTokensOut().add(address(step.tokenOut));
-                        _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), amountsOut[tokenIndex]);
+                        _currentSwapTokensOut(callIndex).add(address(step.tokenOut));
+                        _currentSwapTokenOutAmounts(callIndex).tAdd(address(step.tokenOut), amountsOut[tokenIndex]);
                     } else {
                         // Input for the next step is output of current step.
                         stepExactAmountIn = amountsOut[tokenIndex];
@@ -293,8 +306,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         // We do not need to register the amount out in _currentSwapTokenOutAmounts since the BPT
                         // is minted directly to the sender, so this step can be considered settled at this point.
                         pathAmountsOut[i] = bptAmountOut;
-                        _currentSwapTokensOut().add(address(step.tokenOut));
-                        _settledTokenAmounts().tAdd(address(step.tokenOut), bptAmountOut);
+                        _currentSwapTokensOut(callIndex).add(address(step.tokenOut));
+                        _settledTokenAmounts(callIndex).tAdd(address(step.tokenOut), bptAmountOut);
                     } else {
                         // Input for the next step is output of current step.
                         stepExactAmountIn = bptAmountOut;
@@ -321,8 +334,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         // The amount out for the last step of the path should be recorded for the return value, and the
                         // amount for the token should be sent back to the sender later on.
                         pathAmountsOut[i] = amountOut;
-                        _currentSwapTokensOut().add(address(step.tokenOut));
-                        _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), amountOut);
+                        _currentSwapTokensOut(callIndex).add(address(step.tokenOut));
+                        _currentSwapTokenOutAmounts(callIndex).tAdd(address(step.tokenOut), amountOut);
                     } else {
                         // Input for the next step is output of current step.
                         stepExactAmountIn = amountOut;
@@ -350,6 +363,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     function _swapExactOutHook(
         SwapExactOutHookParams calldata params
     ) internal returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) {
+        uint256 callIndex = _callIndex().tload();
+
         // The deadline is timestamp-based: it should not be relied upon for sub-minute accuracy.
         // solhint-disable-next-line not-rely-on-time
         if (block.timestamp > params.deadline) {
@@ -360,11 +375,13 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
         // The hook writes current swap token and token amounts in.
         // We copy that information to memory to return it before it is deleted during settlement.
-        tokensIn = _currentSwapTokensIn().values(); // Copy transient storage to memory
+        tokensIn = _currentSwapTokensIn(callIndex).values(); // Copy transient storage to memory
         amountsIn = new uint256[](tokensIn.length);
         for (uint256 i = 0; i < tokensIn.length; ++i) {
-            amountsIn[i] = _currentSwapTokenInAmounts().tGet(tokensIn[i]) + _settledTokenAmounts().tGet(tokensIn[i]);
-            _settledTokenAmounts().tSet(tokensIn[i], 0);
+            amountsIn[i] =
+                _currentSwapTokenInAmounts(callIndex).tGet(tokensIn[i]) +
+                _settledTokenAmounts(callIndex).tGet(tokensIn[i]);
+            _settledTokenAmounts(callIndex).tSet(tokensIn[i], 0);
         }
     }
 
@@ -375,6 +392,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     function _computePathAmountsIn(
         SwapExactOutHookParams calldata params
     ) internal returns (uint256[] memory pathAmountsIn) {
+        uint256 callIndex = _callIndex().tload();
+
         pathAmountsIn = new uint256[](params.paths.length);
 
         for (uint256 i = 0; i < params.paths.length; ++i) {
@@ -388,7 +407,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             // For example, if all paths share the same token in, the set will end up with only one entry.
             // Since the path is 'given out', the output of the operation specified by the last step in each path will
             // be added to calculate the amounts in for each token.
-            _currentSwapTokensIn().add(address(path.tokenIn));
+            _currentSwapTokensIn(_callIndex().tload()).add(address(path.tokenIn));
 
             // Backwards iteration: the exact amount out applies to the last step, so we cannot iterate from first to
             // last. The calculated input of step (j) is the exact amount out for step (j - 1).
@@ -407,8 +426,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                     // The first step in the iteration is the last one in the given array of steps, and it
                     // specifies the output token for the step as well as the exact amount out for that token.
                     // Output amounts are stored to send them later on.
-                    _currentSwapTokensOut().add(address(step.tokenOut));
-                    _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), stepExactAmountOut);
+                    _currentSwapTokensOut(callIndex).add(address(step.tokenOut));
+                    _currentSwapTokenOutAmounts(callIndex).tAdd(address(step.tokenOut), stepExactAmountOut);
                 }
 
                 if (stepLocals.isLastStep) {
@@ -447,12 +466,12 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         pathAmountsIn[i] = amountIn;
                         // since the token was taken in advance, returns to the user what is left from the
                         // wrap/unwrap operation
-                        _currentSwapTokensOut().add(address(stepTokenIn));
-                        _currentSwapTokenOutAmounts().tAdd(address(stepTokenIn), path.maxAmountIn - amountIn);
+                        _currentSwapTokensOut(callIndex).add(address(stepTokenIn));
+                        _currentSwapTokenOutAmounts(callIndex).tAdd(address(stepTokenIn), path.maxAmountIn - amountIn);
                         // settledTokenAmounts is used to return the amountsIn at the end of the operation, which
                         // is only amountIn. The difference between maxAmountIn and amountIn will be paid during
                         // settle
-                        _settledTokenAmounts().tAdd(address(path.tokenIn), amountIn);
+                        _settledTokenAmounts(callIndex).tAdd(address(path.tokenIn), amountIn);
                     } else {
                         stepExactAmountOut = amountIn;
                     }
@@ -504,7 +523,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                     if (stepLocals.isLastStep) {
                         // BPT is burnt instantly, so we don't need to send it to the Vault during settlement.
                         pathAmountsIn[i] = bptAmountIn;
-                        _settledTokenAmounts().tAdd(address(stepTokenIn), bptAmountIn);
+                        _settledTokenAmounts(callIndex).tAdd(address(stepTokenIn), bptAmountIn);
 
                         // Refund unused portion of BPT to the user
                         if (bptAmountIn < stepMaxAmountIn && params.sender != address(this)) {
@@ -543,7 +562,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                     if (stepLocals.isLastStep) {
                         // The amount out for the last step of the path should be recorded for the return value.
                         pathAmountsIn[i] = stepAmountsIn[tokenIndex];
-                        _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), stepAmountsIn[tokenIndex]);
+                        _currentSwapTokenInAmounts(callIndex).tAdd(address(stepTokenIn), stepAmountsIn[tokenIndex]);
                     } else {
                         stepExactAmountOut = stepAmountsIn[tokenIndex];
                     }
@@ -552,7 +571,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                     if (stepLocals.isFirstStep) {
                         // Instead of sending tokens back to the vault, we can just discount it from whatever
                         // the vault owes the sender to make one less transfer.
-                        _currentSwapTokenOutAmounts().tSub(address(step.tokenOut), stepExactAmountOut);
+                        _currentSwapTokenOutAmounts(callIndex).tSub(address(step.tokenOut), stepExactAmountOut);
                     } else {
                         // If it's not the first step, BPT is minted to the vault so we just get the credit.
                         _vault.settle(IERC20(step.pool), stepExactAmountOut);
@@ -573,7 +592,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
                     if (stepLocals.isLastStep) {
                         pathAmountsIn[i] = amountIn;
-                        _currentSwapTokenInAmounts().tAdd(address(stepTokenIn), amountIn);
+                        _currentSwapTokenInAmounts(callIndex).tAdd(address(stepTokenIn), amountIn);
                     } else {
                         stepExactAmountOut = amountIn;
                     }
@@ -589,6 +608,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     )
         external
         saveSender
+        computeCallIndex
         returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
     {
         for (uint256 i = 0; i < paths.length; ++i) {
@@ -631,6 +651,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     )
         external
         saveSender
+        computeCallIndex
         returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn)
     {
         for (uint256 i = 0; i < paths.length; ++i) {
@@ -667,28 +688,35 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     }
 
     function _settlePaths(address sender, bool wethIsEth) internal {
+        uint256 callIndex = _callIndex().tload();
+
         // numTokensIn / Out may be 0 if the inputs and / or outputs are not transient.
         // For example, a swap starting with a 'remove liquidity' step will already have burned the input tokens,
         // in which case there is nothing to settle. Then, since we're iterating backwards below, we need to be able
         // to subtract 1 from these quantities without reverting, which is why we use signed integers.
-        int256 numTokensIn = int256(_currentSwapTokensIn().length());
-        int256 numTokensOut = int256(_currentSwapTokensOut().length());
+        int256 numTokensIn = int256(_currentSwapTokensIn(callIndex).length());
+        int256 numTokensOut = int256(_currentSwapTokensOut(callIndex).length());
         uint256 ethAmountIn = 0;
 
         // Iterate backwards, from the last element to 0 (included).
         // Removing the last element from a set is cheaper than removing the first one.
         for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
-            address tokenIn = _currentSwapTokensIn().unchecked_at(uint256(i));
-            ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts().tGet(tokenIn), wethIsEth);
+            address tokenIn = _currentSwapTokensIn(callIndex).unchecked_at(uint256(i));
+            ethAmountIn += _takeTokenIn(
+                sender,
+                IERC20(tokenIn),
+                _currentSwapTokenInAmounts(callIndex).tGet(tokenIn),
+                wethIsEth
+            );
             // Erases delta, in case more than one batch router op is called in the same transaction
-            _currentSwapTokenInAmounts().tSet(tokenIn, 0);
+            _currentSwapTokenInAmounts(callIndex).tSet(tokenIn, 0);
         }
 
         for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
-            address tokenOut = _currentSwapTokensOut().unchecked_at(uint256(i));
-            _sendTokenOut(sender, IERC20(tokenOut), _currentSwapTokenOutAmounts().tGet(tokenOut), wethIsEth);
+            address tokenOut = _currentSwapTokensOut(callIndex).unchecked_at(uint256(i));
+            _sendTokenOut(sender, IERC20(tokenOut), _currentSwapTokenOutAmounts(callIndex).tGet(tokenOut), wethIsEth);
             // Erases delta, in case more than one batch router op is called in the same transaction
-            _currentSwapTokenOutAmounts().tSet(tokenOut, 0);
+            _currentSwapTokenOutAmounts(callIndex).tSet(tokenOut, 0);
         }
 
         // Return the rest of ETH to sender

@@ -16,8 +16,8 @@ contract BatchRouterMock is BatchRouter {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function manualGetCurrentSwapTokensInSlot() external view returns (bytes32) {
-        TransientEnumerableSet.AddressSet storage enumerableSet = _currentSwapTokensIn();
+    function manualGetCurrentSwapTokensInSlot(uint256 index) external pure returns (bytes32) {
+        TransientEnumerableSet.AddressSet storage enumerableSet = _currentSwapTokensIn(index);
 
         bytes32 slot;
         assembly {
@@ -27,8 +27,8 @@ contract BatchRouterMock is BatchRouter {
         return slot;
     }
 
-    function manualGetCurrentSwapTokensOutSlot() external view returns (bytes32) {
-        TransientEnumerableSet.AddressSet storage enumerableSet = _currentSwapTokensOut();
+    function manualGetCurrentSwapTokensOutSlot(uint256 index) external pure returns (bytes32) {
+        TransientEnumerableSet.AddressSet storage enumerableSet = _currentSwapTokensOut(index);
 
         bytes32 slot;
         assembly {
@@ -38,15 +38,15 @@ contract BatchRouterMock is BatchRouter {
         return slot;
     }
 
-    function manualGetCurrentSwapTokenInAmounts() external view returns (AddressMappingSlot) {
-        return _currentSwapTokenInAmounts();
+    function manualGetCurrentSwapTokenInAmounts(uint256 index) external pure returns (AddressMappingSlot) {
+        return _currentSwapTokenInAmounts(index);
     }
 
-    function manualGetCurrentSwapTokenOutAmounts() external view returns (AddressMappingSlot) {
-        return _currentSwapTokenOutAmounts();
+    function manualGetCurrentSwapTokenOutAmounts(uint256 index) external pure returns (AddressMappingSlot) {
+        return _currentSwapTokenOutAmounts(index);
     }
 
-    function manualGetSettledTokenAmounts() external view returns (AddressMappingSlot) {
-        return _settledTokenAmounts();
+    function manualGetSettledTokenAmounts(uint256 index) external pure returns (AddressMappingSlot) {
+        return _settledTokenAmounts(index);
     }
 }
