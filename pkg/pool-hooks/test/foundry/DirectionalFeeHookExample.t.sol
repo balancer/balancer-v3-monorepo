@@ -51,7 +51,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
     }
 
     function createHook() internal override returns (address) {
-        // Create the factory here, because it needs to be created after vault is created, but before hook is created.
+        // Create the factory here, because it needs to be deployed after the vault, but before the hook contract.
         stablePoolFactory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
