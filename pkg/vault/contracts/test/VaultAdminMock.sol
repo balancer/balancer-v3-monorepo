@@ -60,4 +60,8 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
     function mockWithValidPercentage(uint256 percentage) external pure withValidPercentage(percentage) {
         // solhint-disable-previous-line no-empty-blocks
     }
+
+    function mockEnsurePoolNotInRecoveryMode(address pool) external view {
+        _ensurePoolNotInRecoveryMode(pool);
+    }
 }

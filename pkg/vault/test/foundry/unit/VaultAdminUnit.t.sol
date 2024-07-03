@@ -88,4 +88,27 @@ contract VaultAdminUnitTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotPaused.selector, pool));
         vault.manualUnpausePool(pool);
     }
+
+    // _ensurePoolNotInRecoveryMode
+    function testEnsurePoolNotInRecoveryMode() public {
+        // Only internal functions are used, so the pool does not need to be registered.
+        address pool = address(0x123);
+
+        // Should not revert because pool is not in recovery mode
+        vault.mockEnsurePoolNotInRecoveryMode(pool);
+    }
+
+    function testEnsurePoolNotInRecoveryModeRevert() public {
+        // Only internal functions are used, so the pool does not need to be registered.
+        address pool = address(0x123);
+
+        // Set recovery mode flag
+        PoolConfig memory poolConfig;
+        poolConfig.isPoolInRecoveryMode = true;
+        vault.manualSetPoolConfig(pool, poolConfig);
+
+        // Should not revert because pool is not in recovery mode
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolInRecoveryMode.selector, pool));
+        vault.mockEnsurePoolNotInRecoveryMode(pool);
+    }
 }
