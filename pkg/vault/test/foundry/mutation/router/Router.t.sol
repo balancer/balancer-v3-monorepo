@@ -11,6 +11,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -66,7 +67,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testAddLiquidityHookWhenNotVault() public {
-        IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
+        IRouterCommon.AddLiquidityHookParams memory hookParams = IRouterCommon.AddLiquidityHookParams(
             msg.sender,
             pool,
             amountsIn,
@@ -182,7 +183,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testQueryAddLiquidityHookWhenNotVault() public {
-        IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
+        IRouterCommon.AddLiquidityHookParams memory hookParams = IRouterCommon.AddLiquidityHookParams(
             msg.sender,
             pool,
             amountsIn,

@@ -152,7 +152,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
             if (path.steps[0].isBuffer && EVMCallModeHelpers.isStaticCall() == false) {
                 // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
-                _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, false);
+                _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, params.wethIsEth);
                 _settledTokenAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
             } else {
                 // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses
@@ -425,7 +425,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                 if (step.isBuffer) {
                     if (stepLocals.isLastStep && EVMCallModeHelpers.isStaticCall() == false) {
                         // The buffer will need this token to wrap/unwrap, so take it from the user in advance
-                        _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, false);
+                        _takeTokenIn(params.sender, path.tokenIn, path.maxAmountIn, params.wethIsEth);
                     }
 
                     (, uint256 amountIn, ) = _vault.erc4626BufferWrapOrUnwrap(
@@ -662,6 +662,113 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     {
         (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
     }
+
+    /*******************************************************************************
+                            Yield-bearing token buffers
+    *******************************************************************************/
+
+    function addLiquidityUnbalancedToBoostedPool(
+        address pool,
+        uint256[] memory exactUnderlyingAmountsIn,
+        uint256 minBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable saveSender returns (uint256 bptAmountOut) {
+        (, bptAmountOut, ) = abi.decode(
+            _vault.unlock(
+                abi.encodeWithSelector(
+                    BatchRouter.addLiquidityBoostedPoolHook.selector,
+                    AddLiquidityHookParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        maxAmountsIn: exactUnderlyingAmountsIn,
+                        minBptAmountOut: minBptAmountOut,
+                        kind: AddLiquidityKind.UNBALANCED,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[], uint256, bytes)
+        );
+    }
+
+    function addLiquidityProportionalToBoostedPool(
+        address pool,
+        uint256[] memory maxAmountsIn,
+        uint256 exactBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable saveSender returns (uint256[] memory amountsIn) {
+        (amountsIn, , ) = abi.decode(
+            _vault.unlock(
+                abi.encodeWithSelector(
+                    BatchRouter.addLiquidityBoostedPoolHook.selector,
+                    AddLiquidityHookParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        maxAmountsIn: maxAmountsIn,
+                        minBptAmountOut: exactBptAmountOut,
+                        kind: AddLiquidityKind.PROPORTIONAL,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[], uint256, bytes)
+        );
+    }
+
+    function addLiquidityBoostedPoolHook(AddLiquidityHookParams calldata params) external
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
+    {
+        // Non-registered pools will fail here.
+        IERC20[] memory boostedPoolTokens = _vault.getPoolTokens(params.pool);
+        uint256[] memory wrappedAmounts = new uint256[](boostedPoolTokens.length);
+        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
+
+        // Wrap given underlying tokens for wrapped tokens
+        for (uint256 i = 0; i < boostedPoolTokens.length; ++i) {
+            // Boosted pool tokens are the wrappers
+            IERC4626 wrappedToken = IERC4626(address(boostedPoolTokens[i]));
+            IERC20 underlyingToken = IERC20(wrappedToken.asset());
+
+            if (isStaticCall == false) {
+                // We need this to wrap/unwrap in case the buffer doesn't have enough liquidity to do so.
+                _takeTokenIn(params.sender, underlyingToken, params.maxAmountsIn[i], params.wethIsEth);
+            }
+
+            // erc4626BufferWrapOrUnwrap will fail if the wrapper wasn't ERC4626
+            (, , wrappedAmounts[i]) = _vault.erc4626BufferWrapOrUnwrap(
+                BufferWrapOrUnwrapParams({
+                    kind: SwapKind.EXACT_IN,
+                    direction: WrappingDirection.WRAP,
+                    wrappedToken: wrappedToken,
+                    amountGivenRaw: params.maxAmountsIn[i],
+                    limitRaw: 0, // We don't apply the limit here
+                    userData: params.userData
+                })
+            );
+        }
+
+        // Add wrapped amounts to the boosted pool
+        (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
+            AddLiquidityParams({
+                pool: params.pool,
+                to: params.sender,
+                maxAmountsIn: wrappedAmounts,
+                minBptAmountOut: params.minBptAmountOut,
+                kind: params.kind,
+                userData: params.userData
+            })
+        );
+    }
+
+    /*******************************************************************************
+                                    Settlement
+    *******************************************************************************/
 
     function _settlePaths(address sender, bool wethIsEth) internal {
         // numTokensIn / Out may be 0 if the inputs and / or outputs are not transient.

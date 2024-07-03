@@ -3,8 +3,29 @@
 pragma solidity ^0.8.24;
 
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
+import { AddLiquidityKind } from "./VaultTypes.sol";
 
 interface IRouterCommon {
+    /**
+     * @dev Data for the add liquidity hook.
+     * @param sender Account originating the add liquidity operation
+     * @param pool Address of the liquidity pool
+     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
+     * @param minBptAmountOut Minimum amount of pool tokens to be received
+     * @param kind Type of join (e.g., single or multi-token)
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param userData Additional (optional) data required for adding liquidity
+     */
+    struct AddLiquidityHookParams {
+        address sender;
+        address pool;
+        uint256[] maxAmountsIn;
+        uint256 minBptAmountOut;
+        AddLiquidityKind kind;
+        bool wethIsEth;
+        bytes userData;
+    }
+
     /**
      * @notice Get the first sender which initialized the call to Router.
      * @return address The sender address.

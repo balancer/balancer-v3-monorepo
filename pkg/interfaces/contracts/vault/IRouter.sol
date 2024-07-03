@@ -59,26 +59,6 @@ interface IRouter {
     ***************************************************************************/
 
     /**
-     * @dev Data for the add liquidity hook.
-     * @param sender Account originating the add liquidity operation
-     * @param pool Address of the liquidity pool
-     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
-     * @param minBptAmountOut Minimum amount of pool tokens to be received
-     * @param kind Type of join (e.g., single or multi-token)
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
-     * @param userData Additional (optional) data required for adding liquidity
-     */
-    struct AddLiquidityHookParams {
-        address sender;
-        address pool;
-        uint256[] maxAmountsIn;
-        uint256 minBptAmountOut;
-        AddLiquidityKind kind;
-        bool wethIsEth;
-        bytes userData;
-    }
-
-    /**
      * @notice Adds with proportional token amounts to a pool, receiving an exact amount of pool tokens.
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
