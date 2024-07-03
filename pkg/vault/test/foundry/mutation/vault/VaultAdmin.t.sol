@@ -48,6 +48,13 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.pauseVault();
     }
 
+    function testPauseVaultSuccessfully() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVault.selector), admin);
+        vm.prank(admin);
+        vault.pauseVault();
+        assertTrue(vault.isVaultPaused(), "Vault is not paused");
+    }
+
     function testUnpauseVaultWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultAdmin.unpauseVault();
@@ -56,6 +63,18 @@ contract VaultAdminMutationTest is BaseVaultTest {
     function testUnpauseVaultWhenNotAuthenticated() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.unpauseVault();
+    }
+
+    function testUnpauseVaultSuccessfully() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVault.selector), admin);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.unpauseVault.selector), admin);
+        vm.startPrank(admin);
+        vault.pauseVault();
+        assertTrue(vault.isVaultPaused(), "Vault is not paused");
+
+        vault.unpauseVault();
+        assertFalse(vault.isVaultPaused(), "Vault is not unpaused");
+        vm.stopPrank();
     }
 
     function testPausePoolWithoutRegisteredPool() public {

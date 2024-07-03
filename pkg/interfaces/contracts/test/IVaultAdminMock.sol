@@ -29,4 +29,6 @@ interface IVaultAdminMock {
         uint256 sharesToRemove,
         address sharesOwner
     ) external;
+
+    function mockWithValidPercentage(uint256 percentage) external view;
 }
