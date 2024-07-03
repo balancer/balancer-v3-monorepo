@@ -45,7 +45,7 @@ export class Benchmark {
     return null;
   }
 
-  itBenchmarksSwap = () => {
+  itBenchmarks = () => {
     const MAX_PROTOCOL_SWAP_FEE = fp(0.5);
     const MAX_PROTOCOL_YIELD_FEE = fp(0.2);
 
@@ -531,7 +531,7 @@ export class Benchmark {
         tx = await batchRouter.connect(alice).swapExactIn(
           [
             {
-              tokenIn: poolTokens[0],
+              tokenIn: poolTokens[1],
               steps: [
                 {
                   pool: this.pool,

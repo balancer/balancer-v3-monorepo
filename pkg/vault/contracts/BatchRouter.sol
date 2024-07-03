@@ -13,6 +13,7 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import {
     TransientEnumerableSet
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
 import {
@@ -240,8 +241,10 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         minAmountOut == 0 ? 1 : minAmountOut
                     );
 
-                    // Router is always an intermediary in this case. The Vault will burn tokens from the router, so
-                    // Router is both owner and spender (which doesn't need approval).
+                    // Router is always an intermediary in this case.
+                    // The Vault will burn tokens spending this allowance.
+                    IERC20(step.pool).forceApprove(address(this), type(uint256).max);
+
                     // Reusing `amountsOut` as input argument and function output to prevent stack too deep error.
                     (, amountsOut, ) = _vault.removeLiquidity(
                         RemoveLiquidityParams({
@@ -484,8 +487,9 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         stepExactAmountOut
                     );
 
-                    // Router is always an intermediary in this case. The Vault will burn tokens from the router, so
-                    // Router is both owner and spender (which doesn't need approval).
+                    // The router is always the intermediary, and the Vault will burn BPT tokens using its allowance.
+                    stepTokenIn.forceApprove(address(this), type(uint256).max);
+
                     (uint256 bptAmountIn, , ) = _vault.removeLiquidity(
                         RemoveLiquidityParams({
                             pool: step.pool,
