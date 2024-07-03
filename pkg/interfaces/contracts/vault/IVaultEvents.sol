@@ -136,7 +136,7 @@ interface IVaultEvents {
     event ProtocolFeeControllerChanged(IProtocolFeeController indexed newProtocolFeeController);
 
     /**
-     * @notice Add liquidity to a boosted pool buffer.
+     * @notice Liquidity was added to a boosted pool buffer.
      * @dev The underlying token can be derived from the wrapped token, so it's not included here. The shares are not
      * tokenized like pool BPT, but accounted for in the Vault. `getBufferOwnerShares` retrieves the current total
      * shares for a given buffer and address, and `getBufferTotalShares` returns the "totalSupply" of a buffer.
@@ -156,7 +156,7 @@ interface IVaultEvents {
     );
 
     /**
-     * @notice Remove liquidity from a boosted pool buffer.
+     * @notice Liquidity was removed from a boosted pool buffer.
      * @dev The underlying token can be derived from the wrapped token, so it's not included here. The shares are not
      * tokenized like pool BPT, but accounted for in the Vault. `getBufferOwnerShares` retrieves the current total
      * shares for a given buffer and address, and `getBufferTotalShares` returns the "totalSupply" of a buffer.
