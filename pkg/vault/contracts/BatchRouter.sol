@@ -13,7 +13,6 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-import {
     TransientEnumerableSet
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
 import {
