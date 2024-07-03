@@ -27,7 +27,7 @@ contract AggRouter is IAggRouter, RouterCommon, ReentrancyGuardTransient {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-        /// @inheritdoc IAggRouter
+    /// @inheritdoc IAggRouter
     function swapSingleTokenDonated(
         address pool,
         IERC20 tokenIn,
@@ -61,7 +61,6 @@ contract AggRouter is IAggRouter, RouterCommon, ReentrancyGuardTransient {
             );
     }
 
-
     /**
      * @notice Hook for swaps.
      * @dev Can only be called by the Vault. Also handles native ETH.
@@ -74,7 +73,7 @@ contract AggRouter is IAggRouter, RouterCommon, ReentrancyGuardTransient {
         (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) = _swapHook(params);
 
         IERC20 tokenIn = params.tokenIn;
-        
+
         _vault.settle(tokenIn, amountIn);
         _sendTokenOut(params.sender, params.tokenOut, amountOut, params.wethIsEth);
 
