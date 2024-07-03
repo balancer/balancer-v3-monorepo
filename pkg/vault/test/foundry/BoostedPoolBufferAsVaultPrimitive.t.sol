@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TokenConfig, TokenType, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
@@ -68,6 +69,35 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         vm.expectEmit();
         emit IVaultEvents.LiquidityAddedToBuffer(waUSDC, address(lp), bufferAmount, bufferAmount, bufferAmount * 2);
         router.addLiquidityToBuffer(waUSDC, bufferAmount, bufferAmount, address(lp));
+    }
+
+    function testRemoveLiquidityEvents() public {
+        initializeBuffers();
+
+        // Authorizes router to call removeLiquidityFromBuffer (trusted router)
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
+
+        vm.expectEmit();
+        emit IVaultEvents.LiquidityRemovedFromBuffer(
+            waDAI,
+            address(lp),
+            bufferAmount / 2,
+            bufferAmount / 2,
+            bufferAmount
+        );
+        vm.prank(lp);
+        router.removeLiquidityFromBuffer(waDAI, bufferAmount);
+
+        vm.expectEmit();
+        emit IVaultEvents.LiquidityRemovedFromBuffer(
+            waUSDC,
+            address(lp),
+            bufferAmount / 2,
+            bufferAmount / 2,
+            bufferAmount
+        );
+        vm.prank(lp);
+        router.removeLiquidityFromBuffer(waUSDC, bufferAmount);
     }
 
     function initializeBuffers() private {
