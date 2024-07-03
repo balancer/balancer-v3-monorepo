@@ -274,7 +274,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         assertEq(poolConfigBits.aggregateSwapFeePercentage, CUSTOM_PROTOCOL_SWAP_FEE);
     }
 
-    function testProtocolSwapFeeLowResolution() public {
+    function testProtocolSwapFeeLowResolution_Fuzz(uint256 extraFee) public {
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.setProtocolSwapFeePercentage.selector),
             admin
@@ -283,15 +283,20 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.prank(lp);
         feeController.setPoolCreatorSwapFeePercentage(pool, 0);
 
+        // Add bits to the fee, but keep them >= 24 bits
+        extraFee = bound(uint256(extraFee), FEE_SCALING_FACTOR, MAX_PROTOCOL_SWAP_FEE - CUSTOM_PROTOCOL_SWAP_FEE);
+
+        uint256 lowPrecisionFee = ((CUSTOM_PROTOCOL_SWAP_FEE + extraFee) / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
+
         vm.prank(admin);
-        feeController.setProtocolSwapFeePercentage(pool, CUSTOM_PROTOCOL_SWAP_FEE);
+        feeController.setProtocolSwapFeePercentage(pool, lowPrecisionFee);
 
         // Retrieve it from the Vault - should be the same as we set
         PoolConfig memory config = vault.getPoolConfig(pool);
-        assertEq(config.aggregateSwapFeePercentage, CUSTOM_PROTOCOL_SWAP_FEE);
+        assertEq(config.aggregateSwapFeePercentage, lowPrecisionFee);
     }
 
-    function testProtocolSwapFeeHighResolution(uint16 precisionFee) public {
+    function testProtocolSwapFeeHighResolution__Fuzz(uint16 precisionFee) public {
         // Add some bits that make it higher than 24-bit resolution.
         uint256 highPrecisionBits = bound(uint256(precisionFee), 1, FEE_SCALING_FACTOR - 1);
 
@@ -310,7 +315,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.setProtocolSwapFeePercentage(pool, highPrecisionFee);
     }
 
-    function testProtocolYieldFeeLowResolution() public {
+    function testProtocolYieldFeeLowResolution_Fuzz(uint256 extraFee) public {
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.setProtocolYieldFeePercentage.selector),
             admin
@@ -319,19 +324,20 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.prank(lp);
         feeController.setPoolCreatorSwapFeePercentage(pool, 0);
 
+        // Add bits to the fee, but keep them >= 24 bits
+        extraFee = bound(uint256(extraFee), FEE_SCALING_FACTOR, MAX_PROTOCOL_YIELD_FEE - CUSTOM_PROTOCOL_YIELD_FEE);
+
+        uint256 lowPrecisionFee = ((CUSTOM_PROTOCOL_YIELD_FEE + extraFee) / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
+
         vm.prank(admin);
-        feeController.setProtocolYieldFeePercentage(pool, CUSTOM_PROTOCOL_YIELD_FEE);
+        feeController.setProtocolYieldFeePercentage(pool, lowPrecisionFee);
 
         // Retrieve it from the Vault - should be the same as we set
         PoolConfig memory config = vault.getPoolConfig(pool);
-        assertEq(config.aggregateYieldFeePercentage, CUSTOM_PROTOCOL_YIELD_FEE);
-
-        // Should not be able to set this high precision fee
-        uint256 highPrecisionYieldFee = CUSTOM_PROTOCOL_YIELD_FEE + FEE_SCALING_FACTOR - 1;
-        vm.prank(admin);
+        assertEq(config.aggregateYieldFeePercentage, lowPrecisionFee);
     }
 
-    function testProtocolYieldFeeHighResolution(uint16 precisionFee) public {
+    function testProtocolYieldFeeHighResolution__Fuzz(uint16 precisionFee) public {
         // Add some bits that make it higher than 24-bit resolution.
         uint256 highPrecisionBits = bound(uint256(precisionFee), 1, FEE_SCALING_FACTOR - 1);
 
