@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
     SingletonAuthentication
@@ -188,8 +189,15 @@ contract ProtocolFeeController is
     function _computeAggregateFeePercentage(
         uint256 protocolFeePercentage,
         uint256 poolCreatorFeePercentage
-    ) internal pure returns (uint256) {
-        return protocolFeePercentage + protocolFeePercentage.complement().mulDown(poolCreatorFeePercentage);
+    ) internal pure returns (uint256 aggregateFeePercentage) {
+        aggregateFeePercentage =
+            protocolFeePercentage +
+            protocolFeePercentage.complement().mulDown(poolCreatorFeePercentage);
+
+        // Ensure it is not too high precision
+        if ((aggregateFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR != aggregateFeePercentage) {
+            revert IVaultErrors.FeePrecisionTooHigh();
+        }
     }
 
     function _ensureCallerIsPoolCreator(address pool) internal view {
