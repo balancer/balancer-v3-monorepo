@@ -7,8 +7,7 @@ import "forge-std/Test.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -122,7 +121,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
 
         assertEq(vault.getStaticSwapFeePercentage(address(unmanagedPool)), NEW_SWAP_FEE, "Could not set swap fee");
 
-        // Granting speciic permission to bob on unmanagedPool doesn't grant it on otherPool
+        // Granting specific permission to bob on unmanagedPool doesn't grant it on otherPool
         vm.prank(bob);
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.setStaticSwapFeePercentage(address(otherPool), NEW_SWAP_FEE);

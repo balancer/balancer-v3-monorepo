@@ -8,13 +8,12 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { FactoryWidePauseWindow } from "@balancer-labs/v3-solidity-utils/contracts/helpers/FactoryWidePauseWindow.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-import { FactoryWidePauseWindow } from "../../contracts/factories/FactoryWidePauseWindow.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 

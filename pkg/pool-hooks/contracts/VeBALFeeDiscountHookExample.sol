@@ -11,9 +11,9 @@ import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRou
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { LiquidityManagement, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { BasePoolHooks } from "@balancer-labs/v3-vault/contracts/BasePoolHooks.sol";
+import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
-contract VeBALFeeDiscountHookExample is BasePoolHooks {
+contract VeBALFeeDiscountHookExample is BaseHooks {
     // only pools from the allowedFactory are able to register and use this hook
     address private immutable _allowedFactory;
     // only calls from a trusted routers are allowed to call this hook, because the hook relies on the getSender
@@ -21,7 +21,7 @@ contract VeBALFeeDiscountHookExample is BasePoolHooks {
     address private immutable _trustedRouter;
     IERC20 private immutable _veBAL;
 
-    constructor(IVault vault, address allowedFactory, address veBAL, address trustedRouter) BasePoolHooks(vault) {
+    constructor(IVault vault, address allowedFactory, address veBAL, address trustedRouter) BaseHooks(vault) {
         _allowedFactory = allowedFactory;
         _trustedRouter = trustedRouter;
         _veBAL = IERC20(veBAL);
@@ -48,6 +48,7 @@ contract VeBALFeeDiscountHookExample is BasePoolHooks {
     /// @inheritdoc IHooks
     function onComputeDynamicSwapFee(
         IBasePool.PoolSwapParams calldata params,
+        address,
         uint256 staticSwapFeePercentage
     ) external view override returns (bool, uint256) {
         // If the router is not trusted, does not apply the veBAL discount because getSender() may be manipulated by a

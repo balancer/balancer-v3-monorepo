@@ -13,7 +13,6 @@ import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IV
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
@@ -114,7 +113,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         vaultExtension = IVaultExtension(vault.getVaultExtension());
         vm.label(address(vaultExtension), "vaultExtension");
         vaultAdmin = IVaultAdmin(vault.getVaultAdmin());
-        vm.label(address(vaultAdmin), "vaultAxtension");
+        vm.label(address(vaultAdmin), "vaultAdmin");
         authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
         vm.label(address(authorizer), "authorizer");
         factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));

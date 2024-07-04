@@ -16,9 +16,9 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { RateProviderMock } from "./RateProviderMock.sol";
-import { BasePoolHooks } from "../BasePoolHooks.sol";
+import { BaseHooks } from "../BaseHooks.sol";
 
-contract PoolHooksMock is BasePoolHooks {
+contract PoolHooksMock is BaseHooks {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
@@ -64,7 +64,7 @@ contract PoolHooksMock is BasePoolHooks {
 
     HookFlags private _hookFlags;
 
-    constructor(IVault vault) BasePoolHooks(vault) {
+    constructor(IVault vault) BaseHooks(vault) {
         shouldSettleDiscount = true;
     }
 
@@ -99,6 +99,7 @@ contract PoolHooksMock is BasePoolHooks {
 
     function onComputeDynamicSwapFee(
         IBasePool.PoolSwapParams calldata params,
+        address,
         uint256
     ) external view override returns (bool, uint256) {
         uint256 finalSwapFee = _dynamicSwapFee;

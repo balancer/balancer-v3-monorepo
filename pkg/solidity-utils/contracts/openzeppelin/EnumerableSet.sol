@@ -8,7 +8,7 @@
 pragma solidity ^0.8.24;
 
 /**
- * @dev Library for managing sets of primitve types.
+ * @dev Library for managing sets of primitive types.
  * https://en.wikipedia.org/wiki/Set_(abstract_data_type)[sets] of primitive
  * types.
  *

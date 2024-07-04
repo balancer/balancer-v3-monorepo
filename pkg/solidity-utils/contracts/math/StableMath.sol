@@ -15,10 +15,10 @@ library StableMath {
     // we have chosen the rounding direction to favor the protocol in all cases.
 
     /// @dev The iterations to calculate the invariant didn't converge.
-    error StableInvariantDidntConverge();
+    error StableInvariantDidNotConverge();
 
     /// @dev The iterations to calculate the balance didn't converge.
-    error StableGetBalanceDidntConverge();
+    error StableGetBalanceDidNotConverge();
 
     uint256 internal constant MIN_AMP = 1;
     uint256 internal constant MAX_AMP = 5000;
@@ -96,7 +96,7 @@ library StableMath {
             }
         }
 
-        revert StableInvariantDidntConverge();
+        revert StableInvariantDidNotConverge();
     }
 
     // Computes how many tokens can be taken out of a pool if `tokenAmountIn` are sent, given the current balances.
@@ -220,6 +220,6 @@ library StableMath {
             }
         }
 
-        revert StableGetBalanceDidntConverge();
+        revert StableGetBalanceDidNotConverge();
     }
 }

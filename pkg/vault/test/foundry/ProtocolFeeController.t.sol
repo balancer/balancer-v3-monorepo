@@ -464,7 +464,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         // Should be changed again, and now an override.
         (feePercentage, isOverride) = feeController.getPoolProtocolYieldFeeInfo(pool);
         assertEq(feePercentage, MAX_PROTOCOL_YIELD_FEE, "Pool protocol yield fee != MAX");
-        assertTrue(isOverride, "Pool protocol uield fee is not an override");
+        assertTrue(isOverride, "Pool protocol yield fee is not an override");
 
         // Global fee is still the custom one
         assertEq(feeController.getGlobalProtocolYieldFeePercentage(), CUSTOM_PROTOCOL_YIELD_FEE);

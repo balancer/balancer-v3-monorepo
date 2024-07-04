@@ -6,7 +6,6 @@ import "forge-std/Test.sol";
 
 import { StableMath } from "../../contracts/math/StableMath.sol";
 import { FixedPoint } from "../../contracts/math/FixedPoint.sol";
-
 import { StableMathMock } from "../../contracts/test/StableMathMock.sol";
 
 // In the `StableMath` functions, the protocol aims for computing a value either as small as possible or as large as possible
@@ -96,7 +95,7 @@ contract StableMathTest is Test {
             invariant
         );
 
-        uint256 outGivenExactInUnpermuted = stableMathMock.mockComputeOutGivenExactIn(
+        uint256 outGivenExactInNotPermuted = stableMathMock.mockComputeOutGivenExactIn(
             amp,
             balances,
             tokenIndexIn,
@@ -114,7 +113,7 @@ contract StableMathTest is Test {
             roundingPermutation
         );
 
-        assertEq(outGivenExactIn, outGivenExactInUnpermuted, "Mock function and base one should be equivalent.");
+        assertEq(outGivenExactIn, outGivenExactInNotPermuted, "Mock function and base one should be equivalent.");
         assertLe(
             outGivenExactIn,
             outGivenExactInPermuted,
@@ -145,7 +144,7 @@ contract StableMathTest is Test {
             invariant
         );
 
-        uint256 inGivenExactOutUnpermuted = stableMathMock.mockComputeInGivenExactOut(
+        uint256 inGivenExactOutNotPermuted = stableMathMock.mockComputeInGivenExactOut(
             amp,
             balances,
             tokenIndexIn,
@@ -163,7 +162,7 @@ contract StableMathTest is Test {
             roundingPermutation
         );
 
-        assertEq(inGivenExactOut, inGivenExactOutUnpermuted, "Mock function and base one should be equivalent.");
+        assertEq(inGivenExactOut, inGivenExactOutNotPermuted, "Mock function and base one should be equivalent.");
         assertGe(
             inGivenExactOut,
             inGivenExactOutPermuted,
@@ -184,7 +183,7 @@ contract StableMathTest is Test {
 
         uint256 balance = stableMathMock.computeBalance(amp, balances, invariant, tokenIndex);
 
-        uint256 balanceUnpermuted = stableMathMock.mockComputeBalance(amp, balances, invariant, tokenIndex);
+        uint256 balanceNotPermuted = stableMathMock.mockComputeBalance(amp, balances, invariant, tokenIndex);
         uint256 balancePermuted = stableMathMock.mockComputeBalance(
             amp,
             balances,
@@ -193,7 +192,7 @@ contract StableMathTest is Test {
             roundingPermutation
         );
 
-        assertEq(balance, balanceUnpermuted, "Mock function and base one should be equivalent.");
+        assertEq(balance, balanceNotPermuted, "Mock function and base one should be equivalent.");
         assertGe(balance, balancePermuted, "Output should be greater than or equal to the permuted mock value.");
     }
 }

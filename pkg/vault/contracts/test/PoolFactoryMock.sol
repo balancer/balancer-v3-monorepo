@@ -4,25 +4,34 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { BasePoolFactory } from "../factories/BasePoolFactory.sol";
-import { FactoryWidePauseWindow } from "../factories/FactoryWidePauseWindow.sol";
+import {
+    SingletonAuthentication
+} from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
+import { FactoryWidePauseWindow } from "@balancer-labs/v3-solidity-utils/contracts/helpers/FactoryWidePauseWindow.sol";
+import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
+
 import { PoolConfigBits } from "../lib/PoolConfigLib.sol";
 import { PoolMock } from "./PoolMock.sol";
 
-contract PoolFactoryMock is BasePoolFactory {
+contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWidePauseWindow {
     uint256 private constant DEFAULT_SWAP_FEE = 0;
 
     IVault private immutable _vault;
 
+    // Avoid dependency on BasePoolFactory; copy storage here.
+    mapping(address => bool) private _isPoolFromFactory;
+    bool private _disabled;
+
     constructor(
         IVault vault,
         uint32 pauseWindowDuration
-    ) BasePoolFactory(vault, pauseWindowDuration, type(PoolMock).creationCode) {
+    ) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {
         _vault = vault;
     }
 
@@ -170,5 +179,49 @@ contract PoolFactoryMock is BasePoolFactory {
         liquidityManagement.enableAddLiquidityCustom = true;
         liquidityManagement.enableRemoveLiquidityCustom = true;
         return liquidityManagement;
+    }
+
+    /// @inheritdoc IBasePoolFactory
+    function isPoolFromFactory(address pool) external view returns (bool) {
+        return _isPoolFromFactory[pool];
+    }
+
+    /// @inheritdoc IBasePoolFactory
+    function isDisabled() public view returns (bool) {
+        return _disabled;
+    }
+
+    /// @inheritdoc IBasePoolFactory
+    function getDeploymentAddress(bytes32 salt) public view returns (address) {
+        return CREATE3.getDeployed(_computeFinalSalt(salt));
+    }
+
+    /// @inheritdoc IBasePoolFactory
+    function disable() external authenticate {
+        _ensureEnabled();
+
+        _disabled = true;
+
+        emit FactoryDisabled();
+    }
+
+    function _registerPoolWithFactory(address pool) internal virtual {
+        _ensureEnabled();
+
+        _isPoolFromFactory[pool] = true;
+
+        emit PoolCreated(pool);
+    }
+
+    // Functions from BasePoolFactory
+
+    function _ensureEnabled() internal view {
+        if (isDisabled()) {
+            revert Disabled();
+        }
+    }
+
+    function _computeFinalSalt(bytes32 salt) internal view virtual returns (bytes32) {
+        return keccak256(abi.encode(msg.sender, block.chainid, salt));
     }
 }

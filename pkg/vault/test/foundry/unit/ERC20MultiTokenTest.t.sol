@@ -4,13 +4,15 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
+
+import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 
 import { ERC20MultiTokenMock } from "../../../contracts/test/ERC20MultiTokenMock.sol";
 import { ERC20MultiToken } from "../../../contracts/token/ERC20MultiToken.sol";
+import { BalancerPoolToken } from "../../../contracts/BalancerPoolToken.sol";
 
 contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
     address internal constant ZERO_ADDRESS = address(0x00);
@@ -91,6 +93,13 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
 
         token.manualSpendAllowance(POOL, OWNER, SPENDER, 1);
         assertEq(token.allowance(POOL, OWNER, SPENDER), type(uint256).max, "Unexpected allowance");
+    }
+
+    function testSpendAllowanceWhenOwnerIsSender() public {
+        assertEq(token.allowance(POOL, OWNER, OWNER), type(uint256).max, "Unexpected allowance");
+
+        token.manualSpendAllowance(POOL, OWNER, OWNER, 1);
+        assertEq(token.allowance(POOL, OWNER, OWNER), type(uint256).max, "Unexpected allowance");
     }
 
     function testSpendAllowanceRevertIfInsufficientAllowance() public {

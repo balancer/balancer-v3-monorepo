@@ -14,7 +14,7 @@ import {
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 import { VaultDeploymentInputParams, VaultDeploymentParams } from '../vault/types';
 import { IVault, IVault__factory, Vault, VaultMock } from '@balancer-labs/v3-vault/typechain-types';
-import { IVaultMock, IVaultMock__factory } from '@balancer-labs/v3-interfaces/typechain-types';
+import { IERC20, IERC20__factory, IVaultMock, IVaultMock__factory } from '@balancer-labs/v3-interfaces/typechain-types';
 import { IAuthentication } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { IAuthentication__factory } from '@balancer-labs/v3-pool-weighted/typechain-types';
 
@@ -48,6 +48,10 @@ export default {
       throw Error(`Contract ${address} is not IAuthentication`);
     }
     return IAuthentication__factory.connect(await contract.getAddress(), contract.runner);
+  },
+
+  async toIERC20(token: BaseContract): Promise<IERC20> {
+    return IERC20__factory.connect(await token.getAddress(), token.runner);
   },
 
   /***

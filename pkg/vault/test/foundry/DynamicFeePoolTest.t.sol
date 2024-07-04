@@ -18,11 +18,11 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { RouterCommon } from "@balancer-labs/v3-vault/contracts/RouterCommon.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 import { PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
+import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -97,7 +97,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams, 0),
+            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams, pool, 0),
             1 // callCount
         );
 
@@ -125,7 +125,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams, 0),
+            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams, pool, 0),
             1 // callCount
         );
 
@@ -179,6 +179,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
                     router: address(0),
                     userData: bytes("")
                 }),
+                pool,
                 10e16
             ),
             1 // callCount

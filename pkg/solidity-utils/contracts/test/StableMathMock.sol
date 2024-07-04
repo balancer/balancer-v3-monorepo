@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { StableMath } from "../math/StableMath.sol";
 import { FixedPoint } from "../math/FixedPoint.sol";
-
 import { RoundingMock } from "./RoundingMock.sol";
 
 // The `StableMathMock` contract mocks the `StableMath` library for testing purposes; hence its mock functions are meant
@@ -265,6 +264,6 @@ contract StableMathMock {
             }
         }
 
-        revert StableMath.StableGetBalanceDidntConverge();
+        revert StableMath.StableGetBalanceDidNotConverge();
     }
 }

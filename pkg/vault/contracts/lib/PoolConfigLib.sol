@@ -2,7 +2,9 @@
 
 pragma solidity ^0.8.24;
 
+import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
@@ -14,7 +16,8 @@ library PoolConfigLib {
     using WordCodec for bytes32;
     using PoolConfigLib for PoolConfigBits;
 
-    error InvalidSize(uint256 currentValue, uint256 expectedSize);
+    /// @dev Given percentage is above FP(1) (1e18 wei).
+    error InvalidPercentage(uint256 value);
 
     // #region Bit offsets for main pool config settings
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
@@ -159,11 +162,10 @@ library PoolConfigLib {
     }
 
     function setStaticSwapFeePercentage(PoolConfigBits config, uint256 value) internal pure returns (PoolConfigBits) {
-        value /= FEE_SCALING_FACTOR;
-
-        if (value > MAX_FEE_VALUE) {
-            revert InvalidSize(value, FEE_BITLENGTH);
+        if (value > MAX_FEE_PERCENTAGE) {
+            revert InvalidPercentage(value);
         }
+        value /= FEE_SCALING_FACTOR;
 
         return
             PoolConfigBits.wrap(
@@ -181,11 +183,10 @@ library PoolConfigLib {
         PoolConfigBits config,
         uint256 value
     ) internal pure returns (PoolConfigBits) {
-        value /= FEE_SCALING_FACTOR;
-
-        if (value > MAX_FEE_VALUE) {
-            revert InvalidSize(value, FEE_BITLENGTH);
+        if (value > MAX_FEE_PERCENTAGE) {
+            revert InvalidPercentage(value);
         }
+        value /= FEE_SCALING_FACTOR;
 
         return
             PoolConfigBits.wrap(
@@ -207,11 +208,10 @@ library PoolConfigLib {
         PoolConfigBits config,
         uint256 value
     ) internal pure returns (PoolConfigBits) {
-        value /= FEE_SCALING_FACTOR;
-
-        if (value > MAX_FEE_VALUE) {
-            revert InvalidSize(value, FEE_BITLENGTH);
+        if (value > MAX_FEE_PERCENTAGE) {
+            revert InvalidPercentage(value);
         }
+        value /= FEE_SCALING_FACTOR;
 
         return
             PoolConfigBits.wrap(

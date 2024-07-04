@@ -19,7 +19,7 @@ import { VaultGuard } from "./VaultGuard.sol";
  * @dev Pools that only implement a subset of callbacks can inherit from here instead of IHooks,
  * and only override what they need.
  */
-abstract contract BasePoolHooks is IHooks, VaultGuard {
+abstract contract BaseHooks is IHooks, VaultGuard {
     constructor(IVault vault) VaultGuard(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -118,6 +118,7 @@ abstract contract BasePoolHooks is IHooks, VaultGuard {
     /// @inheritdoc IHooks
     function onComputeDynamicSwapFee(
         IBasePool.PoolSwapParams calldata,
+        address,
         uint256
     ) external view virtual onlyVault returns (bool, uint256) {
         return (false, 0);

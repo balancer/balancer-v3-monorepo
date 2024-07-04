@@ -24,6 +24,7 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
 import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { VaultStateLib, VaultStateBits, VaultStateBits } from "../lib/VaultStateLib.sol";
 import { PoolConfigLib } from "../lib/PoolConfigLib.sol";
@@ -31,9 +32,7 @@ import { HooksConfigLib } from "../lib/HooksConfigLib.sol";
 import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { Vault } from "../Vault.sol";
 import { VaultExtension } from "../VaultExtension.sol";
-import { PackedTokenBalance } from "../lib/PackedTokenBalance.sol";
 import { PoolDataLib } from "../lib/PoolDataLib.sol";
-import { BufferPackedTokenBalance } from "../lib/BufferPackedBalance.sol";
 
 struct SwapInternalStateLocals {
     SwapParams params;
@@ -51,7 +50,6 @@ contract VaultMock is IVaultMainMock, Vault {
     using TransientStorageHelpers for *;
     using StorageSlot for *;
     using PoolDataLib for PoolData;
-    using BufferPackedTokenBalance for bytes32;
 
     PoolFactoryMock private immutable _poolFactoryMock;
     InputHelpersMock private immutable _inputHelpersMock;
@@ -194,6 +192,10 @@ contract VaultMock is IVaultMainMock, Vault {
         poolConfigBits = poolConfigBits.setDonation(config.liquidityManagement.enableDonation);
 
         _poolConfigBits[pool] = poolConfigBits;
+    }
+
+    function manualSetStaticSwapFeePercentage(address pool, uint256 value) public {
+        _setStaticSwapFeePercentage(pool, value);
     }
 
     function manualSetHooksConfig(address pool, HooksConfig memory hooksConfig) public {

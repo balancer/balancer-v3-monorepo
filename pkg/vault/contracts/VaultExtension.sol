@@ -34,13 +34,13 @@ import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
-import { PackedTokenBalance } from "./lib/PackedTokenBalance.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
 
 /**
@@ -318,6 +318,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             _hooksContracts[pool] = IHooks(params.poolHooksContract);
         }
 
+        // Static swap fee percentage has special limits, so we don't use the library function directly.
         _setStaticSwapFeePercentage(pool, params.swapFeePercentage);
 
         // Emit an event to log the pool registration (pass msg.sender as the factory argument)
@@ -369,7 +370,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     ) external onlyVaultDelegateCall onlyWhenUnlocked withRegisteredPool(pool) returns (uint256 bptAmountOut) {
         _ensureUnpaused(pool);
 
-        // Balances are zero until after initialize is callled, so there is no need to charge pending yield fee here.
+        // Balances are zero until after initialize is called, so there is no need to charge pending yield fee here.
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
 
         if (poolData.poolConfigBits.isPoolInitialized()) {
@@ -387,7 +388,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         );
 
         if (poolData.poolConfigBits.shouldCallBeforeInitialize()) {
-            poolData.poolConfigBits.callBeforeInitializeHook(exactAmountsInScaled18, userData, _hooksContracts[pool]);
+            HooksConfigLib.callBeforeInitializeHook(exactAmountsInScaled18, userData, _hooksContracts[pool]);
             // The before hook is reentrant, and could have changed token rates.
             // Updating balances here is unnecessary since they're 0, but we do not special case before init
             // for the sake of bytecode size.
@@ -407,12 +408,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // fix stack too deep
             IHooks hooksContract = _hooksContracts[pool];
 
-            poolData.poolConfigBits.callAfterInitializeHook(
-                exactAmountsInScaled18,
-                bptAmountOut,
-                userData,
-                hooksContract
-            );
+            HooksConfigLib.callAfterInitializeHook(exactAmountsInScaled18, bptAmountOut, userData, hooksContract);
         }
     }
 
@@ -620,8 +616,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         IBasePool.PoolSwapParams memory swapParams
     ) external view onlyVaultDelegateCall withInitializedPool(pool) returns (bool success, uint256 dynamicSwapFee) {
         return
-            _poolConfigBits[pool].callComputeDynamicSwapFeeHook(
+            HooksConfigLib.callComputeDynamicSwapFeeHook(
                 swapParams,
+                pool,
                 _poolConfigBits[pool].getStaticSwapFeePercentage(),
                 _hooksContracts[pool]
             );

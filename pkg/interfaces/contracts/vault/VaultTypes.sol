@@ -70,7 +70,7 @@ struct VaultState {
 /**
  * @dev Represents the accounts holding certain roles for a given pool. This is passed in on pool registration.
  * @param pauseManager Account empowered to pause/unpause the pool (or 0 to delegate to governance)
- * @param swapFeeManager Account empowered to set static swap fees for a pool (or 0 to delegate to goverance)
+ * @param swapFeeManager Account empowered to set static swap fees for a pool (or 0 to delegate to governance)
  * @param poolCreator Account empowered to set the pool creator fee percentage
  */
 struct PoolRoleAccounts {
@@ -281,5 +281,5 @@ struct BufferWrapOrUnwrapParams {
 // Protocol Fees are 24-bit values. We transform them by multiplying by 1e11, so
 // they can be set to any value between 0% and 100% (step 0.00001%).
 uint256 constant FEE_BITLENGTH = 24;
-uint256 constant MAX_FEE_VALUE = type(uint24).max;
+uint256 constant MAX_FEE_PERCENTAGE = 1e18;
 uint256 constant FEE_SCALING_FACTOR = 1e11;
