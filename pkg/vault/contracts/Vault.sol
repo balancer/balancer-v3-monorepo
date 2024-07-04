@@ -1109,7 +1109,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (_isQueryContext()) {
-            return _calculateBufferAmounts(kind, wrappedToken, amountGiven);
+            return _calculateBufferAmounts(WrappingDirection.WRAP, kind, wrappedToken, amountGiven);
         }
 
         if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
@@ -1228,7 +1228,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (_isQueryContext()) {
-            return _calculateBufferAmounts(kind, wrappedToken, amountGiven);
+            return _calculateBufferAmounts(WrappingDirection.UNWRAP, kind, wrappedToken, amountGiven);
         }
 
         if (bufferBalances.getBalanceRaw() > amountOutUnderlying) {
@@ -1319,13 +1319,20 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * @dev Call VaultExtension to calculate the amounts for wrap/unwrap operations.
      */
     function _calculateBufferAmounts(
+        WrappingDirection direction,
         SwapKind kind,
         IERC4626 wrappedToken,
         uint256 amountGiven
     ) internal returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped) {
         bytes memory data = Address.functionDelegateCall(
             _implementation(),
-            abi.encodeWithSelector(IVaultExtension.calculateBufferAmounts.selector, kind, wrappedToken, amountGiven)
+            abi.encodeWithSelector(
+                IVaultExtension.calculateBufferAmounts.selector,
+                direction,
+                kind,
+                wrappedToken,
+                amountGiven
+            )
         );
         return abi.decode(data, (uint256, uint256, uint256));
     }

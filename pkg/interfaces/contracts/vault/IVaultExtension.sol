@@ -362,6 +362,7 @@ interface IVaultExtension {
     *******************************************************************************/
 
     function calculateBufferAmounts(
+        WrappingDirection direction,
         SwapKind kind,
         IERC4626 wrappedToken,
         uint256 amountGiven
