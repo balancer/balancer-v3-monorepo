@@ -486,6 +486,10 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.withdrawPoolCreatorFees(pool, alice);
     }
 
+    function testPermissionlessWithdrawalByNonPoolCreator() public {
+        feeController.withdrawPoolCreatorFees(pool);
+    }
+
     function testWithdrawalWithNoCreator() public {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
@@ -605,17 +609,17 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             "Wrong disaggregated USDC pool creator fee amount"
         );
 
+        // withdrawPoolCreatorFees is overloaded.
+        bytes4 permissionedSelector = bytes4(keccak256("withdrawPoolCreatorFees(address,address)"));
+
         // Now all that's left is to withdraw them.
-        // Governance cannot withdraw creator fees
-        authorizer.grantRole(
-            feeControllerAuth.getActionId(IProtocolFeeController.withdrawPoolCreatorFees.selector),
-            admin
-        );
+        // Governance cannot withdraw creator fees.
+        authorizer.grantRole(feeControllerAuth.getActionId(permissionedSelector), admin);
         vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, admin));
         vm.prank(admin);
         feeController.withdrawPoolCreatorFees(pool, admin);
 
-        // Creator cannot withdraw protocol fees
+        // Creator cannot withdraw protocol fees.
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vm.prank(lp);
         feeController.withdrawProtocolFees(pool, lp);
