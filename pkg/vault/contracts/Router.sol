@@ -4,11 +4,9 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
-import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
@@ -1128,79 +1126,5 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 exactBptAmountIn
     ) external onlyVault returns (uint256[] memory amountsOut) {
         return _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn);
-    }
-
-    /*******************************************************************************
-                                    Utils
-    *******************************************************************************/
-
-    struct SignatureParts {
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-    }
-
-    /// @inheritdoc IRouter
-    function permitBatchAndCall(
-        PermitApproval[] calldata permitBatch,
-        bytes[] calldata permitSignatures,
-        IAllowanceTransfer.PermitBatch calldata permit2Batch,
-        bytes calldata permit2Signature,
-        bytes[] calldata multicallData
-    ) external virtual saveSender returns (bytes[] memory results) {
-        // Use Permit (ERC-2612) to grant allowances to Permit2 for tokens to swap,
-        // and grant allowances to Vault for BPT tokens.
-        for (uint256 i = 0; i < permitBatch.length; ++i) {
-            bytes memory signature = permitSignatures[i];
-
-            SignatureParts memory signatureParts = _getSignatureParts(signature);
-
-            IRouter.PermitApproval memory permitApproval = permitBatch[i];
-            IERC20Permit(permitApproval.token).permit(
-                permitApproval.owner,
-                address(this),
-                permitApproval.amount,
-                permitApproval.deadline,
-                signatureParts.v,
-                signatureParts.r,
-                signatureParts.s
-            );
-        }
-
-        // Only call permit2 if there's something to do.
-        if (permit2Batch.details.length > 0) {
-            // Use Permit2 for tokens that are swapped and added into the Vault.
-            _permit2.permit(msg.sender, permit2Batch, permit2Signature);
-        }
-
-        // Execute all the required operations once permissions have been granted.
-        return multicall(multicallData);
-    }
-
-    /// @inheritdoc IRouter
-    function multicall(bytes[] calldata data) public virtual saveSender returns (bytes[] memory results) {
-        results = new bytes[](data.length);
-        for (uint256 i = 0; i < data.length; ++i) {
-            results[i] = Address.functionDelegateCall(address(this), data[i]);
-        }
-        return results;
-    }
-
-    function _getSignatureParts(bytes memory signature) private pure returns (SignatureParts memory signatureParts) {
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-
-        /// @solidity memory-safe-assembly
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            r := mload(add(signature, 0x20))
-            s := mload(add(signature, 0x40))
-            v := byte(0, mload(add(signature, 0x60)))
-        }
-
-        signatureParts.r = r;
-        signatureParts.s = s;
-        signatureParts.v = v;
     }
 }
