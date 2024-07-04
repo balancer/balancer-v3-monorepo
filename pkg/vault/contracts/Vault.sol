@@ -278,7 +278,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert TokenNotRegistered();
         }
 
-        state.indexIn = uint(indexIn);
+        state.indexIn = uint256(indexIn);
         state.indexOut = uint(indexOut);
 
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
