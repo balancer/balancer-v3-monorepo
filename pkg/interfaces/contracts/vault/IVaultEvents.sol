@@ -134,4 +134,44 @@ interface IVaultEvents {
      * @param newProtocolFeeController The address of the new protocol fee controller
      */
     event ProtocolFeeControllerChanged(IProtocolFeeController indexed newProtocolFeeController);
+
+    /**
+     * @notice Liquidity was added to a boosted pool buffer.
+     * @dev The underlying token can be derived from the wrapped token, so it's not included here. The shares are not
+     * tokenized like pool BPT, but accounted for in the Vault. `getBufferOwnerShares` retrieves the current total
+     * shares for a given buffer and address, and `getBufferTotalShares` returns the "totalSupply" of a buffer.
+     *
+     * @param wrappedToken The wrapped token that identifies the buffer
+     * @param sharesOwner The address depositing the funds
+     * @param amountWrapped The amount of the wrapped token that was deposited
+     * @param amountUnderlying The amount of the underlying token that was deposited
+     * @param issuedShares The "internal BPT" shares credited to the depositor
+     */
+    event LiquidityAddedToBuffer(
+        IERC4626 indexed wrappedToken,
+        address indexed sharesOwner,
+        uint256 amountWrapped,
+        uint256 amountUnderlying,
+        uint256 issuedShares
+    );
+
+    /**
+     * @notice Liquidity was removed from a boosted pool buffer.
+     * @dev The underlying token can be derived from the wrapped token, so it's not included here. The shares are not
+     * tokenized like pool BPT, but accounted for in the Vault. `getBufferOwnerShares` retrieves the current total
+     * shares for a given buffer and address, and `getBufferTotalShares` returns the "totalSupply" of a buffer.
+     *
+     * @param wrappedToken The wrapped token that identifies the buffer
+     * @param sharesOwner The address withdrawing the funds
+     * @param amountWrapped The amount of the wrapped token that was withdrawn
+     * @param amountUnderlying The amount of the underlying token that was withdrawn
+     * @param removedShares The "internal BPT" shares debited from the share owner
+     */
+    event LiquidityRemovedFromBuffer(
+        IERC4626 indexed wrappedToken,
+        address indexed sharesOwner,
+        uint256 amountWrapped,
+        uint256 amountUnderlying,
+        uint256 removedShares
+    );
 }

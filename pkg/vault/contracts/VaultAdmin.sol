@@ -471,6 +471,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
         _takeDebt(IERC20(underlyingToken), amountUnderlying);
         _takeDebt(wrappedToken, amountWrapped);
+
+        emit LiquidityAddedToBuffer(wrappedToken, sharesOwner, amountWrapped, amountUnderlying, issuedShares);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -508,6 +510,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
         _supplyCredit(IERC20(_bufferAssets[IERC20(address(wrappedToken))]), removedUnderlyingBalance);
         _supplyCredit(wrappedToken, removedWrappedBalance);
+
+        emit LiquidityRemovedFromBuffer(
+            wrappedToken,
+            sharesOwner,
+            removedWrappedBalance,
+            removedUnderlyingBalance,
+            sharesToRemove
+        );
     }
 
     /// @inheritdoc IVaultAdmin
