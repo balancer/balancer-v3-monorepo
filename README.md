@@ -134,6 +134,8 @@ $ yarn coverage
 
 The `coverage` command generates a coverage report for each package found in the `./package/coverage/index.html` directory. The `coverage.sh` script is used to merge HardHat and Forge coverage reports into a unified report, leveraging the lcov command-line utility.
 
+**Note: We suggest adopting lcov 1.16 since `forge coverage --report lcov` command works better in this version.**
+
 ## Security
 
 > Upgradeability | Not Applicable. The system cannot be upgraded.

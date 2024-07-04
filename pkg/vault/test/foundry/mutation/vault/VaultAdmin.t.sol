@@ -13,6 +13,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import {
@@ -48,6 +49,13 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.pauseVault();
     }
 
+    function testPauseVaultSuccessfully() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVault.selector), admin);
+        vm.prank(admin);
+        vault.pauseVault();
+        assertTrue(vault.isVaultPaused(), "Vault is not paused");
+    }
+
     function testUnpauseVaultWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultAdmin.unpauseVault();
@@ -56,6 +64,18 @@ contract VaultAdminMutationTest is BaseVaultTest {
     function testUnpauseVaultWhenNotAuthenticated() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.unpauseVault();
+    }
+
+    function testUnpauseVaultSuccessfully() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVault.selector), admin);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.unpauseVault.selector), admin);
+        vm.startPrank(admin);
+        vault.pauseVault();
+        assertTrue(vault.isVaultPaused(), "Vault is not paused");
+
+        vault.unpauseVault();
+        assertFalse(vault.isVaultPaused(), "Vault is not unpaused");
+        vm.stopPrank();
     }
 
     function testPausePoolWithoutRegisteredPool() public {
@@ -159,6 +179,20 @@ contract VaultAdminMutationTest is BaseVaultTest {
     function testSetProtocolFeeControllerWhenNotAuthenticated() public {
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.setProtocolFeeController(IProtocolFeeController(address(1)));
+    }
+
+    function testSetProtocolFeeControllerSuccessfully() public {
+        IProtocolFeeController newProtocolFeeController = IProtocolFeeController(address(0x123));
+
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setProtocolFeeController.selector), address(admin));
+        vm.prank(admin);
+        vault.setProtocolFeeController(newProtocolFeeController);
+
+        assertEq(
+            address(vault.getProtocolFeeController()),
+            address(newProtocolFeeController),
+            "ProtocolFeeController is wrong"
+        );
     }
 
     function testEnableRecoveryModeWithoutRegisteredPool() public {
@@ -289,5 +323,15 @@ contract VaultAdminMutationTest is BaseVaultTest {
     function testSetAuthorizerWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultAdmin.setAuthorizer(_authorizer);
+    }
+
+    function testSetAuthorizer() public {
+        IAuthorizer newAuthorizer = IAuthorizer(address(0x123));
+
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setAuthorizer.selector), address(admin));
+        vm.prank(admin);
+        vault.setAuthorizer(newAuthorizer);
+
+        assertEq(address(vault.getAuthorizer()), address(newAuthorizer), "Authorizer is wrong");
     }
 }
