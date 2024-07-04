@@ -56,4 +56,12 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
     ) external nonReentrant {
         IVault(address(this)).removeLiquidityFromBuffer(wrappedToken, sharesToRemove, sharesOwner);
     }
+
+    function mockWithValidPercentage(uint256 percentage) external pure withValidPercentage(percentage) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
+
+    function mockEnsurePoolNotInRecoveryMode(address pool) external view {
+        _ensurePoolNotInRecoveryMode(pool);
+    }
 }
