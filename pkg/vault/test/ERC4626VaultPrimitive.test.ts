@@ -36,8 +36,8 @@ describe('ERC4626VaultPrimitive', function () {
   const MIN_BPT = bn(1e6);
 
   // Donate to wrapped tokens to generate different rates
-  const daiToDonate = fp(549); //fp((Math.random() * 500 + 500).toFixed(0));
-  const usdcToDonate = fp(656); //fp((Math.random() * 500 + 500).toFixed(0));
+  const daiToDonate = fp((Math.random() * 1000 + 10).toFixed(0));
+  const usdcToDonate = fp((Math.random() * 1000 + 10).toFixed(0));
 
   let permit2: IPermit2;
   let vault: IVaultMock;
