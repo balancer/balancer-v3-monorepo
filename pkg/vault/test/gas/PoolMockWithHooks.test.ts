@@ -10,7 +10,7 @@ import { LiquidityManagementStruct, PoolRoleAccountsStruct } from '../../typecha
 
 class PoolMockWithHooksBenchmark extends Benchmark {
   constructor(dirname: string) {
-    super(dirname, 'PoolMock');
+    super(dirname, 'PoolMockWithHooks');
   }
 
   override async deployPool(): Promise<BaseContract> {
