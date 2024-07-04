@@ -10,6 +10,7 @@ import { IEIP712 } from "permit2/src/interfaces/IEIP712.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -59,8 +60,8 @@ contract Permit2Test is BaseVaultTest {
         bptAmountOut = defaultAmount * 2;
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
-        IRouter.PermitApproval[] memory permitBatch = new IRouter.PermitApproval[](1);
-        permitBatch[0] = IRouter.PermitApproval(pool, alice, address(router), bptAmountOut, 0, block.timestamp);
+        IRouterCommon.PermitApproval[] memory permitBatch = new IRouterCommon.PermitApproval[](1);
+        permitBatch[0] = IRouterCommon.PermitApproval(pool, alice, address(router), bptAmountOut, 0, block.timestamp);
 
         bytes[] memory permitSignatures = new bytes[](1);
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
@@ -127,7 +128,7 @@ contract Permit2Test is BaseVaultTest {
     }
 
     function testEmptyBatchAndCall() public {
-        IRouter.PermitApproval[] memory permitBatch = new IRouter.PermitApproval[](0);
+        IRouterCommon.PermitApproval[] memory permitBatch = new IRouterCommon.PermitApproval[](0);
         bytes[] memory permitSignatures = new bytes[](0);
         IAllowanceTransfer.PermitBatch memory permit2Batch;
         bytes[] memory multicallData = new bytes[](1);
