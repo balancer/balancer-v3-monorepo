@@ -18,18 +18,18 @@ sed "s/\/.*$CURRENT_PACKAGE.//g" lcov.info > lcov-clearfolders.info
 sed -i -e "s/\.\.contracts\//contracts\//g" lcov-clearfolders.info
 
 # generates coverage/lcov.info
-# COVERAGE=true yarn hardhat coverage
+COVERAGE=true yarn hardhat coverage
 
 # Foundry uses relative paths but Hardhat uses absolute paths.
 # Convert absolute paths to relative paths for consistency.
 sed -i -e "s/\/.*$CURRENT_PACKAGE.//g" coverage/lcov.info
 
 # Merge lcov files
-  # --add-tracefile coverage/lcov.info \
 lcov \
   --rc lcov_branch_coverage=1 \
   --rc derive_function_end_line=0 \
   --add-tracefile lcov-clearfolders.info \
+  --add-tracefile coverage/lcov.info \
   --output-file lcov-merged.info \
   --no-checksum
 
@@ -67,4 +67,4 @@ genhtml \
 open coverage-genhtml/index.html
 
 # Delete temp files
-# rm -rf lcov-*.info lcov-*.info-e coverage/ lcov.info coverage.json
+rm -rf lcov-*.info lcov-*.info-e coverage/ lcov.info coverage.json
