@@ -27,7 +27,7 @@ contract EmptyPoolHooksMock is BaseHooks {
     constructor(IVault vault) BaseHooks(vault) {}
 
     function onRegister(
-        address factory,
+        address,
         address,
         TokenConfig[] memory,
         LiquidityManagement calldata
@@ -52,7 +52,7 @@ contract EmptyPoolHooksMock is BaseHooks {
     }
 
     function onComputeDynamicSwapFee(
-        IBasePool.PoolSwapParams calldata params,
+        IBasePool.PoolSwapParams calldata,
         address,
         uint256
     ) external pure override returns (bool, uint256) {
@@ -95,7 +95,7 @@ contract EmptyPoolHooksMock is BaseHooks {
 
     function onAfterAddLiquidity(
         address,
-        address pool,
+        address,
         AddLiquidityKind,
         uint256[] memory,
         uint256[] memory amountsInRaw,
@@ -108,7 +108,7 @@ contract EmptyPoolHooksMock is BaseHooks {
 
     function onAfterRemoveLiquidity(
         address,
-        address pool,
+        address,
         RemoveLiquidityKind,
         uint256,
         uint256[] memory,
