@@ -14,7 +14,6 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import {
@@ -25,9 +24,6 @@ import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
 
 contract VaultAdminMutationTest is BaseVaultTest {
     using ArrayHelpers for *;
-
-    uint256 internal constant underlyingTokensToDeposit = 2e18;
-    uint256 internal constant liquidityAmount = 1e18;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -280,26 +276,6 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.manualReentrancyAddLiquidityToBuffer(IERC4626(address(0)), 0, 0, address(0));
     }
 
-    function testAddLiquidityToBufferBaseTokenChanged() public {
-        ERC4626TestToken waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
-        vm.label(address(waDAI), "waDAI");
-
-        vm.startPrank(bob);
-        dai.approve(address(waDAI), underlyingTokensToDeposit);
-        waDAI.deposit(underlyingTokensToDeposit, address(bob));
-
-        waDAI.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
-
-        router.addLiquidityToBuffer(waDAI, liquidityAmount, liquidityAmount, address(bob));
-
-        waDAI.setAsset(usdc);
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedTokenAsset.selector, address(waDAI)));
-        router.addLiquidityToBuffer(waDAI, liquidityAmount, liquidityAmount, address(bob));
-        vm.stopPrank();
-    }
-
     function testRemoveLiquidityFromBufferWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultAdmin.removeLiquidityFromBuffer(IERC4626(address(0)), 0, address(0));
@@ -322,26 +298,6 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         vault.manualReentrancyRemoveLiquidityFromBuffer(IERC4626(address(0)), 0, address(0));
-    }
-
-    function testRemoveLiquidityFromBufferNotEnoughShares() public {
-        ERC4626TestToken waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
-        vm.label(address(waDAI), "waDAI");
-
-        vm.startPrank(bob);
-        dai.approve(address(waDAI), underlyingTokensToDeposit);
-        waDAI.deposit(underlyingTokensToDeposit, address(bob));
-
-        waDAI.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
-
-        uint256 shares = router.addLiquidityToBuffer(waDAI, liquidityAmount, liquidityAmount, address(bob));
-
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
-        vm.expectRevert(IVaultErrors.NotEnoughBufferShares.selector);
-        // The call should revert since bob is trying to withdraw more shares than he has.
-        router.removeLiquidityFromBuffer(waDAI, shares + 1);
-        vm.stopPrank();
     }
 
     function testGetBufferOwnerSharesWhenNotVault() public {

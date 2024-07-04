@@ -8,15 +8,30 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
+
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 contract VaultAdminUnitTest is BaseVaultTest {
+    // This pool address was not registered and initialized and should be used only to test internal functions that
+    // don't require access to pool information.
+    address internal constant TEST_POOL = address(0x123);
+    uint256 internal constant underlyingTokensToDeposit = 2e18;
+    uint256 internal constant liquidityAmount = 1e18;
+
+    ERC4626TestToken internal waDAI;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
         // Authorize admin to pause and unpause vault
         authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVault.selector), admin);
         authorizer.grantRole(vault.getActionId(IVaultAdmin.unpauseVault.selector), admin);
+
+        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
+        vm.label(address(waDAI), "waDAI");
+
+        _initializeBob();
     }
 
     // withValidPercentage
@@ -65,50 +80,73 @@ contract VaultAdminUnitTest is BaseVaultTest {
 
     // _setPoolPaused
     function testPausePoolWhenPoolIsPaused() public {
-        // Only internal functions are used, so the pool does not need to be registered.
-        address pool = address(0x123);
-
         // Pause pool
         PoolConfig memory poolConfig;
         poolConfig.isPoolPaused = true;
         // Pause window cannot be expired
         poolConfig.pauseWindowEndTime = uint32(block.timestamp + 10);
-        vault.manualSetPoolConfig(pool, poolConfig);
+        vault.manualSetPoolConfig(TEST_POOL, poolConfig);
 
         // Pool is already paused and we're trying to pause again.
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, pool));
-        vault.manualPausePool(pool);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolPaused.selector, TEST_POOL));
+        vault.manualPausePool(TEST_POOL);
     }
 
     function testUnpausePoolWhenPoolIsUnpaused() public {
-        // Only internal functions are used, so the pool does not need to be registered.
-        address pool = address(0x123);
-
         // Pool is already unpaused and we're trying to unpause again.
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotPaused.selector, pool));
-        vault.manualUnpausePool(pool);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotPaused.selector, TEST_POOL));
+        vault.manualUnpausePool(TEST_POOL);
     }
 
     // _ensurePoolNotInRecoveryMode
     function testEnsurePoolNotInRecoveryMode() public {
-        // Only internal functions are used, so the pool does not need to be registered.
-        address pool = address(0x123);
-
         // Should not revert because pool is not in recovery mode
-        vault.mockEnsurePoolNotInRecoveryMode(pool);
+        vault.mockEnsurePoolNotInRecoveryMode(TEST_POOL);
     }
 
     function testEnsurePoolNotInRecoveryModeRevert() public {
-        // Only internal functions are used, so the pool does not need to be registered.
-        address pool = address(0x123);
-
         // Set recovery mode flag
         PoolConfig memory poolConfig;
         poolConfig.isPoolInRecoveryMode = true;
-        vault.manualSetPoolConfig(pool, poolConfig);
+        vault.manualSetPoolConfig(TEST_POOL, poolConfig);
 
         // Should not revert because pool is not in recovery mode
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolInRecoveryMode.selector, pool));
-        vault.mockEnsurePoolNotInRecoveryMode(pool);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolInRecoveryMode.selector, TEST_POOL));
+        vault.mockEnsurePoolNotInRecoveryMode(TEST_POOL);
+    }
+
+    function testAddLiquidityToBufferBaseTokenChanged() public {
+        vm.startPrank(bob);
+        router.addLiquidityToBuffer(waDAI, liquidityAmount, liquidityAmount, address(bob));
+
+        // Changes the wrapped token asset. The function `addLiquidityToBuffer` should revert, since the buffer was
+        // initialized already with another underlying asset.
+        waDAI.setAsset(usdc);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedTokenAsset.selector, address(waDAI)));
+        router.addLiquidityToBuffer(waDAI, liquidityAmount, liquidityAmount, address(bob));
+        vm.stopPrank();
+    }
+
+    function testRemoveLiquidityFromBufferNotEnoughShares() public {
+        vm.startPrank(bob);
+        uint256 shares = router.addLiquidityToBuffer(waDAI, liquidityAmount, liquidityAmount, address(bob));
+
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
+        vm.expectRevert(IVaultErrors.NotEnoughBufferShares.selector);
+        // The call should revert since bob is trying to withdraw more shares than he has.
+        router.removeLiquidityFromBuffer(waDAI, shares + 1);
+        vm.stopPrank();
+    }
+
+    function _initializeBob() private {
+        vm.startPrank(bob);
+        dai.approve(address(waDAI), underlyingTokensToDeposit);
+        waDAI.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
+
+        // Deposit some DAI to mint waDAI to bob, so he can add liquidity to the buffer.
+        waDAI.deposit(underlyingTokensToDeposit, address(bob));
+        vm.stopPrank();
     }
 }
