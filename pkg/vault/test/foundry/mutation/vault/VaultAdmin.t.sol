@@ -180,6 +180,20 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.setProtocolFeeController(IProtocolFeeController(address(1)));
     }
 
+    function testSetProtocolFeeControllerSuccessfully() public {
+        IProtocolFeeController newProtocolFeeController = IProtocolFeeController(address(0x123));
+
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setProtocolFeeController.selector), address(admin));
+        vm.prank(admin);
+        vault.setProtocolFeeController(newProtocolFeeController);
+
+        assertEq(
+            address(vault.getProtocolFeeController()),
+            address(newProtocolFeeController),
+            "ProtocolFeeController is wrong"
+        );
+    }
+
     function testEnableRecoveryModeWithoutRegisteredPool() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(0)));
         vault.enableRecoveryMode(address(0));
@@ -308,5 +322,15 @@ contract VaultAdminMutationTest is BaseVaultTest {
     function testSetAuthorizerWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultAdmin.setAuthorizer(_authorizer);
+    }
+
+    function testSetAuthorizer() public {
+        IAuthorizer newAuthorizer = IAuthorizer(address(0x123));
+
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setAuthorizer.selector), address(admin));
+        vm.prank(admin);
+        vault.setAuthorizer(newAuthorizer);
+
+        assertEq(address(vault.getAuthorizer()), address(newAuthorizer), "Authorizer is wrong");
     }
 }
