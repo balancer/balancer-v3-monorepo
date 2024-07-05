@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 
@@ -168,5 +169,30 @@ contract RecoveryModeTest is BaseVaultTest {
         vault.enableRecoveryMode(pool);
 
         assertTrue(vault.isPoolInRecoveryMode(pool), "Pool should be in Recovery Mode");
+    }
+
+    // disableRecoveryMode
+    function testDisableRecoveryModeRevert() public {
+        assertFalse(vault.isPoolInRecoveryMode(pool), "Pool should not be in Recovery Mode");
+
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.disableRecoveryMode.selector), admin);
+        vm.prank(admin);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInRecoveryMode.selector, pool));
+        vault.disableRecoveryMode(pool);
+    }
+
+    function testDisableRecoveryModeSuccessfully() public {
+        // Enable recovery mode
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.enableRecoveryMode.selector), admin);
+        vm.prank(admin);
+        vault.enableRecoveryMode(pool);
+
+        assertTrue(vault.isPoolInRecoveryMode(pool), "Pool should be in Recovery Mode");
+
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.disableRecoveryMode.selector), admin);
+        vm.prank(admin);
+        vault.disableRecoveryMode(pool);
+
+        assertFalse(vault.isPoolInRecoveryMode(pool), "Pool not should be in Recovery Mode");
     }
 }
