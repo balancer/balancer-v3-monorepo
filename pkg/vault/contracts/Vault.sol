@@ -216,6 +216,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             swapParams = _buildPoolSwapParams(params, state, poolData);
         }
 
+        if (state.amountGivenScaled18 < _MINIMUM_SWAP_AMOUNT) {
+            revert SwapAmountTooSmall();
+        }
+
         // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
         // as those passed to the main operation.
         // At this point, the static swap fee percentage is loaded in the swap state as the default,
@@ -239,6 +243,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // PoolData balancesRaw and balancesLiveScaled18 are adjusted for swap amounts and fees inside of _swap.
         uint256 amountCalculatedScaled18;
         (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, swapParams);
+
+        if (amountCalculatedScaled18 < _MINIMUM_SWAP_AMOUNT) {
+            revert SwapAmountTooSmall();
+        }
 
         // If the hook contract does not exist or does not implement onAfterSwap, PoolConfigLib returns the original
         // amountCalculated. Otherwise, the new amount calculated is 'amountCalculated + delta'. If the underlying
