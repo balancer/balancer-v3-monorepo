@@ -10,7 +10,7 @@
 - [ ] Breaking change <!-- (would cause existing functionality to not work as expected) -->
 - [ ] Dependency changes
 - [ ] Code refactor / cleanup
-- [ ] Optimization ([ ] gas / [ ] bytecode)
+- [ ] Optimization: [ ] gas / [ ] bytecode
 - [ ] Documentation or wording changes
 - [ ] Other
 
