@@ -7,7 +7,7 @@ import { saveSnap } from '@balancer-labs/v3-helpers/src/gas';
 import { Router } from '@balancer-labs/v3-vault/typechain-types/contracts/Router';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { FP_ZERO, fp } from '@balancer-labs/v3-helpers/src/numbers';
-import { MAX_UINT256, MAX_UINT160, MAX_UINT48, MAX_UINT128 } from '@balancer-labs/v3-helpers/src/constants';
+import { MAX_UINT256, MAX_UINT160, MAX_UINT48 } from '@balancer-labs/v3-helpers/src/constants';
 import * as VaultDeployer from '@balancer-labs/v3-helpers/src/models/vault/VaultDeployer';
 import TypesConverter from '@balancer-labs/v3-helpers/src/models/types/TypesConverter';
 import {
