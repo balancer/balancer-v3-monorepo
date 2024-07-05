@@ -24,7 +24,9 @@ contract MinimalHooksPoolMock is BaseHooks {
 
     HookFlags private _hookFlags;
 
-    constructor(IVault vault) BaseHooks(vault) {}
+    constructor(IVault vault) BaseHooks(vault) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     function onRegister(
         address,
