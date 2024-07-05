@@ -1467,7 +1467,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         uint256 index = _findTokenIndex(poolTokens, token);
 
-        return (poolTokens.length, uint256(index));
+        return (poolTokens.length, index);
     }
 
     /*******************************************************************************

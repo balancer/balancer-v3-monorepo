@@ -190,26 +190,22 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint8[] memory tokenDecimalDiffs = new uint8[](numTokens);
         IERC20 previousToken;
 
-        IERC20[] memory tokens = new IERC20[](numTokens);
-
         for (uint256 i = 0; i < numTokens; ++i) {
             TokenConfig memory tokenData = params.tokenConfig[i];
             IERC20 token = tokenData.token;
-            tokens[i] = token;
+
+            // Ensure that the token address is valid
+            if (address(token) == address(0) || address(token) == pool) {
+                revert InvalidToken();
+            }
 
             // Enforce token sorting. (`previousToken` will be the zero address on the first iteration.)
             if (token < previousToken) {
                 revert InputHelpers.TokensNotSorted();
             }
+
             if (token == previousToken) {
                 revert TokenAlreadyRegistered(token);
-            }
-
-            previousToken = token;
-
-            // Ensure that the token address is valid
-            if (address(token) == address(0) || address(token) == pool) {
-                revert InvalidToken();
             }
 
             bool hasRateProvider = tokenData.rateProvider != IRateProvider(address(0));
@@ -233,6 +229,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
 
             tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
+
+            // Store token and seed the next iteration.
+            _poolTokens[pool].push(token);
+            previousToken = token;
         }
 
         // Store the role account addresses (for getters).
