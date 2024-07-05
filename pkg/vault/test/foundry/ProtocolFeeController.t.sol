@@ -487,7 +487,51 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     }
 
     function testPermissionlessWithdrawalByNonPoolCreator() public {
+        _registerPoolWithMaxProtocolFees();
+
+        vm.startPrank(lp);
+        feeController.setPoolCreatorSwapFeePercentage(pool, POOL_CREATOR_SWAP_FEE);
+        feeController.setPoolCreatorYieldFeePercentage(pool, POOL_CREATOR_YIELD_FEE);
+        vm.stopPrank();
+
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
+        vault.manualSetAggregateYieldFeeAmount(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);
+
+        uint256 aggregateSwapFeePercentage = feeController.computeAggregateFeePercentage(
+            MAX_PROTOCOL_SWAP_FEE,
+            POOL_CREATOR_SWAP_FEE
+        );
+        uint256 aggregateYieldFeePercentage = feeController.computeAggregateFeePercentage(
+            MAX_PROTOCOL_YIELD_FEE,
+            POOL_CREATOR_YIELD_FEE
+        );
+
+        uint256 expectedProtocolFeeDAI = PROTOCOL_SWAP_FEE_AMOUNT.divUp(aggregateSwapFeePercentage).mulUp(
+            MAX_PROTOCOL_SWAP_FEE
+        );
+        uint256 expectedCreatorFeeDAI = PROTOCOL_SWAP_FEE_AMOUNT - expectedProtocolFeeDAI;
+
+        uint256 expectedProtocolFeeUSDC = PROTOCOL_YIELD_FEE_AMOUNT.divUp(aggregateYieldFeePercentage).mulUp(
+            MAX_PROTOCOL_YIELD_FEE
+        );
+        uint256 expectedCreatorFeeUSDC = PROTOCOL_YIELD_FEE_AMOUNT - expectedProtocolFeeUSDC;
+
+        uint256 creatorBalanceDAIBefore = dai.balanceOf(lp);
+        uint256 creatorBalanceUSDCBefore = usdc.balanceOf(lp);
+
+        vault.collectAggregateFees(pool);
         feeController.withdrawPoolCreatorFees(pool);
+
+        assertEq(
+            dai.balanceOf(lp) - creatorBalanceDAIBefore,
+            expectedCreatorFeeDAI,
+            "Wrong ending balance of DAI (creator)"
+        );
+        assertEq(
+            usdc.balanceOf(lp) - creatorBalanceUSDCBefore,
+            expectedCreatorFeeUSDC,
+            "Wrong ending balance of USDC (creator)"
+        );
     }
 
     function testWithdrawalWithNoCreator() public {
