@@ -472,7 +472,7 @@ contract RouterTest is BaseVaultTest {
         assertEq(amountsGiven[usdcIdx], 4321);
         assertEq(tokenIndex, usdcIdx);
 
-        vm.expectRevert(IVaultErrors.TokenNotRegistered.selector);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenNotRegistered.selector, weth));
         router.getSingleInputArrayAndTokenIndex(pool, weth, daiAmountIn);
     }
 

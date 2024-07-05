@@ -40,7 +40,6 @@ import { PoolDataLib } from "./lib/PoolDataLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
-    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using PackedTokenBalance for bytes32;
     using InputHelpers for uint256;
     using FixedPoint for *;
@@ -277,29 +276,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _loadSwapState(
         SwapParams memory params,
         PoolData memory poolData
-    ) private view returns (SwapState memory state) {
-        // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
-
-        // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value for non-existence.
-        uint256 indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
-        uint256 indexOut = poolBalances.unchecked_indexOf(params.tokenOut);
-
-        // If either are zero, revert because the token wasn't registered to this pool.
-        if (indexIn == 0 || indexOut == 0) {
-            // We require the pool to be initialized, which means it's also registered.
-            // This can only happen if the tokens are not registered.
-            revert TokenNotRegistered();
-        }
-
-        // Convert to regular 0-based indices now, since we've established the tokens are valid.
-        unchecked {
-            indexIn -= 1;
-            indexOut -= 1;
-        }
-
-        state.indexIn = indexIn;
-        state.indexOut = indexOut;
+    ) private pure returns (SwapState memory state) {
+        state.indexIn = _findTokenIndex(poolData.tokens, params.tokenIn);
+        state.indexOut = _findTokenIndex(poolData.tokens, params.tokenOut);
 
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
@@ -472,20 +451,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         // 6) Store pool balances, raw and live (only index in and out)
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
-        poolBalances.unchecked_setAt(
-            state.indexIn,
-            PackedTokenBalance.toPackedBalance(
-                poolData.balancesRaw[state.indexIn],
-                poolData.balancesLiveScaled18[state.indexIn]
-            )
+        mapping(uint256 => bytes32) storage poolBalances = _poolTokenBalances[params.pool];
+        poolBalances[state.indexIn] = PackedTokenBalance.toPackedBalance(
+            poolData.balancesRaw[state.indexIn],
+            poolData.balancesLiveScaled18[state.indexIn]
         );
-        poolBalances.unchecked_setAt(
-            state.indexOut,
-            PackedTokenBalance.toPackedBalance(
-                poolData.balancesRaw[state.indexOut],
-                poolData.balancesLiveScaled18[state.indexOut]
-            )
+        poolBalances[state.indexOut] = PackedTokenBalance.toPackedBalance(
+            poolData.balancesRaw[state.indexOut],
+            poolData.balancesLiveScaled18[state.indexOut]
         );
 
         // 7) Off-chain events
@@ -1117,7 +1090,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (_isQueryContext()) {
-            return _calculateBufferAmounts(kind, wrappedToken, amountGiven);
+            return _calculateBufferAmounts(WrappingDirection.WRAP, kind, wrappedToken, amountGiven);
         }
 
         if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
@@ -1236,7 +1209,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (_isQueryContext()) {
-            return _calculateBufferAmounts(kind, wrappedToken, amountGiven);
+            return _calculateBufferAmounts(WrappingDirection.UNWRAP, kind, wrappedToken, amountGiven);
         }
 
         if (bufferBalances.getBalanceRaw() > amountOutUnderlying) {
@@ -1327,13 +1300,20 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * @dev Call VaultExtension to calculate the amounts for wrap/unwrap operations.
      */
     function _calculateBufferAmounts(
+        WrappingDirection direction,
         SwapKind kind,
         IERC4626 wrappedToken,
         uint256 amountGiven
     ) internal returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped) {
         bytes memory data = Address.functionDelegateCall(
             _implementation(),
-            abi.encodeWithSelector(IVaultExtension.calculateBufferAmounts.selector, kind, wrappedToken, amountGiven)
+            abi.encodeWithSelector(
+                IVaultExtension.calculateBufferAmounts.selector,
+                direction,
+                kind,
+                wrappedToken,
+                amountGiven
+            )
         );
         return abi.decode(data, (uint256, uint256, uint256));
     }
@@ -1499,17 +1479,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         address pool,
         IERC20 token
     ) external view withRegisteredPool(pool) returns (uint256, uint256) {
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        uint256 tokenCount = poolTokenBalances.length();
-        // unchecked indexOf returns index + 1, or 0 if token is not present.
-        uint256 index = poolTokenBalances.unchecked_indexOf(token);
-        if (index == 0) {
-            revert TokenNotRegistered();
-        }
+        IERC20[] memory poolTokens = _poolTokens[pool];
 
-        unchecked {
-            return (tokenCount, index - 1);
-        }
+        uint256 index = _findTokenIndex(poolTokens, token);
+
+        return (poolTokens.length, index);
     }
 
     /*******************************************************************************

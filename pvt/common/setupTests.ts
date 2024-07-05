@@ -22,7 +22,7 @@ declare global {
       equalFp(value: BigNumberish): void;
       lteWithError(value: NAry<BigNumberish>, error: BigNumberish): void;
       equalWithError(value: NAry<BigNumberish>, error: BigNumberish): void;
-      almostEqual(value: NAry<BigNumberish>, error?: BigNumberish): void;
+      almostEqual(value: NAry<BigNumberish>, error?: BigNumberish, message?: string): void;
       almostEqualFp(value: NAry<BigNumberish>, error?: BigNumberish): void;
     }
   }
@@ -74,23 +74,29 @@ chai.use(function (chai, utils) {
     }
   });
 
-  Assertion.addMethod('almostEqual', function (expectedValue: NAry<BigNumberish>, error?: BigNumberish) {
-    if (Array.isArray(expectedValue)) {
-      const actuals: BigNumberish[] = this._obj;
-      actuals.forEach((actual, i) => expectEqualWithError(actual, expectedValue[i], error));
-    } else {
-      expectEqualWithError(this._obj, expectedValue, error);
+  Assertion.addMethod(
+    'almostEqual',
+    function (expectedValue: NAry<BigNumberish>, error?: BigNumberish, message?: string) {
+      if (Array.isArray(expectedValue)) {
+        const actuals: BigNumberish[] = this._obj;
+        actuals.forEach((actual, i) => expectEqualWithError(actual, expectedValue[i], error, message));
+      } else {
+        expectEqualWithError(this._obj, expectedValue, error, message);
+      }
     }
-  });
+  );
 
-  Assertion.addMethod('almostEqualFp', function (expectedValue: NAry<BigNumberish>, error?: BigNumberish) {
-    if (Array.isArray(expectedValue)) {
-      const actuals: BigNumberish[] = this._obj;
-      actuals.forEach((actual, i) => expectEqualWithError(actual, fp(expectedValue[i]), error));
-    } else {
-      expectEqualWithError(this._obj, fp(expectedValue), error);
+  Assertion.addMethod(
+    'almostEqualFp',
+    function (expectedValue: NAry<BigNumberish>, error?: BigNumberish, message?: string) {
+      if (Array.isArray(expectedValue)) {
+        const actuals: BigNumberish[] = this._obj;
+        actuals.forEach((actual, i) => expectEqualWithError(actual, fp(expectedValue[i]), error, message));
+      } else {
+        expectEqualWithError(this._obj, fp(expectedValue), error, message);
+      }
     }
-  });
+  );
 
   ['eq', 'equal', 'equals'].forEach((fn: string) => {
     Assertion.overwriteMethod(fn, function (_super) {

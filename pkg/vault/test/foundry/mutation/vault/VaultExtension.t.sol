@@ -198,7 +198,7 @@ contract VaultExtensionMutationTest is BaseVaultTest {
     function testCalculateBufferAmountsWhenNotVault() public {
         vm.prank(address(0), address(0));
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.calculateBufferAmounts(SwapKind.EXACT_IN, IERC4626(address(0)), 0);
+        vaultExtension.calculateBufferAmounts(WrappingDirection.WRAP, SwapKind.EXACT_IN, IERC4626(address(0)), 0);
     }
 
     function testQuoteWhenNotVault() public {
@@ -225,7 +225,7 @@ contract VaultExtensionMutationTest is BaseVaultTest {
 
     function testCalculateBufferAmountsWhenNotStaticCall() public {
         vm.expectRevert(EVMCallModeHelpers.NotStaticCall.selector);
-        vaultExtension.calculateBufferAmounts(SwapKind.EXACT_IN, IERC4626(address(0)), 0);
+        vaultExtension.calculateBufferAmounts(WrappingDirection.WRAP, SwapKind.EXACT_IN, IERC4626(address(0)), 0);
     }
 
     function testIsQueryDisabledWhenNotVault() public {

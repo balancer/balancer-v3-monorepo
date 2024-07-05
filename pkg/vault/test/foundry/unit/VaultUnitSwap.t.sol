@@ -51,7 +51,7 @@ contract VaultUnitSwapTest is BaseTest {
 
         swapTokens = [dai, usdc];
         // We don't care about last live balances, so we set them equal to the raw ones.
-        vault.manualSetPoolTokenBalances(pool, swapTokens, initialBalances, initialBalances);
+        vault.manualSetPoolTokensAndBalances(pool, swapTokens, initialBalances, initialBalances);
 
         vault.manualSetAggregateSwapFeeAmount(pool, swapTokens[0], 0);
         vault.manualSetAggregateSwapFeeAmount(pool, swapTokens[1], 0);

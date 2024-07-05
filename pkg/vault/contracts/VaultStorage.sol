@@ -79,7 +79,8 @@ contract VaultStorage {
     // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
     // Last live balances are used for yield fee computation, and since these have rates applied, they are stored
     // as scaled 18-decimal FP values. Each value takes up half the storage slot (i.e., 128 bits).
-    mapping(address => EnumerableMap.IERC20ToBytes32Map) internal _poolTokenBalances;
+    mapping(address => mapping(uint256 => bytes32)) internal _poolTokenBalances;
+    mapping(address => IERC20[]) internal _poolTokens;
 
     // Pool -> (token -> TokenInfo): The token configuration of each Pool's tokens.
     mapping(address => mapping(IERC20 => TokenInfo)) internal _poolTokenInfo;
