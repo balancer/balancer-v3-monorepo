@@ -274,9 +274,8 @@ export class Benchmark {
       sharedBeforeEach('approve router to spend BPT', async () => {
         const bpt: IERC20 = await TypesConverter.toIERC20(this.pool);
         await bpt.connect(alice).approve(router, MAX_UINT256);
-        await bpt.connect(alice).approve(batchRouter, MAX_UINT256);
         await bpt.connect(alice).approve(permit2, MAX_UINT256);
-        await permit2.connect(alice).approve(await bpt.getAddress(), batchRouter, MAX_UINT160, MAX_UINT48);
+        await permit2.connect(alice).approve(bpt, batchRouter, MAX_UINT160, MAX_UINT48);
       });
 
       it('pool and protocol fee preconditions', async () => {
