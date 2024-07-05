@@ -352,7 +352,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             }
         }
 
-        return -1;
+        revert TokenNotFound(token);
     }
 
     /*******************************************************************************

@@ -241,6 +241,9 @@ contract VaultMock is IVaultMainMock, Vault {
         uint256[] memory tokenBalanceRaw,
         uint256[] memory tokenBalanceLiveScaled18
     ) public {
+        require(tokens.length == tokenBalanceRaw.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
+        require(tokens.length == tokenBalanceLiveScaled18.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
+
         mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
         for (uint256 i = 0; i < tokens.length; ++i) {
             poolTokenBalances[i] = PackedTokenBalance.toPackedBalance(tokenBalanceRaw[i], tokenBalanceLiveScaled18[i]);

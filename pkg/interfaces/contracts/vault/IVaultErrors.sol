@@ -320,4 +320,7 @@ interface IVaultErrors {
 
     /// @dev Vault buffers are paused.
     error VaultBuffersArePaused();
+
+    /// @dev Token not found in the token array.
+    error TokenNotFound(IERC20 token);
 }

@@ -201,6 +201,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             if (token < previousToken) {
                 revert InputHelpers.TokensNotSorted();
             }
+            if (token == previousToken) {
+                revert TokenAlreadyRegistered();
+            }
+
             previousToken = token;
 
             // Ensure that the token address is valid
@@ -229,18 +233,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             }
 
             tokenDecimalDiffs[i] = uint8(18) - IERC20Metadata(address(token)).decimals();
-        }
-
-        // O(n^2) loop, but n is capped at 4
-        for (uint256 i = 0; i < numTokens; i++) {
-            for (uint256 j = 0; j < i; j++) {
-                if (i != j && tokens[i] == tokens[j]) {
-                    // Register the token with an initial balance of zero.
-                    // Ensure the token isn't already registered for the pool.
-                    revert TokenAlreadyRegistered(tokens[i]);
-                }
-            }
-            _poolTokens[pool].push(tokens[i]);
         }
 
         // Store the role account addresses (for getters).
