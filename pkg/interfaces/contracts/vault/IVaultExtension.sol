@@ -392,10 +392,10 @@ interface IVaultExtension {
      * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
      * anything else will revert.
      *
-     * Allows querying any operation on the Vault that has the `withLocker` modifier.
+     * Allows querying any operation on the Vault that has the `onlyWhenUnlocked` modifier.
      *
      * Allows the external calling of a function via the Vault contract to
-     * access Vault's functions guarded by `withLocker`.
+     * access Vault's functions guarded by `onlyWhenUnlocked`.
      * `transient` modifier ensuring balances changes within the Vault are settled.
      *
      * This call always reverts, returning the result in the revert reason.
