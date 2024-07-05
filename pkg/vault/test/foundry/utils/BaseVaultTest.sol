@@ -104,6 +104,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Applies to Weighted Pools.
     uint256 constant MIN_SWAP_FEE = 1e12; // 0.00001%
     uint256 constant MAX_SWAP_FEE = 0.1e18; // 10%
+    uint256 constant MIN_SWAP_AMOUNT = 1e6;
 
     function setUp() public virtual override {
         BaseTest.setUp();
