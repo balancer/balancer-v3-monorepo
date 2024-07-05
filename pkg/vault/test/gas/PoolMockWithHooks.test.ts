@@ -4,7 +4,7 @@ import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 
 import { Benchmark } from '@balancer-labs/v3-benchmarks/src/PoolBenchmark.behavior';
-import { PoolFactoryMock, EmptyPoolHooksMock } from '@balancer-labs/v3-vault/typechain-types';
+import { PoolFactoryMock, MinimalHooksPoolMock≠ } from '@balancer-labs/v3-vault/typechain-types';
 import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { LiquidityManagementStruct, PoolRoleAccountsStruct } from '../../typechain-types/contracts/Vault';
 
@@ -18,9 +18,9 @@ class PoolMockWithHooksBenchmark extends Benchmark {
       args: [await this.vault.getAddress(), MONTH * 12],
     })) as unknown as PoolFactoryMock;
 
-    const hooks = (await deploy('EmptyPoolHooksMock', {
+    const hooks = (await deploy('MinimalHooksPoolMock', {
       args: [this.vault],
-    })) as unknown as EmptyPoolHooksMock;
+    })) as unknown as MinimalHooksPoolMock;
 
     await hooks.setHookFlags({
       enableHookAdjustedAmounts: false,

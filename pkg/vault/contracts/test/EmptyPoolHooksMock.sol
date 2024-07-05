@@ -18,7 +18,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { RateProviderMock } from "./RateProviderMock.sol";
 import { BaseHooks } from "../BaseHooks.sol";
 
-contract EmptyPoolHooksMock is BaseHooks {
+contract MinimalHooksPoolMock is BaseHooks {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
