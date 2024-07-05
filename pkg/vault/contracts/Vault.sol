@@ -1426,25 +1426,29 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             expectedWrappedDelta = wrapUnwrapWrappedExpected;
         }
 
-        if (
-            (vaultUnderlyingDelta < expectedUnderlyingDelta &&
-                expectedUnderlyingDelta - vaultUnderlyingDelta > _MAX_CONVERT_ERROR) ||
-            (vaultUnderlyingDelta > expectedUnderlyingDelta &&
-                vaultUnderlyingDelta - expectedUnderlyingDelta > _MAX_CONVERT_ERROR)
-        ) {
-            // If this error is thrown, it means the convert result had an absolute error greater than
-            // _MAX_CONVERT_ERROR in comparison with the actual operation.
-            revert WrongUnderlyingAmount(address(wrappedToken));
-        }
+        // Every subtraction is lazy-evaluated after ensuring the result will not underflow.
+        unchecked {
+            if (
+                (vaultUnderlyingDelta < expectedUnderlyingDelta &&
+                    expectedUnderlyingDelta - vaultUnderlyingDelta > _MAX_CONVERT_ERROR) ||
+                (vaultUnderlyingDelta > expectedUnderlyingDelta &&
+                    vaultUnderlyingDelta - expectedUnderlyingDelta > _MAX_CONVERT_ERROR)
+            ) {
+                // If this error is thrown, it means the convert result had an absolute error greater than
+                // _MAX_CONVERT_ERROR in comparison with the actual operation.
+                revert WrongUnderlyingAmount(address(wrappedToken));
+            }
 
-        if (
-            ((vaultWrappedDelta > expectedWrappedDelta) &&
-                (vaultWrappedDelta - expectedWrappedDelta > _MAX_CONVERT_ERROR)) ||
-            (vaultWrappedDelta < expectedWrappedDelta && expectedWrappedDelta - vaultWrappedDelta > _MAX_CONVERT_ERROR)
-        ) {
-            // If this error is thrown, it means the convert result had an absolute error greater than
-            // _MAX_CONVERT_ERROR in comparison with the actual operation.
-            revert WrongWrappedAmount(address(wrappedToken));
+            if (
+                ((vaultWrappedDelta > expectedWrappedDelta) &&
+                    (vaultWrappedDelta - expectedWrappedDelta > _MAX_CONVERT_ERROR)) ||
+                (vaultWrappedDelta < expectedWrappedDelta &&
+                    expectedWrappedDelta - vaultWrappedDelta > _MAX_CONVERT_ERROR)
+            ) {
+                // If this error is thrown, it means the convert result had an absolute error greater than
+                // _MAX_CONVERT_ERROR in comparison with the actual operation.
+                revert WrongWrappedAmount(address(wrappedToken));
+            }
         }
     }
 
