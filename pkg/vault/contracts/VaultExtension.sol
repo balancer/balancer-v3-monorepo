@@ -29,7 +29,7 @@ import {
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
-import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
@@ -65,7 +65,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using ScalingHelpers for *;
     using VaultExtensionsLib for IVault;
     using TransientStorageHelpers for *;
-    using StorageSlot for *;
+    using StorageSlotExtension for *;
     using PoolDataLib for PoolData;
 
     IVault private immutable _vault;
