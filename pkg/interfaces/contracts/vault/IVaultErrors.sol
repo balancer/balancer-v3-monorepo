@@ -121,8 +121,8 @@ interface IVaultErrors {
     /// @dev The user attempted to swap a token for itself.
     error CannotSwapSameToken();
 
-    /// @dev The user attempted to swap a token not in the pool.
-    error TokenNotRegistered();
+    /// @dev The user attempted to operate with a token that is not in the pool.
+    error TokenNotRegistered(IERC20 token);
 
     /// @dev An amount in or out has exceeded the limit specified in the swap request.
     error SwapLimit(uint256 amount, uint256 limit);
@@ -320,7 +320,4 @@ interface IVaultErrors {
 
     /// @dev Vault buffers are paused.
     error VaultBuffersArePaused();
-
-    /// @dev Token not found in the token array.
-    error TokenNotFound(IERC20 token);
 }

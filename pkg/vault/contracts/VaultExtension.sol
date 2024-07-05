@@ -202,7 +202,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 revert InputHelpers.TokensNotSorted();
             }
             if (token == previousToken) {
-                revert TokenAlreadyRegistered();
+                revert TokenAlreadyRegistered(token);
             }
 
             previousToken = token;

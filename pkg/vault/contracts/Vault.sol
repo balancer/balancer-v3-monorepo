@@ -271,9 +271,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         state.indexIn = _findTokenIndex(poolData.tokens, params.tokenIn);
         state.indexOut = _findTokenIndex(poolData.tokens, params.tokenOut);
 
-        // If either are zero, revert because the token wasn't registered to this pool.
-
-
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
         state.amountGivenScaled18 = _computeAmountGivenScaled18(params, poolData, state);
