@@ -1324,8 +1324,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             wrappedBalanceAsUnderlying = wrappedToken.convertToAssets(bufferBalance.getBalanceDerived());
         }
 
-        return
-            underlyingBalance > wrappedBalanceAsUnderlying ? (underlyingBalance - wrappedBalanceAsUnderlying) / 2 : 0;
+        uint256 surplus = 0;
+        if (underlyingBalance > wrappedBalanceAsUnderlying) {
+            unchecked {
+                surplus = (underlyingBalance - wrappedBalanceAsUnderlying) / 2;
+            }
+        }
+        return surplus;
     }
 
     /**
@@ -1347,7 +1352,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             underlyingBalanceAsWrapped = wrappedToken.convertToShares(bufferBalance.getBalanceRaw());
         }
 
-        return wrappedBalance > underlyingBalanceAsWrapped ? (wrappedBalance - underlyingBalanceAsWrapped) / 2 : 0;
+        uint256 surplus = 0;
+        if (wrappedBalance > underlyingBalanceAsWrapped) {
+            unchecked {
+                surplus = (wrappedBalance - underlyingBalanceAsWrapped) / 2;
+            }
+        }
+        return surplus;
     }
 
     /**
@@ -1371,7 +1382,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Wrap
             // Since deposit takes underlying tokens from the vault, the actual underlying tokens deposited is
             // underlyingBefore - underlyingAfter
-            vaultUnderlyingDelta = vaultUnderlyingBefore - vaultUnderlyingAfter;
+            // checked against underflow: vaultUnderlyingBefore > vaultUnderlyingAfter in `if` clause
+            unchecked {
+                vaultUnderlyingDelta = vaultUnderlyingBefore - vaultUnderlyingAfter;
+            }
             // Since deposit puts wrapped tokens into the vault, the actual wrapped minted is
             // wrappedAfter - wrappedBefore
             vaultWrappedDelta = vaultWrappedAfter - vaultWrappedBefore;
@@ -1379,7 +1393,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Unwrap
             // Since withdraw puts underlying tokens into the vault, the actual underlying token amount withdrawn is
             // assetsAfter - assetsBefore
-            vaultUnderlyingDelta = vaultUnderlyingAfter - vaultUnderlyingBefore;
+            // checked against underflow: vaultUnderlyingAfter > vaultUnderlyingBefore in `else` clause
+            unchecked {
+                vaultUnderlyingDelta = vaultUnderlyingAfter - vaultUnderlyingBefore;
+            }
             // Since withdraw takes wrapped tokens from the vault, the actual wrapped token amount burned is
             // wrappedBefore - wrappedAfter
             vaultWrappedDelta = vaultWrappedBefore - vaultWrappedAfter;
