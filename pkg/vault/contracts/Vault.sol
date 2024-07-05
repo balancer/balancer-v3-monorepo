@@ -1155,8 +1155,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // increase. To decrease underlying balance, we get the delta amount that was deposited
                 // (vaultUnderlyingDelta) and discounts the amount needed in the wrapping operation
                 // (amountInUnderlying). Same logic applies to wrapped balances.
+                // Note: bufferUnderlyingSurplus = vaultUnderlyingDelta - amountInUnderlying
                 bufferBalances = PackedTokenBalance.toPackedBalance(
-                    bufferBalances.getBalanceRaw() - (vaultUnderlyingDelta - amountInUnderlying),
+                    bufferBalances.getBalanceRaw() - bufferUnderlyingSurplus,
                     bufferBalances.getBalanceDerived() + (vaultWrappedDelta - amountOutWrapped)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
