@@ -268,18 +268,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapParams memory params,
         PoolData memory poolData
     ) private pure returns (SwapState memory state) {
-        int256 indexIn = _findTokenIndex(poolData.tokens, params.tokenIn);
-        int256 indexOut = _findTokenIndex(poolData.tokens, params.tokenOut);
+        state.indexIn = _findTokenIndex(poolData.tokens, params.tokenIn);
+        state.indexOut = _findTokenIndex(poolData.tokens, params.tokenOut);
 
         // If either are zero, revert because the token wasn't registered to this pool.
-        if (indexIn == -1 || indexOut == -1) {
-            // We require the pool to be initialized, which means it's also registered.
-            // This can only happen if the tokens are not registered.
-            revert TokenNotRegistered();
-        }
 
-        state.indexIn = uint256(indexIn);
-        state.indexOut = uint256(indexOut);
 
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
@@ -1475,10 +1468,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     ) external view withRegisteredPool(pool) returns (uint256, uint256) {
         IERC20[] memory poolTokens = _poolTokens[pool];
 
-        int256 index = _findTokenIndex(poolTokens, token);
-        if (index == -1) {
-            revert TokenNotRegistered();
-        }
+        uint256 index = _findTokenIndex(poolTokens, token);
 
         return (poolTokens.length, uint256(index));
     }

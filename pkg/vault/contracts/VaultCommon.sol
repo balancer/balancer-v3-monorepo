@@ -345,10 +345,10 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /// @dev Find the index of a token in a token array. Returns -1 if not found.
-    function _findTokenIndex(IERC20[] memory tokens, IERC20 token) internal pure returns (int256) {
+    function _findTokenIndex(IERC20[] memory tokens, IERC20 token) internal pure returns (uint256) {
         for (uint256 i = 0; i < tokens.length; i++) {
             if (tokens[i] == token) {
-                return int256(i);
+                return i;
             }
         }
 
