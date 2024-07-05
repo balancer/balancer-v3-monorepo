@@ -1,4 +1,4 @@
 contracts/test/
 
-contracts/openzeppelin/StorageSlot.sol
+contracts/openzeppelin/StorageSlotExtension.sol
 contracts/openzeppelin/SlotDerivation.sol
