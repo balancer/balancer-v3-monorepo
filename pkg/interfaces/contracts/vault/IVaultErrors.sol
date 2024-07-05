@@ -48,12 +48,6 @@ interface IVaultErrors {
      */
     error TokenAlreadyRegistered(IERC20 token);
 
-    /**
-     * @dev Token were already registered (i.e., it is a duplicate in the pool).
-     * @param tokens The tokens from the storage
-     */
-    error TokensAlreadyRegistered(IERC20[] tokens);
-
     /// @dev The token count is below the minimum allowed.
     error MinTokens();
 

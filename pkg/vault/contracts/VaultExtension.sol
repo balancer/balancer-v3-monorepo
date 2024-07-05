@@ -179,10 +179,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             revert PoolAlreadyRegistered(pool);
         }
 
-        if (_poolTokens[pool].length > 0) {
-            revert TokensAlreadyRegistered(_poolTokens[pool]);
-        }
-
         uint256 numTokens = params.tokenConfig.length;
         if (numTokens < _MIN_TOKENS) {
             revert MinTokens();
