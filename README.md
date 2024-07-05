@@ -6,7 +6,7 @@
 [![CI Status](https://github.com/balancer/balancer-v3-monorepo/workflows/CI/badge.svg)](https://github.com/balancer/balancer-v3-monorepo/actions)
 [![License](https://img.shields.io/badge/License-GPLv3-green.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-This repository contains the Balancer Protocol V3 core smart contracts, including the `Vault` and standard Pools, along with their tests, configuration, and deployment information.
+This repository contains the Balancer Protocol V3 core smart contracts, including the `Vault` and standard Pools, along with their tests.
 
 ## Structure
 
@@ -18,6 +18,11 @@ Active development occurs in this repository, which means some contracts in it m
 
 - [`v3-interfaces`](./pkg/interfaces): Solidity interfaces for all contracts.
 - [`v3-solidity-utils`](./pkg/solidity-utils): miscellaneous Solidity helpers and utilities used in many different contracts.
+- [`v3-pool-hooks`](./pkg/pool-hooks/): hook examples to illustrate potential capabilities and how to build one.
+- [`v3-pool-utils`](./pkg/pool-utils/): Solidity utilities used to develop Pool contracts.
+- [`v3-pool-stable`](./pkg/pool-stable/): contains [`StablePool`](./pkg/pool-stable/contracts/StablePool.sol), along with its associated factory.
+- [`v3-pool-weighted`](./pkg/pool-weighted): contains [`WeightedPool`](./pkg/pool-weighted/contracts/WeightedPool.sol), along with its associated factory.
+- [`v3-vault`](./pkg/vault): contains the main [`Vault`](./pkg/vault/contracts/Vault.sol) contract, which is the cornerstone of Balancer V3, and its extensions. Also includes the standard [`Router`](./pkg/vault/contracts/Router.sol) and [`BatchRouter`](./pkg/vault/contracts/BatchRouter.sol), which supports end-user interactions with the Vault.
 
 ## Pre-requisites
 
@@ -50,7 +55,7 @@ $ sed 's,YOUR_MAINNET_RPC_URL,<YOUR_RPC_URL>' .env.example > .env
 $ source .env
 ```
 
-### Regular build
+### Regular build & test
 
 ```bash
 $ yarn build # compile all contracts
@@ -73,7 +78,25 @@ $ yarn test
 
 You can see a sample report of a test run [here](./audits/test-report.md).
 
-### Foundry (Forge) tests
+#### Foundry (Forge) tests
+
+To instead run a single package's forge tests, run:
+
+```bash
+$ cd pkg/<package> # e.g. cd pkg/vault
+$ yarn test:forge
+```
+
+#### Hardhat tests
+
+To instead run a single package's hardhat tests, run:
+
+```bash
+$ cd pkg/<package> # e.g. cd pkg/vault
+$ yarn test:hardhat
+```
+
+Hardhat tests will also update snapshots for bytecode size and gas usage if applicable for a given package.
 
 ## Static analysis
 
@@ -110,6 +133,8 @@ $ yarn coverage
 ```
 
 The `coverage` command generates a coverage report for each package found in the `./package/coverage/index.html` directory. The `coverage.sh` script is used to merge HardHat and Forge coverage reports into a unified report, leveraging the lcov command-line utility.
+
+**Note: We suggest adopting lcov 1.16 since `forge coverage --report lcov` command works better in this version.**
 
 ## Security
 

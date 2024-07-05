@@ -71,8 +71,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /**
      * @notice Records the `credit` for a given token.
-     * @param token   The ERC20 token for which the 'credit' will be accounted.
-     * @param credit  The amount of `token` supplied to the Vault in favor of the caller.
+     * @param token The ERC20 token for which the 'credit' will be accounted
+     * @param credit The amount of `token` supplied to the Vault in favor of the caller
      */
     function _supplyCredit(IERC20 token, uint256 credit) internal {
         _accountDelta(token, -credit.toInt256());
@@ -80,21 +80,21 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /**
      * @notice Records the `debt` for a given token.
-     * @param token   The ERC20 token for which the `debt` will be accounted.
-     * @param debt    The amount of `token` taken from the Vault in favor of the caller.
+     * @param token The ERC20 token for which the `debt` will be accounted
+     * @param debt The amount of `token` taken from the Vault in favor of the caller
      */
     function _takeDebt(IERC20 token, uint256 debt) internal {
         _accountDelta(token, debt.toInt256());
     }
 
     /**
-     * @dev Accounts the delta for the given token.
-     * Positive delta represents debt, while negative delta represents surplus.
+     * @dev Accounts the delta for the given token. A positive delta represents debt,
+     * while a negative delta represents surplus.
      *
-     * @param token   The ERC20 token for which the delta is being accounted.
-     * @param delta   The difference in the token balance.
-     *                Positive indicates a debit or a decrease in Vault's tokens,
-     *                negative indicates a credit or an increase in Vault's tokens.
+     * @param token The ERC20 token for which the delta is being accounted
+     * @param delta The difference in the token balance
+     * Positive indicates a debit or a decrease in Vault's tokens,
+     * negative indicates a credit or an increase in Vault's tokens.
      */
     function _accountDelta(IERC20 token, int256 delta) internal {
         // If the delta is zero, there's nothing to account for.
@@ -214,7 +214,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         _;
     }
 
-    /// @dev Reverts unless `pool` corresponds to an intialized Pool.
+    /// @dev Reverts unless `pool` corresponds to an initialized Pool.
     modifier withInitializedPool(address pool) {
         _ensureInitializedPool(pool);
         _;

@@ -38,11 +38,6 @@ contract BatchRouterMutationTest is BaseVaultTest {
         BaseVaultTest.setUp();
     }
 
-    /*
-      swapExactInHook
-        [] nonReentrant
-        [x] onlyVault
-    */
     function testSwapExactInHookWhenNotVault() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths;
 
@@ -58,12 +53,7 @@ contract BatchRouterMutationTest is BaseVaultTest {
         batchRouter.swapExactInHook(params);
     }
 
-    /*
-      swapExactOutHook
-        [] nonReentrant
-        [x] onlyVault
-    */
-    function testSwapExactOuthookWhenNotVault() public {
+    function testSwapExactOutHookWhenNotVault() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths;
         IBatchRouter.SwapExactOutHookParams memory params = IBatchRouter.SwapExactOutHookParams(
             address(0),
@@ -77,11 +67,6 @@ contract BatchRouterMutationTest is BaseVaultTest {
         batchRouter.swapExactOutHook(params);
     }
 
-    /*
-      querySwapExactInHook
-        [] nonReentrant
-        [x] onlyVault
-    */
     function testQuerySwapExactInHookWhenNotVault() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths;
 
@@ -97,11 +82,6 @@ contract BatchRouterMutationTest is BaseVaultTest {
         batchRouter.querySwapExactInHook(params);
     }
 
-    /*
-      querySwapExactOut
-        [] nonReentrant
-        [x] onlyVault
-    */
     function testQuerySwapExactOutWhenNotVault() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths;
         IBatchRouter.SwapExactOutHookParams memory params = IBatchRouter.SwapExactOutHookParams(

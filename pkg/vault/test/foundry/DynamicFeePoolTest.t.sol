@@ -97,7 +97,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams, 0),
+            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams, pool, 0),
             1 // callCount
         );
 
@@ -125,7 +125,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams, 0),
+            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams, pool, 0),
             1 // callCount
         );
 
@@ -179,6 +179,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
                     router: address(0),
                     userData: bytes("")
                 }),
+                pool,
                 10e16
             ),
             1 // callCount

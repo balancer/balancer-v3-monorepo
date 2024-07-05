@@ -6,6 +6,11 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+import {
+    IStablePool,
+    StablePoolDynamicData,
+    StablePoolImmutableData
+} from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -19,7 +24,7 @@ import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Stab
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 /// @notice Basic Stable Pool.
-contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, PoolInfo, Version {
+contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, PoolInfo, Version {
     using FixedPoint for uint256;
     using SafeCast for *;
 
@@ -157,13 +162,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Poo
         }
     }
 
-    /**
-     * @dev Begins changing the amplification parameter to `rawEndValue` over time. The value will change linearly until
-     * `endTime` is reached, when it will be `rawEndValue`.
-     *
-     * NOTE: Internally, the amplification parameter is represented using higher precision. The values returned by
-     * `getAmplificationParameter` have to be corrected to account for this when comparing to `rawEndValue`.
-     */
+    /// @inheritdoc IStablePool
     function startAmplificationParameterUpdate(uint256 rawEndValue, uint256 endTime) external authenticate {
         if (rawEndValue < StableMath.MIN_AMP) {
             revert AmplificationFactorTooLow();
@@ -208,9 +207,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Poo
         emit AmpUpdateStarted(currentValueUint64, endValueUint64, startTimeUint32, endTimeUint32);
     }
 
-    /**
-     * @dev Stops the amplification parameter change process, keeping the current value.
-     */
+    /// @inheritdoc IStablePool
     function stopAmplificationParameterUpdate() external authenticate {
         (uint256 currentValue, bool isUpdating) = _getAmplificationParameter();
 
@@ -221,12 +218,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Poo
         _stopAmplification(currentValue);
     }
 
-    /**
-     * @notice Get all the amplifcation parameters.
-     * @return value Current amplification parameter value (could be in the middle of an update)
-     * @return isUpdating True if an amp update is in progress
-     * @return precision The raw value is multiplied by this number for greater precision during updates
-     */
+    /// @inheritdoc IStablePool
     function getAmplificationParameter() external view returns (uint256 value, bool isUpdating, uint256 precision) {
         (value, isUpdating) = _getAmplificationParameter();
         precision = StableMath.AMP_PRECISION;
@@ -249,7 +241,7 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Poo
 
             // We can skip checked arithmetic as:
             //  - block.timestamp is always larger or equal to startTime
-            //  - endTime is alawys larger than startTime
+            //  - endTime is always larger than startTime
             //  - the value delta is bounded by the largest amplification parameter, which never causes the
             //    multiplication to overflow.
             // This also means that the following computation will never revert nor yield invalid results.
@@ -292,5 +284,22 @@ contract StablePool is IBasePool, BalancerPoolToken, BasePoolAuthentication, Poo
     /// @inheritdoc ISwapFeePercentageBounds
     function getMaximumSwapFeePercentage() external pure returns (uint256) {
         return _MAX_SWAP_FEE_PERCENTAGE;
+    }
+
+    /// @inheritdoc IStablePool
+    function getStablePoolDynamicData() external view returns (StablePoolDynamicData memory data) {
+        data.liveBalances = _vault.getCurrentLiveBalances(address(this));
+        (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
+        data.staticSwapFeePercentage = _vault.getStaticSwapFeePercentage((address(this)));
+        data.totalSupply = totalSupply();
+        data.bptRate = getRate();
+        (data.amplificationParameter, data.isAmpUpdating) = _getAmplificationParameter();
+    }
+
+    /// @inheritdoc IStablePool
+    function getStablePoolImmutableData() external view returns (StablePoolImmutableData memory data) {
+        data.tokens = _vault.getPoolTokens(address(this));
+        (data.decimalScalingFactors, ) = _vault.getPoolTokenRates(address(this));
+        data.amplificationParameterPrecision = StableMath.AMP_PRECISION;
     }
 }

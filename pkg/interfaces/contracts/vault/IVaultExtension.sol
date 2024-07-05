@@ -33,10 +33,10 @@ interface IVaultExtension {
     function getNonzeroDeltaCount() external view returns (uint256);
 
     /**
-     * @notice Retrieves the token delta for a specific user and token.
+     * @notice Retrieves the token delta for a specific token.
      * @dev This function allows reading the value from the `_tokenDeltas` mapping.
      * @param token The token for which the delta is being fetched
-     * @return The delta of the specified token for the specified user
+     * @return The delta of the specified token
      */
     function getTokenDelta(IERC20 token) external view returns (int256);
 
@@ -392,10 +392,10 @@ interface IVaultExtension {
      * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
      * anything else will revert.
      *
-     * Allows querying any operation on the Vault that has the `withLocker` modifier.
+     * Allows querying any operation on the Vault that has the `onlyWhenUnlocked` modifier.
      *
      * Allows the external calling of a function via the Vault contract to
-     * access Vault's functions guarded by `withLocker`.
+     * access Vault's functions guarded by `onlyWhenUnlocked`.
      * `transient` modifier ensuring balances changes within the Vault are settled.
      *
      * This call always reverts, returning the result in the revert reason.

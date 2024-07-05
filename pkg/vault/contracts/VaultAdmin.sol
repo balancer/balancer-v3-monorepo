@@ -202,7 +202,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
         PoolFunctionPermission memory roleAssignment = _poolFunctionPermissions[pool][actionId];
 
-        // If there is no role assigment, fall through and delegate to governance.
+        // If there is no role assignment, fall through and delegate to governance.
         if (roleAssignment.account != address(0)) {
             // If the sender matches the permissioned account, all good; just return.
             if (msg.sender == roleAssignment.account) {
@@ -471,6 +471,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
         _takeDebt(IERC20(underlyingToken), amountUnderlying);
         _takeDebt(wrappedToken, amountWrapped);
+
+        emit LiquidityAddedToBuffer(wrappedToken, sharesOwner, amountWrapped, amountUnderlying, issuedShares);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -508,6 +510,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
         _supplyCredit(IERC20(_bufferAssets[IERC20(address(wrappedToken))]), removedUnderlyingBalance);
         _supplyCredit(wrappedToken, removedWrappedBalance);
+
+        emit LiquidityRemovedFromBuffer(
+            wrappedToken,
+            sharesOwner,
+            removedWrappedBalance,
+            removedUnderlyingBalance,
+            sharesToRemove
+        );
     }
 
     /// @inheritdoc IVaultAdmin

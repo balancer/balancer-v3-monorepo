@@ -4,19 +4,36 @@ import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH } from '@balancer-labs/v3-helpers/src/time';
 
 import { Benchmark } from '@balancer-labs/v3-benchmarks/src/PoolBenchmark.behavior';
-import { PoolFactoryMock } from '@balancer-labs/v3-vault/typechain-types';
+import { PoolFactoryMock, MinimalHooksPoolMock } from '@balancer-labs/v3-vault/typechain-types';
 import { ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { LiquidityManagementStruct, PoolRoleAccountsStruct } from '../../typechain-types/contracts/Vault';
 
-class PoolMockBenchmark extends Benchmark {
+class PoolMockWithHooksBenchmark extends Benchmark {
   constructor(dirname: string) {
-    super(dirname, 'PoolMock');
+    super(dirname, 'PoolMockWithHooks');
   }
 
   override async deployPool(): Promise<BaseContract> {
     const factory = (await deploy('PoolFactoryMock', {
       args: [await this.vault.getAddress(), MONTH * 12],
     })) as unknown as PoolFactoryMock;
+
+    const hooks = (await deploy('MinimalHooksPoolMock', {
+      args: [this.vault],
+    })) as unknown as MinimalHooksPoolMock;
+
+    await hooks.setHookFlags({
+      enableHookAdjustedAmounts: false,
+      shouldCallBeforeInitialize: true,
+      shouldCallAfterInitialize: true,
+      shouldCallComputeDynamicSwapFee: true,
+      shouldCallBeforeSwap: true,
+      shouldCallAfterSwap: true,
+      shouldCallBeforeAddLiquidity: true,
+      shouldCallAfterAddLiquidity: true,
+      shouldCallBeforeRemoveLiquidity: true,
+      shouldCallAfterRemoveLiquidity: true,
+    });
 
     const pool: string = await deploy('PoolMock', { args: [this.vault, 'Pool Mock', 'MOCK'] });
 
@@ -28,17 +45,17 @@ class PoolMockBenchmark extends Benchmark {
 
     const liquidityManagement: LiquidityManagementStruct = {
       disableUnbalancedLiquidity: false,
-      enableAddLiquidityCustom: false,
-      enableRemoveLiquidityCustom: false,
+      enableAddLiquidityCustom: true,
+      enableRemoveLiquidityCustom: true,
       enableDonation: true,
     };
 
-    await factory.registerPool(pool, this.tokenConfig, roleAccounts, ZERO_ADDRESS, liquidityManagement);
+    await factory.registerPool(pool, this.tokenConfig, roleAccounts, hooks, liquidityManagement);
 
     return pool as unknown as BaseContract;
   }
 }
 
-describe('PoolMock Gas Benchmark', function () {
-  new PoolMockBenchmark(__dirname).itBenchmarksSwap();
+describe('PoolMock with Hooks Gas Benchmark', function () {
+  new PoolMockWithHooksBenchmark(__dirname).itBenchmarks();
 });

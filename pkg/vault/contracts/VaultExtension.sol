@@ -366,7 +366,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     ) external onlyVaultDelegateCall onlyWhenUnlocked withRegisteredPool(pool) returns (uint256 bptAmountOut) {
         _ensureUnpaused(pool);
 
-        // Balances are zero until after initialize is callled, so there is no need to charge pending yield fee here.
+        // Balances are zero until after initialize is called, so there is no need to charge pending yield fee here.
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
 
         if (poolData.poolConfigBits.isPoolInitialized()) {
@@ -591,6 +591,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return
             HooksConfigLib.callComputeDynamicSwapFeeHook(
                 swapParams,
+                pool,
                 _poolConfigBits[pool].getStaticSwapFeePercentage(),
                 _hooksContracts[pool]
             );
