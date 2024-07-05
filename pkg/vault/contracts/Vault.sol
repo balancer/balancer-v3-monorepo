@@ -1480,7 +1480,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert TokenNotRegistered();
         }
 
-        return (poolTokens.length, uint(index));
+        return (poolTokens.length, uint256(index));
     }
 
     /*******************************************************************************
