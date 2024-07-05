@@ -7,11 +7,11 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../../contracts/helpers/TransientStorageHelpers.sol";
-import "../../contracts/openzeppelin/StorageSlot.sol";
+import "../../contracts/openzeppelin/StorageSlotExtension.sol";
 
 contract TransientStorageHelpersTest is Test {
     using TransientStorageHelpers for *;
-    using StorageSlot for StorageSlot.Uint256SlotType;
+    using StorageSlotExtension for StorageSlotExtension.Uint256SlotType;
 
     mapping(IERC20 => int256) private tokenDeltaMapping;
     address[] private addressArray;
@@ -108,7 +108,7 @@ contract TransientStorageHelpersTest is Test {
     function testTransientUint__Fuzz(uint256 value) public {
         storageUint = 1234;
 
-        StorageSlot.Uint256SlotType transientUint;
+        StorageSlotExtension.Uint256SlotType transientUint;
         assembly {
             transientUint := storageUint.slot
         }
@@ -123,7 +123,7 @@ contract TransientStorageHelpersTest is Test {
         vm.assume(value != type(uint256).max);
         storageUint = 1234;
 
-        StorageSlot.Uint256SlotType transientUint;
+        StorageSlotExtension.Uint256SlotType transientUint;
         assembly {
             transientUint := storageUint.slot
         }
@@ -140,7 +140,7 @@ contract TransientStorageHelpersTest is Test {
         vm.assume(value != 0);
         storageUint = 1234;
 
-        StorageSlot.Uint256SlotType transientUint;
+        StorageSlotExtension.Uint256SlotType transientUint;
         assembly {
             transientUint := storageUint.slot
         }
@@ -154,7 +154,7 @@ contract TransientStorageHelpersTest is Test {
     }
 
     function testTransientIncrementOverflow() public {
-        StorageSlot.Uint256SlotType transientUint;
+        StorageSlotExtension.Uint256SlotType transientUint;
         assembly {
             transientUint := storageUint.slot
         }
@@ -166,7 +166,7 @@ contract TransientStorageHelpersTest is Test {
     }
 
     function testTransientDecrementUnderflow() public {
-        StorageSlot.Uint256SlotType transientUint;
+        StorageSlotExtension.Uint256SlotType transientUint;
         assembly {
             transientUint := storageUint.slot
         }
@@ -177,7 +177,7 @@ contract TransientStorageHelpersTest is Test {
         transientUint.tDecrement();
     }
 
-    function testCalculateSlot() public {
+    function testCalculateSlot() public pure {
         bytes32 slot = TransientStorageHelpers.calculateSlot("domain", "name");
         assertEq(
             slot,

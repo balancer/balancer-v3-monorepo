@@ -144,7 +144,7 @@ contract VaultUnitTest is BaseTest {
         poolData.tokens[1] = usdc;
 
         // Live balances will be updated, so we just set them equal to the raw ones.
-        vault.manualSetPoolTokenBalances(pool, defaultTokens, tokenBalances, tokenBalances);
+        vault.manualSetPoolTokensAndBalances(pool, defaultTokens, tokenBalances, tokenBalances);
 
         vm.mockCall(rateProvider, abi.encodeWithSelector(IRateProvider.getRate.selector), abi.encode(secondTokenRate));
         poolData = vault.manualUpdatePoolDataLiveBalancesAndRates(pool, poolData, Rounding.ROUND_UP);
