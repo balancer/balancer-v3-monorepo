@@ -7,6 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "./IVault.sol";
 import { IHooks } from "./IHooks.sol";
 import { IBasePool } from "./IBasePool.sol";
+import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import "./VaultTypes.sol";
 
 interface IVaultExtension {
@@ -329,6 +330,12 @@ interface IVaultExtension {
         address pool,
         IBasePool.PoolSwapParams memory swapParams
     ) external view returns (bool, uint256);
+
+    /**
+     * @notice Returns the Protocol Fee Controller address.
+     * @return Address of the ProtocolFeeController
+     */
+    function getProtocolFeeController() external view returns (IProtocolFeeController);
 
     /*******************************************************************************
                                     Recovery Mode

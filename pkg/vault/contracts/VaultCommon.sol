@@ -332,10 +332,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
 
         // Still has to be a valid percentage, regardless of what the pool defines.
-        if (
-            swapFeePercentage > ISwapFeePercentageBounds(pool).getMaximumSwapFeePercentage() ||
-            swapFeePercentage > FixedPoint.ONE
-        ) {
+        if (swapFeePercentage > ISwapFeePercentageBounds(pool).getMaximumSwapFeePercentage()) {
             revert SwapFeePercentageTooHigh();
         }
 

@@ -994,11 +994,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
     }
 
-    /// @inheritdoc IVaultMain
-    function getProtocolFeeController() external view returns (IProtocolFeeController) {
-        return _protocolFeeController;
-    }
-
     /*******************************************************************************
                              Yield-bearing token buffers
     *******************************************************************************/
