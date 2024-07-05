@@ -42,7 +42,6 @@ struct SwapInternalStateLocals {
 }
 
 contract VaultMock is IVaultMainMock, Vault {
-    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using ScalingHelpers for uint256;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for *;
@@ -236,19 +235,21 @@ contract VaultMock is IVaultMainMock, Vault {
         }
     }
 
-    function manualSetPoolTokenBalances(
+    function manualSetPoolTokensAndBalances(
         address pool,
         IERC20[] memory tokens,
         uint256[] memory tokenBalanceRaw,
         uint256[] memory tokenBalanceLiveScaled18
     ) public {
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        require(tokens.length == tokenBalanceRaw.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
+        require(tokens.length == tokenBalanceLiveScaled18.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
+
+        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
         for (uint256 i = 0; i < tokens.length; ++i) {
-            poolTokenBalances.set(
-                tokens[i],
-                PackedTokenBalance.toPackedBalance(tokenBalanceRaw[i], tokenBalanceLiveScaled18[i])
-            );
+            poolTokenBalances[i] = PackedTokenBalance.toPackedBalance(tokenBalanceRaw[i], tokenBalanceLiveScaled18[i]);
         }
+
+        _poolTokens[pool] = tokens;
     }
 
     function mockIsUnlocked() public view onlyWhenUnlocked {}
@@ -367,28 +368,24 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
 
-        uint256 numTokens = poolTokenBalances.length();
+        uint256 numTokens = _poolTokens[pool].length;
         balancesRaw = new uint256[](numTokens);
-        bytes32 packedBalances;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            (, packedBalances) = poolTokenBalances.unchecked_at(i);
-            balancesRaw[i] = packedBalances.getBalanceRaw();
+            balancesRaw[i] = poolTokenBalances[i].getBalanceRaw();
         }
     }
 
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances) {
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
 
-        uint256 numTokens = poolTokenBalances.length();
+        uint256 numTokens = _poolTokens[pool].length;
         lastLiveBalances = new uint256[](numTokens);
-        bytes32 packedBalances;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            (, packedBalances) = poolTokenBalances.unchecked_at(i);
-            lastLiveBalances[i] = packedBalances.getBalanceDerived();
+            lastLiveBalances[i] = poolTokenBalances[i].getBalanceDerived();
         }
     }
 

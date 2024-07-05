@@ -53,7 +53,12 @@ contract PoolInfoTest is BaseTest {
     function testGetTokenInfo() public {
         uint256[] memory expectedRawBalances = [uint256(1), uint256(2)].toMemoryArray();
         uint256[] memory expectedLastLiveBalances = [uint256(3), uint256(4)].toMemoryArray();
-        vault.manualSetPoolTokenBalances(address(poolInfo), poolTokens, expectedRawBalances, expectedLastLiveBalances);
+        vault.manualSetPoolTokensAndBalances(
+            address(poolInfo),
+            poolTokens,
+            expectedRawBalances,
+            expectedLastLiveBalances
+        );
 
         TokenInfo[] memory expectedTokenInfo = new TokenInfo[](2);
         expectedTokenInfo[0] = TokenInfo({
@@ -125,7 +130,12 @@ contract PoolInfoTest is BaseTest {
     function testGetCurrentLiveBalances() public {
         uint256[] memory expectedRawBalances = [uint256(12), uint256(34)].toMemoryArray();
         uint256[] memory expectedLastLiveBalances = [uint256(56), uint256(478)].toMemoryArray();
-        vault.manualSetPoolTokenBalances(address(poolInfo), poolTokens, expectedRawBalances, expectedLastLiveBalances);
+        vault.manualSetPoolTokensAndBalances(
+            address(poolInfo),
+            poolTokens,
+            expectedRawBalances,
+            expectedLastLiveBalances
+        );
 
         PoolConfig memory config;
         config.isPoolRegistered = true;
