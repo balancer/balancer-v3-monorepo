@@ -145,9 +145,10 @@ contract DynamicFeePoolTest is BaseVaultTest {
             1 // callCount
         );
 
+        // The fee cannot be 100%, or the trade amount will be below the minimum.
         uint256 almostOne = 0.9999e18;
 
-        // Set a 100% fee, and bob as 0 swap fee sender.
+        // Set a fee near 100%, and bob as 0 swap fee sender.
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(almostOne);
         PoolHooksMock(poolHooksContract).setSpecialSender(bob);
 
