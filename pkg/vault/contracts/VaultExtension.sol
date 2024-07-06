@@ -11,6 +11,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
@@ -714,6 +715,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool
     ) external view onlyVaultDelegateCall withRegisteredPool(pool) returns (PoolRoleAccounts memory) {
         return _poolRoleAccounts[pool];
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getProtocolFeeController() external view returns (IProtocolFeeController) {
+        return _protocolFeeController;
     }
 
     /*******************************************************************************
