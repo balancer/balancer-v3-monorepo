@@ -52,7 +52,7 @@ contract VaultStorage {
 
     // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
     // exploitation of rounding errors
-    uint256 internal constant _MINIMUM_SWAP_AMOUNT = 1e6;
+    uint256 internal constant _MINIMUM_TRADE_AMOUNT = 1e6;
 
     // Pools can have two, three, or four tokens.
     uint256 internal constant _MIN_TOKENS = 2;

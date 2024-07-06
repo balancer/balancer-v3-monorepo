@@ -215,8 +215,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             swapParams = _buildPoolSwapParams(params, state, poolData);
         }
 
-        if (state.amountGivenScaled18 < _MINIMUM_SWAP_AMOUNT) {
-            revert SwapAmountTooSmall();
+        if (state.amountGivenScaled18 < _MINIMUM_TRADE_AMOUNT) {
+            revert TradeAmountTooSmall();
         }
 
         // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
@@ -243,8 +243,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountCalculatedScaled18;
         (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, swapParams);
 
-        if (amountCalculatedScaled18 < _MINIMUM_SWAP_AMOUNT) {
-            revert SwapAmountTooSmall();
+        if (amountCalculatedScaled18 < _MINIMUM_TRADE_AMOUNT) {
+            revert TradeAmountTooSmall();
         }
 
         // If the hook contract does not exist or does not implement onAfterSwap, PoolConfigLib returns the original
@@ -672,14 +672,26 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         amountsInRaw = new uint256[](locals.numTokens);
 
         for (uint256 i = 0; i < locals.numTokens; ++i) {
+            uint256 amountInRaw;
+
             // 1) Calculate raw amount in.
-            // amountsInRaw are amounts actually entering the Pool, so we round up.
-            // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` hook
-            uint256 amountInRaw = amountsInScaled18[i].toRawUndoRateRoundUp(
-                poolData.decimalScalingFactors[i],
-                poolData.tokenRates[i]
-            );
-            amountsInRaw[i] = amountInRaw;
+            {
+                uint256 amountInScaled18 = amountsInScaled18[i];
+                if (amountInScaled18 > 0) {
+                    if (amountInScaled18 < _MINIMUM_TRADE_AMOUNT) {
+                        revert TradeAmountTooSmall();
+                    }
+
+                    // amountsInRaw are amounts actually entering the Pool, so we round up.
+                    // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` hook
+                    amountInRaw = amountInScaled18.toRawUndoRateRoundUp(
+                        poolData.decimalScalingFactors[i],
+                        poolData.tokenRates[i]
+                    );
+                }
+
+                amountsInRaw[i] = amountInRaw;
+            }
 
             IERC20 token = poolData.tokens[i];
 
@@ -893,13 +905,25 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         amountsOutRaw = new uint256[](locals.numTokens);
 
         for (uint256 i = 0; i < locals.numTokens; ++i) {
+            uint256 amountOutRaw;
+
             // 1) Calculate raw amount out.
-            // amountsOut are amounts exiting the Pool, so we round down.
-            // Do not mutate in place yet, as we need them scaled for the `onAfterRemoveLiquidity` hook
-            uint256 amountOutRaw = amountsOutScaled18[i].toRawUndoRateRoundDown(
-                poolData.decimalScalingFactors[i],
-                poolData.tokenRates[i]
-            );
+            {
+                uint256 amountOutScaled18 = amountsOutScaled18[i];
+                if (amountOutScaled18 > 0) {
+                    if (amountOutScaled18 < _MINIMUM_TRADE_AMOUNT) {
+                        revert TradeAmountTooSmall();
+                    }
+
+                    // amountsOut are amounts exiting the Pool, so we round down.
+                    // Do not mutate in place yet, as we need them scaled for the `onAfterRemoveLiquidity` hook
+                    amountOutRaw = amountsOutScaled18[i].toRawUndoRateRoundDown(
+                        poolData.decimalScalingFactors[i],
+                        poolData.tokenRates[i]
+                    );
+                }
+            }
+
             amountsOutRaw[i] = amountOutRaw;
 
             IERC20 token = poolData.tokens[i];
