@@ -8,7 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { FEE_SCALING_FACTOR, FEE_SCALING_MASK } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
     SingletonAuthentication
@@ -194,10 +194,14 @@ contract ProtocolFeeController is
             protocolFeePercentage +
             protocolFeePercentage.complement().mulDown(poolCreatorFeePercentage);
 
-        // Ensure it is not too high precision
-        if ((aggregateFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR != aggregateFeePercentage) {
-            revert IVaultErrors.FeePrecisionTooHigh();
-        }
+        // Primary fee percentages are 18-decimal values, stored here in 64 bits, and calculated with full 256-bit
+        // precision. However, the resulting aggregate fees are stored in the Vault with 24-bit precision, which
+        // corresponds to 0.00001% resolution (i.e., a fee can be 1%, 1.00001%, 1.00002%, but not 1.000005%).
+        // Ensure there will be no precision loss in the Vault - which would lead to a discrepancy between the
+        // aggregate fee calculated here and that stored in the Vault - by truncating it here before passing the
+        // value to the Vault. Note that this means any external calculation of the aggregate fee would also need
+        // to do this.
+        aggregateFeePercentage &= ~FEE_SCALING_MASK;
     }
 
     function _ensureCallerIsPoolCreator(address pool) internal view {
