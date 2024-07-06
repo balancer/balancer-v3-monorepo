@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.24;
 
-import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
+
 import {
     TransientStorageHelpers,
     TokenDeltaMappingSlotType
@@ -17,14 +18,14 @@ contract VaultStorageTest is BaseVaultTest {
 
     function testGetIsUnlockedSlot() external view {
         assertEq(
-            StorageSlot.BooleanSlotType.unwrap(vault.manualGetIsUnlocked()),
+            StorageSlotExtension.BooleanSlotType.unwrap(vault.manualGetIsUnlocked()),
             TransientStorageHelpers.calculateSlot("VaultStorage", "isUnlocked")
         );
     }
 
     function testGetNonzeroDeltaCountSlot() external view {
         assertEq(
-            StorageSlot.Uint256SlotType.unwrap(vault.manualGetNonzeroDeltaCount()),
+            StorageSlotExtension.Uint256SlotType.unwrap(vault.manualGetNonzeroDeltaCount()),
             TransientStorageHelpers.calculateSlot("VaultStorage", "nonZeroDeltaCount")
         );
     }
