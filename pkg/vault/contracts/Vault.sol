@@ -1083,9 +1083,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
 
+            uint256 newDerivedBalance;
+            unchecked {
+                // We have verified above that this is safe to do unchecked.
+                newDerivedBalance = bufferBalances.getBalanceDerived() - amountOutWrapped;
+            }
+
             bufferBalances = PackedTokenBalance.toPackedBalance(
                 bufferBalances.getBalanceRaw() + amountInUnderlying,
-                bufferBalances.getBalanceDerived() - amountOutWrapped
+                newDerivedBalance
             );
             _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
         } else {
