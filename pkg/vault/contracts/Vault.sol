@@ -1217,6 +1217,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Gets the amount of wrapped tokens to unwrap in order to rebalance the buffer
             uint256 bufferWrappedSurplus = _getBufferWrappedSurplus(bufferBalances, wrappedToken);
 
+            if (bufferWrappedSurplus > 0) {
+                bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
+            }
+
             if (kind == SwapKind.EXACT_IN) {
                 // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so redeem is called
                 // The amount of wrapped tokens to redeem is the necessary amount to fulfill the trade
@@ -1227,18 +1231,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // EXACT_OUT requires the exact amount of underlying tokens to be returned, so withdraw is called.
                 // The amount of underlying tokens to withdraw is the necessary amount to fulfill the trade
                 // (amountOutUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
-                // (bufferUnderlyingSurplus).
-                if (bufferWrappedSurplus > 0) {
-                    bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
-
-                    wrappedToken.withdraw(
-                        amountOutUnderlying + bufferUnderlyingSurplus,
-                        address(this),
-                        address(this)
-                    );
-                } else {
-                    wrappedToken.withdraw(amountOutUnderlying, address(this), address(this));
-                }
+                // (bufferUnderlyingSurplus). Note that `bufferUnderlyingSurplus` will be zero if there is no
+                // `bufferWrappedSurplus`.
+                wrappedToken.withdraw(amountOutUnderlying + bufferUnderlyingSurplus, address(this), address(this));
             }
 
             (uint256 vaultUnderlyingDelta, uint256 vaultWrappedDelta) = _updateReservesAfterWrapping(
@@ -1277,7 +1272,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     // Since amountOutUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus,
                     // underlyingIncrease = bufferUnderlyingSurplus.
                     bufferBalances.getBalanceRaw() + bufferUnderlyingSurplus,
-
                     // wrappedDecrease = vaultWrappedDelta - amountInWrapped
 
                     // Since amountInWrapped = vaultWrappedDelta - bufferWrappedSurplus,
