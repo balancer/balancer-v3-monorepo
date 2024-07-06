@@ -1080,6 +1080,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             return _calculateBufferAmounts(WrappingDirection.WRAP, kind, wrappedToken, amountGiven);
         }
 
+        uint256 bufferWrappedSurplus;
+
         if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
 
@@ -1104,6 +1106,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Gets the amount of underlying to wrap in order to rebalance the buffer
             uint256 bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalances, wrappedToken);
 
+            if (bufferUnderlyingSurplus > 0) {
+                bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
+            }
+
             if (kind == SwapKind.EXACT_IN) {
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                 // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
@@ -1114,11 +1120,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called
                 wrappedToken.deposit(calculatedUnderlyingDelta, address(this));
             } else {
-                if (bufferUnderlyingSurplus > 0) {
-                    calculatedWrappedDelta = amountOutWrapped + wrappedToken.convertToShares(bufferUnderlyingSurplus);
-                } else {
-                    calculatedWrappedDelta = amountOutWrapped;
-                }
+                // Nnote that `bufferWrappedSurplus` will be zero if there is no bufferUnderlyingSurplus.
+                calculatedWrappedDelta = amountOutWrapped + bufferWrappedSurplus;
+
                 // Add convert error because mint can consume a different amount of tokens than we anticipated with
                 // convert
                 underlyingToken.forceApprove(
@@ -1155,16 +1159,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 amountInUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus;
                 // Since bufferUnderlyingSurplus was wrapped, the final amountOut needs to discount the wrapped amount
                 // that will stay in the buffer
-                amountOutWrapped = vaultWrappedDelta - wrappedToken.convertToShares(bufferUnderlyingSurplus);
+                amountOutWrapped = vaultWrappedDelta - bufferWrappedSurplus;
 
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
                 // increase. To decrease underlying balance, we get the delta amount that was deposited
                 // (vaultUnderlyingDelta) and discounts the amount needed in the wrapping operation
                 // (amountInUnderlying). Same logic applies to wrapped balances.
                 // Note: bufferUnderlyingSurplus = vaultUnderlyingDelta - amountInUnderlying
+                //       bufferWrappedSurplus = vaultWrappedDelta - amountOutWrapped
                 bufferBalances = PackedTokenBalance.toPackedBalance(
                     bufferBalances.getBalanceRaw() - bufferUnderlyingSurplus,
-                    bufferBalances.getBalanceDerived() + (vaultWrappedDelta - amountOutWrapped)
+                    bufferBalances.getBalanceDerived() + bufferWrappedSurplus
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
             } else {
