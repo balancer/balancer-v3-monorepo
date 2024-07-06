@@ -215,9 +215,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             swapParams = _buildPoolSwapParams(params, state, poolData);
         }
 
-        if (state.amountGivenScaled18 < _MINIMUM_TRADE_AMOUNT) {
-            revert TradeAmountTooSmall();
-        }
+        _ensureValidTradeAmount(state.amountGivenScaled18);
 
         // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
         // as those passed to the main operation.
@@ -243,9 +241,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountCalculatedScaled18;
         (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, swapParams);
 
-        if (amountCalculatedScaled18 < _MINIMUM_TRADE_AMOUNT) {
-            revert TradeAmountTooSmall();
-        }
+        _ensureValidTradeAmount(amountCalculatedScaled18);
 
         // If the hook contract does not exist or does not implement onAfterSwap, PoolConfigLib returns the original
         // amountCalculated. Otherwise, the new amount calculated is 'amountCalculated + delta'. If the underlying
@@ -678,9 +674,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             {
                 uint256 amountInScaled18 = amountsInScaled18[i];
                 if (amountInScaled18 > 0) {
-                    if (amountInScaled18 < _MINIMUM_TRADE_AMOUNT) {
-                        revert TradeAmountTooSmall();
-                    }
+                    _ensureValidTradeAmount(amountInScaled18);
 
                     // amountsInRaw are amounts actually entering the Pool, so we round up.
                     // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` hook
@@ -911,9 +905,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             {
                 uint256 amountOutScaled18 = amountsOutScaled18[i];
                 if (amountOutScaled18 > 0) {
-                    if (amountOutScaled18 < _MINIMUM_TRADE_AMOUNT) {
-                        revert TradeAmountTooSmall();
-                    }
+                    _ensureValidTradeAmount(amountOutScaled18);
 
                     // amountsOut are amounts exiting the Pool, so we round down.
                     // Do not mutate in place yet, as we need them scaled for the `onAfterRemoveLiquidity` hook
@@ -1509,6 +1501,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      */
     function _addConvertError(uint256 amount) private pure returns (uint256) {
         return amount + _MAX_CONVERT_ERROR;
+    }
+
+    function _ensureValidTradeAmount(uint256 tradeAmount) private pure {
+        if (tradeAmount < _MINIMUM_TRADE_AMOUNT) {
+            revert TradeAmountTooSmall();
+        }
     }
 
     /*******************************************************************************
