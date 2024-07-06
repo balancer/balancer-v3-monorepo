@@ -118,7 +118,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         PoolHooksMock(poolHooksContract).setSpecialSender(bob);
 
         vm.prank(alice);
-        vm.expectRevert(IVaultErrors.SwapAmountTooSmall.selector);
+        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
         router.swapSingleTokenExactIn(pool, dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
     }
 

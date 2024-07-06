@@ -72,8 +72,8 @@ contract VaultSwapTest is BaseVaultTest {
 
     function testSwapTooSmallAmountGiven() public {
         vm.prank(alice);
-        vm.expectRevert(IVaultErrors.SwapAmountTooSmall.selector);
-        router.swapSingleTokenExactIn(pool, usdc, dai, MIN_SWAP_AMOUNT - 1, 0, MAX_UINT256, false, bytes(""));
+        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
+        router.swapSingleTokenExactIn(pool, usdc, dai, MIN_TRADE_AMOUNT - 1, 0, MAX_UINT256, false, bytes(""));
     }
 
     function testSwapDeadlineExactIn() public {
