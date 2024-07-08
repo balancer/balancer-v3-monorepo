@@ -27,6 +27,13 @@ contract RouterCommonTest is BaseVaultTest {
         reentrancyAttack = new ReentrancyAttack();
     }
 
+    function testConstructor() external {
+        RouterCommonMock anotherRouter = new RouterCommonMock(IVault(address(vault)), weth, permit2);
+        assertEq(address(anotherRouter.getVault()), address(vault), "Vault is wrong");
+        assertEq(address(anotherRouter.getWeth()), address(weth), "Weth is wrong");
+        assertEq(address(anotherRouter.getPermit2()), address(permit2), "Permit2 is wrong");
+    }
+
     function testSaveSenderAndCall() external {
         vm.expectEmit();
         emit RouterCommonMock.CurrentSenderMock(address(this));

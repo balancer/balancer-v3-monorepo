@@ -32,6 +32,18 @@ contract RouterCommonMock is RouterCommon {
         emit CurrentSenderMock(abi.decode(result, (address)));
     }
 
+    function getVault() external view returns (IVault) {
+        return _vault;
+    }
+
+    function getWeth() external view returns (IWETH) {
+        return _weth;
+    }
+
+    function getPermit2() external view returns (IPermit2 permit2) {
+        return _permit2;
+    }
+
     function manualGetSenderSlot() external view returns (StorageSlotExtension.AddressSlotType) {
         return _getSenderSlot();
     }
