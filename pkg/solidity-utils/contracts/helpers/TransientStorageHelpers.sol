@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { SlotDerivation } from "../openzeppelin/SlotDerivation.sol";
-import { StorageSlot } from "../openzeppelin/StorageSlot.sol";
+import { StorageSlotExtension } from "../openzeppelin/StorageSlotExtension.sol";
 
 type TokenDeltaMappingSlotType is bytes32;
 type AddressMappingSlot is bytes32;
@@ -13,7 +13,7 @@ type AddressArraySlotType is bytes32;
 
 library TransientStorageHelpers {
     using SlotDerivation for *;
-    using StorageSlot for *;
+    using StorageSlotExtension for *;
 
     error TransientIndexOutOfBounds();
 
@@ -95,7 +95,7 @@ library TransientStorageHelpers {
         uint256 lastElementIndex = AddressArraySlotType.unwrap(slot).asUint256().tload() - 1;
         // Update length to last element. When the index is 0, the slot that holds the length is cleared out.
         AddressArraySlotType.unwrap(slot).asUint256().tstore(lastElementIndex);
-        StorageSlot.AddressSlotType lastElementSlot = AddressArraySlotType
+        StorageSlotExtension.AddressSlotType lastElementSlot = AddressArraySlotType
             .unwrap(slot)
             .deriveArray()
             .offset(lastElementIndex)
@@ -108,11 +108,11 @@ library TransientStorageHelpers {
 
     // Uint256
 
-    function tIncrement(StorageSlot.Uint256SlotType slot) internal {
+    function tIncrement(StorageSlotExtension.Uint256SlotType slot) internal {
         slot.tstore(slot.tload() + 1);
     }
 
-    function tDecrement(StorageSlot.Uint256SlotType slot) internal {
+    function tDecrement(StorageSlotExtension.Uint256SlotType slot) internal {
         slot.tstore(slot.tload() - 1);
     }
 }

@@ -10,7 +10,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { ReentrancyAttack } from "@balancer-labs/v3-solidity-utils/contracts/test/ReentrancyAttack.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
-import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { RouterCommonMock } from "../../contracts/test/RouterCommonMock.sol";
@@ -34,7 +34,7 @@ contract RouterCommonTest is BaseTest {
 
     function testSenderSlot() external view {
         assertEq(
-            StorageSlot.AddressSlotType.unwrap(router.manualGetSenderSlot()),
+            StorageSlotExtension.AddressSlotType.unwrap(router.manualGetSenderSlot()),
             keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.RouterCommon.sender")) - 1)) &
                 ~bytes32(uint256(0xff))
         );
