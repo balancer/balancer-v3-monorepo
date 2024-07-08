@@ -13,7 +13,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
-import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import {
     TransientStorageHelpers,
     AddressArraySlotType,
@@ -30,7 +30,7 @@ import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
  * @dev Storage layout for Vault. This contract has no code other than a thin abstraction for transient storage slots.
  */
 contract VaultStorage {
-    using StorageSlot for *;
+    using StorageSlotExtension for *;
 
     // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used
     // by what is written after =. If you use immutable, the value is first calculated and
@@ -75,7 +75,8 @@ contract VaultStorage {
     // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
     // Last live balances are used for yield fee computation, and since these have rates applied, they are stored
     // as scaled 18-decimal FP values. Each value takes up half the storage slot (i.e., 128 bits).
-    mapping(address => EnumerableMap.IERC20ToBytes32Map) internal _poolTokenBalances;
+    mapping(address => mapping(uint256 => bytes32)) internal _poolTokenBalances;
+    mapping(address => IERC20[]) internal _poolTokens;
 
     // Pool -> (token -> TokenInfo): The token configuration of each Pool's tokens.
     mapping(address => mapping(IERC20 => TokenInfo)) internal _poolTokenInfo;
@@ -134,11 +135,11 @@ contract VaultStorage {
     // Prevents a malicious ERC4626 from changing the asset after the buffer was initialized.
     mapping(IERC20 => address) internal _bufferAssets;
 
-    function _isUnlocked() internal view returns (StorageSlot.BooleanSlotType slot) {
+    function _isUnlocked() internal view returns (StorageSlotExtension.BooleanSlotType slot) {
         return _IS_UNLOCKED_SLOT.asBoolean();
     }
 
-    function _nonZeroDeltaCount() internal view returns (StorageSlot.Uint256SlotType slot) {
+    function _nonZeroDeltaCount() internal view returns (StorageSlotExtension.Uint256SlotType slot) {
         return _NON_ZERO_DELTA_COUNT_SLOT.asUint256();
     }
 

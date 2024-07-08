@@ -8,7 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
-import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
@@ -32,7 +32,7 @@ contract RouterCommonMock is RouterCommon {
         emit CurrentSenderMock(abi.decode(result, (address)));
     }
 
-    function manualGetSenderSlot() external view returns (StorageSlot.AddressSlotType) {
+    function manualGetSenderSlot() external view returns (StorageSlotExtension.AddressSlotType) {
         return _getSenderSlot();
     }
 

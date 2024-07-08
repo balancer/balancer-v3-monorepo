@@ -50,5 +50,5 @@ class WeightedPoolBenchmark extends Benchmark {
 }
 
 describe('WeightedPool Gas Benchmark', function () {
-  new WeightedPoolBenchmark(__dirname).itBenchmarksSwap();
+  new WeightedPoolBenchmark(__dirname).itBenchmarks();
 });

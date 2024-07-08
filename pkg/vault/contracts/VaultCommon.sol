@@ -16,7 +16,7 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
-import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
@@ -33,14 +33,13 @@ import { PoolDataLib } from "./lib/PoolDataLib.sol";
  * that require storage to work and will be required in both the main Vault and its extension.
  */
 abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, ReentrancyGuardTransient, ERC20MultiToken {
-    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfigBits;
     using ScalingHelpers for *;
     using SafeCast for *;
     using FixedPoint for *;
     using TransientStorageHelpers for *;
-    using StorageSlot for *;
+    using StorageSlotExtension for *;
     using PoolDataLib for PoolData;
 
     /*******************************************************************************
@@ -256,20 +255,25 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * and poolData.liveBalances in the same storage slot.
      */
     function _writePoolBalancesToStorage(address pool, PoolData memory poolData) internal {
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[pool];
+        mapping(uint256 => bytes32) storage poolBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < poolData.balancesRaw.length; ++i) {
-            // Since we assume all newBalances are properly ordered, we can simply use `unchecked_setAt`
-            // to avoid one less storage read per token.
-            poolBalances.unchecked_setAt(
-                i,
-                PackedTokenBalance.toPackedBalance(poolData.balancesRaw[i], poolData.balancesLiveScaled18[i])
+            // Since we assume all newBalances are properly ordered
+            poolBalances[i] = PackedTokenBalance.toPackedBalance(
+                poolData.balancesRaw[i],
+                poolData.balancesLiveScaled18[i]
             );
         }
     }
 
     function _loadPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
-        poolData.load(_poolTokenBalances[pool], _poolConfigBits[pool], _poolTokenInfo[pool], roundingDirection);
+        poolData.load(
+            _poolTokenBalances[pool],
+            _poolConfigBits[pool],
+            _poolTokenInfo[pool],
+            _poolTokens[pool],
+            roundingDirection
+        );
     }
 
     /**
@@ -283,7 +287,13 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         Rounding roundingDirection
     ) internal nonReentrant returns (PoolData memory poolData) {
         // Initialize poolData with base information for subsequent calculations.
-        poolData.load(_poolTokenBalances[pool], _poolConfigBits[pool], _poolTokenInfo[pool], roundingDirection);
+        poolData.load(
+            _poolTokenBalances[pool],
+            _poolConfigBits[pool],
+            _poolTokenInfo[pool],
+            _poolTokens[pool],
+            roundingDirection
+        );
 
         PoolDataLib.syncPoolBalancesAndFees(poolData, _poolTokenBalances[pool], _aggregateFeeAmounts[pool]);
     }
@@ -321,17 +331,25 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
             revert SwapFeePercentageTooLow();
         }
 
-        // Still has to be a valid percentage, regardless of what the pool defines.
-        if (
-            swapFeePercentage > ISwapFeePercentageBounds(pool).getMaximumSwapFeePercentage() ||
-            swapFeePercentage > FixedPoint.ONE
-        ) {
+        if (swapFeePercentage > ISwapFeePercentageBounds(pool).getMaximumSwapFeePercentage()) {
             revert SwapFeePercentageTooHigh();
         }
 
+        // The library also checks that the percentage is <= FP(1), regardless of what the pool defines.
         _poolConfigBits[pool] = _poolConfigBits[pool].setStaticSwapFeePercentage(swapFeePercentage);
 
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
+    }
+
+    /// @dev Find the index of a token in a token array. Returns -1 if not found.
+    function _findTokenIndex(IERC20[] memory tokens, IERC20 token) internal pure returns (uint256) {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (tokens[i] == token) {
+                return i;
+            }
+        }
+
+        revert TokenNotRegistered(token);
     }
 
     /*******************************************************************************

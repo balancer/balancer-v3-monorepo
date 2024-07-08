@@ -30,7 +30,7 @@ import {
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
-import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { VaultStateLib, VaultStateBits, VaultStateBits } from "./lib/VaultStateLib.sol";
@@ -40,7 +40,6 @@ import { PoolDataLib } from "./lib/PoolDataLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
-    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using PackedTokenBalance for bytes32;
     using InputHelpers for uint256;
     using FixedPoint for *;
@@ -51,7 +50,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using HooksConfigLib for PoolConfigBits;
     using ScalingHelpers for *;
     using TransientStorageHelpers for *;
-    using StorageSlot for *;
+    using StorageSlotExtension for *;
     using PoolDataLib for PoolData;
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer, IProtocolFeeController protocolFeeController) {
@@ -269,29 +268,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _loadSwapState(
         SwapParams memory params,
         PoolData memory poolData
-    ) private view returns (SwapState memory state) {
-        // Use the storage map only for translating token addresses to indices. Raw balances can be read from poolData.
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
-
-        // EnumerableMap stores indices *plus one* to use the zero index as a sentinel value for non-existence.
-        uint256 indexIn = poolBalances.unchecked_indexOf(params.tokenIn);
-        uint256 indexOut = poolBalances.unchecked_indexOf(params.tokenOut);
-
-        // If either are zero, revert because the token wasn't registered to this pool.
-        if (indexIn == 0 || indexOut == 0) {
-            // We require the pool to be initialized, which means it's also registered.
-            // This can only happen if the tokens are not registered.
-            revert TokenNotRegistered();
-        }
-
-        // Convert to regular 0-based indices now, since we've established the tokens are valid.
-        unchecked {
-            indexIn -= 1;
-            indexOut -= 1;
-        }
-
-        state.indexIn = indexIn;
-        state.indexOut = indexOut;
+    ) private pure returns (SwapState memory state) {
+        state.indexIn = _findTokenIndex(poolData.tokens, params.tokenIn);
+        state.indexOut = _findTokenIndex(poolData.tokens, params.tokenOut);
 
         // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
         // to a lower calculated amountOut, favoring the pool.
@@ -464,20 +443,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         // 6) Store pool balances, raw and live (only index in and out)
-        EnumerableMap.IERC20ToBytes32Map storage poolBalances = _poolTokenBalances[params.pool];
-        poolBalances.unchecked_setAt(
-            state.indexIn,
-            PackedTokenBalance.toPackedBalance(
-                poolData.balancesRaw[state.indexIn],
-                poolData.balancesLiveScaled18[state.indexIn]
-            )
+        mapping(uint256 => bytes32) storage poolBalances = _poolTokenBalances[params.pool];
+        poolBalances[state.indexIn] = PackedTokenBalance.toPackedBalance(
+            poolData.balancesRaw[state.indexIn],
+            poolData.balancesLiveScaled18[state.indexIn]
         );
-        poolBalances.unchecked_setAt(
-            state.indexOut,
-            PackedTokenBalance.toPackedBalance(
-                poolData.balancesRaw[state.indexOut],
-                poolData.balancesLiveScaled18[state.indexOut]
-            )
+        poolBalances[state.indexOut] = PackedTokenBalance.toPackedBalance(
+            poolData.balancesRaw[state.indexOut],
+            poolData.balancesLiveScaled18[state.indexOut]
         );
 
         // 7) Off-chain events
@@ -1021,11 +994,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
     }
 
-    /// @inheritdoc IVaultMain
-    function getProtocolFeeController() external view returns (IProtocolFeeController) {
-        return _protocolFeeController;
-    }
-
     /*******************************************************************************
                              Yield-bearing token buffers
     *******************************************************************************/
@@ -1109,7 +1077,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (_isQueryContext()) {
-            return _calculateBufferAmounts(kind, wrappedToken, amountGiven);
+            return _calculateBufferAmounts(WrappingDirection.WRAP, kind, wrappedToken, amountGiven);
         }
 
         if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
@@ -1187,8 +1155,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // increase. To decrease underlying balance, we get the delta amount that was deposited
                 // (vaultUnderlyingDelta) and discounts the amount needed in the wrapping operation
                 // (amountInUnderlying). Same logic applies to wrapped balances.
+                // Note: bufferUnderlyingSurplus = vaultUnderlyingDelta - amountInUnderlying
                 bufferBalances = PackedTokenBalance.toPackedBalance(
-                    bufferBalances.getBalanceRaw() - (vaultUnderlyingDelta - amountInUnderlying),
+                    bufferBalances.getBalanceRaw() - bufferUnderlyingSurplus,
                     bufferBalances.getBalanceDerived() + (vaultWrappedDelta - amountOutWrapped)
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
@@ -1228,7 +1197,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (_isQueryContext()) {
-            return _calculateBufferAmounts(kind, wrappedToken, amountGiven);
+            return _calculateBufferAmounts(WrappingDirection.UNWRAP, kind, wrappedToken, amountGiven);
         }
 
         if (bufferBalances.getBalanceRaw() > amountOutUnderlying) {
@@ -1319,13 +1288,20 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * @dev Call VaultExtension to calculate the amounts for wrap/unwrap operations.
      */
     function _calculateBufferAmounts(
+        WrappingDirection direction,
         SwapKind kind,
         IERC4626 wrappedToken,
         uint256 amountGiven
     ) internal returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped) {
         bytes memory data = Address.functionDelegateCall(
             _implementation(),
-            abi.encodeWithSelector(IVaultExtension.calculateBufferAmounts.selector, kind, wrappedToken, amountGiven)
+            abi.encodeWithSelector(
+                IVaultExtension.calculateBufferAmounts.selector,
+                direction,
+                kind,
+                wrappedToken,
+                amountGiven
+            )
         );
         return abi.decode(data, (uint256, uint256, uint256));
     }
@@ -1349,8 +1325,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             wrappedBalanceAsUnderlying = wrappedToken.convertToAssets(bufferBalance.getBalanceDerived());
         }
 
-        return
-            underlyingBalance > wrappedBalanceAsUnderlying ? (underlyingBalance - wrappedBalanceAsUnderlying) / 2 : 0;
+        uint256 surplus = 0;
+        if (underlyingBalance > wrappedBalanceAsUnderlying) {
+            unchecked {
+                surplus = (underlyingBalance - wrappedBalanceAsUnderlying) / 2;
+            }
+        }
+        return surplus;
     }
 
     /**
@@ -1372,7 +1353,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             underlyingBalanceAsWrapped = wrappedToken.convertToShares(bufferBalance.getBalanceRaw());
         }
 
-        return wrappedBalance > underlyingBalanceAsWrapped ? (wrappedBalance - underlyingBalanceAsWrapped) / 2 : 0;
+        uint256 surplus = 0;
+        if (wrappedBalance > underlyingBalanceAsWrapped) {
+            unchecked {
+                surplus = (wrappedBalance - underlyingBalanceAsWrapped) / 2;
+            }
+        }
+        return surplus;
     }
 
     /**
@@ -1396,7 +1383,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Wrap
             // Since deposit takes underlying tokens from the vault, the actual underlying tokens deposited is
             // underlyingBefore - underlyingAfter
-            vaultUnderlyingDelta = vaultUnderlyingBefore - vaultUnderlyingAfter;
+            // checked against underflow: vaultUnderlyingBefore > vaultUnderlyingAfter in `if` clause
+            unchecked {
+                vaultUnderlyingDelta = vaultUnderlyingBefore - vaultUnderlyingAfter;
+            }
             // Since deposit puts wrapped tokens into the vault, the actual wrapped minted is
             // wrappedAfter - wrappedBefore
             vaultWrappedDelta = vaultWrappedAfter - vaultWrappedBefore;
@@ -1404,7 +1394,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Unwrap
             // Since withdraw puts underlying tokens into the vault, the actual underlying token amount withdrawn is
             // assetsAfter - assetsBefore
-            vaultUnderlyingDelta = vaultUnderlyingAfter - vaultUnderlyingBefore;
+            // checked against underflow: vaultUnderlyingAfter > vaultUnderlyingBefore in `else` clause
+            unchecked {
+                vaultUnderlyingDelta = vaultUnderlyingAfter - vaultUnderlyingBefore;
+            }
             // Since withdraw takes wrapped tokens from the vault, the actual wrapped token amount burned is
             // wrappedBefore - wrappedAfter
             vaultWrappedDelta = vaultWrappedBefore - vaultWrappedAfter;
@@ -1451,25 +1444,29 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             expectedWrappedDelta = wrapUnwrapWrappedExpected;
         }
 
-        if (
-            (vaultUnderlyingDelta < expectedUnderlyingDelta &&
-                expectedUnderlyingDelta - vaultUnderlyingDelta > _MAX_CONVERT_ERROR) ||
-            (vaultUnderlyingDelta > expectedUnderlyingDelta &&
-                vaultUnderlyingDelta - expectedUnderlyingDelta > _MAX_CONVERT_ERROR)
-        ) {
-            // If this error is thrown, it means the convert result had an absolute error greater than
-            // _MAX_CONVERT_ERROR in comparison with the actual operation.
-            revert WrongUnderlyingAmount(address(wrappedToken));
-        }
+        // Every subtraction is lazy-evaluated after ensuring the result will not underflow.
+        unchecked {
+            if (
+                (vaultUnderlyingDelta < expectedUnderlyingDelta &&
+                    expectedUnderlyingDelta - vaultUnderlyingDelta > _MAX_CONVERT_ERROR) ||
+                (vaultUnderlyingDelta > expectedUnderlyingDelta &&
+                    vaultUnderlyingDelta - expectedUnderlyingDelta > _MAX_CONVERT_ERROR)
+            ) {
+                // If this error is thrown, it means the convert result had an absolute error greater than
+                // _MAX_CONVERT_ERROR in comparison with the actual operation.
+                revert WrongUnderlyingAmount(address(wrappedToken));
+            }
 
-        if (
-            ((vaultWrappedDelta > expectedWrappedDelta) &&
-                (vaultWrappedDelta - expectedWrappedDelta > _MAX_CONVERT_ERROR)) ||
-            (vaultWrappedDelta < expectedWrappedDelta && expectedWrappedDelta - vaultWrappedDelta > _MAX_CONVERT_ERROR)
-        ) {
-            // If this error is thrown, it means the convert result had an absolute error greater than
-            // _MAX_CONVERT_ERROR in comparison with the actual operation.
-            revert WrongWrappedAmount(address(wrappedToken));
+            if (
+                ((vaultWrappedDelta > expectedWrappedDelta) &&
+                    (vaultWrappedDelta - expectedWrappedDelta > _MAX_CONVERT_ERROR)) ||
+                (vaultWrappedDelta < expectedWrappedDelta &&
+                    expectedWrappedDelta - vaultWrappedDelta > _MAX_CONVERT_ERROR)
+            ) {
+                // If this error is thrown, it means the convert result had an absolute error greater than
+                // _MAX_CONVERT_ERROR in comparison with the actual operation.
+                revert WrongWrappedAmount(address(wrappedToken));
+            }
         }
     }
 
@@ -1491,17 +1488,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         address pool,
         IERC20 token
     ) external view withRegisteredPool(pool) returns (uint256, uint256) {
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
-        uint256 tokenCount = poolTokenBalances.length();
-        // unchecked indexOf returns index + 1, or 0 if token is not present.
-        uint256 index = poolTokenBalances.unchecked_indexOf(token);
-        if (index == 0) {
-            revert TokenNotRegistered();
-        }
+        IERC20[] memory poolTokens = _poolTokens[pool];
 
-        unchecked {
-            return (tokenCount, index - 1);
-        }
+        uint256 index = _findTokenIndex(poolTokens, token);
+
+        return (poolTokens.length, index);
     }
 
     /*******************************************************************************
