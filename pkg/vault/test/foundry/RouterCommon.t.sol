@@ -36,7 +36,7 @@ contract RouterCommonTest is BaseVaultTest {
 
     function testSenderSlot() external view {
         assertEq(
-            StorageSlotExtension.AddressSlotType.unwrap(router.manualGetSenderSlot()),
+            StorageSlotExtension.AddressSlotType.unwrap(routerCommonMock.manualGetSenderSlot()),
             keccak256(abi.encode(uint256(keccak256("balancer-labs.v3.storage.RouterCommon.sender")) - 1)) &
                 ~bytes32(uint256(0xff))
         );
