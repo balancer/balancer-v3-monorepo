@@ -64,7 +64,7 @@ contract RouterCommonTest is BaseVaultTest {
         uint256 routerEthBalance = address(routerCommonMock).balance;
 
         vm.expectRevert(RouterCommon.InsufficientEth.selector);
-        routerCommonMock.mockTakeTokenIn(address(bob), IERC20(weth), routerEthBalance + 1, true);
+        routerCommonMock.mockTakeTokenIn(bob, IERC20(weth), routerEthBalance + 1, true);
     }
 
     function testTakeTokenInWEthIsNotEth() public {
@@ -78,7 +78,7 @@ contract RouterCommonTest is BaseVaultTest {
         IERC20(weth).approve(address(permit2), type(uint256).max);
         permit2.approve(address(weth), address(routerCommonMock), type(uint160).max, type(uint48).max);
 
-        routerCommonMock.mockTakeTokenIn(address(bob), IERC20(weth), amountToDeposit, false);
+        routerCommonMock.mockTakeTokenIn(bob, IERC20(weth), amountToDeposit, false);
         vm.stopPrank();
 
         uint256 wethBobAfter = IERC20(address(weth)).balanceOf(bob);
@@ -91,14 +91,14 @@ contract RouterCommonTest is BaseVaultTest {
     function testSendTokenOutWethIsEth() public {
         vault.manualSetIsUnlocked(true);
 
-        uint256 bobEthBalanceBefore = address(bob).balance;
+        uint256 bobEthBalanceBefore = bob.balance;
         uint256 vaultEthBalanceBefore = address(vault).balance;
 
         uint256 amountToWithdraw = vaultEthBalanceBefore / 100;
 
-        routerCommonMock.mockSendTokenOut(address(bob), IERC20(weth), amountToWithdraw, true);
+        routerCommonMock.mockSendTokenOut(bob, IERC20(weth), amountToWithdraw, true);
 
-        uint256 bobEthBalanceAfter = address(bob).balance;
+        uint256 bobEthBalanceAfter = bob.balance;
         uint256 vaultEthBalanceAfter = address(vault).balance;
 
         assertEq(bobEthBalanceAfter, bobEthBalanceBefore + amountToWithdraw, "Bob ETH balance is wrong");
@@ -113,7 +113,7 @@ contract RouterCommonTest is BaseVaultTest {
 
         uint256 amountToWithdraw = wethVaultBefore / 100;
 
-        routerCommonMock.mockSendTokenOut(address(bob), IERC20(weth), amountToWithdraw, false);
+        routerCommonMock.mockSendTokenOut(bob, IERC20(weth), amountToWithdraw, false);
 
         uint256 wethBobAfter = IERC20(address(weth)).balanceOf(bob);
         uint256 wethVaultAfter = IERC20(address(weth)).balanceOf(address(vault));
