@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 import "../../contracts/math/FixedPoint.sol";
 import "../../contracts/test/WeightedMathMock.sol";
 
-contract WeightedMathTest is Test {
+contract WeightedMathRoundingTest is Test {
     uint256 constant MIN_WEIGHT = 0.1e18;
     uint256 constant MAX_WEIGHT = 0.9e18;
     uint256 constant MIN_BALANCE = 1e18;
