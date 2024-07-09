@@ -574,6 +574,68 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
+    /********************************************************************************
+                          Add/Remove Liquidity from Buffers
+    ********************************************************************************/
+
+    function testAddLiquidityToBuffer() public {
+        BufferAndLPBalances memory beforeBalances = _measureBuffer();
+
+        vm.prank(lp);
+        router.addLiquidityToBuffer(waDAI, _wrapAmount, _wrapAmount, lp);
+
+        BufferAndLPBalances memory afterBalances = _measureBuffer();
+
+        assertEq(afterBalances.buffer.dai, beforeBalances.buffer.dai + _wrapAmount, "Buffer DAI balance is wrong");
+        assertEq(
+            afterBalances.buffer.waDai,
+            beforeBalances.buffer.waDai + _wrapAmount,
+            "Buffer waDAI balance is wrong"
+        );
+
+        assertEq(afterBalances.vault.dai, beforeBalances.vault.dai + _wrapAmount, "Vault DAI balance is wrong");
+        assertEq(afterBalances.vault.waDai, beforeBalances.vault.waDai + _wrapAmount, "Vault waDAI balance is wrong");
+
+        assertEq(
+            afterBalances.vaultReserves.dai,
+            beforeBalances.vaultReserves.dai + _wrapAmount,
+            "Vault Reserve DAI balance is wrong"
+        );
+        assertEq(
+            afterBalances.vaultReserves.waDai,
+            beforeBalances.vaultReserves.waDai + _wrapAmount,
+            "Vault Reserve waDAI balance is wrong"
+        );
+
+        assertEq(afterBalances.lp.dai, beforeBalances.lp.dai - _wrapAmount, "LP DAI balance is wrong");
+        assertEq(afterBalances.lp.waDai, beforeBalances.lp.waDai - _wrapAmount, "LP waDAI balance is wrong");
+    }
+
+    struct BufferTokenBalances {
+        uint256 waDai;
+        uint256 dai;
+    }
+
+    struct BufferAndLPBalances {
+        BufferTokenBalances lp;
+        BufferTokenBalances buffer;
+        BufferTokenBalances vault;
+        BufferTokenBalances vaultReserves;
+    }
+
+    function _measureBuffer() private returns (BufferAndLPBalances memory vars) {
+        vars.lp.dai = dai.balanceOf(lp);
+        vars.lp.waDai = waDAI.balanceOf(lp);
+
+        (vars.buffer.dai, vars.buffer.waDai) = vault.getBufferBalance(IERC20(address(waDAI)));
+
+        vars.vault.dai = dai.balanceOf(address(vault));
+        vars.vault.waDai = waDAI.balanceOf(address(vault));
+
+        vars.vaultReserves.dai = vault.getReservesOf(dai);
+        vars.vaultReserves.waDai = vault.getReservesOf(IERC20(address(waDAI)));
+    }
+
     function _exactInWrapUnwrapPath(
         uint256 exactAmountIn,
         uint256 minAmountOut,
