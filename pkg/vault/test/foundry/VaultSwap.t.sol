@@ -383,7 +383,7 @@ contract VaultSwapTest is BaseVaultTest {
             admin
         );
         vm.prank(admin);
-        feeController.withdrawProtocolFees(pool, address(admin));
+        feeController.withdrawProtocolFees(pool, admin);
 
         // protocol fees are zero
         assertEq(0, feeAmounts[usdcIdx], "Protocol fees are not zero");

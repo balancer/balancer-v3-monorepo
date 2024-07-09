@@ -103,17 +103,17 @@ contract VaultTokenTest is BaseVaultTest {
         // Establish assets and supply so that buffer creation doesn't fail
         vm.startPrank(alice);
 
-        dai.mint(address(alice), 2 * defaultAmount);
+        dai.mint(alice, 2 * defaultAmount);
 
         dai.approve(address(waDAI), defaultAmount);
-        waDAI.deposit(defaultAmount, address(alice));
+        waDAI.deposit(defaultAmount, alice);
 
         dai.approve(address(cDAI), defaultAmount);
-        cDAI.deposit(defaultAmount, address(alice));
+        cDAI.deposit(defaultAmount, alice);
 
-        usdc.mint(address(alice), defaultAmount);
+        usdc.mint(alice, defaultAmount);
         usdc.approve(address(waUSDC), defaultAmount);
-        waUSDC.deposit(defaultAmount, address(alice));
+        waUSDC.deposit(defaultAmount, alice);
         vm.stopPrank();
     }
 
