@@ -156,11 +156,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         uint256 aliceBalanceAfter = usdc.balanceOf(alice);
         // 100% fee; should get nothing
-        assertEq(
-            aliceBalanceAfter - aliceBalanceBefore,
-            0,
-            "Wrong alice balance (high fee)"
-        );
+        assertEq(aliceBalanceAfter - aliceBalanceBefore, 0, "Wrong alice balance (high fee)");
 
         // Now set Alice as the special 0-fee sender
         PoolHooksMock(poolHooksContract).setSpecialSender(alice);
@@ -211,7 +207,11 @@ contract DynamicFeePoolTest is BaseVaultTest {
     }
 
     function testSwapChargesFees__Fuzz(uint256 dynamicSwapFeePercentage) public {
-        dynamicSwapFeePercentage = bound(dynamicSwapFeePercentage, 0, FixedPoint.ONE - MIN_TRADE_AMOUNT.divDown(defaultAmount));
+        dynamicSwapFeePercentage = bound(
+            dynamicSwapFeePercentage,
+            0,
+            FixedPoint.ONE - MIN_TRADE_AMOUNT.divDown(defaultAmount)
+        );
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
 
         vm.prank(alice);
