@@ -62,6 +62,7 @@ contract PoolHooksMock is BaseHooks {
     address private _pool;
     address private _specialSender;
     uint256[] private _newBalancesRaw;
+    address private _savedSender;
 
     mapping(address => bool) private _allowedFactories;
 
@@ -118,7 +119,9 @@ contract PoolHooksMock is BaseHooks {
         return (!failOnComputeDynamicSwapFeeHook, finalSwapFee);
     }
 
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata, address) external override returns (bool) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata params, address) external override returns (bool) {
+        _savedSender = IRouterCommon(params.router).getSender();
+
         if (changeTokenRateOnBeforeSwapHook) {
             _updateTokenRate();
         }
@@ -204,7 +207,7 @@ contract PoolHooksMock is BaseHooks {
     // Liquidity lifecycle hooks
 
     function onBeforeAddLiquidity(
-        address,
+        address router,
         address,
         AddLiquidityKind,
         uint256[] memory,
@@ -212,6 +215,8 @@ contract PoolHooksMock is BaseHooks {
         uint256[] memory,
         bytes memory
     ) external override returns (bool) {
+        _savedSender = IRouterCommon(router).getSender();
+
         if (changeTokenRateOnBeforeAddLiquidity) {
             _updateTokenRate();
         }
@@ -224,7 +229,7 @@ contract PoolHooksMock is BaseHooks {
     }
 
     function onBeforeRemoveLiquidity(
-        address,
+        address router,
         address,
         RemoveLiquidityKind,
         uint256,
@@ -232,6 +237,8 @@ contract PoolHooksMock is BaseHooks {
         uint256[] memory,
         bytes memory
     ) external override returns (bool) {
+        _savedSender = IRouterCommon(router).getSender();
+
         if (changeTokenRateOnBeforeRemoveLiquidity) {
             _updateTokenRate();
         }
@@ -484,6 +491,10 @@ contract PoolHooksMock is BaseHooks {
 
     function denyFactory(address factory) external {
         _allowedFactories[factory] = false;
+    }
+
+    function getSavedSender() external returns (address) {
+        return _savedSender;
     }
 
     /****************************************************************

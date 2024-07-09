@@ -26,6 +26,7 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 import { PoolMock } from "../../../../contracts/test/PoolMock.sol";
+import { PoolHooksMock } from "../../../../contracts/test/PoolHooksMock.sol";
 import { Router } from "../../../../contracts/Router.sol";
 import { RouterCommon } from "../../../../contracts/RouterCommon.sol";
 import { VaultMock } from "../../../../contracts/test/VaultMock.sol";
@@ -211,5 +212,33 @@ contract RouterMutationTest is BaseVaultTest {
     function testQueryRemoveLiquidityRecoveryHookWhenNoVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
         router.queryRemoveLiquidityRecoveryHook(pool, msg.sender, 10);
+    }
+
+    function testQuerySwapSingleTokenExactInSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeSwap = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        vm.prank(address(bob), address(0));
+        router.querySwapSingleTokenExactIn(pool, dai, usdc, amountsIn[0], bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQuerySwapSingleTokenExactOutSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeSwap = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        vm.prank(address(bob), address(0));
+        router.querySwapSingleTokenExactOut(pool, dai, usdc, amountsIn[1], bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
     }
 }
