@@ -117,7 +117,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
 
     function testSwapWithVeBal() public {
         // Mint 1 veBAL to bob, so he's able to receive the fee discount
-        veBAL.mint(address(bob), 1);
+        veBAL.mint(bob, 1);
         assertGt(veBAL.balanceOf(bob), 0, "Bob does not have veBAL");
 
         _doSwapAndCheckBalances(trustedRouter);
@@ -125,7 +125,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
 
     function testSwapWithVeBalAndUntrustedRouter() public {
         // Mint 1 veBAL to bob, so he's able to receive the fee discount
-        veBAL.mint(address(bob), 1);
+        veBAL.mint(bob, 1);
         assertGt(veBAL.balanceOf(bob), 0, "Bob does not have veBAL");
 
         // Create an untrusted router
@@ -156,7 +156,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
         // Hook fee will remain in the pool, so the expected amount out discounts the fees
         expectedAmountOut -= expectedHookFee;
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
         RouterMock(routerToUse).swapSingleTokenExactIn(
@@ -170,7 +170,7 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
             bytes("")
         );
 
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 
         // Bob's balance of DAI is supposed to decrease, since DAI is the token in
         assertEq(
