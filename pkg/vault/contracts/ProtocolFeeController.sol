@@ -420,6 +420,15 @@ contract ProtocolFeeController is
 
     /// @inheritdoc IProtocolFeeController
     function withdrawPoolCreatorFees(address pool, address recipient) external onlyPoolCreator(pool) {
+        _withdrawPoolCreatorFees(pool, recipient);
+    }
+
+    /// @inheritdoc IProtocolFeeController
+    function withdrawPoolCreatorFees(address pool) external {
+        _withdrawPoolCreatorFees(pool, _poolCreators[pool]);
+    }
+
+    function _withdrawPoolCreatorFees(address pool, address recipient) private {
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
 
         for (uint256 i = 0; i < numTokens; ++i) {
