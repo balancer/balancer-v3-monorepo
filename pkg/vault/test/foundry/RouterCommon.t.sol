@@ -66,7 +66,7 @@ contract RouterCommonTest is BaseVaultTest {
         );
     }
 
-    function testTakeTokenInInsufficientEth() public {
+    function testTakeTokenInWethIsEth() public {
         uint256 routerEthBalance = address(routerMock).balance;
 
         vm.expectRevert(RouterCommon.InsufficientEth.selector);
