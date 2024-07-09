@@ -22,7 +22,7 @@ import {
     TransientStorageHelpers,
     TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
-import { StorageSlot } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlot.sol";
+import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
@@ -42,13 +42,12 @@ struct SwapInternalStateLocals {
 }
 
 contract VaultMock is IVaultMainMock, Vault {
-    using EnumerableMap for EnumerableMap.IERC20ToBytes32Map;
     using ScalingHelpers for uint256;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for *;
     using HooksConfigLib for *;
     using TransientStorageHelpers for *;
-    using StorageSlot for *;
+    using StorageSlotExtension for *;
     using PoolDataLib for PoolData;
 
     PoolFactoryMock private immutable _poolFactoryMock;
@@ -236,19 +235,21 @@ contract VaultMock is IVaultMainMock, Vault {
         }
     }
 
-    function manualSetPoolTokenBalances(
+    function manualSetPoolTokensAndBalances(
         address pool,
         IERC20[] memory tokens,
         uint256[] memory tokenBalanceRaw,
         uint256[] memory tokenBalanceLiveScaled18
     ) public {
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        require(tokens.length == tokenBalanceRaw.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
+        require(tokens.length == tokenBalanceLiveScaled18.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
+
+        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
         for (uint256 i = 0; i < tokens.length; ++i) {
-            poolTokenBalances.set(
-                tokens[i],
-                PackedTokenBalance.toPackedBalance(tokenBalanceRaw[i], tokenBalanceLiveScaled18[i])
-            );
+            poolTokenBalances[i] = PackedTokenBalance.toPackedBalance(tokenBalanceRaw[i], tokenBalanceLiveScaled18[i]);
         }
+
+        _poolTokens[pool] = tokens;
     }
 
     function mockIsUnlocked() public view onlyWhenUnlocked {}
@@ -367,28 +368,24 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
 
-        uint256 numTokens = poolTokenBalances.length();
+        uint256 numTokens = _poolTokens[pool].length;
         balancesRaw = new uint256[](numTokens);
-        bytes32 packedBalances;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            (, packedBalances) = poolTokenBalances.unchecked_at(i);
-            balancesRaw[i] = packedBalances.getBalanceRaw();
+            balancesRaw[i] = poolTokenBalances[i].getBalanceRaw();
         }
     }
 
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances) {
-        EnumerableMap.IERC20ToBytes32Map storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
 
-        uint256 numTokens = poolTokenBalances.length();
+        uint256 numTokens = _poolTokens[pool].length;
         lastLiveBalances = new uint256[](numTokens);
-        bytes32 packedBalances;
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            (, packedBalances) = poolTokenBalances.unchecked_at(i);
-            lastLiveBalances[i] = packedBalances.getBalanceDerived();
+            lastLiveBalances[i] = poolTokenBalances[i].getBalanceDerived();
         }
     }
 
@@ -612,11 +609,11 @@ contract VaultMock is IVaultMainMock, Vault {
         return _poolConfigBits[pool];
     }
 
-    function manualGetIsUnlocked() external view returns (StorageSlot.BooleanSlotType slot) {
+    function manualGetIsUnlocked() external view returns (StorageSlotExtension.BooleanSlotType slot) {
         return _isUnlocked();
     }
 
-    function manualGetNonzeroDeltaCount() external view returns (StorageSlot.Uint256SlotType slot) {
+    function manualGetNonzeroDeltaCount() external view returns (StorageSlotExtension.Uint256SlotType slot) {
         return _nonZeroDeltaCount();
     }
 

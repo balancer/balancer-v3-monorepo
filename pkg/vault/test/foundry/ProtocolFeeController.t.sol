@@ -486,6 +486,54 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.withdrawPoolCreatorFees(pool, alice);
     }
 
+    function testPermissionlessWithdrawalByNonPoolCreator() public {
+        _registerPoolWithMaxProtocolFees();
+
+        vm.startPrank(lp);
+        feeController.setPoolCreatorSwapFeePercentage(pool, POOL_CREATOR_SWAP_FEE);
+        feeController.setPoolCreatorYieldFeePercentage(pool, POOL_CREATOR_YIELD_FEE);
+        vm.stopPrank();
+
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
+        vault.manualSetAggregateYieldFeeAmount(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);
+
+        uint256 aggregateSwapFeePercentage = feeController.computeAggregateFeePercentage(
+            MAX_PROTOCOL_SWAP_FEE,
+            POOL_CREATOR_SWAP_FEE
+        );
+        uint256 aggregateYieldFeePercentage = feeController.computeAggregateFeePercentage(
+            MAX_PROTOCOL_YIELD_FEE,
+            POOL_CREATOR_YIELD_FEE
+        );
+
+        uint256 expectedProtocolFeeDAI = PROTOCOL_SWAP_FEE_AMOUNT.divUp(aggregateSwapFeePercentage).mulUp(
+            MAX_PROTOCOL_SWAP_FEE
+        );
+        uint256 expectedCreatorFeeDAI = PROTOCOL_SWAP_FEE_AMOUNT - expectedProtocolFeeDAI;
+
+        uint256 expectedProtocolFeeUSDC = PROTOCOL_YIELD_FEE_AMOUNT.divUp(aggregateYieldFeePercentage).mulUp(
+            MAX_PROTOCOL_YIELD_FEE
+        );
+        uint256 expectedCreatorFeeUSDC = PROTOCOL_YIELD_FEE_AMOUNT - expectedProtocolFeeUSDC;
+
+        uint256 creatorBalanceDAIBefore = dai.balanceOf(lp);
+        uint256 creatorBalanceUSDCBefore = usdc.balanceOf(lp);
+
+        vault.collectAggregateFees(pool);
+        feeController.withdrawPoolCreatorFees(pool);
+
+        assertEq(
+            dai.balanceOf(lp) - creatorBalanceDAIBefore,
+            expectedCreatorFeeDAI,
+            "Wrong ending balance of DAI (creator)"
+        );
+        assertEq(
+            usdc.balanceOf(lp) - creatorBalanceUSDCBefore,
+            expectedCreatorFeeUSDC,
+            "Wrong ending balance of USDC (creator)"
+        );
+    }
+
     function testWithdrawalWithNoCreator() public {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
 
@@ -605,17 +653,17 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             "Wrong disaggregated USDC pool creator fee amount"
         );
 
+        // withdrawPoolCreatorFees is overloaded.
+        bytes4 permissionedSelector = bytes4(keccak256("withdrawPoolCreatorFees(address,address)"));
+
         // Now all that's left is to withdraw them.
-        // Governance cannot withdraw creator fees
-        authorizer.grantRole(
-            feeControllerAuth.getActionId(IProtocolFeeController.withdrawPoolCreatorFees.selector),
-            admin
-        );
+        // Governance cannot withdraw creator fees.
+        authorizer.grantRole(feeControllerAuth.getActionId(permissionedSelector), admin);
         vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, admin));
         vm.prank(admin);
         feeController.withdrawPoolCreatorFees(pool, admin);
 
-        // Creator cannot withdraw protocol fees
+        // Creator cannot withdraw protocol fees.
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vm.prank(lp);
         feeController.withdrawProtocolFees(pool, lp);

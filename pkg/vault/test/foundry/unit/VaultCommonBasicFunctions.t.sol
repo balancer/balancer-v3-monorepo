@@ -75,7 +75,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         originalLastLiveBalances[1] = 456;
         originalLastLiveBalances[2] = 789;
 
-        vault.manualSetPoolTokenBalances(pool, tokens, originalBalancesRaw, originalLastLiveBalances);
+        vault.manualSetPoolTokensAndBalances(pool, tokens, originalBalancesRaw, originalLastLiveBalances);
 
         (
             IERC20[] memory newTokens,
@@ -136,7 +136,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         rawBalances[0] = 1000;
         rawBalances[1] = 2000;
         rawBalances[2] = 3000;
-        vault.manualSetPoolTokenBalances(pool, tokens, rawBalances, rawBalances);
+        vault.manualSetPoolTokensAndBalances(pool, tokens, rawBalances, rawBalances);
 
         PoolConfigBits originalPoolConfig;
         uint8[] memory tokenDecimalDiffs = new uint8[](3);
@@ -203,7 +203,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         originalLastLiveBalances[0] = balance2;
         originalLastLiveBalances[1] = balance3;
         originalLastLiveBalances[2] = balance1;
-        vault.manualSetPoolTokenBalances(pool, tokens, originalBalancesRaw, originalLastLiveBalances);
+        vault.manualSetPoolTokensAndBalances(pool, tokens, originalBalancesRaw, originalLastLiveBalances);
 
         (
             IERC20[] memory newTokens,
@@ -388,7 +388,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         );
 
         // Also revert if it's above the maximum limit
-        vm.expectRevert(IVaultErrors.SwapFeePercentageTooHigh.selector);
+        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
         vault.manualSetStaticSwapFeePercentage(pool, MAX_FEE_PERCENTAGE + 1);
     }
 }
