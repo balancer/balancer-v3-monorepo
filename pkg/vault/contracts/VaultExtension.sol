@@ -782,12 +782,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolBalances[i] = packedBalances.setBalanceRaw(balancesRaw[i]);
         }
 
-        _spendAllowance(address(pool), from, msg.sender, exactBptAmountIn);
+        _spendAllowance(pool, from, msg.sender, exactBptAmountIn);
 
+        if (_isQueryContext()) {
+            // Increase `from` balance to ensure the burn function succeeds.
+            _queryModeBalanceIncrease(pool, from, exactBptAmountIn);
+        }
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
         // Burning will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
-        _burn(address(pool), from, exactBptAmountIn);
+        _burn(pool, from, exactBptAmountIn);
 
         emit PoolBalanceChanged(
             pool,
@@ -819,6 +823,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Unlock so that `onlyWhenUnlocked` does not revert
         _isUnlocked().tstore(true);
+    }
+
+    function _isQueryContext() internal view returns (bool) {
+        return EVMCallModeHelpers.isStaticCall() && _vaultStateBits.isQueryDisabled() == false;
     }
 
     /// @inheritdoc IVaultExtension
