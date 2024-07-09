@@ -15,7 +15,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
-contract RouterQueriesTest is BaseVaultTest {
+contract RouterQueriesDiffRatesTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
 
@@ -65,6 +65,7 @@ contract RouterQueriesTest is BaseVaultTest {
         // 1% of biggerPoolInitAmount, so we have flexibility to handle rate variations (Pool is linear, so edges are
         // not limited and pool math can return a bigger amountOut than the pool balance).
         uint256 exactAmountIn = biggerPoolInitAmount.mulUp(0.01e18);
+        // Round down to favor vault.
         uint256 expectedAmountOut = exactAmountIn.mulDown(daiMockRate).divDown(usdcMockRate);
 
         uint256 snapshotId = vm.snapshot();
@@ -87,5 +88,40 @@ contract RouterQueriesTest is BaseVaultTest {
 
         assertEq(queryAmountOut, actualAmountOut, "Query and Actual amounts out are wrong");
         assertEq(expectedAmountOut, actualAmountOut, "Expected amount out is wrong");
+    }
+
+    function testQuerySwapSingleTokenExactOutDiffRates__Fuzz(uint256 daiMockRate, uint256 usdcMockRate) public {
+        daiMockRate = bound(daiMockRate, 1e17, 1e19);
+        usdcMockRate = bound(usdcMockRate, 1e17, 1e19);
+
+        RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
+        RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
+
+        // 1% of biggerPoolInitAmount, so we have flexibility to handle rate variations (Pool is linear, so edges are
+        // not limited and pool math can return a bigger amountOut than the pool balance).
+        uint256 exactAmountOut = biggerPoolInitAmount.mulUp(0.01e18);
+        // Round up to favor vault.
+        uint256 expectedAmountIn = exactAmountOut.mulUp(usdcMockRate).divUp(daiMockRate);
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(address(0), address(0));
+        uint256 queryAmountIn = router.querySwapSingleTokenExactOut(pool, dai, usdc, exactAmountOut, bytes(""));
+
+        vm.revertTo(snapshotId);
+
+        vm.prank(bob);
+        uint256 actualAmountIn = router.swapSingleTokenExactOut(
+            pool,
+            dai,
+            usdc,
+            exactAmountOut,
+            MAX_UINT256,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        assertEq(queryAmountIn, actualAmountIn, "Query and Actual amounts in are wrong");
+        assertEq(expectedAmountIn, actualAmountIn, "Expected amount in is wrong");
     }
 }
