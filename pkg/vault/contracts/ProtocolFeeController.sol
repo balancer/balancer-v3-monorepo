@@ -198,10 +198,10 @@ contract ProtocolFeeController is
         // precision. However, the resulting aggregate fees are stored in the Vault with 24-bit precision, which
         // corresponds to 0.00001% resolution (i.e., a fee can be 1%, 1.00001%, 1.00002%, but not 1.000005%).
         // Ensure there will be no precision loss in the Vault - which would lead to a discrepancy between the
-        // aggregate fee calculated here and that stored in the Vault - by truncating it here before passing the
-        // value to the Vault. Note that this means any external calculation of the aggregate fee would also need
-        // to do this.
-        aggregateFeePercentage &= ~FEE_SCALING_MASK;
+        // aggregate fee calculated here and that stored in the Vault.
+        if (aggregateFeePercentage & ~FEE_SCALING_MASK != aggregateFeePercentage) {
+            revert IVaultErrors.FeePrecisionTooHigh();
+        }
     }
 
     function _ensureCallerIsPoolCreator(address pool) internal view {

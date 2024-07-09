@@ -311,11 +311,8 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         uint256 highPrecisionFee = CUSTOM_PROTOCOL_SWAP_FEE + highPrecisionBits;
 
         vm.prank(admin);
+        vm.expectRevert(IVaultErrors.FeePrecisionTooHigh.selector);
         feeController.setProtocolSwapFeePercentage(pool, highPrecisionFee);
-
-        // Retrieve it from the Vault - should be truncated
-        PoolConfig memory config = vault.getPoolConfig(pool);
-        assertEq(config.aggregateSwapFeePercentage, CUSTOM_PROTOCOL_SWAP_FEE);
     }
 
     function testProtocolYieldFeeLowResolution_Fuzz(uint256 extraFee) public {
@@ -355,11 +352,8 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         uint256 highPrecisionFee = CUSTOM_PROTOCOL_YIELD_FEE + highPrecisionBits;
 
         vm.prank(admin);
+        vm.expectRevert(IVaultErrors.FeePrecisionTooHigh.selector);
         feeController.setProtocolYieldFeePercentage(pool, highPrecisionFee);
-
-        // Retrieve it from the Vault - should be truncated
-        PoolConfig memory config = vault.getPoolConfig(pool);
-        assertEq(config.aggregateYieldFeePercentage, CUSTOM_PROTOCOL_YIELD_FEE);
     }
 
     function testSettingPoolProtocolSwapFeeTooHigh() public {
