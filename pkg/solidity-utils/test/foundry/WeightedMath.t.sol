@@ -20,6 +20,7 @@ contract WeightedMathTest is Test {
 
     uint256 constant MIN_SWAP_FEE = 0;
     uint256 constant MAX_SWAP_FEE = 0.8e18;
+    uint256 constant DELTA = 1e8;
 
     WeightedMathMock mock;
 
@@ -33,7 +34,7 @@ contract WeightedMathTest is Test {
         uint256 rawBalanceOut,
         uint256 rawAmountGiven,
         bool flipBit
-    ) external {
+    ) external view {
         uint256 weightIn = bound(rawWeightIn, MIN_WEIGHT, MAX_WEIGHT);
         uint256 weightOut = FP_ONE - weightIn;
 
@@ -66,8 +67,13 @@ contract WeightedMathTest is Test {
             roundedDownAmountGiven
         );
 
-        assertGe(roundedUpResult, standardResult);
-        assertLe(roundedDownResult, standardResult);
+        if (flipBit) {
+            assertGe(roundedUpResult, standardResult, "roundedUpResult < standardResult (computeOutGivenExactIn)");
+            assertLe(roundedDownResult, standardResult, "roundedDownResult > standardResult (computeOutGivenExactIn)");
+        } else {
+            assertEq(roundedUpResult, standardResult, "roundedUpResult != standardResult (computeOutGivenExactIn)");
+            assertEq(roundedDownResult, standardResult, "roundedDownResult != standardResult (computeOutGivenExactIn)");
+        }
     }
 
     function testComputeInGivenExactOut__Fuzz(
@@ -76,7 +82,7 @@ contract WeightedMathTest is Test {
         uint256 rawBalanceOut,
         uint256 rawAmountGiven,
         bool flipBit
-    ) external {
+    ) external view {
         uint256 weightIn = bound(rawWeightIn, MIN_WEIGHT, MAX_WEIGHT);
         uint256 weightOut = FP_ONE - weightIn;
 
@@ -109,8 +115,13 @@ contract WeightedMathTest is Test {
             roundedDownAmountGiven
         );
 
-        assertGe(roundedUpResult, standardResult);
-        assertLe(roundedDownResult, standardResult);
+        if (flipBit) {
+            assertGe(roundedUpResult, standardResult, "roundedUpResult < standardResult (computeInGivenExactOut)");
+            assertLe(roundedDownResult, standardResult, "roundedDownResult > standardResult (computeInGivenExactOut)");
+        } else {
+            assertEq(roundedUpResult, standardResult, "roundedUpResult != standardResult (computeInGivenExactOut)");
+            assertEq(roundedDownResult, standardResult, "roundedDownResult != standardResult (computeInGivenExactOut)");
+        }
     }
 
     struct AddLiquidityVars {
@@ -121,15 +132,14 @@ contract WeightedMathTest is Test {
         uint256 swapFee;
     }
 
-    // TODO: Temporarily disable; fails intermittently due to math library precision
-    function skipTestComputeBptOutGivenExactTokensIn__Fuzz(
+    function testComputeBptOutGivenExactTokensIn__Fuzz(
         uint64 rawWeight,
         uint64 rawSwapFee,
         uint256 rawTotalSupply,
         uint256[2] calldata rawBalances,
         uint256[2] calldata rawAmountsIn,
         bool flipBit
-    ) external {
+    ) external view {
         AddLiquidityVars memory vars = _computeAddLiquidityVars(
             rawWeight,
             rawSwapFee,
@@ -170,8 +180,31 @@ contract WeightedMathTest is Test {
             vars.swapFee
         );
 
-        assertLe(roundedUpResult, standardResult);
-        assertGe(roundedDownResult, standardResult);
+        if (flipBit) {
+            assertApproxEqAbs(
+                roundedUpResult,
+                standardResult,
+                DELTA,
+                "roundedUpResult != standardResult with DELTA (computeBptOutGivenExactTokensIn)"
+            );
+            assertApproxEqAbs(
+                roundedDownResult,
+                standardResult,
+                DELTA,
+                "roundedUpResult != standardResult with DELTA (computeBptOutGivenExactTokensIn)"
+            );
+        } else {
+            assertEq(
+                roundedUpResult,
+                standardResult,
+                "roundedUpResult != standardResult (computeBptOutGivenExactTokensIn)"
+            );
+            assertEq(
+                roundedDownResult,
+                standardResult,
+                "roundedDownResult != standardResult (computeBptOutGivenExactTokensIn)"
+            );
+        }
     }
 
     function testComputeBptInGivenExactTokensOut__Fuzz(
@@ -180,7 +213,7 @@ contract WeightedMathTest is Test {
         uint256 rawTotalSupply,
         uint256[2] calldata rawBalances,
         bool flipBit
-    ) external {
+    ) external view {
         uint256[] memory weights = new uint256[](2);
         uint256[] memory balances = new uint256[](2);
         uint256[] memory amountsOut = new uint256[](2);
@@ -232,8 +265,29 @@ contract WeightedMathTest is Test {
             swapFee
         );
 
-        assertLe(roundedUpResult, standardResult);
-        assertGe(roundedDownResult, standardResult);
+        if (flipBit) {
+            assertGe(
+                roundedUpResult,
+                standardResult,
+                "roundedUpResult < standardResult (computeBptInGivenExactTokensOut)"
+            );
+            assertLe(
+                roundedDownResult,
+                standardResult,
+                "roundedDownResult > standardResult (computeBptInGivenExactTokensOut)"
+            );
+        } else {
+            assertEq(
+                roundedUpResult,
+                standardResult,
+                "roundedUpResult != standardResult (computeBptInGivenExactTokensOut)"
+            );
+            assertEq(
+                roundedDownResult,
+                standardResult,
+                "roundedDownResult != standardResult (computeBptInGivenExactTokensOut)"
+            );
+        }
     }
 
     function _computeAddLiquidityVars(
@@ -242,7 +296,7 @@ contract WeightedMathTest is Test {
         uint256 rawTotalSupply,
         uint256[2] calldata rawBalances,
         uint256[2] calldata rawAmounts
-    ) private returns (AddLiquidityVars memory vars) {
+    ) private pure returns (AddLiquidityVars memory vars) {
         vars.weights = new uint256[](2);
         vars.balances = new uint256[](2);
         vars.amountsIn = new uint256[](2);
