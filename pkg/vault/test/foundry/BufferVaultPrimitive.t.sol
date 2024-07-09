@@ -51,13 +51,13 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Create and fund buffer pools
         vm.startPrank(lp);
 
-        dai.mint(address(lp), _userAmount);
+        dai.mint(lp, _userAmount);
         dai.approve(address(waDAI), _userAmount);
-        waDAI.deposit(_userAmount, address(lp));
+        waDAI.deposit(_userAmount, lp);
 
-        usdc.mint(address(lp), _userAmount);
+        usdc.mint(lp, _userAmount);
         usdc.approve(address(waUSDC), _userAmount);
-        waUSDC.deposit(_userAmount, address(lp));
+        waUSDC.deposit(_userAmount, lp);
 
         // Minting wrong token to wrapped token contracts, to test changing the asset
         dai.mint(address(waUSDC), _userAmount);
@@ -96,7 +96,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         // Add Liquidity with the right asset
         vm.prank(lp);
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, lp);
 
         // Change Asset to the wrong asset
         waDAI.setAsset(usdc);
@@ -119,14 +119,14 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        uint256 lpUnderlyingBalanceBefore = dai.balanceOf(address(lp));
-        uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceBefore = dai.balanceOf(lp);
+        uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(lp);
 
         vm.prank(lp);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        uint256 lpUnderlyingBalanceAfter = dai.balanceOf(address(lp));
-        uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceAfter = dai.balanceOf(lp);
+        uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(lp);
 
         assertEq(
             lpUnderlyingBalanceAfter,
@@ -226,14 +226,14 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        uint256 lpUnderlyingBalanceBefore = dai.balanceOf(address(lp));
-        uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceBefore = dai.balanceOf(lp);
+        uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(lp);
 
         vm.prank(lp);
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        uint256 lpUnderlyingBalanceAfter = dai.balanceOf(address(lp));
-        uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceAfter = dai.balanceOf(lp);
+        uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(lp);
 
         assertEq(
             lpUnderlyingBalanceAfter,
@@ -329,14 +329,14 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        uint256 lpUnderlyingBalanceBefore = dai.balanceOf(address(lp));
-        uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceBefore = dai.balanceOf(lp);
+        uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(lp);
 
         vm.prank(lp);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        uint256 lpUnderlyingBalanceAfter = dai.balanceOf(address(lp));
-        uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceAfter = dai.balanceOf(lp);
+        uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(lp);
 
         assertEq(
             lpUnderlyingBalanceAfter,
@@ -379,7 +379,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         vm.startPrank(lp);
         // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
@@ -429,14 +429,14 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        uint256 lpUnderlyingBalanceBefore = dai.balanceOf(address(lp));
-        uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceBefore = dai.balanceOf(lp);
+        uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(lp);
 
         vm.prank(lp);
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        uint256 lpUnderlyingBalanceAfter = dai.balanceOf(address(lp));
-        uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(address(lp));
+        uint256 lpUnderlyingBalanceAfter = dai.balanceOf(lp);
+        uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(lp);
 
         assertEq(
             lpUnderlyingBalanceAfter,
@@ -475,7 +475,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         vm.startPrank(lp);
         // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
@@ -539,7 +539,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
     function testDisableVaultBuffer() public {
         vm.prank(lp);
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, lp);
 
         vm.prank(admin);
         IVaultAdmin(address(vault)).pauseVaultBuffers();
@@ -559,7 +559,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         vm.expectRevert(IVaultErrors.VaultBuffersArePaused.selector);
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, address(lp));
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, lp);
 
         // remove liquidity is supposed to pass even with buffers paused, so revert is not expected
         router.removeLiquidityFromBuffer(IERC4626(address(waDAI)), _wrapAmount);

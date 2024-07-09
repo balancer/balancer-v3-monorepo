@@ -119,7 +119,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
 
         uint256 daiExactAmountIn = poolInitAmount / 10;
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(lp));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp);
 
         // Calculate the expected amount out (amount out without fees)
         uint256 poolInvariant = StableMath.computeInvariant(
@@ -139,7 +139,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         vm.prank(bob);
         router.swapSingleTokenExactIn(pool, dai, usdc, daiExactAmountIn, 0, MAX_UINT256, false, bytes(""));
 
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(lp));
+        BaseVaultTest.Balances memory balancesAfter = getBalances(lp);
 
         // Measure actual amount out, which is expectedAmountOut - swapFeeAmount
         uint256 actualAmountOut = balancesAfter.bobTokens[usdcIdx] - balancesBefore.bobTokens[usdcIdx];
@@ -204,7 +204,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         // Swap to meaningfully take the pool out of equilibrium
         uint256 daiExactAmountIn = poolInitAmount / 2;
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(lp));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp);
         // Since there's no rate providers, and all tokens are 18 decimals, scaled18 and raw values are equal.
         uint256[] memory balancesScaled18 = balancesBefore.poolTokens;
 
@@ -241,7 +241,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         vm.prank(bob);
         router.swapSingleTokenExactIn(pool, dai, usdc, daiExactAmountIn, 0, MAX_UINT256, false, bytes(""));
 
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(lp));
+        BaseVaultTest.Balances memory balancesAfter = getBalances(lp);
 
         // Measure actual amount out, which is expectedAmountOut - swapFeeAmount
         uint256 actualAmountOut = balancesAfter.bobTokens[usdcIdx] - balancesBefore.bobTokens[usdcIdx];
@@ -310,7 +310,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
 
     function _registerPoolWithHook(address directionalFeePool, TokenConfig[] memory tokenConfig) private {
         PoolRoleAccounts memory roleAccounts;
-        roleAccounts.poolCreator = address(lp);
+        roleAccounts.poolCreator = lp;
 
         LiquidityManagement memory liquidityManagement;
 
