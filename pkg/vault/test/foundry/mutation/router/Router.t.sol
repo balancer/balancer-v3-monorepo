@@ -219,6 +219,8 @@ contract RouterMutationTest is BaseVaultTest {
         hooksConfig.shouldCallBeforeSwap = true;
         vault.manualSetHooksConfig(pool, hooksConfig);
 
+        PoolHooksMock(poolHooksContract).setShouldStoreSavedSender(true);
+
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
 
         // tx.origin needs to be 0x0 for the transaction to be considered a query
@@ -232,6 +234,8 @@ contract RouterMutationTest is BaseVaultTest {
         HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
         hooksConfig.shouldCallBeforeSwap = true;
         vault.manualSetHooksConfig(pool, hooksConfig);
+
+        PoolHooksMock(poolHooksContract).setShouldStoreSavedSender(true);
 
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
 
