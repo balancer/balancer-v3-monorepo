@@ -145,11 +145,8 @@ contract DynamicFeePoolTest is BaseVaultTest {
             1 // callCount
         );
 
-        // The fee cannot be 100%, or the trade amount will be below the minimum.
-        uint256 almostOne = 0.9999e18;
-
-        // Set a fee near 100%, and bob as 0 swap fee sender.
-        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(almostOne);
+        // Set a 100% fee, and bob as 0 swap fee sender.
+        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(FixedPoint.ONE);
         PoolHooksMock(poolHooksContract).setSpecialSender(bob);
 
         uint256 aliceBalanceBefore = usdc.balanceOf(alice);
@@ -161,7 +158,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         // near 100% fee; should get very little
         assertEq(
             aliceBalanceAfter - aliceBalanceBefore,
-            defaultAmount.mulDown(almostOne.complement()),
+            defaultAmount,
             "Wrong alice balance (high fee)"
         );
 
@@ -214,8 +211,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
     }
 
     function testSwapChargesFees__Fuzz(uint256 dynamicSwapFeePercentage) public {
-        // Cannot be 100%, or it would do a zero amount swap, which is below the minimum.
-        dynamicSwapFeePercentage = bound(dynamicSwapFeePercentage, 0, 0.9999e18);
+        dynamicSwapFeePercentage = bound(dynamicSwapFeePercentage, 0, FixedPoint.ONE);
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
 
         vm.prank(alice);

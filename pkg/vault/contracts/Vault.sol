@@ -665,10 +665,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert BptAmountOutBelowMin(bptAmountOut, params.minBptAmountOut);
         }
 
-        // Donation sends 0 bptAmountOut by defintion.
-        if (params.kind != AddLiquidityKind.DONATION) {
-            _ensureValidTradeAmount(bptAmountOut);
-        }
+        _ensureValidTradeAmount(bptAmountOut);
 
         amountsInRaw = new uint256[](locals.numTokens);
 
@@ -1536,7 +1533,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     function _ensureValidTradeAmount(uint256 tradeAmount) private pure {
-        if (tradeAmount < _MINIMUM_TRADE_AMOUNT) {
+        if (tradeAmount != 0 && tradeAmount < _MINIMUM_TRADE_AMOUNT) {
             revert TradeAmountTooSmall();
         }
     }
