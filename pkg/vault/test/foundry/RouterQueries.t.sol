@@ -1,0 +1,91 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+pragma solidity ^0.8.24;
+
+import "forge-std/Test.sol";
+
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
+import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
+
+contract RouterQueriesTest is BaseVaultTest {
+    using ArrayHelpers for *;
+    using FixedPoint for uint256;
+
+    // Track the indices for the standard dai/usdc pool.
+    uint256 internal daiIdx;
+    uint256 internal usdcIdx;
+
+    // A bigger pool init amount is needed, so we can manipulate the token rates safely, without breaking the linear
+    // math of PoolMock (Linear math can return amounts out outside of pool balances since it does not have protections
+    // in the edge of the pricing curve).
+    uint256 internal constant biggerPoolInitAmount = 1e6 * 1e18;
+
+    IRateProvider[] internal rateProviders;
+
+    function setUp() public override {
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+
+        super.setUp();
+    }
+
+    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+        address newPool = factoryMock.createPool("TestPool", "TEST");
+        vm.label(newPool, label);
+
+        rateProviders = new IRateProvider[](2);
+        rateProviders[daiIdx] = IRateProvider(address(new RateProviderMock()));
+        rateProviders[usdcIdx] = IRateProvider(address(new RateProviderMock()));
+
+        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20(), rateProviders));
+
+        return newPool;
+    }
+
+    function initPool() internal override {
+        vm.startPrank(lp);
+        _initPool(pool, [biggerPoolInitAmount, biggerPoolInitAmount].toMemoryArray(), 0);
+        vm.stopPrank();
+    }
+
+    function testQuerySwapSingleTokenExactInDiffRates__Fuzz(uint256 daiMockRate, uint256 usdcMockRate) public {
+        daiMockRate = bound(daiMockRate, 1e17, 1e19);
+        usdcMockRate = bound(usdcMockRate, 1e17, 1e19);
+
+        RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
+        RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
+
+        // 1% of biggerPoolInitAmount, so we have flexibility to handle rate variations (Pool is linear, so edges are
+        // not limited and pool math can return a bigger amountOut than the pool balance).
+        uint256 exactAmountIn = biggerPoolInitAmount.mulUp(0.01e18);
+        uint256 expectedAmountOut = exactAmountIn.mulDown(daiMockRate).divDown(usdcMockRate);
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(address(0), address(0));
+        uint256 queryAmountOut = router.querySwapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, bytes(""));
+
+        vm.revertTo(snapshotId);
+
+        vm.prank(bob);
+        uint256 actualAmountOut = router.swapSingleTokenExactIn(
+            pool,
+            dai,
+            usdc,
+            exactAmountIn,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        assertEq(queryAmountOut, actualAmountOut, "Query and Actual amounts out are wrong");
+        assertEq(expectedAmountOut, actualAmountOut, "Expected amount out is wrong");
+    }
+}
