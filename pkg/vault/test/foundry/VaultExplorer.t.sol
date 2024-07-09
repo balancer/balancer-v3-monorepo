@@ -30,7 +30,11 @@ contract VaultExplorerTest is BaseVaultTest {
         assertEq(explorer.getVaultExtension(), vault.getVaultExtension(), "Vault Extension address mismatch");
         assertEq(explorer.getVaultAdmin(), vault.getVaultAdmin(), "Vault Admin address mismatch");
         assertEq(explorer.getAuthorizer(), address(vault.getAuthorizer()), "Authorizer address mismatch");
-        assertEq(explorer.getProtocolFeeController(), address(vault.getProtocolFeeController()), "Protocol Fee Controller address mismatch");
+        assertEq(
+            explorer.getProtocolFeeController(),
+            address(vault.getProtocolFeeController()),
+            "Protocol Fee Controller address mismatch"
+        );
     }
 
     function testPoolTokenCount() public view {
@@ -38,19 +42,29 @@ contract VaultExplorerTest is BaseVaultTest {
         (uint256 tokenCountExplorer, uint256 tokenIndexExplorer) = explorer.getPoolTokenCountAndIndexOfToken(pool, dai);
 
         assertEq(tokenCountExplorer, tokenCountVault, "Token count mismatch");
-        assertEq(tokenIndexExplorer, tokenIndexVault, "Token index mismatch");  
+        assertEq(tokenIndexExplorer, tokenIndexVault, "Token index mismatch");
     }
 
-    function startSwap() public {
-        SwapParams memory params = SwapParams({
-            kind: SwapKind.EXACT_IN,
-            pool: pool,
-            tokenIn: usdc,
-            tokenOut: dai,
-            amountGivenRaw: 1e18,
-            limitRaw: 0,
-            userData: bytes("")
-        });
-        vault.swap(params);
+    function testUnlocked() public {
+        assertFalse(explorer.isUnlocked(), "Should be locked");
+
+        vault.manualSetIsUnlocked(true);
+        assertTrue(explorer.isUnlocked(), "Should be unlocked");
+    }
+
+    function testNonzeroDeltaCount() public {
+        assertEq(explorer.getNonzeroDeltaCount(), 0, "Wrong initial non-zero delta count");
+
+        vault.manualSetNonZeroDeltaCount(47);
+        assertEq(explorer.getNonzeroDeltaCount(), 47, "Wrong non-zero delta count");
+    }
+
+    function testGetReservesOf() public {
+        vault.manualSetIsUnlocked(true);
+        vault.manualSetReservesOf(dai, defaultAmount);
+
+        dai.mint(address(vault), defaultAmount);
+        assertEq(vault.getReservesOf(dai), defaultAmount);
+        assertEq(explorer.getReservesOf(dai), defaultAmount);
     }
 }
