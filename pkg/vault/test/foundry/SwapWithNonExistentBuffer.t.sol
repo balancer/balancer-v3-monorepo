@@ -80,13 +80,13 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
 
-        dai.mint(address(bob), boostedPoolAmount);
+        dai.mint(bob, boostedPoolAmount);
         dai.approve(address(waDAI), boostedPoolAmount);
-        waDAI.deposit(boostedPoolAmount, address(bob));
+        waDAI.deposit(boostedPoolAmount, bob);
 
-        usdc.mint(address(bob), boostedPoolAmount);
+        usdc.mint(bob, boostedPoolAmount);
         usdc.approve(address(waUSDC), boostedPoolAmount);
-        waUSDC.deposit(boostedPoolAmount, address(bob));
+        waUSDC.deposit(boostedPoolAmount, bob);
 
         _initPool(boostedPool, [boostedPoolAmount, boostedPoolAmount].toMemoryArray(), boostedPoolAmount * 2 - MIN_BPT);
         vm.stopPrank();
