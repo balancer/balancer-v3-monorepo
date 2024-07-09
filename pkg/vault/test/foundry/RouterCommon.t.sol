@@ -73,7 +73,7 @@ contract RouterCommonTest is BaseVaultTest {
         routerMock.mockTakeTokenIn(bob, IERC20(weth), routerEthBalance + 1, true);
     }
 
-    function testTakeTokenInWEthIsNotEth() public {
+    function testTakeTokenInWethIsNotEth() public {
         vault.manualSetIsUnlocked(true);
         uint256 amountToDeposit = weth.balanceOf(bob) / 100;
 
