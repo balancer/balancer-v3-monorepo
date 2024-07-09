@@ -36,12 +36,12 @@ contract PoolDonationTest is BaseVaultTest {
         uint256[] memory amountsToDonate = new uint256[](2);
         amountsToDonate[daiIdx] = amountToDonate;
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
         router.donate(pool, amountsToDonate, false, bytes(""));
 
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 
         // Bob balances
         assertEq(

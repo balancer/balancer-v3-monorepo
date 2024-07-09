@@ -204,9 +204,6 @@ interface IRouter {
         bytes userData;
     }
 
-    /// @dev The actual bptAmountOut is below the minimum limit specified in the exit.
-    error ExitBelowMin(uint256 amount, uint256 limit);
-
     /**
      * @notice Removes liquidity with proportional token amounts from a pool, burning an exact pool token amount.
      * @param pool Address of the liquidity pool

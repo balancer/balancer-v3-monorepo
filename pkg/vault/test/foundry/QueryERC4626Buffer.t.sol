@@ -73,12 +73,12 @@ contract QueryERC4626BufferTest is BaseVaultTest {
 
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
         assertEq(
-            vault.getBufferOwnerShares(IERC20(waDAI), address(lp)),
+            vault.getBufferOwnerShares(IERC20(waDAI), lp),
             bufferAmount * 2 - MIN_BPT,
             "Wrong share of waDAI buffer belonging to LP"
         );
         assertEq(
-            vault.getBufferOwnerShares(IERC20(waUSDC), address(lp)),
+            vault.getBufferOwnerShares(IERC20(waUSDC), lp),
             bufferAmount * 2 - MIN_BPT,
             "Wrong share of waUSDC buffer belonging to LP"
         );
@@ -223,13 +223,13 @@ contract QueryERC4626BufferTest is BaseVaultTest {
     function _initializeBuffers() private {
         // Create and fund buffer pools
         vm.startPrank(lp);
-        dai.mint(address(lp), bufferAmount);
+        dai.mint(lp, bufferAmount);
         dai.approve(address(waDAI), bufferAmount);
-        waDAI.deposit(bufferAmount, address(lp));
+        waDAI.deposit(bufferAmount, lp);
 
-        usdc.mint(address(lp), bufferAmount);
+        usdc.mint(lp, bufferAmount);
         usdc.approve(address(waUSDC), bufferAmount);
-        waUSDC.deposit(bufferAmount, address(lp));
+        waUSDC.deposit(bufferAmount, lp);
         vm.stopPrank();
 
         vm.startPrank(lp);
@@ -240,8 +240,8 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
 
-        router.addLiquidityToBuffer(waDAI, bufferAmount, bufferAmount, address(lp));
-        router.addLiquidityToBuffer(waUSDC, bufferAmount, bufferAmount, address(lp));
+        router.addLiquidityToBuffer(waDAI, bufferAmount, bufferAmount, lp);
+        router.addLiquidityToBuffer(waUSDC, bufferAmount, bufferAmount, lp);
         vm.stopPrank();
     }
 
@@ -269,19 +269,19 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
 
-        dai.mint(address(bob), boostedPoolAmount);
+        dai.mint(bob, boostedPoolAmount);
         dai.approve(address(waDAI), boostedPoolAmount);
-        waDAI.deposit(boostedPoolAmount, address(bob));
+        waDAI.deposit(boostedPoolAmount, bob);
 
-        usdc.mint(address(bob), boostedPoolAmount);
+        usdc.mint(bob, boostedPoolAmount);
         usdc.approve(address(waUSDC), boostedPoolAmount);
-        waUSDC.deposit(boostedPoolAmount, address(bob));
+        waUSDC.deposit(boostedPoolAmount, bob);
 
         _initPool(boostedPool, [boostedPoolAmount, boostedPoolAmount].toMemoryArray(), boostedPoolAmount * 2 - MIN_BPT);
         vm.stopPrank();
     }
 
     function _initializeUser() private {
-        dai.mint(address(alice), boostedPoolAmount);
+        dai.mint(alice, boostedPoolAmount);
     }
 }
