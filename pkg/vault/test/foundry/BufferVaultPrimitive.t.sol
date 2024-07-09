@@ -582,7 +582,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         BufferAndLPBalances memory beforeBalances = _measureBuffer();
 
         vm.prank(lp);
-        router.addLiquidityToBuffer(waDAI, _wrapAmount, _wrapAmount, lp);
+        uint256 lpShares = router.addLiquidityToBuffer(waDAI, _wrapAmount, _wrapAmount, lp);
 
         BufferAndLPBalances memory afterBalances = _measureBuffer();
 
@@ -609,6 +609,56 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         assertEq(afterBalances.lp.dai, beforeBalances.lp.dai - _wrapAmount, "LP DAI balance is wrong");
         assertEq(afterBalances.lp.waDai, beforeBalances.lp.waDai - _wrapAmount, "LP waDAI balance is wrong");
+
+        assertEq(lpShares, vault.getBufferOwnerShares(IERC20(address(waDAI)), lp), "LP Buffer shares is wrong");
+        assertEq(lpShares, _wrapAmount + waDAI.convertToAssets(_wrapAmount) - MIN_BPT, "Issued shares is wrong");
+    }
+
+    function testRemoveLiquidityFromBuffer() public {
+        vm.prank(lp);
+        uint256 lpShares = router.addLiquidityToBuffer(waDAI, _wrapAmount, _wrapAmount, lp);
+
+        BufferAndLPBalances memory beforeBalances = _measureBuffer();
+
+        vm.prank(lp);
+        (uint256 underlyingRemoved, uint256 wrappedRemoved) = router.removeLiquidityFromBuffer(waDAI, lpShares);
+
+        BufferAndLPBalances memory afterBalances = _measureBuffer();
+
+        assertEq(
+            afterBalances.buffer.dai,
+            beforeBalances.buffer.dai - underlyingRemoved,
+            "Buffer DAI balance is wrong"
+        );
+        assertEq(
+            afterBalances.buffer.waDai,
+            beforeBalances.buffer.waDai - wrappedRemoved,
+            "Buffer waDAI balance is wrong"
+        );
+
+        assertEq(afterBalances.vault.dai, beforeBalances.vault.dai - underlyingRemoved, "Vault DAI balance is wrong");
+        assertEq(
+            afterBalances.vault.waDai,
+            beforeBalances.vault.waDai - wrappedRemoved,
+            "Vault waDAI balance is wrong"
+        );
+
+        assertEq(
+            afterBalances.vaultReserves.dai,
+            beforeBalances.vaultReserves.dai - underlyingRemoved,
+            "Vault Reserve DAI balance is wrong"
+        );
+        assertEq(
+            afterBalances.vaultReserves.waDai,
+            beforeBalances.vaultReserves.waDai - wrappedRemoved,
+            "Vault Reserve waDAI balance is wrong"
+        );
+
+        assertEq(afterBalances.lp.dai, beforeBalances.lp.dai + underlyingRemoved, "LP DAI balance is wrong");
+        assertEq(afterBalances.lp.waDai, beforeBalances.lp.waDai + wrappedRemoved, "LP waDAI balance is wrong");
+
+        assertEq(vault.getBufferOwnerShares(IERC20(address(waDAI)), lp), 0, "LP Buffer shares is wrong");
+        assertEq(lpShares, underlyingRemoved + waDAI.convertToAssets(wrappedRemoved), "Removed assets are wrong");
     }
 
     struct BufferTokenBalances {
