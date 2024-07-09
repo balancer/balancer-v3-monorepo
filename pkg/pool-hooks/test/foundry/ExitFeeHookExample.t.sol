@@ -50,7 +50,7 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         vm.label(address(newPool), label);
 
         PoolRoleAccounts memory roleAccounts;
-        roleAccounts.poolCreator = address(lp);
+        roleAccounts.poolCreator = lp;
 
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.disableUnbalancedLiquidity = true;
@@ -107,12 +107,12 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         uint256 hookFee = amountOut.mulDown(exitFeePercentage);
         uint256[] memory minAmountsOut = [amountOut - hookFee, amountOut - hookFee].toMemoryArray();
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(lp));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp);
 
         vm.prank(lp);
         router.removeLiquidityProportional(pool, 2 * amountOut, minAmountsOut, false, bytes(""));
 
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(lp));
+        BaseVaultTest.Balances memory balancesAfter = getBalances(lp);
 
         // LP gets original liquidity minus hook fee
         assertEq(
@@ -166,7 +166,7 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
 
     function _registerPoolWithHook(address exitFeePool, TokenConfig[] memory tokenConfig, bool enableDonation) private {
         PoolRoleAccounts memory roleAccounts;
-        roleAccounts.poolCreator = address(lp);
+        roleAccounts.poolCreator = lp;
 
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.disableUnbalancedLiquidity = true;

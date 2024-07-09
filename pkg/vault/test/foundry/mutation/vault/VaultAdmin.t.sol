@@ -184,7 +184,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     function testSetProtocolFeeControllerSuccessfully() public {
         IProtocolFeeController newProtocolFeeController = IProtocolFeeController(address(0x123));
 
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setProtocolFeeController.selector), address(admin));
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setProtocolFeeController.selector), admin);
         vm.prank(admin);
         vault.setProtocolFeeController(newProtocolFeeController);
 
@@ -328,7 +328,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     function testSetAuthorizer() public {
         IAuthorizer newAuthorizer = IAuthorizer(address(0x123));
 
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setAuthorizer.selector), address(admin));
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setAuthorizer.selector), admin);
         vm.prank(admin);
         vault.setAuthorizer(newAuthorizer);
 
