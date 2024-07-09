@@ -426,19 +426,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             );
     }
 
-    /// @inheritdoc IRouter
-    function removeLiquidityRecovery(
-        address pool,
-        uint256 exactBptAmountIn
-    ) external returns (uint256[] memory amountsOut) {
-        amountsOut = abi.decode(
-            _vault.unlock(
-                abi.encodeWithSelector(Router.removeLiquidityRecoveryHook.selector, pool, msg.sender, exactBptAmountIn)
-            ),
-            (uint256[])
-        );
-    }
-
     /**
      * @notice Hook for removing liquidity.
      * @dev Can only be called by the Vault.
@@ -488,6 +475,19 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         // Send ETH to sender
         payable(params.sender).sendValue(ethAmountOut);
+    }
+
+    /// @inheritdoc IRouter
+    function removeLiquidityRecovery(
+        address pool,
+        uint256 exactBptAmountIn
+    ) external returns (uint256[] memory amountsOut) {
+        amountsOut = abi.decode(
+            _vault.unlock(
+                abi.encodeWithSelector(Router.removeLiquidityRecoveryHook.selector, pool, msg.sender, exactBptAmountIn)
+            ),
+            (uint256[])
+        );
     }
 
     /**
