@@ -283,4 +283,3 @@ struct BufferWrapOrUnwrapParams {
 uint256 constant FEE_BITLENGTH = 24;
 uint256 constant MAX_FEE_PERCENTAGE = 1e18;
 uint256 constant FEE_SCALING_FACTOR = 1e11;
-uint256 constant FEE_SCALING_MASK = 2 ** (11) - 1;
