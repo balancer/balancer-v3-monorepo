@@ -506,7 +506,7 @@ contract PoolHooksMock is BaseHooks {
         shouldStoreSavedSender = value;
     }
 
-    function getSavedSender() external returns (address) {
+    function getSavedSender() external view returns (address) {
         return _savedSender;
     }
 
