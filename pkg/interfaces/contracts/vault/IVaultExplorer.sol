@@ -179,10 +179,10 @@ interface IVaultExplorer {
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
      * @param pool Address of the pool
-     * @return tokens The pool tokens, in registration order
-     * @return tokenInfo Corresponding token info
-     * @return balancesRaw Corresponding raw balances of the tokens
-     * @return scalingFactors Corresponding scalingFactors of the tokens
+     * @return tokens The pool tokens, sorted in registration order
+     * @return tokenInfo Token info, sorted in token registration order
+     * @return balancesRaw Raw balances, sorted in token registration order
+     * @return lastLiveBalances Last saved live balances, sorted in token registration order
      */
     function getPoolTokenInfo(
         address pool
@@ -193,7 +193,7 @@ interface IVaultExplorer {
             IERC20[] memory tokens,
             TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory scalingFactors
+            uint256[] memory lastLiveBalances
         );
 
     /**

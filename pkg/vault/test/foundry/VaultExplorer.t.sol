@@ -280,7 +280,7 @@ contract VaultExplorerTest is BaseVaultTest {
             IERC20[] memory tokens,
             TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory scalingFactors
+            uint256[] memory lastLiveBalances
         ) = explorer.getPoolTokenInfo(pool);
 
         assertTrue(tokenInfo[daiIdx].paysYieldFees, "DAI doesn't pay yield fees");
@@ -292,15 +292,12 @@ contract VaultExplorerTest is BaseVaultTest {
         assertEq(balancesRaw[daiIdx], daiRawBalance, "DAI raw balance wrong");
         assertEq(balancesRaw[usdcIdx], usdcRawBalance, "USDC raw balance wrong");
 
+        assertEq(lastLiveBalances[daiIdx], daiRawBalance, "DAI last live balance wrong");
+        assertEq(lastLiveBalances[usdcIdx], usdcRawBalance, "USDC last live balance wrong");
+
         IERC20[] memory vaultTokens = vault.getPoolTokens(pool);
 
         for (uint256 i = 0; i < tokens.length; ++i) {
-            assertEq(
-                scalingFactors[i],
-                10 ** (18 + tokenDecimalDiffs[i]),
-                string.concat("scalingFactors of token ", Strings.toString(i), " should match tokenDecimalDiffs")
-            );
-
             assertEq(
                 address(tokens[i]),
                 address(vaultTokens[i]),
