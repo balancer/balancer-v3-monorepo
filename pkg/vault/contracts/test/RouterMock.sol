@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
@@ -13,6 +14,43 @@ contract RouterMock is Router {
     error MockErrorCode();
 
     constructor(IVault vault, IWETH weth, IPermit2 permit2) Router(vault, weth, permit2) {}
+
+    function manualReentrancyInitializeHook() external nonReentrant {
+        IRouter.InitializeHookParams memory hookParams;
+        Router(payable(this)).initializeHook(hookParams);
+    }
+
+    function manualReentrancyAddLiquidityHook() external nonReentrant {
+        AddLiquidityHookParams memory params;
+        Router(payable(this)).addLiquidityHook(params);
+    }
+
+    function manualReentrancyRemoveLiquidityHook() external nonReentrant {
+        RemoveLiquidityHookParams memory params;
+        Router(payable(this)).removeLiquidityHook(params);
+    }
+
+    function manualReentrancyRemoveLiquidityRecoveryHook() external nonReentrant {
+        Router(payable(this)).removeLiquidityRecoveryHook(address(0), address(0), 0);
+    }
+
+    function manualReentrancySwapSingleTokenHook() external nonReentrant {
+        IRouter.SwapSingleTokenHookParams memory params;
+        Router(payable(this)).swapSingleTokenHook(params);
+    }
+
+    function manualReentrancyAddLiquidityToBufferHook() external nonReentrant {
+        Router(payable(this)).addLiquidityToBufferHook(IERC4626(address(0)), 0, 0, address(0));
+    }
+
+    function manualReentrancyRemoveLiquidityFromBufferHook() external nonReentrant {
+        Router(payable(this)).removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
+    }
+
+    function manualReentrancyQuerySwapHook() external nonReentrant {
+        IRouter.SwapSingleTokenHookParams memory params;
+        Router(payable(this)).querySwapHook(params);
+    }
 
     function getSingleInputArrayAndTokenIndex(
         address pool,

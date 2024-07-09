@@ -535,6 +535,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     /// @inheritdoc IVaultAdmin
     function getBufferBalance(IERC20 token) external view onlyVaultDelegateCall returns (uint256, uint256) {
+        // The first balance is underlying, and the last is wrapped balance.
         return (_bufferTokenBalances[token].getBalanceRaw(), _bufferTokenBalances[token].getBalanceDerived());
     }
 
