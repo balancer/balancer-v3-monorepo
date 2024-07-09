@@ -99,7 +99,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
     }
 
     function testCannotSetSwapFeePercentageIfNotManager() public {
-        require(vault.getPoolRoleAccounts(pool).swapFeeManager == address(admin), "Wrong swap fee manager");
+        require(vault.getPoolRoleAccounts(pool).swapFeeManager == admin, "Wrong swap fee manager");
 
         vm.prank(bob);
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);

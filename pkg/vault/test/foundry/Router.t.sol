@@ -205,7 +205,7 @@ contract RouterTest is BaseVaultTest {
         );
 
         // weth was deposited, pool tokens were minted to Alice.
-        assertEq(address(alice).balance, defaultBalance - ethAmountIn, "Wrong ETH balance");
+        assertEq(alice.balance, defaultBalance - ethAmountIn, "Wrong ETH balance");
         assertEq(wethPoolNoInit.balanceOf(alice), bptAmountOut, "Wrong WETH pool balance");
         assertGt(bptAmountOut, 0, "bptAmountOut is zero");
     }
@@ -225,7 +225,7 @@ contract RouterTest is BaseVaultTest {
         );
 
         // weth was deposited, excess ETH was returned, pool tokens were minted to Alice.
-        assertEq(address(alice).balance, defaultBalance - ethAmountIn, "Wrong ETH balance");
+        assertEq(alice.balance, defaultBalance - ethAmountIn, "Wrong ETH balance");
         assertEq(wethPoolNoInit.balanceOf(alice), bptAmountOut, "Wrong WETH pool balance");
         assertGt(bptAmountOut, 0, "bptAmountOut is zero");
     }
@@ -272,7 +272,7 @@ contract RouterTest is BaseVaultTest {
         );
 
         // weth was deposited, pool tokens were minted to Alice.
-        assertEq(address(alice).balance, defaultBalance - ethAmountIn, "Wrong ETH balance");
+        assertEq(alice.balance, defaultBalance - ethAmountIn, "Wrong ETH balance");
         assertEq(wethPool.balanceOf(alice), bptAmountOut, "Wrong WETH pool balance");
     }
 
@@ -289,7 +289,7 @@ contract RouterTest is BaseVaultTest {
         );
 
         // weth was deposited, excess was returned, pool tokens were minted to Alice.
-        assertEq(address(alice).balance, defaultBalance - ethAmountIn, "Wrong ETH balance");
+        assertEq(alice.balance, defaultBalance - ethAmountIn, "Wrong ETH balance");
         assertEq(wethPool.balanceOf(alice), bptAmountOut, "Wrong WETH pool balance");
     }
 
@@ -315,7 +315,7 @@ contract RouterTest is BaseVaultTest {
         // Liquidity position was removed, Alice gets weth back
         assertEq(weth.balanceOf(alice), defaultBalance + ethAmountIn, "Wrong WETH balance");
         assertEq(wethPool.balanceOf(alice), 0, "WETH pool balance is > 0");
-        assertEq(address(alice).balance, defaultBalance - ethAmountIn, "Wrong ETH balance");
+        assertEq(alice.balance, defaultBalance - ethAmountIn, "Wrong ETH balance");
     }
 
     function testRemoveLiquidityNative() public {
@@ -331,7 +331,7 @@ contract RouterTest is BaseVaultTest {
             bytes("")
         );
 
-        uint256 aliceNativeBalanceBefore = address(alice).balance;
+        uint256 aliceNativeBalanceBefore = alice.balance;
         checkRemoveLiquidityPreConditions();
 
         router.removeLiquidityCustom(
@@ -345,7 +345,7 @@ contract RouterTest is BaseVaultTest {
         // Liquidity position was removed, Alice gets ETH back
         assertEq(weth.balanceOf(alice), defaultBalance, "Wrong WETH balance");
         assertEq(wethPool.balanceOf(alice), 0, "WETH pool balance is > 0");
-        assertEq(address(alice).balance, aliceNativeBalanceBefore + ethAmountIn, "Wrong ETH balance");
+        assertEq(alice.balance, aliceNativeBalanceBefore + ethAmountIn, "Wrong ETH balance");
     }
 
     function testSwapExactInWETH() public {

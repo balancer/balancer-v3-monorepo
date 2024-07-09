@@ -24,7 +24,7 @@ export async function saveSizeSnap(basePath: string, snap: string, deployedCodeS
 
   let fmtDeploySize = formatSize(deployedCodeSize, 'KiB');
   if (deployedCodeSize > DEPLOYED_SIZE_LIMIT) {
-    fmtDeploySize += '*';
+    fmtDeploySize += '* (' + (deployedCodeSize - DEPLOYED_SIZE_LIMIT) + ' over)';
   }
   let fmtInitSize = formatSize(initCodeSize, 'KiB');
   if (initCodeSize > INIT_SIZE_LIMIT) {
