@@ -113,8 +113,8 @@ contract DynamicFeePoolTest is BaseVaultTest {
     }
 
     function testSwapTooSmallAmountCalculated() public {
-        // 100% swap fee will result in 0 amount calculated
-        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(FixedPoint.ONE);
+        // Near 100% swap fee will result in near 0 amount calculated
+        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(FixedPoint.ONE - 1);
         PoolHooksMock(poolHooksContract).setSpecialSender(bob);
 
         vm.prank(alice);
@@ -155,10 +155,10 @@ contract DynamicFeePoolTest is BaseVaultTest {
         router.swapSingleTokenExactIn(pool, dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
 
         uint256 aliceBalanceAfter = usdc.balanceOf(alice);
-        // near 100% fee; should get very little
+        // 100% fee; should get nothing
         assertEq(
             aliceBalanceAfter - aliceBalanceBefore,
-            defaultAmount,
+            0,
             "Wrong alice balance (high fee)"
         );
 
@@ -211,7 +211,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
     }
 
     function testSwapChargesFees__Fuzz(uint256 dynamicSwapFeePercentage) public {
-        dynamicSwapFeePercentage = bound(dynamicSwapFeePercentage, 0, FixedPoint.ONE);
+        dynamicSwapFeePercentage = bound(dynamicSwapFeePercentage, 0, FixedPoint.ONE - MIN_TRADE_AMOUNT.divDown(defaultAmount));
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
 
         vm.prank(alice);
