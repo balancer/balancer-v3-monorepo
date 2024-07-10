@@ -124,4 +124,46 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         assertEq(queryAmountIn, actualAmountIn, "Query and Actual amounts in are wrong");
         assertEq(expectedAmountIn, actualAmountIn, "Expected amount in is wrong");
     }
+
+    function testQueryAddLiquidityProportionalDiffRates__Fuzz(uint256 daiMockRate, uint256 usdcMockRate) public {
+        daiMockRate = bound(daiMockRate, 1e17, 1e19);
+        usdcMockRate = bound(usdcMockRate, 1e17, 1e19);
+
+        RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
+        RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
+
+        // 1% of biggerPoolInitAmount, arbitrarily
+        uint256 exactBptAmountOut = biggerPoolInitAmount.mulUp(0.01e18);
+        // Proportional join is proportional to pool balance, in terms of raw values. So, since the pool has the same
+        // balance for USDC and DAI, and the invariant of PoolMock is linear (the sum of both balances),
+        // the expectedAmountsIn is `exactBptAmountOut / 2`.
+        uint256[] memory expectedAmountsIn = [exactBptAmountOut.divUp(2e18), exactBptAmountOut.divUp(2e18)]
+            .toMemoryArray();
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(address(0), address(0));
+        uint256[] memory queryAmountsIn = router.queryAddLiquidityProportional(
+            pool,
+            expectedAmountsIn,
+            exactBptAmountOut,
+            bytes("")
+        );
+
+        vm.revertTo(snapshotId);
+
+        vm.prank(bob);
+        uint256[] memory actualAmountsIn = router.addLiquidityProportional(
+            pool,
+            expectedAmountsIn,
+            exactBptAmountOut,
+            false,
+            bytes("")
+        );
+
+        assertEq(queryAmountsIn[daiIdx], actualAmountsIn[daiIdx], "DAI Query and Actual amounts in are wrong");
+        assertEq(expectedAmountsIn[daiIdx], actualAmountsIn[daiIdx], "DAI Expected amount in is wrong");
+
+        assertEq(queryAmountsIn[usdcIdx], actualAmountsIn[usdcIdx], "USDC Query and Actual amounts in are wrong");
+        assertEq(expectedAmountsIn[usdcIdx], actualAmountsIn[usdcIdx], "USDC Expected amount in is wrong");
+    }
 }
