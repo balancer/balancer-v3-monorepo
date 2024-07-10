@@ -57,8 +57,8 @@ contract GetBptRateTest is BaseVaultTest {
                 roleAccounts,
                 swapFeePercentage,
                 address(0), // No hook contract
-                false, // no donations
-                false, // keep support to unbalanced add/remove liquidity
+                false, // Do not enable donations
+                false, // Do not disable unbalanced add/remove liquidity
                 ZERO_BYTES32
             )
         );

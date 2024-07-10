@@ -68,8 +68,8 @@ contract StablePoolTest is BaseVaultTest {
                 roleAccounts,
                 MIN_SWAP_FEE,
                 poolHooksContract,
-                false, // no donations
-                false, // keep support to unbalanced add/remove liquidity
+                false, // Do not enable donations
+                false, // Do not disable unbalanced add/remove liquidity
                 ZERO_BYTES32
             )
         );
