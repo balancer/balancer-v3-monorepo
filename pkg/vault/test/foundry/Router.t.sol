@@ -348,6 +348,72 @@ contract RouterTest is BaseVaultTest {
         assertEq(alice.balance, aliceNativeBalanceBefore + ethAmountIn, "Wrong ETH balance");
     }
 
+    function testRemoveLiquidityRecovery() public {
+        // Add initial liquidity
+        uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
+
+        vm.prank(alice);
+        bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, defaultAmount, false, bytes(""));
+
+        // Put pool in recovery mode
+        vault.manualEnableRecoveryMode(pool);
+
+        BaseVaultTest.Balances memory beforeBalances = getBalances(alice);
+
+        // Do a recovery withdrawal
+        uint256 bptAmountIn = bptAmountOut / 2;
+        vm.prank(alice);
+        uint256[] memory amountsOut = router.removeLiquidityRecovery(pool, bptAmountIn);
+
+        BaseVaultTest.Balances memory afterBalances = getBalances(alice);
+
+        assertEq(afterBalances.aliceBpt, beforeBalances.aliceBpt - bptAmountIn, "Alice BPT is wrong");
+        assertEq(
+            afterBalances.aliceTokens[daiIdx],
+            beforeBalances.aliceTokens[daiIdx] + amountsOut[daiIdx],
+            "Alice DAI is wrong"
+        );
+        assertEq(
+            afterBalances.aliceTokens[usdcIdx],
+            beforeBalances.aliceTokens[usdcIdx] + amountsOut[usdcIdx],
+            "Alice USDC is wrong"
+        );
+
+        assertEq(afterBalances.poolSupply, beforeBalances.poolSupply - bptAmountIn, "Pool Supply is wrong");
+        assertEq(
+            afterBalances.poolTokens[daiIdx],
+            beforeBalances.poolTokens[daiIdx] - amountsOut[daiIdx],
+            "Pool DAI is wrong"
+        );
+        assertEq(
+            afterBalances.poolTokens[usdcIdx],
+            beforeBalances.poolTokens[usdcIdx] - amountsOut[usdcIdx],
+            "Pool USDC is wrong"
+        );
+
+        assertEq(
+            afterBalances.vaultTokens[daiIdx],
+            beforeBalances.vaultTokens[daiIdx] - amountsOut[daiIdx],
+            "Vault DAI is wrong"
+        );
+        assertEq(
+            afterBalances.vaultTokens[usdcIdx],
+            beforeBalances.vaultTokens[usdcIdx] - amountsOut[usdcIdx],
+            "Vault USDC is wrong"
+        );
+
+        assertEq(
+            afterBalances.vaultReserves[daiIdx],
+            beforeBalances.vaultReserves[daiIdx] - amountsOut[daiIdx],
+            "Vault Reserve DAI is wrong"
+        );
+        assertEq(
+            afterBalances.vaultReserves[usdcIdx],
+            beforeBalances.vaultReserves[usdcIdx] - amountsOut[usdcIdx],
+            "Vault Reserve USDC is wrong"
+        );
+    }
+
     function testSwapExactInWETH() public {
         require(weth.balanceOf(alice) == defaultBalance, "Precondition: wrong WETH balance");
 
