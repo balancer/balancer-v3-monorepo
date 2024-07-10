@@ -78,7 +78,6 @@ contract ExitFeeHookExampleStablePoolTest is BaseVaultTest {
         vm.prank(lp);
         ExitFeeHookExample(poolHooksContract).setRemoveLiquidityHookFeePercentage(exitFeePercentage);
         uint256 amountOut = poolInitAmount / 100;
-        uint256 hookFee = amountOut.mulDown(exitFeePercentage);
         uint256[] memory minAmountsOut = [uint256(0), uint256(0)].toMemoryArray();
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp);
