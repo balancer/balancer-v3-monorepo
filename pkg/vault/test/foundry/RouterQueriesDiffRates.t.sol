@@ -6,10 +6,12 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -165,5 +167,45 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         assertEq(queryAmountsIn[usdcIdx], actualAmountsIn[usdcIdx], "USDC Query and Actual amounts in are wrong");
         assertEq(expectedAmountsIn[usdcIdx], actualAmountsIn[usdcIdx], "USDC Expected amount in is wrong");
+    }
+
+    function testQueryAddLiquidityUnbalancedDiffRates__Fuzz(uint256 daiMockRate, uint256 usdcMockRate) public {
+        daiMockRate = bound(daiMockRate, 1e17, 1e19);
+        usdcMockRate = bound(usdcMockRate, 1e17, 1e19);
+
+        RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
+        RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
+
+        // DAI is 1% of biggerPoolInitAmount, USDC is 0.5% of biggerPoolInitAmount, arbitrarily
+        uint256[] memory exactAmountsInRaw = [biggerPoolInitAmount.mulUp(0.01e18), biggerPoolInitAmount.mulUp(0.005e18)]
+            .toMemoryArray();
+        uint256[] memory exactAmountsInScaled18 = new uint256[](2);
+        exactAmountsInScaled18[daiIdx] = exactAmountsInRaw[daiIdx].mulUp(daiMockRate);
+        exactAmountsInScaled18[usdcIdx] = exactAmountsInRaw[usdcIdx].mulUp(usdcMockRate);
+        (uint256 expectedBptAmountOut, ) = BasePoolMath.computeAddLiquidityUnbalanced(
+            vault.getCurrentLiveBalances(pool),
+            exactAmountsInScaled18,
+            IERC20(pool).totalSupply(),
+            0,
+            IBasePool(pool).computeInvariant
+        );
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(address(0), address(0));
+        uint256 queryBptAmountOut = router.queryAddLiquidityUnbalanced(pool, exactAmountsInRaw, bytes(""));
+
+        vm.revertTo(snapshotId);
+
+        vm.prank(bob);
+        uint256 actualBptAmountOut = router.addLiquidityUnbalanced(
+            pool,
+            exactAmountsInRaw,
+            expectedBptAmountOut,
+            false,
+            bytes("")
+        );
+
+        assertEq(queryBptAmountOut, actualBptAmountOut, "Query and Actual bpt amounts out are wrong");
+        assertEq(expectedBptAmountOut, actualBptAmountOut, "BPT expected amount out is wrong");
     }
 }
