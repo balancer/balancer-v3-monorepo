@@ -208,4 +208,43 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         assertEq(queryBptAmountOut, actualBptAmountOut, "Query and Actual bpt amounts out are wrong");
         assertEq(expectedBptAmountOut, actualBptAmountOut, "BPT expected amount out is wrong");
     }
+
+    function testQueryAddLiquiditySingleTokenExactOutDiffRates__Fuzz(uint256 daiMockRate, uint256 usdcMockRate) public {
+        daiMockRate = bound(daiMockRate, 1e17, 1e19);
+        usdcMockRate = bound(usdcMockRate, 1e17, 1e19);
+
+        RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
+        RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
+
+        // 1% of biggerPoolInitAmount, arbitrarily
+        uint256 exactBptAmountOut = biggerPoolInitAmount.mulUp(0.01e18);
+        (uint256 expectedAmountInScaled18, ) = BasePoolMath.computeAddLiquiditySingleTokenExactOut(
+            vault.getCurrentLiveBalances(pool),
+            daiIdx,
+            exactBptAmountOut,
+            IERC20(pool).totalSupply(),
+            0,
+            IBasePool(pool).computeBalance
+        );
+        uint256 expectedAmountInRaw = expectedAmountInScaled18.divUp(daiMockRate);
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(address(0), address(0));
+        uint256 queryAmountIn = router.queryAddLiquiditySingleTokenExactOut(pool, dai, exactBptAmountOut, bytes(""));
+
+        vm.revertTo(snapshotId);
+
+        vm.prank(bob);
+        uint256 actualAmountIn = router.addLiquiditySingleTokenExactOut(
+            pool,
+            dai,
+            MAX_UINT128,
+            exactBptAmountOut,
+            false,
+            bytes("")
+        );
+
+        assertEq(queryAmountIn, actualAmountIn, "Query and Actual DAI amounts in are wrong");
+        assertEq(expectedAmountInRaw, actualAmountIn, "DAI expected amount in is wrong");
+    }
 }
