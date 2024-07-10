@@ -71,9 +71,9 @@ contract ExitFeeHookExampleStablePoolTest is BaseVaultTest {
         return address(newPool);
     }
 
-    // Exit fee returns to LPs
+    // Exit fee returns to LPs.
     function testExitFeeReturnToLPs() public {
-        // 10% exit fee
+        // 10% exit fee.
         uint64 exitFeePercentage = 1e17;
         vm.prank(lp);
         ExitFeeHookExample(poolHooksContract).setRemoveLiquidityHookFeePercentage(exitFeePercentage);
