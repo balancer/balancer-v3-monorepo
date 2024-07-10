@@ -75,6 +75,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
                 MIN_SWAP_FEE,
                 poolHooksContract,
                 false, // Does not allow donations
+                false, // Do not disable unbalanced add/remove liquidity
                 ZERO_BYTES32
             )
         );
