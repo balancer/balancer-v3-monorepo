@@ -80,7 +80,8 @@ describe('StablePool', () => {
       { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS, poolCreator: ZERO_ADDRESS },
       MIN_SWAP_FEE,
       ZERO_ADDRESS,
-      false,
+      false, // no donations
+      false, // keep support to unbalanced add/remove liquidity
       TypesConverter.toBytes32(bn(numTokens))
     );
     const receipt = await tx.wait();

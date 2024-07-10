@@ -47,6 +47,7 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
      * @param swapFeePercentage Initial swap fee percentage
      * @param poolHooksContract Contract that implements the hooks for the pool
      * @param enableDonation If true, the pool will support the donation add liquidity mechanism
+     * @param disableUnbalancedLiquidity If true, only proportional add and remove liquidity are accepted
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
@@ -58,6 +59,7 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
         uint256 swapFeePercentage,
         address poolHooksContract,
         bool enableDonation,
+        bool disableUnbalancedLiquidity,
         bytes32 salt
     ) external returns (address pool) {
         if (roleAccounts.poolCreator != address(0)) {
@@ -66,6 +68,7 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
 
         LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
         liquidityManagement.enableDonation = enableDonation;
+        liquidityManagement.disableUnbalancedLiquidity = disableUnbalancedLiquidity;
 
         pool = _create(
             abi.encode(

@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 import "../../contracts/math/FixedPoint.sol";
 
 contract FixedPointTest is Test {
-    function testComplement__Fuzz(uint256 x) external {
+    function testComplement__Fuzz(uint256 x) external pure {
         uint256 complement = FixedPoint.complement(x);
 
         if (x < FixedPoint.ONE) {
@@ -17,7 +17,7 @@ contract FixedPointTest is Test {
         }
     }
 
-    function testComplementEquivalence__Fuzz(uint256 x) external {
+    function testComplementEquivalence__Fuzz(uint256 x) external pure {
         uint256 referenceComplement = (x < FixedPoint.ONE) ? (FixedPoint.ONE - x) : 0;
         uint256 complement = FixedPoint.complement(x);
 
@@ -58,7 +58,7 @@ contract FixedPointTest is Test {
         }
     }
 
-    function testMulUpEquivalence__Fuzz(uint256 a, uint256 b) external {
+    function testMulUpEquivalence__Fuzz(uint256 a, uint256 b) external pure {
         unchecked {
             uint256 product = a * b;
             vm.assume(a == 0 || product / a == b);
@@ -94,7 +94,7 @@ contract FixedPointTest is Test {
         }
     }
 
-    function testDivDownEquivalence__Fuzz(uint256 a, uint256 b) external {
+    function testDivDownEquivalence__Fuzz(uint256 a, uint256 b) external pure {
         unchecked {
             vm.assume(b > 0);
             vm.assume(a == 0 || (a * FixedPoint.ONE) / FixedPoint.ONE == a);
@@ -126,7 +126,7 @@ contract FixedPointTest is Test {
         }
     }
 
-    function testDivUpEquivalence__Fuzz(uint256 a, uint256 b) external {
+    function testDivUpEquivalence__Fuzz(uint256 a, uint256 b) external pure {
         unchecked {
             vm.assume(b > 0);
             vm.assume(a == 0 || (a * FixedPoint.ONE) / FixedPoint.ONE == a);
