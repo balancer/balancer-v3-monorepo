@@ -71,7 +71,8 @@ contract WeightedPoolTest is BaseVaultTest {
                 roleAccounts,
                 DEFAULT_SWAP_FEE,
                 poolHooksContract,
-                false,
+                false, // no donations
+                false, // keep support to unbalanced add/remove liquidity
                 ZERO_BYTES32
             )
         );
@@ -284,7 +285,8 @@ contract WeightedPoolTest is BaseVaultTest {
             roleAccounts,
             MIN_SWAP_FEE - 1, // Swap fee too low
             poolHooksContract,
-            false,
+            false, // no donations
+            false, // keep support to unbalanced add/remove liquidity
             ZERO_BYTES32
         );
 

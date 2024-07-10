@@ -41,7 +41,8 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
                 roleAccounts,
                 MIN_SWAP_FEE,
                 poolHooksContract,
-                false,
+                false, // no donations
+                false, // keep support to unbalanced add/remove liquidity
                 ZERO_BYTES32
             )
         );

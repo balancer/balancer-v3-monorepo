@@ -89,6 +89,7 @@ contract StablePoolFactoryTest is BaseVaultTest {
             1e17,
             address(0),
             supportsDonation,
+            false, // keep support to unbalanced add/remove liquidity
             ZERO_BYTES32
         );
 

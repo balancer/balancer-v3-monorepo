@@ -50,7 +50,8 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
                 roleAccounts,
                 DEFAULT_SWAP_FEE,
                 poolHooksContract,
-                false,
+                false, // no donations
+                false, // keep support to unbalanced add/remove liquidity
                 // NOTE: sends a unique salt
                 bytes32(poolCreationNonce++)
             )
