@@ -99,7 +99,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
     }
 
     // _ensurePoolNotInRecoveryMode
-    function testEnsurePoolNotInRecoveryMode() public {
+    function testEnsurePoolNotInRecoveryMode() public view {
         // Should not revert because pool is not in recovery mode
         vault.mockEnsurePoolNotInRecoveryMode(TEST_POOL);
     }

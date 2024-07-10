@@ -715,7 +715,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         BufferTokenBalances vaultReserves;
     }
 
-    function _measureBuffer() private returns (BufferAndLPBalances memory vars) {
+    function _measureBuffer() private view returns (BufferAndLPBalances memory vars) {
         vars.lp.dai = dai.balanceOf(lp);
         vars.lp.waDai = waDAI.balanceOf(lp);
 

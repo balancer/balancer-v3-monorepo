@@ -139,7 +139,7 @@ contract RouterCommonTest is BaseVaultTest {
         uint256 vaultWethAfter;
     }
 
-    function _createEthStateTest() private returns (EthStateTest memory vars) {
+    function _createEthStateTest() private view returns (EthStateTest memory vars) {
         vars.bobEthBefore = bob.balance;
         vars.bobWethBefore = IERC20(address(weth)).balanceOf(bob);
 
@@ -147,7 +147,7 @@ contract RouterCommonTest is BaseVaultTest {
         vars.vaultWethBefore = IERC20(address(weth)).balanceOf(address(vault));
     }
 
-    function _fillEthStateTestAfter(EthStateTest memory vars) private {
+    function _fillEthStateTestAfter(EthStateTest memory vars) private view {
         vars.bobEthAfter = bob.balance;
         vars.bobWethAfter = IERC20(address(weth)).balanceOf(bob);
 
