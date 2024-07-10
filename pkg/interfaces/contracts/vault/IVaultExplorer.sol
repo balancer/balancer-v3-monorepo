@@ -323,7 +323,6 @@ interface IVaultExplorer {
         IBasePool.PoolSwapParams memory swapParams
     ) external view returns (bool, uint256);
 
-
     /*******************************************************************************
                                     Recovery Mode
     *******************************************************************************/

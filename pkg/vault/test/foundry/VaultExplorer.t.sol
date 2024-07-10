@@ -11,12 +11,15 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { SwapKind, SwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import {
     TokenConfig,
     TokenInfo,
     TokenType,
     PoolRoleAccounts,
     LiquidityManagement,
+    PoolConfig,
+    HooksConfig,
     PoolData
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -75,6 +78,8 @@ contract VaultExplorerTest is BaseVaultTest {
         tokenDecimalDiffs = new uint8[](2);
         tokenDecimalDiffs[0] = 8;
         tokenDecimalDiffs[1] = 6;
+
+        _setComplexPoolData();
 
         explorer = new VaultExplorer(vault);
     }
@@ -190,9 +195,7 @@ contract VaultExplorerTest is BaseVaultTest {
         assertEq(usdcTokenIndex, usdcIdx, "Wrong USDC token index (Explorer)");
     }
 
-    function testGetPoolTokenRates() public {
-        _setComplexPoolData();
-
+    function testGetPoolTokenRates() public view {
         (uint256[] memory decimalScalingFactors, uint256[] memory tokenRates) = explorer.getPoolTokenRates(pool);
 
         assertEq(
@@ -219,9 +222,7 @@ contract VaultExplorerTest is BaseVaultTest {
         }
     }
 
-    function testGetPoolData() public {
-        _setComplexPoolData();
-
+    function testGetPoolData() public view {
         PoolData memory poolData = explorer.getPoolData(pool);
         IERC20[] memory tokens = vault.getPoolTokens(pool);
 
@@ -273,9 +274,7 @@ contract VaultExplorerTest is BaseVaultTest {
         }
     }
 
-    function testGetPoolTokenInfo() public {
-        _setComplexPoolData();
-
+    function testGetPoolTokenInfo() public view {
         (
             IERC20[] memory tokens,
             TokenInfo[] memory tokenInfo,
@@ -287,7 +286,11 @@ contract VaultExplorerTest is BaseVaultTest {
         assertFalse(tokenInfo[usdcIdx].paysYieldFees, "USDC pays yield fees");
 
         assertEq(address(tokenInfo[daiIdx].rateProvider), address(rateProviders[daiIdx]), "DAI rate provider mismatch");
-        assertEq(address(tokenInfo[usdcIdx].rateProvider), address(rateProviders[usdcIdx]), "USDC rate provider mismatch");
+        assertEq(
+            address(tokenInfo[usdcIdx].rateProvider),
+            address(rateProviders[usdcIdx]),
+            "USDC rate provider mismatch"
+        );
 
         assertEq(balancesRaw[daiIdx], daiRawBalance, "DAI raw balance wrong");
         assertEq(balancesRaw[usdcIdx], usdcRawBalance, "USDC raw balance wrong");
@@ -310,6 +313,132 @@ contract VaultExplorerTest is BaseVaultTest {
                 string.concat("Token type of token ", Strings.toString(i), " does not match")
             );
         }
+    }
+
+    function testGetCurrentLiveBalances() public view {
+        // Calculate live balances using the Vault
+        PoolData memory poolData = vault.getPoolData(pool);
+
+        uint256 daiLiveBalance = poolData.balancesRaw[daiIdx].toScaled18ApplyRateRoundDown(
+            poolData.decimalScalingFactors[daiIdx],
+            poolData.tokenRates[daiIdx]
+        );
+        uint256 usdcLiveBalance = poolData.balancesRaw[usdcIdx].toScaled18ApplyRateRoundDown(
+            poolData.decimalScalingFactors[usdcIdx],
+            poolData.tokenRates[usdcIdx]
+        );
+
+        // Get live balances through the Explorer
+        uint256[] memory balancesLiveScaled18 = explorer.getCurrentLiveBalances(pool);
+
+        assertEq(balancesLiveScaled18.length, 2, "Invalid live balances array");
+
+        assertEq(balancesLiveScaled18[daiIdx], daiLiveBalance, "DAI live balance wrong");
+        assertEq(balancesLiveScaled18[usdcIdx], usdcLiveBalance, "USDC live balance wrong");
+    }
+
+    function testGetPoolConfig() public {
+        PoolConfig memory poolConfig = explorer.getPoolConfig(pool);
+
+        // Check the flags
+        assertTrue(poolConfig.isPoolRegistered, "Pool not registered");
+        assertTrue(poolConfig.isPoolInitialized, "Pool not initialized");
+        assertFalse(poolConfig.isPoolPaused, "Pool is paused");
+        assertFalse(poolConfig.isPoolInRecoveryMode, "Pool is in recovery mode");
+
+        // Change something
+        vault.manualSetPoolPauseWindowEndTime(pool, uint32(block.timestamp) + 365 days);
+        vault.manualPausePool(pool);
+
+        poolConfig = explorer.getPoolConfig(pool);
+        assertTrue(poolConfig.isPoolPaused, "Pool is not paused");
+    }
+
+    function testGetHooksConfig() public {
+        HooksConfig memory hooksConfig = explorer.getHooksConfig(pool);
+
+        assertEq(hooksConfig.hooksContract, poolHooksContract, "Wrong hooks contract");
+        assertFalse(hooksConfig.shouldCallComputeDynamicSwapFee, "Dynamic swap fee flag is true");
+
+        // Change something
+        hooksConfig.shouldCallComputeDynamicSwapFee = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        hooksConfig = explorer.getHooksConfig(pool);
+        assertTrue(hooksConfig.shouldCallComputeDynamicSwapFee, "Dynamic swap fee flag is false");
+    }
+
+    function testGetBptRate() public view {
+        PoolData memory poolData = vault.getPoolData(pool);
+
+        uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18);
+        uint256 expectedRate = invariant.divDown(vault.totalSupply(pool));
+
+        uint256 bptRate = explorer.getBptRate(pool);
+
+        assertEq(bptRate, expectedRate, "Wrong BPT rate");
+    }
+
+    function testTotalSupply() public view {
+        uint256 vaultTotalSupply = vault.totalSupply(address(pool));
+
+        assertTrue(vaultTotalSupply > 0, "Vault total supply is zero");
+
+        assertEq(explorer.totalSupply(address(pool)), vaultTotalSupply, "Total supply mismatch");
+    }
+
+    function testBalanceOf() public view {
+        uint256 bptBalance = vault.balanceOf(address(pool), lp);
+
+        assertTrue(bptBalance > 0, "LP's BPT balance is zero");
+
+        assertEq(explorer.balanceOf(address(pool), lp), bptBalance, "BPT balance mismatch");
+    }
+
+    function testAllowance() public view {
+        uint256 daiVaultAllowance = vault.allowance(address(dai), lp, address(vault));
+        uint256 daiBobAllowance = vault.allowance(address(dai), alice, bob);
+
+        assertEq(daiVaultAllowance, MAX_UINT256, "Wrong DAI Vault allowance");
+        assertEq(daiBobAllowance, 0, "Wrong DAI Bob allowance");
+
+        assertEq(
+            explorer.allowance(address(dai), lp, address(vault)),
+            daiVaultAllowance,
+            "DAI Vault allowance mismatch"
+        );
+        assertEq(explorer.allowance(address(dai), alice, bob), daiBobAllowance, "DAI Bob allowance mismatch");
+    }
+
+    function testIsPoolPaused() public {
+        assertFalse(explorer.isPoolPaused(pool), "Pool is initially paused");
+
+        vault.manualSetPoolPauseWindowEndTime(pool, uint32(block.timestamp) + 365 days);
+        vault.manualPausePool(pool);
+
+        assertTrue(explorer.isPoolPaused(pool), "Pool is not paused");
+    }
+
+    function testGetPoolPausedState() public {
+        (bool paused, uint256 poolPauseWindowEndTime, uint256 poolBufferPeriodEndTime, address pauseManager) = explorer
+            .getPoolPausedState(pool);
+
+        assertFalse(paused, "Pool is initially paused");
+        assertEq(poolPauseWindowEndTime, 0, "Non-zero initial end time");
+        assertEq(poolBufferPeriodEndTime, vault.getBufferPeriodDuration(), "Wrong initial buffer time");
+        assertEq(pauseManager, address(0), "Pool has a pause manager");
+
+        // Change the state
+        uint32 newEndTime = uint32(block.timestamp) + 365 days;
+
+        vault.manualSetPoolPauseWindowEndTime(pool, newEndTime);
+        vault.manualPausePool(pool);
+
+        (paused, poolPauseWindowEndTime, poolBufferPeriodEndTime, ) = explorer.getPoolPausedState(pool);
+
+        assertTrue(paused, "Pool is not paused");
+        assertEq(poolPauseWindowEndTime, newEndTime, "Non-zero initial end time");
+        assertEq(poolBufferPeriodEndTime, newEndTime + vault.getBufferPeriodDuration(), "Wrong initial buffer time");
     }
 
     function _registerPool(address newPool, bool initializeNewPool) private {
