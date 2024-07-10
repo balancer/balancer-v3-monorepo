@@ -42,14 +42,14 @@ contract ExitFeeHookExampleWeightedPoolTest is BaseVaultTest {
     }
 
     function createHook() internal override returns (address) {
-        // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
+        // LP will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
         address exitFeeHook = address(new ExitFeeHookExample(IVault(address(vault))));
         vm.label(exitFeeHook, "Exit Fee Hook");
         return exitFeeHook;
     }
 
-    // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity and enables donation)
+    // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity and enables donation).
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
         weightedPoolFactory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
@@ -73,9 +73,9 @@ contract ExitFeeHookExampleWeightedPoolTest is BaseVaultTest {
         return address(newPool);
     }
 
-    // Exit fee returns to LPs
+    // Exit fee returns to LPs.
     function testExitFeeReturnToLPs() public {
-        // 10% exit fee
+        // 10% exit fee.
         uint64 exitFeePercentage = 1e17;
         vm.prank(lp);
         ExitFeeHookExample(poolHooksContract).setRemoveLiquidityHookFeePercentage(exitFeePercentage);
@@ -96,7 +96,7 @@ contract ExitFeeHookExampleWeightedPoolTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(lp);
 
-        // LP gets original liquidity minus hook fee
+        // LP gets original liquidity minus hook fee.
         assertEq(
             balancesAfter.lpTokens[daiIdx] - balancesBefore.lpTokens[daiIdx],
             amountsOut[daiIdx],
@@ -109,7 +109,7 @@ contract ExitFeeHookExampleWeightedPoolTest is BaseVaultTest {
         );
         assertEq(balancesBefore.lpBpt - balancesAfter.lpBpt, 2 * amountOut, "LP's BPT amount is wrong");
 
-        // Pool balances decrease by amountOut, and receive hook fee
+        // Pool balances decrease by amountOut, and receive hook fee.
         assertEq(
             balancesBefore.poolTokens[daiIdx] - balancesAfter.poolTokens[daiIdx],
             amountsOut[daiIdx],
@@ -122,7 +122,7 @@ contract ExitFeeHookExampleWeightedPoolTest is BaseVaultTest {
         );
         assertEq(balancesBefore.poolSupply - balancesAfter.poolSupply, 2 * amountOut, "BPT supply amount is wrong");
 
-        // Same happens with Vault balances: decrease by amountOut, keep hook fee
+        // Same happens with Vault balances: decrease by amountOut, keep hook fee.
         assertEq(
             balancesBefore.vaultTokens[daiIdx] - balancesAfter.vaultTokens[daiIdx],
             amountsOut[daiIdx],
@@ -134,7 +134,7 @@ contract ExitFeeHookExampleWeightedPoolTest is BaseVaultTest {
             "Vault's USDC amount is wrong"
         );
 
-        // Hook balances remain unchanged
+        // Hook balances remain unchanged.
         assertEq(balancesBefore.hookTokens[daiIdx], balancesAfter.hookTokens[daiIdx], "Hook's DAI amount is wrong");
         assertEq(balancesBefore.hookTokens[usdcIdx], balancesAfter.hookTokens[usdcIdx], "Hook's USDC amount is wrong");
         assertEq(balancesBefore.hookBpt, balancesAfter.hookBpt, "Hook's BPT amount is wrong");
