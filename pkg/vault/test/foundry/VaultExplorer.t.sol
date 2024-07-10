@@ -5,9 +5,12 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { SwapKind, SwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -29,6 +32,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
+import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 
 import { PoolConfigLib, PoolConfigBits } from "../../contracts/lib/PoolConfigLib.sol";
 import { VaultExplorer } from "../../contracts/VaultExplorer.sol";
@@ -44,13 +48,22 @@ contract VaultExplorerTest is BaseVaultTest {
     using ArrayHelpers for *;
     using SafeCast for *;
 
-    uint256 internal constant daiMockRate = 1.85e18;
-    uint256 internal constant usdcMockRate = 7.243e17;
+    uint256 internal constant PROTOCOL_SWAP_FEE = 50e16;
+    uint256 internal constant PROTOCOL_YIELD_FEE = 20e16;
 
-    uint256 internal constant daiRawBalance = 1000;
-    uint256 internal constant usdcRawBalance = 2000;
+    uint256 internal constant DAI_MOCK_RATE = 1.85e18;
+    uint256 internal constant USDC_MOCK_RATE = 7.243e17;
+
+    uint256 internal constant DAI_RAW_BALANCE = 1000;
+    uint256 internal constant USDC_RAW_BALANCE = 2000;
+
+    uint256 internal constant PROTOCOL_SWAP_FEE_AMOUNT = 100e18;
+    uint256 internal constant PROTOCOL_YIELD_FEE_AMOUNT = 50e18;
 
     VaultExplorer internal explorer;
+    IProtocolFeeController feeController;
+    IAuthentication feeControllerAuth;
+    ERC4626TestToken internal waDAI;
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
@@ -68,10 +81,10 @@ contract VaultExplorerTest is BaseVaultTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
         rateProviderDai = new RateProviderMock();
-        rateProviderDai.mockRate(daiMockRate);
+        rateProviderDai.mockRate(DAI_MOCK_RATE);
 
         rateProviderUsdc = new RateProviderMock();
-        rateProviderUsdc.mockRate(usdcMockRate);
+        rateProviderUsdc.mockRate(USDC_MOCK_RATE);
 
         rateProviders = new IRateProvider[](2);
         rateProviders[daiIdx] = rateProviderDai;
@@ -82,6 +95,11 @@ contract VaultExplorerTest is BaseVaultTest {
         tokenDecimalDiffs[1] = 6;
 
         _setComplexPoolData();
+
+        feeController = vault.getProtocolFeeController();
+        feeControllerAuth = IAuthentication(address(feeController));
+
+        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
 
         explorer = new VaultExplorer(vault);
     }
@@ -206,8 +224,8 @@ contract VaultExplorerTest is BaseVaultTest {
             "length of decimalScalingFactors should be equal to amount of tokens"
         );
 
-        assertEq(rateProviders[daiIdx].getRate(), daiMockRate, "DAI rate is wrong");
-        assertEq(rateProviders[usdcIdx].getRate(), usdcMockRate, "USDC rate is wrong");
+        assertEq(rateProviders[daiIdx].getRate(), DAI_MOCK_RATE, "DAI rate is wrong");
+        assertEq(rateProviders[usdcIdx].getRate(), USDC_MOCK_RATE, "USDC rate is wrong");
 
         for (uint256 i = 0; i < decimalScalingFactors.length; ++i) {
             assertEq(
@@ -234,8 +252,8 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(poolData.poolConfigBits.isPoolRegistered(), "Pool not registered");
         assertTrue(poolData.poolConfigBits.isPoolInitialized(), "Pool not registered");
 
-        assertEq(poolData.balancesRaw[daiIdx], daiRawBalance, "DAI raw balance wrong");
-        assertEq(poolData.balancesRaw[usdcIdx], usdcRawBalance, "USDC raw balance wrong");
+        assertEq(poolData.balancesRaw[daiIdx], DAI_RAW_BALANCE, "DAI raw balance wrong");
+        assertEq(poolData.balancesRaw[usdcIdx], USDC_RAW_BALANCE, "USDC raw balance wrong");
 
         uint256 daiLiveBalance = poolData.balancesRaw[daiIdx].toScaled18ApplyRateRoundDown(
             poolData.decimalScalingFactors[daiIdx],
@@ -294,11 +312,11 @@ contract VaultExplorerTest is BaseVaultTest {
             "USDC rate provider mismatch"
         );
 
-        assertEq(balancesRaw[daiIdx], daiRawBalance, "DAI raw balance wrong");
-        assertEq(balancesRaw[usdcIdx], usdcRawBalance, "USDC raw balance wrong");
+        assertEq(balancesRaw[daiIdx], DAI_RAW_BALANCE, "DAI raw balance wrong");
+        assertEq(balancesRaw[usdcIdx], USDC_RAW_BALANCE, "USDC raw balance wrong");
 
-        assertEq(lastLiveBalances[daiIdx], daiRawBalance, "DAI last live balance wrong");
-        assertEq(lastLiveBalances[usdcIdx], usdcRawBalance, "USDC last live balance wrong");
+        assertEq(lastLiveBalances[daiIdx], DAI_RAW_BALANCE, "DAI last live balance wrong");
+        assertEq(lastLiveBalances[usdcIdx], USDC_RAW_BALANCE, "USDC last live balance wrong");
 
         IERC20[] memory vaultTokens = vault.getPoolTokens(pool);
 
@@ -534,6 +552,147 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(explorer.isQueryDisabled(), "Queries are not disabled");
     }
 
+    function testGetPauseWindowEndTime() public view {
+        uint256 vaultEndTime = vault.getPauseWindowEndTime();
+
+        assertTrue(vaultEndTime > 0, "Zero pause window end time");
+        assertEq(explorer.getPauseWindowEndTime(), vaultEndTime, "Pause window end time mismatch");
+    }
+
+    function testGetBufferPeriodDuration() public view {
+        uint256 vaultBufferDuration = vault.getBufferPeriodDuration();
+
+        assertTrue(vaultBufferDuration > 0, "Zero buffer period duration");
+        assertEq(explorer.getBufferPeriodDuration(), vaultBufferDuration, "Buffer period duration mismatch");
+    }
+
+    function testGetBufferPeriodEndTime() public view {
+        uint256 vaultBufferEndTime = vault.getBufferPeriodEndTime();
+
+        assertTrue(vaultBufferEndTime > 0, "Zero buffer period end time");
+        assertEq(explorer.getBufferPeriodEndTime(), vaultBufferEndTime, "Buffer period end time mismatch");
+    }
+
+    function testGetMinimumPoolTokens() public view {
+        uint256 vaultMinimum = vault.getMinimumPoolTokens();
+
+        assertEq(vaultMinimum, 2, "Unexpected minimum pool tokens");
+        assertEq(explorer.getMinimumPoolTokens(), vaultMinimum, "Minimum pool token mismatch");
+    }
+
+    function testGetMaximumPoolTokens() public view {
+        uint256 vaultMaximum = vault.getMaximumPoolTokens();
+
+        assertEq(vaultMaximum, 4, "Unexpected maximum pool tokens");
+        assertEq(explorer.getMaximumPoolTokens(), vaultMaximum, "Maximum pool token mismatch");
+    }
+
+    function testIsVaultPaused() public {
+        assertFalse(vault.isVaultPaused(), "Vault is paused");
+        assertFalse(explorer.isVaultPaused(), "Explorer says Vault is paused");
+
+        vault.manualPauseVault();
+
+        assertTrue(vault.isVaultPaused(), "Vault is not paused");
+        assertTrue(explorer.isVaultPaused(), "Explorer says Vault is not paused");
+    }
+
+    function testGetVaultPausedState() public {
+        (bool vaultIsPaused, uint32 vaultPauseWindowEndTime, uint32 vaultBufferPeriodEndTime) = vault
+            .getVaultPausedState();
+
+        assertFalse(vaultIsPaused, "Vault is paused");
+        assertTrue(vaultPauseWindowEndTime > 0, "Zero pause window end time");
+        assertTrue(vaultBufferPeriodEndTime > 0, "Zero buffer period end time");
+
+        (bool explorerIsPaused, uint32 explorerPauseWindowEndTime, uint32 explorerBufferPeriodEndTime) = explorer
+            .getVaultPausedState();
+
+        assertFalse(explorerIsPaused, "Explorer says Vault is paused");
+        assertEq(vaultPauseWindowEndTime, explorerPauseWindowEndTime, "Pause window end time mismatch");
+        assertEq(vaultBufferPeriodEndTime, explorerBufferPeriodEndTime, "Buffer period end time mismatch");
+
+        vault.manualPauseVault();
+
+        (explorerIsPaused, , ) = explorer.getVaultPausedState();
+
+        assertTrue(explorerIsPaused, "Explorer says Vault is not paused");
+    }
+
+    function testCollectAggregateFees() public {
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
+            admin
+        );
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolYieldFeePercentage.selector),
+            admin
+        );
+
+        vm.startPrank(admin);
+        feeController.setGlobalProtocolSwapFeePercentage(PROTOCOL_SWAP_FEE);
+        feeController.setGlobalProtocolYieldFeePercentage(PROTOCOL_YIELD_FEE);
+        vm.stopPrank();
+
+        // Permissionlessly update the pool's fee percentages.
+        feeController.updateProtocolSwapFeePercentage(pool);
+        feeController.updateProtocolYieldFeePercentage(pool);
+
+        // Check that the fee percentages are set in the pool.
+        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
+        assertEq(poolConfig.aggregateSwapFeePercentage, PROTOCOL_SWAP_FEE);
+        assertEq(poolConfig.aggregateYieldFeePercentage, PROTOCOL_YIELD_FEE);
+
+        // Simulate incurred fees.
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
+        vault.manualSetAggregateYieldFeeAmount(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);
+
+        // Collected fees should initially be zero.
+        uint256[] memory feeAmounts = feeController.getProtocolFeeAmounts(pool);
+        assertEq(feeAmounts.length, 2, "Incorrect feeAmounts array");
+        assertEq(feeAmounts[daiIdx], 0, "Non-zero DAI fees");
+        assertEq(feeAmounts[usdcIdx], 0, "Non-zero USDC fees");
+
+        // Collect through the explorer.
+        explorer.collectAggregateFees(pool);
+
+        // Ensure they were actually collected.
+        feeAmounts = feeController.getProtocolFeeAmounts(pool);
+        assertTrue(feeAmounts[daiIdx] > 0, "Zero DAI fees");
+        assertTrue(feeAmounts[usdcIdx] > 0, "Zero USDC fees");
+    }
+
+    function testGetBufferOwnerShares() public {
+        _setupBuffer();
+
+        uint256 lpShares = explorer.getBufferOwnerShares(waDAI, lp);
+        assertTrue(lpShares > 0, "LP has no shares");
+    }
+
+    function testGetBufferTotalShares() public {
+        _setupBuffer();
+
+        uint256 lpShares = explorer.getBufferOwnerShares(waDAI, lp);
+        uint256 totalShares = explorer.getBufferTotalShares(waDAI);
+
+        // A single depositor has all the shares (except for the security premint).
+        assertTrue(lpShares > 0, "LP has no shares");
+        assertEq(totalShares - MIN_BPT, lpShares, "Share value mismatch");
+    }
+
+    function testGetBufferBalance() public {
+        _setupBuffer();
+
+        (uint256 vaultUnderlyingBalanceRaw, uint256 vaultWrappedBalanceRaw) = vault.getBufferBalance(waDAI);
+        assertTrue(vaultUnderlyingBalanceRaw > 0, "Zero underlying balance");
+        assertTrue(vaultWrappedBalanceRaw > 0, "Zero wrapped balance");
+
+        (uint256 explorerUnderlyingBalanceRaw, uint256 explorertWrappedBalanceRaw) = explorer.getBufferBalance(waDAI);
+
+        assertEq(explorerUnderlyingBalanceRaw, vaultUnderlyingBalanceRaw, "Underlying balance mismatch");
+        assertEq(explorertWrappedBalanceRaw, vaultWrappedBalanceRaw, "Wrapped balance mismatch");
+    }
+
     function _registerPool(address newPool, bool initializeNewPool) private {
         IERC20[] memory tokens = InputHelpers.sortTokens([address(dai), address(usdc)].toMemoryArray().asIERC20());
 
@@ -560,8 +719,8 @@ contract VaultExplorerTest is BaseVaultTest {
 
         // decimalScalingFactors depends on balances array (it's used gto calculate number of tokens)
         uint256[] memory rawBalances = new uint256[](2);
-        rawBalances[daiIdx] = daiRawBalance;
-        rawBalances[usdcIdx] = usdcRawBalance;
+        rawBalances[daiIdx] = DAI_RAW_BALANCE;
+        rawBalances[usdcIdx] = USDC_RAW_BALANCE;
 
         vault.manualSetPoolTokensAndBalances(pool, tokens, rawBalances, rawBalances);
 
@@ -572,5 +731,20 @@ contract VaultExplorerTest is BaseVaultTest {
             .setPoolInitialized(true);
 
         vault.manualSetPoolConfigBits(pool, originalPoolConfig);
+    }
+
+    function _setupBuffer() private {
+        vm.startPrank(lp);
+        dai.mint(lp, defaultAmount);
+        dai.approve(address(waDAI), defaultAmount);
+        waDAI.deposit(defaultAmount, lp);
+
+        waDAI.approve(address(permit2), MAX_UINT256);
+        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
+
+        uint256 depositAmount = 100e18;
+
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), depositAmount, depositAmount, lp);
+        vm.stopPrank();
     }
 }
