@@ -3,7 +3,6 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import {
     TokenConfig,
     TokenInfo,
@@ -199,6 +198,7 @@ interface IVaultExplorer {
     /**
      * @notice Gets current live balances of a given pool (fixed-point, 18 decimals), corresponding to its tokens in
      * registration order.
+     *
      * @param pool Address of the pool
      * @return balancesLiveScaled18  Token balances after paying yield fees, applying decimal scaling and rates
      */
