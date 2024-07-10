@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { SwapKind, SwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -27,6 +28,7 @@ import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
 import { PoolConfigLib, PoolConfigBits } from "../../contracts/lib/PoolConfigLib.sol";
 import { VaultExplorer } from "../../contracts/VaultExplorer.sol";
@@ -439,6 +441,97 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(paused, "Pool is not paused");
         assertEq(poolPauseWindowEndTime, newEndTime, "Non-zero initial end time");
         assertEq(poolBufferPeriodEndTime, newEndTime + vault.getBufferPeriodDuration(), "Wrong initial buffer time");
+    }
+
+    function testGetAggregateSwapFeeAmount() public {
+        uint256 swapFees = explorer.getAggregateSwapFeeAmount(pool, dai);
+
+        assertEq(swapFees, 0, "Non-zero initial swap fees");
+
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, defaultAmount);
+
+        swapFees = explorer.getAggregateSwapFeeAmount(pool, dai);
+        assertEq(swapFees, defaultAmount, "Swap fees are zero");
+    }
+
+    function testGetAggregateYieldFeeAmount() public {
+        uint256 yieldFees = explorer.getAggregateYieldFeeAmount(pool, dai);
+
+        assertEq(yieldFees, 0, "Non-zero initial yield fees");
+
+        vault.manualSetAggregateYieldFeeAmount(pool, dai, defaultAmount);
+
+        yieldFees = explorer.getAggregateYieldFeeAmount(pool, dai);
+        assertEq(yieldFees, defaultAmount, "Yield fees are zero");
+    }
+
+    function testGetStaticSwapFeePercentage() public {
+        uint256 explorerSwapFeePercentage = explorer.getStaticSwapFeePercentage(pool);
+
+        assertEq(explorerSwapFeePercentage, 0, "Non-zero initial swap fee");
+
+        assertTrue(swapFeePercentage > 0, "Swap fee is zero");
+        vault.manualSetStaticSwapFeePercentage(pool, swapFeePercentage);
+
+        explorerSwapFeePercentage = explorer.getStaticSwapFeePercentage(pool);
+        assertEq(explorerSwapFeePercentage, swapFeePercentage, "Wrong swap fee");
+    }
+
+    function testGetPoolRoleAccounts() public view {
+        PoolRoleAccounts memory vaultRoleAccounts = vault.getPoolRoleAccounts(pool);
+        PoolRoleAccounts memory explorerRoleAccounts = explorer.getPoolRoleAccounts(pool);
+
+        assertEq(vaultRoleAccounts.poolCreator, lp, "Pool creator is not LP");
+
+        assertEq(vaultRoleAccounts.pauseManager, explorerRoleAccounts.pauseManager, "Pause manager mmismatch");
+        assertEq(vaultRoleAccounts.swapFeeManager, explorerRoleAccounts.swapFeeManager, "Swap fee manager mmismatch");
+        assertEq(vaultRoleAccounts.poolCreator, explorerRoleAccounts.poolCreator, "Pool creator mmismatch");
+    }
+
+    function testComputeDynamicSwapFee() public {
+        assertTrue(swapFeePercentage > 0, "Swap fee is zero");
+        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(swapFeePercentage);
+
+        (bool success, uint256 dynamicSwapFeePercentage) = explorer.computeDynamicSwapFee(
+            pool,
+            IBasePool.PoolSwapParams({
+                kind: SwapKind.EXACT_IN,
+                amountGivenScaled18: defaultAmount,
+                balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
+                indexIn: daiIdx,
+                indexOut: usdcIdx,
+                router: address(0),
+                userData: bytes("")
+            })
+        );
+
+        assertTrue(success, "Vault dynamic fee call failed");
+        // Should default to the static fee
+        assertEq(dynamicSwapFeePercentage, swapFeePercentage, "Wrong dynamic fee percentage");
+    }
+
+    function testIsPoolInRecoveryMode() public {
+        assertFalse(explorer.isPoolInRecoveryMode(pool), "Pool is initially in recovery mode");
+
+        vault.manualSetPoolPauseWindowEndTime(pool, uint32(block.timestamp) + 365 days);
+        vault.manualPausePool(pool);
+
+        vault.enableRecoveryMode(pool);
+
+        assertTrue(explorer.isPoolPaused(pool), "Pool is not paused");
+        assertTrue(explorer.isPoolInRecoveryMode(pool), "Pool is not in recovery mode");
+    }
+
+    function testIsQueryDisabled() public {
+        assertFalse(explorer.isQueryDisabled(), "Queries are initially disabled");
+
+        bytes32 disableQueryRole = vault.getActionId(IVaultAdmin.disableQuery.selector);
+        authorizer.grantRole(disableQueryRole, alice);
+
+        vm.prank(alice);
+        vault.disableQuery();
+
+        assertTrue(explorer.isQueryDisabled(), "Queries are not disabled");
     }
 
     function _registerPool(address newPool, bool initializeNewPool) private {
