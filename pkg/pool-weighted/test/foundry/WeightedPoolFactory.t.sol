@@ -88,6 +88,7 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
             1e17,
             address(0),
             supportsDonation,
+            false, // Do not disable unbalanced add/remove liquidity
             ZERO_BYTES32
         );
 
