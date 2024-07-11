@@ -64,7 +64,7 @@ contract PoolHooksMock is BaseHooks {
     uint256[] private _newBalancesRaw;
 
     // Bool created because in some tests the test file is used as router and does not implement getSender.
-    bool public shouldStoreSavedSender;
+    bool public shouldIgnoreSavedSender;
     address private _savedSender;
 
     mapping(address => bool) private _allowedFactories;
@@ -123,7 +123,7 @@ contract PoolHooksMock is BaseHooks {
     }
 
     function onBeforeSwap(IBasePool.PoolSwapParams calldata params, address) external override returns (bool) {
-        if (shouldStoreSavedSender) {
+        if (shouldIgnoreSavedSender == false) {
             _savedSender = IRouterCommon(params.router).getSender();
         }
 
@@ -220,7 +220,7 @@ contract PoolHooksMock is BaseHooks {
         uint256[] memory,
         bytes memory
     ) external override returns (bool) {
-        if (shouldStoreSavedSender) {
+        if (shouldIgnoreSavedSender == false) {
             _savedSender = IRouterCommon(router).getSender();
         }
 
@@ -244,7 +244,7 @@ contract PoolHooksMock is BaseHooks {
         uint256[] memory,
         bytes memory
     ) external override returns (bool) {
-        if (shouldStoreSavedSender) {
+        if (shouldIgnoreSavedSender == false) {
             _savedSender = IRouterCommon(router).getSender();
         }
 
@@ -502,8 +502,8 @@ contract PoolHooksMock is BaseHooks {
         _allowedFactories[factory] = false;
     }
 
-    function setShouldStoreSavedSender(bool value) external {
-        shouldStoreSavedSender = value;
+    function setShouldIgnoreSavedSender(bool value) external {
+        shouldIgnoreSavedSender = value;
     }
 
     function getSavedSender() external view returns (address) {
