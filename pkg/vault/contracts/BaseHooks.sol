@@ -19,7 +19,7 @@ import { VaultGuard } from "./VaultGuard.sol";
  * @dev Pools that only implement a subset of callbacks can inherit from here instead of IHooks,
  * and only override what they need.
  */
-abstract contract BaseHooks is IHooks, VaultGuard {
+contract BaseHooks is IHooks, VaultGuard {
     constructor(IVault vault) VaultGuard(vault) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -36,7 +36,9 @@ abstract contract BaseHooks is IHooks, VaultGuard {
     }
 
     /// @inheritdoc IHooks
-    function getHookFlags() external view virtual returns (HookFlags memory);
+    function getHookFlags() external view virtual returns (HookFlags memory hookFlags) {
+        // solhint-disable-previous-line no-empty-blocks
+    }
 
     /// @inheritdoc IHooks
     function onBeforeInitialize(uint256[] memory, bytes memory) external virtual onlyVault returns (bool) {
@@ -67,12 +69,12 @@ abstract contract BaseHooks is IHooks, VaultGuard {
         address,
         AddLiquidityKind,
         uint256[] memory,
-        uint256[] memory amountsInRaw,
+        uint256[] memory,
         uint256,
         uint256[] memory,
         bytes memory
     ) external virtual onlyVault returns (bool, uint256[] memory) {
-        return (false, amountsInRaw);
+        return (false, new uint256[](0));
     }
 
     /// @inheritdoc IHooks
@@ -95,11 +97,11 @@ abstract contract BaseHooks is IHooks, VaultGuard {
         RemoveLiquidityKind,
         uint256,
         uint256[] memory,
-        uint256[] memory amountsOutRaw,
+        uint256[] memory,
         uint256[] memory,
         bytes memory
     ) external virtual onlyVault returns (bool, uint256[] memory) {
-        return (false, amountsOutRaw);
+        return (false, new uint256[](0));
     }
 
     /// @inheritdoc IHooks
