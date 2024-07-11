@@ -135,7 +135,7 @@ contract RouterTest is BaseVaultTest {
 
         vm.expectRevert(IVaultErrors.QueriesDisabled.selector);
 
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         router.querySwapSingleTokenExactIn(pool, usdc, dai, usdcAmountIn, bytes(""));
     }
 

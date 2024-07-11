@@ -264,4 +264,9 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
             ((protocolFeePercentage + protocolFeePercentage.complement().mulDown(creatorFeePercentage)) /
                 FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
     }
+
+    function _prankStaticCall() internal {
+        // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
+        vm.prank(address(0), address(0));
+    }
 }
