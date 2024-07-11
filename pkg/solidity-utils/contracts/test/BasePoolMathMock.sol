@@ -2,15 +2,29 @@
 
 pragma solidity ^0.8.24;
 
+import "../math/FixedPoint.sol";
 import "../math/WeightedMath.sol";
 import "../math/BasePoolMath.sol";
 
 contract BasePoolMathMock {
-    function computeInvariantMock(uint256[] memory balances) external pure returns (uint256 invariant) {
+    using FixedPoint for uint256;
+
+    function computeInvariantMock(uint256[] memory balances) public pure returns (uint256 invariant) {
+        // inv = x + y
         for (uint256 i = 0; i < balances.length; i++) {
             invariant += balances[i];
         }
         return invariant;
+    }
+
+    function computeBalanceMock(
+        uint256[] memory balances,
+        uint256 tokenInIndex,
+        uint256 invariantRatio
+    ) public pure returns (uint256 newBalance) {
+        // inv = x + y
+        uint256 invariant = computeInvariantMock(balances);
+        return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
     }
 
     function computeProportionalAmountsIn(
@@ -50,8 +64,7 @@ contract BasePoolMathMock {
         uint256 tokenInIndex,
         uint256 exactBptAmountOut,
         uint256 totalSupply,
-        uint256 swapFeePercentage,
-        function(uint256[] memory, uint256, uint256) external view returns (uint256) computeBalance
+        uint256 swapFeePercentage
     ) external view returns (uint256 amountInWithFee, uint256[] memory swapFeeAmounts) {
         return
             BasePoolMath.computeAddLiquiditySingleTokenExactOut(
@@ -60,7 +73,7 @@ contract BasePoolMathMock {
                 exactBptAmountOut,
                 totalSupply,
                 swapFeePercentage,
-                computeBalance
+                this.computeBalanceMock
             );
     }
 
@@ -69,8 +82,7 @@ contract BasePoolMathMock {
         uint256 tokenOutIndex,
         uint256 exactAmountOut,
         uint256 totalSupply,
-        uint256 swapFeePercentage,
-        function(uint256[] memory) external view returns (uint256) computeInvariant
+        uint256 swapFeePercentage
     ) external view returns (uint256 bptAmountIn, uint256[] memory swapFeeAmounts) {
         return
             BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
@@ -79,7 +91,7 @@ contract BasePoolMathMock {
                 exactAmountOut,
                 totalSupply,
                 swapFeePercentage,
-                computeInvariant
+                this.computeInvariantMock
             );
     }
 
@@ -88,8 +100,7 @@ contract BasePoolMathMock {
         uint256 tokenOutIndex,
         uint256 exactBptAmountIn,
         uint256 totalSupply,
-        uint256 swapFeePercentage,
-        function(uint256[] memory, uint256, uint256) external view returns (uint256) computeBalance
+        uint256 swapFeePercentage
     ) external view returns (uint256 amountOutWithFee, uint256[] memory swapFeeAmounts) {
         return
             BasePoolMath.computeRemoveLiquiditySingleTokenExactIn(
@@ -98,7 +109,7 @@ contract BasePoolMathMock {
                 exactBptAmountIn,
                 totalSupply,
                 swapFeePercentage,
-                computeBalance
+                this.computeBalanceMock
             );
     }
 }
