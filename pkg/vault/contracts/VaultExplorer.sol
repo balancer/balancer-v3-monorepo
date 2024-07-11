@@ -280,15 +280,6 @@ contract VaultExplorer is IVaultExplorer {
     }
 
     /*******************************************************************************
-                                        Fees
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultExplorer
-    function collectAggregateFees(address pool) external {
-        return _vault.collectAggregateFees(pool);
-    }
-
-    /*******************************************************************************
                                 Wrapped Token Buffers
     *******************************************************************************/
 

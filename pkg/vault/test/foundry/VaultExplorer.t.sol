@@ -604,49 +604,6 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(explorerIsPaused, "Explorer says Vault is not paused");
     }
 
-    function testCollectAggregateFees() public {
-        authorizer.grantRole(
-            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
-            admin
-        );
-        authorizer.grantRole(
-            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolYieldFeePercentage.selector),
-            admin
-        );
-
-        vm.startPrank(admin);
-        feeController.setGlobalProtocolSwapFeePercentage(PROTOCOL_SWAP_FEE);
-        feeController.setGlobalProtocolYieldFeePercentage(PROTOCOL_YIELD_FEE);
-        vm.stopPrank();
-
-        // Permissionlessly update the pool's fee percentages.
-        feeController.updateProtocolSwapFeePercentage(pool);
-        feeController.updateProtocolYieldFeePercentage(pool);
-
-        // Check that the fee percentages are set in the pool.
-        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
-        assertEq(poolConfig.aggregateSwapFeePercentage, PROTOCOL_SWAP_FEE);
-        assertEq(poolConfig.aggregateYieldFeePercentage, PROTOCOL_YIELD_FEE);
-
-        // Simulate incurred fees.
-        vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
-        vault.manualSetAggregateYieldFeeAmount(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);
-
-        // Collected fees should initially be zero.
-        uint256[] memory feeAmounts = feeController.getProtocolFeeAmounts(pool);
-        assertEq(feeAmounts.length, 2, "Incorrect feeAmounts array");
-        assertEq(feeAmounts[daiIdx], 0, "Non-zero DAI fees");
-        assertEq(feeAmounts[usdcIdx], 0, "Non-zero USDC fees");
-
-        // Collect through the explorer.
-        explorer.collectAggregateFees(pool);
-
-        // Ensure they were actually collected.
-        feeAmounts = feeController.getProtocolFeeAmounts(pool);
-        assertTrue(feeAmounts[daiIdx] > 0, "Zero DAI fees");
-        assertTrue(feeAmounts[usdcIdx] > 0, "Zero USDC fees");
-    }
-
     function testGetBufferOwnerShares() public {
         _setupBuffer();
 
