@@ -16,7 +16,7 @@ contract BasePoolFactoryMock is BasePoolFactory {
         // solhint-disable-previous-line no-empty-blocks
     }
 
-    function getCreationCode() external returns (bytes memory) {
+    function getCreationCode() external view returns (bytes memory) {
         return _creationCode;
     }
 
