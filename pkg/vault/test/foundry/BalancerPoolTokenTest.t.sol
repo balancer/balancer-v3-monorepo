@@ -10,10 +10,12 @@ import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { IEIP712 } from "permit2/src/interfaces/IEIP712.sol";
 
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
@@ -21,6 +23,8 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract BalancerPoolTokenTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
+
     PoolMock internal poolToken;
 
     bytes32 private constant PERMIT_TYPEHASH =
@@ -311,5 +315,23 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
     function testSupportsIERC165() public view {
         assertTrue(poolToken.supportsInterface(type(IERC165).interfaceId), "IERC165 not supported");
+    }
+
+    function testGetVault() public {
+        assertEq(address(poolToken.getVault()), address(vault), "Vault is wrong");
+    }
+
+    function testGetRate() public {
+        // Init pool, so it has a BPT supply and rate can be calculated.
+        vm.startPrank(lp);
+        IERC20[] memory tokens = vault.getPoolTokens(address(poolToken));
+        router.initialize(address(poolToken), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
+        vm.stopPrank();
+
+        uint256[] memory liveBalancesScaled18 = vault.getCurrentLiveBalances(address(poolToken));
+        uint256 invariant = IBasePool(address(poolToken)).computeInvariant(liveBalancesScaled18);
+        uint256 bptRate = invariant.divDown(poolToken.totalSupply());
+
+        assertEq(poolToken.getRate(), bptRate, "BPT rate is wrong");
     }
 }
