@@ -1550,6 +1550,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         return amount + _MAX_CONVERT_ERROR;
     }
 
+    // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
+    // exploitation of rounding errors
     function _ensureValidTradeAmount(uint256 tradeAmount) private pure {
         if (tradeAmount < _MINIMUM_TRADE_AMOUNT && tradeAmount != 0) {
             revert TradeAmountTooSmall();
