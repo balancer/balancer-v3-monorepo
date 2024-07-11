@@ -700,7 +700,7 @@ contract VaultExplorerTest is BaseVaultTest {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
         LiquidityManagement memory liquidityManagement;
 
-        explorer.registerPool(newPool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
+        vault.registerPool(newPool, tokenConfig, 0, 0, false, roleAccounts, address(0), liquidityManagement);
 
         if (initializeNewPool) {
             vm.prank(alice);

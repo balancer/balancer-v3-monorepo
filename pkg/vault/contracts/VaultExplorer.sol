@@ -10,10 +10,8 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
-    TokenConfig,
     TokenInfo,
     PoolRoleAccounts,
-    LiquidityManagement,
     PoolConfig,
     HooksConfig,
     PoolData
@@ -82,30 +80,6 @@ contract VaultExplorer is IVaultExplorer {
     /*******************************************************************************
                                     Pool Registration
     *******************************************************************************/
-
-    /// @inheritdoc IVaultExplorer
-    function registerPool(
-        address pool,
-        TokenConfig[] memory tokenConfig,
-        uint256 swapFeePercentage,
-        uint32 pauseWindowEndTime,
-        bool protocolFeeExempt,
-        PoolRoleAccounts calldata roleAccounts,
-        address poolHooksContract,
-        LiquidityManagement calldata liquidityManagement
-    ) external {
-        return
-            _vault.registerPool(
-                pool,
-                tokenConfig,
-                swapFeePercentage,
-                pauseWindowEndTime,
-                protocolFeeExempt,
-                roleAccounts,
-                poolHooksContract,
-                liquidityManagement
-            );
-    }
 
     /// @inheritdoc IVaultExplorer
     function isPoolRegistered(address pool) external view returns (bool) {

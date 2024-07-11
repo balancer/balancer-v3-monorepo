@@ -4,10 +4,8 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
-    TokenConfig,
     TokenInfo,
     PoolRoleAccounts,
-    LiquidityManagement,
     PoolData,
     PoolConfig,
     HooksConfig
@@ -86,40 +84,6 @@ interface IVaultExplorer {
     /*******************************************************************************
                                     Pool Registration
     *******************************************************************************/
-
-    /**
-     * @notice Registers a pool, associating it with its factory and the tokens it manages.
-     * @dev A pool can opt-out of pausing by providing a zero value for the pause window, or allow pausing indefinitely
-     * by providing a large value. (Pool pause windows are not limited by the Vault maximums.) The vault defines an
-     * additional buffer period during which a paused pool will stay paused. After the buffer period passes, a paused
-     * pool will automatically unpause.
-     *
-     * A pool can opt out of Balancer governance pausing by providing a custom `pauseManager`. This might be a
-     * multi-sig contract or an arbitrary smart contract with its own access controls, that forwards calls to
-     * the Vault.
-     *
-     * If the zero address is provided for the `pauseManager`, permissions for pausing the pool will default to the
-     * authorizer.
-     *
-     * @param pool The address of the pool being registered
-     * @param tokenConfig An array of descriptors for the tokens the pool will manage
-     * @param swapFeePercentage The initial static swap fee percentage of the pool
-     * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
-     * @param protocolFeeExempt If true, the pool's initial aggregate fees will be set to 0
-     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
-     * @param poolHooksContract Contract that implements the hooks for the pool
-     * @param liquidityManagement Liquidity management flags with implemented methods
-     */
-    function registerPool(
-        address pool,
-        TokenConfig[] memory tokenConfig,
-        uint256 swapFeePercentage,
-        uint32 pauseWindowEndTime,
-        bool protocolFeeExempt,
-        PoolRoleAccounts calldata roleAccounts,
-        address poolHooksContract,
-        LiquidityManagement calldata liquidityManagement
-    ) external;
 
     /**
      * @notice Checks whether a pool is registered.
