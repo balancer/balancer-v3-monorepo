@@ -269,5 +269,4 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
         vm.prank(address(0), address(0));
     }
-
 }
