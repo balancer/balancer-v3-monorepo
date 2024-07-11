@@ -122,8 +122,7 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         // Snapshots the current state of the network
         uint256 snapshotId = vm.snapshot();
 
-        // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         // Not using staticCall because it does not allow changes in the transient storage, and reverts with
         // a StateChangeDuringStaticCall error
         (
@@ -152,8 +151,7 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         // Snapshots the current state of the network
         uint256 snapshotId = vm.snapshot();
 
-        // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         // Not using staticCall because it does not allow changes in the transient storage, and reverts with
         // a StateChangeDuringStaticCall error
         (
