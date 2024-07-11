@@ -477,9 +477,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
     }
 
-    /*******************************************************************************
-                                Pool Operations
-    *******************************************************************************/
+    /***************************************************************************
+                                   Add Liquidity
+    ***************************************************************************/
 
     /// @inheritdoc IVaultMain
     function addLiquidity(
@@ -734,6 +734,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // 8) Off-chain events
         emit PoolBalanceChanged(params.pool, params.to, amountsInRaw.unsafeCastToInt256(true));
     }
+
+    /***************************************************************************
+                                 Remove Liquidity
+    ***************************************************************************/
 
     /// @inheritdoc IVaultMain
     function removeLiquidity(
@@ -1023,6 +1027,22 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 currentPackedBalance.getBalanceRaw() + totalFeesRaw
             );
         }
+    }
+
+    /*******************************************************************************
+                                    Pool Information
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultMain
+    function getPoolTokenCountAndIndexOfToken(
+        address pool,
+        IERC20 token
+    ) external view withRegisteredPool(pool) returns (uint256, uint256) {
+        IERC20[] memory poolTokens = _poolTokens[pool];
+
+        uint256 index = _findTokenIndex(poolTokens, token);
+
+        return (poolTokens.length, index);
     }
 
     /*******************************************************************************
@@ -1340,9 +1360,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         return EVMCallModeHelpers.isStaticCall() && _vaultStateBits.isQueryDisabled() == false;
     }
 
-    /**
-     * @dev Call VaultExtension to calculate the amounts for wrap/unwrap operations.
-     */
+    /// @dev Call VaultExtension to calculate the amounts for wrap/unwrap operations.
     function _calculateBufferAmounts(
         WrappingDirection direction,
         SwapKind kind,
@@ -1542,22 +1560,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
-                                    Pool Information
-    *******************************************************************************/
-
-    /// @inheritdoc IVaultMain
-    function getPoolTokenCountAndIndexOfToken(
-        address pool,
-        IERC20 token
-    ) external view withRegisteredPool(pool) returns (uint256, uint256) {
-        IERC20[] memory poolTokens = _poolTokens[pool];
-
-        uint256 index = _findTokenIndex(poolTokens, token);
-
-        return (poolTokens.length, index);
-    }
-
-    /*******************************************************************************
                                     Authentication
     *******************************************************************************/
 
@@ -1588,6 +1590,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _fallback();
     }
+
+    /*******************************************************************************
+                                     Miscellaneous
+    *******************************************************************************/
 
     /// @inheritdoc IVaultMain
     function getVaultExtension() external view returns (address) {
