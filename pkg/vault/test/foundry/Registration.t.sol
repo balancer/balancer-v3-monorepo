@@ -136,7 +136,7 @@ contract RegistrationTest is BaseVaultTest {
         // Stored value is truncated
         assertEq(
             vault.getStaticSwapFeePercentage(pool),
-            (swapFeePercentage / 1e11) * 1e11,
+            (swapFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR,
             "Wrong swap fee percentage"
         );
     }

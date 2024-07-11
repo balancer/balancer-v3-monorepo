@@ -11,8 +11,11 @@ import { IVault } from "./IVault.sol";
 
 interface IVaultAdmin {
     /*******************************************************************************
-                              Constants and immutables
+                               Constants and immutables
     *******************************************************************************/
+
+    /// @dev Returns the main Vault address.
+    function vault() external view returns (IVault);
 
     /**
      * @notice Returns Vault's pause window end time.
@@ -44,9 +47,6 @@ interface IVaultAdmin {
      * @return The token count of a minimal pool
      */
     function getMaximumPoolTokens() external pure returns (uint256);
-
-    /// @dev Returns the main Vault address.
-    function vault() external view returns (IVault);
 
     /*******************************************************************************
                                     Vault Pausing
@@ -174,15 +174,8 @@ interface IVaultAdmin {
     function disableQuery() external;
 
     /*******************************************************************************
-                         Yield-bearing token buffers
+                              Yield-bearing token buffers
     *******************************************************************************/
-    /**
-     * @notice Unpauses native vault buffers globally. When buffers are paused, it's not possible to add liquidity or
-     * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove
-     * liquidity.
-     * @dev This is a permissioned call.
-     */
-    function unpauseVaultBuffers() external;
 
     /**
      * @notice Pauses native vault buffers globally. When buffers are paused, it's not possible to add liquidity or
@@ -191,6 +184,14 @@ interface IVaultAdmin {
      * @dev This is a permissioned call.
      */
     function pauseVaultBuffers() external;
+
+    /**
+     * @notice Unpauses native vault buffers globally. When buffers are paused, it's not possible to add liquidity or
+     * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove
+     * liquidity.
+     * @dev This is a permissioned call.
+     */
+    function unpauseVaultBuffers() external;
 
     /**
      * @notice Adds liquidity to an yield-bearing token buffer (linear pool embedded in the vault).
