@@ -816,7 +816,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         pool: pool,
                         maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
-                        kind: AddLiquidityKind.UNBALANCED,
+                        kind: AddLiquidityKind.PROPORTIONAL,
                         wethIsEth: false,
                         userData: userData
                     })

@@ -20,12 +20,14 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 import { PoolMock } from "../../../../contracts/test/PoolMock.sol";
+import { PoolHooksMock } from "../../../../contracts/test/PoolHooksMock.sol";
 import { Router } from "../../../../contracts/Router.sol";
 import { RouterCommon } from "../../../../contracts/RouterCommon.sol";
 import { VaultMock } from "../../../../contracts/test/VaultMock.sol";
@@ -35,6 +37,7 @@ import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
 
 contract RouterMutationTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     uint256[] internal amountsIn = [poolInitAmount, poolInitAmount].toMemoryArray();
 
@@ -211,5 +214,150 @@ contract RouterMutationTest is BaseVaultTest {
     function testQueryRemoveLiquidityRecoveryHookWhenNoVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
         router.queryRemoveLiquidityRecoveryHook(pool, msg.sender, 10);
+    }
+
+    function testQuerySwapSingleTokenExactInSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeSwap = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        vm.prank(address(bob), address(0));
+        router.querySwapSingleTokenExactIn(pool, dai, usdc, amountsIn[0], bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQuerySwapSingleTokenExactOutSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeSwap = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        vm.prank(address(bob), address(0));
+        router.querySwapSingleTokenExactOut(pool, dai, usdc, amountsIn[1], bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryAddLiquidityProportionalSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeAddLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        vm.prank(address(bob), address(0));
+        router.queryAddLiquidityProportional(pool, amountsIn, poolInitAmount.mulDown(2e18), bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryAddLiquidityUnbalancedSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeAddLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        vm.prank(address(bob), address(0));
+        router.queryAddLiquidityUnbalanced(pool, amountsIn, bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryAddLiquiditySingleTokenExactOutSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeAddLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        vm.prank(address(bob), address(0));
+        router.queryAddLiquiditySingleTokenExactOut(pool, dai, poolInitAmount, bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryAddLiquidityCustomSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeAddLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        vm.prank(address(bob), address(0));
+        router.queryAddLiquidityCustom(pool, amountsIn, poolInitAmount.mulDown(2e18), bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryRemoveLiquidityProportionalSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeRemoveLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        vm.prank(address(bob), address(0));
+        router.queryRemoveLiquidityProportional(pool, poolInitAmount, bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryRemoveLiquiditySingleTokenExactInSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeRemoveLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        vm.prank(address(bob), address(0));
+        router.queryRemoveLiquiditySingleTokenExactIn(pool, poolInitAmount, usdc, bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryRemoveLiquiditySingleTokenExactOutSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeRemoveLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        vm.prank(address(bob), address(0));
+        router.queryRemoveLiquiditySingleTokenExactOut(pool, usdc, poolInitAmount, bytes(""));
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
+    }
+
+    function testQueryRemoveLiquidityCustomSaveSender() public {
+        HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
+        hooksConfig.shouldCallBeforeRemoveLiquidity = true;
+        vault.manualSetHooksConfig(pool, hooksConfig);
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), address(0), "Hook saved sender is not empty");
+
+        // tx.origin needs to be 0x0 for the transaction to be considered a query
+        vm.prank(address(bob), address(0));
+        router.queryRemoveLiquidityCustom(
+            pool,
+            poolInitAmount,
+            [poolInitAmount.divDown(2e18), poolInitAmount.divDown(2e18)].toMemoryArray(),
+            bytes("")
+        );
+
+        assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
     }
 }
