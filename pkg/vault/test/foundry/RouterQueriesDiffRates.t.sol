@@ -263,10 +263,9 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             .toMemoryArray();
         // On addLiquidity, the amount in is scaled up first (round down), addLiquidityCustom returns the maxAmountsIn
         // as amountsIn, and finally it is scaled down (round up).
-        uint256[] memory expectedAmountsIn = [
-            (maxAmountsIn[0].mulDown(daiMockRate)).divUp(daiMockRate),
-            (maxAmountsIn[1].mulDown(usdcMockRate)).divUp(usdcMockRate)
-        ].toMemoryArray();
+        uint256[] memory expectedAmountsIn = new uint256[](2);
+        expectedAmountsIn[daiIdx] = (maxAmountsIn[0].mulDown(daiMockRate)).divUp(daiMockRate);
+        expectedAmountsIn[usdcIdx] = (maxAmountsIn[1].mulDown(usdcMockRate)).divUp(usdcMockRate);
 
         uint256 snapshotId = vm.snapshot();
         vm.prank(address(0), address(0));
@@ -433,10 +432,9 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             .toMemoryArray();
         // On addLiquidity, the amount out is scaled up first (round up), addLiquidityCustom returns the minAmountsOut
         // as amountsOut, and finally it is scaled down (round down).
-        uint256[] memory expectedAmountsOut = [
-            (minAmountsOut[0].mulUp(daiMockRate)).divDown(daiMockRate),
-            (minAmountsOut[1].mulUp(usdcMockRate)).divDown(usdcMockRate)
-        ].toMemoryArray();
+        uint256[] memory expectedAmountsOut = new uint256[](2);
+        expectedAmountsOut[daiIdx] = (minAmountsOut[daiIdx].mulUp(daiMockRate)).divDown(daiMockRate);
+        expectedAmountsOut[usdcIdx] = (minAmountsOut[usdcIdx].mulUp(usdcMockRate)).divDown(usdcMockRate);
 
         uint256 snapshotId = vm.snapshot();
         vm.prank(address(0), address(0));
