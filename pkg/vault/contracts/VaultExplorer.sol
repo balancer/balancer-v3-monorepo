@@ -84,30 +84,6 @@ contract VaultExplorer is IVaultExplorer {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExplorer
-    function registerPool(
-        address pool,
-        TokenConfig[] memory tokenConfig,
-        uint256 swapFeePercentage,
-        uint32 pauseWindowEndTime,
-        bool protocolFeeExempt,
-        PoolRoleAccounts calldata roleAccounts,
-        address poolHooksContract,
-        LiquidityManagement calldata liquidityManagement
-    ) external {
-        return
-            _vault.registerPool(
-                pool,
-                tokenConfig,
-                swapFeePercentage,
-                pauseWindowEndTime,
-                protocolFeeExempt,
-                roleAccounts,
-                poolHooksContract,
-                liquidityManagement
-            );
-    }
-
-    /// @inheritdoc IVaultExplorer
     function isPoolRegistered(address pool) external view returns (bool) {
         return _vault.isPoolRegistered(pool);
     }

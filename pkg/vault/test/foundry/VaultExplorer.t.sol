@@ -160,21 +160,6 @@ contract VaultExplorerTest is BaseVaultTest {
         assertEq(explorer.getReservesOf(dai), defaultAmount, "Wrong Explorer reserves");
     }
 
-    function testPoolRegistration() public {
-        assertTrue(vault.isPoolRegistered(pool), "Default pool not registered (Vault)");
-        assertTrue(explorer.isPoolRegistered(pool), "Default pool not registered (Explorer)");
-
-        address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
-
-        assertFalse(vault.isPoolRegistered(newPool), "New pool magically registered (Vault)");
-        assertFalse(explorer.isPoolRegistered(newPool), "New pool magically registered (Explorer)");
-
-        _registerPool(newPool, false);
-
-        assertTrue(vault.isPoolRegistered(newPool), "New pool not registered (Vault)");
-        assertTrue(explorer.isPoolRegistered(newPool), "New pool not registered (Explorer)");
-    }
-
     function testPoolInitialization() public {
         assertTrue(vault.isPoolInitialized(pool), "Default pool not initialized (Vault)");
         assertTrue(explorer.isPoolInitialized(pool), "Default pool not initialized (Explorer)");
