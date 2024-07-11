@@ -72,7 +72,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         uint256 expectedAmountOut = exactAmountIn.mulDown(daiMockRate).divDown(usdcMockRate);
 
         uint256 snapshotId = vm.snapshot();
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         uint256 queryAmountOut = router.querySwapSingleTokenExactIn(pool, dai, usdc, exactAmountIn, bytes(""));
 
         vm.revertTo(snapshotId);
@@ -107,7 +107,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         uint256 expectedAmountIn = exactAmountOut.mulUp(usdcMockRate).divUp(daiMockRate);
 
         uint256 snapshotId = vm.snapshot();
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         uint256 queryAmountIn = router.querySwapSingleTokenExactOut(pool, dai, usdc, exactAmountOut, bytes(""));
 
         vm.revertTo(snapshotId);
@@ -144,7 +144,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             .toMemoryArray();
 
         uint256 snapshotId = vm.snapshot();
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         uint256[] memory queryAmountsIn = router.queryAddLiquidityProportional(
             pool,
             expectedAmountsIn,
@@ -192,7 +192,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         );
 
         uint256 snapshotId = vm.snapshot();
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         uint256 queryBptAmountOut = router.queryAddLiquidityUnbalanced(pool, exactAmountsInRaw, bytes(""));
 
         vm.revertTo(snapshotId);
@@ -230,7 +230,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         uint256 expectedAmountInRaw = expectedAmountInScaled18.divUp(daiMockRate);
 
         uint256 snapshotId = vm.snapshot();
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         uint256 queryAmountIn = router.queryAddLiquiditySingleTokenExactOut(pool, dai, exactBptAmountOut, bytes(""));
 
         vm.revertTo(snapshotId);
@@ -268,7 +268,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         expectedAmountsIn[usdcIdx] = (maxAmountsIn[1].mulDown(usdcMockRate)).divUp(usdcMockRate);
 
         uint256 snapshotId = vm.snapshot();
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         (uint256[] memory queryAmountsIn, uint256 queryBptOut, ) = router.queryAddLiquidityCustom(
             pool,
             maxAmountsIn,
@@ -313,7 +313,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             .toMemoryArray();
 
         uint256 snapshotId = vm.snapshot();
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         uint256[] memory queryAmountsOut = router.queryRemoveLiquidityProportional(pool, exactBptAmountIn, bytes(""));
 
         vm.revertTo(snapshotId);
@@ -357,7 +357,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         uint256 expectedAmountOutRaw = expectedAmountOutScaled18.divDown(daiMockRate);
 
         uint256 snapshotId = vm.snapshot();
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         uint256 queryAmountOut = router.queryRemoveLiquiditySingleTokenExactIn(pool, exactBptAmountIn, dai, bytes(""));
 
         vm.revertTo(snapshotId);
@@ -399,7 +399,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         );
 
         uint256 snapshotId = vm.snapshot();
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         uint256 queryBptAmountIn = router.queryRemoveLiquiditySingleTokenExactOut(pool, dai, exactAmountOut, bytes(""));
 
         vm.revertTo(snapshotId);
@@ -437,7 +437,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         expectedAmountsOut[usdcIdx] = (minAmountsOut[usdcIdx].mulUp(usdcMockRate)).divDown(usdcMockRate);
 
         uint256 snapshotId = vm.snapshot();
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         (uint256 queryBptIn, uint256[] memory queryAmountsOut, ) = router.queryRemoveLiquidityCustom(
             pool,
             expectedBptAmountIn,
@@ -484,7 +484,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         vault.manualEnableRecoveryMode(pool);
 
         uint256 snapshotId = vm.snapshot();
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         uint256[] memory queryAmountsOut = router.queryRemoveLiquidityRecovery(pool, exactBptAmountIn);
 
         vm.revertTo(snapshotId);
