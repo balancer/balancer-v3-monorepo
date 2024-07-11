@@ -466,4 +466,37 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         assertEq(queryBptIn, actualBptIn, "BPT Query and Actual amounts in are wrong");
         assertEq(expectedBptAmountIn, actualBptIn, "BPT Expected amount in is wrong");
     }
+
+    function testQueryRemoveLiquidityRecoveryDiffRates__Fuzz(uint256 daiMockRate, uint256 usdcMockRate) public {
+        daiMockRate = bound(daiMockRate, 1e17, 1e19);
+        usdcMockRate = bound(usdcMockRate, 1e17, 1e19);
+
+        RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
+        RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
+
+        // 1% of biggerPoolInitAmount, arbitrarily.
+        uint256 exactBptAmountIn = biggerPoolInitAmount.mulUp(0.01e18);
+        // Recovery remove is proportional to pool balance, in terms of raw values. So, since the pool has the same
+        // balance for USDC and DAI, and the invariant of PoolMock is linear (the sum of both balances),
+        // the expectedAmountsOut is `exactBptAmountIn / 2`.
+        uint256[] memory expectedAmountsOut = [exactBptAmountIn.divUp(2e18), exactBptAmountIn.divUp(2e18)]
+            .toMemoryArray();
+
+        vault.manualEnableRecoveryMode(pool);
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(address(0), address(0));
+        uint256[] memory queryAmountsOut = router.queryRemoveLiquidityRecovery(pool, exactBptAmountIn);
+
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        uint256[] memory actualAmountsOut = router.removeLiquidityRecovery(pool, exactBptAmountIn);
+
+        assertEq(queryAmountsOut[daiIdx], actualAmountsOut[daiIdx], "DAI Query and Actual amounts out are wrong");
+        assertEq(expectedAmountsOut[daiIdx], actualAmountsOut[daiIdx], "DAI Expected amount out is wrong");
+
+        assertEq(queryAmountsOut[usdcIdx], actualAmountsOut[usdcIdx], "USDC Query and Actual amounts out are wrong");
+        assertEq(expectedAmountsOut[usdcIdx], actualAmountsOut[usdcIdx], "USDC Expected amount out is wrong");
+    }
 }
