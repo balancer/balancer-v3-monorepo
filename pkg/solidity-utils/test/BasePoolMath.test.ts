@@ -26,189 +26,151 @@ describe('BasePoolMath', function () {
     math = await deploy('BasePoolMathMock');
   });
 
-  context('computeProportionalAmountsIn', () => {
-    it('computes correct proportional amounts in', async () => {
-      const balances = [bn(100e18), bn(200e18)];
-      const bptTotalSupply = bn(300e18);
-      const bptAmountOut = bn(30e18);
+  it('test computeProportionalAmountsIn', async () => {
+    const balances = [bn(100e18), bn(200e18)];
+    const bptTotalSupply = bn(300e18);
+    const bptAmountOut = bn(30e18);
 
-      const expected = computeProportionalAmountsIn(balances, bptTotalSupply, bptAmountOut);
-      const result = await math.computeProportionalAmountsIn(balances, bptTotalSupply, bptAmountOut);
+    const expected = computeProportionalAmountsIn(balances, bptTotalSupply, bptAmountOut);
+    const result = await math.computeProportionalAmountsIn(balances, bptTotalSupply, bptAmountOut);
 
-      result.forEach((res, index) => {
-        expect(res).not.to.be.equal(0n, 'result is 0');
-        expectEqualWithError(res, expected[index], MAX_RELATIVE_ERROR, 'unexpected result');
-      });
-    });
-
-    it('computes correct proportional amounts in when tokenAmountOut is extremely small', async () => {
-      const balances = [bn(100e18), bn(200e18)];
-      const bptTotalSupply = bn(300e18);
-      const bptAmountOut = bn(30e18);
-
-      const expected = computeProportionalAmountsIn(balances, bptTotalSupply, bptAmountOut);
-      const result = await math.computeProportionalAmountsIn(balances, bptTotalSupply, bptAmountOut);
-
-      result.forEach((res, index) => {
-        expect(res).not.to.be.equal(0n, 'result is 0');
-        expectEqualWithError(res, expected[index], MAX_RELATIVE_ERROR, 'unexpected result');
-      });
+    result.forEach((res, index) => {
+      expect(res).not.to.be.equal(0n, 'result is 0');
+      expectEqualWithError(res, expected[index], MAX_RELATIVE_ERROR, 'unexpected result');
     });
   });
 
-  context('computeProportionalAmountsOut', () => {
-    it('computes correct proportional amounts out', async () => {
-      const balances = [bn(100e18), bn(200e18)];
-      const bptTotalSupply = bn(300e18);
-      const bptAmountIn = bn(30e18);
+  it('test computeProportionalAmountsOut', async () => {
+    const balances = [bn(100e18), bn(200e18)];
+    const bptTotalSupply = bn(300e18);
+    const bptAmountIn = bn(30e18);
 
-      const expected = computeProportionalAmountsOut(balances, bptTotalSupply, bptAmountIn);
-      const result = await math.computeProportionalAmountsOut(balances, bptTotalSupply, bptAmountIn);
+    const expected = computeProportionalAmountsOut(balances, bptTotalSupply, bptAmountIn);
+    const result = await math.computeProportionalAmountsOut(balances, bptTotalSupply, bptAmountIn);
 
-      result.forEach((res, index) => {
-        expect(res).not.to.be.equal(0n, 'result is 0');
-        expectEqualWithError(res, expected[index], MAX_RELATIVE_ERROR, 'unexpected result');
-      });
+    result.forEach((res, index) => {
+      expect(res).not.to.be.equal(0n, 'result is 0');
+      expectEqualWithError(res, expected[index], MAX_RELATIVE_ERROR, 'unexpected result');
     });
   });
 
-  context('computeAddLiquidityUnbalanced', () => {
-    it('computes correct BPT amount out and swap fees for unbalanced liquidity addition', async () => {
-      const currentBalances = [bn(100e18), bn(200e18)];
-      const exactAmounts = [bn(10e18), bn(20e18)];
-      const totalSupply = bn(300e18);
+  it('test computeAddLiquidityUnbalanced', async () => {
+    const currentBalances = [bn(100e18), bn(200e18)];
+    const exactAmounts = [bn(10e18), bn(20e18)];
+    const totalSupply = bn(300e18);
 
-      const { bptAmountOut: expectedBptAmountOut, swapFeeAmounts: expectedSwapFeeAmounts } =
-        computeAddLiquidityUnbalanced(currentBalances, exactAmounts, totalSupply, SWAP_FEE);
+    const { bptAmountOut: expectedBptAmountOut, swapFeeAmounts: expectedSwapFeeAmounts } =
+      computeAddLiquidityUnbalanced(currentBalances, exactAmounts, totalSupply, SWAP_FEE);
 
-      const result = await math.computeAddLiquidityUnbalanced(currentBalances, exactAmounts, totalSupply, SWAP_FEE);
+    const result = await math.computeAddLiquidityUnbalanced(currentBalances, exactAmounts, totalSupply, SWAP_FEE);
 
-      expect(result.bptAmountOut).not.to.be.equal(0n, 'bptAmountOut is 0');
-      expectEqualWithError(result.bptAmountOut, expectedBptAmountOut, MAX_RELATIVE_ERROR, 'unexpected bptAmountOut');
-      result.swapFeeAmounts.forEach((res, i) => {
-        expectEqualWithError(
-          result.swapFeeAmounts[i],
-          expectedSwapFeeAmounts[i],
-          MAX_RELATIVE_ERROR,
-          'unexpected swapFeeAmounts'
-        );
-      });
-    });
-  });
-
-  context('computeAddLiquiditySingleTokenExactOut', () => {
-    it('computes correct input amount for single-token liquidity addition', async () => {
-      const currentBalances = [bn(100e18), bn(200e18)];
-      const tokenInIndex = 0;
-      const exactBptAmountOut = bn(30e18);
-      const totalSupply = bn(300e18);
-
-      const { amountInWithFee: expectedAmountInWithFee, swapFeeAmounts: expectedSwapFeeAmounts } =
-        computeAddLiquiditySingleTokenExactOut(currentBalances, tokenInIndex, exactBptAmountOut, totalSupply, SWAP_FEE);
-
-      const result = await math.computeAddLiquiditySingleTokenExactOut(
-        currentBalances,
-        tokenInIndex,
-        exactBptAmountOut,
-        totalSupply,
-        SWAP_FEE
-      );
-
-      expect(result.amountInWithFee).not.to.be.equal(0n, 'amountInWithFee is 0');
+    expect(result.bptAmountOut).not.to.be.equal(0n, 'bptAmountOut is 0');
+    expectEqualWithError(result.bptAmountOut, expectedBptAmountOut, MAX_RELATIVE_ERROR, 'unexpected bptAmountOut');
+    result.swapFeeAmounts.forEach((res, i) => {
       expectEqualWithError(
-        result.amountInWithFee,
-        expectedAmountInWithFee,
+        result.swapFeeAmounts[i],
+        expectedSwapFeeAmounts[i],
         MAX_RELATIVE_ERROR,
-        'unexpected amountInWithFee'
+        'unexpected swapFeeAmounts'
       );
-      result.swapFeeAmounts.forEach((res, i) => {
-        expectEqualWithError(
-          result.swapFeeAmounts[i],
-          expectedSwapFeeAmounts[i],
-          MAX_RELATIVE_ERROR,
-          'unexpected swapFeeAmounts'
-        );
-      });
     });
   });
 
-  context('computeRemoveLiquiditySingleTokenExactOut', () => {
-    it('computes correct BPT amount in for exact single-token withdrawal', async () => {
-      const currentBalances = [bn(100e18), bn(200e18)];
-      const tokenOutIndex = 0;
-      const exactAmountOut = bn(10e18);
-      const totalSupply = bn(300e18);
+  it('test computeAddLiquiditySingleTokenExactOut', async () => {
+    const currentBalances = [bn(100e18), bn(200e18)];
+    const tokenInIndex = 0;
+    const exactBptAmountOut = bn(30e18);
+    const totalSupply = bn(300e18);
 
-      const { bptAmountIn: expectedBptAmountIn, swapFeeAmounts: expectedSwapFeeAmounts } =
-        computeRemoveLiquiditySingleTokenExactOut(
-          currentBalances,
-          tokenOutIndex,
-          exactAmountOut,
-          totalSupply,
-          SWAP_FEE
-        );
+    const { amountInWithFee: expectedAmountInWithFee, swapFeeAmounts: expectedSwapFeeAmounts } =
+      computeAddLiquiditySingleTokenExactOut(currentBalances, tokenInIndex, exactBptAmountOut, totalSupply, SWAP_FEE);
 
-      const result = await math.computeRemoveLiquiditySingleTokenExactOut(
-        currentBalances,
-        tokenOutIndex,
-        exactAmountOut,
-        totalSupply,
-        SWAP_FEE
-      );
+    const result = await math.computeAddLiquiditySingleTokenExactOut(
+      currentBalances,
+      tokenInIndex,
+      exactBptAmountOut,
+      totalSupply,
+      SWAP_FEE
+    );
 
-      expect(result.bptAmountIn).not.to.be.equal(0n, 'bptAmountIn is 0');
-      expectEqualWithError(result.bptAmountIn, expectedBptAmountIn, MAX_RELATIVE_ERROR, 'unexpected bptAmountIn');
-
-      result.swapFeeAmounts.forEach((res, i) => {
-        expectEqualWithError(
-          result.swapFeeAmounts[i],
-          expectedSwapFeeAmounts[i],
-          MAX_RELATIVE_ERROR,
-          'unexpected swapFeeAmounts'
-        );
-      });
-    });
-  });
-
-  context('computeRemoveLiquiditySingleTokenExactIn', () => {
-    it('computes correct token amount out for exact BPT amount in', async () => {
-      const currentBalances = [bn(100e18), bn(200e18)];
-      const tokenOutIndex = 0;
-      const exactBptAmountIn = bn(30e18);
-      const totalSupply = bn(300e18);
-
-      const { amountOutWithFee: expectedAmountOutWithFee, swapFeeAmounts: expectedSwapFeeAmounts } =
-        computeRemoveLiquiditySingleTokenExactIn(
-          currentBalances,
-          tokenOutIndex,
-          exactBptAmountIn,
-          totalSupply,
-          SWAP_FEE
-        );
-
-      const result = await math.computeRemoveLiquiditySingleTokenExactIn(
-        currentBalances,
-        tokenOutIndex,
-        exactBptAmountIn,
-        totalSupply,
-        SWAP_FEE
-      );
-
-      expect(result.amountOutWithFee).not.to.be.equal(0n, 'amountOutWithFee is 0');
+    expect(result.amountInWithFee).not.to.be.equal(0n, 'amountInWithFee is 0');
+    expectEqualWithError(
+      result.amountInWithFee,
+      expectedAmountInWithFee,
+      MAX_RELATIVE_ERROR,
+      'unexpected amountInWithFee'
+    );
+    result.swapFeeAmounts.forEach((res, i) => {
       expectEqualWithError(
-        result.amountOutWithFee,
-        expectedAmountOutWithFee,
+        result.swapFeeAmounts[i],
+        expectedSwapFeeAmounts[i],
         MAX_RELATIVE_ERROR,
-        'unexpected amountOutWithFee'
+        'unexpected swapFeeAmounts'
       );
-      result.swapFeeAmounts.forEach((res, i) => {
-        expectEqualWithError(
-          result.swapFeeAmounts[i],
-          expectedSwapFeeAmounts[i],
-          MAX_RELATIVE_ERROR,
-          'unexpected swapFeeAmounts'
-        );
-      });
+    });
+  });
+
+  it('test computeRemoveLiquiditySingleTokenExactOut', async () => {
+    const currentBalances = [bn(100e18), bn(200e18)];
+    const tokenOutIndex = 0;
+    const exactAmountOut = bn(10e18);
+    const totalSupply = bn(300e18);
+
+    const { bptAmountIn: expectedBptAmountIn, swapFeeAmounts: expectedSwapFeeAmounts } =
+      computeRemoveLiquiditySingleTokenExactOut(currentBalances, tokenOutIndex, exactAmountOut, totalSupply, SWAP_FEE);
+
+    const result = await math.computeRemoveLiquiditySingleTokenExactOut(
+      currentBalances,
+      tokenOutIndex,
+      exactAmountOut,
+      totalSupply,
+      SWAP_FEE
+    );
+
+    expect(result.bptAmountIn).not.to.be.equal(0n, 'bptAmountIn is 0');
+    expectEqualWithError(result.bptAmountIn, expectedBptAmountIn, MAX_RELATIVE_ERROR, 'unexpected bptAmountIn');
+
+    result.swapFeeAmounts.forEach((res, i) => {
+      expectEqualWithError(
+        result.swapFeeAmounts[i],
+        expectedSwapFeeAmounts[i],
+        MAX_RELATIVE_ERROR,
+        'unexpected swapFeeAmounts'
+      );
+    });
+  });
+
+  it('test computeRemoveLiquiditySingleTokenExactIn', async () => {
+    const currentBalances = [bn(100e18), bn(200e18)];
+    const tokenOutIndex = 0;
+    const exactBptAmountIn = bn(30e18);
+    const totalSupply = bn(300e18);
+
+    const { amountOutWithFee: expectedAmountOutWithFee, swapFeeAmounts: expectedSwapFeeAmounts } =
+      computeRemoveLiquiditySingleTokenExactIn(currentBalances, tokenOutIndex, exactBptAmountIn, totalSupply, SWAP_FEE);
+
+    const result = await math.computeRemoveLiquiditySingleTokenExactIn(
+      currentBalances,
+      tokenOutIndex,
+      exactBptAmountIn,
+      totalSupply,
+      SWAP_FEE
+    );
+
+    expect(result.amountOutWithFee).not.to.be.equal(0n, 'amountOutWithFee is 0');
+    expectEqualWithError(
+      result.amountOutWithFee,
+      expectedAmountOutWithFee,
+      MAX_RELATIVE_ERROR,
+      'unexpected amountOutWithFee'
+    );
+    result.swapFeeAmounts.forEach((res, i) => {
+      expectEqualWithError(
+        result.swapFeeAmounts[i],
+        expectedSwapFeeAmounts[i],
+        MAX_RELATIVE_ERROR,
+        'unexpected swapFeeAmounts'
+      );
     });
   });
 });
