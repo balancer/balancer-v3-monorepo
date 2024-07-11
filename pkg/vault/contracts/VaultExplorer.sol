@@ -10,10 +10,8 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
-    TokenConfig,
     TokenInfo,
     PoolRoleAccounts,
-    LiquidityManagement,
     PoolConfig,
     HooksConfig,
     PoolData
