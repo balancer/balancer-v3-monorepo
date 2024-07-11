@@ -52,6 +52,22 @@ interface IVaultMain {
     function sendTo(IERC20 token, address to, uint256 amount) external;
 
     /***************************************************************************
+                                       Swaps
+    ***************************************************************************/
+
+    /**
+     * @notice Swaps tokens based on provided parameters.
+     * @dev All parameters are given in raw token decimal encoding.
+     * @param params Parameters for the swap (see above for struct definition)
+     * @return amountCalculatedRaw Calculated swap amount
+     * @return amountInRaw Amount of input tokens for the swap
+     * @return amountOutRaw Amount of output tokens from the swap
+     */
+    function swap(
+        SwapParams memory params
+    ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
+
+    /***************************************************************************
                                    Add Liquidity
     ***************************************************************************/
 
@@ -87,22 +103,6 @@ interface IVaultMain {
     function removeLiquidity(
         RemoveLiquidityParams memory params
     ) external returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData);
-
-    /***************************************************************************
-                                       Swaps
-    ***************************************************************************/
-
-    /**
-     * @notice Swaps tokens based on provided parameters.
-     * @dev All parameters are given in raw token decimal encoding.
-     * @param params Parameters for the swap (see above for struct definition)
-     * @return amountCalculatedRaw Calculated swap amount
-     * @return amountInRaw Amount of input tokens for the swap
-     * @return amountOutRaw Amount of output tokens from the swap
-     */
-    function swap(
-        SwapParams memory params
-    ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     /*******************************************************************************
                                     Pool Information
