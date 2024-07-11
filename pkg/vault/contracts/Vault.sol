@@ -1551,7 +1551,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     function _ensureValidTradeAmount(uint256 tradeAmount) private pure {
-        if (tradeAmount != 0 && tradeAmount < _MINIMUM_TRADE_AMOUNT) {
+        if (tradeAmount < _MINIMUM_TRADE_AMOUNT && tradeAmount != 0) {
             revert TradeAmountTooSmall();
         }
     }
