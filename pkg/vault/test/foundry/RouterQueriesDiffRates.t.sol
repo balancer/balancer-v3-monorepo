@@ -134,9 +134,9 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
         RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
 
-        // 1% of biggerPoolInitAmount, arbitrarily
+        // 1% of biggerPoolInitAmount, arbitrarily.
         uint256 exactBptAmountOut = biggerPoolInitAmount.mulUp(0.01e18);
-        // Proportional join is proportional to pool balance, in terms of raw values. So, since the pool has the same
+        // Proportional add is proportional to pool balance, in terms of raw values. So, since the pool has the same
         // balance for USDC and DAI, and the invariant of PoolMock is linear (the sum of both balances),
         // the expectedAmountsIn is `exactBptAmountOut / 2`.
         uint256[] memory expectedAmountsIn = [exactBptAmountOut.divUp(2e18), exactBptAmountOut.divUp(2e18)]
@@ -176,7 +176,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
         RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
 
-        // DAI is 1% of biggerPoolInitAmount, USDC is 0.5% of biggerPoolInitAmount, arbitrarily
+        // DAI is 1% of biggerPoolInitAmount, USDC is 0.5% of biggerPoolInitAmount, arbitrarily.
         uint256[] memory exactAmountsInRaw = [biggerPoolInitAmount.mulUp(0.01e18), biggerPoolInitAmount.mulUp(0.005e18)]
             .toMemoryArray();
         uint256[] memory exactAmountsInScaled18 = new uint256[](2);
@@ -216,7 +216,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
         RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
 
-        // 1% of biggerPoolInitAmount, arbitrarily
+        // 1% of biggerPoolInitAmount, arbitrarily.
         uint256 exactBptAmountOut = biggerPoolInitAmount.mulUp(0.01e18);
         (uint256 expectedAmountInScaled18, ) = BasePoolMath.computeAddLiquiditySingleTokenExactOut(
             vault.getCurrentLiveBalances(pool),
@@ -255,9 +255,9 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
         RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
 
-        // 1% of biggerPoolInitAmount, arbitrarily
+        // 1% of biggerPoolInitAmount, arbitrarily.
         uint256 expectedBptAmountOut = biggerPoolInitAmount.mulUp(0.01e18);
-        // Arbitrary numbers
+        // Arbitrary numbers.
         uint256[] memory maxAmountsIn = [expectedBptAmountOut.divUp(3e18), expectedBptAmountOut.divUp(5e18)]
             .toMemoryArray();
         // On addLiquidity, the amount in is scaled up first (round down), addLiquidityCustom returns the maxAmountsIn
@@ -293,7 +293,177 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         assertEq(queryAmountsIn[usdcIdx], actualAmountsIn[usdcIdx], "USDC Query and Actual amounts in are wrong");
         assertEq(expectedAmountsIn[usdcIdx], actualAmountsIn[usdcIdx], "USDC Expected amount in is wrong");
 
-        assertEq(queryBptOut, actualBptOut, "BPT Query and Actual amounts in are wrong");
-        assertEq(expectedBptAmountOut, actualBptOut, "BPT Expected amount in is wrong");
+        assertEq(queryBptOut, actualBptOut, "BPT Query and Actual amounts out are wrong");
+        assertEq(expectedBptAmountOut, actualBptOut, "BPT Expected amount out is wrong");
+    }
+
+    function testQueryRemoveLiquidityProportionalDiffRates__Fuzz(uint256 daiMockRate, uint256 usdcMockRate) public {
+        daiMockRate = bound(daiMockRate, 1e17, 1e19);
+        usdcMockRate = bound(usdcMockRate, 1e17, 1e19);
+
+        RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
+        RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
+
+        // 1% of biggerPoolInitAmount, arbitrarily.
+        uint256 exactBptAmountIn = biggerPoolInitAmount.mulUp(0.01e18);
+        // Proportional remove is proportional to pool balance, in terms of raw values. So, since the pool has the same
+        // balance for USDC and DAI, and the invariant of PoolMock is linear (the sum of both balances),
+        // the expectedAmountsOut is `exactBptAmountIn / 2`.
+        uint256[] memory expectedAmountsOut = [exactBptAmountIn.divUp(2e18), exactBptAmountIn.divUp(2e18)]
+            .toMemoryArray();
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(address(0), address(0));
+        uint256[] memory queryAmountsOut = router.queryRemoveLiquidityProportional(pool, exactBptAmountIn, bytes(""));
+
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        uint256[] memory actualAmountsOut = router.removeLiquidityProportional(
+            pool,
+            exactBptAmountIn,
+            expectedAmountsOut,
+            false,
+            bytes("")
+        );
+
+        assertEq(queryAmountsOut[daiIdx], actualAmountsOut[daiIdx], "DAI Query and Actual amounts out are wrong");
+        assertEq(expectedAmountsOut[daiIdx], actualAmountsOut[daiIdx], "DAI Expected amount out is wrong");
+
+        assertEq(queryAmountsOut[usdcIdx], actualAmountsOut[usdcIdx], "USDC Query and Actual amounts out are wrong");
+        assertEq(expectedAmountsOut[usdcIdx], actualAmountsOut[usdcIdx], "USDC Expected amount out is wrong");
+    }
+
+    function testQueryRemoveLiquiditySingleTokenExactInDiffRates__Fuzz(
+        uint256 daiMockRate,
+        uint256 usdcMockRate
+    ) public {
+        daiMockRate = bound(daiMockRate, 1e17, 1e19);
+        usdcMockRate = bound(usdcMockRate, 1e17, 1e19);
+
+        RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
+        RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
+
+        // 1% of biggerPoolInitAmount, arbitrarily.
+        uint256 exactBptAmountIn = biggerPoolInitAmount.mulUp(0.01e18);
+        (uint256 expectedAmountOutScaled18, ) = BasePoolMath.computeRemoveLiquiditySingleTokenExactIn(
+            vault.getCurrentLiveBalances(pool),
+            daiIdx,
+            exactBptAmountIn,
+            IERC20(pool).totalSupply(),
+            0,
+            IBasePool(pool).computeBalance
+        );
+        uint256 expectedAmountOutRaw = expectedAmountOutScaled18.divDown(daiMockRate);
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(address(0), address(0));
+        uint256 queryAmountOut = router.queryRemoveLiquiditySingleTokenExactIn(pool, exactBptAmountIn, dai, bytes(""));
+
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        uint256 actualAmountOut = router.removeLiquiditySingleTokenExactIn(
+            pool,
+            exactBptAmountIn,
+            dai,
+            expectedAmountOutRaw,
+            false,
+            bytes("")
+        );
+
+        assertEq(queryAmountOut, actualAmountOut, "DAI Query and Actual amounts out are wrong");
+        assertEq(expectedAmountOutRaw, actualAmountOut, "DAI Expected amount out is wrong");
+    }
+
+    function testQueryRemoveLiquiditySingleTokenExactOutDiffRates__Fuzz(
+        uint256 daiMockRate,
+        uint256 usdcMockRate
+    ) public {
+        daiMockRate = bound(daiMockRate, 1e17, 1e19);
+        usdcMockRate = bound(usdcMockRate, 1e17, 1e19);
+
+        RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
+        RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
+
+        // 1% of biggerPoolInitAmount, arbitrarily.
+        uint256 exactAmountOut = biggerPoolInitAmount.mulUp(0.01e18);
+        (uint256 expectedBptAmountIn, ) = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
+            vault.getCurrentLiveBalances(pool),
+            daiIdx,
+            // Amount out needs to be scaled18, so we multiply by the rate (considering DAI already has 18 decimals)
+            exactAmountOut.mulUp(daiMockRate),
+            IERC20(pool).totalSupply(),
+            0,
+            IBasePool(pool).computeInvariant
+        );
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(address(0), address(0));
+        uint256 queryBptAmountIn = router.queryRemoveLiquiditySingleTokenExactOut(pool, dai, exactAmountOut, bytes(""));
+
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        uint256 actualBptAmountIn = router.removeLiquiditySingleTokenExactOut(
+            pool,
+            expectedBptAmountIn,
+            dai,
+            exactAmountOut,
+            false,
+            bytes("")
+        );
+
+        assertEq(queryBptAmountIn, actualBptAmountIn, "BPT Query and Actual amounts out are wrong");
+        assertEq(expectedBptAmountIn, actualBptAmountIn, "BPT Expected amount out is wrong");
+    }
+
+    function testQueryRemoveLiquidityCustomDiffRates__Fuzz(uint256 daiMockRate, uint256 usdcMockRate) public {
+        daiMockRate = bound(daiMockRate, 1e17, 1e19);
+        usdcMockRate = bound(usdcMockRate, 1e17, 1e19);
+
+        RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
+        RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
+
+        // 1% of biggerPoolInitAmount, arbitrarily.
+        uint256 expectedBptAmountIn = biggerPoolInitAmount.mulUp(0.01e18);
+        // Arbitrary numbers.
+        uint256[] memory minAmountsOut = [expectedBptAmountIn.divUp(3e18), expectedBptAmountIn.divUp(5e18)]
+            .toMemoryArray();
+        // On addLiquidity, the amount out is scaled up first (round up), addLiquidityCustom returns the minAmountsOut
+        // as amountsOut, and finally it is scaled down (round down).
+        uint256[] memory expectedAmountsOut = [
+            (minAmountsOut[0].mulUp(daiMockRate)).divDown(daiMockRate),
+            (minAmountsOut[1].mulUp(usdcMockRate)).divDown(usdcMockRate)
+        ].toMemoryArray();
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(address(0), address(0));
+        (uint256 queryBptIn, uint256[] memory queryAmountsOut, ) = router.queryRemoveLiquidityCustom(
+            pool,
+            expectedBptAmountIn,
+            minAmountsOut,
+            bytes("")
+        );
+
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        (uint256 actualBptIn, uint256[] memory actualAmountsOut, ) = router.removeLiquidityCustom(
+            pool,
+            expectedBptAmountIn,
+            minAmountsOut,
+            false,
+            bytes("")
+        );
+
+        assertEq(queryAmountsOut[daiIdx], actualAmountsOut[daiIdx], "DAI Query and Actual amounts out are wrong");
+        assertEq(expectedAmountsOut[daiIdx], actualAmountsOut[daiIdx], "DAI Expected amount out is wrong");
+
+        assertEq(queryAmountsOut[usdcIdx], actualAmountsOut[usdcIdx], "USDC Query and Actual amounts out are wrong");
+        assertEq(expectedAmountsOut[usdcIdx], actualAmountsOut[usdcIdx], "USDC Expected amount out is wrong");
+
+        assertEq(queryBptIn, actualBptIn, "BPT Query and Actual amounts in are wrong");
+        assertEq(expectedBptAmountIn, actualBptIn, "BPT Expected amount in is wrong");
     }
 }
