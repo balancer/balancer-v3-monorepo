@@ -30,7 +30,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
         address,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) external virtual onlyVault returns (bool) {
+    ) external virtual returns (bool) {
         // By default, deny all factories. This method must be overwritten by the hook contract
         return false;
     }
@@ -39,12 +39,12 @@ abstract contract BaseHooks is IHooks, VaultGuard {
     function getHookFlags() external view virtual returns (HookFlags memory);
 
     /// @inheritdoc IHooks
-    function onBeforeInitialize(uint256[] memory, bytes memory) external virtual onlyVault returns (bool) {
+    function onBeforeInitialize(uint256[] memory, bytes memory) external virtual returns (bool) {
         return false;
     }
 
     /// @inheritdoc IHooks
-    function onAfterInitialize(uint256[] memory, uint256, bytes memory) external virtual onlyVault returns (bool) {
+    function onAfterInitialize(uint256[] memory, uint256, bytes memory) external virtual returns (bool) {
         return false;
     }
 
@@ -57,7 +57,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
         uint256,
         uint256[] memory,
         bytes memory
-    ) external virtual onlyVault returns (bool) {
+    ) external virtual returns (bool) {
         return false;
     }
 
@@ -71,7 +71,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
         uint256,
         uint256[] memory,
         bytes memory
-    ) external virtual onlyVault returns (bool, uint256[] memory) {
+    ) external virtual returns (bool, uint256[] memory) {
         return (false, amountsInRaw);
     }
 
@@ -103,13 +103,13 @@ abstract contract BaseHooks is IHooks, VaultGuard {
     }
 
     /// @inheritdoc IHooks
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata, address) external virtual onlyVault returns (bool) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata, address) external virtual returns (bool) {
         // return false to trigger an error if shouldCallBeforeSwap is true but this function is not overridden.
         return false;
     }
 
     /// @inheritdoc IHooks
-    function onAfterSwap(AfterSwapParams calldata) external virtual onlyVault returns (bool, uint256) {
+    function onAfterSwap(AfterSwapParams calldata) external virtual returns (bool, uint256) {
         // return false to trigger an error if shouldCallAfterSwap is true but this function is not overridden.
         // The second argument is not used.
         return (false, 0);
@@ -120,7 +120,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
         IBasePool.PoolSwapParams calldata,
         address,
         uint256
-    ) external view virtual onlyVault returns (bool, uint256) {
+    ) external view virtual returns (bool, uint256) {
         return (false, 0);
     }
 }

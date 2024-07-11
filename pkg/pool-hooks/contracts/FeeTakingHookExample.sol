@@ -100,7 +100,7 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
         uint256,
         uint256[] memory,
         bytes memory
-    ) external override returns (bool success, uint256[] memory) {
+    ) external override onlyVault returns (bool success, uint256[] memory) {
         // Our current architecture only supports fees on tokens. Since we must always respect exact `amountsIn`, and
         // non-proportional add liquidity operations would require taking fees in BPT, we only support proportional
         // addLiquidity.
@@ -135,7 +135,7 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
         uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) external override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+    ) external override onlyVault returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
         // Our current architecture only supports fees on tokens. Since we must always respect exact `amountsOut`, and
         // non-proportional remove liquidity operations would require taking fees in BPT, we only support proportional
         // removeLiquidity.

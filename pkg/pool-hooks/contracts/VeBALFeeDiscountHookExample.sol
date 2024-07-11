@@ -38,7 +38,7 @@ contract VeBALFeeDiscountHookExample is BaseHooks {
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) external view override returns (bool) {
+    ) external view override onlyVault returns (bool) {
         // This hook implements a restrictive approach, where we check if the factory is an allowed factory and if
         // the pool was created by the allowed factory. Since we only use onComputeDynamicSwapFee, this might be an
         // overkill in real applications because the pool math doesn't play a role in the discount calculation.

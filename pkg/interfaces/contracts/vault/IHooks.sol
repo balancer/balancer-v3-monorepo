@@ -18,7 +18,7 @@ interface IHooks {
      * @notice Hook to be executed when pool is registered. Returns true if registration was successful, and false to
      * revert the registration of the pool. Make sure this function is properly implemented (e.g. check the factory,
      * and check that the given pool is from the factory).
-     * @dev Vault address can be accessed with msg.sender.
+     * @dev Vault address can be accessed with msg.sender. Should only be called by the Vault.
      * @param factory Address of the pool factory
      * @param pool Address of the pool
      * @param tokenConfig An array of descriptors for the tokens the pool will manage
@@ -57,6 +57,7 @@ interface IHooks {
 
     /**
      * @notice Optional hook to be executed before pool initialization.
+     * @dev Should only be called by the Vault.
      * @param exactAmountsIn Exact amounts of input tokens
      * @param userData Optional, arbitrary data with the encoded request
      * @return success True if the pool wishes to proceed with initialization
@@ -65,6 +66,7 @@ interface IHooks {
 
     /**
      * @notice Optional hook to be executed after pool initialization.
+     * @dev Should only be called by the Vault.
      * @param exactAmountsIn Exact amounts of input tokens
      * @param bptAmountOut Amount of pool tokens minted during initialization
      * @param userData Optional, arbitrary data with the encoded request
@@ -82,6 +84,7 @@ interface IHooks {
 
     /**
      * @notice Optional hook to be executed before adding liquidity.
+     * @dev Should only be called by the Vault.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of add liquidity operation (e.g., proportional, custom)
@@ -103,6 +106,7 @@ interface IHooks {
 
     /**
      * @notice Optional hook to be executed after adding liquidity.
+     * @dev Should only be called by the Vault.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of add liquidity operation (e.g., proportional, custom)
@@ -131,6 +135,7 @@ interface IHooks {
 
     /**
      * @notice Optional hook to be executed before removing liquidity.
+     * @dev Should only be called by the Vault.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of remove liquidity operation (e.g., proportional, custom)
@@ -152,6 +157,7 @@ interface IHooks {
 
     /**
      * @notice Optional hook to be executed after removing liquidity.
+     * @dev Should only be called by the Vault.
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of remove liquidity operation (e.g., proportional, custom)
@@ -211,6 +217,7 @@ interface IHooks {
 
     /**
      * @notice Called before a swap to give the Pool an opportunity to perform actions.
+     * @dev Should only be called by the Vault.
      * @param params Swap parameters (see IBasePool.PoolSwapParams for struct definition)
      * @param pool Pool address, used to get pool information from the vault (poolData, token config, etc.)
      * @return success True if the pool wishes to proceed with settlement
@@ -220,6 +227,7 @@ interface IHooks {
     /**
      * @notice Called after a swap to give the Pool an opportunity to perform actions.
      * once the balances have been updated by the swap.
+     * @dev Should only be called by the Vault.
      *
      * @param params Swap parameters (see above for struct definition)
      * @return success True if the pool wishes to proceed with settlement
