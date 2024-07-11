@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasePoolFactory } from "../BasePoolFactory.sol";
 
@@ -21,5 +22,35 @@ contract BasePoolFactoryMock is BasePoolFactory {
 
     function manualEnsureEnabled() external view {
         _ensureEnabled();
+    }
+
+    function manualRegisterPoolWithFactory(address pool) external {
+        _registerPoolWithFactory(pool);
+    }
+
+    function manualRegisterPoolWithVault(
+        address pool,
+        TokenConfig[] memory tokens,
+        uint256 swapFeePercentage,
+        bool protocolFeeExempt,
+        PoolRoleAccounts memory roleAccounts,
+        address poolHooksContract,
+        LiquidityManagement memory liquidityManagement
+    ) external {
+        _registerPoolWithVault(
+            pool,
+            tokens,
+            swapFeePercentage,
+            protocolFeeExempt,
+            roleAccounts,
+            poolHooksContract,
+            liquidityManagement
+        );
+    }
+
+    function manualCreate(string memory name, string memory symbol, bytes32 salt) external returns (address) {
+        address pool = _create(abi.encode(getVault(), name, symbol), salt);
+
+        return pool;
     }
 }
