@@ -74,6 +74,37 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _;
     }
 
+    modifier authenticateByRole(address pool) {
+        _ensureAuthenticatedByRole(pool);
+        _;
+    }
+
+    function _ensureAuthenticatedByRole(address pool) private view {
+        bytes32 actionId = getActionId(msg.sig);
+
+        PoolFunctionPermission memory roleAssignment = _poolFunctionPermissions[pool][actionId];
+
+        // If there is no role assignment, fall through and delegate to governance.
+        if (roleAssignment.account != address(0)) {
+            // If the sender matches the permissioned account, all good; just return.
+            if (msg.sender == roleAssignment.account) {
+                return;
+            }
+
+            // If it doesn't, check whether it's onlyOwner. onlyOwner means *only* the permissioned account
+            // may call the function, so revert if this is the case. Otherwise, fall through and check
+            // governance.
+            if (roleAssignment.onlyOwner) {
+                revert SenderNotAllowed();
+            }
+        }
+
+        // Delegate to governance.
+        if (_canPerform(actionId, msg.sender, pool) == false) {
+            revert SenderNotAllowed();
+        }
+    }
+
     constructor(
         IVault mainVault,
         uint32 pauseWindowDuration,
@@ -97,7 +128,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /*******************************************************************************
-                              Constants and immutables
+                               Constants and immutables
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
@@ -191,37 +222,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /*******************************************************************************
                                      Pool Pausing
     *******************************************************************************/
-
-    modifier authenticateByRole(address pool) {
-        _ensureAuthenticatedByRole(pool);
-        _;
-    }
-
-    function _ensureAuthenticatedByRole(address pool) private view {
-        bytes32 actionId = getActionId(msg.sig);
-
-        PoolFunctionPermission memory roleAssignment = _poolFunctionPermissions[pool][actionId];
-
-        // If there is no role assignment, fall through and delegate to governance.
-        if (roleAssignment.account != address(0)) {
-            // If the sender matches the permissioned account, all good; just return.
-            if (msg.sender == roleAssignment.account) {
-                return;
-            }
-
-            // If it doesn't, check whether it's onlyOwner. onlyOwner means *only* the permissioned account
-            // may call the function, so revert if this is the case. Otherwise, fall through and check
-            // governance.
-            if (roleAssignment.onlyOwner) {
-                revert SenderNotAllowed();
-            }
-        }
-
-        // Delegate to governance.
-        if (_canPerform(actionId, msg.sender, pool) == false) {
-            revert SenderNotAllowed();
-        }
-    }
 
     /// @inheritdoc IVaultAdmin
     function pausePool(address pool) external onlyVaultDelegateCall withRegisteredPool(pool) authenticateByRole(pool) {
