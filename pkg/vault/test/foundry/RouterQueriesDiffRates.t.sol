@@ -247,4 +247,53 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         assertEq(queryAmountIn, actualAmountIn, "Query and Actual DAI amounts in are wrong");
         assertEq(expectedAmountInRaw, actualAmountIn, "DAI expected amount in is wrong");
     }
+
+    function testQueryAddLiquidityCustomDiffRates__Fuzz(uint256 daiMockRate, uint256 usdcMockRate) public {
+        daiMockRate = bound(daiMockRate, 1e17, 1e19);
+        usdcMockRate = bound(usdcMockRate, 1e17, 1e19);
+
+        RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
+        RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
+
+        // 1% of biggerPoolInitAmount, arbitrarily
+        uint256 expectedBptAmountOut = biggerPoolInitAmount.mulUp(0.01e18);
+        // Arbitrary numbers
+        uint256[] memory maxAmountsIn = [expectedBptAmountOut.divUp(3e18), expectedBptAmountOut.divUp(5e18)]
+            .toMemoryArray();
+        // On addLiquidity, the amount in is scaled up first (round down), addLiquidityCustom returns the maxAmountsIn
+        // as amountsIn, and finally it is scaled down (round up).
+        uint256[] memory expectedAmountsIn = [
+            (maxAmountsIn[0].mulDown(daiMockRate)).divUp(daiMockRate),
+            (maxAmountsIn[1].mulDown(usdcMockRate)).divUp(usdcMockRate)
+        ].toMemoryArray();
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(address(0), address(0));
+        (uint256[] memory queryAmountsIn, uint256 queryBptOut, ) = router.queryAddLiquidityCustom(
+            pool,
+            maxAmountsIn,
+            expectedBptAmountOut,
+            bytes("")
+        );
+
+        vm.revertTo(snapshotId);
+
+        vm.prank(bob);
+        (uint256[] memory actualAmountsIn, uint256 actualBptOut, ) = router.addLiquidityCustom(
+            pool,
+            maxAmountsIn,
+            expectedBptAmountOut,
+            false,
+            bytes("")
+        );
+
+        assertEq(queryAmountsIn[daiIdx], actualAmountsIn[daiIdx], "DAI Query and Actual amounts in are wrong");
+        assertEq(expectedAmountsIn[daiIdx], actualAmountsIn[daiIdx], "DAI Expected amount in is wrong");
+
+        assertEq(queryAmountsIn[usdcIdx], actualAmountsIn[usdcIdx], "USDC Query and Actual amounts in are wrong");
+        assertEq(expectedAmountsIn[usdcIdx], actualAmountsIn[usdcIdx], "USDC Expected amount in is wrong");
+
+        assertEq(queryBptOut, actualBptOut, "BPT Query and Actual amounts in are wrong");
+        assertEq(expectedBptAmountOut, actualBptOut, "BPT Expected amount in is wrong");
+    }
 }
