@@ -33,12 +33,13 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
     IRateProvider[] internal rateProviders;
 
     function setUp() public override {
-        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
-
-        super.setUp();
+        BaseVaultTest.setUp();
     }
 
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+        // Get token indexes after tokens were created by BaseVaultTest.setUp.
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+
         address newPool = factoryMock.createPool("TestPool", "TEST");
         vm.label(newPool, label);
 
