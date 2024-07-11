@@ -1,4 +1,4 @@
-import { bn, fromFp } from '@balancer-labs/v3-helpers/src/numbers';
+import { bn } from '@balancer-labs/v3-helpers/src/numbers';
 import { MAX_RELATIVE_ERROR } from '@balancer-labs/v3-helpers/src/constants';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
