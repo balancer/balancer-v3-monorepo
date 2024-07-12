@@ -46,7 +46,7 @@ contract DirectionalFeeHookExample is BaseHooks {
         IBasePool.PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
-    ) external view override returns (bool, uint256) {
+    ) external view override onlyVault returns (bool, uint256) {
         // Get pool balances
         (, , , uint256[] memory lastLiveBalances) = _vault.getPoolTokenInfo(pool);
 

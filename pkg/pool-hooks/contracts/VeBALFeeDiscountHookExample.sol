@@ -50,7 +50,7 @@ contract VeBALFeeDiscountHookExample is BaseHooks {
         IBasePool.PoolSwapParams calldata params,
         address,
         uint256 staticSwapFeePercentage
-    ) external view override returns (bool, uint256) {
+    ) external view override onlyVault returns (bool, uint256) {
         // If the router is not trusted, does not apply the veBAL discount because getSender() may be manipulated by a
         // malicious router.
         if (params.router != _trustedRouter) {

@@ -239,6 +239,7 @@ interface IHooks {
 
     /**
      * @notice Called before `onBeforeSwap` if the pool has dynamic fees.
+     * @dev Should only be called by the Vault.
      * @param params Swap parameters (see IBasePool.PoolSwapParams for struct definition)
      * @param pool Pool address, used to get pool information from the vault (poolData, token config, etc.)
      * @param staticSwapFeePercentage Value of the static swap fee, for reference
