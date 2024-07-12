@@ -19,17 +19,23 @@ import { BasePoolFactoryMock } from "../../contracts/test/BasePoolFactoryMock.so
 contract BasePoolFactoryTest is BaseVaultTest {
     using ArrayHelpers for *;
 
+    uint32 private constant _DEFAULT_PAUSE_WINDOW = 365 days;
+
     BasePoolFactoryMock internal testFactory;
 
     function setUp() public override {
         BaseVaultTest.setUp();
 
-        testFactory = new BasePoolFactoryMock(IVault(address(vault)), 365 days, type(PoolMock).creationCode);
+        testFactory = new BasePoolFactoryMock(
+            IVault(address(vault)),
+            _DEFAULT_PAUSE_WINDOW,
+            type(PoolMock).creationCode
+        );
     }
 
     function testConstructor() public {
         bytes memory creationCode = type(PoolMock).creationCode;
-        uint32 pauseWindowDuration = 365 days;
+        uint32 pauseWindowDuration = _DEFAULT_PAUSE_WINDOW;
 
         BasePoolFactoryMock newFactory = new BasePoolFactoryMock(
             IVault(address(vault)),
@@ -138,6 +144,14 @@ contract BasePoolFactoryTest is BaseVaultTest {
         address predictedAddress = testFactory.getDeploymentAddress(salt);
         address newPool = testFactory.manualCreate(name, symbol, salt);
         assertEq(newPool, predictedAddress, "predictedAddress is wrong");
+
+        vm.prank(bob);
+        address bobAddress = testFactory.getDeploymentAddress(salt);
+        assertTrue(bobAddress != predictedAddress, "Different sender generates the same address");
+
+        vm.chainId(10000);
+        address chainAddress = testFactory.getDeploymentAddress(salt);
+        assertTrue(chainAddress != predictedAddress, "Different chain generates the same address");
     }
 
     function testGetDefaultPoolHooksContract() public {
