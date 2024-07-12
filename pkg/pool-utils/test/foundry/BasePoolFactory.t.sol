@@ -140,7 +140,7 @@ contract BasePoolFactoryTest is BaseVaultTest {
         assertEq(newPool, predictedAddress, "predictedAddress is wrong");
     }
 
-    function testGetDefaultPoolHooksContract() public {
+    function testGetDefaultPoolHooksContract() public view {
         assertEq(testFactory.getDefaultPoolHooksContract(), address(0), "Wrong hooks contract");
     }
 
