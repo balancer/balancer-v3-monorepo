@@ -8,6 +8,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import {
     AddLiquidityKind,
     HooksConfig,
+    HookFlags,
     LiquidityManagement,
     RemoveLiquidityKind,
     TokenConfig
@@ -30,21 +31,21 @@ abstract contract BaseHooks is IHooks, VaultGuard {
         address,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) external virtual returns (bool) {
+    ) public virtual returns (bool) {
         // By default, deny all factories. This method must be overwritten by the hook contract
         return false;
     }
 
     /// @inheritdoc IHooks
-    function getHookFlags() external view virtual returns (HookFlags memory);
+    function getHookFlags() public view virtual returns (HookFlags memory);
 
     /// @inheritdoc IHooks
-    function onBeforeInitialize(uint256[] memory, bytes memory) external virtual returns (bool) {
+    function onBeforeInitialize(uint256[] memory, bytes memory) public virtual returns (bool) {
         return false;
     }
 
     /// @inheritdoc IHooks
-    function onAfterInitialize(uint256[] memory, uint256, bytes memory) external virtual returns (bool) {
+    function onAfterInitialize(uint256[] memory, uint256, bytes memory) public virtual returns (bool) {
         return false;
     }
 
@@ -57,7 +58,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
         uint256,
         uint256[] memory,
         bytes memory
-    ) external virtual returns (bool) {
+    ) public virtual returns (bool) {
         return false;
     }
 
@@ -71,7 +72,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
         uint256,
         uint256[] memory,
         bytes memory
-    ) external virtual returns (bool, uint256[] memory) {
+    ) public virtual returns (bool, uint256[] memory) {
         return (false, amountsInRaw);
     }
 
@@ -84,7 +85,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
         uint256[] memory,
         uint256[] memory,
         bytes memory
-    ) external virtual onlyVault returns (bool) {
+    ) public virtual onlyVault returns (bool) {
         return false;
     }
 
@@ -98,18 +99,18 @@ abstract contract BaseHooks is IHooks, VaultGuard {
         uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) external virtual onlyVault returns (bool, uint256[] memory) {
+    ) public virtual onlyVault returns (bool, uint256[] memory) {
         return (false, amountsOutRaw);
     }
 
     /// @inheritdoc IHooks
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata, address) external virtual returns (bool) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata, address) public virtual returns (bool) {
         // return false to trigger an error if shouldCallBeforeSwap is true but this function is not overridden.
         return false;
     }
 
     /// @inheritdoc IHooks
-    function onAfterSwap(AfterSwapParams calldata) external virtual returns (bool, uint256) {
+    function onAfterSwap(AfterSwapParams calldata) public virtual returns (bool, uint256) {
         // return false to trigger an error if shouldCallAfterSwap is true but this function is not overridden.
         // The second argument is not used.
         return (false, 0);
@@ -120,7 +121,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
         IBasePool.PoolSwapParams calldata,
         address,
         uint256
-    ) external view virtual returns (bool, uint256) {
+    ) public view virtual returns (bool, uint256) {
         return (false, 0);
     }
 }

@@ -6,7 +6,14 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "./IVault.sol";
 import { IBasePool } from "./IBasePool.sol";
-import "./VaultTypes.sol";
+import {
+    HookFlags,
+    TokenConfig,
+    LiquidityManagement,
+    AddLiquidityKind,
+    RemoveLiquidityKind,
+    SwapKind
+} from "./VaultTypes.sol";
 
 /// @notice Interface for pool hooks
 interface IHooks {
@@ -31,19 +38,6 @@ interface IHooks {
         TokenConfig[] memory tokenConfig,
         LiquidityManagement calldata liquidityManagement
     ) external returns (bool);
-
-    struct HookFlags {
-        bool enableHookAdjustedAmounts;
-        bool shouldCallBeforeInitialize;
-        bool shouldCallAfterInitialize;
-        bool shouldCallComputeDynamicSwapFee;
-        bool shouldCallBeforeSwap;
-        bool shouldCallAfterSwap;
-        bool shouldCallBeforeAddLiquidity;
-        bool shouldCallAfterAddLiquidity;
-        bool shouldCallBeforeRemoveLiquidity;
-        bool shouldCallAfterRemoveLiquidity;
-    }
 
     /**
      * @notice Returns flags informing which hooks are implemented in the contract.
