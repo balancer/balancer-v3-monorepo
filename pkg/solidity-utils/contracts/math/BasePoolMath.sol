@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/console.sol";
 import { FixedPoint } from "./FixedPoint.sol";
 
 library BasePoolMath {
@@ -103,7 +104,7 @@ library BasePoolMath {
      * @param exactAmounts Array of exact amounts for each token to be added to the pool
      * @param totalSupply Current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the transaction
-     * @param computeInvariant A function pointer to the invariant calculation function
+     * @param computeInvariant A function pointer to the invariant calculation fuƒnction
      * @return bptAmountOut The amount of pool tokens (BPT) that will be minted as a result of the liquidity addition
      * @return swapFeeAmounts The amount of swap fees charged for each token
      */
@@ -309,7 +310,7 @@ library BasePoolMath {
         uint256 totalSupply,
         uint256 swapFeePercentage,
         function(uint256[] memory, uint256, uint256) external view returns (uint256) computeBalance
-    ) internal view returns (uint256 amountOutWithFee, uint256[] memory swapFeeAmounts) {
+    ) internal returns (uint256 amountOutWithFee, uint256[] memory swapFeeAmounts) {
         // Calculate new supply accounting for burning exactBptAmountIn
         uint256 newSupply = totalSupply - exactBptAmountIn;
         // Calculate the new balance of the output token after the BPT burn.
@@ -317,21 +318,26 @@ library BasePoolMath {
         // "taxableAmount". Although the former leads to giving less tokens for the same amount of BPT burned,
         // the latter leads to charging less swap fees. In consequence, a conflict of interests arises regarding
         // the rounding of "newBalance"; we prioritize getting a lower "amountOut".
+
+        console.log("newSupply.divUp(totalSupply): %d", newSupply.divUp(totalSupply));
         uint256 newBalance = computeBalance(currentBalances, tokenOutIndex, newSupply.divUp(totalSupply));
 
+        console.log("newBalance: %d", newBalance);
         // Compute the amount to be withdrawn from the pool.
         uint256 amountOut = currentBalances[tokenOutIndex] - newBalance;
 
+        console.log("amountOut: %d", amountOut);
         // Calculate the new balance proportionate to the BPT burnt.
         // Round the `newBalanceBeforeTax` up to favor the protocol by increasing the taxable amount, which charges
         // higher swap fees, ultimately decreasing the amount of `tokenOut` that will be transferred to the caller.
         uint256 newBalanceBeforeTax = newSupply.mulUp(currentBalances[tokenOutIndex]).divUp(totalSupply);
-
+        console.log("newBalanceBeforeTax: %d", newBalanceBeforeTax);
         // Compute the taxable amount: the difference between the new proportional and disproportional balances.
         uint256 taxableAmount = newBalanceBeforeTax - newBalance;
-
+        console.log("taxableAmount: %d", taxableAmount);
         // Calculate the swap fee on the taxable amount.
         uint256 fee = taxableAmount.mulUp(swapFeePercentage);
+        console.log("fee: %d", fee);
 
         // Create swap fees amount array and set the single fee we charge
         swapFeeAmounts = new uint256[](currentBalances.length);
