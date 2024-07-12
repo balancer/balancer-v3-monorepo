@@ -9,16 +9,6 @@ import "../math/BasePoolMath.sol";
 contract BasePoolMathMock {
     using FixedPoint for uint256;
 
-    function getWeights(uint256[] memory balances) public pure returns (uint256[] memory weights) {
-        weights = new uint256[](balances.length);
-
-        for (uint256 i = 0; i < balances.length; i++) {
-            weights[i] = FixedPoint.ONE.divDown(balances.length);
-        }
-
-        return weights;
-    }
-
     function computeInvariantMock(uint256[] memory balancesLiveScaled18) public view returns (uint256 invariant) {
         // expected to work with 2 tokens only
         invariant = FixedPoint.ONE;
@@ -30,11 +20,11 @@ contract BasePoolMathMock {
     }
 
     function _sqrt(uint256 x) internal pure returns (uint256 y) {
-        uint256 z = (x + 1) / 2;
+        uint256 z = (x + 1).divDown(2);
         y = x;
         while (z < y) {
             y = z;
-            z = (x / z + z) / 2;
+            z = (x / z + z).divDown(2);
         }
     }
 
@@ -47,7 +37,7 @@ contract BasePoolMathMock {
 
         uint256 newInvariant = computeInvariantMock(balancesLiveScaled18).mulDown(invariantRatio);
 
-        newBalance = ((newInvariant * newInvariant) / balancesLiveScaled18[otherTokenIndex]);
+        newBalance = ((newInvariant * newInvariant).divDown(balancesLiveScaled18[otherTokenIndex]));
     }
 
     function computeProportionalAmountsIn(
@@ -88,7 +78,7 @@ contract BasePoolMathMock {
         uint256 exactBptAmountOut,
         uint256 totalSupply,
         uint256 swapFeePercentage
-    ) external view returns (uint256 amountInWithFee, uint256[] memory swapFeeAmounts) {
+    ) external returns (uint256 amountInWithFee, uint256[] memory swapFeeAmounts) {
         return
             BasePoolMath.computeAddLiquiditySingleTokenExactOut(
                 currentBalances,

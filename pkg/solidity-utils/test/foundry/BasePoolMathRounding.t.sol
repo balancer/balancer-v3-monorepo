@@ -14,9 +14,6 @@ contract BasePoolMathRoundingTest is Test {
     uint256 constant MAX_AMOUNT = 1000e18;
     uint256 constant FP_ONE = 1e18;
 
-    uint256 constant MAX_IN_RATIO = 0.3e18;
-    uint256 constant MAX_OUT_RATIO = 0.3e18;
-
     uint256 constant MIN_SWAP_FEE = 0;
     uint256 constant MAX_SWAP_FEE = 0.8e18;
     uint256 constant DELTA = 1e12;
@@ -33,7 +30,7 @@ contract BasePoolMathRoundingTest is Test {
         uint256 rawBptAmountOut,
         bool flipBit
     ) external view {
-        uint256[] memory balances = new uint256[](2);
+        uint256[] memory balances = new uint256[](rawBalances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
         }
@@ -89,7 +86,7 @@ contract BasePoolMathRoundingTest is Test {
         uint256 rawBptAmountIn,
         bool flipBit
     ) external view {
-        uint256[] memory balances = new uint256[](2);
+        uint256[] memory balances = new uint256[](rawBalances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
         }
@@ -146,7 +143,7 @@ contract BasePoolMathRoundingTest is Test {
         uint64 rawSwapFee,
         bool flipBit
     ) external view {
-        uint256[] memory balances = new uint256[](2);
+        uint256[] memory balances = new uint256[](rawBalances.length);
         uint256[] memory amountsIn = new uint256[](2);
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
@@ -252,8 +249,8 @@ contract BasePoolMathRoundingTest is Test {
         uint256 rawTotalSupply,
         uint64 rawSwapFee,
         bool flipBit
-    ) external view {
-        uint256[] memory balances = new uint256[](2);
+    ) external {
+        uint256[] memory balances = new uint256[](rawBalances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
         }
@@ -261,6 +258,10 @@ contract BasePoolMathRoundingTest is Test {
         uint256 bptAmountOut = bound(rawBptAmountOut, MIN_AMOUNT, MAX_AMOUNT);
         uint256 totalSupply = bound(rawTotalSupply, MIN_BALANCE, MAX_AMOUNT);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
+
+        console.log("balance", balances[tokenInIndex]);
+        console.log("bptAmountOut", bptAmountOut);
+        console.log("totalSupply", totalSupply);
 
         uint256 standardResultAmountInWithFee;
         uint256[] memory standardResultFees;
@@ -358,15 +359,18 @@ contract BasePoolMathRoundingTest is Test {
         uint64 rawSwapFee,
         bool flipBit
     ) external view {
-        uint256[] memory balances = new uint256[](2);
+        uint256[] memory balances = new uint256[](rawBalances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
-            balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
+            balances[i] = bound(rawBalances[i], MIN_BALANCE * 4, MAX_AMOUNT);
         }
         uint256 tokenOutIndex = bound(rawTokenOutIndex, 0, 1);
-        uint256 amountOut = bound(rawAmountOut, MIN_AMOUNT, MAX_AMOUNT / 4);
-        uint256 totalSupply = bound(rawTotalSupply, amountOut * 4, MAX_AMOUNT);
+        uint256 amountOut = bound(rawAmountOut, MIN_BALANCE, balances[tokenOutIndex] / 4);
+        uint256 totalSupply = bound(rawTotalSupply, MIN_AMOUNT, MAX_AMOUNT);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
+        console.log("balance", balances[tokenOutIndex]);
+        console.log("amountOut", amountOut);
+        console.log("totalSupply", totalSupply);
         uint256 standardResultBptAmountIn;
         uint256[] memory standardResultFees;
 
@@ -463,7 +467,7 @@ contract BasePoolMathRoundingTest is Test {
         uint64 rawSwapFee,
         bool flipBit
     ) external {
-        uint256[] memory balances = new uint256[](2);
+        uint256[] memory balances = new uint256[](rawBalances.length);
 
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
@@ -475,11 +479,6 @@ contract BasePoolMathRoundingTest is Test {
 
         uint256 standardResultAmountOutWithFee;
         uint256[] memory standardResultFees;
-
-        console.log("tokenOutIndex: ", tokenOutIndex);
-        console.log("bptAmountIn: ", bptAmountIn);
-        console.log("totalSupply: ", totalSupply);
-        console.log("swapFee: ", swapFee);
 
         (standardResultAmountOutWithFee, standardResultFees) = mock.computeRemoveLiquiditySingleTokenExactIn(
             balances,
