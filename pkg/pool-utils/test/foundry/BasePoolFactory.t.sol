@@ -144,7 +144,7 @@ contract BasePoolFactoryTest is BaseVaultTest {
         assertEq(testFactory.getDefaultPoolHooksContract(), address(0), "Wrong hooks contract");
     }
 
-    function testGetDefaultLiquidityManagement() public {
+    function testGetDefaultLiquidityManagement() public view {
         LiquidityManagement memory liquidityManagement = testFactory.getDefaultLiquidityManagement();
 
         assertFalse(liquidityManagement.enableDonation, "enableDonation is wrong");
