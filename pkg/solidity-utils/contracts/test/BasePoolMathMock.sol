@@ -19,21 +19,35 @@ contract BasePoolMathMock {
         return weights;
     }
 
-    function computeInvariantMock(uint256[] memory balances) public pure returns (uint256 invariant) {
-        return WeightedMath.computeInvariant(getWeights(balances), balances);
+    function computeInvariantMock(uint256[] memory balancesLiveScaled18) public view returns (uint256 invariant) {
+        // expected to work with 2 tokens only
+        invariant = FixedPoint.ONE;
+        for (uint256 i = 0; i < balancesLiveScaled18.length; ++i) {
+            invariant = invariant.mulDown(balancesLiveScaled18[i]);
+        }
+        // scale the invariant to 1e18
+        invariant = _sqrt(invariant) * 1e9;
+    }
+
+    function _sqrt(uint256 x) internal pure returns (uint256 y) {
+        uint256 z = (x + 1) / 2;
+        y = x;
+        while (z < y) {
+            y = z;
+            z = (x / z + z) / 2;
+        }
     }
 
     function computeBalanceMock(
-        uint256[] memory balances,
+        uint256[] memory balancesLiveScaled18,
         uint256 tokenInIndex,
         uint256 invariantRatio
-    ) public pure returns (uint256 newBalance) {
-        return
-            WeightedMath.computeBalanceOutGivenInvariant(
-                balances[tokenInIndex],
-                getWeights(balances)[tokenInIndex],
-                invariantRatio
-            );
+    ) public view returns (uint256 newBalance) {
+        uint256 otherTokenIndex = tokenInIndex == 0 ? 1 : 0;
+
+        uint256 newInvariant = computeInvariantMock(balancesLiveScaled18).mulDown(invariantRatio);
+
+        newBalance = ((newInvariant * newInvariant) / balancesLiveScaled18[otherTokenIndex]);
     }
 
     function computeProportionalAmountsIn(
