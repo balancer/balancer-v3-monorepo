@@ -9,7 +9,11 @@ import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/I
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { LiquidityManagement, TokenConfig, HookFlags } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    LiquidityManagement,
+    TokenConfig,
+    HookFlags
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
