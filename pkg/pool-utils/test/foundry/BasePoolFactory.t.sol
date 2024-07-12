@@ -44,7 +44,6 @@ contract BasePoolFactoryTest is BaseVaultTest {
         );
 
         assertEq(newFactory.getPauseWindowDuration(), pauseWindowDuration, "pauseWindowDuration is wrong");
-        assertEq(newFactory.getCreationCode(), creationCode, "creationCode is wrong");
         assertEq(address(newFactory.getVault()), address(vault), "Vault is wrong");
     }
 
