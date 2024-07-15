@@ -14,7 +14,8 @@ import {
     LiquidityManagement,
     RemoveLiquidityKind,
     SwapKind,
-    TokenConfig
+    TokenConfig,
+    HookFlags
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
@@ -57,7 +58,7 @@ contract LotteryHookExample is BaseHooks, Ownable {
         address,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) external view override onlyVault returns (bool) {
+    ) public view override onlyVault returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
         // that the given pool is from the factory). Returning true allows any pool, with any configuration, to use
         // this hook.
@@ -65,7 +66,7 @@ contract LotteryHookExample is BaseHooks, Ownable {
     }
 
     /// @inheritdoc IHooks
-    function getHookFlags() external pure override returns (HookFlags memory) {
+    function getHookFlags() public pure override returns (HookFlags memory) {
         HookFlags memory hookFlags;
         // `enableHookAdjustedAmounts` must be true for all contracts that modify the `amountCalculated`
         // in after hooks. Otherwise, the Vault will ignore any "hookAdjusted" amounts, and the transaction
@@ -78,7 +79,7 @@ contract LotteryHookExample is BaseHooks, Ownable {
     /// @inheritdoc IHooks
     function onAfterSwap(
         AfterSwapParams calldata params
-    ) external override onlyVault returns (bool success, uint256 hookAdjustedAmountCalculatedRaw) {
+    ) public override onlyVault returns (bool success, uint256 hookAdjustedAmountCalculatedRaw) {
         uint8 drawnNumber;
         if (params.router == _trustedRouter) {
             // If router is trusted, draws a number to be able to get the accrued fees. (If router is not trusted, the

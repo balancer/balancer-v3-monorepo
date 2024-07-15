@@ -32,23 +32,23 @@ contract MinimalHooksPoolMock is BaseHooks {
         address,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) external pure override returns (bool) {
+    ) public pure override returns (bool) {
         return true;
     }
 
-    function getHookFlags() external view override returns (HookFlags memory) {
+    function getHookFlags() public view override returns (HookFlags memory) {
         return _hookFlags;
     }
 
-    function setHookFlags(HookFlags memory hookFlags) external {
+    function setHookFlags(HookFlags memory hookFlags) public {
         _hookFlags = hookFlags;
     }
 
-    function onBeforeInitialize(uint256[] memory, bytes memory) external pure override returns (bool) {
+    function onBeforeInitialize(uint256[] memory, bytes memory) public pure override returns (bool) {
         return true;
     }
 
-    function onAfterInitialize(uint256[] memory, uint256, bytes memory) external pure override returns (bool) {
+    function onAfterInitialize(uint256[] memory, uint256, bytes memory) public pure override returns (bool) {
         return true;
     }
 
@@ -56,15 +56,15 @@ contract MinimalHooksPoolMock is BaseHooks {
         IBasePool.PoolSwapParams calldata,
         address,
         uint256
-    ) external pure override returns (bool, uint256) {
+    ) public pure override returns (bool, uint256) {
         return (true, 0);
     }
 
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata, address) external pure override returns (bool) {
+    function onBeforeSwap(IBasePool.PoolSwapParams calldata, address) public pure override returns (bool) {
         return true;
     }
 
-    function onAfterSwap(IHooks.AfterSwapParams calldata params) external pure override returns (bool, uint256) {
+    function onAfterSwap(IHooks.AfterSwapParams calldata params) public pure override returns (bool, uint256) {
         return (true, params.amountCalculatedRaw);
     }
 
@@ -78,7 +78,7 @@ contract MinimalHooksPoolMock is BaseHooks {
         uint256,
         uint256[] memory,
         bytes memory
-    ) external pure override returns (bool) {
+    ) public pure override returns (bool) {
         return true;
     }
 
@@ -90,7 +90,7 @@ contract MinimalHooksPoolMock is BaseHooks {
         uint256[] memory,
         uint256[] memory,
         bytes memory
-    ) external pure override returns (bool) {
+    ) public pure override returns (bool) {
         return true;
     }
 
@@ -103,7 +103,7 @@ contract MinimalHooksPoolMock is BaseHooks {
         uint256,
         uint256[] memory,
         bytes memory
-    ) external pure override returns (bool, uint256[] memory hookAdjustedAmountsInRaw) {
+    ) public pure override returns (bool, uint256[] memory hookAdjustedAmountsInRaw) {
         return (true, amountsInRaw);
     }
 
@@ -116,7 +116,7 @@ contract MinimalHooksPoolMock is BaseHooks {
         uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) external pure override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+    ) public pure override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
         return (true, amountsOutRaw);
     }
 }
