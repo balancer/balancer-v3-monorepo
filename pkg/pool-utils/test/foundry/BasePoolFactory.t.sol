@@ -153,11 +153,11 @@ contract BasePoolFactoryTest is BaseVaultTest {
         assertTrue(chainAddress != predictedAddress, "Different chain generates the same address");
     }
 
-    function testGetDefaultPoolHooksContract() public {
+    function testGetDefaultPoolHooksContract() public view {
         assertEq(testFactory.getDefaultPoolHooksContract(), address(0), "Wrong hooks contract");
     }
 
-    function testGetDefaultLiquidityManagement() public {
+    function testGetDefaultLiquidityManagement() public view {
         LiquidityManagement memory liquidityManagement = testFactory.getDefaultLiquidityManagement();
 
         assertFalse(liquidityManagement.enableDonation, "enableDonation is wrong");
