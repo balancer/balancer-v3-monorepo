@@ -3,26 +3,19 @@ import { Decimal } from 'decimal.js';
 import { bn, decimal, fromFp, toFp } from '../numbers';
 
 export function computeInvariantMock(fpBalances: bigint[]): bigint {
-  // inv = x + y
-  let invariant = decimal(0);
-
+  let invariant = decimal(1);
   for (let i = 0; i < fpBalances.length; i++) {
-    invariant = invariant.add(fromFp(fpBalances[i]));
+    invariant = invariant.mul(fromFp(fpBalances[i]));
   }
 
-  return bn(toFp(invariant));
+  return bn(toFp(invariant.sqrt()));
 }
 
 export function computeBalanceMock(fpBalances: bigint[], tokenInIndex: number, invariantRatio: bigint): bigint {
-  // inv = x + y
-  const invariant = fromFp(computeInvariantMock(fpBalances));
-  return bn(
-    toFp(
-      fromFp(fpBalances[tokenInIndex])
-        .add(invariant.mul(fromFp(invariantRatio)))
-        .sub(invariant)
-    )
-  );
+  const otherTokenIndex = tokenInIndex == 0 ? 1 : 0;
+  const newInvariant = fromFp(computeInvariantMock(fpBalances)).mul(fromFp(invariantRatio));
+
+  return bn(toFp(newInvariant.mul(newInvariant).div(fromFp(fpBalances[otherTokenIndex]))));
 }
 
 export function computeProportionalAmountsIn(

@@ -62,6 +62,7 @@ export const warnings = {
   // that.
   'contracts/test/**/*': {
     'code-size': 'off' as WarningRule,
+    'func-mutability': 'warn' as WarningRule,
   },
   // Make all warnings cause errors, except code-size (contracts may go over the limit during development).
   '*': {

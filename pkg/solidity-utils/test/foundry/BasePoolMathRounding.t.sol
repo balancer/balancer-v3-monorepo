@@ -16,7 +16,7 @@ contract BasePoolMathRoundingTest is Test {
 
     uint256 constant MIN_SWAP_FEE = 0;
     uint256 constant MAX_SWAP_FEE = 0.8e18;
-    uint256 constant DELTA = 1e12;
+    uint256 constant DELTA = 1e9;
 
     BasePoolMathMock mock;
 
@@ -25,7 +25,6 @@ contract BasePoolMathRoundingTest is Test {
     }
 
     function testComputeProportionalAmountsIn__Fuzz(
-        uint256 rawTotalSupply,
         uint256[2] calldata rawBalances,
         uint256 rawBptAmountOut,
         bool flipBit
@@ -34,7 +33,7 @@ contract BasePoolMathRoundingTest is Test {
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
         }
-        uint256 totalSupply = bound(rawTotalSupply, MIN_BALANCE, MAX_AMOUNT);
+        uint256 totalSupply = mock.computeInvariantMock(balances);
         uint256 bptAmountOut = bound(rawBptAmountOut, MIN_AMOUNT, totalSupply);
 
         uint256[] memory standardResult = mock.computeProportionalAmountsIn(balances, totalSupply, bptAmountOut);
@@ -81,7 +80,6 @@ contract BasePoolMathRoundingTest is Test {
     }
 
     function testComputeProportionalAmountsOut__Fuzz(
-        uint256 rawTotalSupply,
         uint256[2] calldata rawBalances,
         uint256 rawBptAmountIn,
         bool flipBit
@@ -90,7 +88,7 @@ contract BasePoolMathRoundingTest is Test {
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
         }
-        uint256 totalSupply = bound(rawTotalSupply, MIN_BALANCE, MAX_AMOUNT);
+        uint256 totalSupply = mock.computeInvariantMock(balances);
         uint256 bptAmountIn = bound(rawBptAmountIn, MIN_AMOUNT, totalSupply);
 
         uint256[] memory standardResult = mock.computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
@@ -139,7 +137,6 @@ contract BasePoolMathRoundingTest is Test {
     function testComputeAddLiquidityUnbalanced__Fuzz(
         uint256[2] calldata rawBalances,
         uint256[2] calldata rawAmountsIn,
-        uint256 rawTotalSupply,
         uint64 rawSwapFee,
         bool flipBit
     ) external view {
@@ -149,7 +146,7 @@ contract BasePoolMathRoundingTest is Test {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
             amountsIn[i] = bound(rawAmountsIn[i], MIN_BALANCE, MAX_AMOUNT);
         }
-        uint256 totalSupply = bound(rawTotalSupply, MIN_BALANCE, MAX_AMOUNT);
+        uint256 totalSupply = mock.computeInvariantMock(balances);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
         uint256 standardResultBpt;
@@ -246,22 +243,17 @@ contract BasePoolMathRoundingTest is Test {
         uint256[2] calldata rawBalances,
         uint256 rawTokenInIndex,
         uint256 rawBptAmountOut,
-        uint256 rawTotalSupply,
         uint64 rawSwapFee,
         bool flipBit
-    ) external {
+    ) external view {
         uint256[] memory balances = new uint256[](rawBalances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
         }
         uint256 tokenInIndex = bound(rawTokenInIndex, 0, 1);
         uint256 bptAmountOut = bound(rawBptAmountOut, MIN_AMOUNT, MAX_AMOUNT);
-        uint256 totalSupply = bound(rawTotalSupply, MIN_BALANCE, MAX_AMOUNT);
+        uint256 totalSupply = mock.computeInvariantMock(balances);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
-
-        console.log("balance", balances[tokenInIndex]);
-        console.log("bptAmountOut", bptAmountOut);
-        console.log("totalSupply", totalSupply);
 
         uint256 standardResultAmountInWithFee;
         uint256[] memory standardResultFees;
@@ -355,22 +347,21 @@ contract BasePoolMathRoundingTest is Test {
         uint256[2] calldata rawBalances,
         uint256 rawTokenOutIndex,
         uint256 rawAmountOut,
-        uint256 rawTotalSupply,
         uint64 rawSwapFee,
         bool flipBit
     ) external view {
         uint256[] memory balances = new uint256[](rawBalances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE * 4, MAX_AMOUNT);
+            console.log("balance", balances[i]);
         }
         uint256 tokenOutIndex = bound(rawTokenOutIndex, 0, 1);
         uint256 amountOut = bound(rawAmountOut, MIN_BALANCE, balances[tokenOutIndex] / 4);
-        uint256 totalSupply = bound(rawTotalSupply, MIN_AMOUNT, MAX_AMOUNT);
+
+        console.log("amountOut", amountOut);
+        uint256 totalSupply = mock.computeInvariantMock(balances);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
-        console.log("balance", balances[tokenOutIndex]);
-        console.log("amountOut", amountOut);
-        console.log("totalSupply", totalSupply);
         uint256 standardResultBptAmountIn;
         uint256[] memory standardResultFees;
 
@@ -463,18 +454,19 @@ contract BasePoolMathRoundingTest is Test {
         uint256[2] calldata rawBalances,
         uint256 rawTokenOutIndex,
         uint256 rawBptAmountIn,
-        uint256 rawTotalSupply,
         uint64 rawSwapFee,
         bool flipBit
-    ) external {
+    ) external view {
         uint256[] memory balances = new uint256[](rawBalances.length);
 
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
+            console.log("balance", balances[i]);
         }
+
         uint256 tokenOutIndex = bound(rawTokenOutIndex, 0, 1);
-        uint256 bptAmountIn = bound(rawBptAmountIn, MIN_AMOUNT, MAX_AMOUNT - 1);
-        uint256 totalSupply = bound(rawTotalSupply, bptAmountIn + 1, MAX_AMOUNT);
+        uint256 totalSupply = mock.computeInvariantMock(balances);
+        uint256 bptAmountIn = bound(rawBptAmountIn, MIN_AMOUNT, totalSupply - 1);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
         uint256 standardResultAmountOutWithFee;

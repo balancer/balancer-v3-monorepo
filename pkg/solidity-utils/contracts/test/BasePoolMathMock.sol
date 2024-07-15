@@ -9,6 +9,7 @@ import "../math/BasePoolMath.sol";
 contract BasePoolMathMock {
     using FixedPoint for uint256;
 
+    // solhint-disable-next-line
     function computeInvariantMock(uint256[] memory balancesLiveScaled18) public view returns (uint256 invariant) {
         // expected to work with 2 tokens only
         invariant = FixedPoint.ONE;
@@ -19,12 +20,12 @@ contract BasePoolMathMock {
         invariant = _sqrt(invariant) * 1e9;
     }
 
-    function _sqrt(uint256 x) internal pure returns (uint256 y) {
-        uint256 z = (x + 1).divDown(2);
+    function _sqrt(uint x) internal pure returns (uint y) {
+        uint z = (x + 1) / 2;
         y = x;
         while (z < y) {
             y = z;
-            z = (x / z + z).divDown(2);
+            z = (x / z + z) / 2;
         }
     }
 
@@ -37,7 +38,7 @@ contract BasePoolMathMock {
 
         uint256 newInvariant = computeInvariantMock(balancesLiveScaled18).mulDown(invariantRatio);
 
-        newBalance = ((newInvariant * newInvariant).divDown(balancesLiveScaled18[otherTokenIndex]));
+        newBalance = ((newInvariant * newInvariant) / balancesLiveScaled18[otherTokenIndex]);
     }
 
     function computeProportionalAmountsIn(
@@ -78,7 +79,7 @@ contract BasePoolMathMock {
         uint256 exactBptAmountOut,
         uint256 totalSupply,
         uint256 swapFeePercentage
-    ) external returns (uint256 amountInWithFee, uint256[] memory swapFeeAmounts) {
+    ) external view returns (uint256 amountInWithFee, uint256[] memory swapFeeAmounts) {
         return
             BasePoolMath.computeAddLiquiditySingleTokenExactOut(
                 currentBalances,
@@ -114,7 +115,7 @@ contract BasePoolMathMock {
         uint256 exactBptAmountIn,
         uint256 totalSupply,
         uint256 swapFeePercentage
-    ) external returns (uint256 amountOutWithFee, uint256[] memory swapFeeAmounts) {
+    ) external view returns (uint256 amountOutWithFee, uint256[] memory swapFeeAmounts) {
         return
             BasePoolMath.computeRemoveLiquiditySingleTokenExactIn(
                 currentBalances,
