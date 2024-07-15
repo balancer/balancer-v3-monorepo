@@ -64,7 +64,7 @@ contract RegistrationTest is BaseVaultTest {
 
     function testRegisterPoolAboveMaxTokens() public {
         PoolRoleAccounts memory roleAccounts;
-        TokenConfig[] memory tokenConfig = new TokenConfig[](5);
+        TokenConfig[] memory tokenConfig = new TokenConfig[](vault.getMaximumPoolTokens() + 1);
         LiquidityManagement memory liquidityManagement;
 
         vm.expectRevert(IVaultErrors.MaxTokens.selector);
