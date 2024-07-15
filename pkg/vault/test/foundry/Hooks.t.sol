@@ -50,7 +50,7 @@ contract HooksTest is BaseVaultTest {
     }
 
     function createHook() internal override returns (address) {
-        IHooks.HookFlags memory hookFlags;
+        HookFlags memory hookFlags;
         return _createHook(hookFlags);
     }
 
@@ -123,7 +123,7 @@ contract HooksTest is BaseVaultTest {
 
         // Enable hook adjusted amounts in the hooks, so hooks can change the amount calculated of add/remove liquidity
         // and swap operations
-        IHooks.HookFlags memory hookFlags;
+        HookFlags memory hookFlags;
         hookFlags.enableHookAdjustedAmounts = true;
         PoolHooksMock(poolHooksContract).setHookFlags(hookFlags);
 

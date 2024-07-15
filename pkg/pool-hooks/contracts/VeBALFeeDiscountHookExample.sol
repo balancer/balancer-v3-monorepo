@@ -9,7 +9,11 @@ import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/I
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { LiquidityManagement, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    LiquidityManagement,
+    TokenConfig,
+    HookFlags
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
@@ -28,7 +32,7 @@ contract VeBALFeeDiscountHookExample is BaseHooks {
     }
 
     /// @inheritdoc IHooks
-    function getHookFlags() external pure override returns (IHooks.HookFlags memory hookFlags) {
+    function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
         hookFlags.shouldCallComputeDynamicSwapFee = true;
     }
 
@@ -38,7 +42,7 @@ contract VeBALFeeDiscountHookExample is BaseHooks {
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) external view override returns (bool) {
+    ) public view override onlyVault returns (bool) {
         // This hook implements a restrictive approach, where we check if the factory is an allowed factory and if
         // the pool was created by the allowed factory. Since we only use onComputeDynamicSwapFee, this might be an
         // overkill in real applications because the pool math doesn't play a role in the discount calculation.
@@ -50,7 +54,7 @@ contract VeBALFeeDiscountHookExample is BaseHooks {
         IBasePool.PoolSwapParams calldata params,
         address,
         uint256 staticSwapFeePercentage
-    ) external view override returns (bool, uint256) {
+    ) public view override onlyVault returns (bool, uint256) {
         // If the router is not trusted, does not apply the veBAL discount because getSender() may be manipulated by a
         // malicious router.
         if (params.router != _trustedRouter) {
