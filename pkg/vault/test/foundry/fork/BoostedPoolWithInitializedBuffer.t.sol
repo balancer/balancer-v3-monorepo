@@ -94,7 +94,7 @@ contract YieldBearingPoolWithInitializedBufferTest is BaseVaultTest {
         tokenConfig[waDaiIdx].rateProvider = new ERC4626RateProvider(waDAI);
         tokenConfig[waUsdcIdx].rateProvider = new ERC4626RateProvider(waUSDC);
 
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "Yield-bearing Pool", "YIELDYBOI");
 
         factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract);
 
@@ -110,12 +110,12 @@ contract YieldBearingPoolWithInitializedBufferTest is BaseVaultTest {
         permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
 
-        uint256 boostedAmountDai = waDAI.convertToShares(yieldBearingPoolAmount);
-        uint256 boostedAmountUSDC = waUSDC.convertToShares(yieldBearingPoolAmount / USDC_FACTOR);
+        uint256 yieldBearingAmountDai = waDAI.convertToShares(yieldBearingPoolAmount);
+        uint256 yieldBearingAmountUSDC = waUSDC.convertToShares(yieldBearingPoolAmount / USDC_FACTOR);
 
         uint256[] memory tokenAmounts = new uint256[](2);
-        tokenAmounts[waDaiIdx] = boostedAmountDai;
-        tokenAmounts[waUsdcIdx] = boostedAmountUSDC;
+        tokenAmounts[waDaiIdx] = yieldBearingAmountDai;
+        tokenAmounts[waUsdcIdx] = yieldBearingAmountUSDC;
 
         _initPool(yieldBearingPool, tokenAmounts, yieldBearingPoolAmount * 2 - USDC_FACTOR);
         vm.stopPrank();

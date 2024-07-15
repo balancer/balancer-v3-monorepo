@@ -197,15 +197,14 @@ interface IVaultAdmin {
     function unpauseVaultBuffers() external;
 
     /**
-     * @notice Adds liquidity to an yield-bearing token buffer (wrapped token buffer "pool" embedded in the vault).
-     *
+     * @notice Adds liquidity to an yield-bearing buffer (one of the Vault's internal ERC4626 token buffers).
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
      * @param sharesOwner Address of contract that will own the deposited liquidity. Only this contract will be able
      * to remove liquidity from the buffer
-     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts
-     * (it is the BPT of the vault's internal wrapped token buffer pools)
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts.
+     * (it is the BPT of an internal ERC4626 token buffer)
      */
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
@@ -215,8 +214,8 @@ interface IVaultAdmin {
     ) external returns (uint256 issuedShares);
 
     /**
-     * @notice Removes liquidity from a yield-bearing token buffer (wrapped token buffer "pool" embedded in the vault).
-     * Only proportional exits are supported.
+     * @notice Removes liquidity from a yield-bearing buffer (one of the Vault's internal ERC4626 token buffers).
+     * @dev Only proportional exits are supported.
      *
      * Pre-conditions:
      * - sharesOwner is the original msg.sender, it needs to be checked in the router. That's why
@@ -250,7 +249,7 @@ interface IVaultAdmin {
     ) external view returns (uint256 ownerShares);
 
     /**
-     * @notice Returns the supply shares (internal buffer BPT) of the ERC4626 buffer.
+     * @notice Returns the supply shares (internal buffer BPT) of the ERC4626 token buffer.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @return bufferShares Amount of supply shares of the buffer
      */

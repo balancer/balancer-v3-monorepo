@@ -163,14 +163,14 @@ interface IRouter {
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
 
     /**
-     * @notice Adds liquidity to a yield-bearing token buffer (an embedded wrapped token buffer pool).
+     * @notice Adds liquidity to a yield-bearing buffer (one of the Vault's internal ERC4626 token buffers).
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
-     * @param sharesOwner Address of the contract that will own the liquidity.
-     * Only this contract will be able to remove liquidity from the buffer
-     * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in underlying tokens
-     * (This is the BPT of the vault's internal wrapped token buffer pools.)
+     * @param sharesOwner Address of the contract that will own the liquidity. Only this contract will be able to
+     * remove liquidity from the buffer
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in underlying tokens.
+     * (This is the BPT of an internal ERC4626 token buffer.)
      */
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
@@ -291,7 +291,7 @@ interface IRouter {
     ) external returns (uint256[] memory amountsOut);
 
     /**
-     * @notice Removes liquidity from a yield-bearing token buffer (an embedded wrapped token buffer pool).
+     * @notice Removes liquidity from a yield-bearing buffer (one of the Vault's internal ERC4626 token buffers).
      * @dev Only proportional withdrawals are supported, and removing liquidity is permissioned.
      * @param wrappedToken Address of a wrapped token that implements IERC4626
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner's

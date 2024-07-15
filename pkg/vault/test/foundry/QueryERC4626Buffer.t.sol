@@ -256,7 +256,7 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         tokenConfig[waDaiIdx].rateProvider = IRateProvider(address(waDAI));
         tokenConfig[waUsdcIdx].rateProvider = IRateProvider(address(waUSDC));
 
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "Yield-bearing Pool", "YIELDYBOI");
 
         factoryMock.registerTestPool(address(newPool), tokenConfig);
 
