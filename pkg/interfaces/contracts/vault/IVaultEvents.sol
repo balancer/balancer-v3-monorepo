@@ -10,6 +10,7 @@ import { IHooks } from "./IHooks.sol";
 import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import "./VaultTypes.sol";
 
+/// @dev Events are declared inside an interface (namespace) to improve DX with Typechain.
 interface IVaultEvents {
     /**
      * @notice A Pool was registered by calling `registerPool`.

@@ -2,9 +2,11 @@
 
 pragma solidity ^0.8.24;
 
-import "../vault/VaultTypes.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+
 import { IRateProvider } from "../vault/IRateProvider.sol";
-import { IBasePool } from "../vault/IBasePool.sol";
+import "../vault/VaultTypes.sol";
 
 interface IVaultMainMock {
     function getPoolFactoryMock() external view returns (address);
@@ -82,7 +84,7 @@ interface IVaultMainMock {
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw);
 
-    function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances);
+    function getLastLiveBalances(address pool) external view returns (uint256[] memory lastBalancesLiveScaled18);
 
     function updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,
@@ -172,7 +174,7 @@ interface IVaultMainMock {
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
-    ) external view returns (IBasePool.PoolSwapParams memory);
+    ) external view returns (PoolSwapParams memory);
 
     function manualComputeAndChargeAggregateSwapFees(
         PoolData memory poolData,

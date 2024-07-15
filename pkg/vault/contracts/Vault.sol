@@ -199,7 +199,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // State is fully populated here, and shall not be modified at a lower level.
         SwapState memory state = _loadSwapState(params, poolData);
 
-        IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
+        PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
 
         if (poolData.poolConfigBits.shouldCallBeforeSwap()) {
             HooksConfigLib.callBeforeSwapHook(swapParams, params.pool, _hooksContracts[params.pool]);
@@ -282,10 +282,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
-    ) internal view returns (IBasePool.PoolSwapParams memory) {
+    ) internal view returns (PoolSwapParams memory) {
         // Uses msg.sender as the router (the contract that called the vault)
         return
-            IBasePool.PoolSwapParams({
+            PoolSwapParams({
                 kind: params.kind,
                 amountGivenScaled18: state.amountGivenScaled18,
                 balancesScaled18: poolData.balancesLiveScaled18,
@@ -341,7 +341,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData,
-        IBasePool.PoolSwapParams memory swapParams
+        PoolSwapParams memory swapParams
     )
         internal
         nonReentrant

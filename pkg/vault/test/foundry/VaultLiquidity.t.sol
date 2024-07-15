@@ -396,12 +396,12 @@ contract VaultLiquidityTest is BaseVaultTest {
 
         // Ensure raw and last live balances are in sync after the operation
         uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
-        uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
+        uint256[] memory lastBalancesLiveScaled18 = vault.getLastLiveBalances(pool);
 
-        assertEq(currentLiveBalances.length, lastLiveBalances.length);
+        assertEq(currentLiveBalances.length, lastBalancesLiveScaled18.length);
 
         for (uint256 i = 0; i < currentLiveBalances.length; ++i) {
-            assertEq(currentLiveBalances[i], lastLiveBalances[i]);
+            assertEq(currentLiveBalances[i], lastBalancesLiveScaled18[i]);
         }
     }
 
@@ -454,12 +454,12 @@ contract VaultLiquidityTest is BaseVaultTest {
 
         // Ensure raw and last live balances are in sync after the operation
         uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
-        uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
+        uint256[] memory lastBalancesLiveScaled18 = vault.getLastLiveBalances(pool);
 
-        assertEq(currentLiveBalances.length, lastLiveBalances.length);
+        assertEq(currentLiveBalances.length, lastBalancesLiveScaled18.length);
 
         for (uint256 i = 0; i < currentLiveBalances.length; ++i) {
-            assertEq(currentLiveBalances[i], lastLiveBalances[i]);
+            assertEq(currentLiveBalances[i], lastBalancesLiveScaled18[i]);
         }
     }
 }

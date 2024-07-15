@@ -5,7 +5,6 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -53,14 +52,14 @@ contract MinimalHooksPoolMock is BaseHooks {
     }
 
     function onComputeDynamicSwapFee(
-        IBasePool.PoolSwapParams calldata,
+        PoolSwapParams calldata,
         address,
         uint256
     ) external pure override returns (bool, uint256) {
         return (true, 0);
     }
 
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata, address) external pure override returns (bool) {
+    function onBeforeSwap(PoolSwapParams calldata, address) external pure override returns (bool) {
         return true;
     }
 

@@ -148,6 +148,16 @@ struct TokenInfo {
     bool paysYieldFees;
 }
 
+/**
+ * @dev Data structure used to represent the current pool state in memory
+ * @param asdf
+ * @param
+ * @param
+ * @param
+ * @param balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
+ * @param
+ * @param
+ */
 struct PoolData {
     PoolConfigBits poolConfigBits;
     IERC20[] tokens;
@@ -173,7 +183,7 @@ enum SwapKind {
 }
 
 /**
- * @dev Data for a swap operation.
+ * @dev Data passed into primary Vault `swap` operations.
  * @param kind Type of swap (Exact In or Exact Out)
  * @param pool The pool with the tokens being swapped
  * @param tokenIn The token entering the Vault (balance increases)
@@ -189,6 +199,26 @@ struct SwapParams {
     IERC20 tokenOut;
     uint256 amountGivenRaw;
     uint256 limitRaw;
+    bytes userData;
+}
+
+/**
+ * @dev Data for a swap operation, used by contracts implementing `IBasePool`.
+ * @param kind Type of swap (exact in or exact out)
+ * @param amountGivenScaled18 Amount given based on kind of the swap (e.g., tokenIn for exact in)
+ * @param balancesScaled18 Current pool balances
+ * @param indexIn Index of tokenIn
+ * @param indexOut Index of tokenOut
+ * @param router The address (usually a router contract) that initiated a swap operation on the Vault
+ * @param userData Additional (optional) data required for the swap
+ */
+struct PoolSwapParams {
+    SwapKind kind;
+    uint256 amountGivenScaled18;
+    uint256[] balancesScaled18;
+    uint256 indexIn;
+    uint256 indexOut;
+    address router;
     bytes userData;
 }
 

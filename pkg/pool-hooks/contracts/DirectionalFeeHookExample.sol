@@ -4,11 +4,14 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { LiquidityManagement, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    LiquidityManagement,
+    TokenConfig,
+    PoolSwapParams
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -43,15 +46,15 @@ contract DirectionalFeeHookExample is BaseHooks {
 
     /// @inheritdoc IHooks
     function onComputeDynamicSwapFee(
-        IBasePool.PoolSwapParams calldata params,
+        PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
     ) external view override returns (bool, uint256) {
         // Get pool balances
-        (, , , uint256[] memory lastLiveBalances) = _vault.getPoolTokenInfo(pool);
+        (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(pool);
 
         uint256 calculatedSwapFeePercentage = _calculatedExpectedSwapFeePercentage(
-            lastLiveBalances,
+            lastBalancesLiveScaled18,
             params.amountGivenScaled18,
             params.indexIn,
             params.indexOut

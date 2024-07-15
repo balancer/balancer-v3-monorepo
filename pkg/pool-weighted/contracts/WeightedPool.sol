@@ -13,7 +13,7 @@ import {
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { SwapKind, PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
@@ -109,7 +109,7 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(IBasePool.PoolSwapParams memory request) public view onlyVault returns (uint256) {
+    function onSwap(PoolSwapParams memory request) public view onlyVault returns (uint256) {
         uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 
@@ -182,7 +182,7 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
 
     /// @inheritdoc IWeightedPool
     function getWeightedPoolDynamicData() external view returns (WeightedPoolDynamicData memory data) {
-        data.liveBalances = _vault.getCurrentLiveBalances(address(this));
+        data.balancesLiveScaled18 = _vault.getCurrentLiveBalances(address(this));
         (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
         data.staticSwapFeePercentage = _vault.getStaticSwapFeePercentage((address(this)));
         data.totalSupply = totalSupply();

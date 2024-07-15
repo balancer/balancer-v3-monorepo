@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/// @dev Errors are namespaced inside an interface to improve DX with Typechain.
+/// @dev Errors are declared inside an interface (namespace) to improve DX with Typechain.
 interface IVaultErrors {
     /*******************************************************************************
                             Registration and Initialization

@@ -140,9 +140,7 @@ library ScalingHelpers {
         }
     }
 
-    /**
-     * @dev Same as `toScaled18ApplyRateRoundDown`, but returns a new array, leaving the original intact.
-     */
+    /// @dev Same as `toScaled18ApplyRateRoundDown`, but returns a new array, leaving the original intact.
     function copyToScaled18ApplyRateRoundDownArray(
         uint256[] memory amounts,
         uint256[] memory scalingFactors,

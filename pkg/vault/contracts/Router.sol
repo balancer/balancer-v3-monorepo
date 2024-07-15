@@ -10,7 +10,6 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
@@ -432,7 +431,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param params Remove liquidity parameters (see IRouter for struct definition)
      * @return bptAmountIn BPT amount burned for the output tokens
      * @return amountsOut Actual token amounts transferred in exchange for the BPT
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function removeLiquidityHook(
         RemoveLiquidityHookParams calldata params
@@ -924,7 +923,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param params Add liquidity parameters (see IRouter for struct definition)
      * @return amountsIn Actual token amounts in required as inputs
      * @return bptAmountOut Expected pool tokens to be minted
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function queryAddLiquidityHook(
         AddLiquidityHookParams calldata params
@@ -1088,7 +1087,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param params Remove liquidity parameters (see IRouter for struct definition)
      * @return bptAmountIn Pool token amount to be burned for the output tokens
      * @return amountsOut Expected token amounts to be transferred to the sender
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function queryRemoveLiquidityHook(
         RemoveLiquidityHookParams calldata params

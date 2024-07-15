@@ -3,13 +3,25 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IVault } from "./IVault.sol";
 import { IHooks } from "./IHooks.sol";
-import { IBasePool } from "./IBasePool.sol";
 import { IProtocolFeeController } from "./IProtocolFeeController.sol";
-import "./VaultTypes.sol";
+import {
+    TokenConfig,
+    TokenInfo,
+    PoolRoleAccounts,
+    LiquidityManagement,
+    PoolData,
+    PoolConfig,
+    HooksConfig,
+    PoolSwapParams,
+    SwapKind,
+    WrappingDirection
+} from "./VaultTypes.sol";
 
+/// @notice Extension of the Vault contract (via the Proxy pattern), intended for less common operations.
 interface IVaultExtension {
     /*******************************************************************************
                               Constants and immutables
@@ -138,8 +150,9 @@ interface IVaultExtension {
      * registration order.
      *
      * @param pool Address of the pool
-     * @return decimalScalingFactors Token decimal scaling factors
-     * @return tokenRates Token rates for yield-bearing tokens, or FP(1) for standard tokens
+     * @return decimalScalingFactors Conversion factor used to adjust for token decimals for uniform precision in
+     * calculations. FP(1) for 18-decimal tokens
+     * @return tokenRates 18-decimal FP values for rate tokens (e.g., yield-bearing), or FP(1) for standard tokens
      */
     function getPoolTokenRates(
         address pool
@@ -152,9 +165,9 @@ interface IVaultExtension {
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
      * @param pool Address of the pool
      * @return tokens The pool tokens, sorted in registration order
-     * @return tokenInfo Token info, sorted in token registration order
-     * @return balancesRaw Raw balances, sorted in token registration order
-     * @return lastLiveBalances Last saved live balances, sorted in token registration order
+     * @return tokenInfo Token info structs (type, rate provider, yield flag), sorted in pool registration order
+     * @return balancesRaw Current native decimal balances of the pool tokens, sorted in pool registration order
+     * @return lastBalancesLiveScaled18 Last saved live balances, sorted in token registration order
      */
     function getPoolTokenInfo(
         address pool
@@ -165,7 +178,7 @@ interface IVaultExtension {
             IERC20[] memory tokens,
             TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory lastLiveBalances
+            uint256[] memory lastBalancesLiveScaled18
         );
 
     /**
@@ -173,7 +186,7 @@ interface IVaultExtension {
      * registration order.
      *
      * @param pool Address of the pool
-     * @return balancesLiveScaled18  Token balances after paying yield fees, applying decimal scaling and rates
+     * @return balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
      */
     function getCurrentLiveBalances(address pool) external view returns (uint256[] memory balancesLiveScaled18);
 
@@ -192,7 +205,7 @@ interface IVaultExtension {
     function getHooksConfig(address pool) external view returns (HooksConfig memory);
 
     /**
-     * @notice Gets the current bpt rate of a pool, by dividing the current invariant by the total supply of BPT.
+     * @notice The current rate of a pool token (BPT) = invariant / totalSupply.
      * @param pool Address of the pool
      * @return rate BPT rate
      */
@@ -330,7 +343,7 @@ interface IVaultExtension {
      */
     function computeDynamicSwapFee(
         address pool,
-        IBasePool.PoolSwapParams memory swapParams
+        PoolSwapParams memory swapParams
     ) external view returns (bool, uint256);
 
     /**

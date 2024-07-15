@@ -60,10 +60,10 @@ library BasePoolMath {
      * Calculation: For each token, amountOut = balance * (bptAmountIn / bptTotalSupply).
      * Rounding down is used to prevent withdrawing more than the pool can afford.
      *
-     * @param balances Array of current token balances in the pool.
-     * @param bptTotalSupply Total supply of the pool tokens (BPT).
-     * @param bptAmountIn The amount of pool tokens that will be burned.
-     * @return amountsOut Array of amounts for each token to be withdrawn.
+     * @param balances Array of current token balances in the pool
+     * @param bptTotalSupply Total supply of the pool tokens (BPT)
+     * @param bptAmountIn The amount of pool tokens that will be burned
+     * @return amountsOut Array of amounts for each token to be withdrawn
      */
     function computeProportionalAmountsOut(
         uint256[] memory balances,
@@ -101,7 +101,7 @@ library BasePoolMath {
      *
      * @param currentBalances Current pool balances, sorted in token registration order
      * @param exactAmounts Array of exact amounts for each token to be added to the pool
-     * @param totalSupply Current total supply of the pool tokens (BPT)
+     * @param totalSupply The current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the transaction
      * @param computeInvariant A function pointer to the invariant calculation function
      * @return bptAmountOut The amount of pool tokens (BPT) that will be minted as a result of the liquidity addition
@@ -181,7 +181,7 @@ library BasePoolMath {
      * @param currentBalances Array of current token balances in the pool, sorted in token registration order
      * @param tokenInIndex Index of the input token for which the amount needs to be calculated
      * @param exactBptAmountOut Exact amount of pool tokens (BPT) the user wants to receive
-     * @param totalSupply Current total supply of the pool tokens (BPT)
+     * @param totalSupply The current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount
      * @param computeBalance A function pointer to the balance calculation function
      * @return amountInWithFee The amount of input token needed, including the swap fee, to receive the exact BPT amount
@@ -230,7 +230,7 @@ library BasePoolMath {
      * @param currentBalances Current pool balances, sorted in token registration order
      * @param tokenOutIndex Index of the token to receive in exchange for pool tokens burned
      * @param exactAmountOut Exact amount of tokens to receive
-     * @param totalSupply Current total supply of the pool tokens (BPT)
+     * @param totalSupply The current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount
      * @return bptAmountIn Amount of pool tokens to burn
      * @return swapFeeAmounts The amount of swap fees charged for each token
@@ -297,7 +297,7 @@ library BasePoolMath {
      * @param currentBalances The current token balances in the pool.
      * @param tokenOutIndex The index of the token to be withdrawn.
      * @param exactBptAmountIn The exact amount of BPT the user wants to burn.
-     * @param totalSupply The total supply of BPT in the pool.
+     * @param totalSupply The current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount.
      * @param computeBalance A function pointer to the balance calculation function.
      * @return amountOutWithFee The amount of the output token the user receives, accounting for swap fees.
