@@ -1,5 +1,3 @@
-import { Decimal } from 'decimal.js';
-
 import { bn, decimal, fromFp, toFp } from '../numbers';
 
 export function computeInvariantMock(fpBalances: bigint[]): bigint {
