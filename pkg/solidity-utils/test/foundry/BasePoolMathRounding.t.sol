@@ -186,17 +186,15 @@ contract BasePoolMathRoundingTest is Test {
         );
 
         if (flipBit) {
-            assertApproxEqAbs(
+            assertGe(
                 roundedUpBpt,
                 standardResultBpt,
-                DELTA,
-                "roundedUpBpt != standardResultBpt with DELTA (computeAddLiquidityUnbalanced)"
+                "roundedUpBpt < standardResultBpt (computeAddLiquidityUnbalanced)"
             );
-            assertApproxEqAbs(
+            assertLe(
                 roundedDownBpt,
                 standardResultBpt,
-                DELTA,
-                "roundedDownBpt != standardResultBpt with DELTA (computeAddLiquidityUnbalanced)"
+                "roundedDownBpt > standardResultBpt (computeAddLiquidityUnbalanced)"
             );
 
             for (uint256 i = 0; i < balances.length; ++i) {
@@ -397,17 +395,16 @@ contract BasePoolMathRoundingTest is Test {
         );
 
         if (flipBit) {
-            assertApproxEqAbs(
+            assertGe(
                 roundedUpBptAmountIn,
                 standardResultBptAmountIn,
-                DELTA,
-                "roundedUpBptAmountIn != standardResultBptAmountIn with DELTA (computeRemoveLiquiditySingleTokenExactOut)"
+                "roundedUpBptAmountIn < standardResultBptAmountIn (computeRemoveLiquiditySingleTokenExactOut)"
             );
-            assertApproxEqAbs(
+            assertLe(
                 roundedDownBptAmountIn,
                 standardResultBptAmountIn,
                 DELTA,
-                "roundedDownBptAmountIn != standardResultBptAmountIn with DELTA (computeRemoveLiquiditySingleTokenExactOut)"
+                "roundedDownBptAmountIn > standardResultBptAmountIn (computeRemoveLiquiditySingleTokenExactOut)"
             );
 
             for (uint256 i = 0; i < balances.length; ++i) {
