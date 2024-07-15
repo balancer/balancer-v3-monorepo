@@ -85,7 +85,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
         uint256[] memory,
         uint256[] memory,
         bytes memory
-    ) public virtual onlyVault returns (bool) {
+    ) public virtual returns (bool) {
         return false;
     }
 
@@ -99,7 +99,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
         uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) public virtual onlyVault returns (bool, uint256[] memory) {
+    ) public virtual returns (bool, uint256[] memory) {
         return (false, amountsOutRaw);
     }
 
