@@ -204,9 +204,6 @@ interface IRouter {
         bytes userData;
     }
 
-    /// @dev The actual bptAmountOut is below the minimum limit specified in the exit.
-    error ExitBelowMin(uint256 amount, uint256 limit);
-
     /**
      * @notice Removes liquidity with proportional token amounts from a pool, burning an exact pool token amount.
      * @param pool Address of the liquidity pool
@@ -346,8 +343,8 @@ interface IRouter {
      * @param exactAmountIn Exact amounts of input tokens to send
      * @param minAmountOut Minimum amount of tokens to be received
      * @param deadline Deadline for the swap
-     * @param userData Additional (optional) data required for the swap
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
+     * @param userData Additional (optional) data required for the swap
      * @return amountOut Calculated amount of output tokens to be received in exchange for the given input tokens
      */
     function swapSingleTokenExactIn(

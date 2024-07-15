@@ -186,23 +186,18 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         address newPool = factoryMock.createPool("ERC20 Pool", "ERC20POOL");
         vm.label(newPool, label);
 
-        factoryMock.registerTestPool(
-            newPool,
-            vault.buildTokenConfig(tokens.asIERC20()),
-            poolHooksContract,
-            address(lp)
-        );
+        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), poolHooksContract, lp);
 
         return newPool;
     }
 
     function createHook() internal virtual returns (address) {
         // Sets all flags as false
-        IHooks.HookFlags memory hookFlags;
+        HookFlags memory hookFlags;
         return _createHook(hookFlags);
     }
 
-    function _createHook(IHooks.HookFlags memory hookFlags) internal virtual returns (address) {
+    function _createHook(HookFlags memory hookFlags) internal virtual returns (address) {
         PoolHooksMock newHook = new PoolHooksMock(IVault(address(vault)));
         // Allow pools built with factoryMock to use the poolHooksMock
         newHook.allowFactory(address(factoryMock));
@@ -268,5 +263,10 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         return
             ((protocolFeePercentage + protocolFeePercentage.complement().mulDown(creatorFeePercentage)) /
                 FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
+    }
+
+    function _prankStaticCall() internal {
+        // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
+        vm.prank(address(0), address(0));
     }
 }

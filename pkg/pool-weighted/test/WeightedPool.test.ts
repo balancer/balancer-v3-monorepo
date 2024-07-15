@@ -89,7 +89,8 @@ describe('WeightedPool', function () {
       { pauseManager: ZERO_ADDRESS, swapFeeManager: ZERO_ADDRESS, poolCreator: ZERO_ADDRESS },
       SWAP_FEE,
       ZERO_ADDRESS,
-      false,
+      false, // no donations
+      false, // keep support to unbalanced add/remove liquidity
       ZERO_BYTES32
     );
     const receipt = await tx.wait();

@@ -15,16 +15,17 @@ interface IVaultExtension {
                               Constants and immutables
     *******************************************************************************/
 
-    /// @dev Returns the main Vault address.
+    /// @notice Returns the main Vault address.
     function vault() external view returns (IVault);
+
+    /// @notice Returns the Vault Admin contract address.
+    function getVaultAdmin() external view returns (address);
 
     /*******************************************************************************
                               Transient Accounting
     *******************************************************************************/
 
-    /**
-     * @notice Returns True if the Vault is unlocked, false otherwise.
-     */
+    /// @notice Returns True if the Vault is unlocked, false otherwise.
     function isUnlocked() external view returns (bool);
 
     /**
@@ -150,10 +151,10 @@ interface IVaultExtension {
     /**
      * @notice Gets the raw data for a pool: tokens, raw balances, scaling factors.
      * @param pool Address of the pool
-     * @return tokens The pool tokens, in registration order
-     * @return tokenInfo Corresponding token info
-     * @return balancesRaw Corresponding raw balances of the tokens
-     * @return scalingFactors Corresponding scalingFactors of the tokens
+     * @return tokens The pool tokens, sorted in registration order
+     * @return tokenInfo Token info, sorted in token registration order
+     * @return balancesRaw Raw balances, sorted in token registration order
+     * @return lastLiveBalances Last saved live balances, sorted in token registration order
      */
     function getPoolTokenInfo(
         address pool
@@ -164,12 +165,13 @@ interface IVaultExtension {
             IERC20[] memory tokens,
             TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory scalingFactors
+            uint256[] memory lastLiveBalances
         );
 
     /**
      * @notice Gets current live balances of a given pool (fixed-point, 18 decimals), corresponding to its tokens in
      * registration order.
+     *
      * @param pool Address of the pool
      * @return balancesLiveScaled18  Token balances after paying yield fees, applying decimal scaling and rates
      */
@@ -197,7 +199,7 @@ interface IVaultExtension {
     function getBptRate(address pool) external view returns (uint256 rate);
 
     /*******************************************************************************
-                                    Pool Tokens
+                                 Balancer Pool Tokens
     *******************************************************************************/
 
     /**
@@ -225,6 +227,18 @@ interface IVaultExtension {
     function allowance(address token, address owner, address spender) external view returns (uint256);
 
     /**
+     * @notice Approves a spender to spend pool tokens on behalf of sender.
+     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
+     * the pool contract, so msg.sender is used as the token address.
+     *
+     * @param owner Owner's address
+     * @param spender Spender's address
+     * @param amount Amount of tokens to approve
+     * @return True if successful, false otherwise
+     */
+    function approve(address owner, address spender, uint256 amount) external returns (bool);
+
+    /**
      * @notice Transfers pool token from owner to a recipient.
      * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
      * the pool contract, so msg.sender is used as the token address.
@@ -249,20 +263,8 @@ interface IVaultExtension {
      */
     function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
 
-    /**
-     * @notice Approves a spender to spend pool tokens on behalf of sender.
-     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
-     * the pool contract, so msg.sender is used as the token address.
-     *
-     * @param owner Owner's address
-     * @param spender Spender's address
-     * @param amount Amount of tokens to approve
-     * @return True if successful, false otherwise
-     */
-    function approve(address owner, address spender, uint256 amount) external returns (bool);
-
     /*******************************************************************************
-                                    Pool Pausing
+                                     Pool Pausing
     *******************************************************************************/
 
     /**
@@ -286,7 +288,7 @@ interface IVaultExtension {
     function getPoolPausedState(address pool) external view returns (bool, uint32, uint32, address);
 
     /*******************************************************************************
-                                   Fees
+                                          Fees
     *******************************************************************************/
 
     /**
@@ -338,7 +340,7 @@ interface IVaultExtension {
     function getProtocolFeeController() external view returns (IProtocolFeeController);
 
     /*******************************************************************************
-                                    Recovery Mode
+                                     Recovery Mode
     *******************************************************************************/
 
     /**
@@ -363,17 +365,6 @@ interface IVaultExtension {
         address from,
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut);
-
-    /*******************************************************************************
-                                    Buffer Operations
-    *******************************************************************************/
-
-    function calculateBufferAmounts(
-        WrappingDirection direction,
-        SwapKind kind,
-        IERC4626 wrappedToken,
-        uint256 amountGiven
-    ) external returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped);
 
     /*******************************************************************************
                                     Queries
@@ -418,12 +409,21 @@ interface IVaultExtension {
      */
     function isQueryDisabled() external view returns (bool);
 
-    /*******************************************************************************
-                                     Miscellaneous
-    *******************************************************************************/
-
     /**
-     * @notice Returns the Vault Admin contract address.
+     * @notice Preview the wrapping/unwrapping operation on a buffer.
+     * @dev This must be called in a query context.
+     * @param direction Wrapping direction - WRAP or UNWRAP
+     * @param kind Type of swap: EXACT_IN or EXACT_OUT
+     * @param wrappedToken The wrapped token involved in the operation
+     * @param amountGiven The amount of tokens given (i.e., underlying for WRAP)
+     * @return amountCalculated Return the amount to be returned from the wrap/unwrap operation
+     * @return amountIn Amount of tokenIn (e.g., amountGiven underlying when wrapping during an EXACT_IN)
+     * @return amountOut Amount of tokenOut (e.g., calculatedAmount wrapped in the example above)
      */
-    function getVaultAdmin() external view returns (address);
+    function calculateBufferAmounts(
+        WrappingDirection direction,
+        SwapKind kind,
+        IERC4626 wrappedToken,
+        uint256 amountGiven
+    ) external returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut);
 }

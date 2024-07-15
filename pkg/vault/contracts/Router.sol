@@ -426,19 +426,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             );
     }
 
-    /// @inheritdoc IRouter
-    function removeLiquidityRecovery(
-        address pool,
-        uint256 exactBptAmountIn
-    ) external returns (uint256[] memory amountsOut) {
-        amountsOut = abi.decode(
-            _vault.unlock(
-                abi.encodeWithSelector(Router.removeLiquidityRecoveryHook.selector, pool, msg.sender, exactBptAmountIn)
-            ),
-            (uint256[])
-        );
-    }
-
     /**
      * @notice Hook for removing liquidity.
      * @dev Can only be called by the Vault.
@@ -474,10 +461,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             uint256 amountOut = amountsOut[i];
             IERC20 token = tokens[i];
 
-            if (amountOut < params.minAmountsOut[i]) {
-                revert ExitBelowMin(amountOut, params.minAmountsOut[i]);
-            }
-
             // There can be only one WETH token in the pool
             if (params.wethIsEth && address(token) == address(_weth)) {
                 // Send WETH here and unwrap to native ETH
@@ -492,6 +475,19 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         // Send ETH to sender
         payable(params.sender).sendValue(ethAmountOut);
+    }
+
+    /// @inheritdoc IRouter
+    function removeLiquidityRecovery(
+        address pool,
+        uint256 exactBptAmountIn
+    ) external returns (uint256[] memory amountsOut) {
+        amountsOut = abi.decode(
+            _vault.unlock(
+                abi.encodeWithSelector(Router.removeLiquidityRecoveryHook.selector, pool, msg.sender, exactBptAmountIn)
+            ),
+            (uint256[])
+        );
     }
 
     /**
@@ -820,7 +816,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         pool: pool,
                         maxAmountsIn: maxAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
-                        kind: AddLiquidityKind.UNBALANCED,
+                        kind: AddLiquidityKind.PROPORTIONAL,
                         wethIsEth: false,
                         userData: userData
                     })

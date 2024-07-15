@@ -12,7 +12,8 @@ import {
     AddLiquidityParams,
     LiquidityManagement,
     RemoveLiquidityKind,
-    TokenConfig
+    TokenConfig,
+    HookFlags
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -43,7 +44,7 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
         address,
         TokenConfig[] memory,
         LiquidityManagement calldata liquidityManagement
-    ) external view override onlyVault returns (bool) {
+    ) public view override onlyVault returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
         // that the given pool is from the factory). Returning true allows any pool, with any configuration, to use
         // this hook
@@ -57,7 +58,7 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
     }
 
     /// @inheritdoc IHooks
-    function getHookFlags() external pure override returns (HookFlags memory) {
+    function getHookFlags() public pure override returns (HookFlags memory) {
         HookFlags memory hookFlags;
         // `enableHookAdjustedAmounts` must be true for all contracts that modify the `amountCalculated`
         // in after hooks. Otherwise, the Vault will ignore any "hookAdjusted" amounts, and the transaction
@@ -77,7 +78,7 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
         uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) external override onlyVault returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+    ) public override onlyVault returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
         // Our current architecture only supports fees on tokens. Since we must always respect exact `amountsOut`, and
         // non-proportional remove liquidity operations would require taking fees in BPT, we only support proportional
         // removeLiquidity.

@@ -8,7 +8,11 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { LiquidityManagement, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    LiquidityManagement,
+    TokenConfig,
+    HookFlags
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -31,13 +35,13 @@ contract DirectionalFeeHookExample is BaseHooks {
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) external view override onlyVault returns (bool) {
+    ) public view override onlyVault returns (bool) {
         // This hook allows only pools deployed by the registered factory to register it.
         return factory == _allowedStablePoolFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
     }
 
     /// @inheritdoc IHooks
-    function getHookFlags() external pure override returns (IHooks.HookFlags memory hookFlags) {
+    function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
         hookFlags.shouldCallComputeDynamicSwapFee = true;
     }
 
@@ -46,7 +50,7 @@ contract DirectionalFeeHookExample is BaseHooks {
         IBasePool.PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
-    ) external view override returns (bool, uint256) {
+    ) public view override onlyVault returns (bool, uint256) {
         // Get pool balances
         (, , , uint256[] memory lastLiveBalances) = _vault.getPoolTokenInfo(pool);
 

@@ -141,13 +141,13 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned ""BPTs)
         assertApproxEqAbs(
-            vault.getBufferOwnerShares(IERC20(waDAI), address(lp)),
+            vault.getBufferOwnerShares(IERC20(waDAI), lp),
             bufferAmount * 2 - MIN_BPT,
             1,
             "Wrong share of waDAI buffer belonging to LP"
         );
         assertApproxEqAbs(
-            vault.getBufferOwnerShares(IERC20(waUSDC), address(lp)),
+            vault.getBufferOwnerShares(IERC20(waUSDC), lp),
             (bufferAmount * 2) / USDC_FACTOR - MIN_BPT,
             1,
             "Wrong share of waUSDC buffer belonging to LP"
@@ -364,8 +364,8 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
     function _createSwapResultLocals(SwapKind kind) private view returns (SwapResultLocals memory vars) {
         vars.kind = kind;
-        vars.aliceBalanceBeforeSwapDai = daiMainnet.balanceOf(address(alice));
-        vars.aliceBalanceBeforeSwapUsdc = usdcMainnet.balanceOf(address(alice));
+        vars.aliceBalanceBeforeSwapDai = daiMainnet.balanceOf(alice);
+        vars.aliceBalanceBeforeSwapUsdc = usdcMainnet.balanceOf(alice);
 
         uint256 underlyingBalance;
         uint256 wrappedBalance;
@@ -498,7 +498,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     }
 
     function _transferTokensFromDonorToUsers() private {
-        address[] memory usersToTransfer = [address(lp), address(bob), address(alice)].toMemoryArray();
+        address[] memory usersToTransfer = [lp, bob, alice].toMemoryArray();
 
         for (uint256 i = 0; i < usersToTransfer.length; ++i) {
             address userAddress = usersToTransfer[i];
@@ -537,8 +537,8 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         uint256 wrappedBufferAmountUSDC = waUSDC.convertToShares(bufferAmount / USDC_FACTOR);
 
         vm.startPrank(lp);
-        router.addLiquidityToBuffer(waDAI, bufferAmount, wrappedBufferAmountDai, address(lp));
-        router.addLiquidityToBuffer(waUSDC, bufferAmount / USDC_FACTOR, wrappedBufferAmountUSDC, address(lp));
+        router.addLiquidityToBuffer(waDAI, bufferAmount, wrappedBufferAmountDai, lp);
+        router.addLiquidityToBuffer(waUSDC, bufferAmount / USDC_FACTOR, wrappedBufferAmountUSDC, lp);
         vm.stopPrank();
     }
 }

@@ -275,8 +275,8 @@ contract BoostedPoolWithEmptyBufferTest is BaseVaultTest {
 
     function _createSwapResultLocals(SwapKind kind) private view returns (SwapResultLocals memory vars) {
         vars.kind = kind;
-        vars.aliceBalanceBeforeSwapDai = daiMainnet.balanceOf(address(alice));
-        vars.aliceBalanceBeforeSwapUsdc = usdcMainnet.balanceOf(address(alice));
+        vars.aliceBalanceBeforeSwapDai = daiMainnet.balanceOf(alice);
+        vars.aliceBalanceBeforeSwapUsdc = usdcMainnet.balanceOf(alice);
 
         uint256 underlyingBalance;
         uint256 wrappedBalance;
@@ -389,7 +389,7 @@ contract BoostedPoolWithEmptyBufferTest is BaseVaultTest {
     }
 
     function _transferTokensFromDonorToUsers() private {
-        address[] memory usersToTransfer = [address(lp), address(bob), address(alice)].toMemoryArray();
+        address[] memory usersToTransfer = [lp, bob, alice].toMemoryArray();
 
         for (uint256 i = 0; i < usersToTransfer.length; ++i) {
             address userAddress = usersToTransfer[i];

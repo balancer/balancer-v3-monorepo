@@ -89,6 +89,7 @@ contract StablePoolFactoryTest is BaseVaultTest {
             1e17,
             address(0),
             supportsDonation,
+            false, // Do not disable unbalanced add/remove liquidity
             ZERO_BYTES32
         );
 
@@ -119,9 +120,9 @@ contract StablePoolFactoryTest is BaseVaultTest {
     }
 
     function _createHookTestLocals(address pool) private view returns (HookTestLocals memory vars) {
-        vars.bob.daiBefore = dai.balanceOf(address(bob));
-        vars.bob.usdcBefore = usdc.balanceOf(address(bob));
-        vars.bob.bptBefore = IERC20(pool).balanceOf(address(bob));
+        vars.bob.daiBefore = dai.balanceOf(bob);
+        vars.bob.usdcBefore = usdc.balanceOf(bob);
+        vars.bob.bptBefore = IERC20(pool).balanceOf(bob);
         vars.vault.daiBefore = dai.balanceOf(address(vault));
         vars.vault.usdcBefore = usdc.balanceOf(address(vault));
         vars.poolBefore = vault.getRawBalances(pool);
@@ -129,9 +130,9 @@ contract StablePoolFactoryTest is BaseVaultTest {
     }
 
     function _fillAfterHookTestLocals(HookTestLocals memory vars, address pool) private view {
-        vars.bob.daiAfter = dai.balanceOf(address(bob));
-        vars.bob.usdcAfter = usdc.balanceOf(address(bob));
-        vars.bob.bptAfter = IERC20(pool).balanceOf(address(bob));
+        vars.bob.daiAfter = dai.balanceOf(bob);
+        vars.bob.usdcAfter = usdc.balanceOf(bob);
+        vars.bob.bptAfter = IERC20(pool).balanceOf(bob);
         vars.vault.daiAfter = dai.balanceOf(address(vault));
         vars.vault.usdcAfter = usdc.balanceOf(address(vault));
         vars.poolAfter = vault.getRawBalances(pool);

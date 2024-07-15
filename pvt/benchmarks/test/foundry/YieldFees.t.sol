@@ -80,6 +80,7 @@ contract YieldFeesTest is BaseVaultTest {
                 swapFee,
                 address(0),
                 false,
+                false,
                 bytes32(0)
             )
         );

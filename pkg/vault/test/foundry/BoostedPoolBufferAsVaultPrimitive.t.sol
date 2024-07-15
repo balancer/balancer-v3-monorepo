@@ -63,12 +63,12 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
         // Can add the same amount again, since twice as much was minted
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(waDAI, address(lp), bufferAmount, bufferAmount, bufferAmount * 2);
-        router.addLiquidityToBuffer(waDAI, bufferAmount, bufferAmount, address(lp));
+        emit IVaultEvents.LiquidityAddedToBuffer(waDAI, lp, bufferAmount, bufferAmount, bufferAmount * 2);
+        router.addLiquidityToBuffer(waDAI, bufferAmount, bufferAmount, lp);
 
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(waUSDC, address(lp), bufferAmount, bufferAmount, bufferAmount * 2);
-        router.addLiquidityToBuffer(waUSDC, bufferAmount, bufferAmount, address(lp));
+        emit IVaultEvents.LiquidityAddedToBuffer(waUSDC, lp, bufferAmount, bufferAmount, bufferAmount * 2);
+        router.addLiquidityToBuffer(waUSDC, bufferAmount, bufferAmount, lp);
     }
 
     function testRemoveLiquidityEvents() public {
@@ -78,24 +78,12 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
 
         vm.expectEmit();
-        emit IVaultEvents.LiquidityRemovedFromBuffer(
-            waDAI,
-            address(lp),
-            bufferAmount / 2,
-            bufferAmount / 2,
-            bufferAmount
-        );
+        emit IVaultEvents.LiquidityRemovedFromBuffer(waDAI, lp, bufferAmount / 2, bufferAmount / 2, bufferAmount);
         vm.prank(lp);
         router.removeLiquidityFromBuffer(waDAI, bufferAmount);
 
         vm.expectEmit();
-        emit IVaultEvents.LiquidityRemovedFromBuffer(
-            waUSDC,
-            address(lp),
-            bufferAmount / 2,
-            bufferAmount / 2,
-            bufferAmount
-        );
+        emit IVaultEvents.LiquidityRemovedFromBuffer(waUSDC, lp, bufferAmount / 2, bufferAmount / 2, bufferAmount);
         vm.prank(lp);
         router.removeLiquidityFromBuffer(waUSDC, bufferAmount);
     }
@@ -103,13 +91,13 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     function initializeBuffers() private {
         // Create and fund buffer pools
         vm.startPrank(lp);
-        dai.mint(address(lp), 2 * bufferAmount);
+        dai.mint(lp, 2 * bufferAmount);
         dai.approve(address(waDAI), 2 * bufferAmount);
-        waDAI.deposit(2 * bufferAmount, address(lp));
+        waDAI.deposit(2 * bufferAmount, lp);
 
-        usdc.mint(address(lp), 2 * bufferAmount);
+        usdc.mint(lp, 2 * bufferAmount);
         usdc.approve(address(waUSDC), 2 * bufferAmount);
-        waUSDC.deposit(2 * bufferAmount, address(lp));
+        waUSDC.deposit(2 * bufferAmount, lp);
         vm.stopPrank();
 
         vm.startPrank(lp);
@@ -120,8 +108,8 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
 
-        router.addLiquidityToBuffer(waDAI, bufferAmount, bufferAmount, address(lp));
-        router.addLiquidityToBuffer(waUSDC, bufferAmount, bufferAmount, address(lp));
+        router.addLiquidityToBuffer(waDAI, bufferAmount, bufferAmount, lp);
+        router.addLiquidityToBuffer(waUSDC, bufferAmount, bufferAmount, lp);
         vm.stopPrank();
     }
 
@@ -149,13 +137,13 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
 
-        dai.mint(address(bob), boostedPoolAmount);
+        dai.mint(bob, boostedPoolAmount);
         dai.approve(address(waDAI), boostedPoolAmount);
-        waDAI.deposit(boostedPoolAmount, address(bob));
+        waDAI.deposit(boostedPoolAmount, bob);
 
-        usdc.mint(address(bob), boostedPoolAmount);
+        usdc.mint(bob, boostedPoolAmount);
         usdc.approve(address(waUSDC), boostedPoolAmount);
-        waUSDC.deposit(boostedPoolAmount, address(bob));
+        waUSDC.deposit(boostedPoolAmount, bob);
 
         _initPool(boostedPool, [boostedPoolAmount, boostedPoolAmount].toMemoryArray(), boostedPoolAmount * 2 - MIN_BPT);
         vm.stopPrank();
@@ -174,12 +162,12 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
         assertEq(
-            vault.getBufferOwnerShares(IERC20(waDAI), address(lp)),
+            vault.getBufferOwnerShares(IERC20(waDAI), lp),
             bufferAmount * 2 - MIN_BPT,
             "Wrong share of waDAI buffer belonging to LP"
         );
         assertEq(
-            vault.getBufferOwnerShares(IERC20(waUSDC), address(lp)),
+            vault.getBufferOwnerShares(IERC20(waUSDC), lp),
             bufferAmount * 2 - MIN_BPT,
             "Wrong share of waUSDC buffer belonging to LP"
         );
@@ -288,9 +276,9 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     function testBoostedPoolSwapUnbalancedBufferExactIn() public {
         vm.startPrank(lp);
         // Surplus of underlying
-        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, address(lp));
+        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, lp);
         // Surplus of wrapped
-        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, address(lp));
+        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, lp);
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
@@ -319,9 +307,9 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     function testBoostedPoolSwapUnbalancedBufferExactOut() public {
         vm.startPrank(lp);
         // Surplus of underlying
-        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, address(lp));
+        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, lp);
         // Surplus of wrapped
-        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, address(lp));
+        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, lp);
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
@@ -410,8 +398,8 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
     function _createSwapResultLocals(SwapKind kind) private view returns (SwapResultLocals memory vars) {
         vars.kind = kind;
-        vars.aliceBalanceBeforeSwapDai = dai.balanceOf(address(alice));
-        vars.aliceBalanceBeforeSwapUsdc = usdc.balanceOf(address(alice));
+        vars.aliceBalanceBeforeSwapDai = dai.balanceOf(alice);
+        vars.aliceBalanceBeforeSwapUsdc = usdc.balanceOf(alice);
 
         uint256 underlyingBalance;
         uint256 wrappedBalance;

@@ -58,7 +58,7 @@ contract LotteryHookExampleTest is BaseVaultTest {
         vm.label(address(newPool), label);
 
         PoolRoleAccounts memory roleAccounts;
-        roleAccounts.poolCreator = address(lp);
+        roleAccounts.poolCreator = lp;
 
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.disableUnbalancedLiquidity = true;
@@ -238,7 +238,7 @@ contract LotteryHookExampleTest is BaseVaultTest {
         LotteryHookExample(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
-        balancesBefore = getBalances(address(bob));
+        balancesBefore = getBalances(bob);
 
         accruedFees = new uint256[](2); // Store the fees collected on each token
         iterations = 0;
@@ -293,7 +293,7 @@ contract LotteryHookExampleTest is BaseVaultTest {
         assertNotEq(iterations, 1, "Only 1 iteration");
         assertNotEq(iterations, MAX_ITERATIONS, "Max iterations reached, no winner");
 
-        balancesAfter = getBalances(address(bob));
+        balancesAfter = getBalances(bob);
     }
 
     // @dev Check if pool balances and vault reserves reflect all swaps

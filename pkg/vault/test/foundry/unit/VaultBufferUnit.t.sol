@@ -133,7 +133,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         // Simulate a wrapping operation
 
         // 1) Vault deposits underlying tokens into yield bearing protocol (a.k.a. Bob)
-        vault.manualTransfer(dai, address(bob), underlyingDeposited);
+        vault.manualTransfer(dai, bob, underlyingDeposited);
 
         vm.prank(bob);
         // 2) Yield bearing protocol transfers wrapped tokens to vault (simulating an yield bearing protocol)
@@ -172,7 +172,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         // Simulate a wrapping operation
 
         // 1) Vault burns wrapped tokens (simulated by depositing to Bob, the YB Protocol)
-        vault.manualTransfer(IERC20(address(wDaiInitialized)), address(bob), wrappedBurned);
+        vault.manualTransfer(IERC20(address(wDaiInitialized)), bob, wrappedBurned);
 
         vm.prank(bob);
         // 2) Yield bearing protocol transfers underlying tokens to vault (simulating an yield bearing protocol)
@@ -217,13 +217,13 @@ contract VaultBufferUnitTest is BaseVaultTest {
         // Fund LP
         vm.startPrank(lp);
 
-        dai.mint(address(lp), 3 * _userAmount);
+        dai.mint(lp, 3 * _userAmount);
         dai.approve(address(wDaiInitialized), _userAmount);
-        wDaiInitialized.deposit(_userAmount, address(lp));
+        wDaiInitialized.deposit(_userAmount, lp);
 
-        usdc.mint(address(lp), 3 * _userAmount);
+        usdc.mint(lp, 3 * _userAmount);
         usdc.approve(address(wUSDCNotInitialized), _userAmount);
-        wUSDCNotInitialized.deposit(_userAmount, address(lp));
+        wUSDCNotInitialized.deposit(_userAmount, lp);
 
         wDaiInitialized.approve(address(permit2), MAX_UINT256);
         permit2.approve(address(wDaiInitialized), address(router), type(uint160).max, type(uint48).max);
@@ -236,13 +236,13 @@ contract VaultBufferUnitTest is BaseVaultTest {
         // Fund an Yield-Bearing Protocol, in this case represented by Bob
         vm.startPrank(bob);
 
-        dai.mint(address(bob), 3 * _userAmount);
+        dai.mint(bob, 3 * _userAmount);
         dai.approve(address(wDaiInitialized), _userAmount);
-        wDaiInitialized.deposit(_userAmount, address(bob));
+        wDaiInitialized.deposit(_userAmount, bob);
 
-        usdc.mint(address(bob), 3 * _userAmount);
+        usdc.mint(bob, 3 * _userAmount);
         usdc.approve(address(wUSDCNotInitialized), _userAmount);
-        wUSDCNotInitialized.deposit(_userAmount, address(bob));
+        wUSDCNotInitialized.deposit(_userAmount, bob);
 
         wDaiInitialized.approve(address(permit2), MAX_UINT256);
         permit2.approve(address(wDaiInitialized), address(router), type(uint160).max, type(uint48).max);
@@ -255,7 +255,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
 
     function _initializeBuffer() private {
         vm.prank(lp);
-        router.addLiquidityToBuffer(IERC4626(address(wDaiInitialized)), _wrapAmount, _wrapAmount, address(lp));
+        router.addLiquidityToBuffer(IERC4626(address(wDaiInitialized)), _wrapAmount, _wrapAmount, lp);
     }
 
     function _exactInWrapUnwrapPath(

@@ -99,7 +99,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
     }
 
     // _ensurePoolNotInRecoveryMode
-    function testEnsurePoolNotInRecoveryMode() public {
+    function testEnsurePoolNotInRecoveryMode() public view {
         // Should not revert because pool is not in recovery mode
         vault.mockEnsurePoolNotInRecoveryMode(TEST_POOL);
     }
@@ -117,20 +117,20 @@ contract VaultAdminUnitTest is BaseVaultTest {
 
     function testAddLiquidityToBufferBaseTokenChanged() public {
         vm.startPrank(bob);
-        router.addLiquidityToBuffer(waDAI, liquidityAmount, liquidityAmount, address(bob));
+        router.addLiquidityToBuffer(waDAI, liquidityAmount, liquidityAmount, bob);
 
         // Changes the wrapped token asset. The function `addLiquidityToBuffer` should revert, since the buffer was
         // initialized already with another underlying asset.
         waDAI.setAsset(usdc);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedTokenAsset.selector, address(waDAI)));
-        router.addLiquidityToBuffer(waDAI, liquidityAmount, liquidityAmount, address(bob));
+        router.addLiquidityToBuffer(waDAI, liquidityAmount, liquidityAmount, bob);
         vm.stopPrank();
     }
 
     function testRemoveLiquidityFromBufferNotEnoughShares() public {
         vm.startPrank(bob);
-        uint256 shares = router.addLiquidityToBuffer(waDAI, liquidityAmount, liquidityAmount, address(bob));
+        uint256 shares = router.addLiquidityToBuffer(waDAI, liquidityAmount, liquidityAmount, bob);
 
         authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
         vm.expectRevert(IVaultErrors.NotEnoughBufferShares.selector);
@@ -146,7 +146,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
         permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
 
         // Deposit some DAI to mint waDAI to bob, so he can add liquidity to the buffer.
-        waDAI.deposit(underlyingTokensToDeposit, address(bob));
+        waDAI.deposit(underlyingTokensToDeposit, bob);
         vm.stopPrank();
     }
 }

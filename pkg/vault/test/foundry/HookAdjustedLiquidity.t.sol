@@ -41,7 +41,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     }
 
     function createHook() internal override returns (address) {
-        IHooks.HookFlags memory hookFlags;
+        HookFlags memory hookFlags;
         hookFlags.enableHookAdjustedAmounts = true;
         hookFlags.shouldCallAfterAddLiquidity = true;
         hookFlags.shouldCallAfterRemoveLiquidity = true;
@@ -54,7 +54,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         vm.label(address(newPool), label);
 
         PoolRoleAccounts memory roleAccounts;
-        roleAccounts.poolCreator = address(lp);
+        roleAccounts.poolCreator = lp;
 
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.disableUnbalancedLiquidity = true;
@@ -105,7 +105,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256[] memory expectedBalances = [poolInitAmount + actualAmountIn, poolInitAmount + actualAmountIn]
             .toMemoryArray();
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
         vm.expectCall(
@@ -152,7 +152,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256[] memory expectedBalances = [poolInitAmount + actualAmountIn, poolInitAmount + actualAmountIn]
             .toMemoryArray();
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
         vm.expectCall(
@@ -255,7 +255,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256[] memory expectedBalances = [2 * poolInitAmount - actualAmountOut, 2 * poolInitAmount - actualAmountOut]
             .toMemoryArray();
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
         vm.expectCall(
@@ -313,7 +313,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256[] memory expectedBalances = [2 * poolInitAmount - actualAmountOut, 2 * poolInitAmount - actualAmountOut]
             .toMemoryArray();
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
         vm.expectCall(
@@ -416,7 +416,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256 expectedBptOut,
         int256 expectedHookDelta
     ) private view {
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 
         assertEq(balancesAfter.poolSupply - balancesBefore.poolSupply, expectedBptOut, "Pool Supply is wrong");
         assertEq(
@@ -471,7 +471,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         uint256 expectedBptIn,
         int256 expectedHookDelta
     ) private view {
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 
         assertEq(balancesBefore.poolSupply - balancesAfter.poolSupply, expectedBptIn, "Pool Supply is wrong");
         assertEq(

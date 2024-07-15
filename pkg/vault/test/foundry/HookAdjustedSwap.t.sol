@@ -38,7 +38,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
 
     function createHook() internal override returns (address) {
         // Sets all flags as false
-        IHooks.HookFlags memory hookFlags;
+        HookFlags memory hookFlags;
         hookFlags.enableHookAdjustedAmounts = true;
         hookFlags.shouldCallAfterSwap = true;
         return _createHook(hookFlags);
@@ -50,7 +50,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         vm.label(address(newPool), label);
 
         PoolRoleAccounts memory roleAccounts;
-        roleAccounts.poolCreator = address(lp);
+        roleAccounts.poolCreator = lp;
 
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.disableUnbalancedLiquidity = true;
@@ -75,7 +75,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
         vm.expectCall(
@@ -101,7 +101,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
 
         router.swapSingleTokenExactIn(address(pool), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
 
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 
         assertEq(
             balancesBefore.userTokens[daiIdx] - balancesAfter.userTokens[daiIdx],
@@ -135,7 +135,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Hook needs to pay the discount to the pool. Since it's exact in, the discount is paid in tokenOut amount.
         usdc.mint(address(poolHooksContract), hookDiscount);
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook
         vm.prank(bob);
@@ -163,7 +163,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
 
         router.swapSingleTokenExactIn(address(pool), dai, usdc, swapAmount, 0, MAX_UINT256, false, bytes(""));
 
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 
         assertEq(
             balancesBefore.userTokens[daiIdx] - balancesAfter.userTokens[daiIdx],
@@ -194,7 +194,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook
         vm.prank(bob);
@@ -231,7 +231,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 
         assertEq(
             balancesAfter.userTokens[usdcIdx] - balancesBefore.userTokens[usdcIdx],
@@ -265,7 +265,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Hook needs to pay the discount to the pool. Since it's exact out, the discount is paid in tokenIn amount.
         dai.mint(address(poolHooksContract), hookDiscount);
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         // Check that the swap gets updated balances that reflect the updated balance in the before hook
         vm.prank(bob);
@@ -302,7 +302,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        BaseVaultTest.Balances memory balancesAfter = getBalances(address(bob));
+        BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 
         assertEq(
             balancesAfter.userTokens[usdcIdx] - balancesBefore.userTokens[usdcIdx],

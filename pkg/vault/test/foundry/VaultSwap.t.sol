@@ -383,7 +383,7 @@ contract VaultSwapTest is BaseVaultTest {
             admin
         );
         vm.prank(admin);
-        feeController.withdrawProtocolFees(pool, address(admin));
+        feeController.withdrawProtocolFees(pool, admin);
 
         // protocol fees are zero
         assertEq(0, feeAmounts[usdcIdx], "Protocol fees are not zero");
@@ -420,17 +420,20 @@ contract VaultSwapTest is BaseVaultTest {
     }
 
     function testReentrancySwap() public {
-        // Enable before swap
+        // Enable before swap.
         HooksConfig memory config = vault.getHooksConfig(pool);
         config.shouldCallBeforeSwap = true;
         vault.manualSetHooksConfig(pool, config);
 
-        // Enable reentrancy hook
+        // Enable reentrancy hook.
         PoolHooksMock(poolHooksContract).setSwapReentrancyHookActive(true);
         PoolHooksMock(poolHooksContract).setSwapReentrancyHook(
             address(this),
             abi.encodeWithSelector(this.reentrancyHook.selector)
         );
+
+        // Disable storing router's sender (This test is used as router but does not implement getSender).
+        PoolHooksMock(poolHooksContract).setShouldIgnoreSavedSender(true);
 
         uint256 usdcBeforeSwap = usdc.balanceOf(address(this));
         uint256 daiBeforeSwap = dai.balanceOf(address(this));
@@ -441,7 +444,7 @@ contract VaultSwapTest is BaseVaultTest {
 
         (, , uint256[] memory balancesRawAfter, ) = vault.getPoolTokenInfo(pool);
 
-        // Pool balances should not change
+        // Pool balances should not change.
         for (uint256 i = 0; i < balancesRawAfter.length; ++i) {
             assertEq(balancesRawBefore[i], balancesRawAfter[i], "Balance does not match");
         }
