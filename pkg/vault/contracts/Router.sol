@@ -658,10 +658,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
-     * @param sharesOwner Address of contract that will own the deposited liquidity. Only
-     *        this contract will be able to remove liquidity from the buffer
+     * @param sharesOwner Address of contract that will own the deposited liquidity. Only this contract will be able
+     * to remove liquidity from the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts
-     *         (it is the BPT of vault's internal linear pools)
+     * (it is the BPT of vault's internal ERC4626 buffers)
      */
     function addLiquidityToBufferHook(
         IERC4626 wrappedToken,
