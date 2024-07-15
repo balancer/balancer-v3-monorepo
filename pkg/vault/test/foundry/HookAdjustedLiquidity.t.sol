@@ -41,7 +41,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     }
 
     function createHook() internal override returns (address) {
-        IHooks.HookFlags memory hookFlags;
+        HookFlags memory hookFlags;
         hookFlags.enableHookAdjustedAmounts = true;
         hookFlags.shouldCallAfterAddLiquidity = true;
         hookFlags.shouldCallAfterRemoveLiquidity = true;
