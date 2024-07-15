@@ -318,7 +318,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         assertTrue(poolToken.supportsInterface(type(IERC165).interfaceId), "IERC165 not supported");
     }
 
-    function testGetVault() public {
+    function testGetVault() public view {
         assertEq(address(poolToken.getVault()), address(vault), "Vault is wrong");
     }
 
