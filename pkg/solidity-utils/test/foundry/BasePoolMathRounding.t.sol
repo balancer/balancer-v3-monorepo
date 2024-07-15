@@ -403,7 +403,6 @@ contract BasePoolMathRoundingTest is Test {
             assertLe(
                 roundedDownBptAmountIn,
                 standardResultBptAmountIn,
-                DELTA,
                 "roundedDownBptAmountIn > standardResultBptAmountIn (computeRemoveLiquiditySingleTokenExactOut)"
             );
 
