@@ -157,15 +157,19 @@ contract BaseHooksTest is BaseVaultTest {
         assertEq(hookAdjustedAmount, 0, "hookAdjustedAmount is not zero");
     }
 
-    function testOnComputeDynamicFee() public {
+    function testOnComputeDynamicSwapFeePercentage() public {
         IBasePool.PoolSwapParams memory params;
         uint256 staticSwapFeePercentage;
 
         vm.prank(address(vault));
-        (bool success, uint256 newFee) = testHook.onComputeDynamicSwapFee(params, address(0), staticSwapFeePercentage);
+        (bool success, uint256 newFeePercentage) = testHook.onComputeDynamicSwapFeePercentage(
+            params,
+            address(0),
+            staticSwapFeePercentage
+        );
 
-        assertFalse(success, "onComputeDynamicSwapFee should be false");
+        assertFalse(success, "onComputeDynamicSwapFeePercentage should be false");
         // newFee should not be used in case result is false, so make sure it's zero.
-        assertEq(newFee, 0, "newFee is not zero");
+        assertEq(newFeePercentage, 0, "newFeePercentage is not zero");
     }
 }

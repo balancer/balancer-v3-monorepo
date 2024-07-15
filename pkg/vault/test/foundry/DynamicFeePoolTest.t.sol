@@ -97,7 +97,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams, pool, 0),
+            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFeePercentage.selector, poolSwapParams, pool, 0),
             1 // callCount
         );
 
@@ -125,7 +125,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFee.selector, poolSwapParams, pool, 0),
+            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFeePercentage.selector, poolSwapParams, pool, 0),
             1 // callCount
         );
 
@@ -169,7 +169,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         vm.expectCall(
             address(poolHooksContract),
             abi.encodeWithSelector(
-                IHooks.onComputeDynamicSwapFee.selector,
+                IHooks.onComputeDynamicSwapFeePercentage.selector,
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: 0,
@@ -190,9 +190,9 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
 
-        (bool success, uint256 actualDynamicSwapFee) = vault.computeDynamicSwapFee(pool, swapParams);
+        (bool success, uint256 actualDynamicSwapFee) = vault.computeDynamicSwapFeePercentage(pool, swapParams);
 
-        assertTrue(success, "computeDynamicSwapFee returned false");
+        assertTrue(success, "computeDynamicSwapFeePercentage returned false");
         assertEq(actualDynamicSwapFee, dynamicSwapFeePercentage, "Wrong dynamicSwapFeePercentage");
     }
 

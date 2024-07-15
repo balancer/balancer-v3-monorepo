@@ -104,7 +104,7 @@ contract PoolHooksMock is BaseHooks {
         return !failOnAfterInitialize;
     }
 
-    function onComputeDynamicSwapFee(
+    function onComputeDynamicSwapFeePercentage(
         IBasePool.PoolSwapParams calldata params,
         address,
         uint256
