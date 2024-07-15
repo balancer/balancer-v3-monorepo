@@ -197,7 +197,7 @@ interface IVaultAdmin {
     function unpauseVaultBuffers() external;
 
     /**
-     * @notice Adds liquidity to an yield-bearing token buffer (an embedded wrapped token buffer pool).
+     * @notice Adds liquidity to an yield-bearing token buffer (wrapped token buffer "pool" embedded in the vault).
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
@@ -215,7 +215,7 @@ interface IVaultAdmin {
     ) external returns (uint256 issuedShares);
 
     /**
-     * @notice Removes liquidity from a yield-bearing token buffer (an embedded wrapped token buffer pool).
+     * @notice Removes liquidity from a yield-bearing token buffer (wrapped token buffer "pool" embedded in the vault).
      * Only proportional exits are supported.
      *
      * Pre-conditions:
