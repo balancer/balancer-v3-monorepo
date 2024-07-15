@@ -39,9 +39,9 @@ library PoolConfigConst {
     uint256 public constant PAUSE_WINDOW_END_TIME_OFFSET =
         DECIMAL_SCALING_FACTORS_OFFSET + TOKEN_DECIMAL_DIFFS_BITLENGTH;
 
-    // Uses a uint24 (3 bytes): least significant 20 bits to store the values, and a 4-bit pad.
+    // Uses a uint40 to pack the values: 8 tokens * 5 bits/token.
     // This maximum token count is also hard-coded in the Vault.
-    uint8 public constant TOKEN_DECIMAL_DIFFS_BITLENGTH = 24;
+    uint8 public constant TOKEN_DECIMAL_DIFFS_BITLENGTH = 40;
     uint8 public constant DECIMAL_DIFF_BITLENGTH = 5;
 
     uint8 public constant TIMESTAMP_BITLENGTH = 32;
