@@ -18,7 +18,8 @@ import { VaultGuard } from "./VaultGuard.sol";
 
 /**
  * @dev Pools that only implement a subset of callbacks can inherit from here instead of IHooks,
- * and only override what they need.
+ * and only override what they need. `VaultGuard` allows use of the `onlyVault` modifier, which
+ * isn't used in this abstract contract, but should be used in real derived hook contracts.
  */
 abstract contract BaseHooks is IHooks, VaultGuard {
     constructor(IVault vault) VaultGuard(vault) {
