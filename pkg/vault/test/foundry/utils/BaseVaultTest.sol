@@ -194,11 +194,11 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     function createHook() internal virtual returns (address) {
         // Sets all flags as false
-        IHooks.HookFlags memory hookFlags;
+        HookFlags memory hookFlags;
         return _createHook(hookFlags);
     }
 
-    function _createHook(IHooks.HookFlags memory hookFlags) internal virtual returns (address) {
+    function _createHook(HookFlags memory hookFlags) internal virtual returns (address) {
         PoolHooksMock newHook = new PoolHooksMock(IVault(address(vault)));
         // Allow pools built with factoryMock to use the poolHooksMock
         newHook.allowFactory(address(factoryMock));

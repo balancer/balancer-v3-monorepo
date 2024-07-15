@@ -284,7 +284,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
                 // Gets the default HooksConfig from the hook contract and saves in the vault state
                 // Storing into hooksConfig first avoids stack-too-deep
-                IHooks.HookFlags memory hookFlags = IHooks(params.poolHooksContract).getHookFlags();
+                HookFlags memory hookFlags = IHooks(params.poolHooksContract).getHookFlags();
 
                 // When enableHookAdjustedAmounts == true, hooks are able to modify the result of a liquidity or swap
                 // operation by implementing an after hook. For simplicity, the vault only supports modifying the
