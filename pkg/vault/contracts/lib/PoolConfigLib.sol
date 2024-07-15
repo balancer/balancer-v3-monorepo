@@ -225,7 +225,7 @@ library PoolConfigLib {
 
     function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint40) {
         return
-            uint24(
+            uint40(
                 PoolConfigBits.unwrap(config).decodeUint(
                     PoolConfigConst.DECIMAL_SCALING_FACTORS_OFFSET,
                     PoolConfigConst.TOKEN_DECIMAL_DIFFS_BITLENGTH
@@ -300,6 +300,6 @@ library PoolConfigLib {
             );
         }
 
-        return uint24(uint256(value));
+        return uint40(uint256(value));
     }
 }
