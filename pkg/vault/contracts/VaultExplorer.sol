@@ -209,11 +209,11 @@ contract VaultExplorer is IVaultExplorer {
     }
 
     /// @inheritdoc IVaultExplorer
-    function computeDynamicSwapFee(
+    function computeDynamicSwapFeePercentage(
         address pool,
         IBasePool.PoolSwapParams memory swapParams
     ) external view returns (bool success, uint256 dynamicSwapFee) {
-        return _vault.computeDynamicSwapFee(pool, swapParams);
+        return _vault.computeDynamicSwapFeePercentage(pool, swapParams);
     }
 
     /*******************************************************************************
