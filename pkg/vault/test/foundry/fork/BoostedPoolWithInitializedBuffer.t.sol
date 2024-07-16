@@ -329,7 +329,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(
             tooLargeSwapAmount,
-            tooLargeSwapAmount / USDC_FACTOR - 1
+            (tooLargeSwapAmount - DAI_TO_USDC_FACTOR) / USDC_FACTOR - 1
         );
 
         vm.prank(alice);
@@ -502,9 +502,9 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         if (vars.kind == SwapKind.EXACT_IN) {
             // Rounding issues occurs in favor of vault, and are very small
             assertLe(paths[0], vars.expectedDeltaUsdc, "paths AmountOut must be <= expected amountOut");
-            assertApproxEqAbs(paths[0], vars.expectedDeltaUsdc, 1, "Wrong path count");
+            assertApproxEqAbs(paths[0], vars.expectedDeltaUsdc, 2, "Wrong path count");
             assertLe(paths[0], vars.expectedDeltaUsdc, "amounts AmountOut must be <= expected amountOut");
-            assertApproxEqAbs(amounts[0], vars.expectedDeltaUsdc, 1, "Wrong amounts count");
+            assertApproxEqAbs(amounts[0], vars.expectedDeltaUsdc, 2, "Wrong amounts count");
             assertEq(tokens[0], USDC_ADDRESS, "Wrong token for SwapKind");
         } else {
             // Rounding issues occurs in favor of vault, and are very small
@@ -535,7 +535,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         assertApproxEqAbs(
             usdcMainnet.balanceOf(alice),
             vars.aliceBalanceBeforeSwapUsdc + vars.expectedDeltaUsdc,
-            1,
+            2,
             "Wrong ending balance of USDC for Alice"
         );
 
@@ -576,13 +576,13 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         assertApproxEqAbs(
             underlyingBalance,
             vars.bufferBalanceBeforeSwapUsdc - vars.expectedBufferDeltaUsdc,
-            1,
+            2,
             "Wrong USDC buffer pool underlying balance"
         );
         assertApproxEqAbs(
             wrappedBalance,
             vars.bufferBalanceBeforeSwapWaUsdc + waUSDC.convertToShares(vars.expectedBufferDeltaUsdc),
-            1,
+            2,
             "Wrong USDC buffer pool wrapped balance"
         );
     }

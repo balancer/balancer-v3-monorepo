@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
 import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -263,6 +265,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         } else {
             amountIn = amountCalculated;
         }
+
+        console.log("amountIn", amountIn);
+        console.log("amountOut", amountOut);
     }
 
     function _loadSwapState(
@@ -1045,6 +1050,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (params.direction == WrappingDirection.UNWRAP) {
+            console.log("UNWRAP");
             (amountCalculatedRaw, amountInRaw, amountOutRaw) = _unwrapWithBuffer(
                 params.kind,
                 underlyingToken,
@@ -1053,6 +1059,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             emit Unwrap(params.wrappedToken, underlyingToken, amountInRaw, amountOutRaw);
         } else {
+            console.log("WRAP");
             (amountCalculatedRaw, amountInRaw, amountOutRaw) = _wrapWithBuffer(
                 params.kind,
                 underlyingToken,
@@ -1061,6 +1068,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             emit Wrap(underlyingToken, params.wrappedToken, amountInRaw, amountOutRaw);
         }
+
+        console.log("amountInRaw ", amountInRaw);
+        console.log("amountOutRaw", amountOutRaw);
 
         if (params.kind == SwapKind.EXACT_IN && amountOutRaw < params.limitRaw) {
             revert SwapLimit(amountOutRaw, params.limitRaw);
