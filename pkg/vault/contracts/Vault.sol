@@ -1102,7 +1102,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
-
             uint256 newDerivedBalance;
             unchecked {
                 // We have verified above that this is safe to do unchecked.
@@ -1118,11 +1117,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // The buffer does not have enough liquidity to facilitate the wrap without making an external call.
             // We wrap the user's tokens via an external call and additionally rebalance the buffer if it has a
             // surplus of underlying tokens.
-            uint256 calculatedUnderlyingDelta;
-            uint256 calculatedWrappedDelta;
 
             // Gets the amount of underlying to wrap in order to rebalance the buffer
             uint256 bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalances, wrappedToken);
+            uint256 bufferWrappedSurplus;
+
+            if (bufferUnderlyingSurplus > 0) {
+                bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
+            }
+
+            uint256 calculatedUnderlyingDelta;
+            uint256 calculatedWrappedDelta;
 
             if (kind == SwapKind.EXACT_IN) {
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
@@ -1134,14 +1139,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called
                 wrappedToken.deposit(calculatedUnderlyingDelta, address(this));
             } else {
-                if (bufferUnderlyingSurplus > 0) {
-                    calculatedWrappedDelta = amountOutWrapped + wrappedToken.convertToShares(bufferUnderlyingSurplus);
-                } else {
-                    calculatedWrappedDelta = amountOutWrapped;
-                }
+                // Note that `bufferWrappedSurplus` will be 0 unless `bufferUnderlyingSurplus` > 0.
+                calculatedWrappedDelta = amountOutWrapped + bufferWrappedSurplus;
 
                 // Add convert error because mint can consume a different amount of tokens than we anticipated with
-                // convert
+                // convert.
                 underlyingToken.forceApprove(
                     address(wrappedToken),
                     _addConvertError(amountInUnderlying + bufferUnderlyingSurplus)
@@ -1176,7 +1178,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 amountInUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus;
                 // Since bufferUnderlyingSurplus was wrapped, the final amountOut needs to discount the wrapped amount
                 // that will stay in the buffer
-                uint256 bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
+                bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
                 amountOutWrapped = vaultWrappedDelta - bufferWrappedSurplus;
 
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
@@ -1230,7 +1232,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (bufferBalances.getBalanceRaw() > amountOutUnderlying) {
-            // the buffer has enough liquidity to facilitate the wrap without making an external call.
+            // The buffer has enough liquidity to facilitate the wrap without making an external call.
             uint256 newRawBalance;
             unchecked {
                 // We have verified above that this is safe to do unchecked.
@@ -1298,17 +1300,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // will decrease. To increase the underlying balance, we get the delta amount that was withdrawn
                 // (vaultUnderlyingDelta) and discount the amount expected in the unwrapping operation
                 // (amountOutUnderlying). The same logic applies to wrapped balances.
-
+                // Note: bufferUnderlyingSurplus = vaultUnderlyingDelta - amountOutUnderlying
+                //       bufferWrappedSurplus = vaultWrappedDelta - amountInWrapped
                 bufferBalances = PackedTokenBalance.toPackedBalance(
-                    // underlyingIncrease = vaultUnderlyingDelta - amountOutUnderlying
-
-                    // Since amountOutUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus,
-                    // underlyingIncrease = bufferUnderlyingSurplus.
                     bufferBalances.getBalanceRaw() + bufferUnderlyingSurplus,
-                    // wrappedDecrease = vaultWrappedDelta - amountInWrapped
-
-                    // Since amountInWrapped = vaultWrappedDelta - bufferWrappedSurplus,
-                    // wrappedDecrease = bufferWrappedSurplus.
                     bufferBalances.getBalanceDerived() - bufferWrappedSurplus
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
