@@ -1139,11 +1139,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called
                 wrappedToken.deposit(calculatedUnderlyingDelta, address(this));
             } else {
-                // Note that `bufferWrappedSurplus` will be 0 unless `bufferUnderlyingSurplus` > 0.
+                // Note that `bufferWrappedSurplus` will be zero if there is no bufferUnderlyingSurplus.
                 calculatedWrappedDelta = amountOutWrapped + bufferWrappedSurplus;
 
-                // Add convert error because mint can consume a different amount of tokens than we anticipated with
-                // convert.
+                // Add convert error because mint can consume a different amount of tokens than we anticipated.
                 underlyingToken.forceApprove(
                     address(wrappedToken),
                     _addConvertError(amountInUnderlying + bufferUnderlyingSurplus)
