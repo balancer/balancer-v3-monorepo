@@ -52,7 +52,7 @@ contract MinimalHooksPoolMock is BaseHooks {
         return true;
     }
 
-    function onComputeDynamicSwapFee(
+    function onComputeDynamicSwapFeePercentage(
         IBasePool.PoolSwapParams calldata,
         address,
         uint256
