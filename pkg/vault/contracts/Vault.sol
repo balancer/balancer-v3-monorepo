@@ -675,16 +675,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // 1) Calculate raw amount in.
             {
                 uint256 amountInScaled18 = amountsInScaled18[i];
-                if (amountInScaled18 > 0) {
-                    _ensureValidTradeAmount(amountInScaled18);
+                _ensureValidTradeAmount(amountInScaled18);
 
-                    // amountsInRaw are amounts actually entering the Pool, so we round up.
-                    // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` hook
-                    amountInRaw = amountInScaled18.toRawUndoRateRoundUp(
-                        poolData.decimalScalingFactors[i],
-                        poolData.tokenRates[i]
-                    );
-                }
+                // amountsInRaw are amounts actually entering the Pool, so we round up.
+                // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` hook
+                amountInRaw = amountInScaled18.toRawUndoRateRoundUp(
+                    poolData.decimalScalingFactors[i],
+                    poolData.tokenRates[i]
+                );
 
                 amountsInRaw[i] = amountInRaw;
             }
@@ -912,16 +910,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // 1) Calculate raw amount out.
             {
                 uint256 amountOutScaled18 = amountsOutScaled18[i];
-                if (amountOutScaled18 > 0) {
-                    _ensureValidTradeAmount(amountOutScaled18);
+                _ensureValidTradeAmount(amountOutScaled18);
 
-                    // amountsOut are amounts exiting the Pool, so we round down.
-                    // Do not mutate in place yet, as we need them scaled for the `onAfterRemoveLiquidity` hook
-                    amountOutRaw = amountsOutScaled18[i].toRawUndoRateRoundDown(
-                        poolData.decimalScalingFactors[i],
-                        poolData.tokenRates[i]
-                    );
-                }
+                // amountsOut are amounts exiting the Pool, so we round down.
+                // Do not mutate in place yet, as we need them scaled for the `onAfterRemoveLiquidity` hook
+                amountOutRaw = amountOutScaled18.toRawUndoRateRoundDown(
+                    poolData.decimalScalingFactors[i],
+                    poolData.tokenRates[i]
+                );
             }
 
             amountsOutRaw[i] = amountOutRaw;
