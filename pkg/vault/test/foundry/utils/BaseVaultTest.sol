@@ -103,6 +103,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Applies to Weighted Pools.
     uint256 constant MIN_SWAP_FEE = 1e12; // 0.00001%
     uint256 constant MAX_SWAP_FEE = 0.1e18; // 10%
+    uint256 constant MIN_TRADE_AMOUNT = 1e6;
 
     function setUp() public virtual override {
         BaseTest.setUp();
@@ -192,11 +193,11 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     function createHook() internal virtual returns (address) {
         // Sets all flags as false
-        IHooks.HookFlags memory hookFlags;
+        HookFlags memory hookFlags;
         return _createHook(hookFlags);
     }
 
-    function _createHook(IHooks.HookFlags memory hookFlags) internal virtual returns (address) {
+    function _createHook(HookFlags memory hookFlags) internal virtual returns (address) {
         PoolHooksMock newHook = new PoolHooksMock(IVault(address(vault)));
         // Allow pools built with factoryMock to use the poolHooksMock
         newHook.allowFactory(address(factoryMock));

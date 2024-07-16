@@ -31,7 +31,25 @@ struct PoolConfig {
     bool isPoolInRecoveryMode;
 }
 
-/// @dev Represents a hook contract configuration for a pool.
+/**
+ * @dev `enableHookAdjustedAmounts` must be true for all contracts that modify the `amountCalculated`
+ * in after hooks. Otherwise, the Vault will ignore any "hookAdjusted" amounts. Setting any "shouldCall"
+ * flags to true will cause the Vault to call the corresponding hook during operations.
+ */
+struct HookFlags {
+    bool enableHookAdjustedAmounts;
+    bool shouldCallBeforeInitialize;
+    bool shouldCallAfterInitialize;
+    bool shouldCallComputeDynamicSwapFee;
+    bool shouldCallBeforeSwap;
+    bool shouldCallAfterSwap;
+    bool shouldCallBeforeAddLiquidity;
+    bool shouldCallAfterAddLiquidity;
+    bool shouldCallBeforeRemoveLiquidity;
+    bool shouldCallAfterRemoveLiquidity;
+}
+
+/// @dev Represents a hook contract configuration for a pool (HookFlags + hooksContract address).
 struct HooksConfig {
     bool enableHookAdjustedAmounts;
     bool shouldCallBeforeInitialize;

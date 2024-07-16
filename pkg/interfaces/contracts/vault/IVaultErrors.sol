@@ -130,6 +130,9 @@ interface IVaultErrors {
     /// @dev A hook adjusted amount in or out has exceeded the limit specified in the swap request.
     error HookAdjustedSwapLimit(uint256 amount, uint256 limit);
 
+    /// @dev The amount given or calculated for an operation is below the minimum limit.
+    error TradeAmountTooSmall();
+
     /*******************************************************************************
                                     Add Liquidity
     *******************************************************************************/

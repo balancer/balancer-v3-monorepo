@@ -79,11 +79,11 @@ contract PoolHooksMock is BaseHooks {
         address,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) external view override returns (bool) {
+    ) public view override returns (bool) {
         return _allowedFactories[factory];
     }
 
-    function getHookFlags() external view override returns (HookFlags memory) {
+    function getHookFlags() public view override returns (HookFlags memory) {
         return _hookFlags;
     }
 
@@ -91,7 +91,7 @@ contract PoolHooksMock is BaseHooks {
         _hookFlags = hookFlags;
     }
 
-    function onBeforeInitialize(uint256[] memory, bytes memory) external override returns (bool) {
+    function onBeforeInitialize(uint256[] memory, bytes memory) public override returns (bool) {
         if (changeTokenRateOnBeforeInitialize) {
             _updateTokenRate();
         }
@@ -99,15 +99,15 @@ contract PoolHooksMock is BaseHooks {
         return !failOnBeforeInitialize;
     }
 
-    function onAfterInitialize(uint256[] memory, uint256, bytes memory) external view override returns (bool) {
+    function onAfterInitialize(uint256[] memory, uint256, bytes memory) public view override returns (bool) {
         return !failOnAfterInitialize;
     }
 
-    function onComputeDynamicSwapFee(
+    function onComputeDynamicSwapFeePercentage(
         PoolSwapParams calldata params,
         address,
         uint256
-    ) external view override returns (bool, uint256) {
+    ) public view override returns (bool, uint256) {
         uint256 finalSwapFee = _dynamicSwapFee;
 
         if (_specialSender != address(0)) {
@@ -121,7 +121,7 @@ contract PoolHooksMock is BaseHooks {
         return (!failOnComputeDynamicSwapFeeHook, finalSwapFee);
     }
 
-    function onBeforeSwap(PoolSwapParams calldata params, address) external override returns (bool) {
+    function onBeforeSwap(PoolSwapParams calldata params, address) public override returns (bool) {
         if (shouldIgnoreSavedSender == false) {
             _savedSender = IRouterCommon(params.router).getSender();
         }
@@ -144,7 +144,7 @@ contract PoolHooksMock is BaseHooks {
         return !failOnBeforeSwapHook;
     }
 
-    function onAfterSwap(IHooks.AfterSwapParams calldata params) external override returns (bool, uint256) {
+    function onAfterSwap(IHooks.AfterSwapParams calldata params) public override returns (bool, uint256) {
         // check that actual pool balances match
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = _vault.getPoolTokenInfo(params.pool);
 
@@ -218,7 +218,7 @@ contract PoolHooksMock is BaseHooks {
         uint256,
         uint256[] memory,
         bytes memory
-    ) external override returns (bool) {
+    ) public override returns (bool) {
         if (shouldIgnoreSavedSender == false) {
             _savedSender = IRouterCommon(router).getSender();
         }
@@ -242,7 +242,7 @@ contract PoolHooksMock is BaseHooks {
         uint256[] memory,
         uint256[] memory,
         bytes memory
-    ) external override returns (bool) {
+    ) public override returns (bool) {
         if (shouldIgnoreSavedSender == false) {
             _savedSender = IRouterCommon(router).getSender();
         }
@@ -267,7 +267,7 @@ contract PoolHooksMock is BaseHooks {
         uint256,
         uint256[] memory,
         bytes memory
-    ) external override returns (bool, uint256[] memory hookAdjustedAmountsInRaw) {
+    ) public override returns (bool, uint256[] memory hookAdjustedAmountsInRaw) {
         // Forces the hook answer to test HooksConfigLib
         if (shouldForceHookAdjustedAmounts) {
             return (true, forcedHookAdjustedAmountsLiquidity);
@@ -303,7 +303,7 @@ contract PoolHooksMock is BaseHooks {
         uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) external override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+    ) public override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
         // Forces the hook answer to test HooksConfigLib
         if (shouldForceHookAdjustedAmounts) {
             return (true, forcedHookAdjustedAmountsLiquidity);

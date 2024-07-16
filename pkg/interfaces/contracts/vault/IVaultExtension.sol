@@ -335,13 +335,13 @@ interface IVaultExtension {
     function getPoolRoleAccounts(address pool) external view returns (PoolRoleAccounts memory);
 
     /**
-     * @notice Query the current dynamic swap fee of a pool, given a set of swap parameters.
+     * @notice Query the current dynamic swap fee percentage of a pool, given a set of swap parameters.
      * @param pool The pool
      * @param swapParams The swap parameters used to compute the fee
      * @return success True if the pool has a dynamic swap fee and it can be successfully computed
-     * @return dynamicSwapFee The dynamic swap fee percentage
+     * @return dynamicSwapFeePercentage The dynamic swap fee percentage
      */
-    function computeDynamicSwapFee(
+    function computeDynamicSwapFeePercentage(
         address pool,
         PoolSwapParams memory swapParams
     ) external view returns (bool, uint256);

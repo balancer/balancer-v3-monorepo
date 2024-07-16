@@ -224,7 +224,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         );
 
         // Call dynamic fee hook to fetch the expected swap fee percentage
-        (, uint256 expectedSwapFeePercentage) = DirectionalFeeHookExample(poolHooksContract).onComputeDynamicSwapFee(
+        (, uint256 expectedSwapFeePercentage) = DirectionalFeeHookExample(poolHooksContract).onComputeDynamicSwapFeePercentage(
             PoolSwapParams({
                 kind: SwapKind.EXACT_IN,
                 amountGivenScaled18: daiExactAmountIn,

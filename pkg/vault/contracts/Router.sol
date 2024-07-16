@@ -30,7 +30,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     }
 
     /*******************************************************************************
-                                    Pools
+                                Pool Initialization
     *******************************************************************************/
 
     /// @inheritdoc IRouter
@@ -106,6 +106,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         // return ETH dust
         _returnEth(params.sender);
     }
+
+    /***************************************************************************
+                                   Add Liquidity
+    ***************************************************************************/
 
     /// @inheritdoc IRouter
     function addLiquidityProportional(
@@ -302,6 +306,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         _returnEth(params.sender);
     }
 
+    /***************************************************************************
+                                 Remove Liquidity
+    ***************************************************************************/
+
     /// @inheritdoc IRouter
     function removeLiquidityProportional(
         address pool,
@@ -425,6 +433,19 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             );
     }
 
+    /// @inheritdoc IRouter
+    function removeLiquidityRecovery(
+        address pool,
+        uint256 exactBptAmountIn
+    ) external returns (uint256[] memory amountsOut) {
+        amountsOut = abi.decode(
+            _vault.unlock(
+                abi.encodeWithSelector(Router.removeLiquidityRecoveryHook.selector, pool, msg.sender, exactBptAmountIn)
+            ),
+            (uint256[])
+        );
+    }
+
     /**
      * @notice Hook for removing liquidity.
      * @dev Can only be called by the Vault.
@@ -476,19 +497,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         payable(params.sender).sendValue(ethAmountOut);
     }
 
-    /// @inheritdoc IRouter
-    function removeLiquidityRecovery(
-        address pool,
-        uint256 exactBptAmountIn
-    ) external returns (uint256[] memory amountsOut) {
-        amountsOut = abi.decode(
-            _vault.unlock(
-                abi.encodeWithSelector(Router.removeLiquidityRecoveryHook.selector, pool, msg.sender, exactBptAmountIn)
-            ),
-            (uint256[])
-        );
-    }
-
     /**
      * @notice Hook for removing liquidity in Recovery Mode.
      * @dev Can only be called by the Vault, when the pool is in Recovery Mode.
@@ -511,6 +519,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             _vault.sendTo(tokens[i], sender, amountsOut[i]);
         }
     }
+
+    /***************************************************************************
+                                       Swaps
+    ***************************************************************************/
 
     /// @inheritdoc IRouter
     function swapSingleTokenExactIn(
@@ -718,84 +730,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     }
 
     /*******************************************************************************
-                                    Queries
+                                      Queries
     *******************************************************************************/
-
-    /// @inheritdoc IRouter
-    function querySwapSingleTokenExactIn(
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountIn,
-        bytes calldata userData
-    ) external saveSender returns (uint256 amountCalculated) {
-        return
-            abi.decode(
-                _vault.quote(
-                    abi.encodeWithSelector(
-                        Router.querySwapHook.selector,
-                        SwapSingleTokenHookParams({
-                            sender: msg.sender,
-                            kind: SwapKind.EXACT_IN,
-                            pool: pool,
-                            tokenIn: tokenIn,
-                            tokenOut: tokenOut,
-                            amountGiven: exactAmountIn,
-                            limit: 0,
-                            deadline: _MAX_AMOUNT,
-                            wethIsEth: false,
-                            userData: userData
-                        })
-                    )
-                ),
-                (uint256)
-            );
-    }
-
-    /// @inheritdoc IRouter
-    function querySwapSingleTokenExactOut(
-        address pool,
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 exactAmountOut,
-        bytes calldata userData
-    ) external saveSender returns (uint256 amountCalculated) {
-        return
-            abi.decode(
-                _vault.quote(
-                    abi.encodeWithSelector(
-                        Router.querySwapHook.selector,
-                        SwapSingleTokenHookParams({
-                            sender: msg.sender,
-                            kind: SwapKind.EXACT_OUT,
-                            pool: pool,
-                            tokenIn: tokenIn,
-                            tokenOut: tokenOut,
-                            amountGiven: exactAmountOut,
-                            limit: _MAX_AMOUNT,
-                            deadline: type(uint256).max,
-                            wethIsEth: false,
-                            userData: userData
-                        })
-                    )
-                ),
-                (uint256)
-            );
-    }
-
-    /**
-     * @notice Hook for swap queries.
-     * @dev Can only be called by the Vault. Also handles native ETH.
-     * @param params Swap parameters (see IRouter for struct definition)
-     * @return Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
-     */
-    function querySwapHook(
-        SwapSingleTokenHookParams calldata params
-    ) external payable nonReentrant onlyVault returns (uint256) {
-        (uint256 amountCalculated, , ) = _swapHook(params);
-
-        return amountCalculated;
-    }
 
     /// @inheritdoc IRouter
     function queryAddLiquidityProportional(
@@ -1121,5 +1057,81 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 exactBptAmountIn
     ) external onlyVault returns (uint256[] memory amountsOut) {
         return _vault.removeLiquidityRecovery(pool, sender, exactBptAmountIn);
+    }
+
+    /// @inheritdoc IRouter
+    function querySwapSingleTokenExactIn(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountIn,
+        bytes calldata userData
+    ) external saveSender returns (uint256 amountCalculated) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        Router.querySwapHook.selector,
+                        SwapSingleTokenHookParams({
+                            sender: msg.sender,
+                            kind: SwapKind.EXACT_IN,
+                            pool: pool,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: exactAmountIn,
+                            limit: 0,
+                            deadline: _MAX_AMOUNT,
+                            wethIsEth: false,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    /// @inheritdoc IRouter
+    function querySwapSingleTokenExactOut(
+        address pool,
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 exactAmountOut,
+        bytes calldata userData
+    ) external saveSender returns (uint256 amountCalculated) {
+        return
+            abi.decode(
+                _vault.quote(
+                    abi.encodeWithSelector(
+                        Router.querySwapHook.selector,
+                        SwapSingleTokenHookParams({
+                            sender: msg.sender,
+                            kind: SwapKind.EXACT_OUT,
+                            pool: pool,
+                            tokenIn: tokenIn,
+                            tokenOut: tokenOut,
+                            amountGiven: exactAmountOut,
+                            limit: _MAX_AMOUNT,
+                            deadline: type(uint256).max,
+                            wethIsEth: false,
+                            userData: userData
+                        })
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    /**
+     * @notice Hook for swap queries.
+     * @dev Can only be called by the Vault. Also handles native ETH.
+     * @param params Swap parameters (see IRouter for struct definition)
+     * @return Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
+     */
+    function querySwapHook(
+        SwapSingleTokenHookParams calldata params
+    ) external payable nonReentrant onlyVault returns (uint256) {
+        (uint256 amountCalculated, , ) = _swapHook(params);
+
+        return amountCalculated;
     }
 }

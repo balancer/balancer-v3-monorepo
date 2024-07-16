@@ -11,7 +11,7 @@ import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.so
 /// @notice User-friendly interface to basic Vault operations: swap, add/remove liquidity, and associated queries.
 interface IRouter {
     /***************************************************************************
-                               Pool Initialization
+                                Pool Initialization
     ***************************************************************************/
 
     /**
@@ -78,7 +78,7 @@ interface IRouter {
     }
 
     /**
-     * @notice Adds with proportional token amounts to a pool, receiving an exact amount of pool tokens.
+     * @notice Adds liquidity to a pool with proportional token amounts, receiving an exact amount of pool tokens.
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param exactBptAmountOut Exact amount of pool tokens to be received
@@ -95,7 +95,7 @@ interface IRouter {
     ) external payable returns (uint256[] memory amountsIn);
 
     /**
-     * @notice Adds with arbitrary token amounts in to a pool.
+     * @notice Adds liquidity to a pool with arbitrary token amounts.
      * @param pool Address of the liquidity pool
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
@@ -112,7 +112,7 @@ interface IRouter {
     ) external payable returns (uint256 bptAmountOut);
 
     /**
-     * @notice Adds with a single token to a pool, receiving an exact amount of pool tokens.
+     * @notice Adds liquidity to a pool in a single token, receiving an exact amount of pool tokens.
      * @param pool Address of the liquidity pool
      * @param tokenIn Token used to add liquidity
      * @param maxAmountIn Maximum amount of tokens to be added
@@ -161,23 +161,6 @@ interface IRouter {
         bool wethIsEth,
         bytes memory userData
     ) external payable returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData);
-
-    /**
-     * @notice Adds liquidity to a yield-bearing buffer (one of the Vault's internal ERC4626 token buffers).
-     * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
-     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
-     * @param sharesOwner Address of the contract that will own the liquidity. Only this contract will be able to
-     * remove liquidity from the buffer
-     * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in underlying tokens.
-     * (This is the BPT of an internal ERC4626 token buffer.)
-     */
-    function addLiquidityToBuffer(
-        IERC4626 wrappedToken,
-        uint256 amountUnderlyingRaw,
-        uint256 amountWrappedRaw,
-        address sharesOwner
-    ) external returns (uint256 issuedShares);
 
     /***************************************************************************
                                  Remove Liquidity
@@ -290,20 +273,6 @@ interface IRouter {
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut);
 
-    /**
-     * @notice Removes liquidity from a yield-bearing buffer (one of the Vault's internal ERC4626 token buffers).
-     * @dev Only proportional withdrawals are supported, and removing liquidity is permissioned.
-     * @param wrappedToken Address of a wrapped token that implements IERC4626
-     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner's
-     * total shares
-     * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
-     * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
-     */
-    function removeLiquidityFromBuffer(
-        IERC4626 wrappedToken,
-        uint256 sharesToRemove
-    ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw);
-
     /***************************************************************************
                                        Swaps
     ***************************************************************************/
@@ -380,8 +349,43 @@ interface IRouter {
         bytes calldata userData
     ) external payable returns (uint256 amountIn);
 
+    /*******************************************************************************
+                            Yield-bearing token buffers
+    *******************************************************************************/
+
+    /**
+     * @notice Adds liquidity to a yield-bearing token buffer (linear pools embedded in the vault).
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
+     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param sharesOwner Address of the contract that will own the liquidity.
+     *        Only this contract will be able to remove liquidity from the buffer
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in underlying tokens
+     *         (This is the BPT of the vault's internal "Linear Pools")
+     */
+    function addLiquidityToBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlyingRaw,
+        uint256 amountWrappedRaw,
+        address sharesOwner
+    ) external returns (uint256 issuedShares);
+
+    /**
+     * @notice Removes liquidity from a yield-bearing token buffer (an embedded "Linear Pool").
+     * @dev Only proportional withdrawals are supported, and removing liquidity is permissioned.
+     * @param wrappedToken Address of a wrapped token that implements IERC4626
+     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
+     *        total shares
+     * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
+     * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
+     */
+    function removeLiquidityFromBuffer(
+        IERC4626 wrappedToken,
+        uint256 sharesToRemove
+    ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw);
+
     /***************************************************************************
-                                     Queries
+                                      Queries
     ***************************************************************************/
 
     /**

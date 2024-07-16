@@ -116,7 +116,7 @@ contract VaultExtensionMutationTest is BaseVaultTest {
     function testComputeDynamicSwapFeeWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         PoolSwapParams memory swapParams;
-        vaultExtension.computeDynamicSwapFee(pool, swapParams);
+        vaultExtension.computeDynamicSwapFeePercentage(pool, swapParams);
     }
 
     function testGetBptRateWhenNotVault() public {

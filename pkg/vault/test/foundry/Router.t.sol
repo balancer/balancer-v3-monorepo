@@ -16,6 +16,8 @@ import { IERC20MultiTokenErrors } from "@balancer-labs/v3-interfaces/contracts/v
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { Router } from "../../contracts/Router.sol";
@@ -25,6 +27,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RouterTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using FixedPoint for *;
 
     uint256 internal usdcAmountIn = 1e3 * 1e6;
     uint256 internal daiAmountIn = 1e3 * 1e18;
@@ -364,9 +367,57 @@ contract RouterTest is BaseVaultTest {
         uint256 bptAmountIn = bptAmountOut / 2;
         vm.prank(alice);
         uint256[] memory amountsOut = router.removeLiquidityRecovery(pool, bptAmountIn);
+        assertEq(amountsOut.length, 2, "Incorrect amounts out length");
+        assertEq(amountsOut[daiIdx], defaultAmount / 2, "Incorrect DAI amount out");
+        assertEq(amountsOut[usdcIdx], defaultAmount / 2, "Incorrect USDC amount out");
 
         BaseVaultTest.Balances memory afterBalances = getBalances(alice);
 
+        _assertBalanceChangeRemoveLiquidityRecovery(beforeBalances, afterBalances, bptAmountIn, amountsOut);
+    }
+
+    function testRemoveLiquidityRecovery__Fuzz(uint256 amountIn1, uint256 amountIn2, uint256 exitPercentage) public {
+        amountIn1 = bound(amountIn1, 1e18, defaultBalance); // 1 to max user balance
+        amountIn2 = bound(amountIn2, 1e18, defaultBalance); // 1 to max user balance
+        exitPercentage = bound(exitPercentage, 0, 1e18); // 0 to 100%
+
+        // Add initial liquidity
+        uint256[] memory amountsIn = [uint256(amountIn1), uint256(amountIn2)].toMemoryArray();
+
+        vm.prank(alice);
+        bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, 1, false, bytes(""));
+
+        // Put pool in recovery mode
+        vault.manualEnableRecoveryMode(pool);
+
+        BaseVaultTest.Balances memory beforeBalances = getBalances(alice);
+
+        // Do a recovery withdrawal
+        uint256 bptAmountIn = bptAmountOut.mulDown(exitPercentage);
+        (, , uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(pool);
+        uint256[] memory expectedAmountsOutRaw = BasePoolMath.computeProportionalAmountsOut(
+            poolBalances,
+            vault.totalSupply(pool),
+            bptAmountIn
+        );
+
+        vm.prank(alice);
+        uint256[] memory amountsOut = router.removeLiquidityRecovery(pool, bptAmountIn);
+        assertEq(amountsOut.length, 2, "Incorrect amounts out length");
+        assertEq(amountsOut[daiIdx], expectedAmountsOutRaw[daiIdx], "Incorrect DAI amount out");
+        assertEq(amountsOut[usdcIdx], expectedAmountsOutRaw[usdcIdx], "Incorrect USDC amount out");
+
+        BaseVaultTest.Balances memory afterBalances = getBalances(alice);
+
+        _assertBalanceChangeRemoveLiquidityRecovery(beforeBalances, afterBalances, bptAmountIn, amountsOut);
+    }
+
+    function _assertBalanceChangeRemoveLiquidityRecovery(
+        BaseVaultTest.Balances memory beforeBalances,
+        BaseVaultTest.Balances memory afterBalances,
+        uint256 bptAmountIn,
+        uint256[] memory amountsOut
+    ) internal view {
         assertEq(afterBalances.aliceBpt, beforeBalances.aliceBpt - bptAmountIn, "Alice BPT is wrong");
         assertEq(
             afterBalances.aliceTokens[daiIdx],

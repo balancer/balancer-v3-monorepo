@@ -167,7 +167,7 @@ library HooksConfigLib {
         uint256 staticSwapFeePercentage,
         IHooks hooksContract
     ) internal view returns (bool, uint256) {
-        (bool success, uint256 swapFeePercentage) = hooksContract.onComputeDynamicSwapFee(
+        (bool success, uint256 swapFeePercentage) = hooksContract.onComputeDynamicSwapFeePercentage(
             swapParams,
             pool,
             staticSwapFeePercentage
