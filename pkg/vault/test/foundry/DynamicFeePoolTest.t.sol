@@ -112,6 +112,16 @@ contract DynamicFeePoolTest is BaseVaultTest {
         router.swapSingleTokenExactIn(pool, dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
     }
 
+    function testSwapTooSmallAmountCalculated() public {
+        // Near 100% swap fee will result in near 0 amount calculated
+        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(FixedPoint.ONE - 1);
+        PoolHooksMock(poolHooksContract).setSpecialSender(bob);
+
+        vm.prank(alice);
+        vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
+        router.swapSingleTokenExactIn(pool, dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
+    }
+
     function testSwapCallsComputeFeeWithSender() public {
         IBasePool.PoolSwapParams memory poolSwapParams = IBasePool.PoolSwapParams({
             kind: SwapKind.EXACT_IN,
@@ -146,7 +156,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         uint256 aliceBalanceAfter = usdc.balanceOf(alice);
         // 100% fee; should get nothing
-        assertEq(aliceBalanceAfter - aliceBalanceBefore, 0);
+        assertEq(aliceBalanceAfter - aliceBalanceBefore, 0, "Wrong alice balance (high fee)");
 
         // Now set Alice as the special 0-fee sender
         PoolHooksMock(poolHooksContract).setSpecialSender(alice);
@@ -157,7 +167,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         aliceBalanceAfter = usdc.balanceOf(alice);
         // No fee; should get full swap amount
-        assertEq(aliceBalanceAfter - aliceBalanceBefore, defaultAmount);
+        assertEq(aliceBalanceAfter - aliceBalanceBefore, defaultAmount, "Wrong alice balance (zero fee)");
     }
 
     function testExternalComputeFee() public {
@@ -197,7 +207,11 @@ contract DynamicFeePoolTest is BaseVaultTest {
     }
 
     function testSwapChargesFees__Fuzz(uint256 dynamicSwapFeePercentage) public {
-        dynamicSwapFeePercentage = bound(dynamicSwapFeePercentage, 0, 1e18);
+        dynamicSwapFeePercentage = bound(
+            dynamicSwapFeePercentage,
+            0,
+            FixedPoint.ONE - MIN_TRADE_AMOUNT.divDown(defaultAmount)
+        );
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
 
         vm.prank(alice);

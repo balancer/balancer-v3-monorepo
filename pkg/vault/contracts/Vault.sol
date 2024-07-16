@@ -215,6 +215,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             swapParams = _buildPoolSwapParams(params, state, poolData);
         }
 
+        _ensureValidTradeAmount(state.amountGivenScaled18);
+
         // Note that this must be called *after* the before hook, to guarantee that the swap params are the same
         // as those passed to the main operation.
         // At this point, the static swap fee percentage is loaded in the swap state as the default,
@@ -238,6 +240,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // PoolData balancesRaw and balancesLiveScaled18 are adjusted for swap amounts and fees inside of _swap.
         uint256 amountCalculatedScaled18;
         (amountCalculated, amountCalculatedScaled18, amountIn, amountOut) = _swap(params, state, poolData, swapParams);
+
+        _ensureValidTradeAmount(amountCalculatedScaled18);
 
         // If the hook contract does not exist or does not implement onAfterSwap, PoolConfigLib returns the original
         // amountCalculated. Otherwise, the new amount calculated is 'amountCalculated + delta'. If the underlying
@@ -661,17 +665,27 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert BptAmountOutBelowMin(bptAmountOut, params.minBptAmountOut);
         }
 
+        _ensureValidTradeAmount(bptAmountOut);
+
         amountsInRaw = new uint256[](locals.numTokens);
 
         for (uint256 i = 0; i < locals.numTokens; ++i) {
+            uint256 amountInRaw;
+
             // 1) Calculate raw amount in.
-            // amountsInRaw are amounts actually entering the Pool, so we round up.
-            // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` hook
-            uint256 amountInRaw = amountsInScaled18[i].toRawUndoRateRoundUp(
-                poolData.decimalScalingFactors[i],
-                poolData.tokenRates[i]
-            );
-            amountsInRaw[i] = amountInRaw;
+            {
+                uint256 amountInScaled18 = amountsInScaled18[i];
+                _ensureValidTradeAmount(amountInScaled18);
+
+                // amountsInRaw are amounts actually entering the Pool, so we round up.
+                // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` hook
+                amountInRaw = amountInScaled18.toRawUndoRateRoundUp(
+                    poolData.decimalScalingFactors[i],
+                    poolData.tokenRates[i]
+                );
+
+                amountsInRaw[i] = amountInRaw;
+            }
 
             IERC20 token = poolData.tokens[i];
 
@@ -886,16 +900,26 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert BptAmountInAboveMax(bptAmountIn, params.maxBptAmountIn);
         }
 
+        _ensureValidTradeAmount(bptAmountIn);
+
         amountsOutRaw = new uint256[](locals.numTokens);
 
         for (uint256 i = 0; i < locals.numTokens; ++i) {
+            uint256 amountOutRaw;
+
             // 1) Calculate raw amount out.
-            // amountsOut are amounts exiting the Pool, so we round down.
-            // Do not mutate in place yet, as we need them scaled for the `onAfterRemoveLiquidity` hook
-            uint256 amountOutRaw = amountsOutScaled18[i].toRawUndoRateRoundDown(
-                poolData.decimalScalingFactors[i],
-                poolData.tokenRates[i]
-            );
+            {
+                uint256 amountOutScaled18 = amountsOutScaled18[i];
+                _ensureValidTradeAmount(amountOutScaled18);
+
+                // amountsOut are amounts exiting the Pool, so we round down.
+                // Do not mutate in place yet, as we need them scaled for the `onAfterRemoveLiquidity` hook
+                amountOutRaw = amountOutScaled18.toRawUndoRateRoundDown(
+                    poolData.decimalScalingFactors[i],
+                    poolData.tokenRates[i]
+                );
+            }
+
             amountsOutRaw[i] = amountOutRaw;
 
             IERC20 token = poolData.tokens[i];
@@ -1513,6 +1537,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      */
     function _addConvertError(uint256 amount) private pure returns (uint256) {
         return amount + _MAX_CONVERT_ERROR;
+    }
+
+    // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
+    // exploitation of rounding errors
+    function _ensureValidTradeAmount(uint256 tradeAmount) private pure {
+        if (tradeAmount != 0 && tradeAmount < _MINIMUM_TRADE_AMOUNT) {
+            revert TradeAmountTooSmall();
+        }
     }
 
     /*******************************************************************************
