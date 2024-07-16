@@ -376,6 +376,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         vars.expectedBufferDeltaDai = 0;
         vars.expectedDeltaUsdc = tooLargeSwapAmount / USDC_FACTOR;
         vars.expectedBufferDeltaUsdc = 0;
+
         vm.revertTo(snapshotId);
 
         vm.prank(alice);

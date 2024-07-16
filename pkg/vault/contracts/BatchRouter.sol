@@ -405,7 +405,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                     // The first step in the iteration is the last one in the given array of steps, and it
                     // specifies the output token for the step as well as the exact amount out for that token.
                     // Output amounts are stored to send them later on.
-                    _currentSwapTokensOut().add(address(step.tokenOut));
+                    bool added = _currentSwapTokensOut().add(address(step.tokenOut));
                     _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), stepExactAmountOut);
                 }
 
@@ -445,7 +445,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         pathAmountsIn[i] = amountIn;
                         // since the token was taken in advance, returns to the user what is left from the
                         // wrap/unwrap operation
-                        _currentSwapTokensOut().add(address(stepTokenIn));
+                        bool added = _currentSwapTokensOut().add(address(stepTokenIn));
                         _currentSwapTokenOutAmounts().tAdd(address(stepTokenIn), path.maxAmountIn - amountIn);
                         // settledTokenAmounts is used to return the amountsIn at the end of the operation, which
                         // is only amountIn. The difference between maxAmountIn and amountIn will be paid during
@@ -674,7 +674,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
         // Iterate backwards, from the last element to 0 (included).
         // Removing the last element from a set is cheaper than removing the first one.
-        for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
+        for (int256 i = int256(numTokensIn - 1); i >= 0; i--) {
             address tokenIn = _currentSwapTokensIn().unchecked_at(uint256(i));
             ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts().tGet(tokenIn), wethIsEth);
             // Erases delta, in case more than one batch router op is called in the same transaction
@@ -682,12 +682,12 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             _currentSwapTokensIn().remove(tokenIn);
         }
 
-        for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
+        for (int256 i = int256(numTokensOut - 1); i >= 0; i--) {
             address tokenOut = _currentSwapTokensOut().unchecked_at(uint256(i));
             _sendTokenOut(sender, IERC20(tokenOut), _currentSwapTokenOutAmounts().tGet(tokenOut), wethIsEth);
             // Erases delta, in case more than one batch router op is called in the same transaction
             _currentSwapTokenOutAmounts().tSet(tokenOut, 0);
-            _currentSwapTokensOut().remove(tokenOut);
+            bool removed = _currentSwapTokensOut().remove(tokenOut);
         }
 
         // Return the rest of ETH to sender
