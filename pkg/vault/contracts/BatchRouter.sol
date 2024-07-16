@@ -405,7 +405,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                     // The first step in the iteration is the last one in the given array of steps, and it
                     // specifies the output token for the step as well as the exact amount out for that token.
                     // Output amounts are stored to send them later on.
-                    bool added = _currentSwapTokensOut().add(address(step.tokenOut));
+                    _currentSwapTokensOut().add(address(step.tokenOut));
                     _currentSwapTokenOutAmounts().tAdd(address(step.tokenOut), stepExactAmountOut);
                 }
 
@@ -445,7 +445,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         pathAmountsIn[i] = amountIn;
                         // since the token was taken in advance, returns to the user what is left from the
                         // wrap/unwrap operation
-                        bool added = _currentSwapTokensOut().add(address(stepTokenIn));
+                        _currentSwapTokensOut().add(address(stepTokenIn));
                         _currentSwapTokenOutAmounts().tAdd(address(stepTokenIn), path.maxAmountIn - amountIn);
                         // settledTokenAmounts is used to return the amountsIn at the end of the operation, which
                         // is only amountIn. The difference between maxAmountIn and amountIn will be paid during
@@ -687,7 +687,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             _sendTokenOut(sender, IERC20(tokenOut), _currentSwapTokenOutAmounts().tGet(tokenOut), wethIsEth);
             // Erases delta, in case more than one batch router op is called in the same transaction
             _currentSwapTokenOutAmounts().tSet(tokenOut, 0);
-            bool removed = _currentSwapTokensOut().remove(tokenOut);
+            _currentSwapTokensOut().remove(tokenOut);
         }
 
         // Return the rest of ETH to sender

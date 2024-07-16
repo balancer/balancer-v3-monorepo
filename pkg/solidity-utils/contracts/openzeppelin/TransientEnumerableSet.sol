@@ -109,8 +109,6 @@ library TransientEnumerableSet {
 
                 // Update the index for the moved value
                 _indexes(set).tSet(lastValue, valueIndex); // = toDeleteIndex + 1; all indices are 1-based
-            } else {
-                _indexes(set).tSet(_values(set).tAt(lastIndex), 0);
             }
 
             // Delete the slot where the moved value was stored
