@@ -132,7 +132,7 @@ interface IRouter {
     ) external payable returns (uint256 amountIn);
 
     /**
-     * @notice Adds liquidity to a pool by donating arbitrary amounts (no BPT out).
+     * @notice Adds liquidity to a pool by donating the amounts in (no BPT out).
      * @dev To support donation, the pool config `enableDonation` flag must be set to true.
      * @param pool Address of the liquidity pool
      * @param amountsIn Amounts of tokens to be donated, sorted in token registration order
