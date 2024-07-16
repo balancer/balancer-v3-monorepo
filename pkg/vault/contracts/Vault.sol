@@ -1102,7 +1102,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         uint256 bufferWrappedSurplus;
 
-        if (bufferBalances.getBalanceDerived() > amountOutWrapped) {
+        if (bufferBalances.getBalanceDerived() >= amountOutWrapped) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
 
             uint256 newDerivedBalance;
@@ -1161,6 +1161,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 underlyingToken,
                 IERC20(wrappedToken)
             );
+
+            if (kind == SwapKind.EXACT_IN && vaultUnderlyingDelta == calculatedUnderlyingDelta - 1) {
+                // Sometimes the deposit function takes 1 less wei than `calculatedUnderlyingDelta`, due to rounding.
+                // In this case, leaves the extra wei in the buffer, because in EXACT_IN we need to consume exactly the
+                // value passed by the user.
+                vaultUnderlyingDelta = calculatedUnderlyingDelta;
+                bufferBalances = PackedTokenBalance.toPackedBalance(
+                    bufferBalances.getBalanceRaw() + 1,
+                    bufferBalances.getBalanceDerived()
+                );
+                _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
+            }
 
             _checkWrapOrUnwrapResults(
                 wrappedToken,
@@ -1233,7 +1245,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         uint256 bufferUnderlyingSurplus;
 
-        if (bufferBalances.getBalanceRaw() > amountOutUnderlying) {
+        if (bufferBalances.getBalanceRaw() >= amountOutUnderlying) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
             uint256 newRawBalance;
             unchecked {

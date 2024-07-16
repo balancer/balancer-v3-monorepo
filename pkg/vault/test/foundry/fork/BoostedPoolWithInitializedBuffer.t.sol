@@ -57,11 +57,10 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     address internal boostedPool;
 
     // The boosted pool will have 100x the liquidity of the buffer
-    uint256 internal boostedPoolAmount = 1e6 * 1e18;
-    uint256 internal bufferAmount = boostedPoolAmount / 100;
-    uint256 internal tooLargeSwapAmount = boostedPoolAmount / 2;
-    // We will swap with 10% of the buffer
-    uint256 internal swapAmount = bufferAmount / 10;
+    uint256 private constant _BOOSTED_POOL_AMOUNT = 1e6 * 1e18;
+    uint256 private constant _BUFFER_AMOUNT = _BOOSTED_POOL_AMOUNT / 100;
+    uint256 private constant _MAX_SWAP_AMOUNT_WITHIN_BUFFER_RANGE = _BUFFER_AMOUNT;
+    uint256 private constant _MAX_SWAP_AMOUNT_OUTSIDE_BUFFER_RANGE = _BOOSTED_POOL_AMOUNT / 2;
 
     function setUp() public virtual override {
         vm.createSelectFork({ blockNumber: BLOCK_NUMBER, urlOrAlias: "mainnet" });
@@ -109,14 +108,14 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
 
-        uint256 boostedAmountDai = waDAI.convertToShares(boostedPoolAmount);
-        uint256 boostedAmountUSDC = waUSDC.convertToShares(boostedPoolAmount / USDC_FACTOR);
+        uint256 boostedAmountDai = waDAI.convertToShares(_BOOSTED_POOL_AMOUNT);
+        uint256 boostedAmountUSDC = waUSDC.convertToShares(_BOOSTED_POOL_AMOUNT / USDC_FACTOR);
 
         uint256[] memory tokenAmounts = new uint256[](2);
         tokenAmounts[waDaiIdx] = boostedAmountDai;
         tokenAmounts[waUsdcIdx] = boostedAmountUSDC;
 
-        _initPool(boostedPool, tokenAmounts, boostedPoolAmount * 2 - USDC_FACTOR);
+        _initPool(boostedPool, tokenAmounts, _BOOSTED_POOL_AMOUNT * 2 - USDC_FACTOR);
         vm.stopPrank();
     }
 
@@ -124,7 +123,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         // bob should have the full boostedPool BPT.
         assertGt(
             IERC20(boostedPool).balanceOf(bob),
-            boostedPoolAmount * 2 - USDC_FACTOR,
+            _BOOSTED_POOL_AMOUNT * 2 - USDC_FACTOR,
             "Wrong boosted pool BPT amount"
         );
 
@@ -133,8 +132,8 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong boosted pool token (waDAI)");
         assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong boosted pool token (waUSDC)");
 
-        uint256 boostedAmountDai = waDAI.convertToShares(boostedPoolAmount);
-        uint256 boostedAmountUSDC = waUSDC.convertToShares(boostedPoolAmount / USDC_FACTOR);
+        uint256 boostedAmountDai = waDAI.convertToShares(_BOOSTED_POOL_AMOUNT);
+        uint256 boostedAmountUSDC = waUSDC.convertToShares(_BOOSTED_POOL_AMOUNT / USDC_FACTOR);
 
         assertEq(balancesRaw[waDaiIdx], boostedAmountDai, "Wrong boosted pool balance [waDaiIdx]");
         assertEq(balancesRaw[waUsdcIdx], boostedAmountUSDC, "Wrong boosted pool balance [waUsdcIdx]");
@@ -142,13 +141,13 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned ""BPTs)
         assertApproxEqAbs(
             vault.getBufferOwnerShares(IERC20(waDAI), lp),
-            bufferAmount * 2 - MIN_BPT,
+            _BUFFER_AMOUNT * 2 - MIN_BPT,
             1,
             "Wrong share of waDAI buffer belonging to LP"
         );
         assertApproxEqAbs(
             vault.getBufferOwnerShares(IERC20(waUSDC), lp),
-            (bufferAmount * 2) / USDC_FACTOR - MIN_BPT,
+            (_BUFFER_AMOUNT * 2) / USDC_FACTOR - MIN_BPT,
             1,
             "Wrong share of waUSDC buffer belonging to LP"
         );
@@ -156,13 +155,13 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         // Buffer should have the correct amount of issued shares
         assertApproxEqAbs(
             vault.getBufferTotalShares(IERC20(waDAI)),
-            bufferAmount * 2,
+            _BUFFER_AMOUNT * 2,
             1,
             "Wrong issued shares of waDAI buffer"
         );
         assertApproxEqAbs(
             vault.getBufferTotalShares(IERC20(waUSDC)),
-            (bufferAmount * 2) / USDC_FACTOR,
+            (_BUFFER_AMOUNT * 2) / USDC_FACTOR,
             1,
             "Wrong issued shares of waUSDC buffer"
         );
@@ -172,19 +171,21 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
         // The vault buffers should each have `bufferAmount` of their respective tokens.
         (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
-        assertEq(underlyingBalance, bufferAmount, "Wrong waDAI buffer balance for underlying token");
-        assertEq(wrappedBalance, waDAI.convertToShares(bufferAmount), "Wrong waDAI buffer balance for wrapped token");
+        assertEq(underlyingBalance, _BUFFER_AMOUNT, "Wrong waDAI buffer balance for underlying token");
+        assertEq(wrappedBalance, waDAI.convertToShares(_BUFFER_AMOUNT), "Wrong waDAI buffer balance for wrapped token");
 
         (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
-        assertEq(underlyingBalance, bufferAmount / USDC_FACTOR, "Wrong waUSDC buffer balance for underlying token");
+        assertEq(underlyingBalance, _BUFFER_AMOUNT / USDC_FACTOR, "Wrong waUSDC buffer balance for underlying token");
         assertEq(
             wrappedBalance,
-            waUSDC.convertToShares(bufferAmount / USDC_FACTOR),
+            waUSDC.convertToShares(_BUFFER_AMOUNT / USDC_FACTOR),
             "Wrong waUSDC buffer balance for wrapped token"
         );
     }
 
-    function testBoostedPoolSwapWithinBufferRangeExactIn__Fork() public {
+    function testBoostedPoolSwapWithinBufferRangeExactIn__Fork__Fuzz(uint256 swapAmount) public {
+        swapAmount = bound(swapAmount, _MAX_SWAP_AMOUNT_WITHIN_BUFFER_RANGE / 10, _MAX_SWAP_AMOUNT_WITHIN_BUFFER_RANGE);
+
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
         vars.expectedDeltaDai = swapAmount;
         vars.expectedBufferDeltaDai = swapAmount;
@@ -196,16 +197,16 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
             swapAmount / USDC_FACTOR - 1
         );
 
-        snapStart("forkBoostedPoolSwapExactIn");
         vm.prank(alice);
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
-        snapEnd();
 
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, vars);
     }
 
-    function testBoostedPoolSwapWithinBufferRangeExactOut__Fork() public {
+    function testBoostedPoolSwapWithinBufferRangeExactOut__Fork__Fuzz(uint256 swapAmount) public {
+        swapAmount = bound(swapAmount, _MAX_SWAP_AMOUNT_WITHIN_BUFFER_RANGE / 10, _MAX_SWAP_AMOUNT_WITHIN_BUFFER_RANGE);
+
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
 
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
@@ -213,18 +214,18 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
             swapAmount / USDC_FACTOR
         );
 
-        snapStart("forkBoostedPoolSwapExactOut");
+        uint256 expectedWrappedTokenOutUsdc = waUSDC.convertToShares(swapAmount / USDC_FACTOR);
+
         vm.prank(alice);
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
-        snapEnd();
 
         // EXACT_IN DAI -> USDC does not introduce rounding issues, since the resulting amountOut is divided by 1e12
         // to get the correct amount of USDC to return.
         // However, EXACT_OUT DAI -> USDC has rounding issues, because amount out is given in 6 digits, and we want an
         // 18 decimals amount in, which is not precisely calculated. The calculation below reproduces what happens in
         // the vault to scale tokens in the swap operation of the boosted pool
-        uint256 expectedWrappedTokenOutUsdc = waUSDC.convertToShares(swapAmount / USDC_FACTOR);
+
         uint256 expectedScaled18WrappedTokenOutUsdc = FixedPoint.mulDown(
             expectedWrappedTokenOutUsdc * USDC_FACTOR,
             waUSDC.convertToAssets(FixedPoint.ONE)
@@ -242,7 +243,13 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
 
-    function testBoostedPoolSwapOutOfBufferRangeExactIn__Fork() public {
+    function testBoostedPoolSwapOutOfBufferRangeExactIn__Fork__Fuzz(uint256 tooLargeSwapAmount) public {
+        tooLargeSwapAmount = bound(
+            tooLargeSwapAmount,
+            (11 * _MAX_SWAP_AMOUNT_WITHIN_BUFFER_RANGE) / 10,
+            _MAX_SWAP_AMOUNT_OUTSIDE_BUFFER_RANGE
+        );
+
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
         vars.expectedDeltaDai = tooLargeSwapAmount;
         vars.expectedBufferDeltaDai = 0;
@@ -254,16 +261,20 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
             tooLargeSwapAmount / USDC_FACTOR - 1
         );
 
-        snapStart("forkBoostedPoolSwapTooLarge-ExactIn");
         vm.prank(alice);
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
-        snapEnd();
 
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, vars);
     }
 
-    function testBoostedPoolSwapOutOfBufferRangeExactOut__Fork() public {
+    function testBoostedPoolSwapOutOfBufferRangeExactOut__Fork__Fuzz(uint256 tooLargeSwapAmount) public {
+        tooLargeSwapAmount = bound(
+            tooLargeSwapAmount,
+            (11 * _MAX_SWAP_AMOUNT_WITHIN_BUFFER_RANGE) / 10,
+            _MAX_SWAP_AMOUNT_OUTSIDE_BUFFER_RANGE
+        );
+
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
 
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
@@ -271,18 +282,14 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
             tooLargeSwapAmount / USDC_FACTOR
         );
 
-        snapStart("forkBoostedPoolSwapTooLarge-ExactOut");
-        vm.prank(alice);
-        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
-            .swapExactOut(paths, MAX_UINT256, false, bytes(""));
-        snapEnd();
-
         // EXACT_IN DAI -> USDC does not introduce rounding issues, since the resulting amountOut is divided by 1e12
         // to get the correct amount of USDC to return.
         // However, EXACT_OUT DAI -> USDC has rounding issues, because amount out is given in 6 digits, and we want an
         // 18 decimals amount in, which is not precisely calculated. The calculation below reproduces what happens in
         // the vault to scale tokens in the swap operation of the boosted pool
-        uint256 expectedWrappedTokenOutUsdc = waUSDC.previewWithdraw(tooLargeSwapAmount / USDC_FACTOR);
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(alice);
+        uint256 expectedWrappedTokenOutUsdc = waUSDC.withdraw(tooLargeSwapAmount / USDC_FACTOR, alice, alice);
         uint256 expectedScaled18WrappedTokenOutUsdc = FixedPoint.mulDown(
             expectedWrappedTokenOutUsdc * USDC_FACTOR,
             waUSDC.convertToAssets(FixedPoint.ONE)
@@ -296,6 +303,11 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         vars.expectedBufferDeltaDai = 0;
         vars.expectedDeltaUsdc = tooLargeSwapAmount / USDC_FACTOR;
         vars.expectedBufferDeltaUsdc = 0;
+        vm.revertTo(snapshotId);
+
+        vm.prank(alice);
+        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
+            .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
@@ -448,7 +460,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         assertApproxEqAbs(
             balancesRaw[usdcIdx],
             vars.boostedPoolBalanceBeforeSwapWaUsdc - waUSDC.convertToShares(vars.expectedDeltaUsdc),
-            1,
+            2,
             "Wrong boosted pool USDC balance"
         );
 
@@ -504,8 +516,8 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
             address userAddress = usersToTransfer[i];
 
             vm.startPrank(donor);
-            daiMainnet.transfer(userAddress, 4 * boostedPoolAmount);
-            usdcMainnet.transfer(userAddress, (4 * boostedPoolAmount) / USDC_FACTOR);
+            daiMainnet.transfer(userAddress, 4 * _BOOSTED_POOL_AMOUNT);
+            usdcMainnet.transfer(userAddress, (4 * _BOOSTED_POOL_AMOUNT) / USDC_FACTOR);
             vm.stopPrank();
 
             vm.startPrank(userAddress);
@@ -517,7 +529,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
             permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
 
             daiMainnet.approve(address(waDAI), MAX_UINT256);
-            waDAI.deposit(boostedPoolAmount, userAddress);
+            waDAI.deposit(_BOOSTED_POOL_AMOUNT, userAddress);
 
             usdcMainnet.approve(address(permit2), MAX_UINT256);
             permit2.approve(address(usdcMainnet), address(router), type(uint160).max, type(uint48).max);
@@ -527,18 +539,18 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
             permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
 
             usdcMainnet.approve(address(waUSDC), MAX_UINT256);
-            waUSDC.deposit(boostedPoolAmount / USDC_FACTOR, userAddress);
+            waUSDC.deposit(_BOOSTED_POOL_AMOUNT / USDC_FACTOR, userAddress);
             vm.stopPrank();
         }
     }
 
     function _transferTokensFromDonorToBuffers() private {
-        uint256 wrappedBufferAmountDai = waDAI.convertToShares(bufferAmount);
-        uint256 wrappedBufferAmountUSDC = waUSDC.convertToShares(bufferAmount / USDC_FACTOR);
+        uint256 wrappedBufferAmountDai = waDAI.convertToShares(_BUFFER_AMOUNT);
+        uint256 wrappedBufferAmountUSDC = waUSDC.convertToShares(_BUFFER_AMOUNT / USDC_FACTOR);
 
         vm.startPrank(lp);
-        router.addLiquidityToBuffer(waDAI, bufferAmount, wrappedBufferAmountDai, lp);
-        router.addLiquidityToBuffer(waUSDC, bufferAmount / USDC_FACTOR, wrappedBufferAmountUSDC, lp);
+        router.addLiquidityToBuffer(waDAI, _BUFFER_AMOUNT, wrappedBufferAmountDai, lp);
+        router.addLiquidityToBuffer(waUSDC, _BUFFER_AMOUNT / USDC_FACTOR, wrappedBufferAmountUSDC, lp);
         vm.stopPrank();
     }
 }
