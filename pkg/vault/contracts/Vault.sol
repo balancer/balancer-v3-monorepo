@@ -1228,8 +1228,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             return _calculateBufferAmounts(WrappingDirection.UNWRAP, kind, wrappedToken, amountGiven);
         }
 
-        uint256 bufferUnderlyingSurplus;
-
         if (bufferBalances.getBalanceRaw() > amountOutUnderlying) {
             // the buffer has enough liquidity to facilitate the wrap without making an external call.
             uint256 newRawBalance;
@@ -1249,6 +1247,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Gets the amount of wrapped tokens to unwrap in order to rebalance the buffer
             uint256 bufferWrappedSurplus = _getBufferWrappedSurplus(bufferBalances, wrappedToken);
+            uint256 bufferUnderlyingSurplus;
 
             if (bufferWrappedSurplus > 0) {
                 bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
@@ -1290,8 +1289,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // discount that
                 amountInWrapped = vaultWrappedDelta - bufferWrappedSurplus;
                 // Since bufferWrappedSurplus was unwrapped, the final amountOut needs to discount the underlying
-                // amount that will stay in the buffer
-                //uint256 bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
+                // amount that will stay in the buffer. Refresh after external calls on the wrapped token.
+                bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
                 amountOutUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus;
 
                 // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance
