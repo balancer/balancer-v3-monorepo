@@ -1184,6 +1184,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (vaultUnderlyingDelta) and discounts the amount needed in the wrapping operation
                 // (amountInUnderlying). Same logic applies to wrapped balances.
                 // Note: bufferUnderlyingSurplus = vaultUnderlyingDelta - amountInUnderlying
+                //       bufferWrappedSurplus = vaultWrappedDelta - amountOutWrapped
                 bufferBalances = PackedTokenBalance.toPackedBalance(
                     bufferBalances.getBalanceRaw() - bufferUnderlyingSurplus,
                     bufferBalances.getBalanceDerived() + bufferWrappedSurplus
