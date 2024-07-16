@@ -52,7 +52,7 @@ contract VaultStorage {
 
     // Pools can have two, three, or four tokens.
     uint256 internal constant _MIN_TOKENS = 2;
-    // This maximum token count is also implicitly hard-coded in `PoolConfigLib` (e.g., through packing `tokenDecimalDiffs`).
+    // This maximum token count is also implicitly hard-coded in `PoolConfigLib` (through packing `tokenDecimalDiffs`).
     uint256 internal constant _MAX_TOKENS = 8;
 
     // Maximum pause and buffer period durations.
