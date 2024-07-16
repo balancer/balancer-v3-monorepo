@@ -248,7 +248,7 @@ interface IHooks {
      * @return success True if the pool wishes to proceed with settlement
      * @return dynamicSwapFee Value of the swap fee
      */
-    function onComputeDynamicSwapFee(
+    function onComputeDynamicSwapFeePercentage(
         IBasePool.PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage

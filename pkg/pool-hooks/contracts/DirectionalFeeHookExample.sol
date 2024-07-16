@@ -46,7 +46,7 @@ contract DirectionalFeeHookExample is BaseHooks {
     }
 
     /// @inheritdoc IHooks
-    function onComputeDynamicSwapFee(
+    function onComputeDynamicSwapFeePercentage(
         IBasePool.PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage

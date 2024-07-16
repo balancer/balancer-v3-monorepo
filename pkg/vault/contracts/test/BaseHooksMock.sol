@@ -153,11 +153,11 @@ contract BaseHooksMock is BaseHooks {
     }
 
     /// @inheritdoc IHooks
-    function onComputeDynamicSwapFee(
+    function onComputeDynamicSwapFeePercentage(
         IBasePool.PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
     ) public view override returns (bool, uint256) {
-        return super.onComputeDynamicSwapFee(params, pool, staticSwapFeePercentage);
+        return super.onComputeDynamicSwapFeePercentage(params, pool, staticSwapFeePercentage);
     }
 }
