@@ -44,13 +44,14 @@ contract VeBALFeeDiscountHookExample is BaseHooks {
         LiquidityManagement calldata
     ) public view override onlyVault returns (bool) {
         // This hook implements a restrictive approach, where we check if the factory is an allowed factory and if
-        // the pool was created by the allowed factory. Since we only use onComputeDynamicSwapFee, this might be an
-        // overkill in real applications because the pool math doesn't play a role in the discount calculation.
+        // the pool was created by the allowed factory. Since we only use onComputeDynamicSwapFeePercentage, this
+        // might be an overkill in real applications because the pool math doesn't play a role in the discount
+        // calculation.
         return factory == _allowedFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
     }
 
     /// @inheritdoc IHooks
-    function onComputeDynamicSwapFee(
+    function onComputeDynamicSwapFeePercentage(
         IBasePool.PoolSwapParams calldata params,
         address,
         uint256 staticSwapFeePercentage

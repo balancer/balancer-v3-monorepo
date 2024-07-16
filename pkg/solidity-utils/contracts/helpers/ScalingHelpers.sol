@@ -41,7 +41,7 @@ library ScalingHelpers {
         uint256 scalingFactor,
         uint256 tokenRate
     ) internal pure returns (uint256) {
-        return amount == 0 ? 0 : amount.mulDown(scalingFactor).mulDown(tokenRate);
+        return amount.mulDown(scalingFactor).mulDown(tokenRate);
     }
 
     /**
@@ -61,7 +61,7 @@ library ScalingHelpers {
         uint256 scalingFactor,
         uint256 tokenRate
     ) internal pure returns (uint256) {
-        return amount == 0 ? 0 : amount.mulUp(scalingFactor).mulUp(tokenRate);
+        return amount.mulUp(scalingFactor).mulUp(tokenRate);
     }
 
     /**
@@ -82,7 +82,7 @@ library ScalingHelpers {
         uint256 tokenRate
     ) internal pure returns (uint256) {
         // Do division last, and round scalingFactor * tokenRate up to divide by a larger number.
-        return amount == 0 ? 0 : FixedPoint.divDown(amount, scalingFactor.mulUp(tokenRate));
+        return FixedPoint.divDown(amount, scalingFactor.mulUp(tokenRate));
     }
 
     /**
@@ -103,7 +103,7 @@ library ScalingHelpers {
         uint256 tokenRate
     ) internal pure returns (uint256) {
         // Do division last, and round scalingFactor * tokenRate down to divide by a smaller number.
-        return amount == 0 ? 0 : FixedPoint.divUp(amount, scalingFactor.mulDown(tokenRate));
+        return FixedPoint.divUp(amount, scalingFactor.mulDown(tokenRate));
     }
 
     /***************************************************************************

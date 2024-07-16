@@ -714,10 +714,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function computeDynamicSwapFee(
+    function computeDynamicSwapFeePercentage(
         address pool,
         IBasePool.PoolSwapParams memory swapParams
-    ) external view onlyVaultDelegateCall withInitializedPool(pool) returns (bool success, uint256 dynamicSwapFee) {
+    )
+        external
+        view
+        onlyVaultDelegateCall
+        withInitializedPool(pool)
+        returns (bool success, uint256 dynamicSwapFeePercentage)
+    {
         return
             HooksConfigLib.callComputeDynamicSwapFeeHook(
                 swapParams,
