@@ -1176,7 +1176,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 amountInUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus;
                 // Since bufferUnderlyingSurplus was wrapped, the final amountOut needs to discount the wrapped amount
                 // that will stay in the buffer
-                amountOutWrapped = vaultWrappedDelta - wrappedToken.convertToShares(bufferUnderlyingSurplus);
+                uint256 bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
+                amountOutWrapped = vaultWrappedDelta - bufferWrappedSurplus;
 
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
                 // increase. To decrease underlying balance, we get the delta amount that was deposited
@@ -1185,7 +1186,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // Note: bufferUnderlyingSurplus = vaultUnderlyingDelta - amountInUnderlying
                 bufferBalances = PackedTokenBalance.toPackedBalance(
                     bufferBalances.getBalanceRaw() - bufferUnderlyingSurplus,
-                    bufferBalances.getBalanceDerived() + (vaultWrappedDelta - amountOutWrapped)
+                    bufferBalances.getBalanceDerived() + bufferWrappedSurplus
                 );
                 _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
             } else {
