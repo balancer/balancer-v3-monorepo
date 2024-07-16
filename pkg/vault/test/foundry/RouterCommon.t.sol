@@ -89,26 +89,37 @@ contract RouterCommonTest is BaseVaultTest {
         _fillEthStateTestAfter(vars);
 
         assertEq(vars.bobEthAfter, vars.bobEthBefore, "Bob ETH balance is wrong");
-        assertEq(vars.vaultEthAfter, vars.vaultEthBefore, "Vault ETH balance is wrong");
+        assertEq(vars.vaultEthBefore, 0, "Vault had ETH balance before");
+        assertEq(vars.vaultEthAfter, 0, "Vault has ETH balance after");
         assertEq(vars.bobWethAfter, vars.bobWethBefore - amountToDeposit, "Bob WETH balance is wrong");
         assertEq(vars.vaultWethAfter, vars.vaultWethBefore + amountToDeposit, "Vault WETH balance is wrong");
+        assertEq(vars.wethDeltaAfter, vars.wethDeltaBefore - int256(amountToDeposit), "Vault delta is wrong");
     }
 
     function testSendTokenOutWethIsEth() public {
         vault.manualSetIsUnlocked(true);
+        vm.startPrank(lp);
+        uint256 wethDeposit = lp.balance / 10;
+        weth.deposit{ value: wethDeposit }();
+        weth.transfer(address(vault), wethDeposit);
+        vault.settle(weth, wethDeposit);
+        vm.stopPrank();
 
         EthStateTest memory vars = _createEthStateTest();
 
-        uint256 amountToWithdraw = vars.vaultEthBefore / 100;
+        uint256 amountToWithdraw = vars.vaultWethBefore / 100;
+        assertGt(amountToWithdraw, 0, "Amount to withdraw is 0");
 
         routerMock.mockSendTokenOut(bob, IERC20(weth), amountToWithdraw, true);
 
         _fillEthStateTestAfter(vars);
 
         assertEq(vars.bobEthAfter, vars.bobEthBefore + amountToWithdraw, "Bob ETH balance is wrong");
-        assertEq(vars.vaultEthAfter, vars.vaultEthBefore - amountToWithdraw, "Vault ETH balance is wrong");
+        assertEq(vars.vaultEthBefore, 0, "Vault had ETH balance before");
+        assertEq(vars.vaultEthAfter, 0, "Vault has ETH balance after");
         assertEq(vars.bobWethAfter, vars.bobWethBefore, "Bob WETH balance is wrong");
-        assertEq(vars.vaultWethAfter, vars.vaultWethBefore, "Vault WETH balance is wrong");
+        assertEq(vars.vaultWethAfter, vars.vaultWethBefore - amountToWithdraw, "Vault WETH balance is wrong");
+        assertEq(vars.wethDeltaAfter, vars.wethDeltaBefore + int256(amountToWithdraw), "Vault delta is wrong");
     }
 
     function testSendTokenOutWethIsNotEth() public {
@@ -126,6 +137,7 @@ contract RouterCommonTest is BaseVaultTest {
         assertEq(vars.vaultEthAfter, vars.vaultEthBefore, "Vault ETH balance is wrong");
         assertEq(vars.bobWethAfter, vars.bobWethBefore + amountToWithdraw, "Bob WETH balance is wrong");
         assertEq(vars.vaultWethAfter, vars.vaultWethBefore - amountToWithdraw, "Vault WETH balance is wrong");
+        assertEq(vars.wethDeltaAfter, vars.wethDeltaBefore + int256(amountToWithdraw), "Vault delta is wrong");
     }
 
     struct EthStateTest {
@@ -137,6 +149,8 @@ contract RouterCommonTest is BaseVaultTest {
         uint256 vaultEthAfter;
         uint256 vaultWethBefore;
         uint256 vaultWethAfter;
+        int256 wethDeltaBefore;
+        int256 wethDeltaAfter;
     }
 
     function _createEthStateTest() private view returns (EthStateTest memory vars) {
@@ -145,6 +159,7 @@ contract RouterCommonTest is BaseVaultTest {
 
         vars.vaultEthBefore = address(vault).balance;
         vars.vaultWethBefore = IERC20(address(weth)).balanceOf(address(vault));
+        vars.wethDeltaBefore = vault.getTokenDelta(weth);
     }
 
     function _fillEthStateTestAfter(EthStateTest memory vars) private view {
@@ -153,5 +168,6 @@ contract RouterCommonTest is BaseVaultTest {
 
         vars.vaultEthAfter = address(vault).balance;
         vars.vaultWethAfter = IERC20(address(weth)).balanceOf(address(vault));
+        vars.wethDeltaAfter = vault.getTokenDelta(weth);
     }
 }
