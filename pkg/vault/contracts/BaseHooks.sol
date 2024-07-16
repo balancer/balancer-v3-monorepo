@@ -118,7 +118,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
     }
 
     /// @inheritdoc IHooks
-    function onComputeDynamicSwapFee(
+    function onComputeDynamicSwapFeePercentage(
         IBasePool.PoolSwapParams calldata,
         address,
         uint256
