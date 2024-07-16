@@ -144,7 +144,7 @@ contract PoolHooksMock is BaseHooks {
         return !failOnBeforeSwapHook;
     }
 
-    function onAfterSwap(IHooks.AfterSwapParams calldata params) public override returns (bool, uint256) {
+    function onAfterSwap(AfterSwapParams calldata params) public override returns (bool, uint256) {
         // check that actual pool balances match
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = _vault.getPoolTokenInfo(params.pool);
 

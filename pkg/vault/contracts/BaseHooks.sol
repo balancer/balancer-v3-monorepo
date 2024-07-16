@@ -11,7 +11,8 @@ import {
     LiquidityManagement,
     RemoveLiquidityKind,
     TokenConfig,
-    PoolSwapParams
+    PoolSwapParams,
+    AfterSwapParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";

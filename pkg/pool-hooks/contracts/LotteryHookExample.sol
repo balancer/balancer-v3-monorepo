@@ -13,6 +13,7 @@ import {
     AddLiquidityKind,
     LiquidityManagement,
     RemoveLiquidityKind,
+    AfterSwapParams,
     SwapKind,
     TokenConfig,
     HookFlags

@@ -221,6 +221,37 @@ struct SwapParams {
 }
 
 /**
+ * @dev Data for the hook after a swap operation.
+ * @param kind Type of swap (exact in or exact out)
+ * @param tokenIn Token to be swapped from
+ * @param tokenOut Token to be swapped to
+ * @param amountInScaled18 Amount of tokenIn (entering the Vault)
+ * @param amountOutScaled18 Amount of tokenOut (leaving the Vault)
+ * @param tokenInBalanceScaled18 Updated (after swap) balance of tokenIn
+ * @param tokenOutBalanceScaled18 Updated (after swap) balance of tokenOut
+ * @param amountCalculatedScaled18 Token amount calculated by the swap
+ * @param amountCalculatedRaw Token amount calculated by the swap
+ * @param user Account originating the swap operation
+ * @param router The address (usually a router contract) that initiated a swap operation on the Vault
+ * @param pool Pool address
+ * @param userData Additional (optional) data required for the swap
+ */
+struct AfterSwapParams {
+    SwapKind kind;
+    IERC20 tokenIn;
+    IERC20 tokenOut;
+    uint256 amountInScaled18;
+    uint256 amountOutScaled18;
+    uint256 tokenInBalanceScaled18;
+    uint256 tokenOutBalanceScaled18;
+    uint256 amountCalculatedScaled18;
+    uint256 amountCalculatedRaw;
+    address router;
+    address pool;
+    bytes userData;
+}
+
+/**
  * @dev Data for a swap operation, used by contracts implementing `IBasePool`.
  * @param kind Type of swap (exact in or exact out)
  * @param amountGivenScaled18 Amount given based on kind of the swap (e.g., tokenIn for exact in)

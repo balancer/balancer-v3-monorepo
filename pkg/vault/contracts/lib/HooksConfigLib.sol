@@ -224,7 +224,7 @@ library HooksConfigLib {
             : (amountCalculatedScaled18, state.amountGivenScaled18);
 
         (bool success, uint256 hookAdjustedAmountCalculatedRaw) = hooksContract.onAfterSwap(
-            IHooks.AfterSwapParams({
+            AfterSwapParams({
                 kind: params.kind,
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,

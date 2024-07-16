@@ -63,7 +63,7 @@ contract MinimalHooksPoolMock is BaseHooks {
         return true;
     }
 
-    function onAfterSwap(IHooks.AfterSwapParams calldata params) public pure override returns (bool, uint256) {
+    function onAfterSwap(AfterSwapParams calldata params) public pure override returns (bool, uint256) {
         return (true, params.amountCalculatedRaw);
     }
 

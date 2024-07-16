@@ -12,7 +12,8 @@ import {
     LiquidityManagement,
     PoolSwapParams,
     AddLiquidityKind,
-    RemoveLiquidityKind
+    RemoveLiquidityKind,
+    AfterSwapParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BaseHooksMock } from "../../contracts/test/BaseHooksMock.sol";
@@ -152,7 +153,7 @@ contract BaseHooksTest is BaseVaultTest {
     }
 
     function testOnAfterSwap() public {
-        IHooks.AfterSwapParams memory params;
+        AfterSwapParams memory params;
 
         vm.prank(address(vault));
         (bool success, uint256 hookAdjustedAmount) = testHook.onAfterSwap(params);
