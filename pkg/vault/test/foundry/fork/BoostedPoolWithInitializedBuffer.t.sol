@@ -7,11 +7,11 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import { TokenConfig, TokenType, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -188,7 +188,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
         vars.expectedDeltaDai = swapAmount;
-        vars.expectedBufferDeltaDai = swapAmount;
+        vars.expectedBufferDeltaDai = int256(swapAmount);
         vars.expectedDeltaUsdc = swapAmount / USDC_FACTOR;
         vars.expectedBufferDeltaUsdc = swapAmount / USDC_FACTOR;
 
@@ -236,7 +236,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         );
 
         vars.expectedDeltaDai = waDAI.convertToAssets(expectedScaled18WrappedTokenInDai);
-        vars.expectedBufferDeltaDai = vars.expectedDeltaDai;
+        vars.expectedBufferDeltaDai = int256(vars.expectedDeltaDai);
         vars.expectedDeltaUsdc = swapAmount / USDC_FACTOR;
         vars.expectedBufferDeltaUsdc = swapAmount / USDC_FACTOR;
 
@@ -313,7 +313,9 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     }
 
     function testBoostedPoolSwapBufferUnbalancedExactIn__Fork__Fuzz(uint256 tooLargeSwapAmount) public {
-        _unbalanceWaDaiBuffer();
+        uint256 unbalancedAmount = _BUFFER_AMOUNT / 2;
+
+        _unbalanceBuffer(WrappingDirection.WRAP, waDAI, unbalancedAmount);
 
         tooLargeSwapAmount = bound(
             tooLargeSwapAmount,
@@ -323,7 +325,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
         vars.expectedDeltaDai = tooLargeSwapAmount;
-        vars.expectedBufferDeltaDai = 0;
+        vars.expectedBufferDeltaDai = -int256(unbalancedAmount);
         vars.expectedDeltaUsdc = tooLargeSwapAmount / USDC_FACTOR;
         vars.expectedBufferDeltaUsdc = 0;
 
@@ -340,7 +342,8 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     }
 
     function testBoostedPoolSwapBufferUnbalancedExactOut__Fork__Fuzz(uint256 tooLargeSwapAmount) public {
-        _unbalanceWaDaiBuffer();
+        uint256 unbalancedAmount = _BUFFER_AMOUNT / 2;
+        _unbalanceBuffer(WrappingDirection.WRAP, waDAI, unbalancedAmount);
 
         tooLargeSwapAmount = bound(
             tooLargeSwapAmount,
@@ -373,7 +376,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         );
 
         vars.expectedDeltaDai = waDAI.convertToAssets(expectedScaled18WrappedTokenInDai);
-        vars.expectedBufferDeltaDai = 0;
+        vars.expectedBufferDeltaDai = -int256(unbalancedAmount);
         vars.expectedDeltaUsdc = tooLargeSwapAmount / USDC_FACTOR;
         vars.expectedBufferDeltaUsdc = 0;
 
@@ -432,15 +435,24 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         });
     }
 
-    function _unbalanceWaDaiBuffer() private {
-        uint256 amountToUnbalance = _BUFFER_AMOUNT / 2;
+    function _unbalanceBuffer(WrappingDirection direction, IERC4626 wToken, uint256 amountToUnbalance) private {
+        IERC20 tokenIn;
+        IERC20 tokenOut;
+        if (direction == WrappingDirection.WRAP) {
+            tokenIn = IERC20(wToken.asset());
+            tokenOut = IERC20(address(wToken));
+        } else {
+            tokenIn = IERC20(address(wToken));
+            tokenOut = IERC20(wToken.asset());
+        }
+
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
 
-        steps[0] = IBatchRouter.SwapPathStep({ pool: aDAI_ADDRESS, tokenOut: daiMainnet, isBuffer: true });
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(wToken), tokenOut: tokenOut, isBuffer: true });
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
-            tokenIn: IERC20(address(aDAI_ADDRESS)),
+            tokenIn: tokenIn,
             steps: steps,
             exactAmountIn: amountToUnbalance,
             minAmountOut: 0
@@ -462,7 +474,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         uint256 boostedPoolBalanceBeforeSwapWaUsdc;
         uint256 expectedDeltaDai;
         uint256 expectedDeltaUsdc;
-        uint256 expectedBufferDeltaDai;
+        int256 expectedBufferDeltaDai;
         uint256 expectedBufferDeltaUsdc;
     }
 
@@ -561,13 +573,20 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
         assertApproxEqAbs(
             underlyingBalance,
-            vars.bufferBalanceBeforeSwapDai + vars.expectedBufferDeltaDai,
+            uint256(int256(vars.bufferBalanceBeforeSwapDai) + vars.expectedBufferDeltaDai),
             5,
             "Wrong DAI buffer pool underlying balance"
         );
         assertApproxEqAbs(
             wrappedBalance,
-            vars.bufferBalanceBeforeSwapWaDai - waDAI.convertToShares(vars.expectedBufferDeltaDai),
+            uint256(
+                int256(vars.bufferBalanceBeforeSwapWaDai) +
+                    (
+                        vars.expectedBufferDeltaDai < int256(0)
+                            ? int256(waDAI.convertToShares(uint256(-vars.expectedBufferDeltaDai)))
+                            : -int256(waDAI.convertToShares(uint256(vars.expectedBufferDeltaDai)))
+                    )
+            ),
             5,
             "Wrong DAI buffer pool wrapped balance"
         );
