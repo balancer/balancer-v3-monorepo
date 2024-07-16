@@ -156,8 +156,12 @@ contract VaultExplorerTest is BaseVaultTest {
     function testGetReservesOf() public {
         dai.mint(address(vault), defaultAmount);
 
-        assertEq(vault.getReservesOf(dai), defaultAmount, "Wrong Vault reserves");
-        assertEq(explorer.getReservesOf(dai), defaultAmount, "Wrong Explorer reserves");
+        vault.manualSetIsUnlocked(true);
+        uint256 settlementAmount = vault.settle(dai, defaultAmount);
+
+        assertEq(settlementAmount, defaultAmount, "Wrong settlement amount");
+        assertEq(vault.getReservesOf(dai), defaultAmount * 2, "Wrong Vault reserves");
+        assertEq(explorer.getReservesOf(dai), defaultAmount * 2, "Wrong Explorer reserves");
     }
 
     function testPoolRegistration() public {
@@ -336,7 +340,7 @@ contract VaultExplorerTest is BaseVaultTest {
     }
 
     function testGetCurrentLiveBalances() public view {
-        // Calculate live balances using the Vault
+        // Calculate live balances using the Vault (kind of overkill, as they're fetched directly below).
         PoolData memory poolData = vault.getPoolData(pool);
 
         uint256 daiLiveBalance = poolData.balancesRaw[daiIdx].toScaled18ApplyRateRoundDown(
@@ -348,13 +352,17 @@ contract VaultExplorerTest is BaseVaultTest {
             poolData.tokenRates[usdcIdx]
         );
 
-        // Get live balances through the Explorer
+        uint256[] memory vaultBalancesLiveScaled18 = vault.getCurrentLiveBalances(pool);
+        assertEq(vaultBalancesLiveScaled18.length, 2, "Invalid live balances array (Vault)");
+
         uint256[] memory balancesLiveScaled18 = explorer.getCurrentLiveBalances(pool);
+        assertEq(balancesLiveScaled18.length, 2, "Invalid live balances array (Explorer)");
 
-        assertEq(balancesLiveScaled18.length, 2, "Invalid live balances array");
+        assertEq(balancesLiveScaled18[daiIdx], daiLiveBalance, "DAI live balance wrong (calculated)");
+        assertEq(balancesLiveScaled18[usdcIdx], usdcLiveBalance, "USDC live balance wrong (calculated)");
 
-        assertEq(balancesLiveScaled18[daiIdx], daiLiveBalance, "DAI live balance wrong");
-        assertEq(balancesLiveScaled18[usdcIdx], usdcLiveBalance, "USDC live balance wrong");
+        assertEq(balancesLiveScaled18[daiIdx], vaultBalancesLiveScaled18[daiIdx], "DAI live balance wrong (Vault)");
+        assertEq(balancesLiveScaled18[usdcIdx], vaultBalancesLiveScaled18[usdcIdx], "USDC live balance wrong (Vault)");
     }
 
     function testGetPoolConfig() public {
@@ -506,11 +514,11 @@ contract VaultExplorerTest is BaseVaultTest {
         assertEq(vaultRoleAccounts.poolCreator, explorerRoleAccounts.poolCreator, "Pool creator mmismatch");
     }
 
-    function testComputeDynamicSwapFee() public {
+    function testComputeDynamicSwapFeePercentage() public {
         assertTrue(swapFeePercentage > 0, "Swap fee is zero");
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(swapFeePercentage);
 
-        (bool success, uint256 dynamicSwapFeePercentage) = explorer.computeDynamicSwapFee(
+        (bool success, uint256 dynamicSwapFeePercentage) = explorer.computeDynamicSwapFeePercentage(
             pool,
             IBasePool.PoolSwapParams({
                 kind: SwapKind.EXACT_IN,
