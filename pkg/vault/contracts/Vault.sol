@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
 import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -263,6 +265,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         } else {
             amountIn = amountCalculated;
         }
+
+        console.log("SWAP");
+        console.log("amountIn", amountIn);
+        console.log("amountOut", amountOut);
     }
 
     function _loadSwapState(
@@ -1045,6 +1051,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (params.direction == WrappingDirection.UNWRAP) {
+            console.log("UNWRAP");
             (amountCalculatedRaw, amountInRaw, amountOutRaw) = _unwrapWithBuffer(
                 params.kind,
                 underlyingToken,
@@ -1053,6 +1060,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             emit Unwrap(params.wrappedToken, underlyingToken, amountInRaw, amountOutRaw);
         } else {
+            console.log("WRAP");
             (amountCalculatedRaw, amountInRaw, amountOutRaw) = _wrapWithBuffer(
                 params.kind,
                 underlyingToken,
@@ -1069,6 +1077,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (params.kind == SwapKind.EXACT_OUT && amountInRaw > params.limitRaw) {
             revert SwapLimit(amountInRaw, params.limitRaw);
         }
+
+        console.log("amountInRaw ", amountInRaw);
+        console.log("amountOutRaw", amountOutRaw);
     }
 
     /**
@@ -1140,7 +1151,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called
                 wrappedToken.deposit(calculatedUnderlyingDelta, address(this));
             } else {
-                // Nnote that `bufferWrappedSurplus` will be zero if there is no bufferUnderlyingSurplus.
+                // Note that `bufferWrappedSurplus` will be zero if there is no bufferUnderlyingSurplus.
                 calculatedWrappedDelta = amountOutWrapped + bufferWrappedSurplus;
 
                 // Add convert error because mint can consume a different amount of tokens than we anticipated with
@@ -1186,6 +1197,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Only updates buffer balances if buffer has a surplus of underlying tokens
             if (bufferUnderlyingSurplus > 0) {
+                console.log("surplus");
                 // If buffer has an underlying surplus, it wraps the surplus + amountIn, so the final amountIn needs
                 // to discount that
                 amountInUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus;

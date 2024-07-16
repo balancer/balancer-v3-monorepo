@@ -312,6 +312,79 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
 
+    function testBoostedPoolSwapBufferUnbalancedExactIn__Fork__Fuzz(uint256 tooLargeSwapAmount) public {
+        _unbalanceWaDaiBuffer();
+
+        tooLargeSwapAmount = bound(
+            tooLargeSwapAmount,
+            2 * _MAX_SWAP_AMOUNT_WITHIN_BUFFER_RANGE,
+            _MAX_SWAP_AMOUNT_OUTSIDE_BUFFER_RANGE
+        );
+
+        SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
+        vars.expectedDeltaDai = tooLargeSwapAmount;
+        vars.expectedBufferDeltaDai = 0;
+        vars.expectedDeltaUsdc = tooLargeSwapAmount / USDC_FACTOR;
+        vars.expectedBufferDeltaUsdc = 0;
+
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(
+            tooLargeSwapAmount,
+            tooLargeSwapAmount / USDC_FACTOR - 1
+        );
+
+        vm.prank(alice);
+        (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, vars);
+    }
+
+    function testBoostedPoolSwapBufferUnbalancedExactOut__Fork__Fuzz(uint256 tooLargeSwapAmount) public {
+        _unbalanceWaDaiBuffer();
+
+        tooLargeSwapAmount = bound(
+            tooLargeSwapAmount,
+            2 * _MAX_SWAP_AMOUNT_WITHIN_BUFFER_RANGE,
+            _MAX_SWAP_AMOUNT_OUTSIDE_BUFFER_RANGE
+        );
+
+        SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
+
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
+            tooLargeSwapAmount + DAI_TO_USDC_FACTOR,
+            tooLargeSwapAmount / USDC_FACTOR
+        );
+
+        // EXACT_IN DAI -> USDC does not introduce rounding issues, since the resulting amountOut is divided by 1e12
+        // to get the correct amount of USDC to return.
+        // However, EXACT_OUT DAI -> USDC has rounding issues, because amount out is given in 6 digits, and we want an
+        // 18 decimals amount in, which is not precisely calculated. The calculation below reproduces what happens in
+        // the vault to scale tokens in the swap operation of the boosted pool
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(alice);
+        uint256 expectedWrappedTokenOutUsdc = waUSDC.withdraw(tooLargeSwapAmount / USDC_FACTOR, alice, alice);
+        uint256 expectedScaled18WrappedTokenOutUsdc = FixedPoint.mulDown(
+            expectedWrappedTokenOutUsdc * USDC_FACTOR,
+            waUSDC.convertToAssets(FixedPoint.ONE)
+        );
+        uint256 expectedScaled18WrappedTokenInDai = FixedPoint.divDown(
+            expectedScaled18WrappedTokenOutUsdc,
+            waDAI.convertToAssets(FixedPoint.ONE)
+        );
+
+        vars.expectedDeltaDai = waDAI.convertToAssets(expectedScaled18WrappedTokenInDai);
+        vars.expectedBufferDeltaDai = 0;
+        vars.expectedDeltaUsdc = tooLargeSwapAmount / USDC_FACTOR;
+        vars.expectedBufferDeltaUsdc = 0;
+        vm.revertTo(snapshotId);
+
+        vm.prank(alice);
+        (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
+            .swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
+    }
+
     function _buildExactInPaths(
         uint256 exactAmountIn,
         uint256 minAmountOut
@@ -356,6 +429,24 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
             maxAmountIn: maxAmountIn,
             exactAmountOut: exactAmountOut
         });
+    }
+
+    function _unbalanceWaDaiBuffer() private {
+        uint256 amountToUnbalance = _BUFFER_AMOUNT / 2;
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
+
+        steps[0] = IBatchRouter.SwapPathStep({ pool: aDAI_ADDRESS, tokenOut: daiMainnet, isBuffer: true });
+
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
+        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+            tokenIn: IERC20(address(aDAI_ADDRESS)),
+            steps: steps,
+            exactAmountIn: amountToUnbalance,
+            minAmountOut: 0
+        });
+
+        vm.prank(alice);
+        batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
     struct SwapResultLocals {
