@@ -225,19 +225,20 @@ contract DirectionalHookExampleTest is BaseVaultTest {
 
         // Call dynamic fee hook to fetch the expected swap fee percentage
         vm.prank(address(vault));
-        (, uint256 expectedSwapFeePercentage) = DirectionalFeeHookExample(poolHooksContract).onComputeDynamicSwapFeePercentage(
-            IBasePool.PoolSwapParams({
-                kind: SwapKind.EXACT_IN,
-                amountGivenScaled18: daiExactAmountIn,
-                balancesScaled18: balancesScaled18,
-                indexIn: daiIdx,
-                indexOut: usdcIdx,
-                router: address(0), // The router is not used by the hook
-                userData: bytes("") // User data is not used by the hook
-            }),
-            pool,
-            SWAP_FEE_PERCENTAGE
-        );
+        (, uint256 expectedSwapFeePercentage) = DirectionalFeeHookExample(poolHooksContract)
+            .onComputeDynamicSwapFeePercentage(
+                IBasePool.PoolSwapParams({
+                    kind: SwapKind.EXACT_IN,
+                    amountGivenScaled18: daiExactAmountIn,
+                    balancesScaled18: balancesScaled18,
+                    indexIn: daiIdx,
+                    indexOut: usdcIdx,
+                    router: address(0), // The router is not used by the hook
+                    userData: bytes("") // User data is not used by the hook
+                }),
+                pool,
+                SWAP_FEE_PERCENTAGE
+            );
 
         // Brings pool nearer equilibrium by swapping DAI for USDC
         vm.prank(bob);
