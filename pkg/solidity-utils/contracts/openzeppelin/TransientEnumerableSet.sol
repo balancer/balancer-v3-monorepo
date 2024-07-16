@@ -116,7 +116,9 @@ library TransientEnumerableSet {
             // Delete the slot where the moved value was stored
             _values(set).tPop();
 
-            // We don't need to delete the index for the deleted slot with transient storage.
+            // We need to delete the index for the deleted slot with transient storage because another operation in the
+            // same transaction may want to add the same element to the array again.
+            _indexes(set).tSet(value, 0);
 
             return true;
         } else {
