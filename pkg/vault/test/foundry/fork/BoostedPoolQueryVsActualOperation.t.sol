@@ -461,6 +461,7 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
 
         PoolRoleAccounts memory roleAccounts;
 
+        // Created copying boosted pool 0x302b75a27e5e157f93c679dd7a25fdfcdbc1473c (Sepolia).
         address stablePool = stablePoolFactory.create(
             "Boosted Pool",
             "BP",
