@@ -58,6 +58,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     // The boosted pool will have 100x the liquidity of the buffer
     uint256 private constant _BOOSTED_POOL_AMOUNT = 1e6 * 1e18;
     uint256 private constant _BUFFER_AMOUNT = _BOOSTED_POOL_AMOUNT / 100;
+    uint256 private constant _HALF_BUFFER_AMOUNT = _BUFFER_AMOUNT / 2;
     uint256 private constant _MAX_SWAP_AMOUNT_WITHIN_BUFFER_RANGE = _BUFFER_AMOUNT;
     uint256 private constant _MAX_SWAP_AMOUNT_OUTSIDE_BUFFER_RANGE = _BOOSTED_POOL_AMOUNT / 2;
 
@@ -193,7 +194,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(
             swapAmount,
-            swapAmount / USDC_FACTOR - 1
+            swapAmount / USDC_FACTOR - 2
         );
 
         vm.prank(alice);
@@ -311,10 +312,16 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
 
-    function testBoostedPoolSwapBufferUnbalancedExactIn__Fork__Fuzz(uint256 tooLargeSwapAmount) public {
-        uint256 unbalancedAmount = _BUFFER_AMOUNT / 2;
-
-        _unbalanceBuffer(WrappingDirection.WRAP, waDAI, unbalancedAmount);
+    function testBoostedPoolSwapBufferUnbalancedExactIn__Fork__Fuzz(
+        uint256 tooLargeSwapAmount,
+        uint256 unbalancedAmountDai
+    ) public {
+        unbalancedAmountDai = bound(unbalancedAmountDai, 0, _BUFFER_AMOUNT);
+        if (unbalancedAmountDai > _HALF_BUFFER_AMOUNT) {
+            _unbalanceBuffer(WrappingDirection.WRAP, waDAI, unbalancedAmountDai - _HALF_BUFFER_AMOUNT);
+        } else {
+            _unbalanceBuffer(WrappingDirection.UNWRAP, waDAI, _HALF_BUFFER_AMOUNT - unbalancedAmountDai);
+        }
 
         tooLargeSwapAmount = bound(
             tooLargeSwapAmount,
@@ -324,7 +331,14 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
         vars.expectedDeltaDai = tooLargeSwapAmount;
-        vars.expectedBufferDeltaDai = -int256(unbalancedAmount);
+        if (unbalancedAmountDai > _HALF_BUFFER_AMOUNT) {
+            vars.expectedBufferDeltaDai = int256(_HALF_BUFFER_AMOUNT) - int256(unbalancedAmountDai);
+        } else {
+            // aDAI is wrapping DAI, but the unbalance operation was to remove underlying tokens (different direction),
+            // so the buffer does not rebalance after the swap. It means, the expected delta is 0.
+            vars.expectedBufferDeltaDai = 0;
+        }
+
         vars.expectedDeltaUsdc = tooLargeSwapAmount / USDC_FACTOR;
         vars.expectedBufferDeltaUsdc = 0;
 
@@ -340,9 +354,16 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, vars);
     }
 
-    function testBoostedPoolSwapBufferUnbalancedExactOut__Fork__Fuzz(uint256 tooLargeSwapAmount) public {
-        uint256 unbalancedAmount = _BUFFER_AMOUNT / 2;
-        _unbalanceBuffer(WrappingDirection.WRAP, waDAI, unbalancedAmount);
+    function testBoostedPoolSwapBufferUnbalancedExactOut__Fork__Fuzz(
+        uint256 tooLargeSwapAmount,
+        uint256 unbalancedAmountDai
+    ) public {
+        unbalancedAmountDai = bound(unbalancedAmountDai, 0, _BUFFER_AMOUNT);
+        if (unbalancedAmountDai > _HALF_BUFFER_AMOUNT) {
+            _unbalanceBuffer(WrappingDirection.WRAP, waDAI, unbalancedAmountDai - _HALF_BUFFER_AMOUNT);
+        } else {
+            _unbalanceBuffer(WrappingDirection.UNWRAP, waDAI, _HALF_BUFFER_AMOUNT - unbalancedAmountDai);
+        }
 
         tooLargeSwapAmount = bound(
             tooLargeSwapAmount,
@@ -375,10 +396,17 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         );
 
         vars.expectedDeltaDai = waDAI.convertToAssets(expectedScaled18WrappedTokenInDai);
-        vars.expectedBufferDeltaDai = -int256(unbalancedAmount);
+        if (unbalancedAmountDai > _HALF_BUFFER_AMOUNT) {
+            vars.expectedBufferDeltaDai = int256(_HALF_BUFFER_AMOUNT) - int256(unbalancedAmountDai);
+        } else {
+            // aDAI is wrapping DAI, but the unbalance operation was to remove underlying tokens (different direction),
+            // so the buffer does not rebalance after the swap. It means, the expected delta is 0.
+            vars.expectedBufferDeltaDai = 0;
+        }
+
         vars.expectedDeltaUsdc = tooLargeSwapAmount / USDC_FACTOR;
         vars.expectedBufferDeltaUsdc = 0;
-
+        // Reverts after convertToAssets call, to get the most accurate rate from the wrapped token.
         vm.revertTo(snapshotId);
 
         vm.prank(alice);
