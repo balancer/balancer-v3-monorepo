@@ -4,12 +4,14 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
+import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { StablePool } from "./StablePool.sol";
@@ -64,6 +66,12 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
     ) external returns (address pool) {
         if (roleAccounts.poolCreator != address(0)) {
             revert StandardPoolWithCreator();
+        }
+
+        // As the Stable Pool deployment does not know about the tokens, and the registration doesn't know about the
+        // pool type, we enforce the token limit at the factory level.
+        if (tokens.length > StableMath.MAX_STABLE_TOKENS) {
+            revert IVaultErrors.MaxTokens();
         }
 
         LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
