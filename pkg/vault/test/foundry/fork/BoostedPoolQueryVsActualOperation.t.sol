@@ -19,7 +19,7 @@ import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/Stabl
 import { ERC4626RateProvider } from "../../../contracts/test/ERC4626RateProvider.sol";
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
-contract BoostedPoolSepoliaTest is BaseVaultTest {
+contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
     uint256 private constant BLOCK_NUMBER = 6288761;
 
     address private constant _donorDai = 0x4d02aF17A29cdA77416A1F60Eae9092BB6d9c026;
@@ -37,6 +37,10 @@ contract BoostedPoolSepoliaTest is BaseVaultTest {
     uint256 internal wDaiIdx;
     uint256 internal wUsdcIdx;
 
+    uint256 internal constant DAI_FACTOR = 1e18;
+    uint256 internal constant USDC_FACTOR = 1e6;
+    uint256 internal constant BUFFER_INIT_AMOUNT = 100;
+
     function setUp() public override {
         vm.createSelectFork({ blockNumber: BLOCK_NUMBER, urlOrAlias: "sepolia" });
 
@@ -48,8 +52,9 @@ contract BoostedPoolSepoliaTest is BaseVaultTest {
         _createAndInitializeBoostedPool();
     }
 
-    function testSwapExactIn__Fork() public {
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(50e6, 0);
+    function testWithinBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
+        amountIn = bound(amountIn, (BUFFER_INIT_AMOUNT * USDC_FACTOR) / 10, BUFFER_INIT_AMOUNT * USDC_FACTOR);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountIn, 0);
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
@@ -62,8 +67,45 @@ contract BoostedPoolSepoliaTest is BaseVaultTest {
         assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
     }
 
-    function testSwapExactOut__Fork() public {
-        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(51e6, 50e18);
+    function testWithinBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
+        amountOut = bound(amountOut, (BUFFER_INIT_AMOUNT * DAI_FACTOR) / 10, BUFFER_INIT_AMOUNT * DAI_FACTOR);
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
+            (2 * amountOut * USDC_FACTOR) / DAI_FACTOR,
+            amountOut
+        );
+
+        uint256 snapshotId = vm.snapshot();
+        _prankStaticCall();
+        (uint256[] memory queryPathAmountsIn, , ) = batchRouter.querySwapExactOut(paths, bytes(""));
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        (uint256[] memory actualPathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual outputs do not match");
+    }
+
+    function testOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
+        amountIn = bound(amountIn, 2 * BUFFER_INIT_AMOUNT * USDC_FACTOR, 4 * BUFFER_INIT_AMOUNT * USDC_FACTOR);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountIn, 0);
+
+        uint256 snapshotId = vm.snapshot();
+        _prankStaticCall();
+        (uint256[] memory queryPathAmountsOut, , ) = batchRouter.querySwapExactIn(paths, bytes(""));
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        (uint256[] memory actualPathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
+    }
+
+    function testOutOfBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
+        amountOut = bound(amountOut, 2 * BUFFER_INIT_AMOUNT * DAI_FACTOR, 4 * BUFFER_INIT_AMOUNT * DAI_FACTOR);
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
+            (2 * amountOut * USDC_FACTOR) / DAI_FACTOR,
+            amountOut
+        );
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
@@ -187,8 +229,8 @@ contract BoostedPoolSepoliaTest is BaseVaultTest {
 
     function _setupBuffers() private {
         vm.startPrank(lp);
-        router.addLiquidityToBuffer(wDAI, 100e18, 100e18, lp);
-        router.addLiquidityToBuffer(wUSDC, 100e6, 100e6, lp);
+        router.addLiquidityToBuffer(wDAI, BUFFER_INIT_AMOUNT * DAI_FACTOR, BUFFER_INIT_AMOUNT * DAI_FACTOR, lp);
+        router.addLiquidityToBuffer(wUSDC, BUFFER_INIT_AMOUNT * USDC_FACTOR, BUFFER_INIT_AMOUNT * USDC_FACTOR, lp);
         vm.stopPrank();
     }
 

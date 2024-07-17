@@ -32,6 +32,7 @@ import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/Ba
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
+import { BufferHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/BufferHelpers.sol";
 
 import { VaultStateLib, VaultStateBits, VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -41,6 +42,7 @@ import { VaultCommon } from "./VaultCommon.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
     using PackedTokenBalance for bytes32;
+    using BufferHelpers for bytes32;
     using InputHelpers for uint256;
     using FixedPoint for *;
     using ArrayHelpers for uint256[];
@@ -1143,7 +1145,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // surplus of underlying tokens.
 
             // Gets the amount of underlying to wrap in order to rebalance the buffer.
-            uint256 bufferUnderlyingSurplus = _getBufferUnderlyingSurplus(bufferBalances, wrappedToken);
+            uint256 bufferUnderlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wrappedToken);
             uint256 bufferWrappedSurplus;
 
             if (bufferUnderlyingSurplus > 0) {
@@ -1273,7 +1275,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // surplus of underlying tokens.
 
             // Gets the amount of wrapped tokens to unwrap in order to rebalance the buffer.
-            uint256 bufferWrappedSurplus = _getBufferWrappedSurplus(bufferBalances, wrappedToken);
+            uint256 bufferWrappedSurplus = bufferBalances.getBufferWrappedSurplus(wrappedToken);
             uint256 bufferUnderlyingSurplus;
 
             if (bufferWrappedSurplus > 0) {
@@ -1364,62 +1366,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             )
         );
         return abi.decode(data, (uint256, uint256, uint256));
-    }
-
-    /**
-     * @dev Underlying surplus is the amount of underlying that need to be wrapped for the buffer to be rebalanced.
-     * For instance, consider the following scenario:
-     * - buffer balances: 2 wrapped and 10 underlying
-     * - wrapped rate: 2
-     * - normalized buffer balances: 4 wrapped as underlying (2 wrapped * rate) and 10 underlying
-     * - surplus of underlying = (10 - 4) / 2 = 3 underlying
-     * We need to wrap 3 underlying tokens to consider the buffer rebalanced.
-     * - 3 underlying = 1.5 wrapped
-     * - final balances: 3.5 wrapped (2 existing + 1.5 new) and 7 underlying (10 existing - 3)
-     */
-    function _getBufferUnderlyingSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (uint256) {
-        uint256 underlyingBalance = bufferBalance.getBalanceRaw();
-
-        uint256 wrappedBalanceAsUnderlying = 0;
-        if (bufferBalance.getBalanceDerived() > 0) {
-            wrappedBalanceAsUnderlying = wrappedToken.convertToAssets(bufferBalance.getBalanceDerived());
-        }
-
-        uint256 surplus = 0;
-        if (underlyingBalance > wrappedBalanceAsUnderlying) {
-            unchecked {
-                surplus = (underlyingBalance - wrappedBalanceAsUnderlying) / 2;
-            }
-        }
-        return surplus;
-    }
-
-    /**
-     * @dev Wrapped surplus is the amount of wrapped tokens that need to be unwrapped for the buffer to be rebalanced.
-     * For instance, consider the following scenario:
-     * - buffer balances: 10 wrapped and 4 underlying
-     * - wrapped rate: 2
-     * - normalized buffer balances: 10 wrapped and 2 underlying as wrapped (2 underlying / rate)
-     * - surplus of wrapped = (10 - 2) / 2 = 4 wrapped
-     * We need to unwrap 4 wrapped tokens to consider the buffer rebalanced.
-     * - 4 wrapped = 8 underlying
-     * - final balances: 6 wrapped (10 existing - 4) and 12 underlying (4 existing + 8 new)
-     */
-    function _getBufferWrappedSurplus(bytes32 bufferBalance, IERC4626 wrappedToken) internal view returns (uint256) {
-        uint256 wrappedBalance = bufferBalance.getBalanceDerived();
-
-        uint256 underlyingBalanceAsWrapped = 0;
-        if (bufferBalance.getBalanceRaw() > 0) {
-            underlyingBalanceAsWrapped = wrappedToken.convertToShares(bufferBalance.getBalanceRaw());
-        }
-
-        uint256 surplus = 0;
-        if (wrappedBalance > underlyingBalanceAsWrapped) {
-            unchecked {
-                surplus = (wrappedBalance - underlyingBalanceAsWrapped) / 2;
-            }
-        }
-        return surplus;
     }
 
     /**

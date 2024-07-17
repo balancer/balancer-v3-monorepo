@@ -36,6 +36,7 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
+import { BufferHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/BufferHelpers.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
@@ -60,6 +61,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using FixedPoint for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
     using PackedTokenBalance for bytes32;
+    using BufferHelpers for bytes32;
     using PoolConfigLib for PoolConfigBits;
     using HooksConfigLib for PoolConfigBits;
     using InputHelpers for uint256;
@@ -890,6 +892,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         // Uses the most accurate calculation so that a query matches the actual operation
         if (direction == WrappingDirection.WRAP) {
+            uint256 bufferUnderlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wrappedToken);
+            uint256 bufferWrappedSurplus;
+
+            if (bufferUnderlyingSurplus > 0) {
+                bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
+            }
+
             // Amount in is underlying tokens, amount out is wrapped tokens
             if (kind == SwapKind.EXACT_IN) {
                 // If buffer has enough balance, convertToShares is used by the actual operation to calculate amountOut.
@@ -897,7 +906,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 if (bufferBalances.getBalanceDerived() < amountCalculated) {
                     // Buffer does not have enough balance, so the actual operation will deposit. To mimic the actual
                     // operation, we preview deposit.
-                    amountCalculated = wrappedToken.previewDeposit(amountGiven);
+                    amountCalculated = wrappedToken.previewDeposit(amountGiven + bufferUnderlyingSurplus);
+                    if (underlyingToken.balanceOf(address(this)) > amountGiven + bufferUnderlyingSurplus) {
+                        // If the vault has enough underlying tokens to deposit, makes the deposit to impact the rate
+                        // in the same way as the actual operation (it's a query, the operation will be reverted)
+                        amountCalculated = wrappedToken.deposit(amountGiven + bufferUnderlyingSurplus, address(this));
+                    }
+                    amountCalculated -= bufferWrappedSurplus;
                 }
                 (amountIn, amountOut) = (amountGiven, amountCalculated);
             } else {
@@ -906,30 +921,63 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 if (bufferBalances.getBalanceDerived() < amountGiven) {
                     // Buffer does not have enough balance, so the actual operation will mint. To mimic the actual
                     // operation, we preview mint.
-                    amountCalculated = wrappedToken.previewMint(amountGiven);
+                    amountCalculated = wrappedToken.previewMint(amountGiven + bufferWrappedSurplus);
+                    if (underlyingToken.balanceOf(address(this)) > amountCalculated + bufferUnderlyingSurplus) {
+                        // If the vault has enough underlying tokens to mint shares, use mint to impact the rate in the
+                        // same way as the actual operation (it's a query, the operation will be reverted)
+                        amountCalculated = wrappedToken.mint(amountGiven + bufferWrappedSurplus, address(this));
+                    }
+                    amountCalculated -= bufferUnderlyingSurplus;
                 }
                 (amountIn, amountOut) = (amountCalculated, amountGiven);
             }
             _takeDebt(underlyingToken, amountIn);
             _supplyCredit(wrappedToken, amountOut);
         } else {
+            uint256 bufferWrappedSurplus = bufferBalances.getBufferWrappedSurplus(wrappedToken);
+            uint256 bufferUnderlyingSurplus;
+
+            if (bufferWrappedSurplus > 0) {
+                bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
+            }
+
             // Amount in is wrapped tokens, amount out is underlying tokens
             if (kind == SwapKind.EXACT_IN) {
                 // If buffer has enough balance, convertToShares is used by the actual operation to calculate amountOut.
                 amountCalculated = wrappedToken.convertToAssets(amountGiven);
-                if (bufferBalances.getBalanceDerived() < amountCalculated) {
+                if (bufferBalances.getBalanceRaw() < amountCalculated) {
                     // Buffer does not have enough balance, so the actual operation will redeem. To mimic the actual
                     // operation, we preview redeem.
-                    amountCalculated = wrappedToken.previewRedeem(amountGiven);
+                    amountCalculated = wrappedToken.previewRedeem(amountGiven + bufferWrappedSurplus);
+                    if (wrappedToken.balanceOf(address(this)) > amountGiven + bufferWrappedSurplus) {
+                        // If the vault has enough wrapped tokens to redeem shares, use redeem to impact the rate in
+                        // the same way as the actual operation (it's a query, the operation will be reverted)
+                        amountCalculated = wrappedToken.redeem(
+                            amountGiven + bufferWrappedSurplus,
+                            address(this),
+                            address(this)
+                        );
+                    }
+                    amountCalculated -= bufferUnderlyingSurplus;
                 }
                 (amountIn, amountOut) = (amountGiven, amountCalculated);
             } else {
                 // If buffer has enough balance, convertToShares is used by the actual operation to calculate amountOut.
                 amountCalculated = wrappedToken.convertToShares(amountGiven);
-                if (bufferBalances.getBalanceDerived() < amountCalculated) {
+                if (bufferBalances.getBalanceRaw() < amountGiven) {
                     // Buffer does not have enough balance, so the actual operation will deposit. To mimic the actual
                     // operation, we preview deposit.
-                    amountCalculated = wrappedToken.previewWithdraw(amountGiven);
+                    amountCalculated = wrappedToken.previewWithdraw(amountGiven + bufferUnderlyingSurplus);
+                    if (wrappedToken.balanceOf(address(this)) > amountCalculated + bufferWrappedSurplus) {
+                        // If the vault has enough wrapped tokens to withdraw assets, use withdraw to impact the rate
+                        // in the same way as the actual operation (it's a query, the operation will be reverted)
+                        amountCalculated = wrappedToken.withdraw(
+                            amountGiven + bufferUnderlyingSurplus,
+                            address(this),
+                            address(this)
+                        );
+                    }
+                    amountCalculated -= bufferWrappedSurplus;
                 }
                 (amountIn, amountOut) = (amountCalculated, amountGiven);
             }
