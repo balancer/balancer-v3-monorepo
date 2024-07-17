@@ -257,7 +257,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(
             tooLargeSwapAmount,
-            tooLargeSwapAmount / USDC_FACTOR - 1
+            tooLargeSwapAmount / USDC_FACTOR - 2
         );
 
         vm.prank(alice);

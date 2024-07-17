@@ -56,7 +56,7 @@ contract BoostedPoolSepoliaTest is BaseVaultTest {
         _createAndInitializeBoostedPool();
     }
 
-    function testSwapExactIn() public {
+    function testSwapExactIn__Fork() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(50e6, 0);
 
         uint256 snapshotId = vm.snapshot();
@@ -70,7 +70,7 @@ contract BoostedPoolSepoliaTest is BaseVaultTest {
         assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
     }
 
-    function testSwapExactOut() public {
+    function testSwapExactOut__Fork() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(51e6, 50e18);
 
         uint256 snapshotId = vm.snapshot();
