@@ -943,7 +943,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
             // Amount in is wrapped tokens, amount out is underlying tokens
             if (kind == SwapKind.EXACT_IN) {
-                // If buffer has enough balance, convertToShares is used by the actual operation to calculate amountOut.
+                // If buffer has enough balance, convertToAssets is used by the actual operation to calculate amountOut.
                 amountCalculated = wrappedToken.convertToAssets(amountGiven);
                 if (bufferBalances.getBalanceRaw() < amountCalculated) {
                     // Buffer does not have enough balance, so the actual operation will redeem. To mimic the actual
@@ -962,7 +962,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 }
                 (amountIn, amountOut) = (amountGiven, amountCalculated);
             } else {
-                // If buffer has enough balance, convertToShares is used by the actual operation to calculate amountOut.
+                // If buffer has enough balance, convertToShares is used by the actual operation to calculate amountIn.
                 amountCalculated = wrappedToken.convertToShares(amountGiven);
                 if (bufferBalances.getBalanceRaw() < amountGiven) {
                     // Buffer does not have enough balance, so the actual operation will deposit. To mimic the actual
