@@ -890,7 +890,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
         bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
 
-        // Uses the most accurate calculation so that a query matches the actual operation
+        // Uses the most accurate calculation so that a query matches the actual operation.
         if (direction == WrappingDirection.WRAP) {
             uint256 bufferUnderlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wrappedToken);
             uint256 bufferWrappedSurplus;
@@ -899,7 +899,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
             }
 
-            // Amount in is underlying tokens, amount out is wrapped tokens
+            // Amount in is underlying tokens, amount out is wrapped tokens.
             if (kind == SwapKind.EXACT_IN) {
                 // If buffer has enough balance, convertToShares is used by the actual operation to calculate amountOut.
                 amountCalculated = wrappedToken.convertToShares(amountGiven);
@@ -909,7 +909,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                     amountCalculated = wrappedToken.previewDeposit(amountGiven + bufferUnderlyingSurplus);
                     if (underlyingToken.balanceOf(address(this)) > amountGiven + bufferUnderlyingSurplus) {
                         // If the vault has enough underlying tokens to deposit, makes the deposit to impact the rate
-                        // in the same way as the actual operation (it's a query, the operation will be reverted)
+                        // in the same way as the actual operation (it's a query, the operation will be reverted).
                         amountCalculated = wrappedToken.deposit(amountGiven + bufferUnderlyingSurplus, address(this));
                     }
                     amountCalculated -= bufferWrappedSurplus;
@@ -924,7 +924,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                     amountCalculated = wrappedToken.previewMint(amountGiven + bufferWrappedSurplus);
                     if (underlyingToken.balanceOf(address(this)) > amountCalculated + bufferUnderlyingSurplus) {
                         // If the vault has enough underlying tokens to mint shares, use mint to impact the rate in the
-                        // same way as the actual operation (it's a query, the operation will be reverted)
+                        // same way as the actual operation (it's a query, the operation will be reverted).
                         amountCalculated = wrappedToken.mint(amountGiven + bufferWrappedSurplus, address(this));
                     }
                     amountCalculated -= bufferUnderlyingSurplus;
@@ -941,7 +941,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
             }
 
-            // Amount in is wrapped tokens, amount out is underlying tokens
+            // Amount in is wrapped tokens, amount out is underlying tokens.
             if (kind == SwapKind.EXACT_IN) {
                 // If buffer has enough balance, convertToAssets is used by the actual operation to calculate amountOut.
                 amountCalculated = wrappedToken.convertToAssets(amountGiven);
@@ -951,7 +951,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                     amountCalculated = wrappedToken.previewRedeem(amountGiven + bufferWrappedSurplus);
                     if (wrappedToken.balanceOf(address(this)) > amountGiven + bufferWrappedSurplus) {
                         // If the vault has enough wrapped tokens to redeem shares, use redeem to impact the rate in
-                        // the same way as the actual operation (it's a query, the operation will be reverted)
+                        // the same way as the actual operation (it's a query, the operation will be reverted).
                         amountCalculated = wrappedToken.redeem(
                             amountGiven + bufferWrappedSurplus,
                             address(this),
@@ -970,7 +970,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                     amountCalculated = wrappedToken.previewWithdraw(amountGiven + bufferUnderlyingSurplus);
                     if (wrappedToken.balanceOf(address(this)) > amountCalculated + bufferWrappedSurplus) {
                         // If the vault has enough wrapped tokens to withdraw assets, use withdraw to impact the rate
-                        // in the same way as the actual operation (it's a query, the operation will be reverted)
+                        // in the same way as the actual operation (it's a query, the operation will be reverted).
                         amountCalculated = wrappedToken.withdraw(
                             amountGiven + bufferUnderlyingSurplus,
                             address(this),
