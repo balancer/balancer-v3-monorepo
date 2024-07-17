@@ -885,14 +885,29 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 amountGiven
     ) external query onlyVaultDelegateCall returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
         IERC20 underlyingToken = IERC20(wrappedToken.asset());
+
+        bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
+
         // Uses the most accurate calculation so that a query matches the actual operation
         if (direction == WrappingDirection.WRAP) {
             // Amount in is underlying tokens, amount out is wrapped tokens
             if (kind == SwapKind.EXACT_IN) {
-                amountCalculated = wrappedToken.previewDeposit(amountGiven);
+                // If buffer has enough balance, convertToShares is used by the actual operation to calculate amountOut.
+                amountCalculated = wrappedToken.convertToShares(amountGiven);
+                if (bufferBalances.getBalanceDerived() < amountCalculated) {
+                    // Buffer does not have enough balance, so the actual operation will deposit. To mimic the actual
+                    // operation, we preview deposit.
+                    amountCalculated = wrappedToken.previewDeposit(amountGiven);
+                }
                 (amountIn, amountOut) = (amountGiven, amountCalculated);
             } else {
-                amountCalculated = wrappedToken.previewMint(amountGiven);
+                // If buffer has enough balance, convertToAssets is used by the actual operation to calculate amountIn.
+                amountCalculated = wrappedToken.convertToAssets(amountGiven);
+                if (bufferBalances.getBalanceDerived() < amountGiven) {
+                    // Buffer does not have enough balance, so the actual operation will mint. To mimic the actual
+                    // operation, we preview mint.
+                    amountCalculated = wrappedToken.previewMint(amountGiven);
+                }
                 (amountIn, amountOut) = (amountCalculated, amountGiven);
             }
             _takeDebt(underlyingToken, amountIn);
@@ -900,10 +915,22 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         } else {
             // Amount in is wrapped tokens, amount out is underlying tokens
             if (kind == SwapKind.EXACT_IN) {
-                amountCalculated = wrappedToken.previewRedeem(amountGiven);
+                // If buffer has enough balance, convertToShares is used by the actual operation to calculate amountOut.
+                amountCalculated = wrappedToken.convertToAssets(amountGiven);
+                if (bufferBalances.getBalanceDerived() < amountCalculated) {
+                    // Buffer does not have enough balance, so the actual operation will redeem. To mimic the actual
+                    // operation, we preview redeem.
+                    amountCalculated = wrappedToken.previewRedeem(amountGiven);
+                }
                 (amountIn, amountOut) = (amountGiven, amountCalculated);
             } else {
-                amountCalculated = wrappedToken.previewWithdraw(amountGiven);
+                // If buffer has enough balance, convertToShares is used by the actual operation to calculate amountOut.
+                amountCalculated = wrappedToken.convertToShares(amountGiven);
+                if (bufferBalances.getBalanceDerived() < amountCalculated) {
+                    // Buffer does not have enough balance, so the actual operation will deposit. To mimic the actual
+                    // operation, we preview deposit.
+                    amountCalculated = wrappedToken.previewWithdraw(amountGiven);
+                }
                 (amountIn, amountOut) = (amountCalculated, amountGiven);
             }
             _takeDebt(wrappedToken, amountIn);

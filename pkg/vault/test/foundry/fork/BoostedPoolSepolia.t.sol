@@ -56,22 +56,6 @@ contract BoostedPoolSepoliaTest is BaseVaultTest {
         _createAndInitializeBoostedPool();
     }
 
-    //    function testTokens() public view {
-    //        console.log(address(usdc));
-    //        console.log(address(dai));
-    //
-    //        console.log(usdc.balanceOf(_donorUsdc));
-    //        console.log(dai.balanceOf(_donorDai));
-    //
-    //        (uint256 usdcUnderlyingBalance, uint256 usdcWrappedBalance) = vault.getBufferBalance(IERC20(address(wUSDC)));
-    //        (uint256 daiUnderlyingBalance, uint256 daiWrappedBalance) = vault.getBufferBalance(IERC20(address(wDAI)));
-    //
-    //        console.log("usdcUnderlyingBalance", usdcUnderlyingBalance);
-    //        console.log("usdcWrappedBalance", usdcWrappedBalance);
-    //        console.log("daiUnderlyingBalance", daiUnderlyingBalance);
-    //        console.log("daiWrappedBalance", daiWrappedBalance);
-    //    }
-
     function testSwapExactIn() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(50e6, 0);
 
@@ -83,8 +67,7 @@ contract BoostedPoolSepoliaTest is BaseVaultTest {
         vm.prank(lp);
         (uint256[] memory actualPathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        console.log("actualPathAmountsOut[0]", actualPathAmountsOut[0]);
-        console.log("queryPathAmountsOut[0]", queryPathAmountsOut[0]);
+        assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
     }
 
     function testSwapExactOut() public {
@@ -98,8 +81,7 @@ contract BoostedPoolSepoliaTest is BaseVaultTest {
         vm.prank(lp);
         (uint256[] memory actualPathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        console.log("actualPathAmountsIn[0]", actualPathAmountsIn[0]);
-        console.log("queryPathAmountsIn[0]", queryPathAmountsIn[0]);
+        assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual outputs do not match");
     }
 
     function _buildExactInPaths(

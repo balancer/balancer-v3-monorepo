@@ -1084,6 +1084,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC4626 wrappedToken,
         uint256 amountGiven
     ) private returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped) {
+        if (_isQueryContext()) {
+            return _calculateBufferAmounts(WrappingDirection.WRAP, kind, wrappedToken, amountGiven);
+        }
+
         bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
 
         if (kind == SwapKind.EXACT_IN) {
@@ -1094,10 +1098,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // EXACT_OUT wrap, so AmountGiven is wrapped amount.
             amountCalculated = wrappedToken.convertToAssets(amountGiven);
             (amountInUnderlying, amountOutWrapped) = (amountCalculated, amountGiven);
-        }
-
-        if (_isQueryContext()) {
-            return _calculateBufferAmounts(WrappingDirection.WRAP, kind, wrappedToken, amountGiven);
         }
 
         if (bufferBalances.getBalanceDerived() >= amountOutWrapped) {
@@ -1160,18 +1160,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IERC20(wrappedToken)
             );
 
-            if (kind == SwapKind.EXACT_IN && vaultUnderlyingDelta == calculatedUnderlyingDelta - 1) {
-                // Sometimes the deposit function takes 1 less wei than `calculatedUnderlyingDelta`, due to rounding.
-                // In this case, leaves the extra wei in the buffer, because in EXACT_IN we need to consume exactly the
-                // value passed by the user.
-                vaultUnderlyingDelta = calculatedUnderlyingDelta;
-                bufferBalances = PackedTokenBalance.toPackedBalance(
-                    bufferBalances.getBalanceRaw() + 1,
-                    bufferBalances.getBalanceDerived()
-                );
-                _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
-            }
-
             _checkWrapOrUnwrapResults(
                 wrappedToken,
                 amountInUnderlying,
@@ -1227,7 +1215,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC4626 wrappedToken,
         uint256 amountGiven
     ) private returns (uint256 amountCalculated, uint256 amountInWrapped, uint256 amountOutUnderlying) {
-        bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
+        if (_isQueryContext()) {
+            return _calculateBufferAmounts(WrappingDirection.UNWRAP, kind, wrappedToken, amountGiven);
+        }
 
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGiven is wrapped amount.
@@ -1239,9 +1229,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountOutUnderlying, amountInWrapped) = (amountGiven, amountCalculated);
         }
 
-        if (_isQueryContext()) {
-            return _calculateBufferAmounts(WrappingDirection.UNWRAP, kind, wrappedToken, amountGiven);
-        }
+        bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
 
         if (bufferBalances.getBalanceRaw() >= amountOutUnderlying) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
