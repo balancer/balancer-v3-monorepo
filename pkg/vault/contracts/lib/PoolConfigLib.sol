@@ -223,9 +223,9 @@ library PoolConfigLib {
             );
     }
 
-    function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint24) {
+    function getTokenDecimalDiffs(PoolConfigBits config) internal pure returns (uint40) {
         return
-            uint24(
+            uint40(
                 PoolConfigBits.unwrap(config).decodeUint(
                     PoolConfigConst.DECIMAL_SCALING_FACTORS_OFFSET,
                     PoolConfigConst.TOKEN_DECIMAL_DIFFS_BITLENGTH
@@ -254,7 +254,7 @@ library PoolConfigLib {
         return scalingFactors;
     }
 
-    function setTokenDecimalDiffs(PoolConfigBits config, uint24 value) internal pure returns (PoolConfigBits) {
+    function setTokenDecimalDiffs(PoolConfigBits config, uint40 value) internal pure returns (PoolConfigBits) {
         return
             PoolConfigBits.wrap(
                 PoolConfigBits.unwrap(config).insertUint(
@@ -288,8 +288,8 @@ library PoolConfigLib {
 
     // #endregion
 
-    // Convert from an array of decimal differences, to the encoded 24 bit value (only uses bottom 20 bits).
-    function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint24) {
+    // Convert from an array of decimal differences, to the encoded 40-bit value (8 tokens * 5 bits/token).
+    function toTokenDecimalDiffs(uint8[] memory tokenDecimalDiffs) internal pure returns (uint40) {
         bytes32 value;
 
         for (uint256 i = 0; i < tokenDecimalDiffs.length; ++i) {
@@ -300,6 +300,6 @@ library PoolConfigLib {
             );
         }
 
-        return uint24(uint256(value));
+        return uint40(uint256(value));
     }
 }
