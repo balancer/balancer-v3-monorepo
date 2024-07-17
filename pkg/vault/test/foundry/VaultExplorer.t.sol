@@ -591,7 +591,7 @@ contract VaultExplorerTest is BaseVaultTest {
     function testGetMaximumPoolTokens() public view {
         uint256 vaultMaximum = vault.getMaximumPoolTokens();
 
-        assertEq(vaultMaximum, 4, "Unexpected maximum pool tokens");
+        assertEq(vaultMaximum, 8, "Unexpected maximum pool tokens");
         assertEq(explorer.getMaximumPoolTokens(), vaultMaximum, "Maximum pool token mismatch");
     }
 
