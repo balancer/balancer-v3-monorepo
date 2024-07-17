@@ -40,6 +40,8 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
     uint256 internal constant DAI_FACTOR = 1e18;
     uint256 internal constant USDC_FACTOR = 1e6;
     uint256 internal constant BUFFER_INIT_AMOUNT = 100;
+    uint256 internal constant DAI_BUFFER_INIT_AMOUNT = BUFFER_INIT_AMOUNT * DAI_FACTOR;
+    uint256 internal constant USDC_BUFFER_INIT_AMOUNT = BUFFER_INIT_AMOUNT * USDC_FACTOR;
 
     function setUp() public override {
         vm.createSelectFork({ blockNumber: BLOCK_NUMBER, urlOrAlias: "sepolia" });
@@ -52,9 +54,9 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
         _createAndInitializeBoostedPool();
     }
 
-    function testWithinBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
-        amountIn = bound(amountIn, (BUFFER_INIT_AMOUNT * USDC_FACTOR) / 10, BUFFER_INIT_AMOUNT * USDC_FACTOR);
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountIn, 0);
+    function testUsdcInWithinBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
+        amountIn = bound(amountIn, (USDC_BUFFER_INIT_AMOUNT) / 10, USDC_BUFFER_INIT_AMOUNT);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(usdcFork, amountIn, 0);
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
@@ -67,9 +69,10 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
         assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
     }
 
-    function testWithinBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
-        amountOut = bound(amountOut, (BUFFER_INIT_AMOUNT * DAI_FACTOR) / 10, BUFFER_INIT_AMOUNT * DAI_FACTOR);
+    function testUsdcInWithinBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
+        amountOut = bound(amountOut, (DAI_BUFFER_INIT_AMOUNT) / 10, DAI_BUFFER_INIT_AMOUNT);
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
+            usdcFork,
             (2 * amountOut * USDC_FACTOR) / DAI_FACTOR,
             amountOut
         );
@@ -85,9 +88,9 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
         assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual outputs do not match");
     }
 
-    function testOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
-        amountIn = bound(amountIn, 2 * BUFFER_INIT_AMOUNT * USDC_FACTOR, 4 * BUFFER_INIT_AMOUNT * USDC_FACTOR);
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amountIn, 0);
+    function testUsdcInOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
+        amountIn = bound(amountIn, 2 * USDC_BUFFER_INIT_AMOUNT, 4 * USDC_BUFFER_INIT_AMOUNT);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(usdcFork, amountIn, 0);
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
@@ -100,9 +103,60 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
         assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
     }
 
-    function testOutOfBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
-        amountOut = bound(amountOut, 2 * BUFFER_INIT_AMOUNT * DAI_FACTOR, 4 * BUFFER_INIT_AMOUNT * DAI_FACTOR);
+    function testUsdcInOutOfBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
+        amountOut = bound(amountOut, 2 * DAI_BUFFER_INIT_AMOUNT, 4 * DAI_BUFFER_INIT_AMOUNT);
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
+            usdcFork,
+            (2 * amountOut * USDC_FACTOR) / DAI_FACTOR,
+            amountOut
+        );
+
+        uint256 snapshotId = vm.snapshot();
+        _prankStaticCall();
+        (uint256[] memory queryPathAmountsIn, , ) = batchRouter.querySwapExactOut(paths, bytes(""));
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        (uint256[] memory actualPathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual outputs do not match");
+    }
+
+    function testUsdcInBufferUnbalancedExactIn__Fork__Fuzz(
+        uint256 amountIn,
+        uint256 unbalancedDai,
+        uint256 unbalancedUsdc
+    ) public {
+        unbalancedDai = bound(unbalancedDai, 0, DAI_BUFFER_INIT_AMOUNT);
+        unbalancedUsdc = bound(unbalancedUsdc, 0, USDC_BUFFER_INIT_AMOUNT);
+        _unbalanceBuffers(unbalancedDai, unbalancedUsdc);
+
+        amountIn = bound(amountIn, 2 * USDC_BUFFER_INIT_AMOUNT, 4 * USDC_BUFFER_INIT_AMOUNT);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(usdcFork, amountIn, 0);
+
+        uint256 snapshotId = vm.snapshot();
+        _prankStaticCall();
+        (uint256[] memory queryPathAmountsOut, , ) = batchRouter.querySwapExactIn(paths, bytes(""));
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        (uint256[] memory actualPathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
+    }
+
+    function testUsdcInBufferUnbalancedExactOut__Fork__Fuzz(
+        uint256 amountOut,
+        uint256 unbalancedDai,
+        uint256 unbalancedUsdc
+    ) public {
+        unbalancedDai = bound(unbalancedDai, 0, DAI_BUFFER_INIT_AMOUNT);
+        unbalancedUsdc = bound(unbalancedUsdc, 0, USDC_BUFFER_INIT_AMOUNT);
+        _unbalanceBuffers(unbalancedDai, unbalancedUsdc);
+
+        amountOut = bound(amountOut, 2 * DAI_BUFFER_INIT_AMOUNT, 4 * DAI_BUFFER_INIT_AMOUNT);
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
+            usdcFork,
             (2 * amountOut * USDC_FACTOR) / DAI_FACTOR,
             amountOut
         );
@@ -119,65 +173,107 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
     }
 
     function _buildExactInPaths(
+        IERC20 tokenIn,
         uint256 exactAmountIn,
         uint256 minAmountOut
     ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-
-        // Since this is exact in, swaps will be executed in the order given.
-        // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the boosted pool,
-        // and finally post-swap the waUSDC through the USDC buffer to calculate the USDC amount out.
-        // The only token transfers are DAI in (given) and USDC out (calculated).
-        steps[0] = IBatchRouter.SwapPathStep({
-            pool: address(wUSDC),
-            tokenOut: IERC20(address(wUSDC)),
-            isBuffer: true
-        });
-        steps[1] = IBatchRouter.SwapPathStep({
-            pool: address(boostedPool),
-            tokenOut: IERC20(address(wDAI)),
-            isBuffer: false
-        });
-        steps[2] = IBatchRouter.SwapPathStep({ pool: address(wDAI), tokenOut: daiFork, isBuffer: true });
-
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
-            tokenIn: usdcFork,
-            steps: steps,
+            tokenIn: tokenIn,
+            steps: _getSwapSteps(tokenIn),
             exactAmountIn: exactAmountIn,
             minAmountOut: minAmountOut // rebalance tests are a wei off
         });
     }
 
     function _buildExactOutPaths(
+        IERC20 tokenIn,
         uint256 maxAmountIn,
         uint256 exactAmountOut
     ) private view returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-
-        // Since this is exact out, swaps will be executed in reverse order (though we submit in logical order).
-        // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the boosted pool,
-        // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
-        // The only token transfers are DAI in (calculated) and USDC out (given).
-        steps[0] = IBatchRouter.SwapPathStep({
-            pool: address(wUSDC),
-            tokenOut: IERC20(address(wUSDC)),
-            isBuffer: true
-        });
-        steps[1] = IBatchRouter.SwapPathStep({
-            pool: address(boostedPool),
-            tokenOut: IERC20(address(wDAI)),
-            isBuffer: false
-        });
-        steps[2] = IBatchRouter.SwapPathStep({ pool: address(wDAI), tokenOut: daiFork, isBuffer: true });
-
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
-            tokenIn: usdcFork,
-            steps: steps,
+            tokenIn: tokenIn,
+            steps: _getSwapSteps(tokenIn),
             maxAmountIn: maxAmountIn,
             exactAmountOut: exactAmountOut
         });
+    }
+
+    function _getSwapSteps(IERC20 tokenIn) private view returns (IBatchRouter.SwapPathStep[] memory steps) {
+        steps = new IBatchRouter.SwapPathStep[](3);
+
+        if (tokenIn == daiFork) {
+            steps[0] = IBatchRouter.SwapPathStep({
+                pool: address(wDAI),
+                tokenOut: IERC20(address(wDAI)),
+                isBuffer: true
+            });
+            steps[1] = IBatchRouter.SwapPathStep({
+                pool: address(boostedPool),
+                tokenOut: IERC20(address(wUSDC)),
+                isBuffer: false
+            });
+            steps[2] = IBatchRouter.SwapPathStep({ pool: address(wUSDC), tokenOut: usdcFork, isBuffer: true });
+        } else {
+            steps[0] = IBatchRouter.SwapPathStep({
+                pool: address(wUSDC),
+                tokenOut: IERC20(address(wUSDC)),
+                isBuffer: true
+            });
+            steps[1] = IBatchRouter.SwapPathStep({
+                pool: address(boostedPool),
+                tokenOut: IERC20(address(wDAI)),
+                isBuffer: false
+            });
+            steps[2] = IBatchRouter.SwapPathStep({ pool: address(wDAI), tokenOut: daiFork, isBuffer: true });
+        }
+    }
+
+    function _unbalanceBuffers(uint256 unbalancedDai, uint256 unbalancedUsdc) private {
+        if (unbalancedDai > DAI_BUFFER_INIT_AMOUNT / 2) {
+            _unbalanceBuffer(WrappingDirection.WRAP, wDAI, unbalancedDai - DAI_BUFFER_INIT_AMOUNT / 2);
+        } else {
+            _unbalanceBuffer(WrappingDirection.UNWRAP, wDAI, DAI_BUFFER_INIT_AMOUNT / 2 - unbalancedDai);
+        }
+
+        if (unbalancedUsdc > USDC_BUFFER_INIT_AMOUNT / 2) {
+            _unbalanceBuffer(WrappingDirection.WRAP, wUSDC, unbalancedUsdc - USDC_BUFFER_INIT_AMOUNT / 2);
+        } else {
+            _unbalanceBuffer(WrappingDirection.UNWRAP, wUSDC, USDC_BUFFER_INIT_AMOUNT / 2 - unbalancedUsdc);
+        }
+    }
+
+    function _unbalanceBuffer(WrappingDirection direction, IERC4626 wToken, uint256 amountToUnbalance) private {
+        if (amountToUnbalance < 1e6) {
+            // If amountToUnbalance is very low, returns without unbalancing the buffer.
+            return;
+        }
+
+        IERC20 tokenIn;
+        IERC20 tokenOut;
+        if (direction == WrappingDirection.WRAP) {
+            tokenIn = IERC20(wToken.asset());
+            tokenOut = IERC20(address(wToken));
+        } else {
+            tokenIn = IERC20(address(wToken));
+            tokenOut = IERC20(wToken.asset());
+        }
+
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
+
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(wToken), tokenOut: tokenOut, isBuffer: true });
+
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
+        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+            tokenIn: tokenIn,
+            steps: steps,
+            exactAmountIn: amountToUnbalance,
+            minAmountOut: 0
+        });
+
+        vm.prank(lp);
+        batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
     function _setupTokens() private {
@@ -229,8 +325,8 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
 
     function _setupBuffers() private {
         vm.startPrank(lp);
-        router.addLiquidityToBuffer(wDAI, BUFFER_INIT_AMOUNT * DAI_FACTOR, BUFFER_INIT_AMOUNT * DAI_FACTOR, lp);
-        router.addLiquidityToBuffer(wUSDC, BUFFER_INIT_AMOUNT * USDC_FACTOR, BUFFER_INIT_AMOUNT * USDC_FACTOR, lp);
+        router.addLiquidityToBuffer(wDAI, DAI_BUFFER_INIT_AMOUNT, wDAI.convertToShares(DAI_BUFFER_INIT_AMOUNT), lp);
+        router.addLiquidityToBuffer(wUSDC, USDC_BUFFER_INIT_AMOUNT, wUSDC.convertToShares(USDC_BUFFER_INIT_AMOUNT), lp);
         vm.stopPrank();
     }
 
