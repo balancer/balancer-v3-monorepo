@@ -189,7 +189,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         vars.expectedDeltaDai = swapAmount;
         vars.expectedBufferDeltaDai = int256(swapAmount);
         vars.expectedDeltaUsdc = swapAmount / USDC_FACTOR;
-        vars.expectedBufferDeltaUsdc = swapAmount / USDC_FACTOR;
+        vars.expectedBufferDeltaUsdc = -int256(swapAmount / USDC_FACTOR);
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(
             swapAmount,
@@ -237,7 +237,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         vars.expectedDeltaDai = waDAI.convertToAssets(expectedScaled18WrappedTokenInDai);
         vars.expectedBufferDeltaDai = int256(vars.expectedDeltaDai);
         vars.expectedDeltaUsdc = swapAmount / USDC_FACTOR;
-        vars.expectedBufferDeltaUsdc = swapAmount / USDC_FACTOR;
+        vars.expectedBufferDeltaUsdc = -int256(swapAmount / USDC_FACTOR);
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
@@ -474,7 +474,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         uint256 expectedDeltaDai;
         uint256 expectedDeltaUsdc;
         int256 expectedBufferDeltaDai;
-        uint256 expectedBufferDeltaUsdc;
+        int256 expectedBufferDeltaUsdc;
     }
 
     function _createSwapResultLocals(SwapKind kind) private view returns (SwapResultLocals memory vars) {
@@ -593,13 +593,20 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
         assertApproxEqAbs(
             underlyingBalance,
-            vars.bufferBalanceBeforeSwapUsdc - vars.expectedBufferDeltaUsdc,
+            uint256(int256(vars.bufferBalanceBeforeSwapUsdc) + vars.expectedBufferDeltaUsdc),
             2,
             "Wrong USDC buffer pool underlying balance"
         );
         assertApproxEqAbs(
             wrappedBalance,
-            vars.bufferBalanceBeforeSwapWaUsdc + waUSDC.convertToShares(vars.expectedBufferDeltaUsdc),
+            uint256(
+                int256(vars.bufferBalanceBeforeSwapWaUsdc) +
+                    (
+                        vars.expectedBufferDeltaUsdc < int256(0)
+                            ? int256(waUSDC.convertToShares(uint256(-vars.expectedBufferDeltaUsdc)))
+                            : -int256(waUSDC.convertToShares(uint256(vars.expectedBufferDeltaUsdc)))
+                    )
+            ),
             2,
             "Wrong USDC buffer pool wrapped balance"
         );
