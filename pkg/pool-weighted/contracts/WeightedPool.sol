@@ -179,22 +179,22 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
             return normalizedWeights;
         }
         if (numTokens > 4) {
-            normalizedWeights[4] = _normalizedWeight3;
+            normalizedWeights[4] = _normalizedWeight4;
         } else {
             return normalizedWeights;
         }
         if (numTokens > 5) {
-            normalizedWeights[5] = _normalizedWeight3;
+            normalizedWeights[5] = _normalizedWeight5;
         } else {
             return normalizedWeights;
         }
         if (numTokens > 6) {
-            normalizedWeights[6] = _normalizedWeight3;
+            normalizedWeights[6] = _normalizedWeight6;
         } else {
             return normalizedWeights;
         }
         if (numTokens > 7) {
-            normalizedWeights[7] = _normalizedWeight3;
+            normalizedWeights[7] = _normalizedWeight7;
         } else {
             return normalizedWeights;
         }
