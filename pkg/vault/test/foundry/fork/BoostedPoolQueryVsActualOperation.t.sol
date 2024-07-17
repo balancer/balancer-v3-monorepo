@@ -172,6 +172,124 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
         assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual outputs do not match");
     }
 
+    function testDaiInWithinBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
+        amountIn = bound(amountIn, DAI_BUFFER_INIT_AMOUNT / 10, DAI_BUFFER_INIT_AMOUNT);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(daiFork, amountIn, 0);
+
+        uint256 snapshotId = vm.snapshot();
+        _prankStaticCall();
+        (uint256[] memory queryPathAmountsOut, , ) = batchRouter.querySwapExactIn(paths, bytes(""));
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        (uint256[] memory actualPathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
+    }
+
+    function testDaiInWithinBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
+        amountOut = bound(amountOut, USDC_BUFFER_INIT_AMOUNT / 10, USDC_BUFFER_INIT_AMOUNT);
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
+            daiFork,
+            (2 * amountOut * DAI_FACTOR) / USDC_FACTOR,
+            amountOut
+        );
+
+        uint256 snapshotId = vm.snapshot();
+        _prankStaticCall();
+        (uint256[] memory queryPathAmountsIn, , ) = batchRouter.querySwapExactOut(paths, bytes(""));
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        (uint256[] memory actualPathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual outputs do not match");
+    }
+
+    function testDaiInOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
+        amountIn = bound(amountIn, 2 * DAI_BUFFER_INIT_AMOUNT, 4 * DAI_BUFFER_INIT_AMOUNT);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(daiFork, amountIn, 0);
+
+        uint256 snapshotId = vm.snapshot();
+        _prankStaticCall();
+        (uint256[] memory queryPathAmountsOut, , ) = batchRouter.querySwapExactIn(paths, bytes(""));
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        (uint256[] memory actualPathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
+    }
+
+    function testDaiInOutOfBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
+        amountOut = bound(amountOut, 2 * USDC_BUFFER_INIT_AMOUNT, 4 * USDC_BUFFER_INIT_AMOUNT);
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
+            daiFork,
+            (2 * amountOut * DAI_FACTOR) / USDC_FACTOR,
+            amountOut
+        );
+
+        uint256 snapshotId = vm.snapshot();
+        _prankStaticCall();
+        (uint256[] memory queryPathAmountsIn, , ) = batchRouter.querySwapExactOut(paths, bytes(""));
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        (uint256[] memory actualPathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual outputs do not match");
+    }
+
+    function testDaiInBufferUnbalancedExactIn__Fork__Fuzz(
+        uint256 amountIn,
+        uint256 unbalancedDai,
+        uint256 unbalancedUsdc
+    ) public {
+        unbalancedDai = bound(unbalancedDai, 0, DAI_BUFFER_INIT_AMOUNT);
+        unbalancedUsdc = bound(unbalancedUsdc, 0, USDC_BUFFER_INIT_AMOUNT);
+        _unbalanceBuffers(unbalancedDai, unbalancedUsdc);
+
+        amountIn = bound(amountIn, 2 * DAI_BUFFER_INIT_AMOUNT, 4 * DAI_BUFFER_INIT_AMOUNT);
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(daiFork, amountIn, 0);
+
+        uint256 snapshotId = vm.snapshot();
+        _prankStaticCall();
+        (uint256[] memory queryPathAmountsOut, , ) = batchRouter.querySwapExactIn(paths, bytes(""));
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        (uint256[] memory actualPathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+
+        assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
+    }
+
+    function testDaiInBufferUnbalancedExactOut__Fork__Fuzz(
+        uint256 amountOut,
+        uint256 unbalancedDai,
+        uint256 unbalancedUsdc
+    ) public {
+        unbalancedDai = bound(unbalancedDai, 0, DAI_BUFFER_INIT_AMOUNT);
+        unbalancedUsdc = bound(unbalancedUsdc, 0, USDC_BUFFER_INIT_AMOUNT);
+        _unbalanceBuffers(unbalancedDai, unbalancedUsdc);
+
+        amountOut = bound(amountOut, 2 * USDC_BUFFER_INIT_AMOUNT, 4 * USDC_BUFFER_INIT_AMOUNT);
+        IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
+            daiFork,
+            (2 * amountOut * DAI_FACTOR) / USDC_FACTOR,
+            amountOut
+        );
+
+        uint256 snapshotId = vm.snapshot();
+        _prankStaticCall();
+        (uint256[] memory queryPathAmountsIn, , ) = batchRouter.querySwapExactOut(paths, bytes(""));
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        (uint256[] memory actualPathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual outputs do not match");
+    }
+
     function _buildExactInPaths(
         IERC20 tokenIn,
         uint256 exactAmountIn,
