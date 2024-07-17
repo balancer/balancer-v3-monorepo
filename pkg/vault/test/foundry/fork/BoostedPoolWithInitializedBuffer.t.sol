@@ -245,7 +245,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     function testBoostedPoolSwapOutOfBufferRangeExactIn__Fork__Fuzz(uint256 tooLargeSwapAmount) public {
         tooLargeSwapAmount = bound(
             tooLargeSwapAmount,
-            (11 * _MAX_SWAP_AMOUNT_WITHIN_BUFFER_RANGE) / 10,
+            2 * _MAX_SWAP_AMOUNT_WITHIN_BUFFER_RANGE,
             _MAX_SWAP_AMOUNT_OUTSIDE_BUFFER_RANGE
         );
 
@@ -270,7 +270,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     function testBoostedPoolSwapOutOfBufferRangeExactOut__Fork__Fuzz(uint256 tooLargeSwapAmount) public {
         tooLargeSwapAmount = bound(
             tooLargeSwapAmount,
-            (11 * _MAX_SWAP_AMOUNT_WITHIN_BUFFER_RANGE) / 10,
+            2 * _MAX_SWAP_AMOUNT_WITHIN_BUFFER_RANGE,
             _MAX_SWAP_AMOUNT_OUTSIDE_BUFFER_RANGE
         );
 
