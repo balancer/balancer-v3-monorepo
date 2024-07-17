@@ -139,11 +139,11 @@ contract BoostedPoolSepoliaTest is BaseVaultTest {
     }
 
     function _setupTokens() private {
-        // Label deployed wrapped tokens
+        // Label deployed wrapped tokens.
         vm.label(address(wUSDC), "wUSDC");
         vm.label(address(wDAI), "wDAI");
 
-        // Identify and label underlying tokens
+        // Identify and label underlying tokens.
         usdcFork = IERC20(wUSDC.asset());
         vm.label(address(usdcFork), "USDC");
         daiFork = IERC20(wDAI.asset());
@@ -153,31 +153,31 @@ contract BoostedPoolSepoliaTest is BaseVaultTest {
     }
 
     function _setupLP() private {
-        // Donate DAI to LP
+        // Donate DAI to LP.
         vm.prank(_donorDai);
         daiFork.transfer(lp, 10000e18);
 
-        // Donate USDC to LP
+        // Donate USDC to LP.
         vm.prank(_donorUsdc);
         usdcFork.transfer(lp, 10000e6);
 
         vm.startPrank(lp);
-        // Allow Permit2 to get tokens from LP
+        // Allow Permit2 to get tokens from LP.
         usdcFork.approve(address(permit2), type(uint256).max);
         daiFork.approve(address(permit2), type(uint256).max);
         wDAI.approve(address(permit2), type(uint256).max);
         wUSDC.approve(address(permit2), type(uint256).max);
-        // Allow Permit2 to move DAI and USDC from LP to Router
+        // Allow Permit2 to move DAI and USDC from LP to Router.
         permit2.approve(address(daiFork), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(usdcFork), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(wDAI), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(wUSDC), address(router), type(uint160).max, type(uint48).max);
-        // Allow Permit2 to move DAI and USDC from LP to BatchRouter
+        // Allow Permit2 to move DAI and USDC from LP to BatchRouter.
         permit2.approve(address(daiFork), address(batchRouter), type(uint160).max, type(uint48).max);
         permit2.approve(address(usdcFork), address(batchRouter), type(uint160).max, type(uint48).max);
         permit2.approve(address(wDAI), address(batchRouter), type(uint160).max, type(uint48).max);
         permit2.approve(address(wUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
-        // Wrap part of LP balances
+        // Wrap part of LP balances.
         daiFork.approve(address(wDAI), 1000e18);
         wDAI.deposit(1000e18, lp);
         usdcFork.approve(address(wUSDC), 1000e6);
