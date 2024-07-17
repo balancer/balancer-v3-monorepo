@@ -43,6 +43,10 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
     uint256 internal constant DAI_BUFFER_INIT_AMOUNT = BUFFER_INIT_AMOUNT * DAI_FACTOR;
     uint256 internal constant USDC_BUFFER_INIT_AMOUNT = BUFFER_INIT_AMOUNT * USDC_FACTOR;
 
+    uint256 internal constant BOOSTED_POOL_INIT_AMOUNT = BUFFER_INIT_AMOUNT * 5;
+    uint256 internal constant DAI_BOOSTED_POOL_INIT_AMOUNT = BOOSTED_POOL_INIT_AMOUNT * DAI_FACTOR;
+    uint256 internal constant USDC_BOOSTED_POOL_INIT_AMOUNT = BOOSTED_POOL_INIT_AMOUNT * USDC_FACTOR;
+
     function setUp() public override {
         vm.createSelectFork({ blockNumber: BLOCK_NUMBER, urlOrAlias: "sepolia" });
 
@@ -363,7 +367,7 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
     }
 
     function _unbalanceBuffer(WrappingDirection direction, IERC4626 wToken, uint256 amountToUnbalance) private {
-        if (amountToUnbalance < 1e6) {
+        if (amountToUnbalance < MIN_TRADE_AMOUNT) {
             // If amountToUnbalance is very low, returns without unbalancing the buffer.
             return;
         }
@@ -411,11 +415,11 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
     function _setupLP() private {
         // Donate DAI to LP
         vm.prank(_donorDai);
-        daiFork.transfer(lp, 10000e18);
+        daiFork.transfer(lp, 100 * DAI_BUFFER_INIT_AMOUNT);
 
         // Donate USDC to LP
         vm.prank(_donorUsdc);
-        usdcFork.transfer(lp, 10000e6);
+        usdcFork.transfer(lp, 100 * USDC_BUFFER_INIT_AMOUNT);
 
         vm.startPrank(lp);
         // Allow Permit2 to get tokens from LP
@@ -434,10 +438,10 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
         permit2.approve(address(wDAI), address(batchRouter), type(uint160).max, type(uint48).max);
         permit2.approve(address(wUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
         // Wrap part of LP balances
-        daiFork.approve(address(wDAI), 1000e18);
-        wDAI.deposit(1000e18, lp);
-        usdcFork.approve(address(wUSDC), 1000e6);
-        wUSDC.deposit(1000e6, lp);
+        daiFork.approve(address(wDAI), 2 * DAI_BOOSTED_POOL_INIT_AMOUNT);
+        wDAI.deposit(2 * DAI_BOOSTED_POOL_INIT_AMOUNT, lp);
+        usdcFork.approve(address(wUSDC), 2 * USDC_BOOSTED_POOL_INIT_AMOUNT);
+        wUSDC.deposit(2 * USDC_BOOSTED_POOL_INIT_AMOUNT, lp);
         vm.stopPrank();
     }
 
@@ -479,8 +483,8 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
 
         vm.startPrank(lp);
         uint256[] memory tokenAmounts = new uint256[](2);
-        tokenAmounts[wDaiIdx] = 500e18;
-        tokenAmounts[wUsdcIdx] = 500e6;
+        tokenAmounts[wDaiIdx] = DAI_BOOSTED_POOL_INIT_AMOUNT;
+        tokenAmounts[wUsdcIdx] = USDC_BOOSTED_POOL_INIT_AMOUNT;
         _initPool(address(boostedPool), tokenAmounts, 0);
         vm.stopPrank();
     }

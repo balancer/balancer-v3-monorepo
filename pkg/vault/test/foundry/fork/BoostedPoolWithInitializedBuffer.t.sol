@@ -463,7 +463,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     }
 
     function _unbalanceBuffer(WrappingDirection direction, IERC4626 wToken, uint256 amountToUnbalance) private {
-        if (amountToUnbalance < 1e6) {
+        if (amountToUnbalance < MIN_TRADE_AMOUNT) {
             // If amountToUnbalance is very low, returns without unbalancing the buffer.
             return;
         }
