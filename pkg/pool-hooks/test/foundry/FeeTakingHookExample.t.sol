@@ -205,7 +205,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         // pool liquidity, or else the hook won't be able to charge fees
         expectedBptOut = bound(
             expectedBptOut,
-            _minBptOut,
+            _minBptOut * MIN_TRADE_AMOUNT,
             hookFeePercentage == 0 ? MAX_UINT256 : poolInitAmount.divDown(hookFeePercentage)
         );
 
@@ -266,7 +266,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         FeeTakingHookExample(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
 
         // Make sure bob has enough to pay for the transaction
-        expectedBptIn = bound(expectedBptIn, _minBptOut, BalancerPoolToken(pool).balanceOf(bob));
+        expectedBptIn = bound(expectedBptIn, _minBptOut * MIN_TRADE_AMOUNT, BalancerPoolToken(pool).balanceOf(bob));
 
         // Since bob added poolInitAmount in each token of the pool, the pool balances are doubled
         uint256[] memory actualAmountsOut = BasePoolMath.computeProportionalAmountsOut(
