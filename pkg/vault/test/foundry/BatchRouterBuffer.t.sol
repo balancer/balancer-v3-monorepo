@@ -22,6 +22,8 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract BatchRouterBufferTest is BaseVaultTest {
     using ArrayHelpers for *;
 
+    uint256 constant DELTA = 1e10;
+
     uint256 internal bufferInitialAmount = 1e5 * 1e18;
     uint256 internal boostedPoolInitialAmount = 10e6 * 1e18;
     uint256 internal boostedPoolInitialBPTAmount = boostedPoolInitialAmount * 2;
@@ -112,7 +114,7 @@ contract BatchRouterBufferTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function testAddLiquidationBuffer() public {
+    function testAddLiquidityUnbalancedToBoostedPool() public {
         uint256 amount = bufferInitialAmount / 2;
         uint256[] memory exactUnderlyingAmountsIn = [amount, amount].toMemoryArray();
 
@@ -176,8 +178,100 @@ contract BatchRouterBufferTest is BaseVaultTest {
             );
         }
 
-        // console.log("expectBPTOut", expectBPTOut);
-        // console.log("bptOut", bptOut);
+        assertApproxEqAbs(bptOut, expectBPTOut, DELTA, "BPT amount should match expected");
+
+        vm.stopPrank();
+    }
+
+    function testAddLiquidityUnbalancedToBoostedPoolWhenStaticCall() public {
+        uint256 amount = bufferInitialAmount / 2;
+        uint256[] memory exactUnderlyingAmountsIn = [amount, amount].toMemoryArray();
+
+        _prankStaticCall();
+        // uint256 bptOut = batchRouter.addLiquidityUnbalancedToBoostedPool(
+        //     boostedPool,
+        //     exactUnderlyingAmountsIn,
+        //     1,
+        //     false,
+        //     new bytes(0)
+        // );
+    }
+
+    function testAddLiquidityProportionalToBoostedPool() public {
+        uint256 amount = bufferInitialAmount / 2;
+        uint256[] memory maxAmountsIn = [amount, amount].toMemoryArray();
+        uint256 exactBptAmountOut = amount;
+
+        _prankStaticCall();
+        uint256[] memory expectedAmountsIn = router.queryAddLiquidityProportional(
+            boostedPool,
+            maxAmountsIn,
+            exactBptAmountOut,
+            new bytes(0)
+        );
+
+        vm.startPrank(alice);
+
+        uint256 beforeUSDCBalance = usdc.balanceOf(address(alice));
+        uint256 beforeDAIBalance = dai.balanceOf(address(alice));
+        (uint256 beforeWaUSDCBufferBalanceUnderling, uint256 beforeWaUSDCBufferBalanceWrapped) = vault.getBufferBalance(
+            waUSDC
+        );
+        (uint256 beforeWaDAIBufferBalanceUnderling, uint256 beforeWaDAIBufferBalanceWrapped) = vault.getBufferBalance(
+            waDAI
+        );
+
+        uint256[] memory amountsIn = batchRouter.addLiquidityProportionalToBoostedPool(
+            boostedPool,
+            maxAmountsIn,
+            exactBptAmountOut,
+            false,
+            new bytes(0)
+        );
+
+        // {
+        //     uint256 afterUSDCBalance = usdc.balanceOf(address(alice));
+        //     assertEq(beforeUSDCBalance - afterUSDCBalance, amountsIn[0], "USDC balance should decrease");
+        // }
+        // {
+        //     uint256 afterDAIBalance = dai.balanceOf(address(alice));
+        //     assertEq(beforeDAIBalance - afterDAIBalance, amountsIn[1], "DAI balance should decrease");
+        // }
+        // {
+        //     (uint256 afterWaUSDCBufferBalanceUnderling, uint256 afterWaUSDCBufferBalanceWrapped) = vault
+        //         .getBufferBalance(waUSDC);
+        //     assertEq(
+        //         beforeWaUSDCBufferBalanceWrapped - afterWaUSDCBufferBalanceWrapped,
+        //         amount,
+        //         "waUSDC wrapped buffer balance should decrease"
+        //     );
+        //     assertEq(
+        //         afterWaUSDCBufferBalanceUnderling - beforeWaUSDCBufferBalanceUnderling,
+        //         amount,
+        //         "waUSDC underlying buffer balance should increase"
+        //     );
+        // }
+        // {
+        //     (uint256 afterWaDAIBufferBalanceUnderling, uint256 afterWaDAIBufferBalanceWrapped) = vault.getBufferBalance(
+        //         waDAI
+        //     );
+        //     assertEq(
+        //         beforeWaDAIBufferBalanceWrapped - afterWaDAIBufferBalanceWrapped,
+        //         amount,
+        //         "waDAI wrapped buffer balance should decrease"
+        //     );
+        //     assertEq(
+        //         afterWaDAIBufferBalanceUnderling - beforeWaDAIBufferBalanceUnderling,
+        //         amount,
+        //         "waDAI underlying buffer balance should increase"
+        //     );
+        // }
+
+        // for (uint256 i = 0; i < amountsIn.length; i++) {
+        //     console.log("AmountIn: ", amountsIn[i]);
+        //     console.log("ExpectedAmountIn: ", expectedAmountsIn[i]);
+        //     assertEq(amountsIn[i], expectedAmountsIn[i], "AmountIn should match expected");
+        // }
 
         vm.stopPrank();
     }
