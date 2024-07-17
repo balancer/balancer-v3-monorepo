@@ -40,8 +40,10 @@ contract BigWeightedPoolTest is BaseVaultTest {
 
     uint256 constant TOKEN_AMOUNT = 1e3 * 1e18;
     uint256 constant TOKEN_AMOUNT_IN = 1 * 1e18;
+    uint256 constant TOKEN_AMOUNT_OUT = 1 * 1e18;
 
     uint256 constant DELTA = 9e7;
+    uint256 constant TOKEN_DELTA = 1e4;
 
     WeightedPool internal weightedPool;
     IERC20[] internal bigPoolTokens;
@@ -65,10 +67,12 @@ contract BigWeightedPoolTest is BaseVaultTest {
         initAmounts = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
+            // Use all 18-decimal tokens, for simplicity
             bigPoolTokens[i] = createERC20(string.concat("TKN", Strings.toString(i)), 18);
-            ERC20TestToken(address(bigPoolTokens[i])).mint(lp, poolInitAmount);
+            ERC20TestToken(address(bigPoolTokens[i])).mint(lp, TOKEN_AMOUNT);
+            ERC20TestToken(address(bigPoolTokens[i])).mint(bob, TOKEN_AMOUNT);
             weights[i] = 1e18 / numTokens;
-            initAmounts[i] = poolInitAmount;
+            initAmounts[i] = TOKEN_AMOUNT;
         }
 
         // Allow pools created by `factory` to use poolHooksMock hooks
@@ -155,7 +159,7 @@ contract BigWeightedPoolTest is BaseVaultTest {
         for (uint256 i = 0; i < numTokens; ++i) {
             // Tokens are transferred from lp
             assertEq(
-                defaultBalance - bigPoolTokens[i].balanceOf(lp),
+                TOKEN_AMOUNT - bigPoolTokens[i].balanceOf(lp),
                 TOKEN_AMOUNT,
                 string.concat("LP: Wrong token balance for ", Strings.toString(i))
             );
@@ -177,70 +181,104 @@ contract BigWeightedPoolTest is BaseVaultTest {
         assertApproxEqAbs(bptAmountOut, TOKEN_AMOUNT, DELTA, "Wrong bptAmountOut");
     }
 
-    /*function testAddLiquidity() public {
-        uint256[] memory amountsIn = [uint256(DAI_AMOUNT), uint256(TOKEN_AMOUNT)].toMemoryArray();
+    function testAddLiquidity() public {
+        uint256[] memory amountsIn = _getAmountsIn();
+
         vm.prank(bob);
-        bptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, DAI_AMOUNT - DELTA, false, bytes(""));
-
-        // Tokens are transferred from Bob
-        assertEq(defaultBalance - usdc.balanceOf(bob), TOKEN_AMOUNT, "LP: Wrong USDC balance");
-        assertEq(defaultBalance - dai.balanceOf(bob), DAI_AMOUNT, "LP: Wrong DAI balance");
-
-        // Tokens are stored in the Vault
-        assertEq(usdc.balanceOf(address(vault)), TOKEN_AMOUNT * 2, "Vault: Wrong USDC balance");
-        assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT * 2, "Vault: Wrong DAI balance");
-
-        // Tokens are deposited to the pool
-        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], DAI_AMOUNT * 2, "Pool: Wrong DAI balance");
-        assertEq(balances[1], TOKEN_AMOUNT * 2, "Pool: Wrong USDC balance");
-
-        // should mint correct amount of BPT tokens
-        assertApproxEqAbs(weightedPool.balanceOf(bob), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
-        assertApproxEqAbs(bptAmountOut, DAI_AMOUNT, DELTA, "Wrong bptAmountOut");
-    }
-
-    function testRemoveLiquidity() public {
-        vm.startPrank(bob);
-        router.addLiquidityUnbalanced(
+        bptAmountOut = router.addLiquidityUnbalanced(
             address(pool),
-            [uint256(DAI_AMOUNT), uint256(TOKEN_AMOUNT)].toMemoryArray(),
-            DAI_AMOUNT - DELTA,
+            amountsIn,
+            TOKEN_AMOUNT_IN - DELTA,
             false,
             bytes("")
         );
 
-        weightedPool.approve(address(vault), MAX_UINT256);
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
+
+        for (uint256 i = 0; i < numTokens; ++i) {
+            // Tokens are transferred from Bob
+            assertEq(
+                TOKEN_AMOUNT - bigPoolTokens[i].balanceOf(bob),
+                TOKEN_AMOUNT_IN,
+                string.concat("Bob: Wrong token balance for ", Strings.toString(i))
+            );
+
+            // Tokens are stored in the Vault
+            assertEq(
+                bigPoolTokens[i].balanceOf(address(vault)),
+                TOKEN_AMOUNT + TOKEN_AMOUNT_IN,
+                string.concat("Vault: Wrong token balance for ", Strings.toString(i))
+            );
+
+            // Tokens are deposited to the pool
+            assertEq(
+                balances[i],
+                TOKEN_AMOUNT + TOKEN_AMOUNT_IN,
+                string.concat("Pool: Wrong token balance for ", Strings.toString(i))
+            );
+        }
+
+        // should mint correct amount of BPT tokens
+        assertApproxEqAbs(weightedPool.balanceOf(bob), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
+        assertApproxEqAbs(bptAmountOut, TOKEN_AMOUNT_IN, DELTA, "Wrong bptAmountOut");
+    }
+
+    function testRemoveLiquidity() public {
+        uint256[] memory amountsIn = _getAmountsIn();
+
+        vm.startPrank(bob);
+        router.addLiquidityUnbalanced(address(pool), amountsIn, TOKEN_AMOUNT_IN - DELTA, false, bytes(""));
 
         uint256 bobBptBalance = weightedPool.balanceOf(bob);
         uint256 bptAmountIn = bobBptBalance;
 
+        uint256[] memory minAmountsOut = _getMinAmountsOut();
+
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             address(pool),
             bptAmountIn,
-            [uint256(less(DAI_AMOUNT, 1e4)), uint256(less(TOKEN_AMOUNT, 1e4))].toMemoryArray(),
+            minAmountsOut,
             false,
             bytes("")
         );
 
         vm.stopPrank();
 
-        // Tokens are transferred to Bob
-        assertApproxEqAbs(usdc.balanceOf(bob), defaultBalance, DELTA, "LP: Wrong USDC balance");
-        assertApproxEqAbs(dai.balanceOf(bob), defaultBalance, DELTA, "LP: Wrong DAI balance");
-
-        // Tokens are stored in the Vault
-        assertApproxEqAbs(usdc.balanceOf(address(vault)), TOKEN_AMOUNT, DELTA, "Vault: Wrong USDC balance");
-        assertApproxEqAbs(dai.balanceOf(address(vault)), DAI_AMOUNT, DELTA, "Vault: Wrong DAI balance");
-
-        // Tokens are deposited to the pool
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-        assertApproxEqAbs(balances[0], DAI_AMOUNT, DELTA, "Pool: Wrong DAI balance");
-        assertApproxEqAbs(balances[1], TOKEN_AMOUNT, DELTA, "Pool: Wrong USDC balance");
 
-        // amountsOut are correct
-        assertApproxEqAbs(amountsOut[0], DAI_AMOUNT, DELTA, "Wrong DAI AmountOut");
-        assertApproxEqAbs(amountsOut[1], TOKEN_AMOUNT, DELTA, "Wrong USDC AmountOut");
+        for (uint256 i = 0; i < numTokens; ++i) {
+            // Tokens are transferred to Bob
+            assertApproxEqAbs(
+                bigPoolTokens[i].balanceOf(bob),
+                TOKEN_AMOUNT,
+                TOKEN_DELTA,
+                string.concat("LP: Wrong token balance for ", Strings.toString(i))
+            );
+
+            // Tokens are stored in the Vault
+            assertApproxEqAbs(
+                bigPoolTokens[i].balanceOf(address(vault)),
+                TOKEN_AMOUNT,
+                TOKEN_DELTA,
+                string.concat("Vault: Wrong token balance for ", Strings.toString(i))
+            );
+
+            // Tokens are deposited to the pool
+            assertApproxEqAbs(
+                balances[i],
+                TOKEN_AMOUNT,
+                TOKEN_DELTA,
+                string.concat("Pool: Wrong amountIn for ", Strings.toString(i))
+            );
+
+            // amountsOut are correct
+            assertApproxEqAbs(
+                amountsOut[i],
+                TOKEN_AMOUNT_IN,
+                TOKEN_DELTA,
+                string.concat("Pool: Wrong amountOut for ", Strings.toString(i))
+            );
+        }
 
         // should mint correct amount of BPT tokens
         assertEq(weightedPool.balanceOf(bob), 0, "LP: Wrong BPT balance");
@@ -249,68 +287,86 @@ contract BigWeightedPoolTest is BaseVaultTest {
 
     function testSwap() public {
         // Set swap fee to zero for this test.
-        vault.manuallySetSwapFee(pool, 0);
+        vault.manuallySetSwapFee(address(weightedPool), 0);
+
+        uint256 tokenInIndex = 3;
+        uint256 tokenOutIndex = 7;
+
+        IERC20 tokenIn = bigPoolTokens[tokenInIndex];
+        IERC20 tokenOut = bigPoolTokens[tokenOutIndex];
 
         vm.prank(bob);
         uint256 amountCalculated = router.swapSingleTokenExactIn(
-            address(pool),
-            dai,
-            usdc,
-            DAI_AMOUNT_IN,
-            less(TOKEN_AMOUNT_OUT, 1e3),
+            address(weightedPool),
+            tokenIn,
+            tokenOut,
+            TOKEN_AMOUNT_IN,
+            0,
             MAX_UINT256,
             false,
             bytes("")
         );
 
         // Tokens are transferred from Bob
-        assertEq(usdc.balanceOf(bob), defaultBalance + amountCalculated, "LP: Wrong USDC balance");
-        assertEq(dai.balanceOf(bob), defaultBalance - DAI_AMOUNT_IN, "LP: Wrong DAI balance");
+        assertEq(tokenOut.balanceOf(bob), TOKEN_AMOUNT + amountCalculated, "LP: Wrong tokenOut balance");
+        assertEq(tokenIn.balanceOf(bob), TOKEN_AMOUNT - TOKEN_AMOUNT_IN, "LP: Wrong tokenIn balance");
 
         // Tokens are stored in the Vault
-        assertEq(usdc.balanceOf(address(vault)), TOKEN_AMOUNT - amountCalculated, "Vault: Wrong USDC balance");
-        assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT + DAI_AMOUNT_IN, "Vault: Wrong DAI balance");
+        assertEq(tokenOut.balanceOf(address(vault)), TOKEN_AMOUNT - amountCalculated, "Vault: Wrong tokenOut balance");
+        assertEq(tokenIn.balanceOf(address(vault)), TOKEN_AMOUNT + TOKEN_AMOUNT_IN, "Vault: Wrong tokenIn balance");
 
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
 
-        (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(dai), address(usdc));
-
-        assertEq(balances[daiIdx], DAI_AMOUNT + DAI_AMOUNT_IN, "Pool: Wrong DAI balance");
-        assertEq(balances[usdcIdx], TOKEN_AMOUNT - amountCalculated, "Pool: Wrong USDC balance");
+        assertEq(balances[tokenInIndex], TOKEN_AMOUNT + TOKEN_AMOUNT_IN, "Pool: Wrong tokenIn balance");
+        assertEq(balances[tokenOutIndex], TOKEN_AMOUNT - amountCalculated, "Pool: Wrong tokenOut balance");
     }
 
     function testGetBptRate() public {
         uint256 totalSupply = bptAmountOut + MIN_BPT;
-        uint256 weightedInvariant = WeightedMath.computeInvariant(weights, [DAI_AMOUNT, TOKEN_AMOUNT].toMemoryArray());
+        uint256[] memory balances = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            balances[i] = TOKEN_AMOUNT;
+        }
+
+        uint256 weightedInvariant = WeightedMath.computeInvariant(weights, balances);
         uint256 expectedRate = weightedInvariant.divDown(totalSupply);
         uint256 actualRate = IRateProvider(address(pool)).getRate();
         assertEq(actualRate, expectedRate, "Wrong rate");
 
-        uint256[] memory amountsIn = [uint256(DAI_AMOUNT), 0].toMemoryArray();
+        // Send in only one token
+        uint256[] memory amountsIn = new uint256[](numTokens);
+        amountsIn[0] = TOKEN_AMOUNT;
+
         vm.prank(bob);
-        uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
+        uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(
+            address(weightedPool),
+            amountsIn,
+            0,
+            false,
+            bytes("")
+        );
 
         totalSupply += addLiquidityBptAmountOut;
-        weightedInvariant = WeightedMath.computeInvariant(weights, [2 * DAI_AMOUNT, TOKEN_AMOUNT].toMemoryArray());
+        balances[0] += TOKEN_AMOUNT;
+
+        weightedInvariant = WeightedMath.computeInvariant(weights, balances);
 
         expectedRate = weightedInvariant.divDown(totalSupply);
         actualRate = IRateProvider(address(pool)).getRate();
         assertEq(actualRate, expectedRate, "Wrong rate after addLiquidity");
     }
 
-    function less(uint256 amount, uint256 base) internal pure returns (uint256) {
-        return (amount * (base - 1)) / base;
-    }
-
     function testAddLiquidityUnbalanced() public {
         authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
         vm.prank(alice);
-        vault.setStaticSwapFeePercentage(address(pool), 10e16);
+        vault.setStaticSwapFeePercentage(address(weightedPool), 10e16);
 
-        uint256[] memory amountsIn = [uint256(1e2 * 1e18), uint256(TOKEN_AMOUNT)].toMemoryArray();
+        uint256[] memory amountsIn = _getAmountsIn();
+        amountsIn[0] *= 100;
+
         vm.prank(bob);
 
-        router.addLiquidityUnbalanced(address(pool), amountsIn, 0, false, bytes(""));
+        router.addLiquidityUnbalanced(address(weightedPool), amountsIn, 0, false, bytes(""));
     }
 
     function testMinimumSwapFee() public view {
@@ -321,41 +377,19 @@ contract BigWeightedPoolTest is BaseVaultTest {
         assertEq(weightedPool.getMaximumSwapFeePercentage(), MAX_SWAP_FEE, "Maximum swap fee mismatch");
     }
 
-    function testFailSwapFeeTooLow() public {
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        PoolRoleAccounts memory roleAccounts;
-        tokens[0].token = IERC20(dai);
-        tokens[1].token = IERC20(usdc);
+    function _getAmountsIn() private view returns (uint256[] memory amountsIn) {
+        amountsIn = new uint256[](numTokens);
 
-        address lowFeeWeightedPool = factory.create(
-            "ERC20 Pool",
-            "ERC20POOL",
-            tokens,
-            [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
-            roleAccounts,
-            MIN_SWAP_FEE - 1, // Swap fee too low
-            poolHooksContract,
-            false, // Do not enable donations
-            false, // Do not disable unbalanced add/remove liquidity
-            ZERO_BYTES32
-        );
-
-        factoryMock.registerTestPool(lowFeeWeightedPool, tokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            amountsIn[i] = TOKEN_AMOUNT_IN;
+        }
     }
 
-    function testSetSwapFeeTooLow() public {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
-        vm.prank(alice);
+    function _getMinAmountsOut() private view returns (uint256[] memory amountsOut) {
+        amountsOut = new uint256[](numTokens);
 
-        vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
-        vault.setStaticSwapFeePercentage(address(pool), MIN_SWAP_FEE - 1);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            amountsOut[i] = TOKEN_AMOUNT_OUT - TOKEN_DELTA;
+        }
     }
-
-    function testSetSwapFeeTooHigh() public {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
-        vm.prank(alice);
-
-        vm.expectRevert(IVaultErrors.SwapFeePercentageTooHigh.selector);
-        vault.setStaticSwapFeePercentage(address(pool), MAX_SWAP_FEE + 1);
-    }*/
 }
