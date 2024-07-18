@@ -1459,13 +1459,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             expectedWrappedDelta = wrapUnwrapWrappedExpected;
         }
 
-        if (_diffAbs(vaultUnderlyingDelta, expectedUnderlyingDelta) > _MAX_CONVERT_ERROR) {
+        if (vaultUnderlyingDelta.getAbsoluteDifference(expectedUnderlyingDelta) > _MAX_CONVERT_ERROR) {
             // If this error is thrown, it means the convert result had an absolute error greater than
             // _MAX_CONVERT_ERROR in comparison with the actual operation.
             revert WrongUnderlyingAmount(address(wrappedToken));
         }
 
-        if (_diffAbs(vaultWrappedDelta, expectedWrappedDelta) > _MAX_CONVERT_ERROR) {
+        if (vaultWrappedDelta.getAbsoluteDifference(expectedWrappedDelta) > _MAX_CONVERT_ERROR) {
             // If this error is thrown, it means the convert result had an absolute error greater than
             // _MAX_CONVERT_ERROR in comparison with the actual operation.
             revert WrongWrappedAmount(address(wrappedToken));
@@ -1486,14 +1486,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     function _ensureValidTradeAmount(uint256 tradeAmount) private pure {
         if (tradeAmount != 0 && tradeAmount < _MINIMUM_TRADE_AMOUNT) {
             revert TradeAmountTooSmall();
-        }
-    }
-
-    function _diffAbs(uint256 a, uint256 b) private pure returns (uint256 c) {
-        // Every subtraction is lazy-evaluated after ensuring the result will not underflow.
-        unchecked {
-            int256 sub = int256(a) - int256(b);
-            return uint256(sub > int256(0) ? sub : -sub);
         }
     }
 
