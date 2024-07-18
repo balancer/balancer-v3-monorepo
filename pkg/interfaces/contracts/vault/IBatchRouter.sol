@@ -102,8 +102,7 @@ interface IBatchRouter {
      * @param userData Additional (optional) data required for adding liquidity
      * @return bptAmountOut Actual amount of pool tokens received
      */
-    function 
-     (
+    function addLiquidityUnbalancedToBoostedPool(
         address pool,
         uint256[] memory exactUnderlyingAmountsIn,
         uint256 minBptAmountOut,
