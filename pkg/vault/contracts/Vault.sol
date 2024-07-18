@@ -1110,8 +1110,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC4626 wrappedToken,
         uint256 amountGiven
     ) private returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped) {
-        bool isQueryContext = _isQueryContext();
-
         bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
 
         if (kind == SwapKind.EXACT_IN) {
@@ -1150,7 +1148,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 vaultWrappedDelta;
 
             // If in query mode and vault does not have enough tokens to do the actual wrap, use ERC4626 preview
-            bool shouldPreview = isQueryContext &&
+            bool shouldPreview = _isQueryContext() &&
                 _reservesOf[underlyingToken] < amountInUnderlying + bufferUnderlyingSurplus;
 
             if (kind == SwapKind.EXACT_IN) {
@@ -1188,9 +1186,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 }
             }
 
-            if (isQueryContext == false) {
-                // Do not trust ERC4626 and measure the amount of deposited and returned tokens. Moreover, if preview
-                // was used, the balances of vault are not updated and then reserves cannot be updated.
+            if (shouldPreview == false) {
+                // If preview was used, the balances of vault are not updated and then reserves cannot be updated.
+                // Moreover, ERC4626 output should not be trusted, so it's a good practice to measure the amount of
+                // deposited and returned tokens.
                 (vaultUnderlyingDelta, vaultWrappedDelta) = _updateReservesAfterWrapping(
                     underlyingToken,
                     IERC20(wrappedToken)
@@ -1252,8 +1251,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC4626 wrappedToken,
         uint256 amountGiven
     ) private returns (uint256 amountCalculated, uint256 amountInWrapped, uint256 amountOutUnderlying) {
-        bool isQueryContext = _isQueryContext();
-
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGiven is wrapped amount.
             amountCalculated = wrappedToken.convertToAssets(amountGiven);
@@ -1291,7 +1288,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 vaultWrappedDelta;
 
             // If in query mode and vault does not have enough tokens to do the actual unwrap, use ERC4626 preview
-            bool shouldPreview = isQueryContext &&
+            bool shouldPreview = _isQueryContext() &&
                 _reservesOf[IERC20(address(wrappedToken))] < amountInWrapped + bufferWrappedSurplus;
 
             if (kind == SwapKind.EXACT_IN) {
@@ -1321,9 +1318,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 }
             }
 
-            if (isQueryContext == false) {
-                // Do not trust ERC4626 and measure the amount of deposited and returned tokens. Moreover, if preview
-                // was used, the balances of vault are not updated and then reserves cannot be updated.
+            if (shouldPreview == false) {
+                // If preview was used, the balances of vault are not updated and then reserves cannot be updated.
+                // Moreover, ERC4626 output should not be trusted, so it's a good practice to measure the amount of
+                // deposited and returned tokens.
                 (vaultUnderlyingDelta, vaultWrappedDelta) = _updateReservesAfterWrapping(
                     underlyingToken,
                     IERC20(wrappedToken)
