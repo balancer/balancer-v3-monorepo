@@ -276,7 +276,7 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
             tokenIn: tokenIn,
             steps: _getSwapSteps(tokenIn),
             exactAmountIn: exactAmountIn,
-            minAmountOut: minAmountOut // rebalance tests are a wei off
+            minAmountOut: minAmountOut
         });
     }
 
