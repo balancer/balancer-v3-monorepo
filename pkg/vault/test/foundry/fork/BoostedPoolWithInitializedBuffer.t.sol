@@ -194,6 +194,8 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(
             swapAmount,
+            // Amount out can differ 1 or 2 wei from expected valuie, due to rounding operations in the buffers and
+            // conversions in the Boosted Pool.
             swapAmount / USDC_FACTOR - 2
         );
 
@@ -258,6 +260,8 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(
             tooLargeSwapAmount,
+            // Amount out can differ 1 or 2 wei from expected valuie, due to rounding operations in the buffers and
+            // conversions in the Boosted Pool.
             tooLargeSwapAmount / USDC_FACTOR - 2
         );
 
