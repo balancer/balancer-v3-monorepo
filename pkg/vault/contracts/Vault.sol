@@ -1172,6 +1172,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 if (shouldPreview) {
                     vaultUnderlyingDelta = wrappedToken.previewMint(vaultWrappedDelta);
                 } else {
+                    // The mint operation returns exactly `vaultWrappedDelta` shares. To do so, it withdraws underlying
+                    // from the vault and returns the shares. So, the vault needs to approve the transfer of underlying
+                    // tokens to the wrapper.
                     // Add convert error because mint can consume a different amount of tokens than we anticipated.
                     underlyingToken.forceApprove(
                         address(wrappedToken),
