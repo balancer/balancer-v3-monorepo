@@ -17,6 +17,7 @@ contract PoolConfigLibTest is Test {
 
     uint256 private constant _MAX_UINT32_VALUE = type(uint32).max;
     uint256 private constant _MAX_UINT24_VALUE = type(uint24).max;
+    uint256 private constant _MAX_UINT40_VALUE = type(uint40).max;
     uint256 private constant _ARBITRARY_FEE_PCT = 3.14e16;
 
     function testZeroConfigBytes() public pure {
@@ -290,21 +291,21 @@ contract PoolConfigLibTest is Test {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
             PoolConfigBits.unwrap(config).insertUint(
-                _MAX_UINT24_VALUE,
+                _MAX_UINT40_VALUE,
                 PoolConfigConst.DECIMAL_SCALING_FACTORS_OFFSET,
                 PoolConfigConst.TOKEN_DECIMAL_DIFFS_BITLENGTH
             )
         );
         assertEq(
             config.getTokenDecimalDiffs(),
-            _MAX_UINT24_VALUE,
+            _MAX_UINT40_VALUE,
             "tokenDecimalDiffs mismatch (testGetTokenDecimalDiffs)"
         );
     }
 
     function testSetTokenDecimalDiffs() public pure {
         PoolConfigBits config;
-        uint24 value = uint24(_MAX_UINT24_VALUE);
+        uint40 value = uint40(_MAX_UINT40_VALUE);
         config = config.setTokenDecimalDiffs(value);
         assertEq(config.getTokenDecimalDiffs(), value, "tokenDecimalDiffs mismatch (testSetTokenDecimalDiffs)");
     }
@@ -321,7 +322,7 @@ contract PoolConfigLibTest is Test {
             PoolConfigConst.DECIMAL_DIFF_BITLENGTH
         );
 
-        config = config.setTokenDecimalDiffs(uint24(uint256(value)));
+        config = config.setTokenDecimalDiffs(uint40(uint256(value)));
 
         uint256[] memory scalingFactors = config.getDecimalScalingFactors(2);
 

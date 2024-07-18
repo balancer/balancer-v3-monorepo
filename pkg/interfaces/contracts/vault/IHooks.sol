@@ -212,7 +212,7 @@ interface IHooks {
     ) external returns (bool success, uint256 hookAdjustedAmountCalculatedRaw);
 
     /**
-     * @notice Called between `onBeforeSwap` and the main swap operation, if the pool has dynamic fees.
+     * @notice Called after `onBeforeSwap` and before the main swap operation, if the pool has dynamic fees.
      * @dev Hook contracts should use the `onlyVault` modifier to guarantee this is only called by the Vault.
      * @param params Swap parameters (see PoolSwapParams for struct definition)
      * @param pool Pool address, used to get pool information from the vault (poolData, token config, etc.)

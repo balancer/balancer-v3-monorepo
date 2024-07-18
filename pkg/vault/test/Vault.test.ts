@@ -27,6 +27,7 @@ describe('Vault', function () {
   const PAUSE_WINDOW_DURATION = MONTH * 3;
   const BUFFER_PERIOD_DURATION = MONTH;
   const POOL_SWAP_FEE = fp(0.01);
+  const MAX_TOKENS = 8;
 
   let vault: IVaultMock;
   let vaultExtension: VaultExtensionMock;
@@ -219,7 +220,7 @@ describe('Vault', function () {
     });
 
     it('cannot register a pool with too many tokens', async () => {
-      const tokens = await ERC20TokenList.create(5, { sorted: true });
+      const tokens = await ERC20TokenList.create(MAX_TOKENS + 1, { sorted: true });
 
       await expect(vault.manualRegisterPool(poolB, await tokens.addresses)).to.be.revertedWithCustomError(
         vaultExtension,
@@ -416,7 +417,7 @@ describe('Vault', function () {
       const maxTokens = await vault.getMaximumPoolTokens();
 
       expect(minTokens).to.eq(2);
-      expect(maxTokens).to.eq(4);
+      expect(maxTokens).to.eq(MAX_TOKENS);
     });
 
     it('stores the decimal differences', async () => {

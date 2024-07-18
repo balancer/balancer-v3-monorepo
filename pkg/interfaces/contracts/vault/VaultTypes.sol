@@ -23,7 +23,7 @@ struct PoolConfig {
     uint256 staticSwapFeePercentage;
     uint256 aggregateSwapFeePercentage;
     uint256 aggregateYieldFeePercentage;
-    uint24 tokenDecimalDiffs;
+    uint40 tokenDecimalDiffs;
     uint32 pauseWindowEndTime;
     bool isPoolRegistered;
     bool isPoolInitialized;
