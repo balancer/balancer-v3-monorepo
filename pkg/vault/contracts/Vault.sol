@@ -1149,12 +1149,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 vaultUnderlyingDelta;
             uint256 vaultWrappedDelta;
 
+            // If in query mode and vault does not have enough tokens to do the actual wrap, use ERC4626 preview
+            bool shouldPreview = isQueryContext &&
+                _reservesOf[underlyingToken] < amountInUnderlying + bufferUnderlyingSurplus;
+
             if (kind == SwapKind.EXACT_IN) {
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                 // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingSurplus).
                 vaultUnderlyingDelta = amountInUnderlying + bufferUnderlyingSurplus;
-                if (isQueryContext && underlyingToken.balanceOf(address(this)) < vaultUnderlyingDelta) {
+                if (shouldPreview) {
                     vaultWrappedDelta = wrappedToken.previewDeposit(vaultUnderlyingDelta);
                 } else {
                     underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDelta);
@@ -1167,10 +1171,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 }
                 vaultWrappedDelta = amountOutWrapped + bufferWrappedSurplus;
 
-                if (
-                    isQueryContext &&
-                    underlyingToken.balanceOf(address(this)) < amountInUnderlying + bufferUnderlyingSurplus
-                ) {
+                if (shouldPreview) {
                     vaultUnderlyingDelta = wrappedToken.previewMint(vaultWrappedDelta);
                 } else {
                     // Add convert error because mint can consume a different amount of tokens than we anticipated.
@@ -1188,7 +1189,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
 
             if (isQueryContext == false) {
-                // Do not trust ERC4626 and measure the amount of deposited and returned tokens.
+                // Do not trust ERC4626 and measure the amount of deposited and returned tokens. Moreover, if preview
+                // was used, the balances of vault are not updated and then reserves cannot be updated.
                 (vaultUnderlyingDelta, vaultWrappedDelta) = _updateReservesAfterWrapping(
                     underlyingToken,
                     IERC20(wrappedToken)
@@ -1288,13 +1290,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 vaultUnderlyingDelta;
             uint256 vaultWrappedDelta;
 
+            // If in query mode and vault does not have enough tokens to do the actual unwrap, use ERC4626 preview
+            bool shouldPreview = isQueryContext &&
+                _reservesOf[IERC20(address(wrappedToken))] < amountInWrapped + bufferWrappedSurplus;
+
             if (kind == SwapKind.EXACT_IN) {
                 // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so redeem is called
                 // The amount of wrapped tokens to redeem is the necessary amount to fulfill the trade
                 // (amountInWrapped), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferWrappedSurplus).
                 vaultWrappedDelta = amountInWrapped + bufferWrappedSurplus;
-                if (isQueryContext && wrappedToken.balanceOf(address(this)) < vaultWrappedDelta) {
+                if (shouldPreview) {
                     vaultUnderlyingDelta = wrappedToken.previewRedeem(vaultWrappedDelta);
                 } else {
                     vaultUnderlyingDelta = wrappedToken.redeem(vaultWrappedDelta, address(this), address(this));
@@ -1308,7 +1314,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
                 }
                 vaultUnderlyingDelta = amountOutUnderlying + bufferUnderlyingSurplus;
-                if (isQueryContext && wrappedToken.balanceOf(address(this)) < amountInWrapped + bufferWrappedSurplus) {
+                if (shouldPreview) {
                     vaultWrappedDelta = wrappedToken.previewWithdraw(vaultUnderlyingDelta);
                 } else {
                     vaultWrappedDelta = wrappedToken.withdraw(vaultUnderlyingDelta, address(this), address(this));
@@ -1316,7 +1322,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
 
             if (isQueryContext == false) {
-                // Do not trust ERC4626 and measure the amount of deposited and returned tokens.
+                // Do not trust ERC4626 and measure the amount of deposited and returned tokens. Moreover, if preview
+                // was used, the balances of vault are not updated and then reserves cannot be updated.
                 (vaultUnderlyingDelta, vaultWrappedDelta) = _updateReservesAfterWrapping(
                     underlyingToken,
                     IERC20(wrappedToken)
