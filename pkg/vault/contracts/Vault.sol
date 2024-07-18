@@ -1110,9 +1110,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC4626 wrappedToken,
         uint256 amountGiven
     ) private returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped) {
-        if (_isQueryContext()) {
-            return _calculateBufferAmounts(WrappingDirection.WRAP, kind, wrappedToken, amountGiven);
-        }
+        bool isQueryContext = _isQueryContext();
 
         bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
 
@@ -1148,43 +1146,54 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 bufferUnderlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wrappedToken);
             uint256 bufferWrappedSurplus;
 
-            if (bufferUnderlyingSurplus > 0) {
-                bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
-            }
-
-            uint256 calculatedUnderlyingDelta;
-            uint256 calculatedWrappedDelta;
+            uint256 vaultUnderlyingDelta;
+            uint256 vaultWrappedDelta;
 
             if (kind == SwapKind.EXACT_IN) {
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                 // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingSurplus).
-                calculatedUnderlyingDelta = amountInUnderlying + bufferUnderlyingSurplus;
-
-                underlyingToken.forceApprove(address(wrappedToken), calculatedUnderlyingDelta);
-                // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called.
-                wrappedToken.deposit(calculatedUnderlyingDelta, address(this));
+                vaultUnderlyingDelta = amountInUnderlying + bufferUnderlyingSurplus;
+                if (isQueryContext && underlyingToken.balanceOf(address(this)) < vaultUnderlyingDelta) {
+                    vaultWrappedDelta = wrappedToken.previewDeposit(vaultUnderlyingDelta);
+                } else {
+                    underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDelta);
+                    // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called.
+                    vaultWrappedDelta = wrappedToken.deposit(vaultUnderlyingDelta, address(this));
+                }
             } else {
-                // Note that `bufferWrappedSurplus` will be zero if there is no bufferUnderlyingSurplus.
-                calculatedWrappedDelta = amountOutWrapped + bufferWrappedSurplus;
+                if (bufferUnderlyingSurplus > 0) {
+                    bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
+                }
+                vaultWrappedDelta = amountOutWrapped + bufferWrappedSurplus;
 
-                // Add convert error because mint can consume a different amount of tokens than we anticipated.
-                underlyingToken.forceApprove(
-                    address(wrappedToken),
-                    _addConvertError(amountInUnderlying + bufferUnderlyingSurplus)
-                );
+                if (
+                    isQueryContext &&
+                    underlyingToken.balanceOf(address(this)) < amountInUnderlying + bufferUnderlyingSurplus
+                ) {
+                    vaultUnderlyingDelta = wrappedToken.previewMint(vaultWrappedDelta);
+                } else {
+                    // Add convert error because mint can consume a different amount of tokens than we anticipated.
+                    underlyingToken.forceApprove(
+                        address(wrappedToken),
+                        _addConvertError(amountInUnderlying + bufferUnderlyingSurplus)
+                    );
 
-                // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called.
-                wrappedToken.mint(calculatedWrappedDelta, address(this));
+                    // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called.
+                    vaultUnderlyingDelta = wrappedToken.mint(vaultWrappedDelta, address(this));
 
-                // Remove approval, in case mint consumed less tokens than we approved, due to convert error.
-                underlyingToken.forceApprove(address(wrappedToken), 0);
+                    // Remove approval, in case mint consumed less tokens than we approved, due to convert error.
+                    underlyingToken.forceApprove(address(wrappedToken), 0);
+                }
             }
 
-            (uint256 vaultUnderlyingDelta, uint256 vaultWrappedDelta) = _updateReservesAfterWrapping(
-                underlyingToken,
-                IERC20(wrappedToken)
-            );
+            if (isQueryContext == false) {
+                // Do not trust ERC4626 and measure the amount of deposited and returned tokens.
+                (vaultUnderlyingDelta, vaultWrappedDelta) = _updateReservesAfterWrapping(
+                    underlyingToken,
+                    IERC20(wrappedToken)
+                );
+            }
 
             _checkWrapOrUnwrapResults(
                 wrappedToken,
@@ -1241,9 +1250,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC4626 wrappedToken,
         uint256 amountGiven
     ) private returns (uint256 amountCalculated, uint256 amountInWrapped, uint256 amountOutUnderlying) {
-        if (_isQueryContext()) {
-            return _calculateBufferAmounts(WrappingDirection.UNWRAP, kind, wrappedToken, amountGiven);
-        }
+        bool isQueryContext = _isQueryContext();
 
         if (kind == SwapKind.EXACT_IN) {
             // EXACT_IN unwrap, so AmountGiven is wrapped amount.
@@ -1278,29 +1285,43 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 bufferWrappedSurplus = bufferBalances.getBufferWrappedSurplus(wrappedToken);
             uint256 bufferUnderlyingSurplus;
 
-            if (bufferWrappedSurplus > 0) {
-                bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
-            }
+            uint256 vaultUnderlyingDelta;
+            uint256 vaultWrappedDelta;
 
             if (kind == SwapKind.EXACT_IN) {
                 // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so redeem is called
                 // The amount of wrapped tokens to redeem is the necessary amount to fulfill the trade
                 // (amountInWrapped), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferWrappedSurplus).
-                wrappedToken.redeem(amountInWrapped + bufferWrappedSurplus, address(this), address(this));
+                vaultWrappedDelta = amountInWrapped + bufferWrappedSurplus;
+                if (isQueryContext && wrappedToken.balanceOf(address(this)) < vaultWrappedDelta) {
+                    vaultUnderlyingDelta = wrappedToken.previewRedeem(vaultWrappedDelta);
+                } else {
+                    vaultUnderlyingDelta = wrappedToken.redeem(vaultWrappedDelta, address(this), address(this));
+                }
             } else {
                 // EXACT_OUT requires the exact amount of underlying tokens to be returned, so withdraw is called.
                 // The amount of underlying tokens to withdraw is the necessary amount to fulfill the trade
                 // (amountOutUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
-                // (bufferUnderlyingSurplus). Note that `bufferUnderlyingSurplus` will be zero if there is no
-                // `bufferWrappedSurplus`.
-                wrappedToken.withdraw(amountOutUnderlying + bufferUnderlyingSurplus, address(this), address(this));
+                // (bufferUnderlyingSurplus).
+                if (bufferWrappedSurplus > 0) {
+                    bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
+                }
+                vaultUnderlyingDelta = amountOutUnderlying + bufferUnderlyingSurplus;
+                if (isQueryContext && wrappedToken.balanceOf(address(this)) < amountInWrapped + bufferWrappedSurplus) {
+                    vaultWrappedDelta = wrappedToken.previewWithdraw(vaultUnderlyingDelta);
+                } else {
+                    vaultWrappedDelta = wrappedToken.withdraw(vaultUnderlyingDelta, address(this), address(this));
+                }
             }
 
-            (uint256 vaultUnderlyingDelta, uint256 vaultWrappedDelta) = _updateReservesAfterWrapping(
-                underlyingToken,
-                IERC20(wrappedToken)
-            );
+            if (isQueryContext == false) {
+                // Do not trust ERC4626 and measure the amount of deposited and returned tokens.
+                (vaultUnderlyingDelta, vaultWrappedDelta) = _updateReservesAfterWrapping(
+                    underlyingToken,
+                    IERC20(wrappedToken)
+                );
+            }
 
             _checkWrapOrUnwrapResults(
                 wrappedToken,
@@ -1346,26 +1367,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     function _isQueryContext() internal view returns (bool) {
         return EVMCallModeHelpers.isStaticCall() && _vaultStateBits.isQueryDisabled() == false;
-    }
-
-    /// @dev Call VaultExtension to calculate the amounts for wrap/unwrap operations.
-    function _calculateBufferAmounts(
-        WrappingDirection direction,
-        SwapKind kind,
-        IERC4626 wrappedToken,
-        uint256 amountGiven
-    ) internal returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped) {
-        bytes memory data = Address.functionDelegateCall(
-            _implementation(),
-            abi.encodeWithSelector(
-                IVaultExtension.calculateBufferAmounts.selector,
-                direction,
-                kind,
-                wrappedToken,
-                amountGiven
-            )
-        );
-        return abi.decode(data, (uint256, uint256, uint256));
     }
 
     /**
