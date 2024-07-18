@@ -734,7 +734,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function getProtocolFeeController() external view returns (IProtocolFeeController) {
+    function getProtocolFeeController() external view onlyVaultDelegateCall returns (IProtocolFeeController) {
         return _protocolFeeController;
     }
 

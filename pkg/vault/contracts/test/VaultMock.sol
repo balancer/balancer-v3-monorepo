@@ -635,6 +635,10 @@ contract VaultMock is IVaultMainMock, Vault {
         IVault(address(this)).sendTo(token, to, amount);
     }
 
+    function manualFindTokenIndex(IERC20[] memory tokens, IERC20 token) public pure returns (uint256 index) {
+        return _findTokenIndex(tokens, token);
+    }
+
     function _getDefaultLiquidityManagement() private pure returns (LiquidityManagement memory) {
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.enableAddLiquidityCustom = true;

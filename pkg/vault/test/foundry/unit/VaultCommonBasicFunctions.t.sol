@@ -391,4 +391,18 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
         vault.manualSetStaticSwapFeePercentage(pool, MAX_FEE_PERCENTAGE + 1);
     }
+
+    function testFindTokenIndex__Fuzz(address[8] memory tokensRaw, uint256 tokenIndex, uint256 length) public view {
+        length = bound(length, 1, 8);
+        tokenIndex = bound(tokenIndex, 0, length - 1);
+
+        IERC20[] memory tokens = new IERC20[](length);
+        for (uint256 i = 0; i < length; ++i) {
+            tokens[i] = IERC20(tokensRaw[i]);
+        }
+        IERC20 token = IERC20(tokens[tokenIndex]);
+
+        uint256 actualTokenIndex = vault.manualFindTokenIndex(tokens, token);
+        assertEq(actualTokenIndex, tokenIndex, "Incorrect token index");
+    }
 }
