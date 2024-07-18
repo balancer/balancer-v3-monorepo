@@ -114,9 +114,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         );
     }
 
-    /**
-     * @notice A common place to retrieve a default hooks contract. Currently set to address(0) (i.e. no hooks).
-     */
+    /// @notice A common place to retrieve a default hooks contract. Currently set to address(0) (i.e. no hooks).
     function getDefaultPoolHooksContract() public pure returns (address) {
         return address(0);
     }

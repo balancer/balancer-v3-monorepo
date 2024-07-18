@@ -3,23 +3,49 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { TokenInfo, PoolRoleAccounts, PoolData, PoolConfig, HooksConfig } from "./VaultTypes.sol";
 
-import { IVault } from "./IVault.sol";
-import { IHooks } from "./IHooks.sol";
 import { IBasePool } from "./IBasePool.sol";
-import { IProtocolFeeController } from "./IProtocolFeeController.sol";
-import "./VaultTypes.sol";
 
-interface IVaultExtension {
-    /*******************************************************************************
-                              Constants and immutables
-    *******************************************************************************/
+interface IVaultExplorer {
+    /***************************************************************************
+                                  Vault Contracts
+    ***************************************************************************/
 
-    /// @notice Returns the main Vault address.
-    function vault() external view returns (IVault);
+    /**
+     * @notice Get the Balancer Vault contract address.
+     * @return The address of the Vault
+     */
+    function getVault() external view returns (address);
 
-    /// @notice Returns the Vault Admin contract address.
+    /**
+     * @notice Returns the Vault Extension contract address.
+     * @dev Function is in the main Vault contract. The VaultExtension handles most permissioned calls, and other
+     * functions less frequently used, as delegate calls through the Vault are more expensive than direct calls.
+     * The Vault itself contains the core code for swaps and liquidity operations.
+     *
+     * @return Address of the VaultExtension
+     */
+    function getVaultExtension() external view returns (address);
+
+    /**
+     * @notice Get the Vault Admin contract address.
+     * @return Address of the VaultAdmin
+     */
     function getVaultAdmin() external view returns (address);
+
+    /**
+     * @notice Returns the Vault's Authorizer.
+     * @dev Function is in the main Vault contract to save gas on all permissioned calls.
+     * @return Address of the authorizer
+     */
+    function getAuthorizer() external view returns (address);
+
+    /**
+     * @notice Returns the Protocol Fee Controller address.
+     * @return Address of the ProtocolFeeController
+     */
+    function getProtocolFeeController() external view returns (address);
 
     /*******************************************************************************
                               Transient Accounting
@@ -54,64 +80,11 @@ interface IVaultExtension {
     *******************************************************************************/
 
     /**
-     * @notice Registers a pool, associating it with its factory and the tokens it manages.
-     * @dev A pool can opt-out of pausing by providing a zero value for the pause window, or allow pausing indefinitely
-     * by providing a large value. (Pool pause windows are not limited by the Vault maximums.) The vault defines an
-     * additional buffer period during which a paused pool will stay paused. After the buffer period passes, a paused
-     * pool will automatically unpause.
-     *
-     * A pool can opt out of Balancer governance pausing by providing a custom `pauseManager`. This might be a
-     * multi-sig contract or an arbitrary smart contract with its own access controls, that forwards calls to
-     * the Vault.
-     *
-     * If the zero address is provided for the `pauseManager`, permissions for pausing the pool will default to the
-     * authorizer.
-     *
-     * @param pool The address of the pool being registered
-     * @param tokenConfig An array of descriptors for the tokens the pool will manage
-     * @param swapFeePercentage The initial static swap fee percentage of the pool
-     * @param pauseWindowEndTime The timestamp after which it is no longer possible to pause the pool
-     * @param protocolFeeExempt If true, the pool's initial aggregate fees will be set to 0
-     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
-     * @param poolHooksContract Contract that implements the hooks for the pool
-     * @param liquidityManagement Liquidity management flags with implemented methods
-     */
-    function registerPool(
-        address pool,
-        TokenConfig[] memory tokenConfig,
-        uint256 swapFeePercentage,
-        uint32 pauseWindowEndTime,
-        bool protocolFeeExempt,
-        PoolRoleAccounts calldata roleAccounts,
-        address poolHooksContract,
-        LiquidityManagement calldata liquidityManagement
-    ) external;
-
-    /**
      * @notice Checks whether a pool is registered.
      * @param pool Address of the pool to check
      * @return True if the pool is registered, false otherwise
      */
     function isPoolRegistered(address pool) external view returns (bool);
-
-    /**
-     * @notice Initializes a registered pool by adding liquidity; mints BPT tokens for the first time in exchange.
-     * @param pool Address of the pool to initialize
-     * @param to Address that will receive the output BPT
-     * @param tokens Tokens used to seed the pool (must match the registered tokens)
-     * @param exactAmountsIn Exact amounts of input tokens
-     * @param minBptAmountOut Minimum amount of output pool tokens
-     * @param userData Additional (optional) data required for adding initial liquidity
-     * @return bptAmountOut Output pool token amount
-     */
-    function initialize(
-        address pool,
-        address to,
-        IERC20[] memory tokens,
-        uint256[] memory exactAmountsIn,
-        uint256 minBptAmountOut,
-        bytes memory userData
-    ) external returns (uint256 bptAmountOut);
 
     /*******************************************************************************
                                     Pool Information
@@ -131,6 +104,18 @@ interface IVaultExtension {
      * @return tokens List of tokens in the pool
      */
     function getPoolTokens(address pool) external view returns (IERC20[] memory);
+
+    /**
+     * @notice Gets the index of a token in a given pool.
+     * @dev Reverts if the pool is not registered, or if the token does not belong to the pool.
+     * Function is in the main Vault contract.
+     *
+     * @param pool Address of the pool
+     * @param token Address of the token
+     * @return tokenCount Number of tokens in the pool
+     * @return index Index corresponding to the given token in the pool's token list
+     */
+    function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
 
     /**
      * @notice Gets pool token rates.
@@ -199,7 +184,7 @@ interface IVaultExtension {
     function getBptRate(address pool) external view returns (uint256 rate);
 
     /*******************************************************************************
-                                 Balancer Pool Tokens
+                                    Pool Tokens
     *******************************************************************************/
 
     /**
@@ -226,45 +211,8 @@ interface IVaultExtension {
      */
     function allowance(address token, address owner, address spender) external view returns (uint256);
 
-    /**
-     * @notice Approves a spender to spend pool tokens on behalf of sender.
-     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
-     * the pool contract, so msg.sender is used as the token address.
-     *
-     * @param owner Owner's address
-     * @param spender Spender's address
-     * @param amount Amount of tokens to approve
-     * @return True if successful, false otherwise
-     */
-    function approve(address owner, address spender, uint256 amount) external returns (bool);
-
-    /**
-     * @notice Transfers pool token from owner to a recipient.
-     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
-     * the pool contract, so msg.sender is used as the token address.
-     *
-     * @param owner Owner's address
-     * @param to Recipient's address
-     * @param amount Amount of tokens to transfer
-     * @return True if successful, false otherwise
-     */
-    function transfer(address owner, address to, uint256 amount) external returns (bool);
-
-    /**
-     * @notice Transfers pool token from a sender to a recipient using an allowance.
-     * @dev Notice that the pool token address is not included in the params. This function is exclusively called by
-     * the pool contract, so msg.sender is used as the token address.
-     *
-     * @param spender Address allowed to perform the transfer
-     * @param from Sender's address
-     * @param to Recipient's address
-     * @param amount Amount of tokens to transfer
-     * @return True if successful, false otherwise
-     */
-    function transferFrom(address spender, address from, address to, uint256 amount) external returns (bool);
-
     /*******************************************************************************
-                                     Pool Pausing
+                                    Pool Pausing
     *******************************************************************************/
 
     /**
@@ -288,7 +236,7 @@ interface IVaultExtension {
     function getPoolPausedState(address pool) external view returns (bool, uint32, uint32, address);
 
     /*******************************************************************************
-                                          Fees
+                                   Fees
     *******************************************************************************/
 
     /**
@@ -322,25 +270,19 @@ interface IVaultExtension {
     function getPoolRoleAccounts(address pool) external view returns (PoolRoleAccounts memory);
 
     /**
-     * @notice Query the current dynamic swap fee percentage of a pool, given a set of swap parameters.
+     * @notice Query the current dynamic swap fee of a pool, given a set of swap parameters.
      * @param pool The pool
      * @param swapParams The swap parameters used to compute the fee
      * @return success True if the pool has a dynamic swap fee and it can be successfully computed
-     * @return dynamicSwapFeePercentage The dynamic swap fee percentage
+     * @return dynamicSwapFee The dynamic swap fee percentage
      */
     function computeDynamicSwapFeePercentage(
         address pool,
         IBasePool.PoolSwapParams memory swapParams
     ) external view returns (bool, uint256);
 
-    /**
-     * @notice Returns the Protocol Fee Controller address.
-     * @return Address of the ProtocolFeeController
-     */
-    function getProtocolFeeController() external view returns (IProtocolFeeController);
-
     /*******************************************************************************
-                                     Recovery Mode
+                                    Recovery Mode
     *******************************************************************************/
 
     /**
@@ -350,58 +292,9 @@ interface IVaultExtension {
      */
     function isPoolInRecoveryMode(address pool) external view returns (bool);
 
-    /**
-     * @notice Remove liquidity from a pool specifying exact pool tokens in, with proportional token amounts out.
-     * The request is implemented by the Vault without any interaction with the pool, ensuring that
-     * it works the same for all pools, and cannot be disabled by a new pool type.
-     *
-     * @param pool Address of the pool
-     * @param from Address of user to burn pool tokens from
-     * @param exactBptAmountIn Input pool token amount
-     * @return amountsOut Actual calculated amounts of output tokens, sorted in token registration order
-     */
-    function removeLiquidityRecovery(
-        address pool,
-        address from,
-        uint256 exactBptAmountIn
-    ) external returns (uint256[] memory amountsOut);
-
     /*******************************************************************************
                                     Queries
     *******************************************************************************/
-
-    /**
-     * @notice Performs a callback on msg.sender with arguments provided in `data`.
-     * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
-     * anything else will revert.
-     *
-     * Allows querying any operation on the Vault that has the `onlyWhenUnlocked` modifier.
-     *
-     * Allows the external calling of a function via the Vault contract to
-     * access Vault's functions guarded by `onlyWhenUnlocked`.
-     * `transient` modifier ensuring balances changes within the Vault are settled.
-     *
-     * @param data Contains function signature and args to be passed to the msg.sender
-     * @return result Resulting data from the call
-     */
-    function quote(bytes calldata data) external payable returns (bytes memory result);
-
-    /**
-     * @notice Performs a callback on msg.sender with arguments provided in `data`.
-     * @dev Used to query a set of operations on the Vault. Only off-chain eth_call are allowed,
-     * anything else will revert.
-     *
-     * Allows querying any operation on the Vault that has the `onlyWhenUnlocked` modifier.
-     *
-     * Allows the external calling of a function via the Vault contract to
-     * access Vault's functions guarded by `onlyWhenUnlocked`.
-     * `transient` modifier ensuring balances changes within the Vault are settled.
-     *
-     * This call always reverts, returning the result in the revert reason.
-     *
-     * @param data Contains function signature and args to be passed to the msg.sender
-     */
-    function quoteAndRevert(bytes calldata data) external payable;
 
     /**
      * @notice Checks if the queries enabled on the Vault.
@@ -409,21 +302,102 @@ interface IVaultExtension {
      */
     function isQueryDisabled() external view returns (bool);
 
+    /***************************************************************************
+                              Vault Admin Functions
+    ***************************************************************************/
+
     /**
-     * @notice Preview the wrapping/unwrapping operation on a buffer.
-     * @dev This must be called in a query context.
-     * @param direction Wrapping direction - WRAP or UNWRAP
-     * @param kind Type of swap: EXACT_IN or EXACT_OUT
-     * @param wrappedToken The wrapped token involved in the operation
-     * @param amountGiven The amount of tokens given (i.e., underlying for WRAP)
-     * @return amountCalculated Return the amount to be returned from the wrap/unwrap operation
-     * @return amountIn Amount of tokenIn (e.g., amountGiven underlying when wrapping during an EXACT_IN)
-     * @return amountOut Amount of tokenOut (e.g., calculatedAmount wrapped in the example above)
+     * @notice Returns Vault's pause window end time.
+     * @dev This value is immutable; the getter can be called by anyone.
      */
-    function calculateBufferAmounts(
-        WrappingDirection direction,
-        SwapKind kind,
-        IERC4626 wrappedToken,
-        uint256 amountGiven
-    ) external returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut);
+    function getPauseWindowEndTime() external view returns (uint32);
+
+    /**
+     * @notice Returns Vault's buffer period duration.
+     * @dev This value is immutable; the getter can be called by anyone.
+     */
+    function getBufferPeriodDuration() external view returns (uint32);
+
+    /**
+     * @notice Returns Vault's buffer period end time.
+     * @dev This value is immutable; the getter can be called by anyone.
+     */
+    function getBufferPeriodEndTime() external view returns (uint32);
+
+    /**
+     * @notice Get the minimum number of tokens in a pool.
+     * @dev We expect the vast majority of pools to be 2-token.
+     * @return The token count of a minimal pool
+     */
+    function getMinimumPoolTokens() external view returns (uint256);
+
+    /**
+     * @notice Get the maximum number of tokens in a pool.
+     * @return The token count of a minimal pool
+     */
+    function getMaximumPoolTokens() external view returns (uint256);
+
+    /*******************************************************************************
+                                    Vault Pausing
+    *******************************************************************************/
+
+    /**
+     * @notice Indicates whether the Vault is paused.
+     * @return True if the Vault is paused
+     */
+    function isVaultPaused() external view returns (bool);
+
+    /**
+     * @notice Returns the paused status, and end times of the Vault's pause window and buffer period.
+     * @return paused True if the Vault is paused
+     * @return vaultPauseWindowEndTime The timestamp of the end of the Vault's pause window
+     * @return vaultBufferPeriodEndTime The timestamp of the end of the Vault's buffer period
+     */
+    function getVaultPausedState() external view returns (bool, uint32, uint32);
+
+    /*******************************************************************************
+                                   Fees
+    *******************************************************************************/
+
+    /**
+     * @notice Collects accumulated aggregate swap and yield fees for the specified pool.
+     * @dev Fees are sent to the ProtocolFeeController address.
+     * @param pool The pool on which all aggregate fees should be collected
+     */
+    function collectAggregateFees(address pool) external;
+
+    /*******************************************************************************
+                                Wrapped Token Buffers
+    *******************************************************************************/
+
+    /**
+     * @notice Returns the shares (internal buffer BPT) of a liquidity owner: a user that deposited assets
+     * in the buffer.
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param liquidityOwner Address of the user that owns liquidity in the wrapped token's buffer
+     * @return ownerShares Amount of shares allocated to the liquidity owner
+     */
+    function getBufferOwnerShares(
+        IERC20 wrappedToken,
+        address liquidityOwner
+    ) external view returns (uint256 ownerShares);
+
+    /**
+     * @notice Returns the supply shares (internal buffer BPT) of the ERC4626 buffer.
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @return bufferShares Amount of supply shares of the buffer
+     */
+    function getBufferTotalShares(IERC20 wrappedToken) external view returns (uint256 bufferShares);
+
+    /**
+     * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the vault.
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @return underlyingBalanceRaw Amount of underlying tokens deposited into the buffer
+     * @return wrappedBalanceRaw Amount of wrapped tokens deposited into the buffer
+     */
+    function getBufferBalance(
+        IERC20 wrappedToken
+    ) external view returns (uint256 underlyingBalanceRaw, uint256 wrappedBalanceRaw);
 }

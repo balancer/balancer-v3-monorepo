@@ -41,6 +41,10 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    /***************************************************************************
+                                       Swaps
+    ***************************************************************************/
+
     /// @inheritdoc IBatchRouter
     function swapExactIn(
         SwapPathExactAmountIn[] memory paths,
@@ -579,6 +583,10 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         }
     }
 
+    /***************************************************************************
+                                     Queries
+    ***************************************************************************/
+
     /// @inheritdoc IBatchRouter
     function querySwapExactIn(
         SwapPathExactAmountIn[] memory paths,
@@ -610,17 +618,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             );
     }
 
-    function querySwapExactInHook(
-        SwapExactInHookParams calldata params
-    )
-        external
-        nonReentrant
-        onlyVault
-        returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
-    {
-        (pathAmountsOut, tokensOut, amountsOut) = _swapExactInHook(params);
-    }
-
     /// @inheritdoc IBatchRouter
     function querySwapExactOut(
         SwapPathExactAmountOut[] memory paths,
@@ -650,6 +647,17 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                 ),
                 (uint256[], address[], uint256[])
             );
+    }
+
+    function querySwapExactInHook(
+        SwapExactInHookParams calldata params
+    )
+        external
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut)
+    {
+        (pathAmountsOut, tokensOut, amountsOut) = _swapExactInHook(params);
     }
 
     function querySwapExactOutHook(
@@ -990,6 +998,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts().tGet(tokenIn), wethIsEth);
             // Erases delta, in case more than one batch router op is called in the same transaction
             _currentSwapTokenInAmounts().tSet(tokenIn, 0);
+            _currentSwapTokensIn().remove(tokenIn);
         }
 
         for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
@@ -997,6 +1006,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             _sendTokenOut(sender, IERC20(tokenOut), _currentSwapTokenOutAmounts().tGet(tokenOut), wethIsEth);
             // Erases delta, in case more than one batch router op is called in the same transaction
             _currentSwapTokenOutAmounts().tSet(tokenOut, 0);
+            _currentSwapTokensOut().remove(tokenOut);
         }
 
         // Return the rest of ETH to sender

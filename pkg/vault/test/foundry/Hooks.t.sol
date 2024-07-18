@@ -161,7 +161,7 @@ contract HooksTest is BaseVaultTest {
         vm.expectCall(
             address(poolHooksContract),
             abi.encodeWithSelector(
-                IHooks.onComputeDynamicSwapFee.selector,
+                IHooks.onComputeDynamicSwapFeePercentage.selector,
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
@@ -193,7 +193,7 @@ contract HooksTest is BaseVaultTest {
         vm.expectCall(
             address(poolHooksContract),
             abi.encodeWithSelector(
-                IHooks.onComputeDynamicSwapFee.selector,
+                IHooks.onComputeDynamicSwapFeePercentage.selector,
                 IBasePool.PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
