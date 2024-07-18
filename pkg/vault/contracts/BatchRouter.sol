@@ -667,6 +667,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                             Yield-bearing token buffers
     *******************************************************************************/
 
+    /// @inheritdoc IBatchRouter
     function addLiquidityUnbalancedToBoostedPool(
         address pool,
         uint256[] memory exactUnderlyingAmountsIn,
@@ -677,7 +678,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         (, bptAmountOut, ) = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(
-                    BatchRouter.addLiquidityBoostedPoolHook.selector,
+                    BatchRouter.addLiquidityBoostedPoolUnbalancedHook.selector,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -693,9 +694,10 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         );
     }
 
+    /// @inheritdoc IBatchRouter
     function addLiquidityProportionalToBoostedPool(
         address pool,
-        uint256[] memory maxAmountsIn,
+        uint256[] memory maxUnderlyingAmountsIn,
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
@@ -703,11 +705,11 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         (amountsIn, , ) = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(
-                    BatchRouter.addLiquidityBoostedPoolHook.selector,
+                    BatchRouter.addLiquidityBoostedPoolProportionalHook.selector,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
-                        maxAmountsIn: maxAmountsIn,
+                        maxAmountsIn: maxUnderlyingAmountsIn,
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.PROPORTIONAL,
                         wethIsEth: wethIsEth,
@@ -719,39 +721,125 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         );
     }
 
-    function addLiquidityBoostedPoolHook(AddLiquidityHookParams calldata params) external
+    /// @inheritdoc IBatchRouter
+    function removeLiquidityProportionalToBoostedPool(
+        address pool,
+        uint256 exactBptAmountIn,
+        uint256[] memory minUnderlyingAmountsOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable saveSender returns (uint256[] memory amountsOut) {
+        (, amountsOut, ) = abi.decode(
+            _vault.unlock(
+                abi.encodeWithSelector(
+                    BatchRouter.removeLiquidityBoostedPoolProportionalHook.selector,
+                    RemoveLiquidityHookParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        minAmountsOut: minUnderlyingAmountsOut,
+                        maxBptAmountIn: exactBptAmountIn,
+                        kind: RemoveLiquidityKind.PROPORTIONAL,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256, uint256[], bytes)
+        );
+    }
+
+    /// @inheritdoc IBatchRouter
+    function queryAddLiquidityUnbalancedToBoostedPool(
+        address pool,
+        uint256[] memory exactUnderlyingAmountsIn,
+        bytes memory userData
+    ) external saveSender returns (uint256 bptAmountOut) {
+        (, bptAmountOut, ) = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    BatchRouter.addLiquidityBoostedPoolUnbalancedHook.selector,
+                    AddLiquidityHookParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        maxAmountsIn: exactUnderlyingAmountsIn,
+                        minBptAmountOut: 0,
+                        kind: AddLiquidityKind.UNBALANCED,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[], uint256, bytes)
+        );
+    }
+
+    /// @inheritdoc IBatchRouter
+    function queryAddLiquidityProportionalToBoostedPool(
+        address pool,
+        uint256[] memory maxUnderlyingAmountsIn,
+        uint256 exactBptAmountOut,
+        bytes memory userData
+    ) external saveSender returns (uint256[] memory amountsIn) {
+        (amountsIn, , ) = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    BatchRouter.addLiquidityBoostedPoolProportionalHook.selector,
+                    AddLiquidityHookParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        maxAmountsIn: maxUnderlyingAmountsIn,
+                        minBptAmountOut: exactBptAmountOut,
+                        kind: AddLiquidityKind.PROPORTIONAL,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[], uint256, bytes)
+        );
+    }
+
+    /// @inheritdoc IBatchRouter
+    function queryRemoveLiquidityProportionalToBoostedPool(
+        address pool,
+        uint256 exactBptAmountIn,
+        bytes memory userData
+    ) external saveSender returns (uint256[] memory amountsOut) {
+        (, amountsOut, ) = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    BatchRouter.removeLiquidityBoostedPoolProportionalHook.selector,
+                    RemoveLiquidityHookParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        minAmountsOut: new uint256[](2),
+                        maxBptAmountIn: exactBptAmountIn,
+                        kind: RemoveLiquidityKind.PROPORTIONAL,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256, uint256[], bytes)
+        );
+    }
+
+    function addLiquidityBoostedPoolUnbalancedHook(
+        AddLiquidityHookParams calldata params
+    )
+        external
         nonReentrant
         onlyVault
         returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
     {
-        // Non-registered pools will fail here.
         IERC20[] memory boostedPoolTokens = _vault.getPoolTokens(params.pool);
-        uint256[] memory wrappedAmounts = new uint256[](boostedPoolTokens.length);
-        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
-
-        // Wrap given underlying tokens for wrapped tokens
-        for (uint256 i = 0; i < boostedPoolTokens.length; ++i) {
-            // Boosted pool tokens are the wrappers
-            IERC4626 wrappedToken = IERC4626(address(boostedPoolTokens[i]));
-            IERC20 underlyingToken = IERC20(wrappedToken.asset());
-
-            if (isStaticCall == false) {
-                // We need this to wrap/unwrap in case the buffer doesn't have enough liquidity to do so.
-                _takeTokenIn(params.sender, underlyingToken, params.maxAmountsIn[i], params.wethIsEth);
-            }
-
-            // erc4626BufferWrapOrUnwrap will fail if the wrapper wasn't ERC4626
-            (, , wrappedAmounts[i]) = _vault.erc4626BufferWrapOrUnwrap(
-                BufferWrapOrUnwrapParams({
-                    kind: SwapKind.EXACT_IN,
-                    direction: WrappingDirection.WRAP,
-                    wrappedToken: wrappedToken,
-                    amountGivenRaw: params.maxAmountsIn[i],
-                    limitRaw: 0, // We don't apply the limit here
-                    userData: params.userData
-                })
-            );
-        }
+        uint256[] memory wrappedAmounts = _wrapToken(
+            params,
+            boostedPoolTokens,
+            params.maxAmountsIn,
+            SwapKind.EXACT_IN,
+            0
+        );
 
         // Add wrapped amounts to the boosted pool
         (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
@@ -764,6 +852,122 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                 userData: params.userData
             })
         );
+    }
+
+    function addLiquidityBoostedPoolProportionalHook(
+        AddLiquidityHookParams calldata params
+    )
+        external
+        nonReentrant
+        onlyVault
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut, bytes memory returnData)
+    {
+        IERC20[] memory boostedPoolTokens = _vault.getPoolTokens(params.pool);
+        uint256[] memory maxWrappedAmountsIn = new uint256[](boostedPoolTokens.length);
+
+        for (uint256 i = 0; i < boostedPoolTokens.length; ++i) {
+            maxWrappedAmountsIn[i] = IERC4626(address(boostedPoolTokens[i])).previewDeposit(params.maxAmountsIn[i]);
+        }
+
+        // Add wrapped amounts to the boosted pool
+        (amountsIn, bptAmountOut, returnData) = _vault.addLiquidity(
+            AddLiquidityParams({
+                pool: params.pool,
+                to: params.sender,
+                maxAmountsIn: maxWrappedAmountsIn,
+                minBptAmountOut: params.minBptAmountOut,
+                kind: params.kind,
+                userData: params.userData
+            })
+        );
+
+        _wrapToken(params, boostedPoolTokens, amountsIn, SwapKind.EXACT_OUT, type(uint256).max);
+    }
+
+    function removeLiquidityBoostedPoolProportionalHook(
+        RemoveLiquidityHookParams calldata params
+    )
+        external
+        nonReentrant
+        onlyVault
+        returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory returnData)
+    {
+        IERC20[] memory boostedPoolTokens = _vault.getPoolTokens(params.pool);
+        uint256[] memory minWrappedAmountsIn = new uint256[](boostedPoolTokens.length);
+        uint256[] memory underlingAmountsOut = new uint256[](boostedPoolTokens.length);
+
+        for (uint256 i = 0; i < boostedPoolTokens.length; ++i) {
+            minWrappedAmountsIn[i] = IERC4626(address(boostedPoolTokens[i])).previewWithdraw(params.minAmountsOut[i]);
+        }
+
+        (bptAmountIn, amountsOut, returnData) = _vault.removeLiquidity(
+            RemoveLiquidityParams({
+                pool: params.pool,
+                from: params.sender,
+                maxBptAmountIn: params.maxBptAmountIn,
+                minAmountsOut: minWrappedAmountsIn,
+                kind: params.kind,
+                userData: params.userData
+            })
+        );
+
+        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
+        for (uint256 i = 0; i < boostedPoolTokens.length; ++i) {
+            IERC4626 wrappedToken = IERC4626(address(boostedPoolTokens[i]));
+            IERC20 underlyingToken = IERC20(wrappedToken.asset());
+
+            // erc4626BufferWrapOrUnwrap will fail if the wrapper wasn't ERC4626
+            (, , underlingAmountsOut[i]) = _vault.erc4626BufferWrapOrUnwrap(
+                BufferWrapOrUnwrapParams({
+                    kind: SwapKind.EXACT_IN,
+                    direction: WrappingDirection.UNWRAP,
+                    wrappedToken: wrappedToken,
+                    amountGivenRaw: amountsOut[i],
+                    limitRaw: 0, // We don't apply the limit here
+                    userData: params.userData
+                })
+            );
+
+            if (isStaticCall == false) {
+                _sendTokenOut(params.sender, underlyingToken, underlingAmountsOut[i], params.wethIsEth);
+            }
+        }
+    }
+
+    function _wrapToken(
+        AddLiquidityHookParams calldata params,
+        IERC20[] memory boostedPoolTokens,
+        uint256[] memory amountsIn,
+        SwapKind kind,
+        uint256 limitRaw
+    ) private returns (uint256[] memory wrappedAmounts) {
+        // Non-registered pools will fail here.
+        wrappedAmounts = new uint256[](boostedPoolTokens.length);
+
+        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
+
+        // Wrap given underlying tokens for wrapped tokens
+        for (uint256 i = 0; i < boostedPoolTokens.length; ++i) {
+            // Boosted pool tokens are the wrappers
+            IERC4626 wrappedToken = IERC4626(address(boostedPoolTokens[i]));
+            IERC20 underlyingToken = IERC20(wrappedToken.asset());
+
+            if (isStaticCall == false) {
+                _takeTokenIn(params.sender, underlyingToken, amountsIn[i], params.wethIsEth);
+            }
+
+            // erc4626BufferWrapOrUnwrap will fail if the wrapper wasn't ERC4626
+            (, , wrappedAmounts[i]) = _vault.erc4626BufferWrapOrUnwrap(
+                BufferWrapOrUnwrapParams({
+                    kind: kind,
+                    direction: WrappingDirection.WRAP,
+                    wrappedToken: wrappedToken,
+                    amountGivenRaw: amountsIn[i],
+                    limitRaw: limitRaw,
+                    userData: params.userData
+                })
+            );
+        }
     }
 
     /*******************************************************************************

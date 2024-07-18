@@ -3,7 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
-import { AddLiquidityKind } from "./VaultTypes.sol";
+import { AddLiquidityKind, RemoveLiquidityKind } from "./VaultTypes.sol";
 
 interface IRouterCommon {
     /**
@@ -22,6 +22,26 @@ interface IRouterCommon {
         uint256[] maxAmountsIn;
         uint256 minBptAmountOut;
         AddLiquidityKind kind;
+        bool wethIsEth;
+        bytes userData;
+    }
+
+    /**
+     * @dev Data for the remove liquidity hook.
+     * @param sender Account originating the remove liquidity operation
+     * @param pool Address of the liquidity pool
+     * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
+     * @param maxBptAmountIn Maximum amount of pool tokens provided
+     * @param kind Type of exit (e.g., single or multi-token)
+     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
+     * @param userData Additional (optional) data required for removing liquidity
+     */
+    struct RemoveLiquidityHookParams {
+        address sender;
+        address pool;
+        uint256[] minAmountsOut;
+        uint256 maxBptAmountIn;
+        RemoveLiquidityKind kind;
         bool wethIsEth;
         bytes userData;
     }

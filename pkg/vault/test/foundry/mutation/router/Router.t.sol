@@ -87,7 +87,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testRemoveLiquidityHookWhenNotVault() public {
-        IRouter.RemoveLiquidityHookParams memory params = IRouter.RemoveLiquidityHookParams(
+        IRouterCommon.RemoveLiquidityHookParams memory params = IRouterCommon.RemoveLiquidityHookParams(
             msg.sender,
             pool,
             [uint256(0), uint256(0)].toMemoryArray(),
@@ -198,7 +198,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testQueryRemoveLiquidityHookWhenNotVault() public {
-        IRouter.RemoveLiquidityHookParams memory params = IRouter.RemoveLiquidityHookParams(
+        IRouterCommon.RemoveLiquidityHookParams memory params = IRouterCommon.RemoveLiquidityHookParams(
             msg.sender,
             pool,
             amountsIn,

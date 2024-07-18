@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
-import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
+import { AddLiquidityKind, SwapKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -163,26 +163,6 @@ interface IRouter {
     /***************************************************************************
                                  Remove Liquidity
     ***************************************************************************/
-
-    /**
-     * @dev Data for the remove liquidity hook.
-     * @param sender Account originating the remove liquidity operation
-     * @param pool Address of the liquidity pool
-     * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
-     * @param maxBptAmountIn Maximum amount of pool tokens provided
-     * @param kind Type of exit (e.g., single or multi-token)
-     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
-     * @param userData Additional (optional) data required for removing liquidity
-     */
-    struct RemoveLiquidityHookParams {
-        address sender;
-        address pool;
-        uint256[] minAmountsOut;
-        uint256 maxBptAmountIn;
-        RemoveLiquidityKind kind;
-        bool wethIsEth;
-        bytes userData;
-    }
 
     /**
      * @notice Removes liquidity with proportional token amounts from a pool, burning an exact pool token amount.
