@@ -62,15 +62,7 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
         amountIn = bound(amountIn, (USDC_BUFFER_INIT_AMOUNT) / 10, USDC_BUFFER_INIT_AMOUNT);
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(usdcFork, amountIn, 0);
 
-        uint256 snapshotId = vm.snapshot();
-        _prankStaticCall();
-        (uint256[] memory queryPathAmountsOut, , ) = batchRouter.querySwapExactIn(paths, bytes(""));
-        vm.revertTo(snapshotId);
-
-        vm.prank(lp);
-        (uint256[] memory actualPathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
-
-        assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
+        _testExactIn(paths);
     }
 
     function testUsdcInWithinBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
@@ -81,30 +73,14 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
             amountOut
         );
 
-        uint256 snapshotId = vm.snapshot();
-        _prankStaticCall();
-        (uint256[] memory queryPathAmountsIn, , ) = batchRouter.querySwapExactOut(paths, bytes(""));
-        vm.revertTo(snapshotId);
-
-        vm.prank(lp);
-        (uint256[] memory actualPathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
-
-        assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual outputs do not match");
+        _testExactOut(paths);
     }
 
     function testUsdcInOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
         amountIn = bound(amountIn, 2 * USDC_BUFFER_INIT_AMOUNT, 4 * USDC_BUFFER_INIT_AMOUNT);
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(usdcFork, amountIn, 0);
 
-        uint256 snapshotId = vm.snapshot();
-        _prankStaticCall();
-        (uint256[] memory queryPathAmountsOut, , ) = batchRouter.querySwapExactIn(paths, bytes(""));
-        vm.revertTo(snapshotId);
-
-        vm.prank(lp);
-        (uint256[] memory actualPathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
-
-        assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
+        _testExactIn(paths);
     }
 
     function testUsdcInOutOfBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
@@ -115,15 +91,7 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
             amountOut
         );
 
-        uint256 snapshotId = vm.snapshot();
-        _prankStaticCall();
-        (uint256[] memory queryPathAmountsIn, , ) = batchRouter.querySwapExactOut(paths, bytes(""));
-        vm.revertTo(snapshotId);
-
-        vm.prank(lp);
-        (uint256[] memory actualPathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
-
-        assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual outputs do not match");
+        _testExactOut(paths);
     }
 
     function testUsdcInBufferUnbalancedExactIn__Fork__Fuzz(
@@ -138,15 +106,7 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
         amountIn = bound(amountIn, 2 * USDC_BUFFER_INIT_AMOUNT, 4 * USDC_BUFFER_INIT_AMOUNT);
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(usdcFork, amountIn, 0);
 
-        uint256 snapshotId = vm.snapshot();
-        _prankStaticCall();
-        (uint256[] memory queryPathAmountsOut, , ) = batchRouter.querySwapExactIn(paths, bytes(""));
-        vm.revertTo(snapshotId);
-
-        vm.prank(lp);
-        (uint256[] memory actualPathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
-
-        assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
+        _testExactIn(paths);
     }
 
     function testUsdcInBufferUnbalancedExactOut__Fork__Fuzz(
@@ -165,30 +125,14 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
             amountOut
         );
 
-        uint256 snapshotId = vm.snapshot();
-        _prankStaticCall();
-        (uint256[] memory queryPathAmountsIn, , ) = batchRouter.querySwapExactOut(paths, bytes(""));
-        vm.revertTo(snapshotId);
-
-        vm.prank(lp);
-        (uint256[] memory actualPathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
-
-        assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual outputs do not match");
+        _testExactOut(paths);
     }
 
     function testDaiInWithinBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
         amountIn = bound(amountIn, DAI_BUFFER_INIT_AMOUNT / 10, DAI_BUFFER_INIT_AMOUNT);
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(daiFork, amountIn, 0);
 
-        uint256 snapshotId = vm.snapshot();
-        _prankStaticCall();
-        (uint256[] memory queryPathAmountsOut, , ) = batchRouter.querySwapExactIn(paths, bytes(""));
-        vm.revertTo(snapshotId);
-
-        vm.prank(lp);
-        (uint256[] memory actualPathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
-
-        assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
+        _testExactIn(paths);
     }
 
     function testDaiInWithinBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
@@ -199,30 +143,14 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
             amountOut
         );
 
-        uint256 snapshotId = vm.snapshot();
-        _prankStaticCall();
-        (uint256[] memory queryPathAmountsIn, , ) = batchRouter.querySwapExactOut(paths, bytes(""));
-        vm.revertTo(snapshotId);
-
-        vm.prank(lp);
-        (uint256[] memory actualPathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
-
-        assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual outputs do not match");
+        _testExactOut(paths);
     }
 
     function testDaiInOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
         amountIn = bound(amountIn, 2 * DAI_BUFFER_INIT_AMOUNT, 4 * DAI_BUFFER_INIT_AMOUNT);
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(daiFork, amountIn, 0);
 
-        uint256 snapshotId = vm.snapshot();
-        _prankStaticCall();
-        (uint256[] memory queryPathAmountsOut, , ) = batchRouter.querySwapExactIn(paths, bytes(""));
-        vm.revertTo(snapshotId);
-
-        vm.prank(lp);
-        (uint256[] memory actualPathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
-
-        assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
+        _testExactIn(paths);
     }
 
     function testDaiInOutOfBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
@@ -233,15 +161,7 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
             amountOut
         );
 
-        uint256 snapshotId = vm.snapshot();
-        _prankStaticCall();
-        (uint256[] memory queryPathAmountsIn, , ) = batchRouter.querySwapExactOut(paths, bytes(""));
-        vm.revertTo(snapshotId);
-
-        vm.prank(lp);
-        (uint256[] memory actualPathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
-
-        assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual outputs do not match");
+        _testExactOut(paths);
     }
 
     function testDaiInBufferUnbalancedExactIn__Fork__Fuzz(
@@ -256,15 +176,7 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
         amountIn = bound(amountIn, 2 * DAI_BUFFER_INIT_AMOUNT, 4 * DAI_BUFFER_INIT_AMOUNT);
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(daiFork, amountIn, 0);
 
-        uint256 snapshotId = vm.snapshot();
-        _prankStaticCall();
-        (uint256[] memory queryPathAmountsOut, , ) = batchRouter.querySwapExactIn(paths, bytes(""));
-        vm.revertTo(snapshotId);
-
-        vm.prank(lp);
-        (uint256[] memory actualPathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
-
-        assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual outputs do not match");
+        _testExactIn(paths);
     }
 
     function testDaiInBufferUnbalancedExactOut__Fork__Fuzz(
@@ -283,15 +195,75 @@ contract BoostedPoolQueryVsActualOperationTest is BaseVaultTest {
             amountOut
         );
 
+        _testExactOut(paths);
+    }
+
+    function _testExactIn(IBatchRouter.SwapPathExactAmountIn[] memory paths) private {
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        (uint256[] memory queryPathAmountsIn, , ) = batchRouter.querySwapExactOut(paths, bytes(""));
+        (
+            uint256[] memory queryPathAmountsOut,
+            address[] memory queryTokensOut,
+            uint256[] memory queryAmountsOut
+        ) = batchRouter.querySwapExactIn(paths, bytes(""));
         vm.revertTo(snapshotId);
 
         vm.prank(lp);
-        (uint256[] memory actualPathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+        (
+            uint256[] memory actualPathAmountsOut,
+            address[] memory actualTokensOut,
+            uint256[] memory actualAmountsOut
+        ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual outputs do not match");
+        assertEq(actualPathAmountsOut.length, 1, "actualPathAmountsOut length is wrong");
+        assertEq(actualTokensOut.length, 1, "actualTokensOut length is wrong");
+        assertEq(actualAmountsOut.length, 1, "actualAmountsOut length is wrong");
+        assertEq(
+            actualPathAmountsOut.length,
+            queryPathAmountsOut.length,
+            "actual and query pathAmountsOut lengths do not match"
+        );
+        assertEq(actualTokensOut.length, queryPathAmountsOut.length, "actual and query tokensOut lengths do not match");
+        assertEq(
+            actualAmountsOut.length,
+            queryPathAmountsOut.length,
+            "actual and query amountsOut lengths do not match"
+        );
+        assertEq(queryPathAmountsOut[0], actualPathAmountsOut[0], "Query and actual pathAmountsOut do not match");
+        assertEq(queryTokensOut[0], actualTokensOut[0], "Query and actual tokensOut do not match");
+        assertEq(queryAmountsOut[0], actualAmountsOut[0], "Query and actual amountsOut do not match");
+    }
+
+    function _testExactOut(IBatchRouter.SwapPathExactAmountOut[] memory paths) private {
+        uint256 snapshotId = vm.snapshot();
+        _prankStaticCall();
+        (
+            uint256[] memory queryPathAmountsIn,
+            address[] memory queryTokensIn,
+            uint256[] memory queryAmountsIn
+        ) = batchRouter.querySwapExactOut(paths, bytes(""));
+        vm.revertTo(snapshotId);
+
+        vm.prank(lp);
+        (
+            uint256[] memory actualPathAmountsIn,
+            address[] memory actualTokensIn,
+            uint256[] memory actualAmountsIn
+        ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
+
+        assertEq(actualPathAmountsIn.length, 1, "actualPathAmountsIn length is wrong");
+        assertEq(actualTokensIn.length, 1, "actualTokensIn length is wrong");
+        assertEq(actualAmountsIn.length, 1, "actualAmountsIn length is wrong");
+        assertEq(
+            actualPathAmountsIn.length,
+            queryPathAmountsIn.length,
+            "actual and query pathAmountsIn lengths do not match"
+        );
+        assertEq(actualTokensIn.length, queryPathAmountsIn.length, "actual and query tokensIn lengths do not match");
+        assertEq(actualAmountsIn.length, queryPathAmountsIn.length, "actual and query amountsIn lengths do not match");
+        assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual pathAmountsIn do not match");
+        assertEq(queryTokensIn[0], actualTokensIn[0], "Query and actual tokensIn do not match");
+        assertEq(queryAmountsIn[0], actualAmountsIn[0], "Query and actual amountsIn do not match");
     }
 
     function _buildExactInPaths(
