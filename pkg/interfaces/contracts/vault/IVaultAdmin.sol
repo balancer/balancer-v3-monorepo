@@ -269,9 +269,14 @@ interface IVaultAdmin {
     *******************************************************************************/
 
     /**
-     * @notice Sets a new Authorizer for the Vault.
-     * @dev This is a permissioned call.
-     * Emits an `AuthorizerChanged` event.
+     * @notice Get the v2 Vault address.
+     * @return Address of the v2 Vault used to fetch the authorizer
      */
-    function setAuthorizer(IAuthorizer newAuthorizer) external;
+    function getV2Vault() external view returns (address);
+
+    /**
+     * @notice Synchronizes the authorizer contract with v2.
+     * @dev Emits an `AuthorizerChanged` event.
+     */
+    function updateAuthorizer() external;
 }

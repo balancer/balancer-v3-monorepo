@@ -9,6 +9,7 @@ import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol"
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { Iv2Vault } from "@balancer-labs/v3-interfaces/contracts/vault/Iv2Vault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
@@ -70,6 +71,9 @@ contract VaultStorage {
     // Code extension for Vault.
     IVaultExtension internal immutable _vaultExtension;
 
+    // Address of the v2 Vault, used to fetch the address of the shared Authorizer contract.
+    Iv2Vault internal immutable _v2Vault;
+
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfigBits;
 
@@ -96,7 +100,10 @@ contract VaultStorage {
      */
     mapping(IERC20 => uint256) internal _reservesOf;
 
-    // Upgradeable contract in charge of setting permissions.
+    // Cached address of contract in charge of setting permissions, read from the v2 Vault.
+    // It is cached here to avoid an external call to the v2 Vault on every permissions check. Since it can be updated
+    // through v2 (should be extremely rare), there is a permissionless `updateAuthorizer` function to re-sync in case
+    // it is ever changed.
     IAuthorizer internal _authorizer;
 
     // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.

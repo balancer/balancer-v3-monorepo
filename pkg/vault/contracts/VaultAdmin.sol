@@ -33,6 +33,7 @@ import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
+import "hardhat/console.sol";
 
 /**
  * @dev Bytecode extension for the Vault containing permissioned functions. Complementary to the `VaultExtension`.
@@ -544,10 +545,20 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
-    function setAuthorizer(IAuthorizer newAuthorizer) external onlyVaultDelegateCall authenticate {
-        _authorizer = newAuthorizer;
+    function getV2Vault() external view returns (address) {
+        console.log("v2Vault in getV2Vault: %s (%s)", address(_v2Vault), address(this));
+        return address(_v2Vault);
+    }
 
-        emit AuthorizerChanged(newAuthorizer);
+    /// @inheritdoc IVaultAdmin
+    function updateAuthorizer() external onlyVaultDelegateCall {
+        IAuthorizer newAuthorizer = _v2Vault.getAuthorizer();
+
+        if (newAuthorizer != _authorizer) {
+            _authorizer = newAuthorizer;
+            
+            emit AuthorizerChanged(newAuthorizer);
+        }
     }
 
     /// @dev Access control is delegated to the Authorizer

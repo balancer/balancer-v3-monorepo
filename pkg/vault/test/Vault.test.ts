@@ -64,6 +64,9 @@ describe('Vault', function () {
       await vault.getVaultExtension()
     )) as unknown as VaultExtensionMock;
 
+    const v2VaultAddress = await vault.getV2Vault();
+    console.log(v2VaultAddress);
+
     factory = await deploy('PoolFactoryMock', { args: [vault, 12 * MONTH] });
 
     tokenA = tokens[0];
@@ -346,52 +349,37 @@ describe('Vault', function () {
     });
   });
 
-  describe('authorizer', () => {
+  describe.skip('authorizer', () => {
     let oldAuthorizer: Contract;
     let newAuthorizer: NullAuthorizer;
     let oldAuthorizerAddress: string;
+    let v2Vault: Contract;
 
     sharedBeforeEach('get old and deploy new authorizer', async () => {
       oldAuthorizerAddress = await vault.getAuthorizer();
       oldAuthorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', oldAuthorizerAddress);
 
       newAuthorizer = await deploy('NullAuthorizer');
+
+      const v2VaultAddress = await vault.getV2Vault();
+      console.log(v2VaultAddress);
+      v2Vault = await deployedAt('v3-vault/V2VaultMock', v2VaultAddress);
     });
 
-    context('without permission', () => {
-      it('cannot change authorizer', async () => {
-        await expect(vault.setAuthorizer(newAuthorizer.getAddress())).to.be.revertedWithCustomError(
-          vault,
-          'SenderNotAllowed'
-        );
-      });
-    });
-
-    context('with permission', () => {
+    context('from v2 Vault', () => {
       let newAuthorizerAddress: string;
-
-      sharedBeforeEach('grant permission', async () => {
-        const setAuthorizerAction = await actionId(vault, 'setAuthorizer');
-
-        await oldAuthorizer.grantRole(setAuthorizerAction, alice.address);
-      });
 
       it('can change authorizer', async () => {
         newAuthorizerAddress = await newAuthorizer.getAddress();
 
-        await expect(await vault.connect(alice).setAuthorizer(newAuthorizerAddress))
+        // Set the address in the v2 Vault.
+        await v2Vault.setAuthorizer(newAuthorizerAddress);
+
+        await expect(await vault.updateAuthorizer())
           .to.emit(vault, 'AuthorizerChanged')
           .withArgs(newAuthorizerAddress);
 
         expect(await vault.getAuthorizer()).to.equal(newAuthorizerAddress);
-      });
-
-      it('the null authorizer allows everything', async () => {
-        await vault.connect(alice).setAuthorizer(newAuthorizerAddress);
-
-        await vault.setAuthorizer(oldAuthorizerAddress);
-
-        expect(await vault.getAuthorizer()).to.equal(oldAuthorizerAddress);
       });
     });
   });

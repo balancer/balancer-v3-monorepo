@@ -24,6 +24,7 @@ export async function setupEnvironment(pauseWindowDuration: number): Promise<{
     pauseWindowDuration,
     bufferPeriodDuration: BUFFER_PERIOD_DURATION,
   });
+
   const vaultAddress = await vault.getAddress();
   const factoryAddress = await vault.getPoolFactoryMock();
   const factory = await deployedAt('PoolFactoryMock', factoryAddress);

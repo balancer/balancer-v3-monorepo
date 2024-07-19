@@ -9,16 +9,17 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
+import { Iv2Vault } from "@balancer-labs/v3-interfaces/contracts/vault/Iv2Vault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -38,6 +39,7 @@ import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
+import "hardhat/console.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
     using PackedTokenBalance for bytes32;
@@ -53,7 +55,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using StorageSlotExtension for *;
     using PoolDataLib for PoolData;
 
-    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer, IProtocolFeeController protocolFeeController) {
+    constructor(IVaultExtension vaultExtension, Iv2Vault v2Vault, IProtocolFeeController protocolFeeController) {
         if (address(vaultExtension.vault()) != address(this)) {
             revert WrongVaultExtensionDeployment();
         }
@@ -69,7 +71,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _vaultBufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
         _vaultBufferPeriodEndTime = IVaultAdmin(address(vaultExtension)).getBufferPeriodEndTime();
 
-        _authorizer = authorizer;
+        _v2Vault = v2Vault;
+        console.log("V2Vault in Vault constructor: %s (%s)", address(v2Vault), address(this));
+
+        // Initialize to the current value in the v2 Vault. Can be re-synced with `updateAuthorizer` if it changes.
+        _authorizer = v2Vault.getAuthorizer();
     }
 
     /*******************************************************************************

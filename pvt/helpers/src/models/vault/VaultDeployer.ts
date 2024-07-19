@@ -13,7 +13,7 @@ import {
   VaultExtension,
   VaultExtensionMock,
 } from '@balancer-labs/v3-vault/typechain-types';
-import { VaultMock } from '@balancer-labs/v3-vault/typechain-types';
+import { VaultMock, V2VaultMock } from '@balancer-labs/v3-vault/typechain-types';
 import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 
@@ -21,17 +21,20 @@ export async function deploy(params: VaultDeploymentInputParams = {}): Promise<V
   const deployment = await TypesConverter.toVaultDeployment(params);
 
   const basicAuthorizer = await deployBasicAuthorizer(deployment.admin);
-  return await deployReal(deployment, basicAuthorizer);
+  const v2Vault = await deployV2Vault(basicAuthorizer);
+
+  return await deployReal(deployment, v2Vault);
 }
 
 export async function deployMock(params: VaultDeploymentInputParams = {}): Promise<VaultMock> {
   const deployment = await TypesConverter.toVaultDeployment(params);
 
   const basicAuthorizer = await deployBasicAuthorizer(deployment.admin);
-  return await deployMocked(deployment, basicAuthorizer);
+  const v2Vault = await deployV2Vault(basicAuthorizer);
+  return await deployMocked(deployment, v2Vault);
 }
 
-async function deployReal(deployment: VaultDeploymentParams, authorizer: BaseContract): Promise<Vault> {
+async function deployReal(deployment: VaultDeploymentParams, v2Vault: BaseContract): Promise<Vault> {
   const { admin, pauseWindowDuration, bufferPeriodDuration } = deployment;
 
   const futureVaultAddress = await getVaultAddress(admin);
@@ -51,13 +54,14 @@ async function deployReal(deployment: VaultDeploymentParams, authorizer: BaseCon
     from: admin,
   });
 
+  console.log(`Deploying real: ${await v2Vault.getAddress()}`);
   return await contract.deploy('v3-vault/Vault', {
-    args: [vaultExtension, authorizer, protocolFeeController],
+    args: [vaultExtension, v2Vault, protocolFeeController],
     from: admin,
   });
 }
 
-async function deployMocked(deployment: VaultDeploymentParams, authorizer: BaseContract): Promise<VaultMock> {
+async function deployMocked(deployment: VaultDeploymentParams, v2Vault: BaseContract): Promise<VaultMock> {
   const { admin, pauseWindowDuration, bufferPeriodDuration } = deployment;
 
   const futureVaultAddress = await getVaultAddress(admin);
@@ -77,8 +81,9 @@ async function deployMocked(deployment: VaultDeploymentParams, authorizer: BaseC
     from: admin,
   });
 
+  console.log(`Deploying mocked: ${await v2Vault.getAddress()}`);
   return await contract.deploy('v3-vault/VaultMock', {
-    args: [vaultExtension, authorizer, protocolFeeController],
+    args: [vaultExtension, v2Vault, protocolFeeController],
     from: admin,
   });
 }
@@ -95,4 +100,8 @@ async function getVaultAddress(from: SignerWithAddress): Promise<string> {
 
 async function deployBasicAuthorizer(admin: SignerWithAddress): Promise<BasicAuthorizerMock> {
   return contract.deploy('v3-solidity-utils/BasicAuthorizerMock', { args: [], from: admin });
+}
+
+async function deployV2Vault(authorizer: BaseContract): Promise<V2VaultMock> {
+  return contract.deploy('v3-vault/V2VaultMock', { args: [authorizer]});
 }
