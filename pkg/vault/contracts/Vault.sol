@@ -1147,7 +1147,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 vaultUnderlyingDelta;
             uint256 vaultWrappedDelta;
 
-            // If in query mode and vault does not have enough tokens to do the actual wrap, use ERC4626 preview
+            // When wrapping and in query mode, the vault needs to have enough reserves of underlying token to do the
+            // wrap operation. If the vault does not have enough tokens to do the actual wrap, use ERC4626 preview.
             bool shouldPreview = _isQueryContext() &&
                 _reservesOf[underlyingToken] < amountInUnderlying + bufferUnderlyingSurplus;
 
@@ -1211,14 +1212,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Only updates buffer balances if buffer has a surplus of underlying tokens.
             if (bufferUnderlyingSurplus > 0) {
-                // If buffer has an underlying surplus, it wraps the surplus + amountIn, so the final amountIn needs
-                // to be discounted for that.
-                amountInUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus;
-                // Since bufferUnderlyingSurplus was wrapped, the final amountOut needs to discount the wrapped amount
-                // that will stay in the buffer. Refresh `bufferWrappedSurplus` after external calls on the
-                // wrapped token.
-                bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
-                amountOutWrapped = vaultWrappedDelta - bufferWrappedSurplus;
+                if (kind == SwapKind.EXACT_IN) {
+                    bufferUnderlyingSurplus = vaultUnderlyingDelta - amountInUnderlying;
+                    // Since bufferUnderlyingSurplus was wrapped, the final amountOut needs to discount the wrapped amount
+                    // that will stay in the buffer. Refresh `bufferWrappedSurplus` after external calls on the
+                    // wrapped token.
+                    bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
+                    amountOutWrapped = vaultWrappedDelta - bufferWrappedSurplus;
+                } else {
+                    // If buffer has an underlying surplus, it wraps the surplus + amountIn, so the final amountIn needs
+                    // to be discounted for that.
+                    amountInUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus;
+                    bufferWrappedSurplus = vaultWrappedDelta - amountOutWrapped;
+                }
 
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
                 // increase. To decrease underlying balance, we get the delta amount that was deposited
@@ -1290,7 +1296,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 vaultUnderlyingDelta;
             uint256 vaultWrappedDelta;
 
-            // If in query mode and vault does not have enough tokens to do the actual unwrap, use ERC4626 preview
+            // When unwrapping and in query mode, the vault needs to have enough reserves of wrapped token to do the
+            // unwrap operation. If the vault does not have enough tokens to do the actual unwrap, use ERC4626 preview.
             bool shouldPreview = _isQueryContext() &&
                 _reservesOf[IERC20(address(wrappedToken))] < amountInWrapped + bufferWrappedSurplus;
 
@@ -1343,14 +1350,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // Only updates buffer balances if buffer has a surplus of wrapped tokens.
             if (bufferWrappedSurplus > 0) {
-                // If buffer has a wrapped surplus, it unwraps surplus + amountIn, so the final amountIn needs to
-                // be discounted for that.
-                amountInWrapped = vaultWrappedDelta - bufferWrappedSurplus;
-                // Since bufferWrappedSurplus was unwrapped, the final amountOut needs to discount the underlying
-                // amount that will stay in the buffer. Refresh `bufferUnderlyingSurplus` after external calls
-                // on the wrapped token.
-                bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
-                amountOutUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus;
+                if (kind == SwapKind.EXACT_IN) {
+                    bufferWrappedSurplus = vaultUnderlyingDelta - amountInWrapped;
+                    // Since bufferWrappedSurplus was unwrapped, the final amountOut needs to discount the underlying
+                    // amount that will stay in the buffer. Refresh `bufferUnderlyingSurplus` after external calls
+                    // on the wrapped token.
+                    bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
+                    amountOutUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus;
+                } else {
+                    // If buffer has a wrapped surplus, it unwraps surplus + amountIn, so the final amountIn needs to
+                    // be discounted for that.
+                    amountInWrapped = vaultWrappedDelta - bufferWrappedSurplus;
+                    bufferUnderlyingSurplus = vaultUnderlyingDelta - amountOutUnderlying;
+                }
 
                 // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance
                 // will decrease. To increase the underlying balance, we get the delta amount that was withdrawn
