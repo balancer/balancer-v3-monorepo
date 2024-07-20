@@ -64,9 +64,6 @@ describe('Vault', function () {
       await vault.getVaultExtension()
     )) as unknown as VaultExtensionMock;
 
-    const v2VaultAddress = await vault.getV2Vault();
-    console.log(v2VaultAddress);
-
     factory = await deploy('PoolFactoryMock', { args: [vault, 12 * MONTH] });
 
     tokenA = tokens[0];

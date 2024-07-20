@@ -69,7 +69,12 @@ contract VaultFactory is Authentication {
             revert VaultAddressMismatch();
         }
 
-        VaultAdmin vaultAdmin = new VaultAdmin(IVault(vaultAddress), _v2Vault, _pauseWindowDuration, _bufferPeriodDuration);
+        VaultAdmin vaultAdmin = new VaultAdmin(
+            IVault(vaultAddress),
+            _v2Vault,
+            _pauseWindowDuration,
+            _bufferPeriodDuration
+        );
 
         VaultExtension vaultExtension = new VaultExtension(IVault(vaultAddress), vaultAdmin);
 

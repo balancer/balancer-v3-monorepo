@@ -66,7 +66,7 @@ async function deployMocked(deployment: VaultDeploymentParams, v2Vault: BaseCont
   const futureVaultAddress = await getVaultAddress(admin);
 
   const vaultAdmin: VaultAdminMock = await contract.deploy('v3-vault/VaultAdminMock', {
-    args: [futureVaultAddress, v2Vault,  pauseWindowDuration, bufferPeriodDuration],
+    args: [futureVaultAddress, v2Vault, pauseWindowDuration, bufferPeriodDuration],
     from: admin,
   });
 
@@ -101,5 +101,5 @@ async function deployBasicAuthorizer(admin: SignerWithAddress): Promise<BasicAut
 }
 
 async function deployV2Vault(authorizer: BaseContract): Promise<V2VaultMock> {
-  return contract.deploy('v3-vault/V2VaultMock', { args: [authorizer]});
+  return contract.deploy('v3-vault/V2VaultMock', { args: [authorizer] });
 }

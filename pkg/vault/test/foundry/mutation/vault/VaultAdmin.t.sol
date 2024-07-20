@@ -19,6 +19,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
+import { V2VaultMock } from "@balancer-labs/v3-vault/contracts/test/V2VaultMock.sol";
 
 import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
 
@@ -315,22 +316,16 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vaultAdmin.getBufferBalance(dai);
     }
 
-    function testSetAuthorizerWhenNotAuthenticated() public {
-        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.setAuthorizer(_authorizer);
-    }
-
-    function testSetAuthorizerWhenNotVault() public {
+    function testUpdateAuthorizerWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.setAuthorizer(_authorizer);
+        vaultAdmin.updateAuthorizer();
     }
 
-    function testSetAuthorizer() public {
+    function testUpdateAuthorizer() public {
         IAuthorizer newAuthorizer = IAuthorizer(address(0x123));
+        V2VaultMock(address(vault.getV2Vault())).setAuthorizer(newAuthorizer);
 
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setAuthorizer.selector), admin);
-        vm.prank(admin);
-        vault.setAuthorizer(newAuthorizer);
+        vault.updateAuthorizer();
 
         assertEq(address(vault.getAuthorizer()), address(newAuthorizer), "Authorizer is wrong");
     }

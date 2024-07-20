@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { Iv2Vault } from "@balancer-labs/v3-interfaces/contracts/vault/Iv2Vault.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
@@ -11,6 +12,7 @@ import { VaultFactory } from "../../../contracts/VaultFactory.sol";
 import { VaultAdminMock } from "../../../contracts/test/VaultAdminMock.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";
+import { V2VaultMock } from "../../../contracts/test/V2VaultMock.sol";
 import { ProtocolFeeControllerMock } from "../../../contracts/test/ProtocolFeeControllerMock.sol";
 import { ProtocolFeeController } from "../../../contracts/ProtocolFeeController.sol";
 
@@ -19,11 +21,12 @@ library VaultMockDeployer {
         IAuthorizer authorizer = new BasicAuthorizerMock();
         bytes32 salt = bytes32(0);
         vault = VaultMock(payable(CREATE3.getDeployed(salt)));
-        VaultAdminMock vaultAdmin = new VaultAdminMock(IVault(address(vault)), 90 days, 30 days);
+        Iv2Vault v2Vault = new V2VaultMock(authorizer);
+        VaultAdminMock vaultAdmin = new VaultAdminMock(IVault(address(vault)), v2Vault, 90 days, 30 days);
         VaultExtensionMock vaultExtension = new VaultExtensionMock(IVault(address(vault)), vaultAdmin);
         ProtocolFeeController protocolFeeController = new ProtocolFeeControllerMock(IVault(address(vault)));
 
-        _create(abi.encode(vaultExtension, authorizer, protocolFeeController), salt);
+        _create(abi.encode(vaultExtension, protocolFeeController), salt);
         return vault;
     }
 

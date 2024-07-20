@@ -9,6 +9,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
+import { V2VaultMock } from "@balancer-labs/v3-vault/contracts/test/V2VaultMock.sol";
 
 import { VaultExtension } from "../../contracts/VaultExtension.sol";
 import { VaultFactory } from "../../contracts/VaultFactory.sol";
@@ -16,12 +17,14 @@ import { VaultFactory } from "../../contracts/VaultFactory.sol";
 contract VaultFactoryTest is Test {
     address deployer;
     BasicAuthorizerMock authorizer;
+    V2VaultMock v2Vault;
     VaultFactory factory;
 
     function setUp() public virtual {
         deployer = makeAddr("deployer");
         authorizer = new BasicAuthorizerMock();
-        factory = new VaultFactory(authorizer, 90 days, 30 days);
+        v2Vault = new V2VaultMock(authorizer);
+        factory = new VaultFactory(v2Vault, 90 days, 30 days);
     }
 
     /// forge-config: default.fuzz.runs = 100

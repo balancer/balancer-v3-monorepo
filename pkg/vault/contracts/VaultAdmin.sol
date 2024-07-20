@@ -557,7 +557,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
         if (newAuthorizer != _authorizer) {
             _authorizer = newAuthorizer;
-            
+
             emit AuthorizerChanged(newAuthorizer);
         }
     }
