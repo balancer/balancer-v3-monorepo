@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { Iv2Vault } from "@balancer-labs/v3-interfaces/contracts/vault/Iv2Vault.sol";
 import { IVaultAdminMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultAdminMock.sol";
 
 import "../VaultAdmin.sol";
@@ -10,9 +11,10 @@ import "../VaultAdmin.sol";
 contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
     constructor(
         IVault mainVault,
+        Iv2Vault v2Vault,
         uint32 pauseWindowDuration,
         uint32 bufferPeriodDuration
-    ) VaultAdmin(mainVault, pauseWindowDuration, bufferPeriodDuration) {}
+    ) VaultAdmin(mainVault, v2Vault, pauseWindowDuration, bufferPeriodDuration) {}
 
     function manualPauseVault() external {
         _setVaultPaused(true);

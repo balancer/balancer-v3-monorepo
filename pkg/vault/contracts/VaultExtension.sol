@@ -90,6 +90,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _vaultPauseWindowEndTime = vaultAdmin.getPauseWindowEndTime();
         _vaultBufferPeriodDuration = vaultAdmin.getBufferPeriodDuration();
         _vaultBufferPeriodEndTime = vaultAdmin.getBufferPeriodEndTime();
+        _v2Vault = vaultAdmin.getV2Vault();
 
         _vault = mainVault;
         _vaultAdmin = vaultAdmin;

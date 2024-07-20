@@ -14,6 +14,7 @@ import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol"
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { Iv2Vault } from "@balancer-labs/v3-interfaces/contracts/vault/Iv2Vault.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -33,7 +34,6 @@ import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
-import "hardhat/console.sol";
 
 /**
  * @dev Bytecode extension for the Vault containing permissioned functions. Complementary to the `VaultExtension`.
@@ -108,6 +108,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
     constructor(
         IVault mainVault,
+        Iv2Vault v2Vault,
         uint32 pauseWindowDuration,
         uint32 bufferPeriodDuration
     ) Authentication(bytes32(uint256(uint160(address(mainVault))))) {
@@ -126,6 +127,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
 
         _vault = mainVault;
+        _v2Vault = v2Vault;
     }
 
     /*******************************************************************************
@@ -160,6 +162,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @inheritdoc IVaultAdmin
     function getMaximumPoolTokens() external pure returns (uint256) {
         return _MAX_TOKENS;
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getV2Vault() external view returns (Iv2Vault) {
+        return _v2Vault;
     }
 
     /*******************************************************************************
@@ -543,12 +550,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /*******************************************************************************
                                 Authentication
     *******************************************************************************/
-
-    /// @inheritdoc IVaultAdmin
-    function getV2Vault() external view returns (address) {
-        console.log("v2Vault in getV2Vault: %s (%s)", address(_v2Vault), address(this));
-        return address(_v2Vault);
-    }
 
     /// @inheritdoc IVaultAdmin
     function updateAuthorizer() external onlyVaultDelegateCall {

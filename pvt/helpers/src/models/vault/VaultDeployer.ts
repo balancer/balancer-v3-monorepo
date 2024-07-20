@@ -40,7 +40,7 @@ async function deployReal(deployment: VaultDeploymentParams, v2Vault: BaseContra
   const futureVaultAddress = await getVaultAddress(admin);
 
   const vaultAdmin: VaultAdmin = await contract.deploy('v3-vault/VaultAdmin', {
-    args: [futureVaultAddress, pauseWindowDuration, bufferPeriodDuration],
+    args: [futureVaultAddress, v2Vault, pauseWindowDuration, bufferPeriodDuration],
     from: admin,
   });
 
@@ -54,9 +54,8 @@ async function deployReal(deployment: VaultDeploymentParams, v2Vault: BaseContra
     from: admin,
   });
 
-  console.log(`Deploying real: ${await v2Vault.getAddress()}`);
   return await contract.deploy('v3-vault/Vault', {
-    args: [vaultExtension, v2Vault, protocolFeeController],
+    args: [vaultExtension, protocolFeeController],
     from: admin,
   });
 }
@@ -67,7 +66,7 @@ async function deployMocked(deployment: VaultDeploymentParams, v2Vault: BaseCont
   const futureVaultAddress = await getVaultAddress(admin);
 
   const vaultAdmin: VaultAdminMock = await contract.deploy('v3-vault/VaultAdminMock', {
-    args: [futureVaultAddress, pauseWindowDuration, bufferPeriodDuration],
+    args: [futureVaultAddress, v2Vault,  pauseWindowDuration, bufferPeriodDuration],
     from: admin,
   });
 
@@ -81,9 +80,8 @@ async function deployMocked(deployment: VaultDeploymentParams, v2Vault: BaseCont
     from: admin,
   });
 
-  console.log(`Deploying mocked: ${await v2Vault.getAddress()}`);
   return await contract.deploy('v3-vault/VaultMock', {
-    args: [vaultExtension, v2Vault, protocolFeeController],
+    args: [vaultExtension, protocolFeeController],
     from: admin,
   });
 }

@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import { Iv2Vault } from "@balancer-labs/v3-interfaces/contracts/vault/Iv2Vault.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
@@ -29,7 +29,7 @@ contract VaultFactory is Authentication {
 
     bool public isDisabled;
 
-    IAuthorizer private immutable _authorizer;
+    Iv2Vault private immutable _v2Vault;
     uint32 private immutable _pauseWindowDuration;
     uint32 private immutable _bufferPeriodDuration;
     address private immutable _deployer;
@@ -39,13 +39,13 @@ contract VaultFactory is Authentication {
     // solhint-disable not-rely-on-time
 
     constructor(
-        IAuthorizer authorizer,
+        Iv2Vault v2Vault,
         uint32 pauseWindowDuration,
         uint32 bufferPeriodDuration
     ) Authentication(bytes32(uint256(uint160(address(this))))) {
         _deployer = msg.sender;
         _creationCode = type(Vault).creationCode;
-        _authorizer = authorizer;
+        _v2Vault = v2Vault;
         _pauseWindowDuration = pauseWindowDuration;
         _bufferPeriodDuration = bufferPeriodDuration;
     }
@@ -69,13 +69,13 @@ contract VaultFactory is Authentication {
             revert VaultAddressMismatch();
         }
 
-        VaultAdmin vaultAdmin = new VaultAdmin(IVault(vaultAddress), _pauseWindowDuration, _bufferPeriodDuration);
+        VaultAdmin vaultAdmin = new VaultAdmin(IVault(vaultAddress), _v2Vault, _pauseWindowDuration, _bufferPeriodDuration);
 
         VaultExtension vaultExtension = new VaultExtension(IVault(vaultAddress), vaultAdmin);
 
         ProtocolFeeController feeController = new ProtocolFeeController(IVault(vaultAddress));
 
-        address deployedAddress = _create(abi.encode(vaultExtension, _authorizer, feeController), salt);
+        address deployedAddress = _create(abi.encode(vaultExtension, feeController), salt);
 
         // This should always be the case, but we enforce the end state to match the expected outcome anyways.
         if (deployedAddress != targetAddress) {
@@ -95,6 +95,6 @@ contract VaultFactory is Authentication {
     }
 
     function _canPerform(bytes32 actionId, address user) internal view virtual override returns (bool) {
-        return _authorizer.canPerform(actionId, user, address(this));
+        return _v2Vault.getAuthorizer().canPerform(actionId, user, address(this));
     }
 }

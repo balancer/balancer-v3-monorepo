@@ -349,7 +349,7 @@ describe('Vault', function () {
     });
   });
 
-  describe.skip('authorizer', () => {
+  describe('authorizer', () => {
     let oldAuthorizer: Contract;
     let newAuthorizer: NullAuthorizer;
     let oldAuthorizerAddress: string;
@@ -362,7 +362,6 @@ describe('Vault', function () {
       newAuthorizer = await deploy('NullAuthorizer');
 
       const v2VaultAddress = await vault.getV2Vault();
-      console.log(v2VaultAddress);
       v2Vault = await deployedAt('v3-vault/V2VaultMock', v2VaultAddress);
     });
 

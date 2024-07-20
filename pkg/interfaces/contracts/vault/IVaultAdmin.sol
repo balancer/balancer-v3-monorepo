@@ -7,6 +7,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
+import { Iv2Vault } from "./Iv2Vault.sol";
 import { IVault } from "./IVault.sol";
 
 interface IVaultAdmin {
@@ -47,6 +48,12 @@ interface IVaultAdmin {
      * @return The token count of a minimal pool
      */
     function getMaximumPoolTokens() external pure returns (uint256);
+
+    /**
+     * @notice Get the v2 Vault address.
+     * @return Address of the v2 Vault used to fetch the authorizer
+     */
+    function getV2Vault() external view returns (Iv2Vault);
 
     /*******************************************************************************
                                     Vault Pausing
@@ -267,12 +274,6 @@ interface IVaultAdmin {
     /*******************************************************************************
                                 Authentication
     *******************************************************************************/
-
-    /**
-     * @notice Get the v2 Vault address.
-     * @return Address of the v2 Vault used to fetch the authorizer
-     */
-    function getV2Vault() external view returns (address);
 
     /**
      * @notice Synchronizes the authorizer contract with v2.

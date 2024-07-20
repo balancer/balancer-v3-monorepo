@@ -39,7 +39,6 @@ import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
 import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
-import "hardhat/console.sol";
 
 contract Vault is IVaultMain, VaultCommon, Proxy {
     using PackedTokenBalance for bytes32;
@@ -55,7 +54,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using StorageSlotExtension for *;
     using PoolDataLib for PoolData;
 
-    constructor(IVaultExtension vaultExtension, Iv2Vault v2Vault, IProtocolFeeController protocolFeeController) {
+    constructor(IVaultExtension vaultExtension, IProtocolFeeController protocolFeeController) {
         if (address(vaultExtension.vault()) != address(this)) {
             revert WrongVaultExtensionDeployment();
         }
@@ -71,11 +70,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _vaultBufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
         _vaultBufferPeriodEndTime = IVaultAdmin(address(vaultExtension)).getBufferPeriodEndTime();
 
-        _v2Vault = v2Vault;
-        console.log("V2Vault in Vault constructor: %s (%s)", address(v2Vault), address(this));
-
         // Initialize to the current value in the v2 Vault. Can be re-synced with `updateAuthorizer` if it changes.
-        _authorizer = v2Vault.getAuthorizer();
+        _authorizer = IVaultAdmin(address(vaultExtension)).getV2Vault().getAuthorizer();
     }
 
     /*******************************************************************************
