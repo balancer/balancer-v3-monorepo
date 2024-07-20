@@ -47,6 +47,12 @@ interface IVaultExplorer {
      */
     function getProtocolFeeController() external view returns (address);
 
+    /**
+     * @notice Get the v2 Vault address.
+     * @return Address of the v2 Vault used to fetch the authorizer
+     */
+    function getV2Vault() external view returns (address);
+
     /*******************************************************************************
                               Transient Accounting
     *******************************************************************************/
@@ -400,4 +406,14 @@ interface IVaultExplorer {
     function getBufferBalance(
         IERC20 wrappedToken
     ) external view returns (uint256 underlyingBalanceRaw, uint256 wrappedBalanceRaw);
+
+    /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    /**
+     * @notice Synchronizes the authorizer contract with v2.
+     * @dev Emits an `AuthorizerChanged` event.
+     */
+    function updateAuthorizer() external;
 }

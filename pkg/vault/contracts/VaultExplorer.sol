@@ -53,6 +53,11 @@ contract VaultExplorer is IVaultExplorer {
         return address(_vault.getProtocolFeeController());
     }
 
+    /// @inheritdoc IVaultExplorer
+    function getV2Vault() external view returns (address) {
+        return address(_vault.getV2Vault());
+    }
+
     /*******************************************************************************
                               Transient Accounting
     *******************************************************************************/
@@ -303,5 +308,14 @@ contract VaultExplorer is IVaultExplorer {
     /// @inheritdoc IVaultExplorer
     function getBufferBalance(IERC20 token) external view returns (uint256, uint256) {
         return _vault.getBufferBalance(token);
+    }
+
+    /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExplorer
+    function updateAuthorizer() external {
+        _vault.updateAuthorizer();
     }
 }

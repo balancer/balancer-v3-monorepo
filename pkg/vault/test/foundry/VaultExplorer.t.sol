@@ -16,6 +16,7 @@ import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVault
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import {
     TokenConfig,
     TokenInfo,
@@ -38,6 +39,7 @@ import { PoolConfigLib, PoolConfigBits } from "../../contracts/lib/PoolConfigLib
 import { VaultExplorer } from "../../contracts/VaultExplorer.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
+import { V2VaultMock } from "../../contracts/test/V2VaultMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -699,6 +701,22 @@ contract VaultExplorerTest is BaseVaultTest {
 
         assertEq(explorerUnderlyingBalanceRaw, vaultUnderlyingBalanceRaw, "Underlying balance mismatch");
         assertEq(explorertWrappedBalanceRaw, vaultWrappedBalanceRaw, "Wrapped balance mismatch");
+    }
+
+    function testGetV2Vault() public {
+        address v2Vault = address(vault.getV2Vault());
+
+        assertTrue(v2Vault != address(0));
+        assertEq(explorer.getV2Vault(), v2Vault);
+    }
+
+    function testUpdateAuthorizer() public {
+        IAuthorizer newAuthorizer = IAuthorizer(address(0x123));
+        V2VaultMock(address(vault.getV2Vault())).setAuthorizer(newAuthorizer);
+
+        explorer.updateAuthorizer();
+
+        assertEq(address(vault.getAuthorizer()), address(newAuthorizer), "Authorizer is wrong");
     }
 
     function _registerPool(address newPool, bool initializeNewPool) private {
