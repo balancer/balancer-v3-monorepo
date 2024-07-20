@@ -1,17 +1,14 @@
-import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { Contract } from 'ethers';
 import { deploy, deployedAt } from '@balancer-labs/v3-helpers/src/contract';
 import { MONTH, currentTimestamp, fromNow } from '@balancer-labs/v3-helpers/src/time';
 import { PoolConfigStructOutput } from '../typechain-types/contracts/test/VaultMock';
 import { ERC20TestToken } from '@balancer-labs/v3-solidity-utils/typechain-types/contracts/test/ERC20TestToken';
-import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/dist/src/signer-with-address';
 import { sharedBeforeEach } from '@balancer-labs/v3-common/sharedBeforeEach';
 import { ANY_ADDRESS, ZERO_ADDRESS } from '@balancer-labs/v3-helpers/src/constants';
 import { FP_ONE, bn, fp } from '@balancer-labs/v3-helpers/src/numbers';
 import { buildTokenConfig, setupEnvironment } from './poolSetup';
 import { NullAuthorizer } from '../typechain-types/contracts/test/NullAuthorizer';
-import { actionId } from '@balancer-labs/v3-helpers/src/models/misc/actions';
 import ERC20TokenList from '@balancer-labs/v3-helpers/src/models/tokens/ERC20TokenList';
 import { PoolMock } from '../typechain-types/contracts/test/PoolMock';
 import { PoolFactoryMock, RateProviderMock, VaultExtensionMock } from '../typechain-types';
@@ -39,8 +36,6 @@ describe('Vault', function () {
   let tokenB: ERC20TestToken;
   let tokenC: ERC20TestToken;
 
-  let alice: SignerWithAddress;
-
   let tokenAAddress: string;
   let tokenBAddress: string;
   let poolBAddress: string;
@@ -50,10 +45,6 @@ describe('Vault', function () {
   let invalidTokens: string[];
   let duplicateTokens: string[];
   let unsortedTokens: string[];
-
-  before('setup signers', async () => {
-    [, alice] = await ethers.getSigners();
-  });
 
   sharedBeforeEach('deploy vault, tokens, and pools', async function () {
     const { vault: vaultMock, tokens, pools } = await setupEnvironment(PAUSE_WINDOW_DURATION);
@@ -347,15 +338,12 @@ describe('Vault', function () {
   });
 
   describe('authorizer', () => {
-    let oldAuthorizer: Contract;
     let newAuthorizer: NullAuthorizer;
     let oldAuthorizerAddress: string;
     let v2Vault: Contract;
 
     sharedBeforeEach('get old and deploy new authorizer', async () => {
       oldAuthorizerAddress = await vault.getAuthorizer();
-      oldAuthorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', oldAuthorizerAddress);
-
       newAuthorizer = await deploy('NullAuthorizer');
 
       const v2VaultAddress = await vault.getV2Vault();
@@ -364,6 +352,10 @@ describe('Vault', function () {
 
     context('from v2 Vault', () => {
       let newAuthorizerAddress: string;
+
+      it('has the current authorizer address', async () => {
+        expect(await vault.getAuthorizer()).to.equal(oldAuthorizerAddress);
+      });
 
       it('can change authorizer', async () => {
         newAuthorizerAddress = await newAuthorizer.getAddress();
