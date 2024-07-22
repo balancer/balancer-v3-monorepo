@@ -83,7 +83,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
     function testSwapPreconditions__Fork() public view {
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(yieldBearingPool));
-        // The yield-bearing pool should have `boostedPoolAmount` of both tokens.
+        // The yield-bearing pool should have `initAmount` of both tokens.
         assertEq(address(tokens[_ybToken1Idx]), address(ybToken1), "Wrong yield-bearing pool token (ybToken1)");
         assertEq(address(tokens[_ybToken2Idx]), address(ybToken2), "Wrong yield-bearing pool token (ybToken2)");
 
