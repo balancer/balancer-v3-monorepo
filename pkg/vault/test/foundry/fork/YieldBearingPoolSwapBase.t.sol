@@ -952,7 +952,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 underlyingToDeposit,
         bool shouldUseConvert
-    ) private returns (uint256) {
+    ) private view returns (uint256) {
         if (shouldUseConvert) {
             // If operation is within buffer range, convert is used by the vault to save some gas.
             return wToken.convertToShares(underlyingToDeposit);
@@ -972,7 +972,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 wrappedToMint,
         bool shouldUseConvert
-    ) private returns (uint256) {
+    ) private view returns (uint256) {
         if (shouldUseConvert) {
             // If operation is within buffer range, convert is used by the vault to save some gas.
             return wToken.convertToAssets(wrappedToMint);
@@ -992,7 +992,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 underlyingToWithdraw,
         bool shouldUseConvert
-    ) private returns (uint256) {
+    ) private view returns (uint256) {
         if (shouldUseConvert) {
             // If operation is within buffer range, convert is used by the vault to save some gas.
             return wToken.convertToShares(underlyingToWithdraw);
@@ -1014,7 +1014,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IERC4626 wToken,
         uint256 wrappedToRedeem,
         bool shouldUseConvert
-    ) private returns (uint256) {
+    ) private view returns (uint256) {
         if (shouldUseConvert) {
             // If operation is within buffer range, convert is used by the vault to save some gas.
             return wToken.convertToAssets(wrappedToRedeem);
