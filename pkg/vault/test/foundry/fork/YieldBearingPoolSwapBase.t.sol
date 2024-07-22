@@ -155,33 +155,33 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         int256 expectedBufferDeltaTokenIn = int256(amountIn);
 
-        uint256 wrappedBufferDeltaTokenIn = ybToken1.previewDeposit(amountIn);
+        uint256 wrappedBufferDeltaTokenIn = ybToken1.convertToShares(amountIn);
         uint256 wrappedBufferDeltaTokenInScaled18 = wrappedBufferDeltaTokenIn.divDown(_token1Factor);
         // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
         uint256 wrappedBufferDeltaTokenOutRaw = wrappedBufferDeltaTokenInScaled18.mulDown(_token2Factor);
-        int256 expectedBufferDeltaTokenOut = -int256(ybToken2.previewRedeem(wrappedBufferDeltaTokenOutRaw));
+        int256 expectedBufferDeltaTokenOut = -int256(ybToken2.convertToAssets(wrappedBufferDeltaTokenOutRaw));
 
-        _testExactIn(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
+        _testExactIn(paths, true, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken1InToken2OutWithinBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
         // Test from 10% to 50% of tokenOut's buffer to avoid exceeding the limit of tokenIn's buffer.
-        amountOut = bound(amountOut, (_token2BufferInitAmount) / 10, _token2BufferInitAmount);
+        amountOut = bound(amountOut, (_token2BufferInitAmount) / 10, _token2BufferInitAmount / 2);
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
             _token1Fork,
             (2 * amountOut * _token1Factor) / _token2Factor,
             amountOut
         );
 
-        int256 expectedBufferDeltaTokenOut = int256(amountOut);
-
-        uint256 wrappedBufferDeltaTokenOut = ybToken2.previewWithdraw(amountOut);
+        uint256 wrappedBufferDeltaTokenOut = ybToken2.convertToShares(amountOut);
         uint256 wrappedBufferDeltaTokenOutScaled18 = wrappedBufferDeltaTokenOut.divDown(_token2Factor);
         // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
         uint256 wrappedBufferDeltaTokenInRaw = wrappedBufferDeltaTokenOutScaled18.mulDown(_token1Factor);
-        int256 expectedBufferDeltaTokenIn = -int256(ybToken1.previewMint(wrappedBufferDeltaTokenInRaw));
+        int256 expectedBufferDeltaTokenIn = int256(ybToken1.convertToAssets(wrappedBufferDeltaTokenInRaw));
 
-        _testExactOut(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
+        int256 expectedBufferDeltaTokenOut = -int256(amountOut);
+
+        _testExactOut(paths, true, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken1InToken2OutOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
@@ -194,7 +194,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn = 0;
         int256 expectedBufferDeltaTokenOut = 0;
 
-        _testExactIn(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
+        _testExactIn(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken1InToken2OutOutOfBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
@@ -211,7 +211,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn = 0;
         int256 expectedBufferDeltaTokenOut = 0;
 
-        _testExactOut(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
+        _testExactOut(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken1InToken2OutBufferUnbalancedExactIn__Fork__Fuzz(
@@ -247,7 +247,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             expectedBufferDeltaTokenOut = 0;
         }
 
-        _testExactIn(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
+        _testExactIn(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken1InToken2OutBufferUnbalancedExactOut__Fork__Fuzz(
@@ -273,41 +273,43 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         uint256 wrappedBufferDeltaTokenInRaw = wrappedBufferDeltaTokenOutScaled18.mulDown(_token1Factor);
         int256 expectedBufferDeltaTokenIn = -int256(ybToken1.previewMint(wrappedBufferDeltaTokenInRaw));
 
-        _testExactOut(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
+        _testExactOut(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken2InToken1OutWithinBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
-        amountIn = bound(amountIn, _token2BufferInitAmount / 10, _token2BufferInitAmount);
+        // Test from 10% to 50% of tokenOut's buffer to avoid exceeding the limit of tokenIn's buffer.
+        amountIn = bound(amountIn, _token2BufferInitAmount / 10, _token2BufferInitAmount / 2);
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(_token2Fork, amountIn, 0);
 
         int256 expectedBufferDeltaTokenIn = int256(amountIn);
 
-        uint256 wrappedBufferDeltaTokenIn = ybToken2.previewDeposit(amountIn);
+        uint256 wrappedBufferDeltaTokenIn = ybToken2.convertToShares(amountIn);
         uint256 wrappedBufferDeltaTokenInScaled18 = wrappedBufferDeltaTokenIn.divDown(_token2Factor);
         // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
         uint256 wrappedBufferDeltaTokenOutRaw = wrappedBufferDeltaTokenInScaled18.mulDown(_token1Factor);
-        int256 expectedBufferDeltaTokenOut = -int256(ybToken1.previewRedeem(wrappedBufferDeltaTokenOutRaw));
+        int256 expectedBufferDeltaTokenOut = -int256(ybToken1.convertToAssets(wrappedBufferDeltaTokenOutRaw));
 
-        _testExactIn(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
+        _testExactIn(paths, true, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken2InToken1OutWithinBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
-        amountOut = bound(amountOut, _token1BufferInitAmount / 10, _token1BufferInitAmount);
+        // Test from 10% to 50% of tokenOut's buffer to avoid exceeding the limit of tokenIn's buffer.
+        amountOut = bound(amountOut, _token1BufferInitAmount / 10, _token1BufferInitAmount / 2);
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
             _token2Fork,
             (2 * amountOut * _token2Factor) / _token1Factor,
             amountOut
         );
 
-        int256 expectedBufferDeltaTokenOut = int256(amountOut);
-
-        uint256 wrappedBufferDeltaTokenOut = ybToken2.previewWithdraw(amountOut);
-        uint256 wrappedBufferDeltaTokenOutScaled18 = wrappedBufferDeltaTokenOut.divDown(_token2Factor);
+        uint256 wrappedBufferDeltaTokenOut = ybToken1.convertToShares(amountOut);
+        uint256 wrappedBufferDeltaTokenOutScaled18 = wrappedBufferDeltaTokenOut.divDown(_token1Factor);
         // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
-        uint256 wrappedBufferDeltaTokenInRaw = wrappedBufferDeltaTokenOutScaled18.mulDown(_token1Factor);
-        int256 expectedBufferDeltaTokenIn = -int256(ybToken1.previewMint(wrappedBufferDeltaTokenInRaw));
+        uint256 wrappedBufferDeltaTokenInRaw = wrappedBufferDeltaTokenOutScaled18.mulDown(_token2Factor);
+        int256 expectedBufferDeltaTokenIn = int256(ybToken2.convertToAssets(wrappedBufferDeltaTokenInRaw));
 
-        _testExactOut(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
+        int256 expectedBufferDeltaTokenOut = -int256(amountOut);
+
+        _testExactOut(paths, true, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken2InToken1OutOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
@@ -318,7 +320,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn = 0;
         int256 expectedBufferDeltaTokenOut = 0;
 
-        _testExactIn(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
+        _testExactIn(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken2InToken1OutOutOfBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
@@ -333,7 +335,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn = 0;
         int256 expectedBufferDeltaTokenOut = 0;
 
-        _testExactOut(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
+        _testExactOut(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken2InToken1OutBufferUnbalancedExactIn__Fork__Fuzz(
@@ -351,7 +353,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn = int256(amountIn);
         int256 expectedBufferDeltaTokenOut = int256((amountIn * _token2Factor) / _token1Factor);
 
-        _testExactIn(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
+        _testExactIn(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken2InToken1OutBufferUnbalancedExactOut__Fork__Fuzz(
@@ -377,11 +379,12 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         uint256 wrappedBufferDeltaTokenInRaw = wrappedBufferDeltaTokenOutScaled18.mulDown(_token1Factor);
         int256 expectedBufferDeltaTokenIn = -int256(ybToken1.previewMint(wrappedBufferDeltaTokenInRaw));
 
-        _testExactOut(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
+        _testExactOut(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function _testExactIn(
         IBatchRouter.SwapPathExactAmountIn[] memory paths,
+        bool shouldUseConvert,
         int256 expectedBufferDeltaTokenIn,
         int256 expectedBufferDeltaTokenOut
     ) private {
@@ -401,18 +404,32 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             IERC4626(address(paths[0].steps[1].tokenOut))
         );
         vars.expectedDeltaTokenIn = paths[0].exactAmountIn;
-        // PoolMock uses linear math, so amount in and out should be the same, except by token scaling
         if (paths[0].tokenIn == _token1Fork) {
-            uint256 wrappedAmountIn = ybToken1.previewDeposit(vars.expectedDeltaTokenIn);
+            // If operation is within buffer range, convert is used by the buffer to save some gas
+            uint256 wrappedAmountIn = shouldUseConvert
+                ? ybToken1.convertToShares(vars.expectedDeltaTokenIn)
+                : ybToken1.previewDeposit(vars.expectedDeltaTokenIn);
             uint256 wrappedAmountInScaled18 = wrappedAmountIn.divDown(_token1Factor);
-            uint256 wrappedAmountOutScaled18 = wrappedAmountInScaled18.mulDown(_token2Factor);
-            vars.expectedDeltaTokenOut = ybToken2.previewRedeem(wrappedAmountOutScaled18);
+            // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
+            uint256 wrappedAmountOutRaw = wrappedAmountInScaled18.mulDown(_token2Factor);
+            // If operation is within buffer range, convert is used by the buffer to save some gas
+            vars.expectedDeltaTokenOut = shouldUseConvert
+                ? ybToken2.convertToAssets(wrappedAmountOutRaw)
+                : ybToken2.previewRedeem(wrappedAmountOutRaw);
         } else {
-            uint256 wrappedAmountIn = ybToken2.previewDeposit(vars.expectedDeltaTokenIn);
+            // If operation is within buffer range, convert is used by the buffer to save some gas
+            uint256 wrappedAmountIn = shouldUseConvert
+                ? ybToken2.convertToShares(vars.expectedDeltaTokenIn)
+                : ybToken2.previewDeposit(vars.expectedDeltaTokenIn);
             uint256 wrappedAmountInScaled18 = wrappedAmountIn.divDown(_token2Factor);
-            uint256 wrappedAmountOutScaled18 = wrappedAmountInScaled18.mulDown(_token1Factor);
-            vars.expectedDeltaTokenOut = ybToken1.previewRedeem(wrappedAmountOutScaled18);
+            // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
+            uint256 wrappedAmountOutRaw = wrappedAmountInScaled18.mulDown(_token1Factor);
+            // If operation is within buffer range, convert is used by the buffer to save some gas
+            vars.expectedDeltaTokenOut = shouldUseConvert
+                ? ybToken1.convertToAssets(wrappedAmountOutRaw)
+                : ybToken1.previewRedeem(wrappedAmountOutRaw);
         }
+
         vars.expectedBufferDeltaTokenIn = expectedBufferDeltaTokenIn;
         vars.expectedBufferDeltaTokenOut = expectedBufferDeltaTokenOut;
 
@@ -446,6 +463,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
     function _testExactOut(
         IBatchRouter.SwapPathExactAmountOut[] memory paths,
+        bool shouldUseConvert,
         int256 expectedBufferDeltaTokenIn,
         int256 expectedBufferDeltaTokenOut
     ) private {
@@ -465,17 +483,30 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             IERC4626(address(paths[0].steps[1].tokenOut))
         );
         vars.expectedDeltaTokenOut = paths[0].exactAmountOut;
-        // PoolMock uses linear math, so amount in and out should be the same, except by token scaling
         if (paths[0].tokenIn == _token1Fork) {
-            uint256 wrappedAmountOut = ybToken2.previewWithdraw(vars.expectedDeltaTokenOut);
+            // If operation is within buffer range, convert is used by the buffer to save some gas
+            uint256 wrappedAmountOut = shouldUseConvert
+                ? ybToken2.convertToShares(vars.expectedDeltaTokenOut)
+                : ybToken2.previewWithdraw(vars.expectedDeltaTokenOut);
             uint256 wrappedAmountOutScaled18 = wrappedAmountOut.divDown(_token2Factor);
-            uint256 wrappedAmountInScaled18 = wrappedAmountOutScaled18.mulDown(_token1Factor);
-            vars.expectedDeltaTokenIn = ybToken1.previewMint(wrappedAmountInScaled18);
+            // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
+            uint256 wrappedAmountInRaw = wrappedAmountOutScaled18.mulDown(_token1Factor);
+            // If operation is within buffer range, convert is used by the buffer to save some gas
+            vars.expectedDeltaTokenIn = shouldUseConvert
+                ? ybToken1.convertToAssets(wrappedAmountInRaw)
+                : ybToken1.previewMint(wrappedAmountInRaw);
         } else {
-            uint256 wrappedAmountOut = ybToken1.previewWithdraw(vars.expectedDeltaTokenOut);
+            // If operation is within buffer range, convert is used by the buffer to save some gas
+            uint256 wrappedAmountOut = shouldUseConvert
+                ? ybToken1.convertToShares(vars.expectedDeltaTokenOut)
+                : ybToken1.previewWithdraw(vars.expectedDeltaTokenOut);
             uint256 wrappedAmountOutScaled18 = wrappedAmountOut.divDown(_token1Factor);
-            uint256 wrappedAmountInScaled18 = wrappedAmountOutScaled18.mulDown(_token2Factor);
-            vars.expectedDeltaTokenIn = ybToken2.previewMint(wrappedAmountInScaled18);
+            // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
+            uint256 wrappedAmountInRaw = wrappedAmountOutScaled18.mulDown(_token2Factor);
+            // If operation is within buffer range, convert is used by the buffer to save some gas
+            vars.expectedDeltaTokenIn = shouldUseConvert
+                ? ybToken2.convertToAssets(wrappedAmountInRaw)
+                : ybToken2.previewMint(wrappedAmountInRaw);
         }
         vars.expectedBufferDeltaTokenIn = expectedBufferDeltaTokenIn;
         vars.expectedBufferDeltaTokenOut = expectedBufferDeltaTokenOut;
@@ -502,260 +533,6 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         assertEq(queryAmountsIn[0], actualAmountsIn[0], "Query and actual amountsIn do not match");
 
         _verifySwapResult(actualPathAmountsIn, actualTokensIn, actualAmountsIn, vars);
-    }
-
-    function _buildExactInPaths(
-        IERC20 tokenIn,
-        uint256 exactAmountIn,
-        uint256 minAmountOut
-    ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
-        paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
-            tokenIn: tokenIn,
-            steps: _getSwapSteps(tokenIn),
-            exactAmountIn: exactAmountIn,
-            minAmountOut: minAmountOut
-        });
-    }
-
-    function _buildExactOutPaths(
-        IERC20 tokenIn,
-        uint256 maxAmountIn,
-        uint256 exactAmountOut
-    ) private view returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
-        paths = new IBatchRouter.SwapPathExactAmountOut[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountOut({
-            tokenIn: tokenIn,
-            steps: _getSwapSteps(tokenIn),
-            maxAmountIn: maxAmountIn,
-            exactAmountOut: exactAmountOut
-        });
-    }
-
-    function _getSwapSteps(IERC20 tokenIn) private view returns (IBatchRouter.SwapPathStep[] memory steps) {
-        steps = new IBatchRouter.SwapPathStep[](3);
-
-        if (tokenIn == _token2Fork) {
-            steps[0] = IBatchRouter.SwapPathStep({
-                pool: address(ybToken2),
-                tokenOut: IERC20(address(ybToken2)),
-                isBuffer: true
-            });
-            steps[1] = IBatchRouter.SwapPathStep({
-                pool: address(yieldBearingPool),
-                tokenOut: IERC20(address(ybToken1)),
-                isBuffer: false
-            });
-            steps[2] = IBatchRouter.SwapPathStep({ pool: address(ybToken1), tokenOut: _token1Fork, isBuffer: true });
-        } else {
-            steps[0] = IBatchRouter.SwapPathStep({
-                pool: address(ybToken1),
-                tokenOut: IERC20(address(ybToken1)),
-                isBuffer: true
-            });
-            steps[1] = IBatchRouter.SwapPathStep({
-                pool: address(yieldBearingPool),
-                tokenOut: IERC20(address(ybToken2)),
-                isBuffer: false
-            });
-            steps[2] = IBatchRouter.SwapPathStep({ pool: address(ybToken2), tokenOut: _token2Fork, isBuffer: true });
-        }
-    }
-
-    function _unbalanceBuffers(uint256 unbalancedToken1, uint256 unbalancedToken2) private {
-        if (unbalancedToken1 > _token1BufferInitAmount / 2) {
-            _unbalanceBuffer(WrappingDirection.WRAP, ybToken1, unbalancedToken1 - _token1BufferInitAmount / 2);
-        } else {
-            _unbalanceBuffer(WrappingDirection.UNWRAP, ybToken1, _token1BufferInitAmount / 2 - unbalancedToken1);
-        }
-
-        if (unbalancedToken2 > _token2BufferInitAmount / 2) {
-            _unbalanceBuffer(WrappingDirection.WRAP, ybToken2, unbalancedToken2 - _token2BufferInitAmount / 2);
-        } else {
-            _unbalanceBuffer(WrappingDirection.UNWRAP, ybToken2, _token2BufferInitAmount / 2 - unbalancedToken2);
-        }
-    }
-
-    function _unbalanceBuffer(WrappingDirection direction, IERC4626 wToken, uint256 amountToUnbalance) private {
-        if (amountToUnbalance < MIN_TRADE_AMOUNT) {
-            // If amountToUnbalance is very low, returns without unbalancing the buffer.
-            return;
-        }
-
-        IERC20 tokenIn;
-        IERC20 tokenOut;
-        if (direction == WrappingDirection.WRAP) {
-            tokenIn = IERC20(wToken.asset());
-            tokenOut = IERC20(address(wToken));
-        } else {
-            tokenIn = IERC20(address(wToken));
-            tokenOut = IERC20(wToken.asset());
-        }
-
-        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
-
-        steps[0] = IBatchRouter.SwapPathStep({ pool: address(wToken), tokenOut: tokenOut, isBuffer: true });
-
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
-        paths[0] = IBatchRouter.SwapPathExactAmountIn({
-            tokenIn: tokenIn,
-            steps: steps,
-            exactAmountIn: amountToUnbalance,
-            minAmountOut: 0
-        });
-
-        vm.prank(lp);
-        batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
-    }
-
-    function _setupTokens() private {
-        // Label deployed wrapped tokens.
-        vm.label(address(ybToken1), "wUSDC");
-        vm.label(address(ybToken2), "wDAI");
-
-        // Identify and label underlying tokens.
-        _token1Fork = IERC20(ybToken1.asset());
-        vm.label(address(_token1Fork), "USDC");
-        _token2Fork = IERC20(ybToken2.asset());
-        vm.label(address(_token2Fork), "DAI");
-    }
-
-    function _setupLPAndVault() private {
-        vm.startPrank(donorToken1);
-        // Donate token1 (underlying) to LP.
-        _token1Fork.transfer(lp, 100 * _token1BufferInitAmount);
-        // Donate to vault, so it has enough tokens to wrap and do not preview.
-        _token1Fork.transfer(lp, _token1YieldBearingPoolInitAmount);
-        vm.stopPrank();
-
-        vm.startPrank(donorToken2);
-        // Donate token2 (underlying) to LP.
-        _token2Fork.transfer(lp, 100 * _token2BufferInitAmount);
-        // Donate to vault, so it has enough tokens to wrap and do not preview.
-        _token2Fork.transfer(address(vault), _token2YieldBearingPoolInitAmount);
-        vm.stopPrank();
-
-        vm.startPrank(lp);
-        // Allow Permit2 to get tokens from LP.
-        _token1Fork.approve(address(permit2), type(uint256).max);
-        _token2Fork.approve(address(permit2), type(uint256).max);
-        ybToken2.approve(address(permit2), type(uint256).max);
-        ybToken1.approve(address(permit2), type(uint256).max);
-        // Allow Permit2 to move DAI and USDC from LP to Router.
-        permit2.approve(address(_token2Fork), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(_token1Fork), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(ybToken2), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(ybToken1), address(router), type(uint160).max, type(uint48).max);
-        // Allow Permit2 to move DAI and USDC from LP to BatchRouter.
-        permit2.approve(address(_token2Fork), address(batchRouter), type(uint160).max, type(uint48).max);
-        permit2.approve(address(_token1Fork), address(batchRouter), type(uint160).max, type(uint48).max);
-        permit2.approve(address(ybToken2), address(batchRouter), type(uint160).max, type(uint48).max);
-        permit2.approve(address(ybToken1), address(batchRouter), type(uint160).max, type(uint48).max);
-        // Wrap part of LP balances.
-        _token2Fork.approve(address(ybToken2), 2 * _token2YieldBearingPoolInitAmount);
-        ybToken2.deposit(2 * _token2YieldBearingPoolInitAmount, lp);
-        _token1Fork.approve(address(ybToken1), 2 * _token1YieldBearingPoolInitAmount);
-        ybToken1.deposit(2 * _token1YieldBearingPoolInitAmount, lp);
-        vm.stopPrank();
-    }
-
-    function _setupBuffers() private {
-        vm.startPrank(lp);
-        router.addLiquidityToBuffer(
-            ybToken2,
-            _token2BufferInitAmount,
-            ybToken2.convertToShares(_token2BufferInitAmount),
-            lp
-        );
-        router.addLiquidityToBuffer(
-            ybToken1,
-            _token1BufferInitAmount,
-            ybToken1.convertToShares(_token1BufferInitAmount),
-            lp
-        );
-        vm.stopPrank();
-    }
-
-    function _createAndInitializeBoostedPool() private {
-        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
-        tokenConfig[_ybToken2Idx].token = IERC20(address(ybToken2));
-        tokenConfig[_ybToken1Idx].token = IERC20(address(ybToken1));
-        tokenConfig[0].tokenType = TokenType.STANDARD;
-        tokenConfig[1].tokenType = TokenType.STANDARD;
-
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
-
-        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract);
-
-        vm.label(address(newPool), "yield-bearing pool");
-        yieldBearingPool = address(newPool);
-
-        vm.startPrank(lp);
-        uint256[] memory tokenAmounts = new uint256[](2);
-        tokenAmounts[_ybToken1Idx] = ybToken1.convertToShares(_token1YieldBearingPoolInitAmount);
-        tokenAmounts[_ybToken2Idx] = ybToken2.convertToShares(_token2YieldBearingPoolInitAmount);
-        _initPool(address(yieldBearingPool), tokenAmounts, 0);
-        vm.stopPrank();
-    }
-
-    struct SwapResultLocals {
-        SwapKind kind;
-        IERC20 tokenIn;
-        IERC20 tokenOut;
-        IERC20 ybTokenIn;
-        IERC20 ybTokenOut;
-        uint256 indexYbTokenIn;
-        uint256 indexYbTokenOut;
-        uint256 lpBeforeSwapTokenIn;
-        uint256 lpBeforeSwapTokenOut;
-        uint256 bufferBeforeSwapTokenIn;
-        uint256 bufferBeforeSwapYbTokenIn;
-        uint256 bufferBeforeSwapTokenOut;
-        uint256 bufferBeforeSwapYbTokenOut;
-        uint256 poolBeforeSwapYbTokenIn;
-        uint256 poolBeforeSwapYbTokenOut;
-        uint256 expectedDeltaTokenIn;
-        uint256 expectedDeltaTokenOut;
-        int256 expectedBufferDeltaTokenIn;
-        int256 expectedBufferDeltaTokenOut;
-    }
-
-    function _createSwapResultLocals(
-        SwapKind kind,
-        IERC4626 ybTokenIn,
-        IERC4626 ybTokenOut
-    ) private view returns (SwapResultLocals memory vars) {
-        vars.kind = kind;
-
-        vars.ybTokenIn = IERC20(address(ybTokenIn));
-        vars.ybTokenOut = IERC20(address(ybTokenOut));
-
-        vars.tokenIn = IERC4626(ybTokenIn.asset());
-        vars.tokenOut = IERC4626(ybTokenOut.asset());
-
-        vars.lpBeforeSwapTokenIn = vars.tokenIn.balanceOf(lp);
-        vars.lpBeforeSwapTokenOut = vars.tokenOut.balanceOf(lp);
-
-        uint256 underlyingBalance;
-        uint256 wrappedBalance;
-        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(address(ybTokenIn)));
-        vars.bufferBeforeSwapTokenIn = underlyingBalance;
-        vars.bufferBeforeSwapYbTokenIn = wrappedBalance;
-        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(address(ybTokenOut)));
-        vars.bufferBeforeSwapTokenOut = underlyingBalance;
-        vars.bufferBeforeSwapYbTokenOut = wrappedBalance;
-
-        uint256[] memory balancesRaw;
-        (, , balancesRaw, ) = vault.getPoolTokenInfo(address(yieldBearingPool));
-        if (vars.tokenIn == _token1Fork) {
-            vars.indexYbTokenIn = _ybToken1Idx;
-            vars.indexYbTokenOut = _ybToken2Idx;
-        } else {
-            vars.indexYbTokenIn = _ybToken2Idx;
-            vars.indexYbTokenOut = _ybToken1Idx;
-        }
-        vars.poolBeforeSwapYbTokenIn = balancesRaw[vars.indexYbTokenIn];
-        vars.poolBeforeSwapYbTokenOut = balancesRaw[vars.indexYbTokenOut];
     }
 
     function _verifySwapResult(
@@ -886,5 +663,270 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             5,
             "Wrong tokenOut buffer pool wrapped balance"
         );
+    }
+
+    function _createSwapResultLocals(
+        SwapKind kind,
+        IERC4626 ybTokenIn,
+        IERC4626 ybTokenOut
+    ) private view returns (SwapResultLocals memory vars) {
+        vars.kind = kind;
+
+        vars.ybTokenIn = IERC20(address(ybTokenIn));
+        vars.ybTokenOut = IERC20(address(ybTokenOut));
+
+        vars.tokenIn = IERC4626(ybTokenIn.asset());
+        vars.tokenOut = IERC4626(ybTokenOut.asset());
+
+        vars.lpBeforeSwapTokenIn = vars.tokenIn.balanceOf(lp);
+        vars.lpBeforeSwapTokenOut = vars.tokenOut.balanceOf(lp);
+
+        uint256 underlyingBalance;
+        uint256 wrappedBalance;
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(address(ybTokenIn)));
+        vars.bufferBeforeSwapTokenIn = underlyingBalance;
+        vars.bufferBeforeSwapYbTokenIn = wrappedBalance;
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(address(ybTokenOut)));
+        vars.bufferBeforeSwapTokenOut = underlyingBalance;
+        vars.bufferBeforeSwapYbTokenOut = wrappedBalance;
+
+        uint256[] memory balancesRaw;
+        (, , balancesRaw, ) = vault.getPoolTokenInfo(address(yieldBearingPool));
+        if (vars.tokenIn == _token1Fork) {
+            vars.indexYbTokenIn = _ybToken1Idx;
+            vars.indexYbTokenOut = _ybToken2Idx;
+        } else {
+            vars.indexYbTokenIn = _ybToken2Idx;
+            vars.indexYbTokenOut = _ybToken1Idx;
+        }
+        vars.poolBeforeSwapYbTokenIn = balancesRaw[vars.indexYbTokenIn];
+        vars.poolBeforeSwapYbTokenOut = balancesRaw[vars.indexYbTokenOut];
+    }
+
+    function _buildExactInPaths(
+        IERC20 tokenIn,
+        uint256 exactAmountIn,
+        uint256 minAmountOut
+    ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
+        paths = new IBatchRouter.SwapPathExactAmountIn[](1);
+        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+            tokenIn: tokenIn,
+            steps: _getSwapSteps(tokenIn),
+            exactAmountIn: exactAmountIn,
+            minAmountOut: minAmountOut
+        });
+    }
+
+    function _buildExactOutPaths(
+        IERC20 tokenIn,
+        uint256 maxAmountIn,
+        uint256 exactAmountOut
+    ) private view returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
+        paths = new IBatchRouter.SwapPathExactAmountOut[](1);
+        paths[0] = IBatchRouter.SwapPathExactAmountOut({
+            tokenIn: tokenIn,
+            steps: _getSwapSteps(tokenIn),
+            maxAmountIn: maxAmountIn,
+            exactAmountOut: exactAmountOut
+        });
+    }
+
+    function _getSwapSteps(IERC20 tokenIn) private view returns (IBatchRouter.SwapPathStep[] memory steps) {
+        steps = new IBatchRouter.SwapPathStep[](3);
+
+        if (tokenIn == _token2Fork) {
+            steps[0] = IBatchRouter.SwapPathStep({
+                pool: address(ybToken2),
+                tokenOut: IERC20(address(ybToken2)),
+                isBuffer: true
+            });
+            steps[1] = IBatchRouter.SwapPathStep({
+                pool: address(yieldBearingPool),
+                tokenOut: IERC20(address(ybToken1)),
+                isBuffer: false
+            });
+            steps[2] = IBatchRouter.SwapPathStep({ pool: address(ybToken1), tokenOut: _token1Fork, isBuffer: true });
+        } else {
+            steps[0] = IBatchRouter.SwapPathStep({
+                pool: address(ybToken1),
+                tokenOut: IERC20(address(ybToken1)),
+                isBuffer: true
+            });
+            steps[1] = IBatchRouter.SwapPathStep({
+                pool: address(yieldBearingPool),
+                tokenOut: IERC20(address(ybToken2)),
+                isBuffer: false
+            });
+            steps[2] = IBatchRouter.SwapPathStep({ pool: address(ybToken2), tokenOut: _token2Fork, isBuffer: true });
+        }
+    }
+
+    function _unbalanceBuffers(uint256 unbalancedToken1, uint256 unbalancedToken2) private {
+        if (unbalancedToken1 > _token1BufferInitAmount / 2) {
+            _unbalanceBuffer(WrappingDirection.WRAP, ybToken1, unbalancedToken1 - _token1BufferInitAmount / 2);
+        } else {
+            _unbalanceBuffer(WrappingDirection.UNWRAP, ybToken1, _token1BufferInitAmount / 2 - unbalancedToken1);
+        }
+
+        if (unbalancedToken2 > _token2BufferInitAmount / 2) {
+            _unbalanceBuffer(WrappingDirection.WRAP, ybToken2, unbalancedToken2 - _token2BufferInitAmount / 2);
+        } else {
+            _unbalanceBuffer(WrappingDirection.UNWRAP, ybToken2, _token2BufferInitAmount / 2 - unbalancedToken2);
+        }
+    }
+
+    function _unbalanceBuffer(WrappingDirection direction, IERC4626 wToken, uint256 amountToUnbalance) private {
+        if (amountToUnbalance < MIN_TRADE_AMOUNT) {
+            // If amountToUnbalance is very low, returns without unbalancing the buffer.
+            return;
+        }
+
+        IERC20 tokenIn;
+        IERC20 tokenOut;
+        if (direction == WrappingDirection.WRAP) {
+            tokenIn = IERC20(wToken.asset());
+            tokenOut = IERC20(address(wToken));
+        } else {
+            tokenIn = IERC20(address(wToken));
+            tokenOut = IERC20(wToken.asset());
+        }
+
+        IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](1);
+
+        steps[0] = IBatchRouter.SwapPathStep({ pool: address(wToken), tokenOut: tokenOut, isBuffer: true });
+
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = new IBatchRouter.SwapPathExactAmountIn[](1);
+        paths[0] = IBatchRouter.SwapPathExactAmountIn({
+            tokenIn: tokenIn,
+            steps: steps,
+            exactAmountIn: amountToUnbalance,
+            minAmountOut: 0
+        });
+
+        vm.prank(lp);
+        batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+    }
+
+    function _setupTokens() private {
+        // Label deployed wrapped tokens.
+        vm.label(address(ybToken1), "wUSDC");
+        vm.label(address(ybToken2), "wDAI");
+
+        // Identify and label underlying tokens.
+        _token1Fork = IERC20(ybToken1.asset());
+        vm.label(address(_token1Fork), "USDC");
+        _token2Fork = IERC20(ybToken2.asset());
+        vm.label(address(_token2Fork), "DAI");
+    }
+
+    function _setupLPAndVault() private {
+        vm.startPrank(donorToken1);
+        // Donate token1 (underlying) to LP.
+        _token1Fork.transfer(lp, 100 * _token1BufferInitAmount);
+        //        // Donate token1 (underlying) to bob.
+        //        _token1Fork.transfer(bob, 100 * _token1BufferInitAmount);
+        // Donate to vault, so it has enough tokens to wrap and do not preview.
+        _token1Fork.transfer(lp, _token1YieldBearingPoolInitAmount);
+        vm.stopPrank();
+
+        vm.startPrank(donorToken2);
+        // Donate token2 (underlying) to LP.
+        _token2Fork.transfer(lp, 100 * _token2BufferInitAmount);
+        //        // Donate token2 (underlying) to bob.
+        //        _token2Fork.transfer(bob, 100 * _token2BufferInitAmount);
+        // Donate to vault, so it has enough tokens to wrap and do not preview.
+        _token2Fork.transfer(address(vault), _token2YieldBearingPoolInitAmount);
+        vm.stopPrank();
+
+        vm.startPrank(lp);
+        // Allow Permit2 to get tokens from LP.
+        _token1Fork.approve(address(permit2), type(uint256).max);
+        _token2Fork.approve(address(permit2), type(uint256).max);
+        ybToken2.approve(address(permit2), type(uint256).max);
+        ybToken1.approve(address(permit2), type(uint256).max);
+        // Allow Permit2 to move DAI and USDC from LP to Router.
+        permit2.approve(address(_token2Fork), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(_token1Fork), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(ybToken2), address(router), type(uint160).max, type(uint48).max);
+        permit2.approve(address(ybToken1), address(router), type(uint160).max, type(uint48).max);
+        // Allow Permit2 to move DAI and USDC from LP to BatchRouter.
+        permit2.approve(address(_token2Fork), address(batchRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(_token1Fork), address(batchRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(ybToken2), address(batchRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(ybToken1), address(batchRouter), type(uint160).max, type(uint48).max);
+        // Wrap part of LP balances.
+        _token1Fork.approve(address(ybToken1), 2 * _token1YieldBearingPoolInitAmount);
+        ybToken1.deposit(2 * _token1YieldBearingPoolInitAmount, lp);
+        _token2Fork.approve(address(ybToken2), 2 * _token2YieldBearingPoolInitAmount);
+        ybToken2.deposit(2 * _token2YieldBearingPoolInitAmount, lp);
+        vm.stopPrank();
+
+        //        vm.startPrank(bob);
+        //        _token1Fork.approve(address(ybToken1), 2 * _token1YieldBearingPoolInitAmount);
+        //        ybToken1.deposit(2 * _token1YieldBearingPoolInitAmount, bob);
+        //        _token2Fork.approve(address(ybToken2), 2 * _token2YieldBearingPoolInitAmount);
+        //        ybToken2.deposit(2 * _token2YieldBearingPoolInitAmount, bob);
+        //        vm.stopPrank();
+    }
+
+    function _setupBuffers() private {
+        vm.startPrank(lp);
+        router.addLiquidityToBuffer(
+            ybToken2,
+            _token2BufferInitAmount,
+            ybToken2.convertToShares(_token2BufferInitAmount),
+            lp
+        );
+        router.addLiquidityToBuffer(
+            ybToken1,
+            _token1BufferInitAmount,
+            ybToken1.convertToShares(_token1BufferInitAmount),
+            lp
+        );
+        vm.stopPrank();
+    }
+
+    function _createAndInitializeBoostedPool() private {
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[_ybToken2Idx].token = IERC20(address(ybToken2));
+        tokenConfig[_ybToken1Idx].token = IERC20(address(ybToken1));
+        tokenConfig[0].tokenType = TokenType.STANDARD;
+        tokenConfig[1].tokenType = TokenType.STANDARD;
+
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
+
+        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract);
+
+        vm.label(address(newPool), "yield-bearing pool");
+        yieldBearingPool = address(newPool);
+
+        vm.startPrank(lp);
+        uint256[] memory tokenAmounts = new uint256[](2);
+        tokenAmounts[_ybToken1Idx] = ybToken1.convertToShares(_token1YieldBearingPoolInitAmount);
+        tokenAmounts[_ybToken2Idx] = ybToken2.convertToShares(_token2YieldBearingPoolInitAmount);
+        _initPool(address(yieldBearingPool), tokenAmounts, 0);
+        vm.stopPrank();
+    }
+
+    struct SwapResultLocals {
+        SwapKind kind;
+        IERC20 tokenIn;
+        IERC20 tokenOut;
+        IERC20 ybTokenIn;
+        IERC20 ybTokenOut;
+        uint256 indexYbTokenIn;
+        uint256 indexYbTokenOut;
+        uint256 lpBeforeSwapTokenIn;
+        uint256 lpBeforeSwapTokenOut;
+        uint256 bufferBeforeSwapTokenIn;
+        uint256 bufferBeforeSwapYbTokenIn;
+        uint256 bufferBeforeSwapTokenOut;
+        uint256 bufferBeforeSwapYbTokenOut;
+        uint256 poolBeforeSwapYbTokenIn;
+        uint256 poolBeforeSwapYbTokenOut;
+        uint256 expectedDeltaTokenIn;
+        uint256 expectedDeltaTokenOut;
+        int256 expectedBufferDeltaTokenIn;
+        int256 expectedBufferDeltaTokenOut;
     }
 }
