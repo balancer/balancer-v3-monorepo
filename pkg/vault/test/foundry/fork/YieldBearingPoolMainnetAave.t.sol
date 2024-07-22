@@ -20,22 +20,22 @@ import { ERC4626RateProvider } from "../../../contracts/test/ERC4626RateProvider
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 import { YieldBearingPoolSwapBase } from "./YieldBearingPoolSwapBase.t.sol";
 
-contract YieldBearingPoolSepoliaAaveTest is YieldBearingPoolSwapBase {
+contract YieldBearingPoolMainnetAaveTest is YieldBearingPoolSwapBase {
     function setUp() public override {
         YieldBearingPoolSwapBase.setUp();
     }
 
     function setUpForkTestVariables() internal override {
-        network = "sepolia";
-        blockNumber = 6288761;
+        network = "mainnet";
+        blockNumber = 20327000;
 
-        // Aave's static aUSDC
-        ybToken1 = IERC4626(0x8A88124522dbBF1E56352ba3DE1d9F78C143751e);
-        // Aave's static aDAI
-        ybToken2 = IERC4626(0xDE46e43F46ff74A23a65EBb0580cbe3dFE684a17);
-        // Donor of USDC
-        donorToken1 = 0x0F97F07d7473EFB5c846FB2b6c201eC1E316E994;
-        // Donor of DAI
-        donorToken2 = 0x4d02aF17A29cdA77416A1F60Eae9092BB6d9c026;
+        // Aave's aDai
+        ybToken1 = IERC4626(0xaf270C38fF895EA3f95Ed488CEACe2386F038249);
+        // Aave's aUsdc
+        ybToken2 = IERC4626(0x73edDFa87C71ADdC275c2b9890f5c3a8480bC9E6);
+        // Donor of DAI tokens
+        donorToken1 = 0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf;
+        // Donor of USDC tokens
+        donorToken2 = 0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa;
     }
 }

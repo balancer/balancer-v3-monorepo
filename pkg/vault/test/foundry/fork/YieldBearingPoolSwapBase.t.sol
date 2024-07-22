@@ -20,7 +20,7 @@ import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/Stabl
 import { ERC4626RateProvider } from "../../../contracts/test/ERC4626RateProvider.sol";
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
-contract YieldBearingPoolSwapQueryVsActualBase is BaseVaultTest {
+abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
     string internal network;
     uint256 internal blockNumber;
 
@@ -76,24 +76,85 @@ contract YieldBearingPoolSwapQueryVsActualBase is BaseVaultTest {
         _createAndInitializeBoostedPool();
     }
 
-    function setUpForkTestVariables() internal virtual {
-        network = "sepolia";
-        blockNumber = 6288761;
+    function setUpForkTestVariables() internal virtual;
 
-        ybToken1 = IERC4626(0x8A88124522dbBF1E56352ba3DE1d9F78C143751e);
-        ybToken2 = IERC4626(0xDE46e43F46ff74A23a65EBb0580cbe3dFE684a17);
-        donorToken1 = 0x0F97F07d7473EFB5c846FB2b6c201eC1E316E994;
-        donorToken2 = 0x4d02aF17A29cdA77416A1F60Eae9092BB6d9c026;
+    function testSwapPreconditions__Fork() public view {
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(address(yieldBearingPool));
+        // The yield-bearing pool should have `boostedPoolAmount` of both tokens.
+        assertEq(address(tokens[_ybToken1Idx]), address(ybToken1), "Wrong yield-bearing pool token (ybToken1)");
+        assertEq(address(tokens[_ybToken2Idx]), address(ybToken2), "Wrong yield-bearing pool token (ybToken2)");
+
+        uint256 yieldBearingPoolAmountToken1 = ybToken1.convertToShares(_token1YieldBearingPoolInitAmount);
+        uint256 yieldBeraingPoolAmountToken2 = ybToken2.convertToShares(_token2YieldBearingPoolInitAmount);
+
+        assertEq(
+            balancesRaw[_ybToken1Idx],
+            yieldBearingPoolAmountToken1,
+            "Wrong yield-bearing pool balance [ybToken1]"
+        );
+        assertEq(
+            balancesRaw[_ybToken2Idx],
+            yieldBeraingPoolAmountToken2,
+            "Wrong yield-bearing pool balance [ybToken2]"
+        );
+
+        // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
+        assertApproxEqAbs(
+            vault.getBufferOwnerShares(IERC20(ybToken1), lp),
+            _token1BufferInitAmount * 2 - MIN_BPT,
+            1,
+            "Wrong share of ybToken1 buffer belonging to LP"
+        );
+        assertApproxEqAbs(
+            vault.getBufferOwnerShares(IERC20(ybToken2), lp),
+            (_token2BufferInitAmount * 2) - MIN_BPT,
+            1,
+            "Wrong share of ybToken2 buffer belonging to LP"
+        );
+
+        // Buffer should have the correct amount of issued shares
+        assertApproxEqAbs(
+            vault.getBufferTotalShares(IERC20(ybToken1)),
+            _token1BufferInitAmount * 2,
+            1,
+            "Wrong issued shares of ybToken1 buffer"
+        );
+        assertApproxEqAbs(
+            vault.getBufferTotalShares(IERC20(ybToken2)),
+            (_token2BufferInitAmount * 2),
+            1,
+            "Wrong issued shares of ybToken2 buffer"
+        );
+
+        uint256 underlyingBalance;
+        uint256 wrappedBalance;
+
+        // The vault buffers should each have `bufferAmount` of their respective tokens.
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(ybToken1));
+        assertEq(underlyingBalance, _token1BufferInitAmount, "Wrong ybToken1 buffer balance for underlying token");
+        assertEq(
+            wrappedBalance,
+            ybToken1.convertToShares(_token1BufferInitAmount),
+            "Wrong ybToken1 buffer balance for wrapped token"
+        );
+
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(ybToken2));
+        assertEq(underlyingBalance, _token2BufferInitAmount, "Wrong ybToken2 buffer balance for underlying token");
+        assertEq(
+            wrappedBalance,
+            ybToken2.convertToShares(_token2BufferInitAmount),
+            "Wrong ybToken2 buffer balance for wrapped token"
+        );
     }
 
-    function testWethInWithinBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
+    function testToken1InToken2OutWithinBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
         amountIn = bound(amountIn, (_token1BufferInitAmount) / 10, _token1BufferInitAmount);
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(_token1Fork, amountIn, 0);
 
         _testExactIn(paths);
     }
 
-    function testWethInWithinBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
+    function testToken1InToken2OutWithinBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
         amountOut = bound(amountOut, (_token2BufferInitAmount) / 10, _token2BufferInitAmount);
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
             _token1Fork,
@@ -104,14 +165,14 @@ contract YieldBearingPoolSwapQueryVsActualBase is BaseVaultTest {
         _testExactOut(paths);
     }
 
-    function testWethInOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
+    function testToken1InToken2OutOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
         amountIn = bound(amountIn, 2 * _token1BufferInitAmount, 4 * _token1BufferInitAmount);
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(_token1Fork, amountIn, 0);
 
         _testExactIn(paths);
     }
 
-    function testWethInOutOfBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
+    function testToken1InToken2OutOutOfBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
         amountOut = bound(amountOut, 2 * _token2BufferInitAmount, 4 * _token2BufferInitAmount);
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
             _token1Fork,
@@ -122,7 +183,7 @@ contract YieldBearingPoolSwapQueryVsActualBase is BaseVaultTest {
         _testExactOut(paths);
     }
 
-    function testWethInBufferUnbalancedExactIn__Fork__Fuzz(
+    function testToken1InToken2OutBufferUnbalancedExactIn__Fork__Fuzz(
         uint256 amountIn,
         uint256 unbalancedUsdc,
         uint256 unbalancedWeth
@@ -137,7 +198,7 @@ contract YieldBearingPoolSwapQueryVsActualBase is BaseVaultTest {
         _testExactIn(paths);
     }
 
-    function testWethInBufferUnbalancedExactOut__Fork__Fuzz(
+    function testToken1InToken2OutBufferUnbalancedExactOut__Fork__Fuzz(
         uint256 amountOut,
         uint256 unbalancedUsdc,
         uint256 unbalancedWeth
@@ -156,14 +217,14 @@ contract YieldBearingPoolSwapQueryVsActualBase is BaseVaultTest {
         _testExactOut(paths);
     }
 
-    function testUsdcInWithinBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
+    function testToken2InToken1OutWithinBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
         amountIn = bound(amountIn, _token2BufferInitAmount / 10, _token2BufferInitAmount);
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(_token2Fork, amountIn, 0);
 
         _testExactIn(paths);
     }
 
-    function testUsdcInWithinBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
+    function testToken2InToken1OutWithinBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
         amountOut = bound(amountOut, _token1BufferInitAmount / 10, _token1BufferInitAmount);
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
             _token2Fork,
@@ -174,14 +235,14 @@ contract YieldBearingPoolSwapQueryVsActualBase is BaseVaultTest {
         _testExactOut(paths);
     }
 
-    function testUsdcInOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
+    function testToken2InToken1OutOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
         amountIn = bound(amountIn, 2 * _token2BufferInitAmount, 4 * _token2BufferInitAmount);
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(_token2Fork, amountIn, 0);
 
         _testExactIn(paths);
     }
 
-    function testUsdcInOutOfBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
+    function testToken2InToken1OutOutOfBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
         amountOut = bound(amountOut, 2 * _token1BufferInitAmount, 4 * _token1BufferInitAmount);
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
             _token2Fork,
@@ -192,7 +253,7 @@ contract YieldBearingPoolSwapQueryVsActualBase is BaseVaultTest {
         _testExactOut(paths);
     }
 
-    function testUsdcInBufferUnbalancedExactIn__Fork__Fuzz(
+    function testToken2InToken1OutBufferUnbalancedExactIn__Fork__Fuzz(
         uint256 amountIn,
         uint256 unbalancedUsdc,
         uint256 unbalancedWeth
@@ -207,7 +268,7 @@ contract YieldBearingPoolSwapQueryVsActualBase is BaseVaultTest {
         _testExactIn(paths);
     }
 
-    function testUsdcInBufferUnbalancedExactOut__Fork__Fuzz(
+    function testToken2InToken1OutBufferUnbalancedExactOut__Fork__Fuzz(
         uint256 amountOut,
         uint256 unbalancedUsdc,
         uint256 unbalancedWeth
@@ -235,6 +296,13 @@ contract YieldBearingPoolSwapQueryVsActualBase is BaseVaultTest {
             uint256[] memory queryAmountsOut
         ) = batchRouter.querySwapExactIn(paths, bytes(""));
         vm.revertTo(snapshotId);
+
+        // Measure tokens before actual swap
+        SwapResultLocals memory vars = _createSwapResultLocals(
+            SwapKind.EXACT_IN,
+            IERC4626(address(paths[0].steps[0].tokenOut)),
+            IERC4626(address(paths[0].steps[1].tokenOut))
+        );
 
         vm.prank(lp);
         (
@@ -265,7 +333,6 @@ contract YieldBearingPoolSwapQueryVsActualBase is BaseVaultTest {
     function _testExactOut(IBatchRouter.SwapPathExactAmountOut[] memory paths) private {
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        console.log("--QUERY--");
         (
             uint256[] memory queryPathAmountsIn,
             address[] memory queryTokensIn,
@@ -273,7 +340,16 @@ contract YieldBearingPoolSwapQueryVsActualBase is BaseVaultTest {
         ) = batchRouter.querySwapExactOut(paths, bytes(""));
         vm.revertTo(snapshotId);
 
-        console.log("--ACTUAL--");
+        // Measure tokens before actual swap
+        SwapResultLocals memory vars = _createSwapResultLocals(
+            SwapKind.EXACT_IN,
+            IERC4626(address(paths[0].steps[0].tokenOut)),
+            IERC4626(address(paths[0].steps[1].tokenOut))
+        );
+        //        vars.expectedDeltaToken1 = paths[0].exactAmountOut;
+        //        vars.expectedBufferDeltaToken1 = int256(paths[0].exactAmountOut);
+        //        vars.expectedDeltaToken2 = swapAmount / USDC_FACTOR;
+        //        vars.expectedBufferDeltaToken2 = -int256(swapAmount / USDC_FACTOR);
 
         vm.prank(lp);
         (
@@ -482,27 +558,214 @@ contract YieldBearingPoolSwapQueryVsActualBase is BaseVaultTest {
 
         PoolRoleAccounts memory roleAccounts;
 
-        // Created copying boosted pool 0x302b75a27e5e157f93c679dd7a25fdfcdbc1473c (Sepolia).
+        // Created copying yield-bearing pool 0x302b75a27e5e157f93c679dd7a25fdfcdbc1473c (Sepolia).
         address stablePool = stablePoolFactory.create(
             "Boosted Pool",
             "BP",
             tokenConfig,
-            1000, // Amplification parameter used in the real boosted pool
+            1000, // Amplification parameter used in the real yield-bearing pool
             roleAccounts,
-            1e16, // 1% swap fee, same as the real boosted pool
+            1e16, // 1% swap fee, same as the real yield-bearing pool
             address(0),
             false, // Do not accept donations
             false, // Do not disable unbalanced add/remove liquidity
             ZERO_BYTES32
         );
-        vm.label(stablePool, "boosted pool");
+        vm.label(stablePool, "yield-bearing pool");
         yieldBearingPool = StablePool(stablePool);
 
         vm.startPrank(lp);
         uint256[] memory tokenAmounts = new uint256[](2);
-        tokenAmounts[_ybToken2Idx] = _token2YieldBearingPoolInitAmount;
-        tokenAmounts[_ybToken1Idx] = _token1YieldBearingPoolInitAmount;
+        tokenAmounts[_ybToken1Idx] = ybToken1.convertToShares(_token1YieldBearingPoolInitAmount);
+        tokenAmounts[_ybToken2Idx] = ybToken2.convertToShares(_token2YieldBearingPoolInitAmount);
         _initPool(address(yieldBearingPool), tokenAmounts, 0);
         vm.stopPrank();
+    }
+
+    struct SwapResultLocals {
+        SwapKind kind;
+        IERC20 tokenIn;
+        IERC20 tokenOut;
+        IERC20 ybTokenIn;
+        IERC20 ybTokenOut;
+        uint256 indexYbTokenIn;
+        uint256 indexYbTokenOut;
+        uint256 lpBeforeSwapTokenIn;
+        uint256 lpBeforeSwapTokenOut;
+        uint256 bufferBeforeSwapTokenIn;
+        uint256 bufferBeforeSwapYbTokenIn;
+        uint256 bufferBeforeSwapTokenOut;
+        uint256 bufferBeforeSwapYbTokenOut;
+        uint256 poolBeforeSwapYbTokenIn;
+        uint256 poolBeforeSwapYbTokenOut;
+        uint256 expectedDeltaTokenIn;
+        uint256 expectedDeltaTokenOut;
+        int256 expectedBufferDeltaTokenIn;
+        int256 expectedBufferDeltaTokenOut;
+    }
+
+    function _createSwapResultLocals(
+        SwapKind kind,
+        IERC4626 ybTokenIn,
+        IERC4626 ybTokenOut
+    ) private view returns (SwapResultLocals memory vars) {
+        vars.kind = kind;
+
+        vars.tokenIn = IERC4626(ybTokenIn.asset());
+        vars.tokenOut = IERC4626(ybTokenOut.asset());
+
+        vars.lpBeforeSwapTokenIn = vars.tokenIn.balanceOf(lp);
+        vars.lpBeforeSwapTokenOut = vars.tokenOut.balanceOf(lp);
+
+        uint256 underlyingBalance;
+        uint256 wrappedBalance;
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(address(ybTokenIn)));
+        vars.bufferBeforeSwapTokenIn = underlyingBalance;
+        vars.bufferBeforeSwapYbTokenIn = wrappedBalance;
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(address(ybTokenOut)));
+        vars.bufferBeforeSwapTokenOut = underlyingBalance;
+        vars.bufferBeforeSwapYbTokenOut = wrappedBalance;
+
+        uint256[] memory balancesRaw;
+        (, , balancesRaw, ) = vault.getPoolTokenInfo(address(yieldBearingPool));
+        if (vars.tokenIn == _token1Fork) {
+            vars.indexYbTokenIn = _ybToken1Idx;
+            vars.indexYbTokenOut = _ybToken2Idx;
+        } else {
+            vars.indexYbTokenIn = _ybToken2Idx;
+            vars.indexYbTokenOut = _ybToken1Idx;
+        }
+        vars.poolBeforeSwapYbTokenIn = balancesRaw[vars.indexYbTokenIn];
+        vars.poolBeforeSwapYbTokenOut = balancesRaw[vars.indexYbTokenOut];
+    }
+
+    function _verifySwapResult(
+        uint256[] memory paths,
+        address[] memory tokens,
+        uint256[] memory amounts,
+        SwapResultLocals memory vars
+    ) private view {
+        assertEq(paths.length, 1, "Incorrect output array length");
+
+        assertEq(paths.length, tokens.length, "Output array length mismatch");
+        assertEq(tokens.length, amounts.length, "Output array length mismatch");
+
+        // Check results
+        if (vars.kind == SwapKind.EXACT_IN) {
+            // Rounding issues occurs in favor of vault, and are very small
+            assertLe(paths[0], vars.expectedDeltaTokenOut, "paths AmountOut must be <= expected amountOut");
+            assertApproxEqAbs(paths[0], vars.expectedDeltaTokenOut, 2, "Wrong path count");
+            assertLe(paths[0], vars.expectedDeltaTokenOut, "amounts AmountOut must be <= expected amountOut");
+            assertApproxEqAbs(amounts[0], vars.expectedDeltaTokenOut, 2, "Wrong amounts count");
+            assertEq(tokens[0], address(vars.tokenOut), "Wrong token for SwapKind");
+        } else {
+            // Rounding issues occurs in favor of vault, and are very small
+            assertGe(paths[0], vars.expectedDeltaTokenIn, "paths AmountIn must be >= expected amountIn");
+            assertApproxEqAbs(paths[0], vars.expectedDeltaTokenIn, 5, "Wrong path count");
+            assertGe(amounts[0], vars.expectedDeltaTokenIn, "amounts AmountIn must be >= expected amountIn");
+            assertApproxEqAbs(amounts[0], vars.expectedDeltaTokenIn, 5, "Wrong amounts count");
+            assertEq(tokens[0], address(vars.tokenIn), "Wrong token for SwapKind");
+        }
+
+        // Tokens were transferred
+        assertLe(
+            vars.tokenIn.balanceOf(alice),
+            vars.lpBeforeSwapTokenIn - vars.expectedDeltaTokenIn,
+            "Alice balance tokenIn must be <= expected balance"
+        );
+        assertApproxEqAbs(
+            vars.tokenIn.balanceOf(alice),
+            vars.lpBeforeSwapTokenIn - vars.expectedDeltaTokenIn,
+            5,
+            "Wrong ending balance of tokenIn for Alice"
+        );
+        assertLe(
+            vars.tokenOut.balanceOf(alice),
+            vars.lpBeforeSwapTokenOut + vars.expectedDeltaTokenOut,
+            "Alice balance tokenOut must be <= expected balance"
+        );
+        assertApproxEqAbs(
+            vars.tokenOut.balanceOf(alice),
+            vars.lpBeforeSwapTokenOut + vars.expectedDeltaTokenOut,
+            5,
+            "Wrong ending balance of tokenOut for Alice"
+        );
+
+        uint256[] memory balancesRaw;
+
+        (, , balancesRaw, ) = vault.getPoolTokenInfo(address(yieldBearingPool));
+        assertApproxEqAbs(
+            balancesRaw[vars.indexYbTokenIn],
+            vars.poolBeforeSwapYbTokenIn + IERC4626(address(vars.ybTokenIn)).convertToShares(vars.expectedDeltaTokenIn),
+            5,
+            "Wrong yield-bearing pool tokenIn balance"
+        );
+        assertApproxEqAbs(
+            balancesRaw[vars.indexYbTokenOut],
+            vars.poolBeforeSwapYbTokenOut -
+                IERC4626(address(vars.ybTokenOut)).convertToShares(vars.expectedDeltaTokenOut),
+            2,
+            "Wrong yield-bearing pool tokenOut balance"
+        );
+
+        uint256 underlyingBalance;
+        uint256 wrappedBalance;
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(vars.ybTokenIn);
+        assertApproxEqAbs(
+            underlyingBalance,
+            uint256(int256(vars.bufferBeforeSwapTokenIn) + vars.expectedBufferDeltaTokenIn),
+            5,
+            "Wrong tokenIn buffer pool underlying balance"
+        );
+        assertApproxEqAbs(
+            wrappedBalance,
+            uint256(
+                int256(vars.bufferBeforeSwapYbTokenIn) +
+                    (
+                        vars.expectedBufferDeltaTokenIn < int256(0)
+                            ? int256(
+                                IERC4626(address(vars.ybTokenIn)).convertToShares(
+                                    uint256(-vars.expectedBufferDeltaTokenIn)
+                                )
+                            )
+                            : -int256(
+                                IERC4626(address(vars.ybTokenIn)).convertToShares(
+                                    uint256(vars.expectedBufferDeltaTokenIn)
+                                )
+                            )
+                    )
+            ),
+            5,
+            "Wrong tokenIn buffer pool wrapped balance"
+        );
+
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(vars.ybTokenOut);
+        assertApproxEqAbs(
+            underlyingBalance,
+            uint256(int256(vars.bufferBeforeSwapTokenOut) + vars.expectedBufferDeltaTokenOut),
+            5,
+            "Wrong tokenOut buffer pool underlying balance"
+        );
+        assertApproxEqAbs(
+            wrappedBalance,
+            uint256(
+                int256(vars.bufferBeforeSwapYbTokenOut) +
+                    (
+                        vars.expectedBufferDeltaTokenOut < int256(0)
+                            ? int256(
+                                IERC4626(address(vars.ybTokenOut)).convertToShares(
+                                    uint256(-vars.expectedBufferDeltaTokenOut)
+                                )
+                            )
+                            : -int256(
+                                IERC4626(address(vars.ybTokenOut)).convertToShares(
+                                    uint256(vars.expectedBufferDeltaTokenOut)
+                                )
+                            )
+                    )
+            ),
+            5,
+            "Wrong tokenOut buffer pool wrapped balance"
+        );
     }
 }
