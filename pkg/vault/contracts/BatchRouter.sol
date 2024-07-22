@@ -919,7 +919,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             })
         );
 
-        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
         for (uint256 i = 0; i < boostedPoolTokens.length; ++i) {
             IERC4626 wrappedToken = IERC4626(address(boostedPoolTokens[i]));
             IERC20 underlyingToken = IERC20(wrappedToken.asset());
