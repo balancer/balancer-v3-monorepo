@@ -157,13 +157,15 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         uint256 wrappedBufferDeltaTokenIn = ybToken1.previewDeposit(amountIn);
         uint256 wrappedBufferDeltaTokenInScaled18 = wrappedBufferDeltaTokenIn.divDown(_token1Factor);
-        uint256 wrappedBufferDeltaTokenOutScaled18 = wrappedBufferDeltaTokenInScaled18.mulDown(_token2Factor);
-        int256 expectedBufferDeltaTokenOut = -int256(ybToken2.previewRedeem(wrappedBufferDeltaTokenOutScaled18));
+        // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
+        uint256 wrappedBufferDeltaTokenOutRaw = wrappedBufferDeltaTokenInScaled18.mulDown(_token2Factor);
+        int256 expectedBufferDeltaTokenOut = -int256(ybToken2.previewRedeem(wrappedBufferDeltaTokenOutRaw));
 
         _testExactIn(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken1InToken2OutWithinBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
+        // Test from 10% to 50% of tokenOut's buffer to avoid exceeding the limit of tokenIn's buffer.
         amountOut = bound(amountOut, (_token2BufferInitAmount) / 10, _token2BufferInitAmount);
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
             _token1Fork,
@@ -171,13 +173,24 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             amountOut
         );
 
-        _testExactOut(paths);
+        int256 expectedBufferDeltaTokenOut = int256(amountOut);
+
+        uint256 wrappedBufferDeltaTokenOut = ybToken2.previewWithdraw(amountOut);
+        uint256 wrappedBufferDeltaTokenOutScaled18 = wrappedBufferDeltaTokenOut.divDown(_token2Factor);
+        // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
+        uint256 wrappedBufferDeltaTokenInRaw = wrappedBufferDeltaTokenOutScaled18.mulDown(_token1Factor);
+        int256 expectedBufferDeltaTokenIn = -int256(ybToken1.previewMint(wrappedBufferDeltaTokenInRaw));
+
+        _testExactOut(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken1InToken2OutOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
+        // Test from 2x to 4x of tokenIn's buffer to make sure it's out of both buffer ranges but yield-bearing pool
+        // has enough tokens to trade (5x buffer init amount).
         amountIn = bound(amountIn, 2 * _token1BufferInitAmount, 4 * _token1BufferInitAmount);
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(_token1Fork, amountIn, 0);
 
+        // Since operation is out of buffer range, buffer balances should not change (wrap/unwrap tokens directly).
         int256 expectedBufferDeltaTokenIn = 0;
         int256 expectedBufferDeltaTokenOut = 0;
 
@@ -185,6 +198,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
     }
 
     function testToken1InToken2OutOutOfBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
+        // Test from 2x to 4x of tokenOut's buffer to make sure it's out of both buffer ranges but yield-bearing pool
+        // has enough tokens to trade (5x buffer init amount).
         amountOut = bound(amountOut, 2 * _token2BufferInitAmount, 4 * _token2BufferInitAmount);
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(
             _token1Fork,
@@ -192,7 +207,11 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             amountOut
         );
 
-        _testExactOut(paths);
+        // Since operation is out of buffer range, buffer balances should not change (wrap/unwrap tokens directly).
+        int256 expectedBufferDeltaTokenIn = 0;
+        int256 expectedBufferDeltaTokenOut = 0;
+
+        _testExactOut(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken1InToken2OutBufferUnbalancedExactIn__Fork__Fuzz(
@@ -247,7 +266,14 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             amountOut
         );
 
-        _testExactOut(paths);
+        int256 expectedBufferDeltaTokenOut = int256(amountOut);
+
+        uint256 wrappedBufferDeltaTokenOut = ybToken2.previewWithdraw(amountOut);
+        uint256 wrappedBufferDeltaTokenOutScaled18 = wrappedBufferDeltaTokenOut.divDown(_token2Factor);
+        uint256 wrappedBufferDeltaTokenInRaw = wrappedBufferDeltaTokenOutScaled18.mulDown(_token1Factor);
+        int256 expectedBufferDeltaTokenIn = -int256(ybToken1.previewMint(wrappedBufferDeltaTokenInRaw));
+
+        _testExactOut(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken2InToken1OutWithinBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
@@ -255,7 +281,12 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(_token2Fork, amountIn, 0);
 
         int256 expectedBufferDeltaTokenIn = int256(amountIn);
-        int256 expectedBufferDeltaTokenOut = int256((amountIn * _token2Factor) / _token1Factor);
+
+        uint256 wrappedBufferDeltaTokenIn = ybToken2.previewDeposit(amountIn);
+        uint256 wrappedBufferDeltaTokenInScaled18 = wrappedBufferDeltaTokenIn.divDown(_token2Factor);
+        // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
+        uint256 wrappedBufferDeltaTokenOutRaw = wrappedBufferDeltaTokenInScaled18.mulDown(_token1Factor);
+        int256 expectedBufferDeltaTokenOut = -int256(ybToken1.previewRedeem(wrappedBufferDeltaTokenOutRaw));
 
         _testExactIn(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
@@ -268,15 +299,24 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             amountOut
         );
 
-        _testExactOut(paths);
+        int256 expectedBufferDeltaTokenOut = int256(amountOut);
+
+        uint256 wrappedBufferDeltaTokenOut = ybToken2.previewWithdraw(amountOut);
+        uint256 wrappedBufferDeltaTokenOutScaled18 = wrappedBufferDeltaTokenOut.divDown(_token2Factor);
+        // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
+        uint256 wrappedBufferDeltaTokenInRaw = wrappedBufferDeltaTokenOutScaled18.mulDown(_token1Factor);
+        int256 expectedBufferDeltaTokenIn = -int256(ybToken1.previewMint(wrappedBufferDeltaTokenInRaw));
+
+        _testExactOut(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken2InToken1OutOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
         amountIn = bound(amountIn, 2 * _token2BufferInitAmount, 4 * _token2BufferInitAmount);
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(_token2Fork, amountIn, 0);
 
-        int256 expectedBufferDeltaTokenIn = int256(amountIn);
-        int256 expectedBufferDeltaTokenOut = int256((amountIn * _token2Factor) / _token1Factor);
+        // Since operation is out of buffer range, buffer balances should not change (wrap/unwrap tokens directly).
+        int256 expectedBufferDeltaTokenIn = 0;
+        int256 expectedBufferDeltaTokenOut = 0;
 
         _testExactIn(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
@@ -289,7 +329,11 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             amountOut
         );
 
-        _testExactOut(paths);
+        // Since operation is out of buffer range, buffer balances should not change (wrap/unwrap tokens directly).
+        int256 expectedBufferDeltaTokenIn = 0;
+        int256 expectedBufferDeltaTokenOut = 0;
+
+        _testExactOut(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken2InToken1OutBufferUnbalancedExactIn__Fork__Fuzz(
@@ -326,7 +370,14 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             amountOut
         );
 
-        _testExactOut(paths);
+        int256 expectedBufferDeltaTokenOut = int256(amountOut);
+
+        uint256 wrappedBufferDeltaTokenOut = ybToken2.previewWithdraw(amountOut);
+        uint256 wrappedBufferDeltaTokenOutScaled18 = wrappedBufferDeltaTokenOut.divDown(_token2Factor);
+        uint256 wrappedBufferDeltaTokenInRaw = wrappedBufferDeltaTokenOutScaled18.mulDown(_token1Factor);
+        int256 expectedBufferDeltaTokenIn = -int256(ybToken1.previewMint(wrappedBufferDeltaTokenInRaw));
+
+        _testExactOut(paths, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function _testExactIn(
@@ -393,7 +444,11 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         _verifySwapResult(actualPathAmountsOut, actualTokensOut, actualAmountsOut, vars);
     }
 
-    function _testExactOut(IBatchRouter.SwapPathExactAmountOut[] memory paths) private {
+    function _testExactOut(
+        IBatchRouter.SwapPathExactAmountOut[] memory paths,
+        int256 expectedBufferDeltaTokenIn,
+        int256 expectedBufferDeltaTokenOut
+    ) private {
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
         (
@@ -405,14 +460,25 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         // Measure tokens before actual swap
         SwapResultLocals memory vars = _createSwapResultLocals(
-            SwapKind.EXACT_IN,
+            SwapKind.EXACT_OUT,
             IERC4626(address(paths[0].steps[0].tokenOut)),
             IERC4626(address(paths[0].steps[1].tokenOut))
         );
-        //        vars.expectedDeltaToken1 = paths[0].exactAmountOut;
-        //        vars.expectedBufferDeltaToken1 = int256(paths[0].exactAmountOut);
-        //        vars.expectedDeltaToken2 = swapAmount / USDC_FACTOR;
-        //        vars.expectedBufferDeltaToken2 = -int256(swapAmount / USDC_FACTOR);
+        vars.expectedDeltaTokenOut = paths[0].exactAmountOut;
+        // PoolMock uses linear math, so amount in and out should be the same, except by token scaling
+        if (paths[0].tokenIn == _token1Fork) {
+            uint256 wrappedAmountOut = ybToken2.previewWithdraw(vars.expectedDeltaTokenOut);
+            uint256 wrappedAmountOutScaled18 = wrappedAmountOut.divDown(_token2Factor);
+            uint256 wrappedAmountInScaled18 = wrappedAmountOutScaled18.mulDown(_token1Factor);
+            vars.expectedDeltaTokenIn = ybToken1.previewMint(wrappedAmountInScaled18);
+        } else {
+            uint256 wrappedAmountOut = ybToken1.previewWithdraw(vars.expectedDeltaTokenOut);
+            uint256 wrappedAmountOutScaled18 = wrappedAmountOut.divDown(_token1Factor);
+            uint256 wrappedAmountInScaled18 = wrappedAmountOutScaled18.mulDown(_token2Factor);
+            vars.expectedDeltaTokenIn = ybToken2.previewMint(wrappedAmountInScaled18);
+        }
+        vars.expectedBufferDeltaTokenIn = expectedBufferDeltaTokenIn;
+        vars.expectedBufferDeltaTokenOut = expectedBufferDeltaTokenOut;
 
         vm.prank(lp);
         (
@@ -434,6 +500,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         assertEq(queryPathAmountsIn[0], actualPathAmountsIn[0], "Query and actual pathAmountsIn do not match");
         assertEq(queryTokensIn[0], actualTokensIn[0], "Query and actual tokensIn do not match");
         assertEq(queryAmountsIn[0], actualAmountsIn[0], "Query and actual amountsIn do not match");
+
+        _verifySwapResult(actualPathAmountsIn, actualTokensIn, actualAmountsIn, vars);
     }
 
     function _buildExactInPaths(
@@ -614,8 +682,6 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         tokenConfig[_ybToken1Idx].token = IERC20(address(ybToken1));
         tokenConfig[0].tokenType = TokenType.STANDARD;
         tokenConfig[1].tokenType = TokenType.STANDARD;
-
-        PoolRoleAccounts memory roleAccounts;
 
         PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
 
