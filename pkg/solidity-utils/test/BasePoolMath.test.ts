@@ -1,4 +1,4 @@
-import { bn, decimal, toFp } from '@balancer-labs/v3-helpers/src/numbers';
+import { bn, fp, toFp } from '@balancer-labs/v3-helpers/src/numbers';
 import { MAX_RELATIVE_ERROR } from '@balancer-labs/v3-helpers/src/constants';
 import { deploy } from '@balancer-labs/v3-helpers/src/contract';
 import { expectEqualWithError } from '@balancer-labs/v3-helpers/src/test/relativeError';
@@ -17,7 +17,7 @@ import {
 
 import { BasePoolMathMock } from '../typechain-types/contracts/test/BasePoolMathMock';
 
-const SWAP_FEE = decimal(0.01);
+const SWAP_FEE = fp(0.01);
 
 describe('BasePoolMath', function () {
   let math: BasePoolMathMock;
@@ -27,9 +27,9 @@ describe('BasePoolMath', function () {
   });
 
   it('test computeProportionalAmountsIn', async () => {
-    const balances = [decimal(100), decimal(200)];
-    const bptTotalSupply = decimal(300);
-    const bptAmountOut = decimal(30);
+    const balances = [fp(100), fp(200)];
+    const bptTotalSupply = fp(300);
+    const bptAmountOut = fp(30);
 
     const expected = computeProportionalAmountsIn(balances, bptTotalSupply, bptAmountOut);
     const result = await math.computeProportionalAmountsIn(
@@ -45,9 +45,9 @@ describe('BasePoolMath', function () {
   });
 
   it('test computeProportionalAmountsOut', async () => {
-    const balances = [decimal(100), decimal(200)];
-    const bptTotalSupply = decimal(300);
-    const bptAmountIn = decimal(30);
+    const balances = [fp(100), fp(200)];
+    const bptTotalSupply = fp(300);
+    const bptAmountIn = fp(30);
 
     const expected = computeProportionalAmountsOut(balances, bptTotalSupply, bptAmountIn);
     const result = await math.computeProportionalAmountsOut(
@@ -63,31 +63,21 @@ describe('BasePoolMath', function () {
   });
 
   it('test computeAddLiquidityUnbalanced', async () => {
-    const currentBalances = [decimal(100), decimal(200)];
-    const exactAmounts = [decimal(10), decimal(20)];
-    const totalSupply = decimal(300);
+    const currentBalances = [fp(100), fp(200)];
+    const exactAmounts = [fp(10), fp(20)];
+    const totalSupply = fp(300);
 
     const { bptAmountOut: expectedBptAmountOut, swapFeeAmounts: expectedSwapFeeAmounts } =
       computeAddLiquidityUnbalanced(currentBalances, exactAmounts, totalSupply, SWAP_FEE);
 
-    const result = await math.computeAddLiquidityUnbalanced(
-      currentBalances.map((balance) => bn(toFp(balance))),
-      exactAmounts.map((amount) => bn(toFp(amount))),
-      bn(toFp(totalSupply)),
-      bn(toFp(SWAP_FEE))
-    );
+    const result = await math.computeAddLiquidityUnbalanced(currentBalances, exactAmounts, totalSupply, SWAP_FEE);
 
     expect(result.bptAmountOut).not.to.be.equal(0n, 'bptAmountOut is 0');
-    expectEqualWithError(
-      result.bptAmountOut,
-      bn(toFp(expectedBptAmountOut)),
-      MAX_RELATIVE_ERROR,
-      'unexpected bptAmountOut'
-    );
+    expectEqualWithError(result.bptAmountOut, expectedBptAmountOut, MAX_RELATIVE_ERROR, 'unexpected bptAmountOut');
     result.swapFeeAmounts.forEach((res, i) => {
       expectEqualWithError(
         result.swapFeeAmounts[i],
-        bn(toFp(expectedSwapFeeAmounts[i])),
+        expectedSwapFeeAmounts[i],
         MAX_RELATIVE_ERROR,
         'unexpected swapFeeAmounts'
       );
@@ -95,33 +85,33 @@ describe('BasePoolMath', function () {
   });
 
   it('test computeAddLiquiditySingleTokenExactOut', async () => {
-    const currentBalances = [decimal(100), decimal(200)];
+    const currentBalances = [fp(100), fp(200)];
     const tokenInIndex = 0;
-    const exactBptAmountOut = decimal(30);
-    const totalSupply = decimal(300);
+    const exactBptAmountOut = fp(30);
+    const totalSupply = fp(300);
 
     const { amountInWithFee: expectedAmountInWithFee, swapFeeAmounts: expectedSwapFeeAmounts } =
       computeAddLiquiditySingleTokenExactOut(currentBalances, tokenInIndex, exactBptAmountOut, totalSupply, SWAP_FEE);
 
     const result = await math.computeAddLiquiditySingleTokenExactOut(
-      currentBalances.map((balance) => bn(toFp(balance))),
+      currentBalances,
       tokenInIndex,
-      bn(toFp(exactBptAmountOut)),
-      bn(toFp(totalSupply)),
-      bn(toFp(SWAP_FEE))
+      exactBptAmountOut,
+      totalSupply,
+      SWAP_FEE
     );
 
     expect(result.amountInWithFee).not.to.be.equal(0n, 'amountInWithFee is 0');
     expectEqualWithError(
       result.amountInWithFee,
-      bn(toFp(expectedAmountInWithFee)),
+      expectedAmountInWithFee,
       MAX_RELATIVE_ERROR,
       'unexpected amountInWithFee'
     );
     result.swapFeeAmounts.forEach((res, i) => {
       expectEqualWithError(
         result.swapFeeAmounts[i],
-        bn(toFp(expectedSwapFeeAmounts[i])),
+        expectedSwapFeeAmounts[i],
         MAX_RELATIVE_ERROR,
         'unexpected swapFeeAmounts'
       );
@@ -129,34 +119,29 @@ describe('BasePoolMath', function () {
   });
 
   it('test computeRemoveLiquiditySingleTokenExactOut', async () => {
-    const currentBalances = [decimal(100), decimal(200)];
+    const currentBalances = [fp(100), fp(200)];
     const tokenOutIndex = 0;
-    const exactAmountOut = decimal(10);
-    const totalSupply = decimal(300);
+    const exactAmountOut = fp(10);
+    const totalSupply = fp(300);
 
     const { bptAmountIn: expectedBptAmountIn, swapFeeAmounts: expectedSwapFeeAmounts } =
       computeRemoveLiquiditySingleTokenExactOut(currentBalances, tokenOutIndex, exactAmountOut, totalSupply, SWAP_FEE);
 
     const result = await math.computeRemoveLiquiditySingleTokenExactOut(
-      currentBalances.map((balance) => bn(toFp(balance))),
+      currentBalances,
       tokenOutIndex,
-      bn(toFp(exactAmountOut)),
-      bn(toFp(totalSupply)),
-      bn(toFp(SWAP_FEE))
+      exactAmountOut,
+      totalSupply,
+      SWAP_FEE
     );
 
     expect(result.bptAmountIn).not.to.be.equal(0n, 'bptAmountIn is 0');
-    expectEqualWithError(
-      result.bptAmountIn,
-      bn(toFp(expectedBptAmountIn)),
-      MAX_RELATIVE_ERROR,
-      'unexpected bptAmountIn'
-    );
+    expectEqualWithError(result.bptAmountIn, expectedBptAmountIn, MAX_RELATIVE_ERROR, 'unexpected bptAmountIn');
 
     result.swapFeeAmounts.forEach((res, i) => {
       expectEqualWithError(
         result.swapFeeAmounts[i],
-        bn(toFp(expectedSwapFeeAmounts[i])),
+        expectedSwapFeeAmounts[i],
         MAX_RELATIVE_ERROR,
         'unexpected swapFeeAmounts'
       );
@@ -164,33 +149,33 @@ describe('BasePoolMath', function () {
   });
 
   it('test computeRemoveLiquiditySingleTokenExactIn', async () => {
-    const currentBalances = [decimal(100), decimal(200)];
+    const currentBalances = [fp(100), fp(200)];
     const tokenOutIndex = 0;
-    const exactBptAmountIn = decimal(30);
-    const totalSupply = decimal(300);
+    const exactBptAmountIn = fp(30);
+    const totalSupply = fp(300);
 
     const { amountOutWithFee: expectedAmountOutWithFee, swapFeeAmounts: expectedSwapFeeAmounts } =
       computeRemoveLiquiditySingleTokenExactIn(currentBalances, tokenOutIndex, exactBptAmountIn, totalSupply, SWAP_FEE);
 
     const result = await math.computeRemoveLiquiditySingleTokenExactIn(
-      currentBalances.map((balance) => bn(toFp(balance))),
+      currentBalances,
       tokenOutIndex,
-      bn(toFp(exactBptAmountIn)),
-      bn(toFp(totalSupply)),
-      bn(toFp(SWAP_FEE))
+      exactBptAmountIn,
+      totalSupply,
+      SWAP_FEE
     );
 
     expect(result.amountOutWithFee).not.to.be.equal(0n, 'amountOutWithFee is 0');
     expectEqualWithError(
       result.amountOutWithFee,
-      bn(toFp(expectedAmountOutWithFee)),
+      expectedAmountOutWithFee,
       MAX_RELATIVE_ERROR,
       'unexpected amountOutWithFee'
     );
     result.swapFeeAmounts.forEach((res, i) => {
       expectEqualWithError(
         result.swapFeeAmounts[i],
-        bn(toFp(expectedSwapFeeAmounts[i])),
+        expectedSwapFeeAmounts[i],
         MAX_RELATIVE_ERROR,
         'unexpected swapFeeAmounts'
       );

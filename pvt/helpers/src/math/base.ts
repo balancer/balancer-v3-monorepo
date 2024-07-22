@@ -1,72 +1,69 @@
-import Decimal from 'decimal.js';
-import { decimal } from '../numbers';
+import { bn, fp, fpDiv, fpMul, fromFp, toFp } from '../numbers';
 
-export function computeInvariantMock(balances: Decimal[]): Decimal {
-  let invariant = decimal(1);
+export function computeInvariantMock(balances: bigint[]): bigint {
+  let invariant = fp(1);
   for (let i = 0; i < balances.length; i++) {
-    invariant = invariant.mul(balances[i]);
+    invariant = fpMul(invariant, balances[i]);
   }
 
-  return invariant.sqrt();
+  return bn(toFp(fromFp(invariant).sqrt()));
 }
 
-export function computeBalanceMock(balances: Decimal[], tokenInIndex: number, invariantRatio: Decimal): Decimal {
+export function computeBalanceMock(balances: bigint[], tokenInIndex: number, invariantRatio: bigint): bigint {
   const otherTokenIndex = tokenInIndex == 0 ? 1 : 0;
-  const newInvariant = computeInvariantMock(balances).mul(invariantRatio);
+  const newInvariant = fpMul(computeInvariantMock(balances), invariantRatio);
 
-  return newInvariant.mul(newInvariant).div(balances[otherTokenIndex]);
+  return (newInvariant * newInvariant) / balances[otherTokenIndex];
 }
 
 export function computeProportionalAmountsIn(
-  balances: Decimal[],
-  bptTotalSupply: Decimal,
-  bptAmountOut: Decimal
-): Decimal[] {
-  const bptRatio = bptAmountOut.div(bptTotalSupply);
-  return balances.map((balance) => balance.mul(bptRatio));
+  balances: bigint[],
+  bptTotalSupply: bigint,
+  bptAmountOut: bigint
+): bigint[] {
+  return balances.map((balance) => (balance * bptAmountOut) / bptTotalSupply);
 }
 
 export function computeProportionalAmountsOut(
-  balances: Decimal[],
-  bptTotalSupply: Decimal,
-  bptAmountIn: Decimal
-): Decimal[] {
-  const bptRatio = bptAmountIn.div(bptTotalSupply);
-  return balances.map((balance) => balance.mul(bptRatio));
+  balances: bigint[],
+  bptTotalSupply: bigint,
+  bptAmountIn: bigint
+): bigint[] {
+  return balances.map((balance) => (balance * bptAmountIn) / bptTotalSupply);
 }
 
 export function computeAddLiquidityUnbalanced(
-  currentBalances: Decimal[],
-  exactAmounts: Decimal[],
-  totalSupply: Decimal,
-  swapFeePercentage: Decimal
-): { bptAmountOut: Decimal; swapFeeAmounts: Decimal[] } {
+  currentBalances: bigint[],
+  exactAmounts: bigint[],
+  totalSupply: bigint,
+  swapFeePercentage: bigint
+): { bptAmountOut: bigint; swapFeeAmounts: bigint[] } {
   const numTokens = currentBalances.length;
-  const newBalances = [];
-  const swapFeeAmountsDecimals = [];
+  const newBalances: bigint[] = [];
+  const swapFeeAmountsDecimals: bigint[] = [];
 
   for (let i = 0; i < numTokens; ++i) {
-    newBalances[i] = currentBalances[i].add(exactAmounts[i]);
+    newBalances[i] = currentBalances[i] + exactAmounts[i];
   }
 
   const currentInvariant = computeInvariantMock(currentBalances);
   const newInvariant = computeInvariantMock(newBalances);
-  const invariantRatio = newInvariant.div(currentInvariant);
+  const invariantRatio = fpDiv(newInvariant, currentInvariant);
 
   for (let i = 0; i < numTokens; ++i) {
     const currentBalance = currentBalances[i];
 
-    if (newBalances[i].gt(invariantRatio.mul(currentBalance))) {
-      const taxableAmount = newBalances[i].sub(invariantRatio.mul(currentBalance));
-      swapFeeAmountsDecimals[i] = taxableAmount.mul(swapFeePercentage);
-      newBalances[i] = newBalances[i].sub(swapFeeAmountsDecimals[i]);
+    if (newBalances[i] > fpMul(invariantRatio, currentBalance)) {
+      const taxableAmount = newBalances[i] - fpMul(invariantRatio, currentBalance);
+      swapFeeAmountsDecimals[i] = fpMul(taxableAmount, swapFeePercentage);
+      newBalances[i] = newBalances[i] - swapFeeAmountsDecimals[i];
     } else {
-      swapFeeAmountsDecimals[i] = decimal(0);
+      swapFeeAmountsDecimals[i] = 0n;
     }
   }
 
   const invariantWithFeesApplied = computeInvariantMock(newBalances);
-  const bptAmountOut = totalSupply.mul(invariantWithFeesApplied.sub(currentInvariant)).div(currentInvariant);
+  const bptAmountOut = (totalSupply * (invariantWithFeesApplied - currentInvariant)) / currentInvariant;
 
   return {
     bptAmountOut: bptAmountOut,
@@ -75,28 +72,28 @@ export function computeAddLiquidityUnbalanced(
 }
 
 export function computeAddLiquiditySingleTokenExactOut(
-  currentBalances: Decimal[],
+  currentBalances: bigint[],
   tokenInIndex: number,
-  exactBptAmountOut: Decimal,
-  totalSupply: Decimal,
-  swapFeePercentage: Decimal
-): { amountInWithFee: Decimal; swapFeeAmounts: Decimal[] } {
-  const newSupply = exactBptAmountOut.add(totalSupply);
+  exactBptAmountOut: bigint,
+  totalSupply: bigint,
+  swapFeePercentage: bigint
+): { amountInWithFee: bigint; swapFeeAmounts: bigint[] } {
+  const newSupply = exactBptAmountOut + totalSupply;
   const currentBalanceTokenIn = currentBalances[tokenInIndex];
 
-  const newBalance = computeBalanceMock(currentBalances, tokenInIndex, newSupply.div(totalSupply));
+  const newBalance = computeBalanceMock(currentBalances, tokenInIndex, fpDiv(newSupply, totalSupply));
 
-  const amountIn = newBalance.sub(currentBalanceTokenIn);
+  const amountIn = newBalance - currentBalanceTokenIn;
 
-  const nonTaxableBalance = newSupply.mul(currentBalanceTokenIn).div(totalSupply);
-  const taxableAmount = newBalance.sub(nonTaxableBalance);
+  const nonTaxableBalance = (newSupply * currentBalanceTokenIn) / totalSupply;
+  const taxableAmount = newBalance - nonTaxableBalance;
 
-  const fee = taxableAmount.div(decimal(1).sub(swapFeePercentage)).sub(taxableAmount);
+  const fee = fpDiv(taxableAmount, fp(1) - swapFeePercentage) - taxableAmount;
 
-  const swapFeeAmounts = Array(currentBalances.length).fill(decimal(0));
+  const swapFeeAmounts = Array(currentBalances.length).fill(0n);
   swapFeeAmounts[tokenInIndex] = fee;
 
-  const amountInWithFee = amountIn.add(fee);
+  const amountInWithFee = amountIn + fee;
 
   return {
     amountInWithFee: amountInWithFee,
@@ -105,55 +102,55 @@ export function computeAddLiquiditySingleTokenExactOut(
 }
 
 export function computeRemoveLiquiditySingleTokenExactOut(
-  currentBalances: Decimal[],
+  currentBalances: bigint[],
   tokenOutIndex: number,
-  exactAmountOut: Decimal,
-  totalSupply: Decimal,
-  swapFeePercentage: Decimal
-): { bptAmountIn: Decimal; swapFeeAmounts: Decimal[] } {
+  exactAmountOut: bigint,
+  totalSupply: bigint,
+  swapFeePercentage: bigint
+): { bptAmountIn: bigint; swapFeeAmounts: bigint[] } {
   const newBalances = currentBalances.map((balance) => balance);
-  newBalances[tokenOutIndex] = newBalances[tokenOutIndex].sub(exactAmountOut);
+  newBalances[tokenOutIndex] = newBalances[tokenOutIndex] - exactAmountOut;
 
   const currentInvariant = computeInvariantMock(currentBalances);
   const newInvariant = computeInvariantMock(newBalances);
-  const invariantRatio = newInvariant.div(currentInvariant);
+  const invariantRatio = fpDiv(newInvariant, currentInvariant);
 
-  const taxableAmount = invariantRatio.mul(currentBalances[tokenOutIndex]).sub(newBalances[tokenOutIndex]);
-  const fee = taxableAmount.div(decimal(1).sub(swapFeePercentage)).sub(taxableAmount);
+  const taxableAmount = fpMul(invariantRatio, currentBalances[tokenOutIndex]) - newBalances[tokenOutIndex];
+  const fee = fpDiv(taxableAmount, fp(1) - swapFeePercentage) - taxableAmount;
 
-  newBalances[tokenOutIndex] = newBalances[tokenOutIndex].sub(fee);
+  newBalances[tokenOutIndex] = newBalances[tokenOutIndex] - fee;
 
   const invariantWithFeesApplied = computeInvariantMock(newBalances);
 
-  const swapFeeAmounts = Array(currentBalances.length).fill(decimal(0));
+  const swapFeeAmounts = Array(currentBalances.length).fill(0n);
   swapFeeAmounts[tokenOutIndex] = fee;
 
-  const bptAmountIn = totalSupply.mul(currentInvariant.sub(invariantWithFeesApplied)).div(currentInvariant);
+  const bptAmountIn = (totalSupply * (currentInvariant - invariantWithFeesApplied)) / currentInvariant;
 
   return { bptAmountIn: bptAmountIn, swapFeeAmounts: swapFeeAmounts };
 }
 
 export function computeRemoveLiquiditySingleTokenExactIn(
-  currentBalances: Decimal[],
+  currentBalances: bigint[],
   tokenOutIndex: number,
-  exactBptAmountIn: Decimal,
-  totalSupply: Decimal,
-  swapFeePercentage: Decimal
-): { amountOutWithFee: Decimal; swapFeeAmounts: Decimal[] } {
-  const newSupply = totalSupply.sub(exactBptAmountIn);
-  const newBalance = computeBalanceMock(currentBalances, tokenOutIndex, newSupply.div(totalSupply));
+  exactBptAmountIn: bigint,
+  totalSupply: bigint,
+  swapFeePercentage: bigint
+): { amountOutWithFee: bigint; swapFeeAmounts: bigint[] } {
+  const newSupply = totalSupply - exactBptAmountIn;
+  const newBalance = computeBalanceMock(currentBalances, tokenOutIndex, fpDiv(newSupply, totalSupply));
 
-  const amountOut = currentBalances[tokenOutIndex].sub(newBalance);
+  const amountOut = currentBalances[tokenOutIndex] - newBalance;
 
-  const newBalanceBeforeTax = newSupply.mul(currentBalances[tokenOutIndex]).div(totalSupply);
-  const taxableAmount = newBalanceBeforeTax.sub(newBalance);
+  const newBalanceBeforeTax = (newSupply * currentBalances[tokenOutIndex]) / totalSupply;
+  const taxableAmount = newBalanceBeforeTax - newBalance;
 
-  const fee = taxableAmount.mul(swapFeePercentage);
+  const fee = fpMul(taxableAmount, swapFeePercentage);
 
-  const swapFeeAmounts = Array(currentBalances.length).fill(decimal(0));
+  const swapFeeAmounts = Array(currentBalances.length).fill(0n);
   swapFeeAmounts[tokenOutIndex] = fee;
 
-  const amountOutWithFee = amountOut.sub(fee);
+  const amountOutWithFee = amountOut - fee;
 
   return {
     amountOutWithFee: amountOutWithFee,
