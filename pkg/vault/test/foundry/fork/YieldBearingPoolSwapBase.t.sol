@@ -452,35 +452,19 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             IERC4626(address(paths[0].steps[1].tokenOut))
         );
         vars.expectedDeltaTokenIn = paths[0].exactAmountIn;
-        uint256 surplus;
+
         if (paths[0].tokenIn == _token1Fork) {
-            // If operation is within buffer range, convert is used by the buffer to save some gas
-            surplus = vault.getBufferTokenBalances(ybToken1).getBufferUnderlyingSurplus(ybToken1);
-            uint256 wrappedAmountIn = shouldUseConvert
-                ? ybToken1.convertToShares(vars.expectedDeltaTokenIn)
-                : ybToken1.previewDeposit(vars.expectedDeltaTokenIn + surplus) - ybToken1.convertToShares(surplus);
+            uint256 wrappedAmountIn = _previewDepositWithBuffer(ybToken1, vars.expectedDeltaTokenIn, shouldUseConvert);
             uint256 wrappedAmountInScaled18 = wrappedAmountIn.divDown(_token1Factor);
             // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
             uint256 wrappedAmountOutRaw = wrappedAmountInScaled18.mulDown(_token2Factor);
-            // If operation is within buffer range, convert is used by the buffer to save some gas
-            surplus = vault.getBufferTokenBalances(ybToken2).getBufferWrappedSurplus(ybToken2);
-            vars.expectedDeltaTokenOut = shouldUseConvert
-                ? ybToken2.convertToAssets(wrappedAmountOutRaw)
-                : ybToken2.previewRedeem(wrappedAmountOutRaw + surplus) - ybToken2.convertToAssets(surplus);
+            vars.expectedDeltaTokenOut = _previewRedeemWithBuffer(ybToken2, wrappedAmountOutRaw, shouldUseConvert);
         } else {
-            // If operation is within buffer range, convert is used by the buffer to save some gas
-            surplus = vault.getBufferTokenBalances(ybToken2).getBufferUnderlyingSurplus(ybToken2);
-            uint256 wrappedAmountIn = shouldUseConvert
-                ? ybToken2.convertToShares(vars.expectedDeltaTokenIn)
-                : ybToken2.previewDeposit(vars.expectedDeltaTokenIn + surplus) - ybToken2.convertToShares(surplus);
+            uint256 wrappedAmountIn = _previewDepositWithBuffer(ybToken2, vars.expectedDeltaTokenIn, shouldUseConvert);
             uint256 wrappedAmountInScaled18 = wrappedAmountIn.divDown(_token2Factor);
             // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
             uint256 wrappedAmountOutRaw = wrappedAmountInScaled18.mulDown(_token1Factor);
-            // If operation is within buffer range, convert is used by the buffer to save some gas
-            surplus = vault.getBufferTokenBalances(ybToken1).getBufferWrappedSurplus(ybToken1);
-            vars.expectedDeltaTokenOut = shouldUseConvert
-                ? ybToken1.convertToAssets(wrappedAmountOutRaw)
-                : ybToken1.previewRedeem(wrappedAmountOutRaw + surplus) - ybToken1.convertToAssets(surplus);
+            vars.expectedDeltaTokenOut = _previewRedeemWithBuffer(ybToken1, wrappedAmountOutRaw, shouldUseConvert);
         }
 
         vars.expectedBufferDeltaTokenIn = expectedBufferDeltaTokenIn;
@@ -536,35 +520,27 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             IERC4626(address(paths[0].steps[1].tokenOut))
         );
         vars.expectedDeltaTokenOut = paths[0].exactAmountOut;
-        uint256 surplus;
+
         if (paths[0].tokenIn == _token1Fork) {
-            // If operation is within buffer range, convert is used by the buffer to save some gas
-            surplus = vault.getBufferTokenBalances(ybToken2).getBufferWrappedSurplus(ybToken2);
-            uint256 wrappedAmountOut = shouldUseConvert
-                ? ybToken2.convertToShares(vars.expectedDeltaTokenOut)
-                : ybToken2.previewWithdraw(vars.expectedDeltaTokenOut + ybToken2.convertToAssets(surplus)) - surplus;
+            uint256 wrappedAmountOut = _previewWithdrawWithBuffer(
+                ybToken2,
+                vars.expectedDeltaTokenOut,
+                shouldUseConvert
+            );
             uint256 wrappedAmountOutScaled18 = wrappedAmountOut.divDown(_token2Factor);
             // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
             uint256 wrappedAmountInRaw = wrappedAmountOutScaled18.mulDown(_token1Factor);
-            // If operation is within buffer range, convert is used by the buffer to save some gas
-            surplus = vault.getBufferTokenBalances(ybToken1).getBufferUnderlyingSurplus(ybToken1);
-            vars.expectedDeltaTokenIn = shouldUseConvert
-                ? ybToken1.convertToAssets(wrappedAmountInRaw)
-                : ybToken1.previewMint(wrappedAmountInRaw + ybToken1.convertToShares(surplus)) - surplus;
+            vars.expectedDeltaTokenIn = _previewMintWithBuffer(ybToken1, wrappedAmountInRaw, shouldUseConvert);
         } else {
-            // If operation is within buffer range, convert is used by the buffer to save some gas
-            surplus = vault.getBufferTokenBalances(ybToken1).getBufferWrappedSurplus(ybToken1);
-            uint256 wrappedAmountOut = shouldUseConvert
-                ? ybToken1.convertToShares(vars.expectedDeltaTokenOut)
-                : ybToken1.previewWithdraw(vars.expectedDeltaTokenOut + ybToken1.convertToAssets(surplus)) - surplus;
+            uint256 wrappedAmountOut = _previewWithdrawWithBuffer(
+                ybToken1,
+                vars.expectedDeltaTokenOut,
+                shouldUseConvert
+            );
             uint256 wrappedAmountOutScaled18 = wrappedAmountOut.divDown(_token1Factor);
             // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
             uint256 wrappedAmountInRaw = wrappedAmountOutScaled18.mulDown(_token2Factor);
-            // If operation is within buffer range, convert is used by the buffer to save some gas
-            surplus = vault.getBufferTokenBalances(ybToken2).getBufferUnderlyingSurplus(ybToken2);
-            vars.expectedDeltaTokenIn = shouldUseConvert
-                ? ybToken2.convertToAssets(wrappedAmountInRaw)
-                : ybToken2.previewMint(wrappedAmountInRaw + ybToken2.convertToShares(surplus)) - surplus;
+            vars.expectedDeltaTokenIn = _previewMintWithBuffer(ybToken2, wrappedAmountInRaw, shouldUseConvert);
         }
         vars.expectedBufferDeltaTokenIn = expectedBufferDeltaTokenIn;
         vars.expectedBufferDeltaTokenOut = expectedBufferDeltaTokenOut;
@@ -962,6 +938,88 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         tokenAmounts[_ybToken2Idx] = ybToken2.convertToShares(_token2YieldBearingPoolInitAmount);
         _initPool(address(yieldBearingPool), tokenAmounts, 0);
         vm.stopPrank();
+    }
+
+    function _previewDepositWithBuffer(
+        IERC4626 wToken,
+        uint256 underlyingToDeposit,
+        bool shouldUseConvert
+    ) private returns (uint256) {
+        if (shouldUseConvert) {
+            // If operation is within buffer range, convert is used by the vault to save some gas.
+            return wToken.convertToShares(underlyingToDeposit);
+        } else {
+            bytes32 bufferBalances = vault.getBufferTokenBalances(wToken);
+            // Deposit converts underlying to wrapped. If buffer has a surplus of underlying, the vault wraps it to
+            // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our result
+            // preview.
+            uint256 underlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wToken);
+            uint256 wrappedSurplusToLeaveInTheBuffer = wToken.convertToShares(underlyingSurplus);
+            uint256 vaultWrappedDelta = wToken.previewDeposit(underlyingToDeposit + underlyingSurplus);
+            return vaultWrappedDelta - wrappedSurplusToLeaveInTheBuffer;
+        }
+    }
+
+    function _previewMintWithBuffer(
+        IERC4626 wToken,
+        uint256 wrappedToMint,
+        bool shouldUseConvert
+    ) private returns (uint256) {
+        if (shouldUseConvert) {
+            // If operation is within buffer range, convert is used by the vault to save some gas.
+            return wToken.convertToAssets(wrappedToMint);
+        } else {
+            bytes32 bufferBalances = vault.getBufferTokenBalances(wToken);
+            // Mint converts underlying to wrapped. If buffer has a surplus of underlying, the vault wraps it to
+            // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our
+            // result preview.
+            uint256 underlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wToken);
+            uint256 wrappedSurplusToLeaveInTheBuffer = wToken.convertToShares(underlyingSurplus);
+            uint256 vaultUnderlyingDelta = wToken.previewMint(wrappedToMint + wrappedSurplusToLeaveInTheBuffer);
+            return vaultUnderlyingDelta - underlyingSurplus;
+        }
+    }
+
+    function _previewWithdrawWithBuffer(
+        IERC4626 wToken,
+        uint256 underlyingToWithdraw,
+        bool shouldUseConvert
+    ) private returns (uint256) {
+        if (shouldUseConvert) {
+            // If operation is within buffer range, convert is used by the vault to save some gas.
+            return wToken.convertToShares(underlyingToWithdraw);
+        } else {
+            bytes32 bufferBalances = vault.getBufferTokenBalances(wToken);
+            // Withdraw converts wrapped to underlying. If buffer has a surplus of wrapped, the vault wraps it to
+            // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our
+            // result preview.
+            uint256 wrappedSurplus = bufferBalances.getBufferWrappedSurplus(wToken);
+            uint256 underlyingSurplusToLeaveInTheBuffer = wToken.convertToAssets(wrappedSurplus);
+            uint256 vaultWrappedDelta = wToken.previewWithdraw(
+                underlyingToWithdraw + underlyingSurplusToLeaveInTheBuffer
+            );
+            return vaultWrappedDelta - wrappedSurplus;
+        }
+    }
+
+    function _previewRedeemWithBuffer(
+        IERC4626 wToken,
+        uint256 wrappedToRedeem,
+        bool shouldUseConvert
+    ) private returns (uint256) {
+        if (shouldUseConvert) {
+            // If operation is within buffer range, convert is used by the vault to save some gas.
+            return wToken.convertToAssets(wrappedToRedeem);
+        } else {
+            bytes32 bufferBalances = vault.getBufferTokenBalances(wToken);
+            // Redeem converts wrapped to underlying. If buffer has a surplus of wrapped, the vault wraps it to
+            // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our
+            // result preview.
+            uint256 wrappedSurplus = bufferBalances.getBufferWrappedSurplus(wToken);
+            uint256 underlyingSurplusToLeaveInTheBuffer = wToken.convertToAssets(wrappedSurplus);
+            uint256 vaultUnderlyingDelta = wToken.previewRedeem(wrappedToRedeem + wrappedSurplus);
+            return vaultUnderlyingDelta - underlyingSurplusToLeaveInTheBuffer;
+        }
     }
 
     struct SwapResultLocals {
