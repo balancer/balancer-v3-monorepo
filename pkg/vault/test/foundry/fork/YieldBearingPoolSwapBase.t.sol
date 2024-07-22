@@ -163,7 +163,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         uint256 wrappedBufferDeltaTokenOutRaw = wrappedBufferDeltaTokenInScaled18.mulDown(_token2Factor);
         int256 expectedBufferDeltaTokenOut = -int256(ybToken2.convertToAssets(wrappedBufferDeltaTokenOutRaw));
 
-        _testExactIn(paths, true, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut, false);
+        _testExactIn(paths, true, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken1InToken2OutWithinBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
@@ -183,7 +183,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         int256 expectedBufferDeltaTokenOut = -int256(amountOut);
 
-        _testExactOut(paths, true, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut, false);
+        _testExactOut(paths, true, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken1InToken2OutOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
@@ -196,7 +196,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn = 0;
         int256 expectedBufferDeltaTokenOut = 0;
 
-        _testExactIn(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut, false);
+        _testExactIn(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken1InToken2OutOutOfBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
@@ -213,7 +213,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn = 0;
         int256 expectedBufferDeltaTokenOut = 0;
 
-        _testExactOut(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut, false);
+        _testExactOut(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken1InToken2OutBufferUnbalancedExactIn__Fork__Fuzz(
@@ -249,7 +249,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             expectedBufferDeltaTokenOut = 0;
         }
 
-        _testExactIn(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut, true);
+        _testExactIn(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken1InToken2OutBufferUnbalancedExactOut__Fork__Fuzz(
@@ -289,7 +289,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             expectedBufferDeltaTokenOut = 0;
         }
 
-        _testExactOut(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut, true);
+        _testExactOut(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken2InToken1OutWithinBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
@@ -305,7 +305,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         uint256 wrappedBufferDeltaTokenOutRaw = wrappedBufferDeltaTokenInScaled18.mulDown(_token1Factor);
         int256 expectedBufferDeltaTokenOut = -int256(ybToken1.convertToAssets(wrappedBufferDeltaTokenOutRaw));
 
-        _testExactIn(paths, true, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut, false);
+        _testExactIn(paths, true, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken2InToken1OutWithinBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
@@ -325,7 +325,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         int256 expectedBufferDeltaTokenOut = -int256(amountOut);
 
-        _testExactOut(paths, true, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut, false);
+        _testExactOut(paths, true, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken2InToken1OutOutOfBufferExactIn__Fork__Fuzz(uint256 amountIn) public {
@@ -336,7 +336,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn = 0;
         int256 expectedBufferDeltaTokenOut = 0;
 
-        _testExactIn(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut, false);
+        _testExactIn(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken2InToken1OutOutOfBufferExactOut__Fork__Fuzz(uint256 amountOut) public {
@@ -351,7 +351,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn = 0;
         int256 expectedBufferDeltaTokenOut = 0;
 
-        _testExactOut(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut, false);
+        _testExactOut(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken2InToken1OutBufferUnbalancedExactIn__Fork__Fuzz(
@@ -387,7 +387,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             expectedBufferDeltaTokenIn = 0;
         }
 
-        _testExactIn(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut, true);
+        _testExactIn(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function testToken2InToken1OutBufferUnbalancedExactOut__Fork__Fuzz(
@@ -427,15 +427,14 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             expectedBufferDeltaTokenIn = 0;
         }
 
-        _testExactOut(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut, true);
+        _testExactOut(paths, false, expectedBufferDeltaTokenIn, expectedBufferDeltaTokenOut);
     }
 
     function _testExactIn(
         IBatchRouter.SwapPathExactAmountIn[] memory paths,
         bool shouldUseConvert,
         int256 expectedBufferDeltaTokenIn,
-        int256 expectedBufferDeltaTokenOut,
-        bool unbalancedBuffers
+        int256 expectedBufferDeltaTokenOut
     ) private {
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
@@ -512,15 +511,14 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         assertEq(queryTokensOut[0], actualTokensOut[0], "Query and actual tokensOut do not match");
         assertEq(queryAmountsOut[0], actualAmountsOut[0], "Query and actual amountsOut do not match");
 
-        _verifySwapResult(actualPathAmountsOut, actualTokensOut, actualAmountsOut, vars, unbalancedBuffers);
+        _verifySwapResult(actualPathAmountsOut, actualTokensOut, actualAmountsOut, vars);
     }
 
     function _testExactOut(
         IBatchRouter.SwapPathExactAmountOut[] memory paths,
         bool shouldUseConvert,
         int256 expectedBufferDeltaTokenIn,
-        int256 expectedBufferDeltaTokenOut,
-        bool unbalancedBuffers
+        int256 expectedBufferDeltaTokenOut
     ) private {
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
@@ -592,15 +590,14 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         assertEq(queryTokensIn[0], actualTokensIn[0], "Query and actual tokensIn do not match");
         assertEq(queryAmountsIn[0], actualAmountsIn[0], "Query and actual amountsIn do not match");
 
-        _verifySwapResult(actualPathAmountsIn, actualTokensIn, actualAmountsIn, vars, unbalancedBuffers);
+        _verifySwapResult(actualPathAmountsIn, actualTokensIn, actualAmountsIn, vars);
     }
 
     function _verifySwapResult(
         uint256[] memory paths,
         address[] memory tokens,
         uint256[] memory amounts,
-        SwapResultLocals memory vars,
-        bool unbalancedBuffers
+        SwapResultLocals memory vars
     ) private view {
         assertEq(paths.length, 1, "Incorrect output array length");
 
@@ -609,24 +606,18 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         // Check results
         if (vars.kind == SwapKind.EXACT_IN) {
-            // If buffers are unbalanced, sometimes 1 or 2 extra wei are returned to the user due to rounding.
-            if (unbalancedBuffers == false) {
-                // Rounding issues occurs in favor of vault (only possible to check if buffer was balanced).
-                assertLe(paths[0], vars.expectedDeltaTokenOut, "paths AmountOut must be <= expected amountOut");
-                assertLe(paths[0], vars.expectedDeltaTokenOut, "amounts AmountOut must be <= expected amountOut");
-            }
+            // Rounding issues occurs in favor of vault.
+            assertLe(paths[0], vars.expectedDeltaTokenOut, "paths AmountOut must be <= expected amountOut");
+            assertLe(paths[0], vars.expectedDeltaTokenOut, "amounts AmountOut must be <= expected amountOut");
 
             // Rounding issues are very small.
             assertApproxEqAbs(paths[0], vars.expectedDeltaTokenOut, 2, "Wrong path count");
             assertApproxEqAbs(amounts[0], vars.expectedDeltaTokenOut, 2, "Wrong amounts count");
             assertEq(tokens[0], address(vars.tokenOut), "Wrong token for SwapKind");
         } else {
-            // If buffers are unbalanced, sometimes 1 or 2 extra wei are returned to the user due to rounding.
-            if (unbalancedBuffers == false) {
-                // Rounding issues occurs in favor of vault (only possible to check if buffer was balanced).
-                assertGe(paths[0], vars.expectedDeltaTokenIn, "paths AmountIn must be >= expected amountIn");
-                assertGe(amounts[0], vars.expectedDeltaTokenIn, "amounts AmountIn must be >= expected amountIn");
-            }
+            // Rounding issues occurs in favor of vault.
+            assertGe(paths[0], vars.expectedDeltaTokenIn, "paths AmountIn must be >= expected amountIn");
+            assertGe(amounts[0], vars.expectedDeltaTokenIn, "amounts AmountIn must be >= expected amountIn");
 
             // Rounding issues are very small.
             assertApproxEqAbs(paths[0], vars.expectedDeltaTokenIn, 5, "Wrong path count");
@@ -635,20 +626,11 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         }
 
         // Tokens were transferred
-        if (unbalancedBuffers == false) {
-            // If buffers are unbalanced, sometimes 1 or 2 extra wei are returned to the user due to rounding.
-            assertLe(
-                vars.tokenIn.balanceOf(lp),
-                vars.lpBeforeSwapTokenIn - vars.expectedDeltaTokenIn,
-                "LP balance tokenIn must be <= expected balance"
-            );
-            assertLe(
-                vars.tokenOut.balanceOf(lp),
-                vars.lpBeforeSwapTokenOut + vars.expectedDeltaTokenOut,
-                "LP balance tokenOut must be <= expected balance"
-            );
-        }
-
+        assertLe(
+            vars.tokenIn.balanceOf(lp),
+            vars.lpBeforeSwapTokenIn - vars.expectedDeltaTokenIn,
+            "LP balance tokenIn must be <= expected balance"
+        );
         assertApproxEqAbs(
             vars.tokenIn.balanceOf(lp),
             vars.lpBeforeSwapTokenIn - vars.expectedDeltaTokenIn,
@@ -656,6 +638,11 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             "Wrong ending balance of tokenIn for LP"
         );
 
+        assertLe(
+            vars.tokenOut.balanceOf(lp),
+            vars.lpBeforeSwapTokenOut + vars.expectedDeltaTokenOut,
+            "LP balance tokenOut must be <= expected balance"
+        );
         assertApproxEqAbs(
             vars.tokenOut.balanceOf(lp),
             vars.lpBeforeSwapTokenOut + vars.expectedDeltaTokenOut,
