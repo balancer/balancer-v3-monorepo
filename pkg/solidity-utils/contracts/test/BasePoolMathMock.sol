@@ -10,6 +10,7 @@ contract BasePoolMathMock {
     using FixedPoint for uint256;
 
     // It's the UniV2 invariant formula
+    // Works with 2 tokens only
     // solhint-disable-next-line
     function computeInvariantMock(uint256[] memory balancesLiveScaled18) public view returns (uint256 invariant) {
         require(balancesLiveScaled18.length == 2, "BasePoolMathMock: INVALID_BALANCES_LENGTH");
@@ -23,6 +24,7 @@ contract BasePoolMathMock {
         invariant = _sqrt(invariant) * 1e9;
     }
 
+    // https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
     // https://ethereum.stackexchange.com/questions/2910/can-i-square-root-in-solidity
     // Babylonian Method
     function _sqrt(uint x) internal pure returns (uint y) {
@@ -35,6 +37,7 @@ contract BasePoolMathMock {
     }
 
     // https://docs-v3.balancer.fi/build-a-custom-amm/build-an-amm/create-custom-amm-with-novel-invariant.html#build-your-custom-amm
+    // Works with 2 tokens only
     function computeBalanceMock(
         uint256[] memory balancesLiveScaled18,
         uint256 tokenInIndex,

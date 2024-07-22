@@ -215,7 +215,7 @@ contract WeightedMathRoundingTest is Test {
         bool flipBit
     ) external view {
         uint256[] memory weights = new uint256[](2);
-        uint256[] memory balances = new uint256[](rawBalances.length);
+        uint256[] memory balances = new uint256[](2);
         uint256[] memory amountsOut = new uint256[](2);
 
         weights[0] = bound(rawWeight, MIN_WEIGHT, MAX_WEIGHT);
