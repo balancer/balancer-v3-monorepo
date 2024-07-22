@@ -588,6 +588,10 @@ contract VaultMock is IVaultMainMock, Vault {
         return bufferBalance.getBufferWrappedSurplus(wrappedToken);
     }
 
+    function getBufferTokenBalances(IERC4626 wrappedToken) external view returns (bytes32) {
+        return _bufferTokenBalances[IERC20(address(wrappedToken))];
+    }
+
     function manualUpdateReservesAfterWrapping(
         IERC20 underlyingToken,
         IERC20 wrappedToken

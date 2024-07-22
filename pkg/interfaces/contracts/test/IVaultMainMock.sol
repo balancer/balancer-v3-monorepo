@@ -66,6 +66,8 @@ interface IVaultMainMock {
 
     function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256);
 
+    function getBufferTokenBalances(IERC4626 wrappedToken) external view returns (bytes32);
+
     function getMaxConvertError() external pure returns (uint256);
 
     function recoveryModeExit(address pool) external view;
