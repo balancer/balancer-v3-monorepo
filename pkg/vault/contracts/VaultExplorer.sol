@@ -287,7 +287,7 @@ contract VaultExplorer is IVaultExplorer {
     }
 
     /*******************************************************************************
-                                Wrapped Token Buffers
+                              Yield-bearing Token Buffers
     *******************************************************************************/
 
     /// @inheritdoc IVaultExplorer

@@ -1096,7 +1096,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /**
-     * @dev If the buffer has enough liquidity, it uses the internal ERC42626 token buffer to perform the wrap
+     * @dev If the buffer has enough liquidity, it uses the internal ERC42626 buffer to perform the wrap
      * operation without any external calls. If not, it wraps the assets needed to fulfill the trade + the surplus
      * of assets in the buffer, so that the buffer is rebalanced at the end of the operation.
      *
@@ -1227,7 +1227,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /**
-     * @dev If the buffer has enough liquidity, it uses the internal ERC4626 token buffer to perform the unwrap
+     * @dev If the buffer has enough liquidity, it uses the internal ERC4626 buffer to perform the unwrap
      * operation without any external calls. If not, it unwraps the assets needed to fulfill the trade + the surplus
      * of assets in the buffer, so that the buffer is rebalanced at the end of the operation.
      *

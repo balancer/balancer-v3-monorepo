@@ -137,7 +137,7 @@ interface IVaultEvents {
     event ProtocolFeeControllerChanged(IProtocolFeeController indexed newProtocolFeeController);
 
     /**
-     * @notice Liquidity was added to an ERC4626 pool buffer.
+     * @notice Liquidity was added to an ERC4626 buffer.
      * @dev The underlying token can be derived from the wrapped token, so it's not included here. The shares are not
      * tokenized like pool BPT, but accounted for in the Vault. `getBufferOwnerShares` retrieves the current total
      * shares for a given buffer and address, and `getBufferTotalShares` returns the "totalSupply" of a buffer.
@@ -157,7 +157,7 @@ interface IVaultEvents {
     );
 
     /**
-     * @notice Liquidity was removed from an ERC4626 pool buffer.
+     * @notice Liquidity was removed from an ERC4626 buffer.
      * @dev The underlying token can be derived from the wrapped token, so it's not included here. The shares are not
      * tokenized like pool BPT, but accounted for in the Vault. `getBufferOwnerShares` retrieves the current total
      * shares for a given buffer and address, and `getBufferTotalShares` returns the "totalSupply" of a buffer.

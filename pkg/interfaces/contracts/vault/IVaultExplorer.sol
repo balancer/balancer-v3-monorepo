@@ -365,7 +365,7 @@ interface IVaultExplorer {
     function collectAggregateFees(address pool) external;
 
     /*******************************************************************************
-                                Wrapped Token Buffers
+                              Yield-bearing Token Buffers
     *******************************************************************************/
 
     /**

@@ -14,7 +14,7 @@ struct LiquidityManagement {
     bool enableDonation;
 }
 
-// @notice Config type to store entire configuration of the pool.
+// @notice Config type to store the entire configuration of the pool.
 type PoolConfigBits is bytes32;
 
 /// @dev Represents a pool's configuration (hooks configuration are separated in another struct).
@@ -168,13 +168,14 @@ struct TokenInfo {
 
 /**
  * @dev Data structure used to represent the current pool state in memory
- * @param asdf
- * @param
- * @param
- * @param
+ * @param poolConfigBits Custom type to store the entire configuration of the pool.
+ * @param tokens Pool tokens, sorted in pool registration order
+ * @param tokenInfo Configuration data for each token, sorted in pool registration order
+ * @param balancesRaw Token balances in native decimals
  * @param balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
- * @param
- * @param
+ * @param tokenRates 18-decimal FP values for rate tokens (e.g., yield-bearing), or FP(1) for standard tokens
+ * @param decimalScalingFactors Conversion factor used to adjust for token decimals for uniform precision in
+ * calculations. FP(1) for 18-decimal tokens
  */
 struct PoolData {
     PoolConfigBits poolConfigBits;

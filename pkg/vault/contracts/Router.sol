@@ -673,7 +673,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param sharesOwner Address of contract that will own the deposited liquidity. Only this contract will be able
      * to remove liquidity from the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts.
-     * (This is the BPT of an internal ERC4626 token buffer)
+     * (This is the BPT of an internal ERC4626 buffer)
      */
     function addLiquidityToBufferHook(
         IERC4626 wrappedToken,
