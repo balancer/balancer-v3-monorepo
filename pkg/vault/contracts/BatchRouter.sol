@@ -936,9 +936,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                 })
             );
 
-            if (isStaticCall == false) {
-                _sendTokenOut(params.sender, underlyingToken, underlingAmountsOut[i], params.wethIsEth);
-            }
+            _sendTokenOut(params.sender, underlyingToken, underlingAmountsOut[i], params.wethIsEth);
         }
     }
 
