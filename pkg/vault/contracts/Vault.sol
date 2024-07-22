@@ -1213,6 +1213,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Only updates buffer balances if buffer has a surplus of underlying tokens.
             if (bufferUnderlyingSurplus > 0) {
                 if (kind == SwapKind.EXACT_IN) {
+                    // amountInUnderlying is the amountGiven and should not be changed. Any rounding issue that occurs
+                    // in the vaultUnderlyingDelta should be absorbed by the buffer.
                     bufferUnderlyingSurplus = vaultUnderlyingDelta - amountInUnderlying;
                     // Since bufferUnderlyingSurplus was wrapped, the final amountOut needs to discount the wrapped
                     // amount that will stay in the buffer. Refresh `bufferWrappedSurplus` after external calls on the
@@ -1223,6 +1225,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     // If buffer has an underlying surplus, it wraps the surplus + amountIn, so the final amountIn needs
                     // to be discounted for that.
                     amountInUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus;
+                    // amountOutWrapped is the amountGiven and should not be changed. Any rounding issue that occurs
+                    // in the vaultWrappedDelta should be absorbed by the buffer.
                     bufferWrappedSurplus = vaultWrappedDelta - amountOutWrapped;
                 }
 
@@ -1351,6 +1355,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Only updates buffer balances if buffer has a surplus of wrapped tokens.
             if (bufferWrappedSurplus > 0) {
                 if (kind == SwapKind.EXACT_IN) {
+                    // amountInWrapped is the amountGiven and should not be changed. Any rounding issue that occurs
+                    // in the vaultWrappedDelta should be absorbed by the buffer.
                     bufferWrappedSurplus = vaultWrappedDelta - amountInWrapped;
                     // Since bufferWrappedSurplus was unwrapped, the final amountOut needs to discount the underlying
                     // amount that will stay in the buffer. Refresh `bufferUnderlyingSurplus` after external calls
@@ -1361,6 +1367,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     // If buffer has a wrapped surplus, it unwraps surplus + amountIn, so the final amountIn needs to
                     // be discounted for that.
                     amountInWrapped = vaultWrappedDelta - bufferWrappedSurplus;
+                    // amountOutUnderlying is the amountGiven and should not be changed. Any rounding issue that occurs
+                    // in the vaultUnderlyingDelta should be absorbed by the buffer.
                     bufferUnderlyingSurplus = vaultUnderlyingDelta - amountOutUnderlying;
                 }
 
