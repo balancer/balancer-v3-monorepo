@@ -231,6 +231,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn;
         int256 expectedBufferDeltaTokenOut;
 
+        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
         if (unbalancedToken1 > _token1BufferInitAmount / 2 + MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenIn = int256(_token1BufferInitAmount / 2) - int256(unbalancedToken1);
         } else {
@@ -240,6 +241,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             expectedBufferDeltaTokenIn = 0;
         }
 
+        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
         if (unbalancedToken2 < _token2BufferInitAmount / 2 - MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenOut = int256(_token2BufferInitAmount / 2) - int256(unbalancedToken2);
         } else {
@@ -271,6 +273,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn;
         int256 expectedBufferDeltaTokenOut;
 
+        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
         if (unbalancedToken1 > _token1BufferInitAmount / 2 + MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenIn = int256(_token1BufferInitAmount / 2) - int256(unbalancedToken1);
         } else {
@@ -280,6 +283,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             expectedBufferDeltaTokenIn = 0;
         }
 
+        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
         if (unbalancedToken2 < _token2BufferInitAmount / 2 - MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenOut = int256(_token2BufferInitAmount / 2) - int256(unbalancedToken2);
         } else {
@@ -369,6 +373,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn;
         int256 expectedBufferDeltaTokenOut;
 
+        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
         if (unbalancedToken1 < _token1BufferInitAmount / 2 - MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenOut = int256(_token1BufferInitAmount / 2) - int256(unbalancedToken1);
         } else {
@@ -378,6 +383,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             expectedBufferDeltaTokenOut = 0;
         }
 
+        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
         if (unbalancedToken2 > _token2BufferInitAmount / 2 + MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenIn = int256(_token2BufferInitAmount / 2) - int256(unbalancedToken2);
         } else {
@@ -409,6 +415,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn;
         int256 expectedBufferDeltaTokenOut;
 
+        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
         if (unbalancedToken1 < _token1BufferInitAmount / 2 - MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenOut = int256(_token1BufferInitAmount / 2) - int256(unbalancedToken1);
         } else {
@@ -418,6 +425,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             expectedBufferDeltaTokenOut = 0;
         }
 
+        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
         if (unbalancedToken2 > _token2BufferInitAmount / 2 + MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenIn = int256(_token2BufferInitAmount / 2) - int256(unbalancedToken2);
         } else {
