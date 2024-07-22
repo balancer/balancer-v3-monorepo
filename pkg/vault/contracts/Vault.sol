@@ -1351,7 +1351,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Only updates buffer balances if buffer has a surplus of wrapped tokens.
             if (bufferWrappedSurplus > 0) {
                 if (kind == SwapKind.EXACT_IN) {
-                    bufferWrappedSurplus = vaultUnderlyingDelta - amountInWrapped;
+                    bufferWrappedSurplus = vaultWrappedDelta - amountInWrapped;
                     // Since bufferWrappedSurplus was unwrapped, the final amountOut needs to discount the underlying
                     // amount that will stay in the buffer. Refresh `bufferUnderlyingSurplus` after external calls
                     // on the wrapped token.
