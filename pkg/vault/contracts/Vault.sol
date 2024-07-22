@@ -1214,8 +1214,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (bufferUnderlyingSurplus > 0) {
                 if (kind == SwapKind.EXACT_IN) {
                     bufferUnderlyingSurplus = vaultUnderlyingDelta - amountInUnderlying;
-                    // Since bufferUnderlyingSurplus was wrapped, the final amountOut needs to discount the wrapped amount
-                    // that will stay in the buffer. Refresh `bufferWrappedSurplus` after external calls on the
+                    // Since bufferUnderlyingSurplus was wrapped, the final amountOut needs to discount the wrapped
+                    // amount that will stay in the buffer. Refresh `bufferWrappedSurplus` after external calls on the
                     // wrapped token.
                     bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
                     amountOutWrapped = vaultWrappedDelta - bufferWrappedSurplus;
