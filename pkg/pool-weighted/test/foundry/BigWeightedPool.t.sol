@@ -159,9 +159,9 @@ contract BigWeightedPoolTest is BaseVaultTest {
         for (uint256 i = 0; i < numTokens; ++i) {
             // Tokens are transferred from lp
             assertEq(
-                TOKEN_AMOUNT - bigPoolTokens[i].balanceOf(lp),
-                TOKEN_AMOUNT,
-                string.concat("LP: Wrong token balance for ", Strings.toString(i))
+                bigPoolTokens[i].balanceOf(lp),
+                0,
+                string.concat("LP: Token balance non-zero for ", Strings.toString(i))
             );
 
             // Tokens are stored in the Vault
