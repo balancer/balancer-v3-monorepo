@@ -96,7 +96,7 @@ interface IBatchRouter {
     /**
      * @notice Add arbitrary amounts of underlying tokens to an ERC4626 pool through the buffer.
      * @param pool Address of the liquidity pool
-     * @param exactUnderlyingAmountsIn Exact amounts of underling tokens to be added, sorted in token registration order
+     * @param exactUnderlyingAmountsIn Exact amounts of underlying tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
