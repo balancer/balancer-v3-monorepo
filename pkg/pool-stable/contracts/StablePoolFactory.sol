@@ -18,7 +18,8 @@ import { StablePool } from "./StablePool.sol";
 
 /**
  * @notice General Stable Pool factory
- * @dev This is the most general factory, which allows up to four tokens.
+ * @dev This is the most general factory, which allows up to `StableMath.MAX_STABLE_TOKENS` (5) tokens.
+ * Since this limit is less than Vault's maximum of 8 tokens, we need to enforce this at the factory level.
  */
 contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
     // solhint-disable not-rely-on-time
