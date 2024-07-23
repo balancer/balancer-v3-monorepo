@@ -54,7 +54,8 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
 
     /**
      * @dev The pool does not support adding liquidity through donation.
-     * There is an existing similar error (IVaultErrors.DoesNotSupportDonation), but hooks should not throw "Vault" errors.
+     * There is an existing similar error (IVaultErrors.DoesNotSupportDonation), but hooks should not throw
+     * "Vault" errors.
      */
     error PoolDoesNotSupportDonation();
 
@@ -70,8 +71,8 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
         LiquidityManagement calldata liquidityManagement
     ) public view override onlyVault returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
-        // that the given pool is from the factory). Returning true allows any pool, with any configuration, to use
-        // this hook
+        // that the given pool is from the factory). Returning true unconditionally allows any pool, with any
+        // configuration, to use this hook.
 
         // This hook requires donation support to work (see above).
         if (liquidityManagement.enableDonation == false) {
@@ -141,6 +142,8 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
 
         return (true, hookAdjustedAmountsOutRaw);
     }
+
+    // Permissioned functions
 
     // Sets the hook's exit fee percentage, which will be charged on all remove liquidity operations.
     // This function must be permissioned.
