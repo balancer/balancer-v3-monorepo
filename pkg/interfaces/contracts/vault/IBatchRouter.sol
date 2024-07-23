@@ -111,7 +111,7 @@ interface IBatchRouter {
     ) external payable returns (uint256 bptAmountOut);
 
     /**
-     * @notice Adds with proportional token amounts to a boosted pool using buffer tokens.
+     * @notice Add proportional amounts of underlying tokens to an ERC4626 pool through the buffer.
      * @param pool Address of the liquidity pool
      * @param maxUnderlyingAmountsIn Maximum amounts of underling tokens to be added, sorted in token registration order
      * @param exactBptAmountOut Exact amount of pool tokens to be received
