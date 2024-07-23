@@ -123,7 +123,61 @@ contract E2eSwapTest is BaseVaultTest {
         );
     }
 
-    function testDoExactInUndoExactInVariableFees__Fuzz(uint256 exactAmountIn, uint256 poolSwapFeePercentage) public {
+    function testDoExactInUndoExactInVariableFees__Fuzz(uint256 poolSwapFeePercentage) public {
+        uint256 exactAmountIn = maxSwapAmountToken1;
+        poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
+
+        vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
+
+        vm.startPrank(sender);
+        uint256 exactAmountOutDo = router.swapSingleTokenExactIn(
+            pool,
+            token1,
+            token2,
+            exactAmountIn,
+            0,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+
+        uint256 feesToken2 = vault.getAggregateSwapFeeAmount(pool, token2);
+
+        uint256 exactAmountOutUndo = router.swapSingleTokenExactIn(
+            pool,
+            token2,
+            token1,
+            // Add fees, so the exactAmountOutUndo can be compared with `exactAmountIn - token1 fees`.
+            exactAmountOutDo + feesToken2,
+            0,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+        uint256 feesToken1 = vault.getAggregateSwapFeeAmount(pool, token1);
+        vm.stopPrank();
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
+
+        assertLe(exactAmountOutUndo, exactAmountIn - feesToken1, "Amount out undo should be <= exactAmountIn");
+        assertLe(
+            balancesAfter.userTokens[_idxToken1],
+            balancesBefore.userTokens[_idxToken1] - feesToken1,
+            "Wrong sender token1 balance"
+        );
+        assertLe(
+            balancesAfter.userTokens[_idxToken2],
+            balancesBefore.userTokens[_idxToken2] - feesToken2,
+            "Wrong sender token2 balance"
+        );
+    }
+
+    function testDoExactInUndoExactInVariableFeesAndAmountIn__Fuzz(
+        uint256 exactAmountIn,
+        uint256 poolSwapFeePercentage
+    ) public {
         exactAmountIn = bound(exactAmountIn, minSwapAmountToken1, maxSwapAmountToken1);
         poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
 
@@ -221,7 +275,58 @@ contract E2eSwapTest is BaseVaultTest {
         );
     }
 
-    function testDoExactOutUndoExactOutVariableFees__Fuzz(
+    function testDoExactOutUndoExactOutVariableFees__Fuzz(uint256 poolSwapFeePercentage) public {
+        uint256 exactAmountOut = maxSwapAmountToken2;
+        poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
+
+        vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
+
+        vm.startPrank(sender);
+        uint256 exactAmountInDo = router.swapSingleTokenExactOut(
+            pool,
+            token1,
+            token2,
+            exactAmountOut,
+            MAX_UINT128,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+
+        uint256 feesToken1 = vault.getAggregateSwapFeeAmount(pool, token1);
+
+        uint256 exactAmountInUndo = router.swapSingleTokenExactOut(
+            pool,
+            token2,
+            token1,
+            // Remove fees, so the exactAmountInUndo can be compared with `exactAmountOut + token2 fees`.
+            exactAmountInDo - feesToken1,
+            MAX_UINT128,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+        uint256 feesToken2 = vault.getAggregateSwapFeeAmount(pool, token2);
+        vm.stopPrank();
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
+
+        assertGe(exactAmountInUndo, exactAmountOut + feesToken2, "Amount in undo should be >= exactAmountOut");
+        assertLe(
+            balancesAfter.userTokens[_idxToken1],
+            balancesBefore.userTokens[_idxToken1] - feesToken1,
+            "Wrong sender token1 balance"
+        );
+        assertLe(
+            balancesAfter.userTokens[_idxToken2],
+            balancesBefore.userTokens[_idxToken2] - feesToken2,
+            "Wrong sender token2 balance"
+        );
+    }
+
+    function testDoExactOutUndoExactOutVariableFeesAndAmountOut__Fuzz(
         uint256 exactAmountOut,
         uint256 poolSwapFeePercentage
     ) public {
