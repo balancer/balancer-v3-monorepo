@@ -1,19 +1,18 @@
 import { bn, fp, fpDiv, fpMul, fromFp, toFp } from '../numbers';
 
 export function computeInvariantMock(balances: bigint[]): bigint {
-  let invariant = fp(1);
+  // inv = x + y
+  let invariant = 0n;
   for (let i = 0; i < balances.length; i++) {
-    invariant = fpMul(invariant, balances[i]);
+    invariant = invariant + balances[i];
   }
 
-  return bn(toFp(fromFp(invariant).sqrt()));
+  return invariant;
 }
 
 export function computeBalanceMock(balances: bigint[], tokenInIndex: number, invariantRatio: bigint): bigint {
-  const otherTokenIndex = tokenInIndex == 0 ? 1 : 0;
-  const newInvariant = fpMul(computeInvariantMock(balances), invariantRatio);
-
-  return (newInvariant * newInvariant) / balances[otherTokenIndex];
+  const invariant = computeInvariantMock(balances);
+  return balances[tokenInIndex] + fpMul(invariant, invariantRatio) - invariant;
 }
 
 export function computeProportionalAmountsIn(
