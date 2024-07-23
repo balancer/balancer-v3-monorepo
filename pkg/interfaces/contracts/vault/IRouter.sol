@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
-import { AddLiquidityKind, SwapKind } from "./VaultTypes.sol";
+import { SwapKind } from "./VaultTypes.sol";
 import { IBasePool } from "./IBasePool.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
