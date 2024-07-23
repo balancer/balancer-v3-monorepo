@@ -115,7 +115,7 @@ interface IBatchRouter {
      * @param pool Address of the liquidity pool
      * @param maxUnderlyingAmountsIn Maximum amounts of underling tokens to be added, sorted in token registration order
      * @param exactBptAmountOut Exact amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
      * @return amountsIn Actual amounts of tokens added, sorted in token registration order
      */

@@ -22,7 +22,7 @@ interface IRouter {
      * @param tokens Pool tokens
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding initial liquidity
      */
     struct InitializeHookParams {
@@ -41,7 +41,7 @@ interface IRouter {
      * @param tokens Pool tokens
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding initial liquidity
      * @return bptAmountOut Actual amount of pool tokens minted in exchange for initial liquidity
      */
@@ -63,7 +63,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param exactBptAmountOut Exact amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
      * @return amountsIn Actual amounts of tokens added, sorted in token registration order
      */
@@ -80,7 +80,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
      * @return bptAmountOut Actual amount of pool tokens received
      */
@@ -98,7 +98,7 @@ interface IRouter {
      * @param tokenIn Token used to add liquidity
      * @param maxAmountIn Maximum amount of tokens to be added
      * @param exactBptAmountOut Exact amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
      * @return amountIn Actual amount of tokens added
      */
@@ -116,7 +116,7 @@ interface IRouter {
      * @dev To support donation, the pool config `enableDonation` flag must be set to true.
      * @param pool Address of the liquidity pool
      * @param amountsIn Amounts of tokens to be donated, sorted in token registration order
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
      */
     function donate(address pool, uint256[] memory amountsIn, bool wethIsEth, bytes memory userData) external payable;
@@ -129,7 +129,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH; otherwise the Vault will pull WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
      * @return amountsIn Actual amounts of tokens added, sorted in token registration order
      * @return bptAmountOut Actual amount of pool tokens received
