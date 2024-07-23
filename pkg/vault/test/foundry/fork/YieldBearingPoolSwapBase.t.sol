@@ -4,8 +4,6 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -17,7 +15,6 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { BufferHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/BufferHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { ERC4626RateProvider } from "../../../contracts/test/ERC4626RateProvider.sol";
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
