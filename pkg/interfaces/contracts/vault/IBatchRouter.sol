@@ -128,7 +128,7 @@ interface IBatchRouter {
     ) external payable returns (uint256[] memory amountsIn);
 
     /**
-     * @notice Removes liquidity with proportional underling token amounts from a boosted pool, burning an exact pool token amount.
+     * @notice Remove proportional amounts of underlying tokens from an ERC4626 pool, burning an exact pool token amount.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided
      * @param minUnderlyingAmountsOut Minimum amounts of underling tokens to be received, sorted in token registration order
