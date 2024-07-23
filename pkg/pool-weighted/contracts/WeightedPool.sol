@@ -161,42 +161,19 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     }
 
     function _getNormalizedWeights() internal view virtual returns (uint256[] memory) {
-        uint256 numTokens = _totalTokens;
-
-        uint256[] memory normalizedWeights = new uint256[](numTokens);
+        uint256 totalTokens = _totalTokens;
+        uint256[] memory normalizedWeights = new uint256[](totalTokens);
 
         // prettier-ignore
-        normalizedWeights[0] = _normalizedWeight0;
-        normalizedWeights[1] = _normalizedWeight1;
-        if (numTokens > 2) {
-            normalizedWeights[2] = _normalizedWeight2;
-        } else {
-            return normalizedWeights;
-        }
-        if (numTokens > 3) {
-            normalizedWeights[3] = _normalizedWeight3;
-        } else {
-            return normalizedWeights;
-        }
-        if (numTokens > 4) {
-            normalizedWeights[4] = _normalizedWeight4;
-        } else {
-            return normalizedWeights;
-        }
-        if (numTokens > 5) {
-            normalizedWeights[5] = _normalizedWeight5;
-        } else {
-            return normalizedWeights;
-        }
-        if (numTokens > 6) {
-            normalizedWeights[6] = _normalizedWeight6;
-        } else {
-            return normalizedWeights;
-        }
-        if (numTokens > 7) {
-            normalizedWeights[7] = _normalizedWeight7;
-        } else {
-            return normalizedWeights;
+        {
+            normalizedWeights[0] = _normalizedWeight0;
+            normalizedWeights[1] = _normalizedWeight1;
+            if (totalTokens > 2) { normalizedWeights[2] = _normalizedWeight2; } else { return normalizedWeights; }
+            if (totalTokens > 3) { normalizedWeights[3] = _normalizedWeight3; } else { return normalizedWeights; }
+            if (totalTokens > 4) { normalizedWeights[4] = _normalizedWeight4; } else { return normalizedWeights; }
+            if (totalTokens > 5) { normalizedWeights[5] = _normalizedWeight5; } else { return normalizedWeights; }
+            if (totalTokens > 6) { normalizedWeights[6] = _normalizedWeight6; } else { return normalizedWeights; }
+            if (totalTokens > 7) { normalizedWeights[7] = _normalizedWeight7; }
         }
 
         return normalizedWeights;
