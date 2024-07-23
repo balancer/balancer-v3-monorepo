@@ -15,14 +15,15 @@ import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksM
 import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
 import { E2eSwapTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
 
-import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
-import { StablePool } from "../../contracts/StablePool.sol";
+import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
+import { WeightedPool } from "../../contracts/WeightedPool.sol";
 
-contract E2eSwapStableTest is E2eSwapTest {
+contract E2eSwapWeightedTest is E2eSwapTest {
     using ArrayHelpers for *;
 
     uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
-    uint256 internal constant DEFAULT_AMP_FACTOR = 200;
+
+    uint256 internal poolCreationNonce;
 
     function setUp() public override {
         E2eSwapTest.setUp();
@@ -39,9 +40,10 @@ contract E2eSwapStableTest is E2eSwapTest {
         minSwapAmountToken1 = 10 * MIN_TRADE_AMOUNT;
         minSwapAmountToken2 = 10 * MIN_TRADE_AMOUNT;
 
-        // Divide init amount by 2 to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
-        maxSwapAmountToken1 = poolInitAmount / 2;
-        maxSwapAmountToken2 = poolInitAmount / 2;
+        // Divide init amount by 10 to make sure weighted math ratios are respected (Cannot trade more than 30% of pool
+        // balance).
+        maxSwapAmountToken1 = poolInitAmount / 10;
+        maxSwapAmountToken2 = poolInitAmount / 10;
 
         // 0.0001% max swap fee.
         minPoolSwapFeePercentage = 1e12;
@@ -53,24 +55,30 @@ contract E2eSwapStableTest is E2eSwapTest {
      * @notice Overrides BaseVaultTest _createPool().
      */
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        WeightedPoolFactory factory = new WeightedPoolFactory(
+            IVault(address(vault)),
+            365 days,
+            "Factory v1",
+            "Pool v1"
+        );
         PoolRoleAccounts memory roleAccounts;
 
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
-        StablePool newPool = StablePool(
+        WeightedPool newPool = WeightedPool(
             factory.create(
-                "Stable Pool",
-                "STABLE",
+                "ERC20 Pool",
+                "ERC20POOL",
                 vault.buildTokenConfig(tokens.asIERC20()),
-                DEFAULT_AMP_FACTOR,
+                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
                 roleAccounts,
                 DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it.
                 poolHooksContract,
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity
-                ZERO_BYTES32
+                // NOTE: sends a unique salt
+                bytes32(poolCreationNonce++)
             )
         );
         vm.label(address(newPool), label);
