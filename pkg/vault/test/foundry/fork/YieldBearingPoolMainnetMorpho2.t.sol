@@ -20,7 +20,7 @@ import { ERC4626RateProvider } from "../../../contracts/test/ERC4626RateProvider
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 import { YieldBearingPoolSwapBase } from "./YieldBearingPoolSwapBase.t.sol";
 
-contract YieldBearingPoolMainnetGearboxTest is YieldBearingPoolSwapBase {
+contract YieldBearingPoolMainnetMorpho2Test is YieldBearingPoolSwapBase {
     function setUp() public override {
         YieldBearingPoolSwapBase.setUp();
     }
@@ -29,13 +29,13 @@ contract YieldBearingPoolMainnetGearboxTest is YieldBearingPoolSwapBase {
         network = "mainnet";
         blockNumber = 20327000;
 
-        // Gearbox's gUsdc
-        ybToken1 = IERC4626(0xda00000035fef4082F78dEF6A8903bee419FbF8E);
-        // Gearbox's gWeth
-        ybToken2 = IERC4626(0xda0002859B2d05F66a753d8241fCDE8623f26F4f);
-        // Donor of USDC
-        donorToken1 = 0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa;
-        // Donor of Weth
-        donorToken2 = 0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E;
+        // Morpho's maWBTC
+        ybToken1 = IERC4626(0xd508F85F1511aAeC63434E26aeB6d10bE0188dC7);
+        // Morpho's maUSDC
+        ybToken2 = IERC4626(0xA5269A8e31B93Ff27B887B56720A25F844db0529);
+        // Donor of WBTC tokens
+        donorToken1 = 0x5Ee5bf7ae06D1Be5997A1A72006FE6C607eC6DE8;
+        // Donor of USDC tokens
+        donorToken2 = 0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa;
     }
 }
