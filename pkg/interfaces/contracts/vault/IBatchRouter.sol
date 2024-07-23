@@ -94,7 +94,7 @@ interface IBatchRouter {
     ) external payable returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn);
 
     /**
-     * @notice Adds with arbitrary underling token amounts in to a boosted pool using buffer tokens.
+     * @notice Add arbitrary amounts of underlying tokens to an ERC4626 pool through the buffer.
      * @param pool Address of the liquidity pool
      * @param exactUnderlyingAmountsIn Exact amounts of underling tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
