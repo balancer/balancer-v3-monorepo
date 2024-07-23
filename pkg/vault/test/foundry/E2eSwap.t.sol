@@ -15,6 +15,8 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract E2eSwapTest is BaseVaultTest {
     IERC20 internal token1;
     IERC20 internal token2;
+    uint256 private _idxToken1;
+    uint256 private _idxToken2;
     address internal sender;
     address internal poolCreator;
 
@@ -47,6 +49,8 @@ contract E2eSwapTest is BaseVaultTest {
         vm.prank(poolCreator);
         // Set pool creator fee to 100%, so protocol + creator fees equals the total charged fees.
         feeController.setPoolCreatorSwapFeePercentage(pool, 1e18);
+
+        (_idxToken1, _idxToken2) = _getTokenIndexes();
     }
 
     /**
@@ -106,17 +110,15 @@ contract E2eSwapTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
-        (uint256 idxToken1, uint256 idxToken2) = _getTokenIndexes();
-
         assertLe(exactAmountOutUndo, exactAmountIn, "Amount out undo should be <= exactAmountIn");
         assertLe(
-            balancesAfter.userTokens[idxToken1],
-            balancesBefore.userTokens[idxToken1],
+            balancesAfter.userTokens[_idxToken1],
+            balancesBefore.userTokens[_idxToken1],
             "Wrong sender token1 balance"
         );
         assertLe(
-            balancesAfter.userTokens[idxToken2],
-            balancesBefore.userTokens[idxToken2],
+            balancesAfter.userTokens[_idxToken2],
+            balancesBefore.userTokens[_idxToken2],
             "Wrong sender token2 balance"
         );
     }
@@ -159,17 +161,15 @@ contract E2eSwapTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
-        (uint256 idxToken1, uint256 idxToken2) = _getTokenIndexes();
-
         assertLe(exactAmountOutUndo, exactAmountIn - feesToken1, "Amount out undo should be <= exactAmountIn");
         assertLe(
-            balancesAfter.userTokens[idxToken1],
-            balancesBefore.userTokens[idxToken1] - feesToken1,
+            balancesAfter.userTokens[_idxToken1],
+            balancesBefore.userTokens[_idxToken1] - feesToken1,
             "Wrong sender token1 balance"
         );
         assertLe(
-            balancesAfter.userTokens[idxToken2],
-            balancesBefore.userTokens[idxToken2] - feesToken2,
+            balancesAfter.userTokens[_idxToken2],
+            balancesBefore.userTokens[_idxToken2] - feesToken2,
             "Wrong sender token2 balance"
         );
     }
@@ -208,17 +208,15 @@ contract E2eSwapTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
-        (uint256 idxToken1, uint256 idxToken2) = _getTokenIndexes();
-
         assertGe(exactAmountInUndo, exactAmountOut, "Amount in undo should be >= exactAmountOut");
         assertLe(
-            balancesAfter.userTokens[idxToken1],
-            balancesBefore.userTokens[idxToken1],
+            balancesAfter.userTokens[_idxToken1],
+            balancesBefore.userTokens[_idxToken1],
             "Wrong sender token1 balance"
         );
         assertLe(
-            balancesAfter.userTokens[idxToken2],
-            balancesBefore.userTokens[idxToken2],
+            balancesAfter.userTokens[_idxToken2],
+            balancesBefore.userTokens[_idxToken2],
             "Wrong sender token2 balance"
         );
     }
@@ -264,17 +262,15 @@ contract E2eSwapTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
-        (uint256 idxToken1, uint256 idxToken2) = _getTokenIndexes();
-
         assertGe(exactAmountInUndo, exactAmountOut + feesToken2, "Amount in undo should be >= exactAmountOut");
         assertLe(
-            balancesAfter.userTokens[idxToken1],
-            balancesBefore.userTokens[idxToken1] - feesToken1,
+            balancesAfter.userTokens[_idxToken1],
+            balancesBefore.userTokens[_idxToken1] - feesToken1,
             "Wrong sender token1 balance"
         );
         assertLe(
-            balancesAfter.userTokens[idxToken2],
-            balancesBefore.userTokens[idxToken2] - feesToken2,
+            balancesAfter.userTokens[_idxToken2],
+            balancesBefore.userTokens[_idxToken2] - feesToken2,
             "Wrong sender token2 balance"
         );
     }
