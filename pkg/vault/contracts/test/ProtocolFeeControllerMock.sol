@@ -18,4 +18,8 @@ contract ProtocolFeeControllerMock is ProtocolFeeController {
     ) external view returns (address poolCreator, uint256 creatorSwapFeePercentage, uint256 creatorYieldFeePercentage) {
         return (_poolCreators[pool], _poolCreatorSwapFeePercentages[pool], _poolCreatorYieldFeePercentages[pool]);
     }
+
+    function manualSetPoolCreator(address pool, address poolCreator) external {
+        _poolCreators[pool] = poolCreator;
+    }
 }
