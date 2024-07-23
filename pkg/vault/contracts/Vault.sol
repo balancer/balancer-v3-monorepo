@@ -1485,7 +1485,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             revert WrongUnderlyingAmount(address(wrappedToken));
         }
 
-        if (vaultWrappedDelta.getAbsoluteDifference(expectedWrappedDelta) > _MAX_CONVERT_ERROR) {
+        // If underlying and wrapped token don't have the same amount of decimals, the error tolerance needs to be
+        // converted.
+        if (
+            vaultWrappedDelta.getAbsoluteDifference(expectedWrappedDelta) >
+            wrappedToken.convertToShares(_MAX_CONVERT_ERROR)
+        ) {
             // If this error is thrown, it means the convert result had an absolute error greater than
             // _MAX_CONVERT_ERROR in comparison with the actual operation.
             revert WrongWrappedAmount(address(wrappedToken));
