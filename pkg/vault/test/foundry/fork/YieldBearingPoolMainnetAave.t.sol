@@ -4,20 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
-
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-
-import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
-import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
-
-import { ERC4626RateProvider } from "../../../contracts/test/ERC4626RateProvider.sol";
-import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 import { YieldBearingPoolSwapBase } from "./YieldBearingPoolSwapBase.t.sol";
 
 contract YieldBearingPoolMainnetAaveTest is YieldBearingPoolSwapBase {
