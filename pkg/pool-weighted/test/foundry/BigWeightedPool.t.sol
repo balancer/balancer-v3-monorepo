@@ -280,7 +280,7 @@ contract BigWeightedPoolTest is BaseVaultTest {
             );
         }
 
-        // should mint correct amount of BPT tokens
+        // should burn correct amount of BPT tokens
         assertEq(weightedPool.balanceOf(bob), 0, "LP: Wrong BPT balance");
         assertEq(bobBptBalance, bptAmountIn, "LP: Wrong bptAmountIn");
     }
