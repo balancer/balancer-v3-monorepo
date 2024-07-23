@@ -131,7 +131,7 @@ interface IBatchRouter {
      * @notice Remove proportional amounts of underlying tokens from an ERC4626 pool, burning an exact pool token amount.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided
-     * @param minUnderlyingAmountsOut Minimum amounts of underling tokens to be received, sorted in token registration order
+     * @param minUnderlyingAmountsOut Minimum amounts of underlying tokens to be received, sorted in token registration order
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for removing liquidity
      * @return amountsOut Actual amounts of tokens received, sorted in token registration order
