@@ -38,6 +38,10 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     uint256 internal immutable _normalizedWeight1;
     uint256 internal immutable _normalizedWeight2;
     uint256 internal immutable _normalizedWeight3;
+    uint256 internal immutable _normalizedWeight4;
+    uint256 internal immutable _normalizedWeight5;
+    uint256 internal immutable _normalizedWeight6;
+    uint256 internal immutable _normalizedWeight7;
 
     struct NewPoolParams {
         string name;
@@ -82,6 +86,10 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
         _normalizedWeight1 = params.normalizedWeights[1];
         _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
         _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
+        _normalizedWeight4 = numTokens > 4 ? params.normalizedWeights[4] : 0;
+        _normalizedWeight5 = numTokens > 5 ? params.normalizedWeights[5] : 0;
+        _normalizedWeight6 = numTokens > 6 ? params.normalizedWeights[6] : 0;
+        _normalizedWeight7 = numTokens > 7 ? params.normalizedWeights[7] : 0;
     }
 
     /// @inheritdoc IBasePool
@@ -143,28 +151,29 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
         else if (tokenIndex == 1) { return _normalizedWeight1; }
         else if (tokenIndex == 2) { return _normalizedWeight2; }
         else if (tokenIndex == 3) { return _normalizedWeight3; }
+        else if (tokenIndex == 4) { return _normalizedWeight4; }
+        else if (tokenIndex == 5) { return _normalizedWeight5; }
+        else if (tokenIndex == 6) { return _normalizedWeight6; }
+        else if (tokenIndex == 7) { return _normalizedWeight7; }
         else {
             revert IVaultErrors.InvalidToken();
         }
     }
 
     function _getNormalizedWeights() internal view virtual returns (uint256[] memory) {
-        uint256 numTokens = _totalTokens;
-
-        uint256[] memory normalizedWeights = new uint256[](numTokens);
+        uint256 totalTokens = _totalTokens;
+        uint256[] memory normalizedWeights = new uint256[](totalTokens);
 
         // prettier-ignore
-        normalizedWeights[0] = _normalizedWeight0;
-        normalizedWeights[1] = _normalizedWeight1;
-        if (numTokens > 2) {
-            normalizedWeights[2] = _normalizedWeight2;
-        } else {
-            return normalizedWeights;
-        }
-        if (numTokens > 3) {
-            normalizedWeights[3] = _normalizedWeight3;
-        } else {
-            return normalizedWeights;
+        {
+            normalizedWeights[0] = _normalizedWeight0;
+            normalizedWeights[1] = _normalizedWeight1;
+            if (totalTokens > 2) { normalizedWeights[2] = _normalizedWeight2; } else { return normalizedWeights; }
+            if (totalTokens > 3) { normalizedWeights[3] = _normalizedWeight3; } else { return normalizedWeights; }
+            if (totalTokens > 4) { normalizedWeights[4] = _normalizedWeight4; } else { return normalizedWeights; }
+            if (totalTokens > 5) { normalizedWeights[5] = _normalizedWeight5; } else { return normalizedWeights; }
+            if (totalTokens > 6) { normalizedWeights[6] = _normalizedWeight6; } else { return normalizedWeights; }
+            if (totalTokens > 7) { normalizedWeights[7] = _normalizedWeight7; }
         }
 
         return normalizedWeights;
