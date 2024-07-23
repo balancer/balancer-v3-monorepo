@@ -32,7 +32,7 @@ contract LotteryHookExample is BaseHooks, Ownable {
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using SafeERC20 for IERC20;
 
-    // Trusted router is needed since we rely on getSender() to know which user should receive the prize.
+    // Trusted router is needed since we rely on `getSender` to know which user should receive the prize.
     address private immutable _trustedRouter;
 
     // When calling `onAfterSwap`, a random number is generated. If the number is equal to LUCKY_NUMBER, the user will
