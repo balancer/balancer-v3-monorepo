@@ -43,7 +43,8 @@ library BasePoolMath {
         amountsIn = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
             // Since we multiply and divide we don't need to use FP math.
-            amountsIn[i] = (balances[i] * bptAmountOut) / bptTotalSupply;
+            // We're calculating amounts in so we round up.
+            amountsIn[i] = ((balances[i] * bptAmountOut) / bptTotalSupply) + 1;
         }
     }
 
@@ -256,6 +257,8 @@ library BasePoolMath {
         // Calculate the new proportional balance by multiplying the new invariant ratio by the current balance.
         // Calculate the taxable amount by subtracting the new balance from the equivalent proportional balance.
         // Since we multiply and divide we don't need to use FP math.
+        // We round down for simplicity, as rounding up doesn't really affect the result in a meaningful way down the
+        // line (fee calculation is rounded up anyways which is more straightforward).
         uint256 taxableAmount = (computeInvariant(newBalances) * currentBalances[tokenOutIndex]) /
             currentInvariant -
             newBalances[tokenOutIndex];
@@ -277,6 +280,13 @@ library BasePoolMath {
         // total supply with the ratio of the change in invariant.
         // Since we multiply and divide we don't need to use FP math.
         bptAmountIn = (totalSupply * (currentInvariant - invariantWithFeesApplied)) / currentInvariant;
+        // Calculating BPT amount in, so we round up.
+        // The only way this can overflow is if `totalSupply` is `uint256.max`, `currentInvariant` is 1 wei and
+        // `invariantWithFeesApplied` is 0, which is unlikely enough to make this unchecked. Any other combination
+        // will either revert in the checked multiplication, or not overflow if `currentInvariant` > 1 wei.
+        unchecked {
+            bptAmountIn += 1;
+        }
     }
 
     /**
@@ -314,6 +324,7 @@ library BasePoolMath {
 
         // Calculate the new balance proportionate to the BPT burnt.
         // Since we multiply and divide we don't need to use FP math.
+        // We round down here since we're already rounding up the fee below.
         uint256 newBalanceBeforeTax = (newSupply * currentBalances[tokenOutIndex]) / totalSupply;
 
         // Compute the taxable amount: the difference between the new proportional and disproportional balances.
