@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -12,6 +14,7 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 
@@ -74,6 +77,30 @@ contract StablePoolFactoryTest is BaseVaultTest {
         // Vault Balances
         assertEq(vars.vault.daiAfter - vars.vault.daiBefore, amountToDonate, "Vault DAI balance is wrong");
         assertEq(vars.vault.usdcAfter - vars.vault.usdcBefore, amountToDonate, "Vault USDC balance is wrong");
+    }
+
+    function testCreatePoolWithTooManyTokens() public {
+        IERC20[] memory bigPoolTokens = new IERC20[](StableMath.MAX_STABLE_TOKENS + 1);
+        for (uint256 i = 0; i < bigPoolTokens.length; ++i) {
+            bigPoolTokens[i] = createERC20(string.concat("TKN", Strings.toString(i)), 18);
+        }
+
+        TokenConfig[] memory tokenConfig = vault.buildTokenConfig(bigPoolTokens);
+        PoolRoleAccounts memory roleAccounts;
+
+        vm.expectRevert(IVaultErrors.MaxTokens.selector);
+        stablePoolFactory.create(
+            "Big Pool",
+            "TOOBIG",
+            tokenConfig,
+            DEFAULT_AMP_FACTOR,
+            roleAccounts,
+            1e17,
+            address(0),
+            false,
+            false,
+            ZERO_BYTES32
+        );
     }
 
     function _deployAndInitializeStablePool(bool supportsDonation) private returns (address) {
