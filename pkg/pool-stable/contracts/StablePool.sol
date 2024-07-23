@@ -27,14 +27,14 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
  * or at a known exchange rate. Stable Pools use `StableMath` (based on StableSwap, popularized by Curve),
  *  which allows for swaps of significant size before encountering substantial price impact, vastly
  * increasing capital efficiency for like-kind and correlated-kind swaps.
- * 
+ *
  * The `amplificationParameter` determines the "flatness" of the price curve. Higher values "flatten" the
  * curve, meaning there is a larger range of balances over which tokens will trade near parity, with very low
  * slippage. Generally, the `amplificationParameter` can be higher for tokens with lower volatility, and pools
  * with higher liquidity. Lower values more closely approximate the "weighted" math curve, handling greater
  * volatility at the cost of higher slippage. This parameter can be changed through permissioned calls
  * (see below for details).
- * 
+ *
  * The swap fee percentage is bounded by minimum and maximum values (same as were used in v2).
  */
 contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, PoolInfo, Version {
