@@ -145,8 +145,10 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
 
     // Permissioned functions
 
-    // Sets the hook's exit fee percentage, which will be charged on all remove liquidity operations.
-    // This function must be permissioned.
+    /**
+     * @notice Sets the hook remove liquidity fee percentage, charged on every remove liquidity operation.
+     * @dev This function must be permissioned.
+     */
     function setExitFeePercentage(uint64 newExitFeePercentage) external onlyOwner {
         if (newExitFeePercentage > MAX_EXIT_FEE_PERCENTAGE) {
             revert ExitFeeAboveLimit(newExitFeePercentage, MAX_EXIT_FEE_PERCENTAGE);

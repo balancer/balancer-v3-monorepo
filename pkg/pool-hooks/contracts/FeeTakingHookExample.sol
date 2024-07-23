@@ -179,25 +179,31 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
 
     // Permissioned functions
 
-    // Sets the hook swap fee percentage, which will be accrued after a swap was executed. This function must be
-    // permissioned.
+    /**
+     * @notice Sets the hook swap fee percentage, charged on every swap operation.
+     * @dev This function must be permissioned.
+     */
     function setHookSwapFeePercentage(uint64 feePercentage) external onlyOwner {
         hookSwapFeePercentage = feePercentage;
     }
 
-    // Sets the hook add liquidity fee percentage, which will be accrued after an add liquidity operation was executed.
-    // This function must be permissioned.
+    /**
+     * @notice Sets the hook add liquidity fee percentage, charged on every add liquidity operation.
+     * @dev This function must be permissioned.
+     */
     function setAddLiquidityHookFeePercentage(uint64 hookFeePercentage) external onlyOwner {
         addLiquidityHookFeePercentage = hookFeePercentage;
     }
 
-    // Sets the hook remove liquidity fee percentage, which will be accrued after a remove liquidity operation was
-    // executed. This function must be permissioned.
+    /**
+     * @notice Sets the hook remove liquidity fee percentage, charged on every remove liquidity operation.
+     * @dev This function must be permissioned.
+     */
     function setRemoveLiquidityHookFeePercentage(uint64 hookFeePercentage) external onlyOwner {
         removeLiquidityHookFeePercentage = hookFeePercentage;
     }
 
-    // Withdraws the accumulated fees. This function must be permissioned.
+    /// @notice Withdraws the accumulated fees. This function must be permissioned.
     function withdrawFees(IERC20 feeToken) external onlyOwner {
         feeToken.safeTransfer(owner(), feeToken.balanceOf(address(this)));
     }
