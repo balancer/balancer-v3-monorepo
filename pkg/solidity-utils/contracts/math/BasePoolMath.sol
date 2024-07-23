@@ -44,7 +44,7 @@ library BasePoolMath {
         for (uint256 i = 0; i < balances.length; ++i) {
             // Since we multiply and divide we don't need to use FP math.
             // We're calculating amounts in so we round up.
-            amountsIn[i] = ((balances[i] * bptAmountOut) / bptTotalSupply) + 1;
+            amountsIn[i] = balances[i].mulDivUp(bptAmountOut, bptTotalSupply);
         }
     }
 
@@ -279,14 +279,8 @@ library BasePoolMath {
         // Calculate the amount of BPT to burn. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
         // Since we multiply and divide we don't need to use FP math.
-        bptAmountIn = (totalSupply * (currentInvariant - invariantWithFeesApplied)) / currentInvariant;
         // Calculating BPT amount in, so we round up.
-        // The only way this can overflow is if `totalSupply` is `uint256.max`, `currentInvariant` is 1 wei and
-        // `invariantWithFeesApplied` is 0, which is unlikely enough to make this unchecked. Any other combination
-        // will either revert in the checked multiplication, or not overflow if `currentInvariant` > 1 wei.
-        unchecked {
-            bptAmountIn += 1;
-        }
+        bptAmountIn = totalSupply.mulDivUp(currentInvariant - invariantWithFeesApplied, currentInvariant);
     }
 
     /**
