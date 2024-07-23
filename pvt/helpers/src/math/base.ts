@@ -1,4 +1,4 @@
-import { bn, fp, fpDiv, fpMul, fromFp, toFp } from '../numbers';
+import { fp, fpDiv, fpMul } from '../numbers';
 
 export function computeInvariantMock(balances: bigint[]): bigint {
   // inv = x + y

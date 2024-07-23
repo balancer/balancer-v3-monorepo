@@ -165,12 +165,12 @@ contract BasePoolMathRoundingTest is Test {
             assertGe(
                 roundedUpFees[i] + DELTA,
                 standardResultFees[i],
-                "roundedUpFees + DELTA > standardResultFees (computeRemoveLiquiditySingleTokenExactOut)"
+                "roundedUpFees + DELTA > standardResultFees (computeAddLiquidityUnbalanced)"
             );
             assertLe(
                 roundedDownFees[i],
                 standardResultFees[i] + DELTA,
-                "roundedDownFees < standardResultFees + DELTA (computeRemoveLiquiditySingleTokenExactOut)"
+                "roundedDownFees < standardResultFees + DELTA (computeAddLiquidityUnbalanced)"
             );
         }
     }
@@ -241,12 +241,12 @@ contract BasePoolMathRoundingTest is Test {
             assertGe(
                 roundedUpFees[i] + DELTA,
                 standardResultFees[i],
-                "roundedUpFees + DELTA > standardResultFees (computeRemoveLiquiditySingleTokenExactOut)"
+                "roundedUpFees + DELTA > standardResultFees (computeAddLiquiditySingleTokenExactOut)"
             );
             assertLe(
                 roundedDownFees[i],
                 standardResultFees[i] + DELTA,
-                "roundedDownFees < standardResultFees + DELTA (computeRemoveLiquiditySingleTokenExactOut)"
+                "roundedDownFees < standardResultFees + DELTA (computeAddLiquiditySingleTokenExactOut)"
             );
         }
     }
