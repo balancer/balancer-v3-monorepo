@@ -923,6 +923,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[_ybToken2Idx].token = IERC20(address(ybToken2));
         tokenConfig[_ybToken1Idx].token = IERC20(address(ybToken1));
+        // Not using RateProviders simplifies the calculation of the yield-bearing pool swap, since amountIn and
+        // amountOut are the same using PoolMock's linear math.
         tokenConfig[0].tokenType = TokenType.STANDARD;
         tokenConfig[1].tokenType = TokenType.STANDARD;
 
