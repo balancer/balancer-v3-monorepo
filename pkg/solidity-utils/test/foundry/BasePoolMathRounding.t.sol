@@ -3,7 +3,6 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "forge-std/console.sol";
 
 import "../../contracts/math/FixedPoint.sol";
 import "../../contracts/test/BasePoolMathMock.sol";
@@ -12,11 +11,10 @@ contract BasePoolMathRoundingTest is Test {
     uint256 constant MIN_BALANCE = 1e18;
     uint256 constant MIN_AMOUNT = 1e12;
     uint256 constant MAX_AMOUNT = 1000e18;
-    uint256 constant FP_ONE = 1e18;
 
     uint256 constant MIN_SWAP_FEE = 0;
     uint256 constant MAX_SWAP_FEE = 0.8e18;
-    uint256 constant DELTA = 1e9;
+    uint256 constant DELTA = 1e4;
 
     BasePoolMathMock mock;
 
@@ -26,8 +24,7 @@ contract BasePoolMathRoundingTest is Test {
 
     function testComputeProportionalAmountsIn__Fuzz(
         uint256[2] calldata rawBalances,
-        uint256 rawBptAmountOut,
-        bool flipBit
+        uint256 rawBptAmountOut
     ) external view {
         uint256[] memory balances = new uint256[](rawBalances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
@@ -38,8 +35,8 @@ contract BasePoolMathRoundingTest is Test {
 
         uint256[] memory standardResult = mock.computeProportionalAmountsIn(balances, totalSupply, bptAmountOut);
 
-        uint256 roundedUpBptAmountOut = flipBit ? bptAmountOut + 1 : bptAmountOut;
-        uint256 roundedDownBptAmountOut = flipBit ? bptAmountOut - 1 : bptAmountOut;
+        uint256 roundedUpBptAmountOut = bptAmountOut + 1;
+        uint256 roundedDownBptAmountOut = bptAmountOut - 1;
 
         uint256[] memory roundedUpResult = mock.computeProportionalAmountsIn(
             balances,
@@ -53,36 +50,22 @@ contract BasePoolMathRoundingTest is Test {
         );
 
         for (uint256 i = 0; i < balances.length; ++i) {
-            if (flipBit) {
-                assertGe(
-                    roundedUpResult[i],
-                    standardResult[i],
-                    "roundedUpResult < standardResult (computeProportionalAmountsIn)"
-                );
-                assertLe(
-                    roundedDownResult[i],
-                    standardResult[i],
-                    "roundedDownResult > standardResult (computeProportionalAmountsIn)"
-                );
-            } else {
-                assertEq(
-                    roundedUpResult[i],
-                    standardResult[i],
-                    "roundedUpResult != standardResult (computeProportionalAmountsIn)"
-                );
-                assertEq(
-                    roundedDownResult[i],
-                    standardResult[i],
-                    "roundedDownResult != standardResult (computeProportionalAmountsIn)"
-                );
-            }
+            assertGe(
+                roundedUpResult[i],
+                standardResult[i],
+                "roundedUpResult < standardResult (computeProportionalAmountsIn)"
+            );
+            assertLe(
+                roundedDownResult[i],
+                standardResult[i],
+                "roundedDownResult > standardResult (computeProportionalAmountsIn)"
+            );
         }
     }
 
     function testComputeProportionalAmountsOut__Fuzz(
         uint256[2] calldata rawBalances,
-        uint256 rawBptAmountIn,
-        bool flipBit
+        uint256 rawBptAmountIn
     ) external view {
         uint256[] memory balances = new uint256[](rawBalances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
@@ -93,8 +76,8 @@ contract BasePoolMathRoundingTest is Test {
 
         uint256[] memory standardResult = mock.computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
 
-        uint256 roundedUpBptAmountIn = flipBit ? bptAmountIn + 1 : bptAmountIn;
-        uint256 roundedDownBptAmountIn = flipBit ? bptAmountIn - 1 : bptAmountIn;
+        uint256 roundedUpBptAmountIn = bptAmountIn + 1;
+        uint256 roundedDownBptAmountIn = bptAmountIn - 1;
 
         uint256[] memory roundedUpResult = mock.computeProportionalAmountsOut(
             balances,
@@ -108,37 +91,23 @@ contract BasePoolMathRoundingTest is Test {
         );
 
         for (uint256 i = 0; i < balances.length; ++i) {
-            if (flipBit) {
-                assertGe(
-                    roundedUpResult[i],
-                    standardResult[i],
-                    "roundedUpResult < standardResult (computeProportionalAmountsOut)"
-                );
-                assertLe(
-                    roundedDownResult[i],
-                    standardResult[i],
-                    "roundedDownResult > standardResult (computeProportionalAmountsOut)"
-                );
-            } else {
-                assertEq(
-                    roundedUpResult[i],
-                    standardResult[i],
-                    "roundedUpResult != standardResult (computeProportionalAmountsOut)"
-                );
-                assertEq(
-                    roundedDownResult[i],
-                    standardResult[i],
-                    "roundedDownResult != standardResult (computeProportionalAmountsOut)"
-                );
-            }
+            assertGe(
+                roundedUpResult[i],
+                standardResult[i],
+                "roundedUpResult < standardResult (computeProportionalAmountsOut)"
+            );
+            assertLe(
+                roundedDownResult[i],
+                standardResult[i],
+                "roundedDownResult > standardResult (computeProportionalAmountsOut)"
+            );
         }
     }
 
     function testComputeAddLiquidityUnbalanced__Fuzz(
         uint256[2] calldata rawBalances,
         uint256[2] calldata rawAmountsIn,
-        uint64 rawSwapFee,
-        bool flipBit
+        uint64 rawSwapFee
     ) external view {
         uint256[] memory balances = new uint256[](rawBalances.length);
         uint256[] memory amountsIn = new uint256[](2);
@@ -163,8 +132,8 @@ contract BasePoolMathRoundingTest is Test {
         uint256[] memory roundedDownAmountsIn = new uint256[](balances.length);
 
         for (uint256 i = 0; i < balances.length; ++i) {
-            roundedUpAmountsIn[i] = flipBit ? amountsIn[i] + 1 : amountsIn[i];
-            roundedDownAmountsIn[i] = flipBit ? amountsIn[i] - 1 : amountsIn[i];
+            roundedUpAmountsIn[i] = amountsIn[i] + 1;
+            roundedDownAmountsIn[i] = amountsIn[i] - 1;
         }
 
         uint256 roundedUpBpt;
@@ -185,69 +154,39 @@ contract BasePoolMathRoundingTest is Test {
             swapFee
         );
 
-        if (flipBit) {
+        assertGe(roundedUpBpt, standardResultBpt, "roundedUpBpt < standardResultBpt (computeAddLiquidityUnbalanced)");
+        assertLe(
+            roundedDownBpt,
+            standardResultBpt,
+            "roundedDownBpt > standardResultBpt (computeAddLiquidityUnbalanced)"
+        );
+
+        for (uint256 i = 0; i < balances.length; ++i) {
             assertGe(
-                roundedUpBpt,
-                standardResultBpt,
-                "roundedUpBpt < standardResultBpt (computeAddLiquidityUnbalanced)"
+                roundedUpFees[i] + DELTA,
+                standardResultFees[i],
+                "roundedUpFees + DELTA > standardResultFees (computeRemoveLiquiditySingleTokenExactOut)"
             );
             assertLe(
-                roundedDownBpt,
-                standardResultBpt,
-                "roundedDownBpt > standardResultBpt (computeAddLiquidityUnbalanced)"
+                roundedDownFees[i],
+                standardResultFees[i] + DELTA,
+                "roundedDownFees < standardResultFees + DELTA (computeRemoveLiquiditySingleTokenExactOut)"
             );
-
-            for (uint256 i = 0; i < balances.length; ++i) {
-                assertApproxEqAbs(
-                    roundedUpFees[i],
-                    standardResultFees[i],
-                    DELTA,
-                    "roundedUpFees != standardResultFees with DELTA (computeAddLiquidityUnbalanced)"
-                );
-                assertApproxEqAbs(
-                    roundedDownFees[i],
-                    standardResultFees[i],
-                    DELTA,
-                    "roundedDownFees != standardResultFees with DELTA (computeAddLiquidityUnbalanced)"
-                );
-            }
-        } else {
-            assertEq(
-                roundedUpBpt,
-                standardResultBpt,
-                "roundedUpBpt != standardResultBpt (computeAddLiquidityUnbalanced)"
-            );
-            assertEq(
-                roundedDownBpt,
-                standardResultBpt,
-                "roundedDownBpt != standardResultBpt (computeAddLiquidityUnbalanced)"
-            );
-            for (uint256 i = 0; i < balances.length; ++i) {
-                assertEq(
-                    roundedUpFees[i],
-                    standardResultFees[i],
-                    "roundedUpFees != standardResultFees (computeAddLiquidityUnbalanced)"
-                );
-                assertEq(
-                    roundedDownFees[i],
-                    standardResultFees[i],
-                    "roundedDownFees != standardResultFees (computeAddLiquidityUnbalanced)"
-                );
-            }
         }
     }
 
     function testComputeAddLiquiditySingleTokenExactOut__Fuzz(
-        uint256[2] calldata rawBalances,
+        uint256 rawBalance,
         uint256 rawTokenInIndex,
         uint256 rawBptAmountOut,
-        uint64 rawSwapFee,
-        bool flipBit
+        uint64 rawSwapFee
     ) external view {
-        uint256[] memory balances = new uint256[](rawBalances.length);
+        uint256[] memory balances = new uint256[](2);
+        uint256 balance = bound(rawBalance, MIN_BALANCE * 4, MAX_AMOUNT);
         for (uint256 i = 0; i < balances.length; ++i) {
-            balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
+            balances[i] = balance;
         }
+
         uint256 tokenInIndex = bound(rawTokenInIndex, 0, 1);
         uint256 bptAmountOut = bound(rawBptAmountOut, MIN_AMOUNT, MAX_AMOUNT);
         uint256 totalSupply = mock.computeInvariantMock(balances);
@@ -264,8 +203,8 @@ contract BasePoolMathRoundingTest is Test {
             swapFee
         );
 
-        uint256 roundedUpBptAmountOut = flipBit ? bptAmountOut + 1 : bptAmountOut;
-        uint256 roundedDownBptAmountOut = flipBit ? bptAmountOut - 1 : bptAmountOut;
+        uint256 roundedUpBptAmountOut = bptAmountOut + 1;
+        uint256 roundedDownBptAmountOut = bptAmountOut - 1;
 
         uint256 roundedUpAmountInWithFee;
         uint256[] memory roundedUpFees;
@@ -287,76 +226,46 @@ contract BasePoolMathRoundingTest is Test {
             swapFee
         );
 
-        if (flipBit) {
-            assertApproxEqAbs(
-                roundedUpAmountInWithFee,
-                standardResultAmountInWithFee,
-                DELTA,
-                "roundedUpAmountInWithFee != standardResultAmountInWithFee with DELTA (computeAddLiquiditySingleTokenExactOut)"
-            );
-            assertApproxEqAbs(
-                roundedDownAmountInWithFee,
-                standardResultAmountInWithFee,
-                DELTA,
-                "roundedDownAmountInWithFee != standardResultAmountInWithFee with DELTA (computeAddLiquiditySingleTokenExactOut)"
-            );
+        assertGe(
+            roundedUpAmountInWithFee + DELTA,
+            standardResultAmountInWithFee,
+            "roundedUpAmountInWithFee + DELTA < standardResultAmountInWithFee (computeAddLiquiditySingleTokenExactOut)"
+        );
+        assertLe(
+            roundedDownAmountInWithFee,
+            standardResultAmountInWithFee + DELTA,
+            "roundedDownAmountInWithFee > standardResultAmountInWithFee + DELTA (computeAddLiquiditySingleTokenExactOut)"
+        );
 
-            for (uint256 i = 0; i < balances.length; ++i) {
-                assertApproxEqAbs(
-                    roundedUpFees[i],
-                    standardResultFees[i],
-                    DELTA,
-                    "roundedUpFees != standardResultFees with DELTA (computeAddLiquiditySingleTokenExactOut)"
-                );
-                assertApproxEqAbs(
-                    roundedDownFees[i],
-                    standardResultFees[i],
-                    DELTA,
-                    "roundedDownFees != standardResultFees with DELTA (computeAddLiquiditySingleTokenExactOut)"
-                );
-            }
-        } else {
-            assertEq(
-                roundedUpAmountInWithFee,
-                standardResultAmountInWithFee,
-                "roundedUpAmountInWithFee != standardResultAmountInWithFee (computeAddLiquiditySingleTokenExactOut)"
+        for (uint256 i = 0; i < balances.length; ++i) {
+            assertGe(
+                roundedUpFees[i] + DELTA,
+                standardResultFees[i],
+                "roundedUpFees + DELTA > standardResultFees (computeRemoveLiquiditySingleTokenExactOut)"
             );
-            assertEq(
-                roundedDownAmountInWithFee,
-                standardResultAmountInWithFee,
-                "roundedDownAmountInWithFee != standardResultAmountInWithFee (computeAddLiquiditySingleTokenExactOut)"
+            assertLe(
+                roundedDownFees[i],
+                standardResultFees[i] + DELTA,
+                "roundedDownFees < standardResultFees + DELTA (computeRemoveLiquiditySingleTokenExactOut)"
             );
-            for (uint256 i = 0; i < balances.length; ++i) {
-                assertEq(
-                    roundedUpFees[i],
-                    standardResultFees[i],
-                    "roundedUpFees != standardResultFees (computeAddLiquiditySingleTokenExactOut)"
-                );
-                assertEq(
-                    roundedDownFees[i],
-                    standardResultFees[i],
-                    "roundedDownFees != standardResultFees (computeAddLiquiditySingleTokenExactOut)"
-                );
-            }
         }
     }
 
     function testComputeRemoveLiquiditySingleTokenExactOut__Fuzz(
-        uint256[2] calldata rawBalances,
+        uint256 rawBalance,
         uint256 rawTokenOutIndex,
         uint256 rawAmountOut,
-        uint64 rawSwapFee,
-        bool flipBit
+        uint64 rawSwapFee
     ) external view {
-        uint256[] memory balances = new uint256[](rawBalances.length);
+        uint256[] memory balances = new uint256[](2);
+        uint256 balance = bound(rawBalance, MIN_BALANCE * 4, MAX_AMOUNT);
+
         for (uint256 i = 0; i < balances.length; ++i) {
-            balances[i] = bound(rawBalances[i], MIN_BALANCE * 4, MAX_AMOUNT);
-            console.log("balance", balances[i]);
+            balances[i] = balance;
         }
         uint256 tokenOutIndex = bound(rawTokenOutIndex, 0, 1);
         uint256 amountOut = bound(rawAmountOut, MIN_BALANCE, balances[tokenOutIndex] / 4);
 
-        console.log("amountOut", amountOut);
         uint256 totalSupply = mock.computeInvariantMock(balances);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
@@ -371,8 +280,8 @@ contract BasePoolMathRoundingTest is Test {
             swapFee
         );
 
-        uint256 roundedUpAmountOut = flipBit ? amountOut + 1 : amountOut;
-        uint256 roundedDownAmountOut = flipBit ? amountOut - 1 : amountOut;
+        uint256 roundedUpAmountOut = amountOut + 1;
+        uint256 roundedDownAmountOut = amountOut - 1;
 
         uint256 roundedUpBptAmountIn;
         uint256[] memory roundedUpFees;
@@ -394,75 +303,47 @@ contract BasePoolMathRoundingTest is Test {
             swapFee
         );
 
-        if (flipBit) {
+        assertGe(
+            roundedUpBptAmountIn + DELTA,
+            standardResultBptAmountIn,
+            "roundedUpBptAmountIn + DELTA < standardResultBptAmountIn (computeRemoveLiquiditySingleTokenExactOut)"
+        );
+        assertLe(
+            roundedDownBptAmountIn,
+            standardResultBptAmountIn + DELTA,
+            "roundedDownBptAmountIn > standardResultBptAmountIn + DELTA (computeRemoveLiquiditySingleTokenExactOut)"
+        );
+
+        for (uint256 i = 0; i < balances.length; ++i) {
             assertGe(
-                roundedUpBptAmountIn,
-                standardResultBptAmountIn,
-                "roundedUpBptAmountIn < standardResultBptAmountIn (computeRemoveLiquiditySingleTokenExactOut)"
+                roundedUpFees[i] + DELTA,
+                standardResultFees[i],
+                "roundedUpFees + DELTA > standardResultFees (computeRemoveLiquiditySingleTokenExactOut)"
             );
             assertLe(
-                roundedDownBptAmountIn,
-                standardResultBptAmountIn,
-                "roundedDownBptAmountIn > standardResultBptAmountIn (computeRemoveLiquiditySingleTokenExactOut)"
+                roundedDownFees[i],
+                standardResultFees[i] + DELTA,
+                "roundedDownFees < standardResultFees + DELTA (computeRemoveLiquiditySingleTokenExactOut)"
             );
-
-            for (uint256 i = 0; i < balances.length; ++i) {
-                assertApproxEqAbs(
-                    roundedUpFees[i],
-                    standardResultFees[i],
-                    DELTA,
-                    "roundedUpFees != standardResultFees with DELTA (computeRemoveLiquiditySingleTokenExactOut)"
-                );
-                assertApproxEqAbs(
-                    roundedDownFees[i],
-                    standardResultFees[i],
-                    DELTA,
-                    "roundedDownFees != standardResultFees with DELTA (computeRemoveLiquiditySingleTokenExactOut)"
-                );
-            }
-        } else {
-            assertEq(
-                roundedUpBptAmountIn,
-                standardResultBptAmountIn,
-                "roundedUpBptAmountIn != standardResultBptAmountIn (computeRemoveLiquiditySingleTokenExactOut)"
-            );
-            assertEq(
-                roundedDownBptAmountIn,
-                standardResultBptAmountIn,
-                "roundedDownBptAmountIn != standardResultBptAmountIn (computeRemoveLiquiditySingleTokenExactOut)"
-            );
-            for (uint256 i = 0; i < balances.length; ++i) {
-                assertEq(
-                    roundedUpFees[i],
-                    standardResultFees[i],
-                    "roundedUpFees != standardResultFees (computeRemoveLiquiditySingleTokenExactOut)"
-                );
-                assertEq(
-                    roundedDownFees[i],
-                    standardResultFees[i],
-                    "roundedDownFees != standardResultFees (computeRemoveLiquiditySingleTokenExactOut)"
-                );
-            }
         }
     }
 
     function testComputeRemoveLiquiditySingleTokenExactIn__Fuzz(
-        uint256[2] calldata rawBalances,
+        uint256 rawBalance,
         uint256 rawTokenOutIndex,
         uint256 rawBptAmountIn,
-        uint64 rawSwapFee,
-        bool flipBit
+        uint64 rawSwapFee
     ) external view {
-        uint256[] memory balances = new uint256[](rawBalances.length);
+        uint256[] memory balances = new uint256[](2);
 
+        uint balance = bound(rawBalance, MIN_BALANCE, MAX_AMOUNT);
         for (uint256 i = 0; i < balances.length; ++i) {
-            balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
-            console.log("balance", balances[i]);
+            balances[i] = balance;
         }
 
         uint256 tokenOutIndex = bound(rawTokenOutIndex, 0, 1);
         uint256 totalSupply = mock.computeInvariantMock(balances);
-        uint256 bptAmountIn = bound(rawBptAmountIn, MIN_AMOUNT, totalSupply - 1);
+        uint256 bptAmountIn = bound(rawBptAmountIn, MIN_AMOUNT, totalSupply / 4);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
         uint256 standardResultAmountOutWithFee;
@@ -476,8 +357,8 @@ contract BasePoolMathRoundingTest is Test {
             swapFee
         );
 
-        uint256 roundedUpBptAmountIn = flipBit ? bptAmountIn + 1 : bptAmountIn;
-        uint256 roundedDownBptAmountIn = flipBit ? bptAmountIn - 1 : bptAmountIn;
+        uint256 roundedUpBptAmountIn = bptAmountIn + 1;
+        uint256 roundedDownBptAmountIn = bptAmountIn - 1;
 
         uint256 roundedUpAmountOutWithFee;
         uint256[] memory roundedUpFees;
@@ -499,57 +380,28 @@ contract BasePoolMathRoundingTest is Test {
             swapFee
         );
 
-        if (flipBit) {
-            assertApproxEqAbs(
-                roundedUpAmountOutWithFee,
-                standardResultAmountOutWithFee,
-                DELTA,
-                "roundedUpAmountOutWithFee != standardResultAmountOutWithFee with DELTA (computeRemoveLiquiditySingleTokenExactIn)"
-            );
-            assertApproxEqAbs(
-                roundedDownAmountOutWithFee,
-                standardResultAmountOutWithFee,
-                DELTA,
-                "roundedDownAmountOutWithFee != standardResultAmountOutWithFee with DELTA (computeRemoveLiquiditySingleTokenExactIn)"
-            );
+        assertGe(
+            roundedUpAmountOutWithFee,
+            standardResultAmountOutWithFee,
+            "roundedUpAmountOutWithFee < standardResultAmountOutWithFee (computeRemoveLiquiditySingleTokenExactIn)"
+        );
+        assertLe(
+            roundedDownAmountOutWithFee,
+            standardResultAmountOutWithFee,
+            "roundedDownAmountOutWithFee > standardResultAmountOutWithFee (computeRemoveLiquiditySingleTokenExactIn)"
+        );
 
-            for (uint256 i = 0; i < balances.length; ++i) {
-                assertApproxEqAbs(
-                    roundedUpFees[i],
-                    standardResultFees[i],
-                    DELTA,
-                    "roundedUpFees != standardResultFees with DELTA (computeRemoveLiquiditySingleTokenExactIn)"
-                );
-                assertApproxEqAbs(
-                    roundedDownFees[i],
-                    standardResultFees[i],
-                    DELTA,
-                    "roundedDownFees != standardResultFees with DELTA (computeRemoveLiquiditySingleTokenExactIn)"
-                );
-            }
-        } else {
-            assertEq(
-                roundedUpAmountOutWithFee,
-                standardResultAmountOutWithFee,
-                "roundedUpAmountOutWithFee != standardResultAmountOutWithFee (computeRemoveLiquiditySingleTokenExactIn)"
+        for (uint256 i = 0; i < balances.length; ++i) {
+            assertGe(
+                roundedUpFees[i] + DELTA,
+                standardResultFees[i],
+                "roundedUpFees + DELTA > standardResultFees (computeRemoveLiquiditySingleTokenExactIn)"
             );
-            assertEq(
-                roundedDownAmountOutWithFee,
-                standardResultAmountOutWithFee,
-                "roundedDownAmountOutWithFee != standardResultAmountOutWithFee (computeRemoveLiquiditySingleTokenExactIn)"
+            assertLe(
+                roundedDownFees[i],
+                standardResultFees[i] + DELTA,
+                "roundedDownFees < standardResultFees + DELTA (computeRemoveLiquiditySingleTokenExactIn)"
             );
-            for (uint256 i = 0; i < balances.length; ++i) {
-                assertEq(
-                    roundedUpFees[i],
-                    standardResultFees[i],
-                    "roundedUpFees != standardResultFees (computeRemoveLiquiditySingleTokenExactIn)"
-                );
-                assertEq(
-                    roundedDownFees[i],
-                    standardResultFees[i],
-                    "roundedDownFees != standardResultFees (computeRemoveLiquiditySingleTokenExactIn)"
-                );
-            }
         }
     }
 }

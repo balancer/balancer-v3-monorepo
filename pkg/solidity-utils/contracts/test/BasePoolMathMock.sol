@@ -9,45 +9,23 @@ import "../math/BasePoolMath.sol";
 contract BasePoolMathMock {
     using FixedPoint for uint256;
 
-    // It's the UniV2 invariant formula
-    // Works with 2 tokens only
-    // solhint-disable-next-line
-    function computeInvariantMock(uint256[] memory balancesLiveScaled18) public view returns (uint256 invariant) {
-        require(balancesLiveScaled18.length == 2, "BasePoolMathMock: INVALID_BALANCES_LENGTH");
-
-        // expected to work with 2 tokens only
-        invariant = FixedPoint.ONE;
-        for (uint256 i = 0; i < balancesLiveScaled18.length; ++i) {
-            invariant = invariant.mulDown(balancesLiveScaled18[i]);
+    function computeInvariantMock(uint256[] memory balances) public pure returns (uint256) {
+        // inv = x + y
+        uint256 invariant;
+        for (uint256 i = 0; i < balances.length; ++i) {
+            invariant += balances[i];
         }
-        // scale the invariant to 1e18
-        invariant = _sqrt(invariant) * 1e9;
+        return invariant;
     }
 
-    // https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
-    // https://ethereum.stackexchange.com/questions/2910/can-i-square-root-in-solidity
-    // Babylonian Method
-    function _sqrt(uint x) internal pure returns (uint y) {
-        uint z = (x + 1) / 2;
-        y = x;
-        while (z < y) {
-            y = z;
-            z = (x / z + z) / 2;
-        }
-    }
-
-    // https://docs-v3.balancer.fi/build-a-custom-amm/build-an-amm/create-custom-amm-with-novel-invariant.html#build-your-custom-amm
-    // Works with 2 tokens only
     function computeBalanceMock(
-        uint256[] memory balancesLiveScaled18,
+        uint256[] memory balances,
         uint256 tokenInIndex,
         uint256 invariantRatio
-    ) public view returns (uint256 newBalance) {
-        uint256 otherTokenIndex = tokenInIndex == 0 ? 1 : 0;
-
-        uint256 newInvariant = computeInvariantMock(balancesLiveScaled18).mulDown(invariantRatio);
-
-        newBalance = ((newInvariant * newInvariant) / balancesLiveScaled18[otherTokenIndex]);
+    ) external pure returns (uint256 newBalance) {
+        // inv = x + y
+        uint256 invariant = computeInvariantMock(balances);
+        return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
     }
 
     function computeProportionalAmountsIn(
