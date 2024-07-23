@@ -96,13 +96,13 @@ interface IBatchRouter {
     /**
      * @notice Add arbitrary amounts of underlying tokens to an ERC4626 pool through the buffer.
      * @param pool Address of the liquidity pool
-     * @param exactUnderlyingAmountsIn Exact amounts of underling tokens to be added, sorted in token registration order
+     * @param exactUnderlyingAmountsIn Exact amounts of underlying tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
      * @return bptAmountOut Actual amount of pool tokens received
      */
-    function addLiquidityUnbalancedToBoostedPool(
+    function addLiquidityUnbalancedToERC4626Pool(
         address pool,
         uint256[] memory exactUnderlyingAmountsIn,
         uint256 minBptAmountOut,
@@ -113,13 +113,13 @@ interface IBatchRouter {
     /**
      * @notice Add proportional amounts of underlying tokens to an ERC4626 pool through the buffer.
      * @param pool Address of the liquidity pool
-     * @param maxUnderlyingAmountsIn Maximum amounts of underling tokens to be added, sorted in token registration order
+     * @param maxUnderlyingAmountsIn Maximum amounts of underlying tokens to be added, sorted in token registration order
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
      * @return amountsIn Actual amounts of tokens added, sorted in token registration order
      */
-    function addLiquidityProportionalToBoostedPool(
+    function addLiquidityProportionalToERC4626Pool(
         address pool,
         uint256[] memory maxUnderlyingAmountsIn,
         uint256 exactBptAmountOut,
@@ -131,12 +131,12 @@ interface IBatchRouter {
      * @notice Remove proportional amounts of underlying tokens from an ERC4626 pool, burning an exact pool token amount.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided
-     * @param minUnderlyingAmountsOut Minimum amounts of underling tokens to be received, sorted in token registration order
+     * @param minUnderlyingAmountsOut Minimum amounts of underlying tokens to be received, sorted in token registration order
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for removing liquidity
      * @return amountsOut Actual amounts of tokens received, sorted in token registration order
      */
-    function removeLiquidityProportionalToBoostedPool(
+    function removeLiquidityProportionalToERC4626Pool(
         address pool,
         uint256 exactBptAmountIn,
         uint256[] memory minUnderlyingAmountsOut,
@@ -179,27 +179,27 @@ interface IBatchRouter {
     ) external returns (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn);
 
     /**
-     * @notice Queries an `addLiquidityUnbalancedToBoostedPool` operation without actually executing it.
+     * @notice Queries an `addLiquidityUnbalancedToERC4626Pool` operation without actually executing it.
      * @param pool Address of the liquidity pool
-     * @param exactUnderlyingAmountsIn Exact amounts of underling tokens to be added, sorted in token registration order
+     * @param exactUnderlyingAmountsIn Exact amounts of underlying tokens to be added, sorted in token registration order
      * @param userData Additional (optional) data required for the query
      * @return bptAmountOut Expected amount of pool tokens to receive
      */
-    function queryAddLiquidityUnbalancedToBoostedPool(
+    function queryAddLiquidityUnbalancedToERC4626Pool(
         address pool,
         uint256[] memory exactUnderlyingAmountsIn,
         bytes memory userData
     ) external returns (uint256 bptAmountOut);
 
     /**
-     * @notice Queries an `addLiquidityProportionalToBoostedPool` operation without actually executing it.
+     * @notice Queries an `addLiquidityProportionalToERC4626Pool` operation without actually executing it.
      * @param pool Address of the liquidity pool
-     * @param maxUnderlyingAmountsIn Maximum amounts of underling tokens to be added, sorted in token registration order
+     * @param maxUnderlyingAmountsIn Maximum amounts of underlying tokens to be added, sorted in token registration order
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param userData Additional (optional) data required for the query
      * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
      */
-    function queryAddLiquidityProportionalToBoostedPool(
+    function queryAddLiquidityProportionalToERC4626Pool(
         address pool,
         uint256[] memory maxUnderlyingAmountsIn,
         uint256 exactBptAmountOut,
@@ -207,13 +207,13 @@ interface IBatchRouter {
     ) external returns (uint256[] memory amountsIn);
 
     /**
-     * @notice Queries `removeLiquidityProportionalToBoostedPool` operation without actually executing it.
+     * @notice Queries `removeLiquidityProportionalToERC4626Pool` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @param userData Additional (optional) data required for the query
      * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
      */
-    function queryRemoveLiquidityProportionalToBoostedPool(
+    function queryRemoveLiquidityProportionalToERC4626Pool(
         address pool,
         uint256 exactBptAmountIn,
         bytes memory userData

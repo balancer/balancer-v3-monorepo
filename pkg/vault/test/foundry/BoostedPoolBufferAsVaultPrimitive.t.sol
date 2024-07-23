@@ -337,7 +337,7 @@ contract BoostedPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
     function testBoostedPoolAddLiquidityUnbalanced() public {
         vm.startPrank(lp);
-        batchRouter.addLiquidityUnbalancedToBoostedPool(
+        batchRouter.addLiquidityUnbalancedToERC4626Pool(
             boostedPool,
             [swapAmount, swapAmount].toMemoryArray(),
             1e18,
