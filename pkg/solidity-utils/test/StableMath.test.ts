@@ -20,7 +20,7 @@ describe('StableMath', function () {
   let mock: Contract;
 
   const AMP_PRECISION = bn(1e3);
-  const MAX_TOKENS = 4;
+  const MAX_TOKENS = 5;
 
   before(async function () {
     mock = await deploy('StableMathMock');

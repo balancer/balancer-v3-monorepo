@@ -27,6 +27,7 @@ describe('StablePool', () => {
   const FACTORY_VERSION = 'Stable Factory v1';
   const POOL_VERSION = 'Stable Pool v1';
 
+  const MAX_STABLE_TOKENS = 5;
   const TOKEN_AMOUNT = fp(1000);
   const MIN_SWAP_FEE = 1e12;
 
@@ -54,7 +55,7 @@ describe('StablePool', () => {
       args: [await vault.getAddress(), MONTH * 12, FACTORY_VERSION, POOL_VERSION],
     });
 
-    tokens = await ERC20TokenList.create(4, { sorted: true });
+    tokens = await ERC20TokenList.create(MAX_STABLE_TOKENS, { sorted: true });
     poolTokens = await tokens.addresses;
 
     // mint and approve tokens
@@ -65,7 +66,7 @@ describe('StablePool', () => {
     }
   });
 
-  for (let i = 2; i <= 4; i++) {
+  for (let i = 2; i <= MAX_STABLE_TOKENS; i++) {
     itDeploysAStablePool(i);
   }
 
