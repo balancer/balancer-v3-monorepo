@@ -5,7 +5,6 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import {
     HooksConfig,
     LiquidityManagement,
@@ -18,7 +17,6 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { ExitFeeHookExample } from "../../contracts/ExitFeeHookExample.sol";
@@ -29,6 +27,9 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
+
+    // 10% exit fee
+    uint64 exitFeePercentage = 10e16;
 
     function setUp() public override {
         super.setUp();
@@ -87,22 +88,16 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         PoolConfig memory poolConfig = vault.getPoolConfig(exitFeePool);
         HooksConfig memory hooksConfig = vault.getHooksConfig(exitFeePool);
 
-        assertEq(poolConfig.liquidityManagement.enableDonation, true, "pool's enableDonation is wrong");
-        assertEq(
-            poolConfig.liquidityManagement.disableUnbalancedLiquidity,
-            true,
-            "pool's disableUnbalancedLiquidity is wrong"
-        );
-        assertEq(hooksConfig.hooksContract, poolHooksContract, "pool's hooks contract is wrong");
-        assertEq(hooksConfig.enableHookAdjustedAmounts, true, "hook's enableHookAdjustedAmounts is wrong");
+        assertTrue(poolConfig.liquidityManagement.enableDonation, "enableDonation is false");
+        assertTrue(poolConfig.liquidityManagement.disableUnbalancedLiquidity, "disableUnbalancedLiquidity is false");
+        assertTrue(hooksConfig.enableHookAdjustedAmounts, "enableHookAdjustedAmounts is false");
+        assertEq(hooksConfig.hooksContract, poolHooksContract, "hooksContract is wrong");
     }
 
     // Exit fee returns to LPs
     function testExitFeeReturnToLPs() public {
-        // 10% exit fee
-        uint64 exitFeePercentage = 1e17;
         vm.prank(lp);
-        ExitFeeHookExample(poolHooksContract).setRemoveLiquidityHookFeePercentage(exitFeePercentage);
+        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(exitFeePercentage);
         uint256 amountOut = poolInitAmount / 2;
         uint256 hookFee = amountOut.mulDown(exitFeePercentage);
         uint256[] memory minAmountsOut = [amountOut - hookFee, amountOut - hookFee].toMemoryArray();
@@ -156,6 +151,16 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         assertEq(balancesBefore.hookTokens[daiIdx], balancesAfter.hookTokens[daiIdx], "Hook's DAI amount is wrong");
         assertEq(balancesBefore.hookTokens[usdcIdx], balancesAfter.hookTokens[usdcIdx], "Hook's USDC amount is wrong");
         assertEq(balancesBefore.hookBpt, balancesAfter.hookBpt, "Hook's BPT amount is wrong");
+    }
+
+    function testPercentageTooHigh() public {
+        uint64 highFee = uint64(FixedPoint.ONE);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ExitFeeHookExample.ExitFeeAboveLimit.selector, highFee, exitFeePercentage)
+        );
+        vm.prank(lp);
+        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(highFee);
     }
 
     // Registry tests require a new pool, because an existent pool may be already registered
