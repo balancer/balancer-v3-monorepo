@@ -25,7 +25,7 @@ import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Vers
  * @notice Standard Balancer Stable Pool.
  * @dev Stable Pools are designed for assets that are either expected to consistently swap at near parity,
  * or at a known exchange rate. Stable Pools use `StableMath` (based on StableSwap, popularized by Curve),
- *  which allows for swaps of significant size before encountering substantial price impact, vastly
+ * which allows for swaps of significant size before encountering substantial price impact, vastly
  * increasing capital efficiency for like-kind and correlated-kind swaps.
  *
  * The `amplificationParameter` determines the "flatness" of the price curve. Higher values "flatten" the
