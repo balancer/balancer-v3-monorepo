@@ -122,6 +122,7 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertLe(exactAmountOutUndo, exactAmountIn, "Amount out undo should be <= exactAmountIn");
+        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
         assertLe(
             balancesAfter.userTokens[_idxToken1],
             balancesBefore.userTokens[_idxToken1],
@@ -177,6 +178,7 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertLe(exactAmountOutUndo, exactAmountIn, "Amount out undo should be <= exactAmountIn");
+        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
         assertLe(
             balancesAfter.userTokens[_idxToken1],
             balancesBefore.userTokens[_idxToken1],
@@ -211,11 +213,14 @@ contract E2eSwapTest is BaseVaultTest {
 
         uint256 feesToken2 = vault.getAggregateSwapFeeAmount(pool, token2);
 
+        // In the first swap, the trade was exactAmountIn => exactAmountOutDo + feesToken2. So, if
+        // there were no fees, trading `exactAmountOutDo + feesToken2` would get exactAmountIn. Therefore, a swap
+        // with exact_in `exactAmountOutDo + feesToken2` is comparable with `exactAmountIn`, given that the fees are
+        // known.
         uint256 exactAmountOutUndo = router.swapSingleTokenExactIn(
             pool,
             token2,
             token1,
-            // Add fees, so the exactAmountOutUndo can be compared with `exactAmountIn - token1 fees`.
             exactAmountOutDo + feesToken2,
             0,
             MAX_UINT128,
@@ -228,6 +233,7 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertLe(exactAmountOutUndo, exactAmountIn - feesToken1, "Amount out undo should be <= exactAmountIn");
+        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
         assertLe(
             balancesAfter.userTokens[_idxToken1],
             balancesBefore.userTokens[_idxToken1] - feesToken1,
@@ -278,11 +284,14 @@ contract E2eSwapTest is BaseVaultTest {
 
         uint256 feesToken2 = vault.getAggregateSwapFeeAmount(pool, token2);
 
+        // In the first swap, the trade was exactAmountIn => exactAmountOutDo + feesToken2. So, if
+        // there were no fees, trading `exactAmountOutDo + feesToken2` would get exactAmountIn. Therefore, a swap
+        // with exact_in `exactAmountOutDo + feesToken2` is comparable with `exactAmountIn`, given that the fees are
+        // known.
         uint256 exactAmountOutUndo = router.swapSingleTokenExactIn(
             pool,
             token2,
             token1,
-            // Add fees, so the exactAmountOutUndo can be compared with `exactAmountIn - token1 fees`.
             exactAmountOutDo + feesToken2,
             0,
             MAX_UINT128,
@@ -295,6 +304,7 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertLe(exactAmountOutUndo, exactAmountIn - feesToken1, "Amount out undo should be <= exactAmountIn");
+        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
         assertLe(
             balancesAfter.userTokens[_idxToken1],
             balancesBefore.userTokens[_idxToken1] - feesToken1,
@@ -342,6 +352,7 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertGe(exactAmountInUndo, exactAmountOut, "Amount in undo should be >= exactAmountOut");
+        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
         assertLe(
             balancesAfter.userTokens[_idxToken1],
             balancesBefore.userTokens[_idxToken1],
@@ -398,6 +409,7 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertGe(exactAmountInUndo, exactAmountOut, "Amount in undo should be >= exactAmountOut");
+        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
         assertLe(
             balancesAfter.userTokens[_idxToken1],
             balancesBefore.userTokens[_idxToken1],
@@ -432,11 +444,14 @@ contract E2eSwapTest is BaseVaultTest {
 
         uint256 feesToken1 = vault.getAggregateSwapFeeAmount(pool, token1);
 
+        // In the first swap, the trade was exactAmountInDo => exactAmountOut (token2) + feesToken1 (token1). So, if
+        // there were no fees, trading `exactAmountInDo - feesToken1` would get exactAmountOut. Therefore, a swap
+        // with exact_out `exactAmountInDo - feesToken1` is comparable with `exactAmountOut`, given that the fees are
+        // known.
         uint256 exactAmountInUndo = router.swapSingleTokenExactOut(
             pool,
             token2,
             token1,
-            // Remove fees, so the exactAmountInUndo can be compared with `exactAmountOut + token2 fees`.
             exactAmountInDo - feesToken1,
             MAX_UINT128,
             MAX_UINT128,
@@ -449,6 +464,7 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertGe(exactAmountInUndo, exactAmountOut + feesToken2, "Amount in undo should be >= exactAmountOut");
+        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
         assertLe(
             balancesAfter.userTokens[_idxToken1],
             balancesBefore.userTokens[_idxToken1] - feesToken1,
@@ -499,11 +515,14 @@ contract E2eSwapTest is BaseVaultTest {
 
         uint256 feesToken1 = vault.getAggregateSwapFeeAmount(pool, token1);
 
+        // In the first swap, the trade was exactAmountInDo => exactAmountOut (token2) + feesToken1 (token1). So, if
+        // there were no fees, trading `exactAmountInDo - feesToken1` would get exactAmountOut. Therefore, a swap
+        // with exact_out `exactAmountInDo - feesToken1` is comparable with `exactAmountOut`, given that the fees are
+        // known.
         uint256 exactAmountInUndo = router.swapSingleTokenExactOut(
             pool,
             token2,
             token1,
-            // Remove fees, so the exactAmountInUndo can be compared with `exactAmountOut + token2 fees`.
             exactAmountInDo - feesToken1,
             MAX_UINT128,
             MAX_UINT128,
@@ -516,6 +535,7 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertGe(exactAmountInUndo, exactAmountOut + feesToken2, "Amount in undo should be >= exactAmountOut");
+        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
         assertLe(
             balancesAfter.userTokens[_idxToken1],
             balancesBefore.userTokens[_idxToken1] - feesToken1,
