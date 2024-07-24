@@ -20,6 +20,9 @@ library StableMath {
     /// @dev The iterations to calculate the balance didn't converge.
     error StableGetBalanceDidNotConverge();
 
+    // The max token count is limited by the math, and less than the Vault's maximum.
+    uint256 public constant MAX_STABLE_TOKENS = 5;
+
     uint256 internal constant MIN_AMP = 1;
     uint256 internal constant MAX_AMP = 5000;
     uint256 internal constant AMP_PRECISION = 1e3;
