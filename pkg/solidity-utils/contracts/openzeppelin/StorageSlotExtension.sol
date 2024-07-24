@@ -3,9 +3,8 @@
 pragma solidity ^0.8.24;
 
 /**
- * @dev Library for reading and writing primitive types to specific storage slots. Based on OpenZeppelin; just adding support for int256.
- *
- * TIP: Consider using this library along with {SlotDerivation}.
+ * @notice Library for reading and writing primitive types to specific storage slots. Based on OpenZeppelin; just adding support for int256.
+ * @dev TIP: Consider using this library along with {SlotDerivation}.
  */
 library StorageSlotExtension {
     struct Int256Slot {
