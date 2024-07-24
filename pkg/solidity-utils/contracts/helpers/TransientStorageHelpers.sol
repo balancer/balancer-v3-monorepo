@@ -11,6 +11,12 @@ type TokenDeltaMappingSlotType is bytes32;
 type AddressMappingSlot is bytes32;
 type AddressArraySlotType is bytes32;
 
+/**
+ * @notice Helper functions to read and write values from transient storage, including support for arrays and mappings.
+ * @dev This is temporary, based on Open Zeppelin's partially released library. When the final version is published, we
+ * should be able to remove our copies and import directly from OZ. When Solidity catches up and puts direct support
+ * for transient storage in the language, we should be able to get rid of this altogether.
+ */
 library TransientStorageHelpers {
     using SlotDerivation for *;
     using StorageSlotExtension for *;
@@ -106,7 +112,7 @@ library TransientStorageHelpers {
         lastElementSlot.tstore(address(0));
     }
 
-    // Uint256
+    // Uint256 values
 
     function tIncrement(StorageSlotExtension.Uint256SlotType slot) internal {
         slot.tstore(slot.tload() + 1);

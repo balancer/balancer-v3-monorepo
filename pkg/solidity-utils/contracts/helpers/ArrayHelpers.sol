@@ -4,6 +4,14 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+/**
+ * @notice Library of helper functions to convert fixed-sized array types to dynamic arrays.
+ * @dev For instance, the `buildTokenConfig` functions construct a `TokenConfig` from its component parts.
+ * The first argument is a dynamic array of `IERC20`, but it's convenient to start with a fixed array of strings or
+ * addresses. `[address(dai), address(usdc)].toMemoryArray().asIERC20()` casts to the correct type.
+ *
+ * This library is intended for testing purposes; it should not be used in the main codebase.
+ */
 library ArrayHelpers {
     function toMemoryArray(address[1] memory array) internal pure returns (address[] memory) {
         address[] memory ret = new address[](1);
