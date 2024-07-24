@@ -127,6 +127,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         );
 
         _checkPoolAndVaultBalancesAfterSwap(balancesBefore, balancesAfter, swapAmount);
+        _checkWithdrawals(0, hookFee);
     }
 
     function testFeeSwapExactOut__Fuzz(uint256 swapAmount, uint64 hookFeePercentage) public {
@@ -194,6 +195,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         );
 
         _checkPoolAndVaultBalancesAfterSwap(balancesBefore, balancesAfter, swapAmount);
+        _checkWithdrawals(hookFee, 0);
     }
 
     function testHookFeeAddLiquidityExactIn__Fuzz(uint256 expectedBptOut, uint64 hookFeePercentage) public {
@@ -248,6 +250,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         router.addLiquidityProportional(pool, maxAmountsIn, expectedBptOut, false, bytes(""));
 
         _checkAddLiquidityHookTestResults(balancesBefore, actualAmountsIn, expectedBptOut, hookFee);
+        _checkWithdrawals(hookFee, hookFee);
     }
 
     function testHookFeeRemoveLiquidityExactIn__Fuzz(uint256 expectedBptIn, uint64 hookFeePercentage) public {
@@ -303,6 +306,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         router.removeLiquidityProportional(pool, expectedBptIn, minAmountsOut, false, bytes(""));
 
         _checkRemoveLiquidityHookTestResults(balancesBefore, actualAmountsOut, expectedBptIn, hookFee);
+        _checkWithdrawals(hookFee, hookFee);
     }
 
     function _checkPoolAndVaultBalancesAfterSwap(
@@ -443,5 +447,19 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
             expectedHookFee,
             "Hook USDC balance is wrong"
         );
+    }
+
+    function _checkWithdrawals(uint256 daiHookFee, uint256 usdcHookFee) private {
+        (uint256 daiBefore, uint256 usdcBefore) = (dai.balanceOf(lp), usdc.balanceOf(lp));
+
+        vm.startPrank(lp);
+        FeeTakingHookExample(poolHooksContract).withdrawFees(dai);
+        FeeTakingHookExample(poolHooksContract).withdrawFees(usdc);
+        vm.stopPrank();
+
+        (uint256 daiAfter, uint256 usdcAfter) = (dai.balanceOf(lp), usdc.balanceOf(lp));
+
+        assertEq(daiAfter - daiBefore, daiHookFee, "DAI balance wrong after withdrawal");
+        assertEq(usdcAfter - usdcBefore, usdcHookFee, "USDC balance wrong after withdrawal");
     }
 }

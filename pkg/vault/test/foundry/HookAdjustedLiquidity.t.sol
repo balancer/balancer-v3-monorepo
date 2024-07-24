@@ -28,6 +28,9 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
+    // Maximum fee of 10%
+    uint64 public constant MAX_HOOK_FEE_PERCENTAGE = 10e16;
+
     uint256 private _swapAmount;
     uint256 private constant _minBptOut = 1e6;
 
@@ -175,8 +178,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     }
 
     function testHookFeeAddLiquidityLimitViolation() public {
-        // 10% fee
-        uint256 hookFeePercentage = 1e17;
+        uint256 hookFeePercentage = MAX_HOOK_FEE_PERCENTAGE;
         PoolHooksMock(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
 
         uint256 expectedBptOut = poolInitAmount / 100;
@@ -206,8 +208,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         config.enableHookAdjustedAmounts = false;
         vault.manualSetHooksConfig(pool, config);
 
-        // 10% fee
-        uint256 hookFeePercentage = 1e17;
+        uint256 hookFeePercentage = MAX_HOOK_FEE_PERCENTAGE;
         PoolHooksMock(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
 
         uint256 expectedBptOut = poolInitAmount / 100;
@@ -346,8 +347,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
             bytes("")
         );
 
-        // 10% fee
-        uint256 hookFeePercentage = 1e17;
+        uint256 hookFeePercentage = MAX_HOOK_FEE_PERCENTAGE;
         PoolHooksMock(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
 
         // 10% of Bob's liquidity
@@ -389,8 +389,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
             bytes("")
         );
 
-        // 10% fee
-        uint256 hookFeePercentage = 1e17;
+        uint256 hookFeePercentage = MAX_HOOK_FEE_PERCENTAGE;
         PoolHooksMock(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
 
         // 10% of Bob's liquidity

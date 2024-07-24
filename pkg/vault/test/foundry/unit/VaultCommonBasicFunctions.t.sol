@@ -26,8 +26,8 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
 
     // The balance and live balance are stored in the same bytes32 word, each uses 128 bits
     uint256 private constant _MAX_RAW_BALANCE = 2 ** 128 - 1;
-    uint256 private constant MAX_TEST_SWAP_FEE = 1e17;
-    uint256 private constant MIN_TEST_SWAP_FEE = 1e10;
+    uint256 private constant MAX_TEST_SWAP_FEE = 10e16; // 10%
+    uint256 private constant MIN_TEST_SWAP_FEE = 1e10; // 0.0001%
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
