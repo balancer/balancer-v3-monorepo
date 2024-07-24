@@ -4,9 +4,11 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -92,7 +94,7 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
             ZERO_BYTES32
         );
 
-        // Initialize pool
+        // Initialize pool.
         vm.prank(lp);
         router.initialize(weightedPool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
 
