@@ -5,33 +5,23 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { TokenConfig, PoolConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
-
-import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
-import { PoolConfigBits } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
+import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 
-import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-
 contract BigWeightedPoolTest is BaseVaultTest {
-    using ArrayHelpers for *;
     using FixedPoint for uint256;
 
     uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
@@ -67,7 +57,7 @@ contract BigWeightedPoolTest is BaseVaultTest {
         initAmounts = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            // Use all 18-decimal tokens, for simplicity
+            // Use all 18-decimal tokens, for simplicity.
             bigPoolTokens[i] = createERC20(string.concat("TKN", Strings.toString(i)), 18);
             ERC20TestToken(address(bigPoolTokens[i])).mint(lp, TOKEN_AMOUNT);
             ERC20TestToken(address(bigPoolTokens[i])).mint(bob, TOKEN_AMOUNT);
@@ -75,7 +65,7 @@ contract BigWeightedPoolTest is BaseVaultTest {
             initAmounts[i] = TOKEN_AMOUNT;
         }
 
-        // Allow pools created by `factory` to use poolHooksMock hooks
+        // Allow pools created by `factory` to use PoolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
         WeightedPool newPool = WeightedPool(
@@ -131,7 +121,7 @@ contract BigWeightedPoolTest is BaseVaultTest {
         bptAmountOut = _initPool(
             pool,
             initAmounts,
-            // Account for the precision loss
+            // Account for the precision loss.
             TOKEN_AMOUNT - DELTA
         );
         vm.stopPrank();
@@ -281,7 +271,7 @@ contract BigWeightedPoolTest is BaseVaultTest {
         }
 
         // should burn correct amount of BPT tokens
-        assertEq(weightedPool.balanceOf(bob), 0, "LP: Wrong BPT balance");
+        assertEq(weightedPool.balanceOf(bob), 0, "LP: Non-zero BPT balance");
         assertEq(bobBptBalance, bptAmountIn, "LP: Wrong bptAmountIn");
     }
 
