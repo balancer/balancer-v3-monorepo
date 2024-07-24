@@ -15,10 +15,18 @@ import { WeightedPool } from "./WeightedPool.sol";
 
 /**
  * @notice Weighted Pool factory for 80/20 pools.
+ * @dev These are standard Weighted Pools, but constrained to two tokens and 80/20 weights, greatly simplifying their
+ * configuration. This is an example of a customized factory, designed to deploy special-purpose pools.
+ *
+ * It does not allow hooks, and has a custom salt computation that does not consider the deployer address.
+ *
+ * See https://medium.com/balancer-protocol/the-8020-initiative-64a7a6cab976 for one use case, and
+ * https://medium.com/balancer-protocol/80-20-balancer-pools-ad7fed816c8d for a general discussion of the benefits of
+ * 80/20 pools.
  */
 contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
-    uint256 private constant _EIGHTY = 8e17; // 80%
-    uint256 private constant _TWENTY = 2e17; // 20%
+    uint256 private constant _EIGHTY = 80e16; // 80%
+    uint256 private constant _TWENTY = 20e16; // 20%
 
     string private _poolVersion;
 
@@ -77,7 +85,7 @@ contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
                 WeightedPool.NewPoolParams({
                     name: string.concat("Balancer 80 ", highWeightTokenSymbol, " 20 ", lowWeightTokenSymbol),
                     symbol: string.concat("B-80", highWeightTokenSymbol, "-20", lowWeightTokenSymbol),
-                    numTokens: tokenConfig.length,
+                    numTokens: 2,
                     normalizedWeights: weights,
                     version: _poolVersion
                 }),
@@ -86,7 +94,7 @@ contract WeightedPool8020Factory is IPoolVersion, BasePoolFactory, Version {
             _calculateSalt(highWeightToken, lowWeightToken)
         );
 
-        // Using empty pool hooks for standard 80/20 pool
+        // Using empty pool hooks for standard 80/20 pool.
         _registerPoolWithVault(
             pool,
             tokenConfig,
