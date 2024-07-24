@@ -20,6 +20,9 @@ contract ExitFeeHookExampleStablePoolTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
+    // Maximum exit fee of 10%
+    uint64 public constant MAX_EXIT_FEE_PERCENTAGE = 10e16;
+
     StablePoolFactory internal stablePoolFactory;
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
 
@@ -48,7 +51,7 @@ contract ExitFeeHookExampleStablePoolTest is BaseVaultTest {
             vault.buildTokenConfig(tokens.asIERC20()),
             DEFAULT_AMP_FACTOR,
             roleAccounts,
-            1e17,
+            MAX_EXIT_FEE_PERCENTAGE,
             address(0),
             true, // supports donation
             true, // does not support unbalanced add/remove liquidity
@@ -61,10 +64,8 @@ contract ExitFeeHookExampleStablePoolTest is BaseVaultTest {
 
     // Exit fee returns to LPs.
     function testExitFeeReturnToLPs() public {
-        // 10% exit fee.
-        uint64 exitFeePercentage = 1e17;
         vm.prank(lp);
-        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(exitFeePercentage);
+        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(MAX_EXIT_FEE_PERCENTAGE);
         uint256 amountOut = poolInitAmount / 100;
         uint256[] memory minAmountsOut = [uint256(0), uint256(0)].toMemoryArray();
 

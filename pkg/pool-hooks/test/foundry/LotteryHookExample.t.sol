@@ -27,6 +27,9 @@ contract LotteryHookExampleTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
+    // Maximum swap fee of 10%
+    uint64 public constant MAX_SWAP_FEE_PERCENTAGE = 10e16;
+
     uint256 private constant _minSwapAmount = 1e6;
     uint256 private constant _minBptOut = 1e6;
 
@@ -226,11 +229,9 @@ contract LotteryHookExampleTest is BaseVaultTest {
     {
         swapAmount = poolInitAmount / 100;
 
-        // 10% fee
-        uint64 hookFeePercentage = 1e17;
         vm.prank(lp);
-        LotteryHookExample(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
-        uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
+        LotteryHookExample(poolHooksContract).setHookSwapFeePercentage(MAX_SWAP_FEE_PERCENTAGE);
+        uint256 hookFee = swapAmount.mulDown(MAX_SWAP_FEE_PERCENTAGE);
 
         balancesBefore = getBalances(bob);
 

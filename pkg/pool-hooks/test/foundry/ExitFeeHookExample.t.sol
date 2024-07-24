@@ -29,7 +29,7 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
     uint256 internal usdcIdx;
 
     // 10% exit fee
-    uint64 exitFeePercentage = 1e17;
+    uint64 exitFeePercentage = 10e16;
 
     function setUp() public override {
         super.setUp();

@@ -31,6 +31,9 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
+    // Maximum swap fee of 10%
+    uint64 public constant MAX_SWAP_FEE_PERCENTAGE = 10e16;
+
     address payable internal trustedRouter;
 
     function setUp() public override {
@@ -140,8 +143,8 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
     }
 
     function _doSwapAndCheckBalances(address payable routerToUse) private {
-        // 10% swap fee. Since the Vault has no swap fee, the fee will stay in the pool.
-        uint256 swapFeePercentage = 1e17;
+        // Since the Vault has no swap fee, the fee will stay in the pool.
+        uint256 swapFeePercentage = MAX_SWAP_FEE_PERCENTAGE;
 
         vm.prank(lp);
         vault.setStaticSwapFeePercentage(pool, swapFeePercentage);

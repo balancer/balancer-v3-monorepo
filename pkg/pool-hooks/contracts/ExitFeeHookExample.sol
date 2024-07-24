@@ -43,7 +43,7 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
     uint64 public exitFeePercentage;
 
     // Maximum exit fee of 10%
-    uint64 public constant MAX_EXIT_FEE_PERCENTAGE = 1e17;
+    uint64 public constant MAX_EXIT_FEE_PERCENTAGE = 10e16;
 
     /**
      * @dev The exit fee cannot exceed the maximum allowed percentage.
