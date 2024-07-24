@@ -106,7 +106,7 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
         return
             WeightedMath.computeBalanceOutGivenInvariant(
                 balancesLiveScaled18[tokenInIndex],
-                _getNormalizedWeights()[tokenInIndex],
+                _getNormalizedWeight(tokenInIndex),
                 invariantRatio
             );
     }
