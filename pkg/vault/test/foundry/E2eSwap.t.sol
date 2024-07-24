@@ -354,6 +354,62 @@ contract E2eSwapTest is BaseVaultTest {
         );
     }
 
+    function testDoExactOutUndoExactOutLiquidity__Fuzz(uint256 liquidityToken1, uint256 liquidityToken2) public {
+        liquidityToken1 = bound(liquidityToken1, poolInitAmount / 10, 10 * poolInitAmount);
+        liquidityToken2 = bound(liquidityToken2, poolInitAmount / 10, 10 * poolInitAmount);
+
+        // 25% of token1 or token2 liquidity, the lowest value, to make sure the swap is executed.
+        uint256 exactAmountOut = (liquidityToken1 > liquidityToken2 ? liquidityToken2 : liquidityToken1) / 4;
+
+        // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
+        vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
+
+        // Set liquidity of pool.
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
+        uint256[] memory newPoolBalance = [liquidityToken1, liquidityToken2].toMemoryArray();
+        vault.manualSetPoolTokensAndBalances(pool, tokens, newPoolBalance, newPoolBalance);
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
+
+        vm.startPrank(sender);
+        uint256 exactAmountInDo = router.swapSingleTokenExactOut(
+            pool,
+            token1,
+            token2,
+            exactAmountOut,
+            MAX_UINT128,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+
+        uint256 exactAmountInUndo = router.swapSingleTokenExactOut(
+            pool,
+            token2,
+            token1,
+            exactAmountInDo,
+            MAX_UINT128,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
+
+        assertGe(exactAmountInUndo, exactAmountOut, "Amount in undo should be >= exactAmountOut");
+        assertLe(
+            balancesAfter.userTokens[_idxToken1],
+            balancesBefore.userTokens[_idxToken1],
+            "Wrong sender token1 balance"
+        );
+        assertLe(
+            balancesAfter.userTokens[_idxToken2],
+            balancesBefore.userTokens[_idxToken2],
+            "Wrong sender token2 balance"
+        );
+    }
+
     function testDoExactOutUndoExactOutVariableFees__Fuzz(uint256 poolSwapFeePercentage) public {
         uint256 exactAmountOut = maxSwapAmountToken2;
         poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
@@ -405,14 +461,27 @@ contract E2eSwapTest is BaseVaultTest {
         );
     }
 
-    function testDoExactOutUndoExactOutVariableFeesAndAmountOut__Fuzz(
+    function testDoExactOutUndoExactOutVariableFeesAmountOutAndLiquidity__Fuzz(
         uint256 exactAmountOut,
-        uint256 poolSwapFeePercentage
+        uint256 poolSwapFeePercentage,
+        uint256 liquidityToken1,
+        uint256 liquidityToken2
     ) public {
-        exactAmountOut = bound(exactAmountOut, minSwapAmountToken2, maxSwapAmountToken2);
+        liquidityToken1 = bound(liquidityToken1, poolInitAmount / 10, 10 * poolInitAmount);
+        liquidityToken2 = bound(liquidityToken2, poolInitAmount / 10, 10 * poolInitAmount);
+
+        // 25% of token1 or token2 liquidity, the lowest value, to make sure the swap is executed.
+        uint256 maxAmountOut = (liquidityToken1 > liquidityToken2 ? liquidityToken2 : liquidityToken1) / 4;
+
+        exactAmountOut = bound(exactAmountOut, minSwapAmountToken2, maxAmountOut);
         poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
 
         vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
+
+        // Set liquidity of pool.
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
+        uint256[] memory newPoolBalance = [liquidityToken1, liquidityToken2].toMemoryArray();
+        vault.manualSetPoolTokensAndBalances(pool, tokens, newPoolBalance, newPoolBalance);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
 
