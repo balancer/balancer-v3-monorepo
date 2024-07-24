@@ -23,6 +23,9 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
+    // Maximum swap fee of 10%
+    uint64 public constant MAX_SWAP_FEE_PERCENTAGE = 10e16;
+
     WeightedPoolFactory internal weightedPoolFactory;
 
     function setUp() public override {
@@ -87,7 +90,7 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
             vault.buildTokenConfig(tokens),
             weights,
             roleAccounts,
-            1e17,
+            MAX_SWAP_FEE_PERCENTAGE,
             address(0),
             supportsDonation,
             false, // Do not disable unbalanced add/remove liquidity
