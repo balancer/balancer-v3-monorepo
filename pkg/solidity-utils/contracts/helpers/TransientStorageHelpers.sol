@@ -16,6 +16,8 @@ type AddressArraySlotType is bytes32;
  * @dev This is temporary, based on Open Zeppelin's partially released library. When the final version is published, we
  * should be able to remove our copies and import directly from OZ. When Solidity catches up and puts direct support
  * for transient storage in the language, we should be able to get rid of this altogether.
+ *
+ * This only works on networks where EIP-1153 is supported.
  */
 library TransientStorageHelpers {
     using SlotDerivation for *;
