@@ -203,8 +203,8 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
         removeLiquidityHookFeePercentage = hookFeePercentage;
     }
 
-    /// @notice Withdraws the accumulated fees. This function must be permissioned.
-    function withdrawFees(IERC20 feeToken) external onlyOwner {
+    /// @notice Withdraws the accumulated fees and sends them to the owner.
+    function withdrawFees(IERC20 feeToken) external {
         feeToken.safeTransfer(owner(), feeToken.balanceOf(address(this)));
     }
 }
