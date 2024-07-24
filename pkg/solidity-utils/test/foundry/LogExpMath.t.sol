@@ -6,7 +6,6 @@ import "forge-std/Test.sol";
 
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-import "../../contracts/math/LogExpMath.sol";
 import "../../contracts/test/LogExpMathMock.sol";
 
 contract LogExpMathTest is Test {
