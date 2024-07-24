@@ -5,32 +5,23 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import {
-    HooksConfig,
-    LiquidityManagement,
-    PoolConfig,
-    PoolRoleAccounts,
-    TokenConfig
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
-import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 
 import { ExitFeeHookExample } from "../../contracts/ExitFeeHookExample.sol";
 
 contract ExitFeeHookExampleWeightedPoolTest is BaseVaultTest {
-    using FixedPoint for uint256;
     using ArrayHelpers for *;
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
+
+    // Maximum exit fee of 10%
+    uint64 public constant MAX_EXIT_FEE_PERCENTAGE = 10e16;
 
     WeightedPoolFactory internal weightedPoolFactory;
     uint256[] internal weights;
@@ -62,7 +53,7 @@ contract ExitFeeHookExampleWeightedPoolTest is BaseVaultTest {
             vault.buildTokenConfig(tokens.asIERC20()),
             weights,
             roleAccounts,
-            1e17,
+            MAX_EXIT_FEE_PERCENTAGE,
             address(0),
             true, // supports donation
             true, // does not support unbalanced add/remove liquidity
@@ -75,10 +66,8 @@ contract ExitFeeHookExampleWeightedPoolTest is BaseVaultTest {
 
     // Exit fee returns to LPs.
     function testExitFeeReturnToLPs() public {
-        // 10% exit fee.
-        uint64 exitFeePercentage = 1e17;
         vm.prank(lp);
-        ExitFeeHookExample(poolHooksContract).setRemoveLiquidityHookFeePercentage(exitFeePercentage);
+        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(MAX_EXIT_FEE_PERCENTAGE);
         uint256 amountOut = poolInitAmount / 100;
         uint256[] memory minAmountsOut = [uint256(0), uint256(0)].toMemoryArray();
 
