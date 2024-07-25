@@ -1120,15 +1120,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         if (kind == SwapKind.EXACT_IN) {
             if (isQueryContext) {
-                amountOutWrapped = wrappedToken.previewDeposit(amountGiven);
-                return (amountGiven, amountOutWrapped);
+                return (amountGiven, wrappedToken.previewDeposit(amountGiven));
             }
             // EXACT_IN wrap, so AmountGiven is underlying amount.
             (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.convertToShares(amountGiven));
         } else {
             if (isQueryContext) {
-                amountInUnderlying = wrappedToken.previewMint(amountGiven);
-                return (amountInUnderlying, amountGiven);
+                return (wrappedToken.previewMint(amountGiven), amountGiven);
             }
             // EXACT_OUT wrap, so AmountGiven is wrapped amount.
             (amountInUnderlying, amountOutWrapped) = (wrappedToken.convertToAssets(amountGiven), amountGiven);
