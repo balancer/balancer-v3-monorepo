@@ -132,38 +132,15 @@ contract BigWeightedPoolTest is BasePoolTest {
         vm.stopPrank();
     }
 
-    // function testGetBptRate() public {
-    //     uint256 totalSupply = bptAmountOut + MIN_BPT;
-    //     uint256[] memory balances = new uint256[](numTokens);
-    //     for (uint256 i = 0; i < numTokens; ++i) {
-    //         balances[i] = TOKEN_AMOUNT;
-    //     }
+    function testGetBptRate() public {
+        uint256[] memory amountsIn = new uint256[](poolTokens.length);
+        amountsIn[0] = TOKEN_AMOUNT;
 
-    //     uint256 weightedInvariant = WeightedMath.computeInvariant(weights, balances);
-    //     uint256 expectedRate = weightedInvariant.divDown(totalSupply);
-    //     uint256 actualRate = IRateProvider(address(pool)).getRate();
-    //     assertEq(actualRate, expectedRate, "Wrong rate");
+        uint256 invariantBefore = WeightedMath.computeInvariant(weights, tokenAmounts);
 
-    //     // Send in only one token
-    //     uint256[] memory amountsIn = new uint256[](numTokens);
-    //     amountsIn[0] = TOKEN_AMOUNT;
+        tokenAmounts[0] += TOKEN_AMOUNT;
+        uint256 invariantAfter = WeightedMath.computeInvariant(weights, tokenAmounts);
 
-    //     vm.prank(bob);
-    //     uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(
-    //         address(weightedPool),
-    //         amountsIn,
-    //         0,
-    //         false,
-    //         bytes("")
-    //     );
-
-    //     totalSupply += addLiquidityBptAmountOut;
-    //     balances[0] += TOKEN_AMOUNT;
-
-    //     weightedInvariant = WeightedMath.computeInvariant(weights, balances);
-
-    //     expectedRate = weightedInvariant.divDown(totalSupply);
-    //     actualRate = IRateProvider(address(pool)).getRate();
-    //     assertEq(actualRate, expectedRate, "Wrong rate after addLiquidity");
-    // }
+        _testGetBptRate(invariantBefore, invariantAfter, amountsIn);
+    }
 }
