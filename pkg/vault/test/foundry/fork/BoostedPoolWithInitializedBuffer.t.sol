@@ -9,17 +9,12 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { TokenConfig, TokenType, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
-import { RouterCommon } from "../../../contracts/RouterCommon.sol";
 import { ERC4626RateProvider } from "../../../contracts/test/ERC4626RateProvider.sol";
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
@@ -28,7 +23,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
-    // Using older block number because convertToAssets function is bricked in the new version of the aToken wrapper
+    // Using older block number because convertToAssets function is bricked in the new version of the aToken wrapper.
     uint256 constant BLOCK_NUMBER = 17965150;
 
     address constant aDAI_ADDRESS = 0x098256c06ab24F5655C5506A6488781BD711c14b;
@@ -37,7 +32,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
     address constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
     uint256 constant USDC_FACTOR = 1e12;
-    // When converting from DAI to USDC, we get rounding errors on exact outs (1 unit of USDC is 1e12 units of DAI)
+    // When converting from DAI to USDC, we get rounding errors on exact outs (1 unit of USDC is 1e12 units of DAI).
     uint256 constant DAI_TO_USDC_FACTOR = USDC_FACTOR * 2;
 
     // Owner of DAI and USDC in Mainnet
@@ -56,11 +51,11 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
     address internal boostedPool;
 
-    // The boosted pool will have 100x the liquidity of the buffer
+    // The boosted pool will have 100x the liquidity of the buffer.
     uint256 internal boostedPoolAmount = 1e6 * 1e18;
     uint256 internal bufferAmount = boostedPoolAmount / 100;
     uint256 internal tooLargeSwapAmount = boostedPoolAmount / 2;
-    // We will swap with 10% of the buffer
+    // We will swap with 10% of the buffer.
     uint256 internal swapAmount = bufferAmount / 10;
 
     function setUp() public virtual override {
@@ -139,7 +134,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
         assertEq(balancesRaw[waDaiIdx], boostedAmountDai, "Wrong boosted pool balance [waDaiIdx]");
         assertEq(balancesRaw[waUsdcIdx], boostedAmountUSDC, "Wrong boosted pool balance [waUsdcIdx]");
 
-        // LP should have correct amount of shares from buffer (invested amount in underlying minus burned ""BPTs)
+        // LP should have correct amount of shares from buffer (invested amount in underlying minus burned ""BPTs).
         assertApproxEqAbs(
             vault.getBufferOwnerShares(IERC20(waDAI), lp),
             bufferAmount * 2 - MIN_BPT,
@@ -153,7 +148,7 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
             "Wrong share of waUSDC buffer belonging to LP"
         );
 
-        // Buffer should have the correct amount of issued shares
+        // Buffer should have the correct amount of issued shares.
         assertApproxEqAbs(
             vault.getBufferTotalShares(IERC20(waDAI)),
             bufferAmount * 2,
@@ -221,9 +216,10 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
         // EXACT_IN DAI -> USDC does not introduce rounding issues, since the resulting amountOut is divided by 1e12
         // to get the correct amount of USDC to return.
+        //
         // However, EXACT_OUT DAI -> USDC has rounding issues, because amount out is given in 6 digits, and we want an
         // 18 decimals amount in, which is not precisely calculated. The calculation below reproduces what happens in
-        // the vault to scale tokens in the swap operation of the boosted pool
+        // the vault to scale tokens in the swap operation of the boosted pool.
         uint256 expectedWrappedTokenOutUsdc = waUSDC.convertToShares(swapAmount / USDC_FACTOR);
         uint256 expectedScaled18WrappedTokenOutUsdc = FixedPoint.mulDown(
             expectedWrappedTokenOutUsdc * USDC_FACTOR,
@@ -279,9 +275,10 @@ contract BoostedPoolWithInitializedBufferTest is BaseVaultTest {
 
         // EXACT_IN DAI -> USDC does not introduce rounding issues, since the resulting amountOut is divided by 1e12
         // to get the correct amount of USDC to return.
+        //
         // However, EXACT_OUT DAI -> USDC has rounding issues, because amount out is given in 6 digits, and we want an
         // 18 decimals amount in, which is not precisely calculated. The calculation below reproduces what happens in
-        // the vault to scale tokens in the swap operation of the boosted pool
+        // the vault to scale tokens in the swap operation of the boosted pool.
         uint256 expectedWrappedTokenOutUsdc = waUSDC.previewWithdraw(tooLargeSwapAmount / USDC_FACTOR);
         uint256 expectedScaled18WrappedTokenOutUsdc = FixedPoint.mulDown(
             expectedWrappedTokenOutUsdc * USDC_FACTOR,
