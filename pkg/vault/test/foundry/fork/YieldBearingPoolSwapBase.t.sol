@@ -671,7 +671,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         if (vars.kind == SwapKind.EXACT_IN) {
             // Rounding issues occurs in favor of vault.
             assertLe(paths[0], vars.expectedDeltaTokenOut, "paths AmountOut must be <= expected amountOut");
-            assertLe(paths[0], vars.expectedDeltaTokenOut, "amounts AmountOut must be <= expected amountOut");
+            assertLe(amounts[0], vars.expectedDeltaTokenOut, "amounts AmountOut must be <= expected amountOut");
 
             // Rounding issues are very small.
             assertApproxEqAbs(paths[0], vars.expectedDeltaTokenOut, 2, "Wrong path count");
