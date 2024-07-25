@@ -22,6 +22,11 @@ import {
 
 import { RouterCommon } from "./RouterCommon.sol";
 
+/**
+ * @notice Entrypoint for swaps, liquidity operations, and corresponding queries.
+ * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
+ * These interact with the Vault, transfer tokens, settle accounting, and handle wrapping and unwrapping ETH.
+ */
 contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
     using Address for address payable;
@@ -672,9 +677,9 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
      * @param sharesOwner Address of contract that will own the deposited liquidity. Only
-     *        this contract will be able to remove liquidity from the buffer
+     * this contract will be able to remove liquidity from the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts
-     *         (it is the BPT of vault's internal linear pools)
+     * (it is the BPT of vault's internal linear pools)
      */
     function addLiquidityToBufferHook(
         IERC4626 wrappedToken,
@@ -711,7 +716,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @dev Can only be called by the Vault.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
-     *        total shares
+     * total shares
      * @param sharesOwner Address of contract that owns the deposited liquidity.
      * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
      * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
@@ -746,8 +751,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeWithSelector(
                     Router.queryAddLiquidityHook.selector,
                     AddLiquidityHookParams({
-                        // we use router as a sender to simplify basic query functions
-                        // but it is possible to add liquidity to any recipient
+                        // We use the Router as a sender to simplify basic query functions,
+                        // but it is possible to add liquidity to any recipient.
                         sender: address(this),
                         pool: pool,
                         maxAmountsIn: maxAmountsIn,
@@ -773,8 +778,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeWithSelector(
                     Router.queryAddLiquidityHook.selector,
                     AddLiquidityHookParams({
-                        // we use router as a sender to simplify basic query functions
-                        // but it is possible to add liquidity to any recipient
+                        // We use the Router as a sender to simplify basic query functions,
+                        // but it is possible to add liquidity to any recipient.
                         sender: address(this),
                         pool: pool,
                         maxAmountsIn: exactAmountsIn,
@@ -807,8 +812,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeWithSelector(
                     Router.queryAddLiquidityHook.selector,
                     AddLiquidityHookParams({
-                        // we use router as a sender to simplify basic query functions
-                        // but it is possible to add liquidity to any recipient
+                        // We use the Router as a sender to simplify basic query functions,
+                        // but it is possible to add liquidity to any recipient.
                         sender: address(this),
                         pool: pool,
                         maxAmountsIn: maxAmountsIn,
@@ -838,8 +843,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                     abi.encodeWithSelector(
                         Router.queryAddLiquidityHook.selector,
                         AddLiquidityHookParams({
-                            // we use router as a sender to simplify basic query functions
-                            // but it is possible to add liquidity to any recipient
+                            // We use the Router as a sender to simplify basic query functions,
+                            // but it is possible to add liquidity to any recipient.
                             sender: address(this),
                             pool: pool,
                             maxAmountsIn: maxAmountsIn,
@@ -889,8 +894,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeWithSelector(
                     Router.queryRemoveLiquidityHook.selector,
                     RemoveLiquidityHookParams({
-                        // We use router as a sender to simplify basic query functions
-                        // but it is possible to remove liquidity from any sender
+                        // We use the Router as a sender to simplify basic query functions,
+                        // but it is possible to remove liquidity from any sender.
                         sender: address(this),
                         pool: pool,
                         minAmountsOut: minAmountsOut,
@@ -912,7 +917,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         IERC20 tokenOut,
         bytes memory userData
     ) external saveSender returns (uint256 amountOut) {
-        // We cannot use 0 as min amount out, as the value is used to figure out the token index.
+        // We cannot use 0 as min amount out, as this value is used to figure out the token index.
         (uint256[] memory minAmountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, 1);
 
         (, uint256[] memory amountsOut, ) = abi.decode(
@@ -920,8 +925,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeWithSelector(
                     Router.queryRemoveLiquidityHook.selector,
                     RemoveLiquidityHookParams({
-                        // We use router as a sender to simplify basic query functions
-                        // but it is possible to remove liquidity from any sender
+                        // We use the Router as a sender to simplify basic query functions,
+                        // but it is possible to remove liquidity from any sender.
                         sender: address(this),
                         pool: pool,
                         minAmountsOut: minAmountsOut,
@@ -952,8 +957,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeWithSelector(
                     Router.queryRemoveLiquidityHook.selector,
                     RemoveLiquidityHookParams({
-                        // We use router as a sender to simplify basic query functions
-                        // but it is possible to remove liquidity from any sender
+                        // We use the Router as a sender to simplify basic query functions,
+                        // but it is possible to remove liquidity from any sender.
                         sender: address(this),
                         pool: pool,
                         minAmountsOut: minAmountsOut,
@@ -983,8 +988,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                     abi.encodeWithSelector(
                         Router.queryRemoveLiquidityHook.selector,
                         RemoveLiquidityHookParams({
-                            // We use router as a sender to simplify basic query functions
-                            // but it is possible to remove liquidity from any sender
+                            // We use the Router as a sender to simplify basic query functions,
+                            // but it is possible to remove liquidity from any sender.
                             sender: address(this),
                             pool: pool,
                             minAmountsOut: minAmountsOut,

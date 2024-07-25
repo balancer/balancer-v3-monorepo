@@ -7,7 +7,6 @@ import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol"
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import {
     AddLiquidityKind,
-    HooksConfig,
     HookFlags,
     LiquidityManagement,
     RemoveLiquidityKind,
@@ -17,9 +16,10 @@ import {
 import { VaultGuard } from "./VaultGuard.sol";
 
 /**
- * @dev Pools that only implement a subset of callbacks can inherit from here instead of IHooks,
- * and only override what they need. `VaultGuard` allows use of the `onlyVault` modifier, which
- * isn't used in this abstract contract, but should be used in real derived hook contracts.
+ * @notice Base for pool hooks contracts.
+ * @dev Hook contracts that only implement a subset of callbacks can inherit from here instead of IHooks,
+ * and only override what they need. `VaultGuard` allows use of the `onlyVault` modifier, which isn't used
+ * in this abstract contract, but should be used in real derived hook contracts.
  */
 abstract contract BaseHooks is IHooks, VaultGuard {
     constructor(IVault vault) VaultGuard(vault) {

@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
@@ -32,6 +31,12 @@ struct SwapStepLocals {
     bool isLastStep;
 }
 
+/**
+ * @notice Entrypoint for batch swaps, and batch swap queries.
+ * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
+ * These interpret the steps and paths in the input data, perform token accounting (in transient storage, to save gas),
+ * settle with the Vault, and handle wrapping and unwrapping ETH.
+ */
 contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, ReentrancyGuardTransient {
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
