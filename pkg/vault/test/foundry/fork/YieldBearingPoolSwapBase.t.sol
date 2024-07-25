@@ -955,15 +955,11 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         vm.startPrank(donorToken1);
         // Donate token1 (underlying) to LP.
         _token1Fork.transfer(lp, 100 * _token1BufferInitAmount);
-        // Donate to vault, so it has enough tokens to wrap and do not preview.
-        _token1Fork.transfer(address(vault), _token1YieldBearingPoolInitAmount);
         vm.stopPrank();
 
         vm.startPrank(donorToken2);
         // Donate token2 (underlying) to LP.
         _token2Fork.transfer(lp, 100 * _token2BufferInitAmount);
-        // Donate to vault, so it has enough tokens to wrap and do not preview.
-        _token2Fork.transfer(address(vault), _token2YieldBearingPoolInitAmount);
         vm.stopPrank();
 
         vm.startPrank(lp);
