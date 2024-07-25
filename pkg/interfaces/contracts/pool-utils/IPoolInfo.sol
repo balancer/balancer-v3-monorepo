@@ -47,10 +47,8 @@ interface IPoolInfo {
 
     /**
      * @notice Get the aggregate swap and yield fees for a pool.
-     * @dev There are determined by the current protocol and pool creator fees, set by the `ProtocolFeeController`.
-     * @return aggregateSwapFeePercentage The aggregate percentage fee applied to swaps (including
-     * unbalanced liquidity operations).
-     *
+     * @dev These are determined by the current protocol and pool creator fees, set in the `ProtocolFeeController`.
+     * @return aggregateSwapFeePercentage The aggregate percentage fee applied to swaps
      * @return aggregateYieldFeePercentage The aggregate percentage fee applied to yield
      */
     function getAggregateFeePercentages()
