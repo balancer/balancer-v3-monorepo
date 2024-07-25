@@ -15,7 +15,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
-import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.t.sol";
+import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
@@ -33,18 +33,19 @@ contract StablePoolTest is BasePoolTest {
     }
 
     function createPool() internal override returns (address) {
-        poolTokens.push(dai);
-        tokenAmounts.push(TOKEN_AMOUNT);
-
-        poolTokens.push(usdc);
-        tokenAmounts.push(TOKEN_AMOUNT);
-
         factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
-        TokenConfig[] memory tokens = new TokenConfig[](2);
-        PoolRoleAccounts memory roleAccounts;
-        tokens[0].token = IERC20(dai);
-        tokens[1].token = IERC20(usdc);
+        TokenConfig[] memory tokenConfigs = new TokenConfig[](2);
 
+        IERC20[] memory sortedTokens = InputHelpers.sortTokens(
+            [address(dai), address(usdc)].toMemoryArray().asIERC20()
+        );
+        for (uint256 i = 0; i < sortedTokens.length; i++) {
+            poolTokens.push(sortedTokens[i]);
+            tokenAmounts.push(TOKEN_AMOUNT);
+            tokenConfigs[i].token = sortedTokens[i];
+        }
+
+        PoolRoleAccounts memory roleAccounts;
         // Allow pools created by `factory` to use poolHooksMock hooks
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
@@ -53,7 +54,7 @@ contract StablePoolTest is BasePoolTest {
                 StablePoolFactory(address(factory)).create(
                     "ERC20 Pool",
                     "ERC20POOL",
-                    inputHelpersMock.sortTokenConfig(tokens),
+                    tokenConfigs,
                     DEFAULT_AMP_FACTOR,
                     roleAccounts,
                     MIN_SWAP_FEE,
@@ -71,7 +72,7 @@ contract StablePoolTest is BasePoolTest {
         vm.prank(lp);
         bptAmountOut = router.initialize(
             pool,
-            InputHelpers.sortTokens(poolTokens),
+            poolTokens,
             tokenAmounts,
             // Account for the precision loss
             expectedAddLiquidityBptAmountOut - BasePoolTest.DELTA - 1e6,
