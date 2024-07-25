@@ -1071,7 +1071,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
 
         if (params.direction == WrappingDirection.UNWRAP) {
-            (amountCalculatedRaw, amountInRaw, amountOutRaw) = _unwrapWithBuffer(
+            (amountInRaw, amountOutRaw) = _unwrapWithBuffer(
                 params.kind,
                 underlyingToken,
                 params.wrappedToken,
@@ -1079,7 +1079,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             );
             emit Unwrap(params.wrappedToken, underlyingToken, amountInRaw, amountOutRaw);
         } else {
-            (amountCalculatedRaw, amountInRaw, amountOutRaw) = _wrapWithBuffer(
+            (amountInRaw, amountOutRaw) = _wrapWithBuffer(
                 params.kind,
                 underlyingToken,
                 params.wrappedToken,
@@ -1088,12 +1088,16 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             emit Wrap(underlyingToken, params.wrappedToken, amountInRaw, amountOutRaw);
         }
 
-        if (params.kind == SwapKind.EXACT_IN && amountOutRaw < params.limitRaw) {
-            revert SwapLimit(amountOutRaw, params.limitRaw);
-        }
-
-        if (params.kind == SwapKind.EXACT_OUT && amountInRaw > params.limitRaw) {
-            revert SwapLimit(amountInRaw, params.limitRaw);
+        if (params.kind == SwapKind.EXACT_IN) {
+            if (amountOutRaw < params.limitRaw) {
+                revert SwapLimit(amountOutRaw, params.limitRaw);
+            }
+            amountCalculatedRaw = amountOutRaw;
+        } else {
+            if (amountInRaw > params.limitRaw) {
+                revert SwapLimit(amountInRaw, params.limitRaw);
+            }
+            amountCalculatedRaw = amountInRaw;
         }
     }
 
@@ -1109,7 +1113,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGiven
-    ) private returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped) {
+    ) private returns (uint256 amountInUnderlying, uint256 amountOutWrapped) {
         // When wrapping and in query mode, the vault needs to have enough reserves of underlying token to do the
         // wrap operation. If the vault does not have enough tokens to do the actual wrap, use ERC4626 preview.
         bool isQueryContext = _isQueryContext();
@@ -1117,19 +1121,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (kind == SwapKind.EXACT_IN) {
             if (isQueryContext) {
                 amountOutWrapped = wrappedToken.previewDeposit(amountGiven);
-                return (amountOutWrapped, amountGiven, amountOutWrapped);
+                return (amountGiven, amountOutWrapped);
             }
             // EXACT_IN wrap, so AmountGiven is underlying amount.
-            amountCalculated = wrappedToken.convertToShares(amountGiven);
-            (amountInUnderlying, amountOutWrapped) = (amountGiven, amountCalculated);
+            (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.convertToShares(amountGiven));
         } else {
             if (isQueryContext) {
                 amountInUnderlying = wrappedToken.previewMint(amountGiven);
-                return (amountInUnderlying, amountInUnderlying, amountGiven);
+                return (amountInUnderlying, amountGiven);
             }
             // EXACT_OUT wrap, so AmountGiven is wrapped amount.
-            amountCalculated = wrappedToken.convertToAssets(amountGiven);
-            (amountInUnderlying, amountOutWrapped) = (amountCalculated, amountGiven);
+            (amountInUnderlying, amountOutWrapped) = (wrappedToken.convertToAssets(amountGiven), amountGiven);
         }
 
         bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
@@ -1258,25 +1260,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC20 underlyingToken,
         IERC4626 wrappedToken,
         uint256 amountGiven
-    ) private returns (uint256 amountCalculated, uint256 amountInWrapped, uint256 amountOutUnderlying) {
+    ) private returns (uint256 amountInWrapped, uint256 amountOutUnderlying) {
         bool isQueryContext = _isQueryContext();
 
         if (kind == SwapKind.EXACT_IN) {
             if (isQueryContext) {
-                amountOutUnderlying = wrappedToken.previewRedeem(amountGiven);
-                return (amountOutUnderlying, amountGiven, amountOutUnderlying);
+                return (amountGiven, wrappedToken.previewRedeem(amountGiven));
             }
             // EXACT_IN unwrap, so AmountGiven is wrapped amount.
-            amountCalculated = wrappedToken.convertToAssets(amountGiven);
-            (amountOutUnderlying, amountInWrapped) = (amountCalculated, amountGiven);
+            (amountOutUnderlying, amountInWrapped) = (wrappedToken.convertToAssets(amountGiven), amountGiven);
         } else {
             if (isQueryContext) {
-                amountInWrapped = wrappedToken.previewWithdraw(amountGiven);
-                return (amountInWrapped, amountInWrapped, amountGiven);
+                return (wrappedToken.previewWithdraw(amountGiven), amountGiven);
             }
             // EXACT_OUT unwrap, so AmountGiven is underlying amount.
-            amountCalculated = wrappedToken.convertToShares(amountGiven);
-            (amountOutUnderlying, amountInWrapped) = (amountGiven, amountCalculated);
+            (amountOutUnderlying, amountInWrapped) = (amountGiven, wrappedToken.convertToShares(amountGiven));
         }
 
         bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
