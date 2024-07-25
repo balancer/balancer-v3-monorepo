@@ -24,6 +24,9 @@ contract StablePoolFactoryTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
+    // Maximum swap fee of 10%
+    uint64 public constant MAX_SWAP_FEE_PERCENTAGE = 10e16;
+
     StablePoolFactory internal stablePoolFactory;
 
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
@@ -95,7 +98,7 @@ contract StablePoolFactoryTest is BaseVaultTest {
             tokenConfig,
             DEFAULT_AMP_FACTOR,
             roleAccounts,
-            1e17,
+            MAX_SWAP_FEE_PERCENTAGE,
             address(0),
             false,
             false,
@@ -113,7 +116,7 @@ contract StablePoolFactoryTest is BaseVaultTest {
             vault.buildTokenConfig(tokens),
             DEFAULT_AMP_FACTOR,
             roleAccounts,
-            1e17,
+            MAX_SWAP_FEE_PERCENTAGE,
             address(0),
             supportsDonation,
             false, // Do not disable unbalanced add/remove liquidity
