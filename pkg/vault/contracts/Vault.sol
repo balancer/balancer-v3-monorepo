@@ -1110,17 +1110,29 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC4626 wrappedToken,
         uint256 amountGiven
     ) private returns (uint256 amountCalculated, uint256 amountInUnderlying, uint256 amountOutWrapped) {
-        bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
+        // When wrapping and in query mode, the vault needs to have enough reserves of underlying token to do the
+        // wrap operation. If the vault does not have enough tokens to do the actual wrap, use ERC4626 preview.
+        bool isQueryContext = _isQueryContext();
 
         if (kind == SwapKind.EXACT_IN) {
+            if (isQueryContext) {
+                amountOutWrapped = wrappedToken.previewDeposit(amountGiven);
+                return (amountOutWrapped, amountGiven, amountOutWrapped);
+            }
             // EXACT_IN wrap, so AmountGiven is underlying amount.
             amountCalculated = wrappedToken.convertToShares(amountGiven);
             (amountInUnderlying, amountOutWrapped) = (amountGiven, amountCalculated);
         } else {
+            if (isQueryContext) {
+                amountInUnderlying = wrappedToken.previewMint(amountGiven);
+                return (amountInUnderlying, amountInUnderlying, amountGiven);
+            }
             // EXACT_OUT wrap, so AmountGiven is wrapped amount.
             amountCalculated = wrappedToken.convertToAssets(amountGiven);
             (amountInUnderlying, amountOutWrapped) = (amountCalculated, amountGiven);
         }
+
+        bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
 
         if (bufferBalances.getBalanceDerived() >= amountOutWrapped) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
@@ -1147,58 +1159,41 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 vaultUnderlyingDelta;
             uint256 vaultWrappedDelta;
 
-            // When wrapping and in query mode, the vault needs to have enough reserves of underlying token to do the
-            // wrap operation. If the vault does not have enough tokens to do the actual wrap, use ERC4626 preview.
-            bool shouldPreview = _isQueryContext() &&
-                _reservesOf[underlyingToken] < amountInUnderlying + bufferUnderlyingSurplus;
-
             if (kind == SwapKind.EXACT_IN) {
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                 // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingSurplus).
                 vaultUnderlyingDelta = amountInUnderlying + bufferUnderlyingSurplus;
-                if (shouldPreview) {
-                    vaultWrappedDelta = wrappedToken.previewDeposit(vaultUnderlyingDelta);
-                } else {
-                    underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDelta);
-                    // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called.
-                    vaultWrappedDelta = wrappedToken.deposit(vaultUnderlyingDelta, address(this));
-                }
+                underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDelta);
+                // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called.
+                wrappedToken.deposit(vaultUnderlyingDelta, address(this));
             } else {
                 if (bufferUnderlyingSurplus > 0) {
                     bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
                 }
-                vaultWrappedDelta = amountOutWrapped + bufferWrappedSurplus;
 
-                if (shouldPreview) {
-                    vaultUnderlyingDelta = wrappedToken.previewMint(vaultWrappedDelta);
-                } else {
-                    // The mint operation returns exactly `vaultWrappedDelta` shares. To do so, it withdraws underlying
-                    // from the vault and returns the shares. So, the vault needs to approve the transfer of underlying
-                    // tokens to the wrapper.
-                    // Add convert error because mint can consume a different amount of tokens than we anticipated.
-                    underlyingToken.forceApprove(
-                        address(wrappedToken),
-                        _addConvertError(amountInUnderlying + bufferUnderlyingSurplus)
-                    );
-
-                    // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called.
-                    vaultUnderlyingDelta = wrappedToken.mint(vaultWrappedDelta, address(this));
-
-                    // Remove approval, in case mint consumed less tokens than we approved, due to convert error.
-                    underlyingToken.forceApprove(address(wrappedToken), 0);
-                }
-            }
-
-            if (shouldPreview == false) {
-                // If preview was used, the balances of vault are not updated and then reserves cannot be updated.
-                // Moreover, ERC4626 output should not be trusted, so it's a good practice to measure the amount of
-                // deposited and returned tokens.
-                (vaultUnderlyingDelta, vaultWrappedDelta) = _updateReservesAfterWrapping(
-                    underlyingToken,
-                    IERC20(wrappedToken)
+                // The mint operation returns exactly `vaultWrappedDelta` shares. To do so, it withdraws underlying
+                // from the vault and returns the shares. So, the vault needs to approve the transfer of underlying
+                // tokens to the wrapper.
+                // Add convert error because mint can consume a different amount of tokens than we anticipated.
+                underlyingToken.forceApprove(
+                    address(wrappedToken),
+                    _addConvertError(amountInUnderlying + bufferUnderlyingSurplus)
                 );
+
+                // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called.
+                vaultUnderlyingDelta = wrappedToken.mint(amountOutWrapped + bufferWrappedSurplus, address(this));
+
+                // Remove approval, in case mint consumed less tokens than we approved, due to convert error.
+                underlyingToken.forceApprove(address(wrappedToken), 0);
             }
+
+            // ERC4626 output should not be trusted, so it's a good practice to measure the amount of
+            // deposited and returned tokens.
+            (vaultUnderlyingDelta, vaultWrappedDelta) = _updateReservesAfterWrapping(
+                underlyingToken,
+                IERC20(wrappedToken)
+            );
 
             _checkWrapOrUnwrapResults(
                 wrappedToken,
@@ -1264,11 +1259,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IERC4626 wrappedToken,
         uint256 amountGiven
     ) private returns (uint256 amountCalculated, uint256 amountInWrapped, uint256 amountOutUnderlying) {
+        bool isQueryContext = _isQueryContext();
+
         if (kind == SwapKind.EXACT_IN) {
+            if (isQueryContext) {
+                amountOutUnderlying = wrappedToken.previewRedeem(amountGiven);
+                return (amountOutUnderlying, amountGiven, amountOutUnderlying);
+            }
             // EXACT_IN unwrap, so AmountGiven is wrapped amount.
             amountCalculated = wrappedToken.convertToAssets(amountGiven);
             (amountOutUnderlying, amountInWrapped) = (amountCalculated, amountGiven);
         } else {
+            if (isQueryContext) {
+                amountInWrapped = wrappedToken.previewWithdraw(amountGiven);
+                return (amountInWrapped, amountInWrapped, amountGiven);
+            }
             // EXACT_OUT unwrap, so AmountGiven is underlying amount.
             amountCalculated = wrappedToken.convertToShares(amountGiven);
             (amountOutUnderlying, amountInWrapped) = (amountGiven, amountCalculated);
@@ -1297,25 +1302,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 bufferWrappedSurplus = bufferBalances.getBufferWrappedSurplus(wrappedToken);
             uint256 bufferUnderlyingSurplus;
 
-            uint256 vaultUnderlyingDelta;
-            uint256 vaultWrappedDelta;
-
-            // When unwrapping and in query mode, the vault needs to have enough reserves of wrapped token to do the
-            // unwrap operation. If the vault does not have enough tokens to do the actual unwrap, use ERC4626 preview.
-            bool shouldPreview = _isQueryContext() &&
-                _reservesOf[IERC20(address(wrappedToken))] < amountInWrapped + bufferWrappedSurplus;
-
             if (kind == SwapKind.EXACT_IN) {
                 // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so redeem is called
                 // The amount of wrapped tokens to redeem is the necessary amount to fulfill the trade
                 // (amountInWrapped), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferWrappedSurplus).
-                vaultWrappedDelta = amountInWrapped + bufferWrappedSurplus;
-                if (shouldPreview) {
-                    vaultUnderlyingDelta = wrappedToken.previewRedeem(vaultWrappedDelta);
-                } else {
-                    vaultUnderlyingDelta = wrappedToken.redeem(vaultWrappedDelta, address(this), address(this));
-                }
+                wrappedToken.redeem(amountInWrapped + bufferWrappedSurplus, address(this), address(this));
             } else {
                 // EXACT_OUT requires the exact amount of underlying tokens to be returned, so withdraw is called.
                 // The amount of underlying tokens to withdraw is the necessary amount to fulfill the trade
@@ -1324,23 +1316,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 if (bufferWrappedSurplus > 0) {
                     bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
                 }
-                vaultUnderlyingDelta = amountOutUnderlying + bufferUnderlyingSurplus;
-                if (shouldPreview) {
-                    vaultWrappedDelta = wrappedToken.previewWithdraw(vaultUnderlyingDelta);
-                } else {
-                    vaultWrappedDelta = wrappedToken.withdraw(vaultUnderlyingDelta, address(this), address(this));
-                }
+                wrappedToken.withdraw(amountOutUnderlying + bufferUnderlyingSurplus, address(this), address(this));
             }
 
-            if (shouldPreview == false) {
-                // If preview was used, the balances of vault are not updated and then reserves cannot be updated.
-                // Moreover, ERC4626 output should not be trusted, so it's a good practice to measure the amount of
-                // deposited and returned tokens.
-                (vaultUnderlyingDelta, vaultWrappedDelta) = _updateReservesAfterWrapping(
-                    underlyingToken,
-                    IERC20(wrappedToken)
-                );
-            }
+            // ERC4626 output should not be trusted, so it's a good practice to measure the amount of
+            // deposited and returned tokens.
+            (uint256 vaultUnderlyingDelta, uint256 vaultWrappedDelta) = _updateReservesAfterWrapping(
+                underlyingToken,
+                IERC20(wrappedToken)
+            );
 
             _checkWrapOrUnwrapResults(
                 wrappedToken,
