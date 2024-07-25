@@ -45,14 +45,14 @@ contract BigWeightedPoolTest is BasePoolTest {
         weights = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            // Use all 18-decimal tokens, for simplicity
+            // Use all 18-decimal tokens, for simplicity.
             bigPoolTokens[i] = createERC20(string.concat("TKN", Strings.toString(i)), 18);
             ERC20TestToken(address(bigPoolTokens[i])).mint(lp, defaultBalance);
             ERC20TestToken(address(bigPoolTokens[i])).mint(bob, defaultBalance);
             weights[i] = 1e18 / numTokens;
         }
 
-        // Allow pools created by `factory` to use poolHooksMock hooks
+        // Allow pools created by `factory` to use PoolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
         WeightedPool newPool = WeightedPool(
