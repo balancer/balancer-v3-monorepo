@@ -5,16 +5,13 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
-
 import { BasePoolTest } from "@balancer-labs/v3-vault/test/foundry/utils/BasePoolTest.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
@@ -22,27 +19,28 @@ import { StablePool } from "../../contracts/StablePool.sol";
 
 contract StablePoolTest is BasePoolTest {
     using ArrayHelpers for *;
-    using FixedPoint for uint256;
 
     uint256 constant DEFAULT_AMP_FACTOR = 200;
     uint256 constant TOKEN_AMOUNT = 1e3 * 1e18;
 
     function setUp() public virtual override {
         expectedAddLiquidityBptAmountOut = TOKEN_AMOUNT * 2;
+
         BasePoolTest.setUp();
     }
 
     function createPool() internal override returns (address) {
         factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
-        TokenConfig[] memory tokenConfigs = new TokenConfig[](2);
 
+        TokenConfig[] memory tokenConfigs = new TokenConfig[](2);
         IERC20[] memory sortedTokens = InputHelpers.sortTokens(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
         for (uint256 i = 0; i < sortedTokens.length; i++) {
             poolTokens.push(sortedTokens[i]);
-            tokenAmounts.push(TOKEN_AMOUNT);
             tokenConfigs[i].token = sortedTokens[i];
+
+            tokenAmounts.push(TOKEN_AMOUNT);
         }
 
         PoolRoleAccounts memory roleAccounts;
@@ -75,7 +73,7 @@ contract StablePoolTest is BasePoolTest {
             poolTokens,
             tokenAmounts,
             // Account for the precision loss
-            expectedAddLiquidityBptAmountOut - BasePoolTest.DELTA - 1e6,
+            expectedAddLiquidityBptAmountOut - BasePoolTest.DELTA,
             false,
             bytes("")
         );

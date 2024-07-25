@@ -11,7 +11,6 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -20,13 +19,11 @@ import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
 import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
 abstract contract BasePoolTest is BaseVaultTest {
-    using ArrayHelpers for *;
     using FixedPoint for uint256;
 
     IBasePoolFactory public factory;
 
     uint256 public constant DELTA = 1e9;
-    uint256 constant TOKEN_DELTA = 1e4;
 
     IERC20[] internal poolTokens;
     uint256[] internal tokenAmounts;
@@ -45,11 +42,14 @@ abstract contract BasePoolTest is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        require(poolTokens.length >= 2, "Minimum 2 tokens required (poolTokens)");
+        require(poolTokens.length == tokenAmounts.length, "poolTokens and tokenAmounts length mismatch");
     }
 
     function testPoolAddress() public view {
         address calculatedPoolAddress = factory.getDeploymentAddress(ZERO_BYTES32);
-        assertEq(pool, calculatedPoolAddress);
+        assertEq(pool, calculatedPoolAddress, "Pool address mismatch");
     }
 
     function testPoolPausedState() public view {
@@ -137,7 +137,7 @@ abstract contract BasePoolTest is BaseVaultTest {
 
         uint256[] memory minAmountsOut = new uint256[](poolTokens.length);
         for (uint256 i = 0; i < poolTokens.length; ++i) {
-            minAmountsOut[i] = less(tokenAmounts[i], 1e4);
+            minAmountsOut[i] = _less(tokenAmounts[i], 1e4);
         }
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
@@ -205,7 +205,7 @@ abstract contract BasePoolTest is BaseVaultTest {
             tokenIn,
             tokenOut,
             tokenAmountIn,
-            less(tokenAmountOut, 1e3),
+            _less(tokenAmountOut, 1e3),
             MAX_UINT256,
             false,
             bytes("")
@@ -289,7 +289,7 @@ abstract contract BasePoolTest is BaseVaultTest {
         assertEq(actualRate, expectedRate, "Wrong rate after addLiquidity");
     }
 
-    function less(uint256 amount, uint256 base) internal pure returns (uint256) {
+    function _less(uint256 amount, uint256 base) private pure returns (uint256) {
         return (amount * (base - 1)) / base;
     }
 }
