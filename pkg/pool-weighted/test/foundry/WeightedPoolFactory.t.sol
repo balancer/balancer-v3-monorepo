@@ -4,9 +4,11 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -20,6 +22,9 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
+
+    // Maximum swap fee of 10%
+    uint64 public constant MAX_SWAP_FEE_PERCENTAGE = 10e16;
 
     WeightedPoolFactory internal weightedPoolFactory;
 
@@ -85,14 +90,14 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
             vault.buildTokenConfig(tokens),
             weights,
             roleAccounts,
-            1e17,
+            MAX_SWAP_FEE_PERCENTAGE,
             address(0),
             supportsDonation,
             false, // Do not disable unbalanced add/remove liquidity
             ZERO_BYTES32
         );
 
-        // Initialize pool
+        // Initialize pool.
         vm.prank(lp);
         router.initialize(weightedPool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
 

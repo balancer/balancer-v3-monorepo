@@ -2,9 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-
 import {
     IWeightedPool,
     WeightedPoolDynamicData,
@@ -23,7 +20,16 @@ import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/We
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
-/// @notice Basic Weighted Pool with immutable weights.
+/**
+ * @notice Standard Balancer Weighted Pool, with fixed weights.
+ * @dev Weighted Pools are designed for uncorrelated assets, and use `WeightedMath` (from Balancer v1 and v2)
+ * to compute the price curve.
+ *
+ * There can be up to 8 tokens in a weighted pool (same as v2), and the normalized weights (expressed as 18-decimal
+ * floating point numbers), must sum to FixedPoint.ONE. Weights cannot be changed after deployment.
+ *
+ * The swap fee percentage is bounded by minimum and maximum values (same as were used in v2).
+ */
 contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     // Fees are 18-decimal, floating point values, which will be stored in the Vault using 24 bits.
     // This means they have 0.00001% resolution (i.e., any non-zero bits < 1e11 will cause precision loss).
@@ -106,7 +112,7 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
         return
             WeightedMath.computeBalanceOutGivenInvariant(
                 balancesLiveScaled18[tokenInIndex],
-                _getNormalizedWeights()[tokenInIndex],
+                _getNormalizedWeight(tokenInIndex),
                 invariantRatio
             );
     }

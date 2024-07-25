@@ -54,7 +54,7 @@ contract VaultStorage {
     // exploitation of rounding errors
     uint256 internal constant _MINIMUM_TRADE_AMOUNT = 1e6;
 
-    // Pools can have two, three, or four tokens.
+    // Pools can have between two and eight tokens.
     uint256 internal constant _MIN_TOKENS = 2;
     // This maximum token count is also implicitly hard-coded in `PoolConfigLib` (through packing `tokenDecimalDiffs`).
     uint256 internal constant _MAX_TOKENS = 8;
