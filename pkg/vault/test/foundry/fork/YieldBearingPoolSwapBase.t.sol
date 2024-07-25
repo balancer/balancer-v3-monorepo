@@ -194,7 +194,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         amountIn = bound(amountIn, 2 * _token1BufferInitAmount, 4 * _token1BufferInitAmount);
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(_token1Fork, amountIn, 0);
 
-        // Since operation is out of buffer range, buffer balances should not change (wrap/unwrap tokens directly).
+        // Since operation is out of buffer range and buffers are balanced, buffer balances should not change
+        // (wrap/unwrap tokens directly).
         int256 expectedBufferDeltaTokenIn = 0;
         int256 expectedBufferDeltaTokenOut = 0;
 
@@ -211,7 +212,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             amountOut
         );
 
-        // Since operation is out of buffer range, buffer balances should not change (wrap/unwrap tokens directly).
+        // Since operation is out of buffer range and buffers are balanced, buffer balances should not change
+        // (wrap/unwrap tokens directly).
         int256 expectedBufferDeltaTokenIn = 0;
         int256 expectedBufferDeltaTokenOut = 0;
 
@@ -338,7 +340,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         amountIn = bound(amountIn, 2 * _token2BufferInitAmount, 4 * _token2BufferInitAmount);
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(_token2Fork, amountIn, 0);
 
-        // Since operation is out of buffer range, buffer balances should not change (wrap/unwrap tokens directly).
+        // Since operation is out of buffer range and buffers are balanced, buffer balances should not change
+        // (wrap/unwrap tokens directly).
         int256 expectedBufferDeltaTokenIn = 0;
         int256 expectedBufferDeltaTokenOut = 0;
 
@@ -353,7 +356,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             amountOut
         );
 
-        // Since operation is out of buffer range, buffer balances should not change (wrap/unwrap tokens directly).
+        // Since operation is out of buffer range and buffers are balanced, buffer balances should not change
+        // (wrap/unwrap tokens directly).
         int256 expectedBufferDeltaTokenIn = 0;
         int256 expectedBufferDeltaTokenOut = 0;
 

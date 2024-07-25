@@ -1156,17 +1156,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 bufferUnderlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wrappedToken);
             uint256 bufferWrappedSurplus;
 
-            uint256 vaultUnderlyingDelta;
-            uint256 vaultWrappedDelta;
-
             if (kind == SwapKind.EXACT_IN) {
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                 // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingSurplus).
-                vaultUnderlyingDelta = amountInUnderlying + bufferUnderlyingSurplus;
-                underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDelta);
+                uint256 amountToDeposit = amountInUnderlying + bufferUnderlyingSurplus;
+                underlyingToken.forceApprove(address(wrappedToken), amountToDeposit);
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called.
-                wrappedToken.deposit(vaultUnderlyingDelta, address(this));
+                wrappedToken.deposit(amountToDeposit, address(this));
             } else {
                 if (bufferUnderlyingSurplus > 0) {
                     bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
@@ -1182,7 +1179,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 );
 
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called.
-                vaultUnderlyingDelta = wrappedToken.mint(amountOutWrapped + bufferWrappedSurplus, address(this));
+                wrappedToken.mint(amountOutWrapped + bufferWrappedSurplus, address(this));
 
                 // Remove approval, in case mint consumed less tokens than we approved, due to convert error.
                 underlyingToken.forceApprove(address(wrappedToken), 0);
@@ -1190,7 +1187,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // ERC4626 output should not be trusted, so it's a good practice to measure the amount of
             // deposited and returned tokens.
-            (vaultUnderlyingDelta, vaultWrappedDelta) = _updateReservesAfterWrapping(
+            (uint256 vaultUnderlyingDelta, uint256 vaultWrappedDelta) = _updateReservesAfterWrapping(
                 underlyingToken,
                 IERC20(wrappedToken)
             );
