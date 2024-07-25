@@ -4,10 +4,12 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { PoolRoleAccounts, TokenInfo, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenInfo, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -51,7 +53,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
     }
 
     function testInitializePoolWithRate() public view {
-        // mock pool invariant is just a sum of all balances
+        // Mock pool invariant is linear (just a sum of all balances).
         assertEq(
             PoolMock(pool).balanceOf(lp),
             defaultAmount + defaultAmount.mulDown(mockRate) - 1e6,

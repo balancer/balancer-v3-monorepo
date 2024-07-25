@@ -227,11 +227,11 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
             }
 
             ethAmountIn = amountIn;
-            // wrap amountIn to WETH
+            // wrap amountIn to WETH.
             _weth.deposit{ value: amountIn }();
-            // send WETH to Vault
+            // send WETH to Vault.
             _weth.safeTransfer(address(_vault), amountIn);
-            // update Vault accounting
+            // update Vault accounting.
             _vault.settle(_weth, amountIn);
         } else {
             // Send the tokenIn amount to the Vault
@@ -243,14 +243,14 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
     function _sendTokenOut(address sender, IERC20 tokenOut, uint256 amountOut, bool wethIsEth) internal {
         // If the tokenOut is ETH, then unwrap `amountOut` into ETH.
         if (wethIsEth && tokenOut == _weth) {
-            // Receive the WETH amountOut
+            // Receive the WETH amountOut.
             _vault.sendTo(tokenOut, address(this), amountOut);
-            // Withdraw WETH to ETH
+            // Withdraw WETH to ETH.
             _weth.withdraw(amountOut);
-            // Send ETH to sender
+            // Send ETH to sender.
             payable(sender).sendValue(amountOut);
         } else {
-            // Receive the tokenOut amountOut
+            // Receive the tokenOut amountOut.
             _vault.sendTo(tokenOut, sender, amountOut);
         }
     }

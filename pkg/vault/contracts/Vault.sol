@@ -1482,9 +1482,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 expectedUnderlyingDelta;
         uint256 expectedWrappedDelta;
         if (bufferUnderlyingSurplus > 0) {
-            // If the buffer has a surplus of underlying, the expected underlying delta is the underlying amountIn from the
-            // user (wrapUnwrapUnderlyingExpected) + bufferUnderlyingSurplus. This value left vault's reserves because
-            // it was wrapped.
+            // If the buffer has a surplus of underlying, the expected underlying delta is the underlying amountIn from
+            // the user (wrapUnwrapUnderlyingExpected) + bufferUnderlyingSurplus. This value left vault's reserves
+            // because it was wrapped.
             expectedUnderlyingDelta = wrapUnwrapUnderlyingExpected + bufferUnderlyingSurplus;
             // If the buffer has a surplus of underlying, the expected wrapped delta is the wrapped amountOut to the
             // user (wrapUnwrapWrappedExpected) + converted bufferUnderlyingSurplus. This value was added to vault's

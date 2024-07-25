@@ -8,22 +8,17 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { TokenConfig, TokenType, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract SwapWithNonExistentBufferTest is BaseVaultTest {
-    using FixedPoint for uint256;
     using ArrayHelpers for *;
 
     ERC4626TestToken internal waDAI;
@@ -38,7 +33,7 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
     // The boosted pool will have 100x the liquidity of the buffer
     uint256 internal boostedPoolAmount = 10e6 * 1e18;
     uint256 internal bufferAmount = 0;
-    // We will swap with 10% of the boostedPool
+    // We will swap with 10% of the boostedPool.
     uint256 internal swapAmount = boostedPoolAmount / 10;
 
     function setUp() public virtual override {
@@ -103,7 +98,7 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         assertEq(balancesRaw[0], boostedPoolAmount, "Wrong boosted pool balance [0]");
         assertEq(balancesRaw[1], boostedPoolAmount, "Wrong boosted pool balance [1]");
 
-        // Buffers should have 0 liquidity
+        // Buffers should have zero liquidity.
         uint256 baseBalance;
         uint256 wrappedBalance;
 
@@ -209,7 +204,7 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         assertEq(balancesRaw[daiIdx], boostedPoolAmount + expectedDelta, "Wrong boosted pool DAI balance");
         assertEq(balancesRaw[usdcIdx], boostedPoolAmount - expectedDelta, "Wrong boosted pool USDC balance");
 
-        // Buffers should have 0 liquidity, since they were not initialized
+        // Buffers should have 0 liquidity, since they were not initialized.
         uint256 baseBalance;
         uint256 wrappedBalance;
         (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));

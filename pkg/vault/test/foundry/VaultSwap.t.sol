@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
@@ -236,7 +235,7 @@ contract VaultSwapTest is BaseVaultTest {
     }
 
     function testSwapSingleTokenExactInWithFeeInRecoveryMode() public {
-        // Put pool in recovery mode
+        // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
 
         assertSwap(swapSingleTokenExactInWithFeeInRecoveryMode, SwapKind.EXACT_IN);
@@ -294,7 +293,7 @@ contract VaultSwapTest is BaseVaultTest {
     }
 
     function testSwapSingleTokenExactOutWithFeeInRecoveryMode() public {
-        // Put pool in recovery mode
+        // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
 
         assertSwap(swapSingleTokenExactOutWithFeeInRecoveryMode, SwapKind.EXACT_OUT);
@@ -391,15 +390,15 @@ contract VaultSwapTest is BaseVaultTest {
         vm.prank(admin);
         feeController.withdrawProtocolFees(pool, admin);
 
-        // protocol fees are zero
+        // Protocol fees are zero.
         assertEq(0, feeAmounts[usdcIdx], "Protocol fees are not zero");
 
-        // alice received protocol fees
+        // Alice received protocol fees.
         assertEq(dai.balanceOf(admin) - defaultBalance, protocolSwapFee, "Protocol fees not collected");
     }
 
     function reentrancyHook() public {
-        // do second swap
+        // Do second swap.
         SwapParams memory params = SwapParams({
             kind: SwapKind.EXACT_IN,
             pool: pool,
@@ -460,6 +459,7 @@ contract VaultSwapTest is BaseVaultTest {
     }
 
     /// Utils
+
     struct SwapBalances {
         uint256 vaultDai;
         uint256 vaultUsdc;
@@ -490,7 +490,7 @@ contract VaultSwapTest is BaseVaultTest {
             daiProtocolFee = protocolFee;
         }
 
-        // assets are transferred to/from user
+        // assets are transferred to/from user.
         assertEq(
             usdc.balanceOf(alice),
             balancesBefore.userUsdc - defaultAmount - usdcFee,
@@ -502,16 +502,16 @@ contract VaultSwapTest is BaseVaultTest {
             "Swap: User's DAI balance is wrong"
         );
 
-        // Tokens are adjusted in the pool
+        // Tokens are adjusted in the pool.
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(pool);
         assertEq(balances[daiIdx], daiFee - daiProtocolFee, "Swap: Pool's [0] balance is wrong");
         assertEq(balances[usdcIdx], 2 * defaultAmount + usdcFee - usdcProtocolFee, "Swap: Pool's [1] balance is wrong");
 
-        // protocol fees are accrued
+        // Protocol fees are accrued.
         uint256 actualFee = vault.manualGetAggregateSwapFeeAmount(pool, kind == SwapKind.EXACT_OUT ? usdc : dai);
         assertEq(protocolFee, actualFee, "Swap: Aggregate fee amount is wrong");
 
-        // vault are adjusted balances
+        // Vault has adjusted balances.
         assertEq(
             balancesBefore.vaultDai - dai.balanceOf(address(vault)),
             defaultAmount - daiFee,
@@ -523,7 +523,7 @@ contract VaultSwapTest is BaseVaultTest {
             "Swap: Vault's USDC balance is wrong"
         );
 
-        // Ensure raw and last live balances are in sync after the operation
+        // Ensure raw and last live balances are in sync after the operation.
         uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
         uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
 

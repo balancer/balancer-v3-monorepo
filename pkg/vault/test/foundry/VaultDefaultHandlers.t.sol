@@ -40,7 +40,7 @@ contract VaultDefaultHandlers is BaseVaultTest {
     }
 
     function testOnlyVault() public {
-        // Does not revert via Vault
+        // Does not revert via Vault.
         assertTrue(IVault(address(vault)).isPoolRegistered(pool));
 
         IVault vaultExtension = IVault(vault.getVaultExtension());

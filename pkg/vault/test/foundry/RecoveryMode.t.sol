@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
@@ -21,33 +20,33 @@ contract RecoveryModeTest is BaseVaultTest {
     }
 
     function testRecoveryModeBalances() public {
-        // Add initial liquidity
+        // Add initial liquidity.
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
 
         vm.prank(alice);
         uint256 bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, defaultAmount, false, bytes(""));
 
-        // Raw and live should be in sync
+        // Raw and live should be in sync.
         assertRawAndLiveBalanceRelationship(true);
 
-        // Put pool in recovery mode
+        // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
 
-        // Do a recovery withdrawal
+        // Do a recovery withdrawal.
         vm.prank(alice);
         router.removeLiquidityRecovery(pool, bptAmountOut / 2);
 
-        // Raw and live should be out of sync
+        // Raw and live should be out of sync.
         assertRawAndLiveBalanceRelationship(false);
 
         vault.manualDisableRecoveryMode(pool);
 
-        // Raw and live should be back in sync
+        // Raw and live should be back in sync.
         assertRawAndLiveBalanceRelationship(true);
     }
 
     function assertRawAndLiveBalanceRelationship(bool shouldBeEqual) internal view {
-        // Ensure raw and last live balances are in sync after the operation
+        // Ensure raw and last live balances are in sync after the operation.
         uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
         uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
 
@@ -94,7 +93,7 @@ contract RecoveryModeTest is BaseVaultTest {
         vm.prank(lp);
         vault.enableRecoveryMode(pool);
 
-        // Pause Pool
+        // Pause Pool.
         vault.manualSetPoolPaused(pool, true);
 
         assertTrue(vault.isPoolPaused(pool), "Pool should be paused");
@@ -129,7 +128,7 @@ contract RecoveryModeTest is BaseVaultTest {
         vm.prank(lp);
         vault.enableRecoveryMode(pool);
 
-        // Can still set it if granted permission
+        // Can still set it if granted permission.
         authorizer.grantRole(vault.getActionId(IVaultAdmin.enableRecoveryMode.selector), admin);
 
         vm.prank(admin);
@@ -153,7 +152,7 @@ contract RecoveryModeTest is BaseVaultTest {
 
         vm.warp(bufferPeriodEndTime + 1);
 
-        // Confirm the Pool is permissionless
+        // Confirm the Pool is permissionless.
         assertTrue(block.timestamp > bufferPeriodEndTime, "Time should be after Pool's buffer period end time");
 
         // Recovery Mode is permissioned even though the Pool's pause bit is set, because it's no longer pausable.
@@ -162,7 +161,7 @@ contract RecoveryModeTest is BaseVaultTest {
         vm.prank(lp);
         vault.enableRecoveryMode(pool);
 
-        // Can still set it if granted permission
+        // Can still set it if granted permission.
         authorizer.grantRole(vault.getActionId(IVaultAdmin.enableRecoveryMode.selector), admin);
 
         vm.prank(admin);
@@ -171,7 +170,8 @@ contract RecoveryModeTest is BaseVaultTest {
         assertTrue(vault.isPoolInRecoveryMode(pool), "Pool should be in Recovery Mode");
     }
 
-    // disableRecoveryMode
+    // Disable Recovery Mode
+
     function testDisableRecoveryModeRevert() public {
         assertFalse(vault.isPoolInRecoveryMode(pool), "Pool should not be in Recovery Mode");
 

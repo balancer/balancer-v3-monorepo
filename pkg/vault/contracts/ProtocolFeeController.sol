@@ -503,7 +503,7 @@ contract ProtocolFeeController is
         uint256 newProtocolYieldFeePercentage,
         bool isOverride
     ) private {
-        // Update local storage of the raw percentage
+        // Update local storage of the raw percentage.
         _poolProtocolYieldFeePercentages[pool] = PoolFeeConfig({
             feePercentage: uint64(newProtocolYieldFeePercentage),
             isOverride: isOverride

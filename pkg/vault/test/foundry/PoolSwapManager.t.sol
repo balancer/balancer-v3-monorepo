@@ -91,7 +91,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
     function testSwapFeeManagerCanSetFees() public {
         require(vault.getStaticSwapFeePercentage(pool) == 0, "initial swap fee non-zero");
 
-        // swap fee manager can set the static swap fee.
+        // Swap fee manager can set the static swap fee.
         vm.prank(admin);
         vault.setStaticSwapFeePercentage(pool, NEW_SWAP_FEE);
 
@@ -121,13 +121,13 @@ contract PoolSwapManagerTest is BaseVaultTest {
 
         assertEq(vault.getStaticSwapFeePercentage(address(unmanagedPool)), NEW_SWAP_FEE, "Could not set swap fee");
 
-        // Granting specific permission to bob on unmanagedPool doesn't grant it on otherPool
+        // Granting specific permission to bob on `unmanagedPool` doesn't grant it on `otherPool`.
         vm.prank(bob);
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.setStaticSwapFeePercentage(address(otherPool), NEW_SWAP_FEE);
     }
 
-    // It is onlyOwner, so governance cannot override
+    // It is onlyOwner, so governance cannot override.
     function testGovernanceCannotSetSwapFeeWithManager() public {
         require(vault.getStaticSwapFeePercentage(pool) == 0, "initial swap fee non-zero");
 
