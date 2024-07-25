@@ -491,16 +491,6 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             uint256[] memory actualAmountsOut
         ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        // The error is proportional to the amount of decimals of token in and token out. If tokenIn has 6 decimals
-        // and tokenOut has 18 decimals, an error of 1 wei in amountOut of the first buffer generates an error in the
-        // order of 1e12 (1e18/1e6) in amountOut of the last buffer.
-        // But, if it's the opposite case, 1e6/1e18 is rounded to 0, but the max error is actually 1 (the error in the
-        // tokenOut token itself), so the division is incremented by 1.
-        // Finally, the error can be slightly bigger than the division of the factors, since each token has a rate. The
-        // error is multiplied by 2 to give some space for rounding errors related to the rates.
-        uint256 tolerance = (2 *
-            (paths[0].tokenIn == _token1Fork ? _token2Factor / _token1Factor : _token1Factor / _token2Factor)) + 1;
-
         assertEq(actualPathAmountsOut.length, 1, "actualPathAmountsOut length is wrong");
         assertEq(actualTokensOut.length, 1, "actualTokensOut length is wrong");
         assertEq(actualAmountsOut.length, 1, "actualAmountsOut length is wrong");
@@ -512,18 +502,45 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         assertEq(actualTokensOut.length, queryTokensOut.length, "actual and query tokensOut lengths do not match");
         assertEq(actualAmountsOut.length, queryAmountsOut.length, "actual and query amountsOut lengths do not match");
 
+        assertEq(queryTokensOut[0], actualTokensOut[0], "Query and actual tokensOut do not match");
+
+        // The error is proportional to the amount of decimals of token in and token out. If tokenIn has 6 decimals
+        // and tokenOut has 18 decimals, an error of 1 wei in amountOut of the first buffer generates an error in the
+        // order of 1e12 (1e18/1e6) in amountOut of the last buffer.
+        // But, if it's the opposite case, 1e6/1e18 is rounded to 0, but the max error is actually 1 (the error in the
+        // tokenOut token itself), so the division is incremented by 1.
+        // Finally, the error can be slightly bigger than the division of the factors, since each token has a rate. The
+        // error is multiplied by 2 to give some space for rounding errors related to the rates.
+        uint256 absTolerance = (2 *
+            (paths[0].tokenIn == _token1Fork ? _token2Factor / _token1Factor : _token1Factor / _token2Factor)) + 1;
+
         assertApproxEqAbs(
             queryPathAmountsOut[0],
             actualPathAmountsOut[0],
-            tolerance,
-            "Query and actual pathAmountsOut do not match"
+            absTolerance,
+            "Query and actual pathAmountsOut difference is bigger than absolute tolerance"
         );
-        assertEq(queryTokensOut[0], actualTokensOut[0], "Query and actual tokensOut do not match");
         assertApproxEqAbs(
             queryAmountsOut[0],
             actualAmountsOut[0],
-            tolerance,
-            "Query and actual amountsOut do not match"
+            absTolerance,
+            "Query and actual amountsOut difference is bigger than absolute tolerance"
+        );
+
+        // 0.01% relative error tolerance.
+        uint256 relTolerance = 1e14;
+
+        assertApproxEqRel(
+            queryPathAmountsOut[0],
+            actualPathAmountsOut[0],
+            relTolerance,
+            "Query and actual pathAmountsOut difference is bigger than relative tolerance"
+        );
+        assertApproxEqRel(
+            queryAmountsOut[0],
+            actualAmountsOut[0],
+            relTolerance,
+            "Query and actual amountsOut difference is bigger than relative tolerance"
         );
 
         _verifySwapResult(actualPathAmountsOut, actualTokensOut, actualAmountsOut, vars);
@@ -583,19 +600,10 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             uint256[] memory actualAmountsIn
         ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        // The error is proportional to the amount of decimals of tokenIn and tokenOut. If tokenIn has 6 decimals
-        // and tokenOut has 18 decimals, an error of 1 wei in amountOut of the first buffer generates an error in the
-        // order of 1e12 (1e18/1e6) in amountOut of the last buffer.
-        // But, if it's the opposite case, 1e6/1e18 is rounded to 0, but the max error is actually 1 (the error in the
-        // tokenOut token itself), so the division is incremented by 1.
-        // Finally, the error can be slightly bigger than the division of the factors, since each token has a rate. The
-        // error is multiplied by 2 to give some space for rounding errors related to the rates.
-        uint256 tolerance = 2 *
-            (paths[0].tokenIn == _token1Fork ? _token1Factor / _token2Factor + 1 : _token2Factor / _token1Factor + 1);
-
         assertEq(actualPathAmountsIn.length, 1, "actualPathAmountsIn length is wrong");
         assertEq(actualTokensIn.length, 1, "actualTokensIn length is wrong");
         assertEq(actualAmountsIn.length, 1, "actualAmountsIn length is wrong");
+
         assertEq(actualTokensIn.length, queryTokensIn.length, "actual and query tokensIn lengths do not match");
         assertEq(actualAmountsIn.length, queryAmountsIn.length, "actual and query amountsIn lengths do not match");
         assertEq(
@@ -604,14 +612,46 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             "actual and query pathAmountsIn lengths do not match"
         );
 
+        assertEq(queryTokensIn[0], actualTokensIn[0], "Query and actual tokensIn do not match");
+
+        // The error is proportional to the amount of decimals of tokenIn and tokenOut. If tokenIn has 6 decimals
+        // and tokenOut has 18 decimals, an error of 1 wei in amountOut of the first buffer generates an error in the
+        // order of 1e12 (1e18/1e6) in amountOut of the last buffer.
+        // But, if it's the opposite case, 1e6/1e18 is rounded to 0, but the max error is actually 1 (the error in the
+        // tokenOut token itself), so the division is incremented by 1.
+        // Finally, the error can be slightly bigger than the division of the factors, since each token has a rate. The
+        // error is multiplied by 2 to give some space for rounding errors related to the rates.
+        uint256 absTolerance = 2 *
+            (paths[0].tokenIn == _token1Fork ? _token1Factor / _token2Factor + 1 : _token2Factor / _token1Factor + 1);
+
         assertApproxEqAbs(
             queryPathAmountsIn[0],
             actualPathAmountsIn[0],
-            tolerance,
-            "Query and actual pathAmountsIn do not match"
+            absTolerance,
+            "Query and actual pathAmountsIn difference is bigger than absolute tolerance"
         );
-        assertEq(queryTokensIn[0], actualTokensIn[0], "Query and actual tokensIn do not match");
-        assertApproxEqAbs(queryAmountsIn[0], actualAmountsIn[0], tolerance, "Query and actual amountsIn do not match");
+        assertApproxEqAbs(
+            queryAmountsIn[0],
+            actualAmountsIn[0],
+            absTolerance,
+            "Query and actual amountsIn difference is bigger than absolute tolerance"
+        );
+
+        // 0.01% relative error tolerance.
+        uint256 relTolerance = 1e14;
+
+        assertApproxEqRel(
+            queryPathAmountsIn[0],
+            actualPathAmountsIn[0],
+            relTolerance,
+            "Query and actual pathAmountsIn difference is bigger than relative tolerance"
+        );
+        assertApproxEqRel(
+            queryAmountsIn[0],
+            actualAmountsIn[0],
+            relTolerance,
+            "Query and actual amountsIn difference is bigger than relative tolerance"
+        );
 
         _verifySwapResult(actualPathAmountsIn, actualTokensIn, actualAmountsIn, vars);
     }
