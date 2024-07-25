@@ -195,43 +195,43 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
 
         {
             uint256 afterUSDCBalance = usdc.balanceOf(alice);
-            assertEq(beforeUSDCBalance - afterUSDCBalance, operationAmount, "USDC balance should decrease");
+            assertEq(afterUSDCBalance, beforeUSDCBalance - operationAmount, "Alice: USDC balance should decrease");
         }
         {
             uint256 afterDAIBalance = dai.balanceOf(alice);
-            assertEq(beforeDAIBalance - afterDAIBalance, operationAmount, "DAI balance should decrease");
+            assertEq(afterDAIBalance, beforeDAIBalance - operationAmount, "Alice: DAI balance should decrease");
         }
         {
             (uint256 afterWaUSDCBufferBalanceUnderlying, uint256 afterWaUSDCBufferBalanceWrapped) = vault
                 .getBufferBalance(waUSDC);
             assertEq(
-                beforeWaUSDCBufferBalanceWrapped - afterWaUSDCBufferBalanceWrapped,
-                operationAmount,
-                "waUSDC wrapped buffer balance should decrease"
+                afterWaUSDCBufferBalanceWrapped,
+                beforeWaUSDCBufferBalanceWrapped - operationAmount,
+                "Vault: waUSDC wrapped buffer balance should decrease"
             );
             assertEq(
-                afterWaUSDCBufferBalanceUnderlying - beforeWaUSDCBufferBalanceUnderlying,
-                operationAmount,
-                "waUSDC underlying buffer balance should increase"
+                beforeWaUSDCBufferBalanceUnderlying,
+                afterWaUSDCBufferBalanceUnderlying - operationAmount,
+                "Vault: waUSDC underlying buffer balance should increase"
             );
         }
         {
             (uint256 afterWaDAIBufferBalanceUnderlying, uint256 afterWaDAIBufferBalanceWrapped) = vault
                 .getBufferBalance(waDAI);
             assertEq(
-                beforeWaDAIBufferBalanceWrapped - afterWaDAIBufferBalanceWrapped,
-                operationAmount,
-                "waDAI wrapped buffer balance should decrease"
+                afterWaDAIBufferBalanceWrapped,
+                beforeWaDAIBufferBalanceWrapped - operationAmount,
+                "Vault: waDAI wrapped buffer balance should decrease"
             );
             assertEq(
-                afterWaDAIBufferBalanceUnderlying - beforeWaDAIBufferBalanceUnderlying,
-                operationAmount,
-                "waDAI underlying buffer balance should increase"
+                beforeWaDAIBufferBalanceUnderlying,
+                afterWaDAIBufferBalanceUnderlying - operationAmount,
+                "Vault: waDAI underlying buffer balance should increase"
             );
         }
 
         assertApproxEqAbs(bptOut, expectBPTOut, DELTA, "BPT operationAmount should match expected");
-        assertEq(IERC20(address(erc4626Pool)).balanceOf(alice), bptOut, "BPT balance should increase");
+        assertEq(IERC20(address(erc4626Pool)).balanceOf(alice), bptOut, "Alice: BPT balance should increase");
     }
 
     function testAddLiquidityUnbalancedToERC4626PoolWhenStaticCall() public checkBuffersWhenStaticCall(alice) {
@@ -272,38 +272,38 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
 
         {
             uint256 afterUSDCBalance = usdc.balanceOf(alice);
-            assertEq(beforeUSDCBalance - afterUSDCBalance, amountsIn[0], "USDC balance should decrease");
+            assertEq(afterUSDCBalance, beforeUSDCBalance - amountsIn[0], "Alice: USDC balance should decrease");
         }
         {
             uint256 afterDAIBalance = dai.balanceOf(alice);
-            assertEq(beforeDAIBalance - afterDAIBalance, amountsIn[1], "DAI balance should decrease");
+            assertEq(afterDAIBalance, beforeDAIBalance - amountsIn[1], "Alice: DAI balance should decrease");
         }
         {
             (uint256 afterWaUSDCBufferBalanceUnderlying, uint256 afterWaUSDCBufferBalanceWrapped) = vault
                 .getBufferBalance(waUSDC);
             assertEq(
-                beforeWaUSDCBufferBalanceWrapped - afterWaUSDCBufferBalanceWrapped,
-                amountsIn[0],
-                "waUSDC wrapped buffer balance should decrease"
+                afterWaUSDCBufferBalanceWrapped,
+                beforeWaUSDCBufferBalanceWrapped - amountsIn[0],
+                "Vault: waUSDC wrapped buffer balance should decrease"
             );
             assertEq(
-                afterWaUSDCBufferBalanceUnderlying - beforeWaUSDCBufferBalanceUnderlying,
-                amountsIn[1],
-                "waUSDC underlying buffer balance should increase"
+                beforeWaUSDCBufferBalanceUnderlying,
+                afterWaUSDCBufferBalanceUnderlying - amountsIn[1],
+                "Vault: waUSDC underlying buffer balance should increase"
             );
         }
         {
             (uint256 afterWaDAIBufferBalanceUnderlying, uint256 afterWaDAIBufferBalanceWrapped) = vault
                 .getBufferBalance(waDAI);
             assertEq(
-                beforeWaDAIBufferBalanceWrapped - afterWaDAIBufferBalanceWrapped,
-                amountsIn[0],
-                "waDAI wrapped buffer balance should decrease"
+                afterWaDAIBufferBalanceWrapped,
+                beforeWaDAIBufferBalanceWrapped - amountsIn[0],
+                "Vault: waDAI wrapped buffer balance should decrease"
             );
             assertEq(
-                afterWaDAIBufferBalanceUnderlying - beforeWaDAIBufferBalanceUnderlying,
-                amountsIn[1],
-                "waDAI underlying buffer balance should increase"
+                beforeWaDAIBufferBalanceUnderlying,
+                afterWaDAIBufferBalanceUnderlying - amountsIn[1],
+                "Vault: waDAI underlying buffer balance should increase"
             );
         }
 
@@ -311,7 +311,11 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
             assertApproxEqAbs(amountsIn[i], expectedAmountsIn[i], DELTA, "AmountIn should match expected");
         }
 
-        assertEq(IERC20(address(erc4626Pool)).balanceOf(alice), exactBptAmountOut, "BPT balance should increase");
+        assertEq(
+            IERC20(address(erc4626Pool)).balanceOf(alice),
+            exactBptAmountOut,
+            "Alice: BPT balance should increase"
+        );
     }
 
     function testAddLiquidityProportionalToERC4626PoolWhenStaticCall() public checkBuffersWhenStaticCall(alice) {
@@ -357,38 +361,38 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
 
         {
             uint256 afterUSDCBalance = usdc.balanceOf(bob);
-            assertEq(afterUSDCBalance - beforeUSDCBalance, amountsOut[0], "USDC balance should increase");
+            assertEq(beforeUSDCBalance, afterUSDCBalance - amountsOut[0], "Bob: USDC balance should increase");
         }
         {
             uint256 afterDAIBalance = dai.balanceOf(bob);
-            assertEq(afterDAIBalance - beforeDAIBalance, amountsOut[1], "DAI balance should increase");
+            assertEq(beforeDAIBalance, afterDAIBalance - amountsOut[1], "Bob: DAI balance should increase");
         }
         {
             (uint256 afterWaUSDCBufferBalanceUnderlying, uint256 afterWaUSDCBufferBalanceWrapped) = vault
                 .getBufferBalance(waUSDC);
             assertEq(
-                afterWaUSDCBufferBalanceWrapped - beforeWaUSDCBufferBalanceWrapped,
-                amountsOut[0],
-                "waUSDC wrapped buffer balance should increase"
+                beforeWaUSDCBufferBalanceWrapped,
+                afterWaUSDCBufferBalanceWrapped - amountsOut[0],
+                "Vault: waUSDC wrapped buffer balance should increase"
             );
             assertEq(
-                beforeWaUSDCBufferBalanceUnderlying - afterWaUSDCBufferBalanceUnderlying,
-                amountsOut[1],
-                "waUSDC underlying buffer balance should decrease"
+                afterWaUSDCBufferBalanceUnderlying,
+                beforeWaUSDCBufferBalanceUnderlying - amountsOut[1],
+                "Vault: waUSDC underlying buffer balance should decrease"
             );
         }
         {
             (uint256 afterWaDAIBufferBalanceUnderlying, uint256 afterWaDAIBufferBalanceWrapped) = vault
                 .getBufferBalance(waDAI);
             assertEq(
-                afterWaDAIBufferBalanceWrapped - beforeWaDAIBufferBalanceWrapped,
-                amountsOut[0],
-                "waDAI wrapped buffer balance should increase"
+                beforeWaDAIBufferBalanceWrapped,
+                afterWaDAIBufferBalanceWrapped - amountsOut[0],
+                "Vault: waDAI wrapped buffer balance should increase"
             );
             assertEq(
-                beforeWaDAIBufferBalanceUnderlying - afterWaDAIBufferBalanceUnderlying,
-                amountsOut[1],
-                "waDAI underlying buffer balance should decrease"
+                afterWaDAIBufferBalanceUnderlying,
+                beforeWaDAIBufferBalanceUnderlying - amountsOut[1],
+                "Vault: waDAI underlying buffer balance should decrease"
             );
         }
 
@@ -397,7 +401,7 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
         }
 
         uint256 afterBPTBalance = IERC20(address(erc4626Pool)).balanceOf(bob);
-        assertEq(beforeBPTBalance - afterBPTBalance, exactBptAmountIn);
+        assertEq(afterBPTBalance, beforeBPTBalance - exactBptAmountIn, "Bob: BPT balance should decrease");
     }
 
     function testRemoveLiquidityProportionalToERC4626PoolWhenStaticCall() public checkBuffersWhenStaticCall(bob) {
