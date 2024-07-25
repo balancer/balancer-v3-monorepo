@@ -35,7 +35,7 @@ interface IPoolInfo {
         );
 
     /**
-     * @notice Gets the current live balances of the pool, as fixed point, 18-decimal numbers.
+     * @notice Gets the current live balances of the pool as fixed point, 18-decimal numbers.
      * @return balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
      */
     function getCurrentLiveBalances() external view returns (uint256[] memory balancesLiveScaled18);
