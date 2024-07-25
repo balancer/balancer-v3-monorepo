@@ -6,7 +6,8 @@ import { WeightedPool } from "./WeightedPool.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { GradualValueChange } from "../lib/GradualValueChange.sol";
+import { GradualValueChange } from "./lib/GradualValueChange.sol";
+import { WeightValidation } from "./lib/WeightValidation.sol";
 
 /// @notice Basic Weighted Pool with immutable weights.
 contract LBPool is WeightedPool, Ownable {
@@ -30,7 +31,7 @@ contract LBPool is WeightedPool, Ownable {
         _isPaused = startPaused;
 
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, params.numTokens);
-        // WeightedPool takes care of numTokens == normalizedWeights.length
+        // WeightedPool takes care of numTokens == normalizedWeights.length // TODO: do this when no longer inheriting from WP
 
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(currentTime, currentTime, normalizedWeights, normalizedWeights);
@@ -43,6 +44,7 @@ contract LBPool is WeightedPool, Ownable {
         uint256[] memory endWeights
     ) external view onlyOwner {
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, endWeights.length);
+        WeightValidation.validateTwoWeights(endWeights[0], endWeights[1]);
 
         startTime = GradualValueChange.resolveStartTime(startTime, endTime);
         _startGradualWeightChange(startTime, endTime, _getNormalizedWeights(), endWeights);

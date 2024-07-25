@@ -36,7 +36,7 @@ library GradualValueChange {
         // If the start time is in the past, "fast forward" to start now
         // This avoids discontinuities in the value curve. Otherwise, if you set the start/end times with
         // only 10% of the period in the future, the value would immediately jump 90%
-        resolvedStartTime = _max(block.timestamp, startTime);
+        resolvedStartTime = FixedPoint.max(block.timestamp, startTime);
 
         _require(resolvedStartTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
     }
@@ -77,14 +77,4 @@ library GradualValueChange {
         return secondsElapsed.divDown(totalSeconds);
     }
 
-    /**
-     * @dev Returns the larger of two uint256s.
-     */
-    function _max(uint256 a, uint256 b) internal pure returns (uint256 result) {
-        // Equivalent to:
-        // result = (a < b) ? b : a;
-        assembly {
-            result := sub(a, mul(sub(a, b), lt(a, b)))
-        }
-    }
 }
