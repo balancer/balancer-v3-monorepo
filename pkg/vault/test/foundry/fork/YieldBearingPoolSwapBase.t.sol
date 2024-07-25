@@ -235,7 +235,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn;
         int256 expectedBufferDeltaTokenOut;
 
-        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
+        // If the buffer is unbalanced beyond MIN_TRADE_AMOUNT, we expect a delta in the buffer.
         if (unbalancedToken1 > _token1BufferInitAmount / 2 + MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenIn = int256(_token1BufferInitAmount / 2) - int256(unbalancedToken1);
         } else {
@@ -277,7 +277,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn;
         int256 expectedBufferDeltaTokenOut;
 
-        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
+        // If the buffer is unbalanced beyond MIN_TRADE_AMOUNT, we expect a delta in the buffer.
         if (unbalancedToken1 > _token1BufferInitAmount / 2 + MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenIn = int256(_token1BufferInitAmount / 2) - int256(unbalancedToken1);
         } else {
@@ -379,7 +379,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn;
         int256 expectedBufferDeltaTokenOut;
 
-        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
+        // If the buffer is unbalanced beyond MIN_TRADE_AMOUNT, we expect a delta in the buffer.
         if (unbalancedToken1 < _token1BufferInitAmount / 2 - MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenOut = int256(_token1BufferInitAmount / 2) - int256(unbalancedToken1);
         } else {
@@ -421,7 +421,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn;
         int256 expectedBufferDeltaTokenOut;
 
-        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
+        // If the buffer is unbalanced beyond MIN_TRADE_AMOUNT, we expect a delta in the buffer.
         if (unbalancedToken1 < _token1BufferInitAmount / 2 - MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenOut = int256(_token1BufferInitAmount / 2) - int256(unbalancedToken1);
         } else {
