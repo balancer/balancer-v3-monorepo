@@ -688,12 +688,14 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             assertEq(tokens[0], address(vars.tokenIn), "Wrong token for SwapKind");
         }
 
-        // Tokens were transferred
+        // If there were rounding issues, make sure it's in favor of the vault (lp balance of tokenIn is <= expected,
+        // meaning vault's tokenIn is >= expected).
         assertLe(
             vars.tokenIn.balanceOf(lp),
             vars.lpBeforeSwapTokenIn - vars.expectedDeltaTokenIn,
             "LP balance tokenIn must be <= expected balance"
         );
+        // If there were rounding issues, make sure it's not a big one (less than 5 wei).
         assertApproxEqAbs(
             vars.tokenIn.balanceOf(lp),
             vars.lpBeforeSwapTokenIn - vars.expectedDeltaTokenIn,
@@ -701,11 +703,14 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             "Wrong ending balance of tokenIn for LP"
         );
 
+        // If there were rounding issues, make sure it's in favor of the vault (lp balance of tokenOut is <= expected,
+        // meaning vault's tokenOut is >= expected).
         assertLe(
             vars.tokenOut.balanceOf(lp),
             vars.lpBeforeSwapTokenOut + vars.expectedDeltaTokenOut,
             "LP balance tokenOut must be <= expected balance"
         );
+        // If there were rounding issues, make sure it's not a big one (less than 5 wei).
         assertApproxEqAbs(
             vars.tokenOut.balanceOf(lp),
             vars.lpBeforeSwapTokenOut + vars.expectedDeltaTokenOut,
@@ -878,6 +883,12 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         }
     }
 
+    /**
+     * @notice Unbalance buffers of ybToken1 and ybToken2.
+     * @dev This function can unbalance buffers to both sides, up to 50% of buffer initial liquidity.
+     * If the amount to unbalance token is smaller than 50% of buffer initial liquidity, underlying are wrapped, else
+     * wrapped are transformed in underlying.
+     */
     function _unbalanceBuffers(uint256 unbalancedToken1, uint256 unbalancedToken2) private {
         if (unbalancedToken1 > _token1BufferInitAmount / 2) {
             _unbalanceBuffer(WrappingDirection.WRAP, ybToken1, unbalancedToken1 - _token1BufferInitAmount / 2);
