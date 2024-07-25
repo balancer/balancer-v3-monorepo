@@ -39,6 +39,22 @@ interface IPoolInfo {
      */
     function getCurrentLiveBalances() external view returns (uint256[] memory balancesLiveScaled18);
 
-    /// @notice Fetches the static swap fee percentage for the pool.
-    function getStaticSwapFeePercentage() external view returns (uint256);
+    /**
+     * @notice Fetches the static swap fee percentage for the pool.
+     * @return staticSwapFeePercentage The current static swap fee percentage for the pool
+     */
+    function getStaticSwapFeePercentage() external view returns (uint256 staticSwapFeePercentage);
+
+    /**
+     * @notice Get the aggregate swap and yield fees for a pool.
+     * @dev There are determined by the current protocol and pool creator fees, set by the `ProtocolFeeController`.
+     * @return aggregateSwapFeePercentage The aggregate percentage fee applied to swaps (including
+     * unbalanced liquidity operations).
+     *
+     * @return aggregateYieldFeePercentage The aggregate percentage fee applied to yield
+     */
+    function getAggregateFeePercentages()
+        external
+        view
+        returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage);
 }

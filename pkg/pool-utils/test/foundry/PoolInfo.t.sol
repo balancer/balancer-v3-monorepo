@@ -156,4 +156,19 @@ contract PoolInfoTest is BaseTest {
         uint256 swapFeePercentage = poolInfo.getStaticSwapFeePercentage();
         assertEq(swapFeePercentage, expectedSwapFeePercentage, "Incorrect swap fee percentage");
     }
+
+    function testGetAggregateFeePercentages() public {
+        // Use unusual values that aren't used anywhere else.
+        uint256 expectedSwapFeePercentage = 32e16;
+        uint256 expectedYieldFeePercentage = 21e16;
+
+        vault.manualSetAggregateSwapFeePercentage(address(poolInfo), expectedSwapFeePercentage);
+        vault.manualSetAggregateYieldFeePercentage(address(poolInfo), expectedYieldFeePercentage);
+
+        (uint256 actualAggregateSwapFeePercentage, uint256 actualAggregateYieldFeePercentage) = poolInfo
+            .getAggregateFeePercentages();
+
+        assertEq(actualAggregateSwapFeePercentage, expectedSwapFeePercentage, "Incorrect swap fee percentage");
+        assertEq(actualAggregateYieldFeePercentage, expectedYieldFeePercentage, "Incorrect yield fee percentage");
+    }
 }
