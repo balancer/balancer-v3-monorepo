@@ -48,6 +48,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using SafeERC20 for IERC20;
     using PoolConfigLib for PoolConfigBits;
     using HooksConfigLib for PoolConfigBits;
+    using VaultStateLib for VaultStateBits;
     using ScalingHelpers for *;
     using TransientStorageHelpers for *;
     using StorageSlotExtension for *;

@@ -12,6 +12,7 @@ import { BaseBitsConfigTest } from "@balancer-labs/v3-solidity-utils/test/foundr
 import { VaultStateLib, VaultStateBits, VaultStateBits } from "../../../contracts/lib/VaultStateLib.sol";
 
 contract VaultStateLibTest is BaseBitsConfigTest {
+    using VaultStateLib for VaultStateBits;
     using WordCodec for bytes32;
 
     function testOffsets() public {

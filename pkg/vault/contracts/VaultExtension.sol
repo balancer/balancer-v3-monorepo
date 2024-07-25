@@ -62,6 +62,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfigBits;
     using HooksConfigLib for PoolConfigBits;
+    using VaultStateLib for VaultStateBits;
     using InputHelpers for uint256;
     using ScalingHelpers for *;
     using VaultExtensionsLib for IVault;

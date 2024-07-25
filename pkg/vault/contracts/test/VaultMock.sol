@@ -46,6 +46,7 @@ contract VaultMock is IVaultMainMock, Vault {
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for *;
     using HooksConfigLib for *;
+    using VaultStateLib for VaultStateBits;
     using TransientStorageHelpers for *;
     using StorageSlotExtension for *;
     using PoolDataLib for PoolData;

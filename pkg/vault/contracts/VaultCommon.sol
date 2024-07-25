@@ -35,6 +35,7 @@ import { PoolDataLib } from "./lib/PoolDataLib.sol";
 abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, ReentrancyGuardTransient, ERC20MultiToken {
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfigBits;
+    using VaultStateLib for VaultStateBits;
     using ScalingHelpers for *;
     using SafeCast for *;
     using FixedPoint for *;

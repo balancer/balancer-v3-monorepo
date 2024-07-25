@@ -47,6 +47,7 @@ import { VaultCommon } from "./VaultCommon.sol";
 contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfigBits;
+    using VaultStateLib for VaultStateBits;
     using VaultExtensionsLib for IVault;
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20;
