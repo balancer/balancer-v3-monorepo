@@ -14,7 +14,7 @@ contract BasePoolMathRoundingTest is Test {
 
     uint256 constant MIN_SWAP_FEE = 0;
     uint256 constant MAX_SWAP_FEE = 0.8e18;
-    uint256 constant DELTA = 1e4;
+    uint256 constant DELTA = 1e3;
 
     BasePoolMathMock mock;
 
