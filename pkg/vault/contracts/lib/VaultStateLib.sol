@@ -6,7 +6,7 @@ import { VaultState } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTy
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
-// @notice Config type to store entire configuration of the vault state.
+// @notice Config type to store the entire configuration of the vault state.
 type VaultStateBits is bytes32;
 
 using VaultStateLib for VaultStateBits global;

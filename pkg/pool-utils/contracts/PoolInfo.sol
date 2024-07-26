@@ -28,7 +28,7 @@ contract PoolInfo is IPoolInfo {
             IERC20[] memory tokens,
             TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory lastLiveBalances
+            uint256[] memory lastBalancesLiveScaled18
         )
     {
         return _vault.getPoolTokenInfo(address(this));

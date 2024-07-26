@@ -56,7 +56,7 @@ contract VaultUnitTest is BaseTest {
         PoolData memory poolData;
         poolData.balancesLiveScaled18 = [uint256(1e18), 1e18].toMemoryArray();
 
-        IBasePool.PoolSwapParams memory poolSwapParams = vault.manualBuildPoolSwapParams(params, state, poolData);
+        PoolSwapParams memory poolSwapParams = vault.manualBuildPoolSwapParams(params, state, poolData);
 
         assertEq(uint8(poolSwapParams.kind), uint8(params.kind), "Unexpected kind");
         assertEq(poolSwapParams.amountGivenScaled18, state.amountGivenScaled18, "Unexpected amountGivenScaled18");
