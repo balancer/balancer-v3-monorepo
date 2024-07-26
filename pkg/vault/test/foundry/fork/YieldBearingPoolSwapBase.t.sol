@@ -1036,7 +1036,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             // If operation is within buffer range, convert is used by the vault to save some gas.
             return wToken.convertToShares(underlyingToDeposit);
         } else {
-            bytes32 bufferBalances = vault.getBufferTokenBalances(wToken);
+            bytes32 bufferBalances = vault.getBufferTokenBalancesBytes(wToken);
             // Deposit converts underlying to wrapped. If buffer has a surplus of underlying, the vault wraps it to
             // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our result
             // preview.
@@ -1064,7 +1064,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             // If operation is within buffer range, convert is used by the vault to save some gas.
             return wToken.convertToAssets(wrappedToMint);
         } else {
-            bytes32 bufferBalances = vault.getBufferTokenBalances(wToken);
+            bytes32 bufferBalances = vault.getBufferTokenBalancesBytes(wToken);
             // Mint converts underlying to wrapped. If buffer has a surplus of underlying, the vault wraps it to
             // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our
             // result preview.
@@ -1084,7 +1084,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             // If operation is within buffer range, convert is used by the vault to save some gas.
             return wToken.convertToShares(underlyingToWithdraw);
         } else {
-            bytes32 bufferBalances = vault.getBufferTokenBalances(wToken);
+            bytes32 bufferBalances = vault.getBufferTokenBalancesBytes(wToken);
             // Withdraw converts wrapped to underlying. If buffer has a surplus of wrapped, the vault wraps it to
             // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our
             // result preview.
@@ -1106,7 +1106,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             // If operation is within buffer range, convert is used by the vault to save some gas.
             return wToken.convertToAssets(wrappedToRedeem);
         } else {
-            bytes32 bufferBalances = vault.getBufferTokenBalances(wToken);
+            bytes32 bufferBalances = vault.getBufferTokenBalancesBytes(wToken);
             // Redeem converts wrapped to underlying. If buffer has a surplus of wrapped, the vault wraps it to
             // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our
             // result preview.
