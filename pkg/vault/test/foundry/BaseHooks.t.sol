@@ -4,11 +4,17 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    TokenConfig,
+    LiquidityManagement,
+    PoolSwapParams,
+    AddLiquidityKind,
+    RemoveLiquidityKind,
+    AfterSwapParams
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BaseHooksMock } from "../../contracts/test/BaseHooksMock.sol";
 
@@ -140,14 +146,14 @@ contract BaseHooksTest is BaseVaultTest {
     }
 
     function testOnBeforeSwap() public {
-        IBasePool.PoolSwapParams memory params;
+        PoolSwapParams memory params;
 
         vm.prank(address(vault));
         assertFalse(testHook.onBeforeSwap(params, address(0)), "onBeforeSwap should be false");
     }
 
     function testOnAfterSwap() public {
-        IHooks.AfterSwapParams memory params;
+        AfterSwapParams memory params;
 
         vm.prank(address(vault));
         (bool success, uint256 hookAdjustedAmount) = testHook.onAfterSwap(params);
@@ -158,7 +164,7 @@ contract BaseHooksTest is BaseVaultTest {
     }
 
     function testOnComputeDynamicSwapFeePercentage() public {
-        IBasePool.PoolSwapParams memory params;
+        PoolSwapParams memory params;
         uint256 staticSwapFeePercentage;
 
         vm.prank(address(vault));

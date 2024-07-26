@@ -11,6 +11,7 @@ import {
     LiquidityManagement,
     PoolRoleAccounts,
     RemoveLiquidityKind,
+    AfterSwapParams,
     SwapKind
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -87,7 +88,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
             address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onAfterSwap.selector,
-                IHooks.AfterSwapParams({
+                AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: dai,
                     tokenOut: usdc,
@@ -146,7 +147,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
             address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onAfterSwap.selector,
-                IHooks.AfterSwapParams({
+                AfterSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     tokenIn: dai,
                     tokenOut: usdc,

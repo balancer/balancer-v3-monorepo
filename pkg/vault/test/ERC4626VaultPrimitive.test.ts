@@ -49,7 +49,7 @@ describe('ERC4626VaultPrimitive', function () {
   let DAI: ERC20TestToken;
   let wUSDC: ERC4626TestToken;
   let USDC: ERC20TestToken;
-  let boostedPoolTokens: string[];
+  let yieldBearingPoolTokens: string[];
 
   let lp: SignerWithAddress;
   let alice: SignerWithAddress;
@@ -84,12 +84,12 @@ describe('ERC4626VaultPrimitive', function () {
     await DAI.connect(alice).approve(permit2, MAX_UINT256);
     await permit2.connect(alice).approve(DAI, batchRouter, MAX_UINT160, MAX_UINT48);
 
-    boostedPoolTokens = sortAddresses([await wDAI.getAddress(), await wUSDC.getAddress()]);
+    yieldBearingPoolTokens = sortAddresses([await wDAI.getAddress(), await wUSDC.getAddress()]);
 
     factory = await deploy('v3-vault/PoolFactoryMock', { args: [vault, 12 * MONTH] });
   });
 
-  async function createBoostedPool(): Promise<PoolMock> {
+  async function createYieldBearingPool(): Promise<PoolMock> {
     // initialize assets and supply
     await DAI.mint(lp, TOKEN_AMOUNT);
     await DAI.connect(lp).approve(wDAI, TOKEN_AMOUNT);
@@ -100,7 +100,7 @@ describe('ERC4626VaultPrimitive', function () {
     await wUSDC.connect(lp).deposit(TOKEN_AMOUNT, lp);
 
     pool = await deploy('v3-vault/PoolMock', {
-      args: [await vault.getAddress(), 'Boosted Pool DAI-USDC', 'BP-DAI_USDC'],
+      args: [await vault.getAddress(), 'Yield-bearing Pool DAI-USDC', 'BP-DAI_USDC'],
     });
 
     const rpwDAI: ERC4626RateProvider = await deploy('v3-vault/ERC4626RateProvider', {
@@ -112,16 +112,16 @@ describe('ERC4626VaultPrimitive', function () {
     });
 
     const rateProviders: string[] = [];
-    rateProviders[boostedPoolTokens.indexOf(await wDAI.getAddress())] = await rpwDAI.getAddress();
-    rateProviders[boostedPoolTokens.indexOf(await wUSDC.getAddress())] = await rpwUSDC.getAddress();
+    rateProviders[yieldBearingPoolTokens.indexOf(await wDAI.getAddress())] = await rpwDAI.getAddress();
+    rateProviders[yieldBearingPoolTokens.indexOf(await wUSDC.getAddress())] = await rpwUSDC.getAddress();
 
-    await factory.connect(lp).registerTestPool(pool, buildTokenConfig(boostedPoolTokens, rateProviders));
+    await factory.connect(lp).registerTestPool(pool, buildTokenConfig(yieldBearingPoolTokens, rateProviders));
 
     return (await deployedAt('PoolMock', await pool.getAddress())) as unknown as PoolMock;
   }
 
-  async function createAndInitializeBoostedPool(): Promise<PoolMock> {
-    pool = await createBoostedPool();
+  async function createAndInitializeYieldBearingPool(): Promise<PoolMock> {
+    pool = await createYieldBearingPool();
 
     await pool.connect(lp).approve(router, MAX_UINT256);
     for (const token of [wDAI, wUSDC]) {
@@ -130,18 +130,20 @@ describe('ERC4626VaultPrimitive', function () {
       await permit2.connect(lp).approve(token, batchRouter, MAX_UINT160, MAX_UINT48);
     }
 
-    await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
+    await router
+      .connect(lp)
+      .initialize(pool, yieldBearingPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
 
     return pool;
   }
 
   describe('registration', () => {
     sharedBeforeEach('register factory and create pool', async () => {
-      pool = await createBoostedPool();
+      pool = await createYieldBearingPool();
     });
 
     it('pool has correct metadata', async () => {
-      expect(await pool.name()).to.eq('Boosted Pool DAI-USDC');
+      expect(await pool.name()).to.eq('Yield-bearing Pool DAI-USDC');
       expect(await pool.symbol()).to.eq('BP-DAI_USDC');
     });
 
@@ -155,7 +157,7 @@ describe('ERC4626VaultPrimitive', function () {
     it('has the correct tokens', async () => {
       const actualTokens = await vault.getPoolTokens(pool);
 
-      expect(actualTokens).to.deep.equal(boostedPoolTokens);
+      expect(actualTokens).to.deep.equal(yieldBearingPoolTokens);
     });
 
     it('configures the pool correctly', async () => {
@@ -184,7 +186,7 @@ describe('ERC4626VaultPrimitive', function () {
 
   describe('initialization', () => {
     sharedBeforeEach('create pool', async () => {
-      pool = await createBoostedPool();
+      pool = await createYieldBearingPool();
 
       await pool.connect(lp).approve(router, MAX_UINT256);
       for (const token of [wDAI, wUSDC]) {
@@ -200,14 +202,18 @@ describe('ERC4626VaultPrimitive', function () {
 
     it('emits an event', async () => {
       expect(
-        await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x')
+        await router
+          .connect(lp)
+          .initialize(pool, yieldBearingPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x')
       )
         .to.emit(vault, 'PoolInitialized')
         .withArgs(pool);
     });
 
     it('updates the state', async () => {
-      await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
+      await router
+        .connect(lp)
+        .initialize(pool, yieldBearingPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
 
       const poolConfig: PoolConfigStructOutput = await vault.getPoolConfig(pool);
 
@@ -221,22 +227,24 @@ describe('ERC4626VaultPrimitive', function () {
       const [, tokenInfo, balances] = await vault.getPoolTokenInfo(pool);
       const tokenTypes = tokenInfo.map((config) => config.tokenType);
 
-      const expectedTokenTypes = boostedPoolTokens.map(() => TokenType.WITH_RATE);
+      const expectedTokenTypes = yieldBearingPoolTokens.map(() => TokenType.WITH_RATE);
       expect(tokenTypes).to.deep.equal(expectedTokenTypes);
       expect(balances).to.deep.equal([TOKEN_AMOUNT, TOKEN_AMOUNT]);
     });
 
     it('cannot be initialized twice', async () => {
-      await router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
+      await router
+        .connect(lp)
+        .initialize(pool, yieldBearingPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
       await expect(
-        router.connect(lp).initialize(pool, boostedPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x')
+        router.connect(lp).initialize(pool, yieldBearingPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x')
       ).to.be.revertedWithCustomError(vault, 'PoolAlreadyInitialized');
     });
   });
 
   describe('queries', () => {
     sharedBeforeEach('create and initialize pool', async () => {
-      pool = await createAndInitializeBoostedPool();
+      pool = await createAndInitializeYieldBearingPool();
 
       // Donate to wrapped tokens to generate different rates
       await DAI.mint(lp, daiToDonate);

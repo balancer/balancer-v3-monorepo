@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.24;
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
     LiquidityManagement,
     TokenConfig,
+    PoolSwapParams,
     HookFlags
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -59,15 +59,15 @@ contract DirectionalFeeHookExample is BaseHooks {
 
     /// @inheritdoc IHooks
     function onComputeDynamicSwapFeePercentage(
-        IBasePool.PoolSwapParams calldata params,
+        PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
     ) public view override onlyVault returns (bool, uint256) {
         // Get pool balances
-        (, , , uint256[] memory lastLiveBalances) = _vault.getPoolTokenInfo(pool);
+        (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(pool);
 
         uint256 calculatedSwapFeePercentage = _calculatedExpectedSwapFeePercentage(
-            lastLiveBalances,
+            lastBalancesLiveScaled18,
             params.amountGivenScaled18,
             params.indexIn,
             params.indexOut

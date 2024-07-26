@@ -25,16 +25,18 @@ library ScalingHelpers {
     ***************************************************************************/
 
     /**
-     * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
-     * scaling or not. The result is rounded down.
+     * @notice Applies `scalingFactor` to `amount`.
+     * @dev This may result in a larger or equal value, depending on whether it needed scaling or not. The result
+     * is rounded down.
      */
     function toScaled18RoundDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
         return FixedPoint.mulDown(amount, scalingFactor);
     }
 
     /**
-     * @dev Applies `scalingFactor` and `tokenRate` to `amount`, resulting in a larger or equal value depending on
-     * whether it needed scaling/rate adjustment or not. The result is rounded down.
+     * @notice Applies `scalingFactor` and `tokenRate` to `amount`.
+     * @dev This may result in a larger or equal value, depending on whether it needed scaling/rate adjustment or not.
+     * The result is rounded down.
      */
     function toScaled18ApplyRateRoundDown(
         uint256 amount,
@@ -45,16 +47,18 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
-     * scaling or not. The result is rounded up.
+     * @notice Applies `scalingFactor` to `amount`.
+     * @dev This may result in a larger or equal value, depending on whether it needed scaling or not. The result
+     * is rounded up.
      */
     function toScaled18RoundUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
         return FixedPoint.mulUp(amount, scalingFactor);
     }
 
     /**
-     * @dev Applies `scalingFactor` and `tokenRate` to `amount`, resulting in a larger or equal value depending on
-     * whether it needed scaling/rate adjustment or not. The result is rounded up.
+     * @notice Applies `scalingFactor` and `tokenRate` to `amount`.
+     * @dev This may result in a larger or equal value, depending on whether it needed scaling/rate adjustment or not.
+     * The result is rounded up.
      */
     function toScaled18ApplyRateRoundUp(
         uint256 amount,
@@ -65,16 +69,18 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Reverses the `scalingFactor` applied to `amount`, resulting in a smaller or equal value depending on
-     * whether it needed scaling or not. The result is rounded down.
+     * @notice Reverses the `scalingFactor` applied to `amount`.
+     * @dev This may result in a smaller or equal value, depending on whether it needed scaling or not. The result
+     * is rounded down.
      */
     function toRawRoundDown(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
         return FixedPoint.divDown(amount, scalingFactor);
     }
 
     /**
-     * @dev Reverses the `scalingFactor` and `tokenRate` applied to `amount`, resulting in a smaller or equal value
-     * depending on whether it needed scaling/rate adjustment or not. The result is rounded down.
+     * @notice Reverses the `scalingFactor` and `tokenRate` applied to `amount`.
+     * @dev This may result in a smaller or equal value, depending on whether it needed scaling/rate adjustment or not.
+     * The result is rounded down.
      */
     function toRawUndoRateRoundDown(
         uint256 amount,
@@ -86,16 +92,18 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Reverses the `scalingFactor` applied to `amount`, resulting in a smaller or equal value depending on
-     * whether it needed scaling or not. The result is rounded up.
+     * @notice Reverses the `scalingFactor` applied to `amount`.
+     * @dev This may result in a smaller or equal value, depending on whether it needed scaling or not. The result
+     * is rounded up.
      */
     function toRawRoundUp(uint256 amount, uint256 scalingFactor) internal pure returns (uint256) {
         return FixedPoint.divUp(amount, scalingFactor);
     }
 
     /**
-     * @dev Reverses the `scalingFactor` and `tokenRate` applied to `amount`, resulting in a smaller or equal value
-     * depending on whether it needed scaling/rate adjustment or not. The result is rounded up.
+     * @notice Reverses the `scalingFactor` and `tokenRate` applied to `amount`.
+     * @dev This may result in a smaller or equal value, depending on whether it needed scaling/rate adjustment or not.
+     * The result is rounded up.
      */
     function toRawUndoRateRoundUp(
         uint256 amount,
@@ -111,8 +119,8 @@ library ScalingHelpers {
     ***************************************************************************/
 
     /**
-     * @dev Same as `toScaled18RoundDown`, but for an entire array. This function does not return anything,
-     * but instead *mutates* the `amounts` array.
+     * @notice Same as `toScaled18RoundDown`, but for an entire array.
+     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
      */
     function toScaled18RoundDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
         uint256 length = amounts.length;
@@ -124,8 +132,8 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `toScaled18ApplyRateRoundDown`, but for an entire array. This function does not return anything,
-     * but instead *mutates* the `amounts` array.
+     * @notice Same as `toScaled18ApplyRateRoundDown`, but for an entire array.
+     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
      */
     function toScaled18ApplyRateRoundDownArray(
         uint256[] memory amounts,
@@ -140,9 +148,7 @@ library ScalingHelpers {
         }
     }
 
-    /**
-     * @dev Same as `toScaled18ApplyRateRoundDown`, but returns a new array, leaving the original intact.
-     */
+    /// @notice Same as `toScaled18ApplyRateRoundDown`, but returns a new array, leaving the original intact.
     function copyToScaled18ApplyRateRoundDownArray(
         uint256[] memory amounts,
         uint256[] memory scalingFactors,
@@ -160,8 +166,8 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `toScaled18RoundUp`, but for an entire array. This function does not return anything,
-     * but instead *mutates* the `amounts` array.
+     * @notice Same as `toScaled18RoundUp`, but for an entire array.
+     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
      */
     function toScaled18RoundUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
         uint256 length = amounts.length;
@@ -173,8 +179,8 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `toScaled18ApplyRateRoundUp`, but for an entire array. This function does not return anything,
-     * but instead *mutates* the `amounts` array.
+     * @notice Same as `toScaled18ApplyRateRoundUp`, but for an entire array.
+     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
      */
     function toScaled18ApplyRateRoundUpArray(
         uint256[] memory amounts,
@@ -189,9 +195,7 @@ library ScalingHelpers {
         }
     }
 
-    /**
-     * @dev Same as `toScaled18ApplyRateRoundUp`, but returns a new array, leaving the original intact.
-     */
+    /// @notice Same as `toScaled18ApplyRateRoundUp`, but returns a new array, leaving the original intact.
     function copyToScaled18ApplyRateRoundUpArray(
         uint256[] memory amounts,
         uint256[] memory scalingFactors,
@@ -209,8 +213,8 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `toRawRoundDown`, but for an entire array. This function does not return anything, but instead
-     * *mutates* the `amounts` array.
+     * @notice Same as `toRawRoundDown`, but for an entire array.
+     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
      */
     function toRawRoundDownArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
         uint256 length = amounts.length;
@@ -222,8 +226,8 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `toRawRoundUp`, but for an entire array. This function does not return anything, but instead
-     * *mutates* the `amounts` array.
+     * @notice Same as `toRawRoundUp`, but for an entire array.
+     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
      */
     function toRawRoundUpArray(uint256[] memory amounts, uint256[] memory scalingFactors) internal pure {
         uint256 length = amounts.length;

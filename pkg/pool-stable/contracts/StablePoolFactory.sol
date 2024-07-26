@@ -46,7 +46,7 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
      * @param name The name of the pool
      * @param symbol The symbol of the pool
      * @param tokens An array of descriptors for the tokens the pool will manage
-     * @param amplificationParameter The initial Amplification Parameter
+     * @param amplificationParameter Starting value of the amplificationParameter (see StablePool)
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
      * @param poolHooksContract Contract that implements the hooks for the pool
