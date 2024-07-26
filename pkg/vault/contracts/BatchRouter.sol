@@ -161,7 +161,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             if (path.steps[0].isBuffer && EVMCallModeHelpers.isStaticCall() == false) {
                 // If first step is a buffer, take the token in advance. We need this to wrap/unwrap.
                 _takeTokenIn(params.sender, stepTokenIn, stepExactAmountIn, false);
-                _settledTokenAmounts().tAdd(address(stepTokenIn), stepExactAmountIn);
             } else {
                 // Paths may (or may not) share the same token in. To minimize token transfers, we store the addresses
                 // in a set with unique addresses that can be iterated later on.

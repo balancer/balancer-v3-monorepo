@@ -871,40 +871,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         return _vaultStateBits.isQueryDisabled();
     }
 
-    /// @inheritdoc IVaultExtension
-    function calculateBufferAmounts(
-        WrappingDirection direction,
-        SwapKind kind,
-        IERC4626 wrappedToken,
-        uint256 amountGiven
-    ) external query onlyVaultDelegateCall returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut) {
-        IERC20 underlyingToken = IERC20(wrappedToken.asset());
-        // Uses the most accurate calculation so that a query matches the actual operation.
-        if (direction == WrappingDirection.WRAP) {
-            // `amountIn` is underlying tokens, `amountOut` is wrapped tokens.
-            if (kind == SwapKind.EXACT_IN) {
-                amountCalculated = wrappedToken.previewDeposit(amountGiven);
-                (amountIn, amountOut) = (amountGiven, amountCalculated);
-            } else {
-                amountCalculated = wrappedToken.previewMint(amountGiven);
-                (amountIn, amountOut) = (amountCalculated, amountGiven);
-            }
-            _takeDebt(underlyingToken, amountIn);
-            _supplyCredit(wrappedToken, amountOut);
-        } else {
-            // `amountIn` is wrapped tokens, `amountOut` is underlying tokens.
-            if (kind == SwapKind.EXACT_IN) {
-                amountCalculated = wrappedToken.previewRedeem(amountGiven);
-                (amountIn, amountOut) = (amountGiven, amountCalculated);
-            } else {
-                amountCalculated = wrappedToken.previewWithdraw(amountGiven);
-                (amountIn, amountOut) = (amountCalculated, amountGiven);
-            }
-            _takeDebt(wrappedToken, amountIn);
-            _supplyCredit(underlyingToken, amountOut);
-        }
-    }
-
     /*******************************************************************************
                                      Default handlers
     *******************************************************************************/
