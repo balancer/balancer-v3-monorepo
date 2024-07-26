@@ -4,14 +4,15 @@ pragma solidity ^0.8.24;
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import {
     AddLiquidityKind,
     HooksConfig,
     HookFlags,
     LiquidityManagement,
     RemoveLiquidityKind,
-    TokenConfig
+    TokenConfig,
+    PoolSwapParams,
+    AfterSwapParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
@@ -105,7 +106,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
     }
 
     /// @inheritdoc IHooks
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata, address) public virtual returns (bool) {
+    function onBeforeSwap(PoolSwapParams calldata, address) public virtual returns (bool) {
         // return false to trigger an error if shouldCallBeforeSwap is true but this function is not overridden.
         return false;
     }
@@ -119,7 +120,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
 
     /// @inheritdoc IHooks
     function onComputeDynamicSwapFeePercentage(
-        IBasePool.PoolSwapParams calldata,
+        PoolSwapParams calldata,
         address,
         uint256
     ) public view virtual returns (bool, uint256) {

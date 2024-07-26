@@ -30,6 +30,7 @@ contract ProtocolFeeController is
     using SafeERC20 for IERC20;
 
     /**
+     * @notice Fee configuration stored in the swap and yield fee mappings.
      * @dev Instead of storing only the fee in the mapping, also store a flag to indicate whether the fee has been
      * set by governance through a permissioned call. (The fee is stored in 64-bits, so that the struct fits
      * within a single slot.)
