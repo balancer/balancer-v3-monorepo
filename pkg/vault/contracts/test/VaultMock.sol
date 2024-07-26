@@ -24,6 +24,7 @@ import {
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
+import { BufferHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/BufferHelpers.sol";
 
 import { VaultStateLib, VaultStateBits, VaultStateBits } from "../lib/VaultStateLib.sol";
 import { PoolConfigLib } from "../lib/PoolConfigLib.sol";
@@ -43,6 +44,7 @@ struct SwapInternalStateLocals {
 contract VaultMock is IVaultMainMock, Vault {
     using ScalingHelpers for uint256;
     using PackedTokenBalance for bytes32;
+    using BufferHelpers for bytes32;
     using PoolConfigLib for *;
     using HooksConfigLib for *;
     using TransientStorageHelpers for *;
@@ -577,12 +579,16 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256) {
         bytes32 bufferBalance = _bufferTokenBalances[IERC20(address(wrappedToken))];
-        return _getBufferUnderlyingSurplus(bufferBalance, wrappedToken);
+        return bufferBalance.getBufferUnderlyingSurplus(wrappedToken);
     }
 
     function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256) {
         bytes32 bufferBalance = _bufferTokenBalances[IERC20(address(wrappedToken))];
-        return _getBufferWrappedSurplus(bufferBalance, wrappedToken);
+        return bufferBalance.getBufferWrappedSurplus(wrappedToken);
+    }
+
+    function getBufferTokenBalancesBytes(IERC4626 wrappedToken) external view returns (bytes32) {
+        return _bufferTokenBalances[IERC20(address(wrappedToken))];
     }
 
     function manualUpdateReservesAfterWrapping(

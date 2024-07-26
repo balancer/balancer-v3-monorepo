@@ -381,8 +381,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setSharesToConsume(_wrapAmount + _ABOVE_CONVERT_ERROR);
 
         vm.startPrank(lp);
-        // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, lp);
+        // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount (but not enough to dismiss
+        // wrap/unwrap)
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount / 2, _wrapAmount / 2, lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
@@ -477,8 +478,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setSharesToConsume(waDAI.previewWithdraw(_wrapAmount) + _ABOVE_CONVERT_ERROR);
 
         vm.startPrank(lp);
-        // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, lp);
+        // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount (but not enough to dismiss
+        // wrap/unwrap)
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount / 2, _wrapAmount / 2, lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
         vm.stopPrank();
