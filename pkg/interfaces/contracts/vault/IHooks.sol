@@ -4,7 +4,8 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVault } from "./IVault.sol";
+// Explicitly import VaultTypes structs because we expect this interface to be heavily used by external developers.
+// Internally, when this list gets too long, we usually just do a simple import to keep things tidy.
 import {
     TokenConfig,
     LiquidityManagement,
@@ -15,6 +16,7 @@ import {
     RemoveLiquidityKind,
     SwapKind
 } from "./VaultTypes.sol";
+import { IVault } from "./IVault.sol";
 
 /**
  * @notice Interface for pool hooks.
@@ -29,7 +31,7 @@ interface IHooks {
     ***************************************************************************/
 
     /**
-     * @notice Hook to be executed when a pool is registered.
+     * @notice Hook executed when a pool is registered with a non-zero hooks contract.
      * @dev Returns true if registration was successful, and false to revert the pool registration.
      * Make sure this function is properly implemented (e.g. check the factory, and check that the
      * given pool is from the factory). The Vault address will be msg.sender.
@@ -49,6 +51,10 @@ interface IHooks {
 
     /**
      * @notice Return the set of hooks implemented by the contract.
+     * @dev The Vault will only call hooks the pool says it supports, and of course only if a hooks contract is defined
+     * (i.e., the `poolHooksContract` in `PoolRegistrationParams` is non-zero).
+     * `onRegister` is the only "mandatory" hook.
+     *
      * @return hookFlags Flags indicating which hooks the contract supports
      */
     function getHookFlags() external view returns (HookFlags memory hookFlags);
@@ -58,8 +64,10 @@ interface IHooks {
     ***************************************************************************/
 
     /**
-     * @notice Hook to be executed before pool initialization.
-     * @dev Hook contracts should use the `onlyVault` modifier to guarantee this is only called by the Vault.
+     * @notice Hook executed before pool initialization.
+     * @dev Called if the `shouldCallBeforeInitialize` flag is set in the configuration. Hook contracts should use
+     * the `onlyVault` modifier to guarantee this is only called by the Vault.
+     *
      * @param exactAmountsIn Exact amounts of input tokens
      * @param userData Optional, arbitrary data sent with the encoded request
      * @return success True if the pool wishes to proceed with initialization
@@ -68,7 +76,9 @@ interface IHooks {
 
     /**
      * @notice Hook to be executed after pool initialization.
-     * @dev Hook contracts should use the `onlyVault` modifier to guarantee this is only called by the Vault.
+     * @dev Called if the `shouldCallAfterInitialize` flag is set in the configuration. Hook contracts should use
+     * the `onlyVault` modifier to guarantee this is only called by the Vault.
+     *
      * @param exactAmountsIn Exact amounts of input tokens
      * @param bptAmountOut Amount of pool tokens minted during initialization
      * @param userData Optional, arbitrary data sent with the encoded request
@@ -86,7 +96,9 @@ interface IHooks {
 
     /**
      * @notice Hook to be executed before adding liquidity.
-     * @dev Hook contracts should use the `onlyVault` modifier to guarantee this is only called by the Vault.
+     * @dev Called if the `shouldCallBeforeAddLiquidity` flag is set in the configuration. Hook contracts should use
+     * the `onlyVault` modifier to guarantee this is only called by the Vault.
+     *
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of add liquidity operation (e.g., proportional, custom)
@@ -108,8 +120,9 @@ interface IHooks {
 
     /**
      * @notice Hook to be executed after adding liquidity.
-     * @dev The Vault will ignore `hookAdjustedAmountsInRaw` unless `enableHookAdjustedAmounts` is true.
-     * Hook contracts should use the `onlyVault` modifier to guarantee this is only called by the Vault.
+     * @dev Called if the `shouldCallAfterAddLiquidity` flag is set in the configuration. The Vault will ignore
+     * `hookAdjustedAmountsInRaw` unless `enableHookAdjustedAmounts` is true. Hook contracts should use the
+     * `onlyVault` modifier to guarantee this is only called by the Vault.
      *
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
@@ -139,7 +152,9 @@ interface IHooks {
 
     /**
      * @notice Hook to be executed before removing liquidity.
-     * @dev Hook contracts should use the `onlyVault` modifier to guarantee this is only called by the Vault.
+     * @dev Called if the `shouldCallBeforeRemoveLiquidity` flag is set in the configuration. Hook contracts should use
+     * the `onlyVault` modifier to guarantee this is only called by the Vault.
+     *
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of remove liquidity operation (e.g., proportional, custom)
@@ -161,8 +176,10 @@ interface IHooks {
 
     /**
      * @notice Hook to be executed after removing liquidity.
-     * @dev The Vault will ignore `hookAdjustedAmountsOutRaw` unless `enableHookAdjustedAmounts` is true.
-     * Hook contracts should use the `onlyVault` modifier to guarantee this is only called by the Vault.
+     * @dev Called if the `shouldCallAfterRemoveLiquidity` flag is set in the configuration. The Vault will ignore
+     * `hookAdjustedAmountsOutRaw` unless `enableHookAdjustedAmounts` is true. Hook contracts should use the
+     * `onlyVault` modifier to guarantee this is only called by the Vault.
+     *
      * @param router The address (usually a router contract) that initiated a swap operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of remove liquidity operation (e.g., proportional, custom)
@@ -191,7 +208,9 @@ interface IHooks {
 
     /**
      * @notice Called before a swap to give the Pool an opportunity to perform actions.
-     * @dev Hook contracts should use the `onlyVault` modifier to guarantee this is only called by the Vault.
+     * @dev Called if the `shouldCallBeforeSwap` flag is set in the configuration. Hook contracts should use the
+     * `onlyVault` modifier to guarantee this is only called by the Vault.
+     *
      * @param params Swap parameters (see PoolSwapParams for struct definition)
      * @param pool Pool address, used to get pool information from the vault (poolData, token config, etc.)
      * @return success True if the pool wishes to proceed with settlement
@@ -200,8 +219,9 @@ interface IHooks {
 
     /**
      * @notice Called after a swap to perform further actions once the balances have been updated by the swap.
-     * @dev The Vault will ignore `hookAdjustedAmountCalculatedRaw` unless `enableHookAdjustedAmounts` is true.
-     * Hook contracts should use the `onlyVault` modifier to guarantee this is only called by the Vault.
+     * @dev Called if the `shouldCallAfterSwap` flag is set in the configuration. The Vault will ignore
+     * `hookAdjustedAmountCalculatedRaw` unless `enableHookAdjustedAmounts` is true. Hook contracts should
+     * use the `onlyVault` modifier to guarantee this is only called by the Vault.
      *
      * @param params Swap parameters (see above for struct definition)
      * @return success True if the pool wishes to proceed with settlement
@@ -213,7 +233,9 @@ interface IHooks {
 
     /**
      * @notice Called after `onBeforeSwap` and before the main swap operation, if the pool has dynamic fees.
-     * @dev Hook contracts should use the `onlyVault` modifier to guarantee this is only called by the Vault.
+     * @dev Called if the `shouldCallComputeDynamicSwapFee` flag is set in the configuration. Hook contracts should use
+     * the `onlyVault` modifier to guarantee this is only called by the Vault.
+     *
      * @param params Swap parameters (see PoolSwapParams for struct definition)
      * @param pool Pool address, used to get pool information from the vault (poolData, token config, etc.)
      * @param staticSwapFeePercentage 18-decimal FP value of the static swap fee percentage, for reference
