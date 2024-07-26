@@ -887,7 +887,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
      * @notice Unbalance buffers of ybToken1 and ybToken2.
      * @dev This function can unbalance buffers to both sides, up to 50% of buffer initial liquidity.
      * If the amount to unbalance token is smaller than 50% of buffer initial liquidity, underlying are wrapped, else
-     * wrapped are transformed in underlying.
+     * wrapped are transformed to underlying.
      */
     function _unbalanceBuffers(uint256 unbalancedToken1, uint256 unbalancedToken2) private {
         if (unbalancedToken1 > _token1BufferInitAmount / 2) {
