@@ -25,7 +25,8 @@ import {
     LiquidityManagement,
     PoolConfig,
     HooksConfig,
-    PoolData
+    PoolData,
+    PoolSwapParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -522,7 +523,7 @@ contract VaultExplorerTest is BaseVaultTest {
 
         (bool success, uint256 dynamicSwapFeePercentage) = explorer.computeDynamicSwapFeePercentage(
             pool,
-            IBasePool.PoolSwapParams({
+            PoolSwapParams({
                 kind: SwapKind.EXACT_IN,
                 amountGivenScaled18: defaultAmount,
                 balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),

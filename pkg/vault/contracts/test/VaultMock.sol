@@ -9,7 +9,6 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMainMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMainMock.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
@@ -378,14 +377,14 @@ contract VaultMock is IVaultMainMock, Vault {
         }
     }
 
-    function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances) {
+    function getLastLiveBalances(address pool) external view returns (uint256[] memory lastBalancesLiveScaled18) {
         mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
 
         uint256 numTokens = _poolTokens[pool].length;
-        lastLiveBalances = new uint256[](numTokens);
+        lastBalancesLiveScaled18 = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
-            lastLiveBalances[i] = poolTokenBalances[i].getBalanceDerived();
+            lastBalancesLiveScaled18[i] = poolTokenBalances[i].getBalanceDerived();
         }
     }
 
@@ -441,7 +440,7 @@ contract VaultMock is IVaultMainMock, Vault {
             PoolData memory
         )
     {
-        IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
+        PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
 
         (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut) = _swap(
             params,
@@ -458,7 +457,7 @@ contract VaultMock is IVaultMainMock, Vault {
         SwapState memory state,
         PoolData memory poolData
     ) external nonReentrant {
-        IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
+        PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
         _swap(params, state, poolData, swapParams);
     }
 
@@ -490,7 +489,7 @@ contract VaultMock is IVaultMainMock, Vault {
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
-    ) external view returns (IBasePool.PoolSwapParams memory) {
+    ) external view returns (PoolSwapParams memory) {
         return _buildPoolSwapParams(params, state, poolData);
     }
 

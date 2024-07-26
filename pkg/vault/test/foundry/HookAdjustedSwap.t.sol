@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -82,7 +81,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
             address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onAfterSwap.selector,
-                IHooks.AfterSwapParams({
+                AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: dai,
                     tokenOut: usdc,
@@ -144,7 +143,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
             address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onAfterSwap.selector,
-                IHooks.AfterSwapParams({
+                AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: dai,
                     tokenOut: usdc,
@@ -203,7 +202,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
             address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onAfterSwap.selector,
-                IHooks.AfterSwapParams({
+                AfterSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     tokenIn: dai,
                     tokenOut: usdc,
@@ -274,7 +273,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
             address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onAfterSwap.selector,
-                IHooks.AfterSwapParams({
+                AfterSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     tokenIn: dai,
                     tokenOut: usdc,
@@ -336,7 +335,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
             address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onAfterSwap.selector,
-                IHooks.AfterSwapParams({
+                AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: dai,
                     tokenOut: usdc,
@@ -381,7 +380,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
             address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onAfterSwap.selector,
-                IHooks.AfterSwapParams({
+                AfterSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     tokenIn: dai,
                     tokenOut: usdc,
@@ -427,7 +426,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
             address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onAfterSwap.selector,
-                IHooks.AfterSwapParams({
+                AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: dai,
                     tokenOut: usdc,
