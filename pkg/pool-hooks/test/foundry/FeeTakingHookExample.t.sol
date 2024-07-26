@@ -126,6 +126,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         );
 
         _checkPoolAndVaultBalancesAfterSwap(balancesBefore, balancesAfter, swapAmount);
+        _checkWithdrawals(0, hookFee);
     }
 
     function testFeeSwapExactOut__Fuzz(uint256 swapAmount, uint64 hookFeePercentage) public {
@@ -193,6 +194,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         );
 
         _checkPoolAndVaultBalancesAfterSwap(balancesBefore, balancesAfter, swapAmount);
+        _checkWithdrawals(hookFee, 0);
     }
 
     function testHookFeeAddLiquidityExactIn__Fuzz(uint256 expectedBptOut, uint64 hookFeePercentage) public {
@@ -205,7 +207,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         // pool liquidity, or else the hook won't be able to charge fees
         expectedBptOut = bound(
             expectedBptOut,
-            _minBptOut,
+            _minBptOut * MIN_TRADE_AMOUNT,
             hookFeePercentage == 0 ? MAX_UINT256 : poolInitAmount.divDown(hookFeePercentage)
         );
 
@@ -247,6 +249,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         router.addLiquidityProportional(pool, maxAmountsIn, expectedBptOut, false, bytes(""));
 
         _checkAddLiquidityHookTestResults(balancesBefore, actualAmountsIn, expectedBptOut, hookFee);
+        _checkWithdrawals(hookFee, hookFee);
     }
 
     function testHookFeeRemoveLiquidityExactIn__Fuzz(uint256 expectedBptIn, uint64 hookFeePercentage) public {
@@ -266,7 +269,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         FeeTakingHookExample(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
 
         // Make sure bob has enough to pay for the transaction
-        expectedBptIn = bound(expectedBptIn, _minBptOut, BalancerPoolToken(pool).balanceOf(bob));
+        expectedBptIn = bound(expectedBptIn, _minBptOut * MIN_TRADE_AMOUNT, BalancerPoolToken(pool).balanceOf(bob));
 
         // Since bob added poolInitAmount in each token of the pool, the pool balances are doubled
         uint256[] memory actualAmountsOut = BasePoolMath.computeProportionalAmountsOut(
@@ -302,6 +305,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         router.removeLiquidityProportional(pool, expectedBptIn, minAmountsOut, false, bytes(""));
 
         _checkRemoveLiquidityHookTestResults(balancesBefore, actualAmountsOut, expectedBptIn, hookFee);
+        _checkWithdrawals(hookFee, hookFee);
     }
 
     function _checkPoolAndVaultBalancesAfterSwap(
@@ -442,5 +446,19 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
             expectedHookFee,
             "Hook USDC balance is wrong"
         );
+    }
+
+    function _checkWithdrawals(uint256 daiHookFee, uint256 usdcHookFee) private {
+        (uint256 daiBefore, uint256 usdcBefore) = (dai.balanceOf(lp), usdc.balanceOf(lp));
+
+        vm.startPrank(lp);
+        FeeTakingHookExample(poolHooksContract).withdrawFees(dai);
+        FeeTakingHookExample(poolHooksContract).withdrawFees(usdc);
+        vm.stopPrank();
+
+        (uint256 daiAfter, uint256 usdcAfter) = (dai.balanceOf(lp), usdc.balanceOf(lp));
+
+        assertEq(daiAfter - daiBefore, daiHookFee, "DAI balance wrong after withdrawal");
+        assertEq(usdcAfter - usdcBefore, usdcHookFee, "USDC balance wrong after withdrawal");
     }
 }

@@ -23,7 +23,7 @@ struct PoolConfig {
     uint256 staticSwapFeePercentage;
     uint256 aggregateSwapFeePercentage;
     uint256 aggregateYieldFeePercentage;
-    uint24 tokenDecimalDiffs;
+    uint40 tokenDecimalDiffs;
     uint32 pauseWindowEndTime;
     bool isPoolRegistered;
     bool isPoolInitialized;
@@ -31,7 +31,21 @@ struct PoolConfig {
     bool isPoolInRecoveryMode;
 }
 
-/// @dev Represents a hook contract configuration for a pool.
+/// @dev Represents the flags the can be set in the hook contract configuration.
+struct HookFlags {
+    bool enableHookAdjustedAmounts;
+    bool shouldCallBeforeInitialize;
+    bool shouldCallAfterInitialize;
+    bool shouldCallComputeDynamicSwapFee;
+    bool shouldCallBeforeSwap;
+    bool shouldCallAfterSwap;
+    bool shouldCallBeforeAddLiquidity;
+    bool shouldCallAfterAddLiquidity;
+    bool shouldCallBeforeRemoveLiquidity;
+    bool shouldCallAfterRemoveLiquidity;
+}
+
+/// @dev Represents a hook contract configuration for a pool (HookFlags + hooksContract address).
 struct HooksConfig {
     bool enableHookAdjustedAmounts;
     bool shouldCallBeforeInitialize;

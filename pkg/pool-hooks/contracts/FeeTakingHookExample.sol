@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -12,16 +13,31 @@ import {
     LiquidityManagement,
     RemoveLiquidityKind,
     SwapKind,
-    TokenConfig
+    TokenConfig,
+    HookFlags
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
+/**
+ * @notice A hook that takes a fee on all operations.
+ * @dev This hook extracts fees on all operations (swaps, add and remove liquidity), retaining them in the hook.
+ *
+ * Since the Vault always takes fees on the calculated amounts, and only supports taking fees in tokens, this hook
+ * must be restricted to pools that require proportional liquidity operations. For example, the calculated amount
+ * for EXACT_OUT withdrawals would be in BPT, and charging fees on BPT is unsupported.
+ *
+ * Since the fee must be taken *after* the `amountOut` is calculated - and the actual `amountOut` returned to the Vault
+ * must be modified in order to charge the fee - `enableHookAdjustedAmounts` must also be set to true in the
+ * pool configuration. Otherwise, the Vault would ignore the adjusted values, and not recognize the fee.
+ */
 contract FeeTakingHookExample is BaseHooks, Ownable {
     using FixedPoint for uint256;
+    using SafeERC20 for IERC20;
 
-    // Percentages are represented as 18-decimal FP, with maximum value of 1e18 (100%), so 60 bits are enough.
+    // Percentages are represented as 18-decimal FP numbers, which have a maximum value of 1e18 (100%),
+    // so 60 bits are sufficient.
     uint64 public hookSwapFeePercentage;
     uint64 public addLiquidityHookFeePercentage;
     uint64 public removeLiquidityHookFeePercentage;
@@ -36,15 +52,16 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
         address,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) external view override onlyVault returns (bool) {
+    ) public view override onlyVault returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
-        // that the given pool is from the factory). Returning true allows any pool, with any configuration, to use
-        // this hook
+        // that the given pool is from the factory). Returning true unconditionally allows any pool, with any
+        // configuration, to use this hook.
+
         return true;
     }
 
     /// @inheritdoc IHooks
-    function getHookFlags() external pure override returns (HookFlags memory) {
+    function getHookFlags() public pure override returns (HookFlags memory) {
         HookFlags memory hookFlags;
         // `enableHookAdjustedAmounts` must be true for all contracts that modify the `amountCalculated`
         // in after hooks. Otherwise, the Vault will ignore any "hookAdjusted" amounts, and the transaction
@@ -59,7 +76,7 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
     /// @inheritdoc IHooks
     function onAfterSwap(
         AfterSwapParams calldata params
-    ) external override onlyVault returns (bool success, uint256 hookAdjustedAmountCalculatedRaw) {
+    ) public override onlyVault returns (bool success, uint256 hookAdjustedAmountCalculatedRaw) {
         hookAdjustedAmountCalculatedRaw = params.amountCalculatedRaw;
         if (hookSwapFeePercentage > 0) {
             uint256 hookFee = params.amountCalculatedRaw.mulDown(hookSwapFeePercentage);
@@ -100,7 +117,7 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
         uint256,
         uint256[] memory,
         bytes memory
-    ) external override returns (bool success, uint256[] memory) {
+    ) public override onlyVault returns (bool success, uint256[] memory) {
         // Our current architecture only supports fees on tokens. Since we must always respect exact `amountsIn`, and
         // non-proportional add liquidity operations would require taking fees in BPT, we only support proportional
         // addLiquidity.
@@ -135,7 +152,7 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
         uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory
-    ) external override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+    ) public override onlyVault returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
         // Our current architecture only supports fees on tokens. Since we must always respect exact `amountsOut`, and
         // non-proportional remove liquidity operations would require taking fees in BPT, we only support proportional
         // removeLiquidity.
@@ -160,23 +177,34 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
         return (true, hookAdjustedAmountsOutRaw);
     }
 
-    // Setters
+    // Permissioned functions
 
-    // Sets the hook swap fee percentage, which will be accrued after a swap was executed. This function must be
-    // permissioned.
+    /**
+     * @notice Sets the hook swap fee percentage, charged on every swap operation.
+     * @dev This function must be permissioned.
+     */
     function setHookSwapFeePercentage(uint64 feePercentage) external onlyOwner {
         hookSwapFeePercentage = feePercentage;
     }
 
-    // Sets the hook add liquidity fee percentage, which will be accrued after an add liquidity operation was executed.
-    // This function must be permissioned.
-    function setAddLiquidityHookFeePercentage(uint64 hookFeePercentage) public onlyOwner {
+    /**
+     * @notice Sets the hook add liquidity fee percentage, charged on every add liquidity operation.
+     * @dev This function must be permissioned.
+     */
+    function setAddLiquidityHookFeePercentage(uint64 hookFeePercentage) external onlyOwner {
         addLiquidityHookFeePercentage = hookFeePercentage;
     }
 
-    // Sets the hook remove liquidity fee percentage, which will be accrued after a remove liquidity operation was
-    // executed. This function must be permissioned.
-    function setRemoveLiquidityHookFeePercentage(uint64 hookFeePercentage) public onlyOwner {
+    /**
+     * @notice Sets the hook remove liquidity fee percentage, charged on every remove liquidity operation.
+     * @dev This function must be permissioned.
+     */
+    function setRemoveLiquidityHookFeePercentage(uint64 hookFeePercentage) external onlyOwner {
         removeLiquidityHookFeePercentage = hookFeePercentage;
+    }
+
+    /// @notice Withdraws the accumulated fees and sends them to the owner.
+    function withdrawFees(IERC20 feeToken) external {
+        feeToken.safeTransfer(owner(), feeToken.balanceOf(address(this)));
     }
 }

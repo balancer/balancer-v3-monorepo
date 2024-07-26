@@ -29,6 +29,9 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
+    // Maximum fee of 10%
+    uint64 public constant MAX_HOOK_FEE_PERCENTAGE = 10e16;
+
     uint256 private _swapAmount;
     uint256 private constant _minBptOut = 1e6;
 
@@ -41,7 +44,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     }
 
     function createHook() internal override returns (address) {
-        IHooks.HookFlags memory hookFlags;
+        HookFlags memory hookFlags;
         hookFlags.enableHookAdjustedAmounts = true;
         hookFlags.shouldCallAfterAddLiquidity = true;
         hookFlags.shouldCallAfterRemoveLiquidity = true;
@@ -72,7 +75,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
 
     function testHookFeeAddLiquidity__Fuzz(uint256 expectedBptOut, uint256 hookFeePercentage) public {
         // Add fee between 0 and 100%
-        hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
+        hookFeePercentage = bound(hookFeePercentage, 0, FixedPoint.ONE);
         PoolHooksMock(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
 
         // Since operation is not settled in advance, max expected bpt out can't generate a hook fee higher than
@@ -84,7 +87,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
             // pool liquidity, or else the hook won't be able to charge fees
             expectedBptOut = bound(
                 expectedBptOut,
-                _minBptOut,
+                _minBptOut * MIN_TRADE_AMOUNT,
                 hookFeePercentage == 0 ? bobDaiBalance : poolInitAmount.divDown(hookFeePercentage)
             );
 
@@ -131,11 +134,11 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
 
     function testHookDiscountAddLiquidity__Fuzz(uint256 expectedBptOut, uint256 hookDiscountPercentage) public {
         // Add discount between 0 and 100%
-        hookDiscountPercentage = bound(hookDiscountPercentage, 0, 1e18);
+        hookDiscountPercentage = bound(hookDiscountPercentage, 0, FixedPoint.ONE);
         PoolHooksMock(poolHooksContract).setAddLiquidityHookDiscountPercentage(hookDiscountPercentage);
 
         // Make sure bob has enough to pay for the transaction
-        expectedBptOut = bound(expectedBptOut, _minBptOut, dai.balanceOf(bob));
+        expectedBptOut = bound(expectedBptOut, _minBptOut * MIN_TRADE_AMOUNT, dai.balanceOf(bob));
 
         uint256[] memory actualAmountsIn = BasePoolMath.computeProportionalAmountsIn(
             [poolInitAmount, poolInitAmount].toMemoryArray(),
@@ -176,8 +179,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     }
 
     function testHookFeeAddLiquidityLimitViolation() public {
-        // 10% fee
-        uint256 hookFeePercentage = 1e17;
+        uint256 hookFeePercentage = MAX_HOOK_FEE_PERCENTAGE;
         PoolHooksMock(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
 
         uint256 expectedBptOut = poolInitAmount / 100;
@@ -207,8 +209,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         config.enableHookAdjustedAmounts = false;
         vault.manualSetHooksConfig(pool, config);
 
-        // 10% fee
-        uint256 hookFeePercentage = 1e17;
+        uint256 hookFeePercentage = MAX_HOOK_FEE_PERCENTAGE;
         PoolHooksMock(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
 
         uint256 expectedBptOut = poolInitAmount / 100;
@@ -237,11 +238,11 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         );
 
         // Add fee between 0 and 100%
-        hookFeePercentage = bound(hookFeePercentage, 0, 1e18);
+        hookFeePercentage = bound(hookFeePercentage, 0, FixedPoint.ONE);
         PoolHooksMock(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
 
         // Make sure bob has enough to pay for the transaction
-        expectedBptIn = bound(expectedBptIn, _minBptOut, BalancerPoolToken(pool).balanceOf(bob));
+        expectedBptIn = bound(expectedBptIn, _minBptOut * MIN_TRADE_AMOUNT, BalancerPoolToken(pool).balanceOf(bob));
 
         // Since bob added poolInitAmount in each token of the pool, the pool balances are doubled
         uint256[] memory actualAmountsOut = BasePoolMath.computeProportionalAmountsOut(
@@ -291,11 +292,11 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         );
 
         // Add discount between 0 and 100%
-        hookDiscountPercentage = bound(hookDiscountPercentage, 0, 1e18);
+        hookDiscountPercentage = bound(hookDiscountPercentage, 0, FixedPoint.ONE);
         PoolHooksMock(poolHooksContract).setRemoveLiquidityHookDiscountPercentage(hookDiscountPercentage);
 
         // Make sure bob has enough to pay for the transaction
-        expectedBptIn = bound(expectedBptIn, _minBptOut, BalancerPoolToken(pool).balanceOf(bob));
+        expectedBptIn = bound(expectedBptIn, _minBptOut * MIN_TRADE_AMOUNT, BalancerPoolToken(pool).balanceOf(bob));
 
         // Since bob added poolInitAmount in each token of the pool, the pool balances are doubled
         uint256[] memory actualAmountsOut = BasePoolMath.computeProportionalAmountsOut(
@@ -347,8 +348,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
             bytes("")
         );
 
-        // 10% fee
-        uint256 hookFeePercentage = 1e17;
+        uint256 hookFeePercentage = MAX_HOOK_FEE_PERCENTAGE;
         PoolHooksMock(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
 
         // 10% of Bob's liquidity
@@ -390,8 +390,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
             bytes("")
         );
 
-        // 10% fee
-        uint256 hookFeePercentage = 1e17;
+        uint256 hookFeePercentage = MAX_HOOK_FEE_PERCENTAGE;
         PoolHooksMock(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
 
         // 10% of Bob's liquidity

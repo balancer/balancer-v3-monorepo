@@ -95,8 +95,18 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _vaultAdmin = vaultAdmin;
     }
 
+    /*******************************************************************************
+                              Constants and immutables
+    *******************************************************************************/
+
+    /// @inheritdoc IVaultExtension
     function vault() external view returns (IVault) {
         return _vault;
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getVaultAdmin() external view returns (address) {
+        return _implementation();
     }
 
     /*******************************************************************************
@@ -124,7 +134,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
-                            Pool Registration and Initialization
+                                    Pool Registration
     *******************************************************************************/
 
     struct PoolRegistrationParams {
@@ -160,11 +170,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 liquidityManagement: liquidityManagement
             })
         );
-    }
-
-    /// @inheritdoc IVaultExtension
-    function isPoolRegistered(address pool) external view onlyVaultDelegateCall returns (bool) {
-        return _isPoolRegistered(pool);
     }
 
     /**
@@ -279,7 +284,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
                 // Gets the default HooksConfig from the hook contract and saves in the vault state
                 // Storing into hooksConfig first avoids stack-too-deep
-                IHooks.HookFlags memory hookFlags = IHooks(params.poolHooksContract).getHookFlags();
+                HookFlags memory hookFlags = IHooks(params.poolHooksContract).getHookFlags();
 
                 // When enableHookAdjustedAmounts == true, hooks are able to modify the result of a liquidity or swap
                 // operation by implementing an after hook. For simplicity, the vault only supports modifying the
@@ -354,6 +359,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 onlyOwner: true
             });
         }
+    }
+
+    /// @inheritdoc IVaultExtension
+    function isPoolRegistered(address pool) external view onlyVaultDelegateCall returns (bool) {
+        return _isPoolRegistered(pool);
     }
 
     /// @inheritdoc IVaultExtension
@@ -475,40 +485,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function getPoolConfig(
-        address pool
-    ) external view onlyVaultDelegateCall withRegisteredPool(pool) returns (PoolConfig memory) {
-        PoolConfigBits config = _poolConfigBits[pool];
-
-        return
-            PoolConfig({
-                isPoolRegistered: config.isPoolRegistered(),
-                isPoolInitialized: config.isPoolInitialized(),
-                isPoolPaused: config.isPoolPaused(),
-                isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
-                staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
-                aggregateSwapFeePercentage: config.getAggregateSwapFeePercentage(),
-                aggregateYieldFeePercentage: config.getAggregateYieldFeePercentage(),
-                tokenDecimalDiffs: config.getTokenDecimalDiffs(),
-                pauseWindowEndTime: config.getPauseWindowEndTime(),
-                liquidityManagement: LiquidityManagement({
-                    // NOTE: supportUnbalancedLiquidity is inverted because false means it is supported
-                    disableUnbalancedLiquidity: !config.supportsUnbalancedLiquidity(),
-                    enableAddLiquidityCustom: config.supportsAddLiquidityCustom(),
-                    enableRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom(),
-                    enableDonation: config.supportsDonation()
-                })
-            });
-    }
-
-    /// @inheritdoc IVaultExtension
-    function getHooksConfig(
-        address pool
-    ) external view onlyVaultDelegateCall withRegisteredPool(pool) returns (HooksConfig memory) {
-        return _poolConfigBits[pool].toHooksConfig(_hooksContracts[pool]);
-    }
-
-    /// @inheritdoc IVaultExtension
     function getPoolTokens(
         address pool
     ) external view onlyVaultDelegateCall withRegisteredPool(pool) returns (IERC20[] memory tokens) {
@@ -585,17 +561,37 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function computeDynamicSwapFee(
-        address pool,
-        IBasePool.PoolSwapParams memory swapParams
-    ) external view onlyVaultDelegateCall withInitializedPool(pool) returns (bool success, uint256 dynamicSwapFee) {
+    function getPoolConfig(
+        address pool
+    ) external view onlyVaultDelegateCall withRegisteredPool(pool) returns (PoolConfig memory) {
+        PoolConfigBits config = _poolConfigBits[pool];
+
         return
-            HooksConfigLib.callComputeDynamicSwapFeeHook(
-                swapParams,
-                pool,
-                _poolConfigBits[pool].getStaticSwapFeePercentage(),
-                _hooksContracts[pool]
-            );
+            PoolConfig({
+                isPoolRegistered: config.isPoolRegistered(),
+                isPoolInitialized: config.isPoolInitialized(),
+                isPoolPaused: config.isPoolPaused(),
+                isPoolInRecoveryMode: config.isPoolInRecoveryMode(),
+                staticSwapFeePercentage: config.getStaticSwapFeePercentage(),
+                aggregateSwapFeePercentage: config.getAggregateSwapFeePercentage(),
+                aggregateYieldFeePercentage: config.getAggregateYieldFeePercentage(),
+                tokenDecimalDiffs: config.getTokenDecimalDiffs(),
+                pauseWindowEndTime: config.getPauseWindowEndTime(),
+                liquidityManagement: LiquidityManagement({
+                    // NOTE: supportUnbalancedLiquidity is inverted because false means it is supported
+                    disableUnbalancedLiquidity: !config.supportsUnbalancedLiquidity(),
+                    enableAddLiquidityCustom: config.supportsAddLiquidityCustom(),
+                    enableRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom(),
+                    enableDonation: config.supportsDonation()
+                })
+            });
+    }
+
+    /// @inheritdoc IVaultExtension
+    function getHooksConfig(
+        address pool
+    ) external view onlyVaultDelegateCall withRegisteredPool(pool) returns (HooksConfig memory) {
+        return _poolConfigBits[pool].toHooksConfig(_hooksContracts[pool]);
     }
 
     /// @inheritdoc IVaultExtension
@@ -609,7 +605,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
-                                    Pool Tokens
+                                 Balancer Pool Tokens
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
@@ -679,7 +675,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
-                                        Fees
+                                          Fees
     *******************************************************************************/
 
     // Swap and Yield fees are both stored using the PackedTokenBalance library, which is usually used for
@@ -718,12 +714,32 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
+    function computeDynamicSwapFeePercentage(
+        address pool,
+        IBasePool.PoolSwapParams memory swapParams
+    )
+        external
+        view
+        onlyVaultDelegateCall
+        withInitializedPool(pool)
+        returns (bool success, uint256 dynamicSwapFeePercentage)
+    {
+        return
+            HooksConfigLib.callComputeDynamicSwapFeeHook(
+                swapParams,
+                pool,
+                _poolConfigBits[pool].getStaticSwapFeePercentage(),
+                _hooksContracts[pool]
+            );
+    }
+
+    /// @inheritdoc IVaultExtension
     function getProtocolFeeController() external view returns (IProtocolFeeController) {
         return _protocolFeeController;
     }
 
     /*******************************************************************************
-                                    Recovery Mode
+                                     Recovery Mode
     *******************************************************************************/
 
     /// @inheritdoc IVaultExtension
@@ -782,12 +798,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolBalances[i] = packedBalances.setBalanceRaw(balancesRaw[i]);
         }
 
-        _spendAllowance(address(pool), from, msg.sender, exactBptAmountIn);
+        _spendAllowance(pool, from, msg.sender, exactBptAmountIn);
 
+        if (_isQueryContext()) {
+            // Increase `from` balance to ensure the burn function succeeds.
+            _queryModeBalanceIncrease(pool, from, exactBptAmountIn);
+        }
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
         // Burning will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
-        _burn(address(pool), from, exactBptAmountIn);
+        _burn(pool, from, exactBptAmountIn);
 
         emit PoolBalanceChanged(
             pool,
@@ -821,6 +841,10 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _isUnlocked().tstore(true);
     }
 
+    function _isQueryContext() internal view returns (bool) {
+        return EVMCallModeHelpers.isStaticCall() && _vaultStateBits.isQueryDisabled() == false;
+    }
+
     /// @inheritdoc IVaultExtension
     function quote(bytes calldata data) external payable query onlyVaultDelegateCall returns (bytes memory result) {
         // Forward the incoming call to the original sender of this transaction.
@@ -846,6 +870,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             // Otherwise we bubble up the original revert reason.
             RevertCodec.bubbleUpRevert(result);
         }
+    }
+
+    /// @inheritdoc IVaultExtension
+    function isQueryDisabled() external view onlyVaultDelegateCall returns (bool) {
+        return _vaultStateBits.isQueryDisabled();
     }
 
     /// @inheritdoc IVaultExtension
@@ -882,10 +911,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         }
     }
 
-    /// @inheritdoc IVaultExtension
-    function isQueryDisabled() external view onlyVaultDelegateCall returns (bool) {
-        return _vaultStateBits.isQueryDisabled();
-    }
+    /*******************************************************************************
+                                     Default handlers
+    *******************************************************************************/
 
     receive() external payable {
         revert CannotReceiveEth();
@@ -906,10 +934,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _fallback();
     }
 
-    /// @inheritdoc IVaultExtension
-    function getVaultAdmin() external view returns (address) {
-        return _implementation();
-    }
+    /*******************************************************************************
+                                     Miscellaneous
+    *******************************************************************************/
 
     /**
      * @inheritdoc Proxy

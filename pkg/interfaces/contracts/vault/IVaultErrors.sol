@@ -130,6 +130,9 @@ interface IVaultErrors {
     /// @dev A hook adjusted amount in or out has exceeded the limit specified in the swap request.
     error HookAdjustedSwapLimit(uint256 amount, uint256 limit);
 
+    /// @dev The amount given or calculated for an operation is below the minimum limit.
+    error TradeAmountTooSmall();
+
     /*******************************************************************************
                                     Add Liquidity
     *******************************************************************************/
@@ -201,6 +204,15 @@ interface IVaultErrors {
      * Pools with dynamic fees do not check these limits.
      */
     error SwapFeePercentageTooHigh();
+
+    /**
+     * @dev Primary fee percentages are 18-decimal values, stored here in 64 bits, and calculated with full 256-bit
+     * precision. However, the resulting aggregate fees are stored in the Vault with 24-bit precision, which
+     * corresponds to 0.00001% resolution (i.e., a fee can be 1%, 1.00001%, 1.00002%, but not 1.000005%).
+     * Disallow setting fees such that there would be precision loss in the Vault, leading to a discrepancy between
+     * the aggregate fee calculated here and that stored in the Vault.
+     */
+    error FeePrecisionTooHigh();
 
     /*******************************************************************************
                                     Queries

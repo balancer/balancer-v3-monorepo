@@ -29,7 +29,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
         StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
-        // Allow pools created by `factory` to use poolHooksMock hooks
+        // Allow pools created by `factory` to use PoolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
         StablePool newPool = StablePool(
@@ -41,7 +41,8 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
                 roleAccounts,
                 MIN_SWAP_FEE,
                 poolHooksContract,
-                false,
+                false, // Do not enable donations
+                false, // Do not disable unbalanced add/remove liquidity
                 ZERO_BYTES32
             )
         );

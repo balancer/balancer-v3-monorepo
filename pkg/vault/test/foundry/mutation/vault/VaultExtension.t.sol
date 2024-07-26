@@ -117,7 +117,7 @@ contract VaultExtensionMutationTest is BaseVaultTest {
     function testComputeDynamicSwapFeeWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         IBasePool.PoolSwapParams memory swapParams;
-        vaultExtension.computeDynamicSwapFee(pool, swapParams);
+        vaultExtension.computeDynamicSwapFeePercentage(pool, swapParams);
     }
 
     function testGetBptRateWhenNotVault() public {
@@ -196,13 +196,13 @@ contract VaultExtensionMutationTest is BaseVaultTest {
     }
 
     function testCalculateBufferAmountsWhenNotVault() public {
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.calculateBufferAmounts(WrappingDirection.WRAP, SwapKind.EXACT_IN, IERC4626(address(0)), 0);
     }
 
     function testQuoteWhenNotVault() public {
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.quote(bytes(""));
     }
@@ -214,7 +214,7 @@ contract VaultExtensionMutationTest is BaseVaultTest {
 
     function testQuoteAndRevertWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vm.prank(address(0), address(0));
+        _prankStaticCall();
         vaultExtension.quoteAndRevert(bytes(""));
     }
 

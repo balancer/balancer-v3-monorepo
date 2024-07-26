@@ -55,7 +55,7 @@ contract RegistrationTest is BaseVaultTest {
 
     function testRegisterPoolBelowMinTokens() public {
         PoolRoleAccounts memory roleAccounts;
-        TokenConfig[] memory tokenConfig = new TokenConfig[](1);
+        TokenConfig[] memory tokenConfig = new TokenConfig[](vault.getMinimumPoolTokens() - 1);
         LiquidityManagement memory liquidityManagement;
 
         vm.expectRevert(IVaultErrors.MinTokens.selector);
@@ -64,7 +64,7 @@ contract RegistrationTest is BaseVaultTest {
 
     function testRegisterPoolAboveMaxTokens() public {
         PoolRoleAccounts memory roleAccounts;
-        TokenConfig[] memory tokenConfig = new TokenConfig[](5);
+        TokenConfig[] memory tokenConfig = new TokenConfig[](vault.getMaximumPoolTokens() + 1);
         LiquidityManagement memory liquidityManagement;
 
         vm.expectRevert(IVaultErrors.MaxTokens.selector);
@@ -136,7 +136,7 @@ contract RegistrationTest is BaseVaultTest {
         // Stored value is truncated
         assertEq(
             vault.getStaticSwapFeePercentage(pool),
-            (swapFeePercentage / 1e11) * 1e11,
+            (swapFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR,
             "Wrong swap fee percentage"
         );
     }
