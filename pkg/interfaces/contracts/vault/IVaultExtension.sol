@@ -408,22 +408,4 @@ interface IVaultExtension {
      * @return If true, then queries are disabled
      */
     function isQueryDisabled() external view returns (bool);
-
-    /**
-     * @notice Preview the wrapping/unwrapping operation on a buffer.
-     * @dev This must be called in a query context.
-     * @param direction Wrapping direction - WRAP or UNWRAP
-     * @param kind Type of swap: EXACT_IN or EXACT_OUT
-     * @param wrappedToken The wrapped token involved in the operation
-     * @param amountGiven The amount of tokens given (i.e., underlying for WRAP)
-     * @return amountCalculated Return the amount to be returned from the wrap/unwrap operation
-     * @return amountIn Amount of tokenIn (e.g., amountGiven underlying when wrapping during an EXACT_IN)
-     * @return amountOut Amount of tokenOut (e.g., calculatedAmount wrapped in the example above)
-     */
-    function calculateBufferAmounts(
-        WrappingDirection direction,
-        SwapKind kind,
-        IERC4626 wrappedToken,
-        uint256 amountGiven
-    ) external returns (uint256 amountCalculated, uint256 amountIn, uint256 amountOut);
 }

@@ -157,4 +157,12 @@ library FixedPoint {
             result := mul(lt(x, ONE), sub(ONE, x))
         }
     }
+
+    function getAbsoluteDifference(uint256 a, uint256 b) internal pure returns (uint256) {
+        int256 difference = int256(a) - int256(b);
+        // We check the difference before inverting the sign, so we don't need to check the operation.
+        unchecked {
+            return uint256(difference > int256(0) ? difference : -difference);
+        }
+    }
 }
