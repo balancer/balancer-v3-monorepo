@@ -6,15 +6,13 @@ import "forge-std/Test.sol";
 
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
-import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
-
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 
 import { ERC20MultiTokenMock } from "../../../contracts/test/ERC20MultiTokenMock.sol";
 import { ERC20MultiToken } from "../../../contracts/token/ERC20MultiToken.sol";
 import { BalancerPoolToken } from "../../../contracts/BalancerPoolToken.sol";
 
-contract ERC20MultiTokenTest is Test, IERC20Errors, IERC20MultiToken {
+contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
     address internal constant ZERO_ADDRESS = address(0x00);
     address internal constant POOL = address(0x01);
     address internal constant OWNER = address(0x02);

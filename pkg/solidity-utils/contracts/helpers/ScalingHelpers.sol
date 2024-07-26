@@ -26,8 +26,9 @@ library ScalingHelpers {
     ***************************************************************************/
 
     /**
-     * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
-     * scaling or not. The result is rounded down.
+     * @notice Applies `scalingFactor` to `amount`.
+     * @dev This may result in a larger or equal value, depending on whether it needed scaling or not. The result
+     * is rounded down.
      *
      * @param amount Amount to be scaled up to 18 decimals
      * @param scalingFactor The token decimal scaling factor
@@ -38,8 +39,9 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Applies `scalingFactor` and `tokenRate` to `amount`, resulting in a larger or equal value depending on
-     * whether it needed scaling/rate adjustment or not. The result is rounded down.
+     * @notice Applies `scalingFactor` and `tokenRate` to `amount`.
+     * @dev This may result in a larger or equal value, depending on whether it needed scaling/rate adjustment or not.
+     * The result is rounded down.
      *
      * @param amount Amount to be scaled up to 18 decimals
      * @param scalingFactor The token decimal scaling factor
@@ -55,8 +57,9 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Applies `scalingFactor` to `amount`, resulting in a larger or equal value depending on whether it needed
-     * scaling or not. The result is rounded up.
+     * @notice Applies `scalingFactor` to `amount`.
+     * @dev This may result in a larger or equal value, depending on whether it needed scaling or not. The result
+     * is rounded up.
      *
      * @param amount Amount to be scaled up to 18 decimals
      * @param scalingFactor The token decimal scaling factor
@@ -67,8 +70,9 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Applies `scalingFactor` and `tokenRate` to `amount`, resulting in a larger or equal value depending on
-     * whether it needed scaling/rate adjustment or not. The result is rounded up.
+     * @notice Applies `scalingFactor` and `tokenRate` to `amount`.
+     * @dev This may result in a larger or equal value, depending on whether it needed scaling/rate adjustment or not.
+     * The result is rounded up.
      *
      * @param amount Amount to be scaled up to 18 decimals
      * @param scalingFactor The token decimal scaling factor
@@ -84,8 +88,9 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Reverses the `scalingFactor` applied to `amount`, resulting in a smaller or equal value depending on
-     * whether it needed scaling or not. The result is rounded down.
+     * @notice Reverses the `scalingFactor` applied to `amount`.
+     * @dev This may result in a smaller or equal value, depending on whether it needed scaling or not. The result
+     * is rounded down.
      *
      * @param amount Amount to be scaled down to native token decimals
      * @param scalingFactor The token decimal scaling factor
@@ -96,8 +101,9 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Reverses the `scalingFactor` and `tokenRate` applied to `amount`, resulting in a smaller or equal value
-     * depending on whether it needed scaling/rate adjustment or not. The result is rounded down.
+     * @notice Reverses the `scalingFactor` and `tokenRate` applied to `amount`.
+     * @dev This may result in a smaller or equal value, depending on whether it needed scaling/rate adjustment or not.
+     * The result is rounded down.
      *
      * @param amount Amount to be scaled down to native token decimals
      * @param scalingFactor The token decimal scaling factor
@@ -114,8 +120,9 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Reverses the `scalingFactor` applied to `amount`, resulting in a smaller or equal value depending on
-     * whether it needed scaling or not. The result is rounded up.
+     * @notice Reverses the `scalingFactor` applied to `amount`.
+     * @dev This may result in a smaller or equal value, depending on whether it needed scaling or not. The result
+     * is rounded up.
      *
      * @param amount Amount to be scaled down to native token decimals
      * @param scalingFactor The token decimal scaling factor
@@ -126,8 +133,9 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Reverses the `scalingFactor` and `tokenRate` applied to `amount`, resulting in a smaller or equal value
-     * depending on whether it needed scaling/rate adjustment or not. The result is rounded up.
+     * @notice Reverses the `scalingFactor` and `tokenRate` applied to `amount`.
+     * @dev This may result in a smaller or equal value, depending on whether it needed scaling/rate adjustment or not.
+     * The result is rounded up.
      *
      * @param amount Amount to be scaled down to native token decimals
      * @param scalingFactor The token decimal scaling factor
@@ -148,9 +156,8 @@ library ScalingHelpers {
     ***************************************************************************/
 
     /**
-     * @dev Same as `toScaled18RoundDown`, but for an entire array. This function does not return anything,
-     * but instead *mutates* the `amounts` array.
-     *
+     * @notice Same as `toScaled18RoundDown`, but for an entire array.
+     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
      * @param amounts Amounts to be scaled up to 18 decimals, sorted in token registration order
      * @param scalingFactors The token decimal scaling factors, sorted in token registration order
      */
@@ -164,9 +171,8 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `toScaled18ApplyRateRoundDown`, but for an entire array. This function does not return anything,
-     * but instead *mutates* the `amounts` array.
-     *
+     * @notice Same as `toScaled18ApplyRateRoundDown`, but for an entire array.
+     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
      * @param amounts Amounts to be scaled up to 18 decimals, sorted in token registration order
      * @param scalingFactors The token decimal scaling factors, sorted in token registration order
      * @param tokenRates The token rate scaling factors, sorted in token registration order
@@ -185,8 +191,7 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `toScaled18ApplyRateRoundDown`, but returns a new array, leaving the original intact.
-     *
+     * @notice Same as `toScaled18ApplyRateRoundDown`, but returns a new array, leaving the original intact.
      * @param amounts Amounts to be scaled up to 18 decimals, sorted in token registration order
      * @param scalingFactors The token decimal scaling factors, sorted in token registration order
      * @param tokenRates The token rate scaling factors, sorted in token registration order
@@ -209,9 +214,8 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `toScaled18RoundUp`, but for an entire array. This function does not return anything,
-     * but instead *mutates* the `amounts` array.
-     *
+     * @notice Same as `toScaled18RoundUp`, but for an entire array.
+     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
      * @param amounts Amounts to be scaled up to 18 decimals, sorted in token registration order
      * @param scalingFactors The token decimal scaling factors, sorted in token registration order
      */
@@ -225,9 +229,8 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `toScaled18ApplyRateRoundUp`, but for an entire array. This function does not return anything,
-     * but instead *mutates* the `amounts` array.
-     *
+     * @notice Same as `toScaled18ApplyRateRoundUp`, but for an entire array.
+     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
      * @param amounts Amounts to be scaled up to 18 decimals, sorted in token registration order
      * @param scalingFactors The token decimal scaling factors, sorted in token registration order
      * @param tokenRates The token rate scaling factors, sorted in token registration order
@@ -246,8 +249,7 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `toScaled18ApplyRateRoundUp`, but returns a new array, leaving the original intact.
-     *
+     * @notice Same as `toScaled18ApplyRateRoundUp`, but returns a new array, leaving the original intact.
      * @param amounts Amounts to be scaled up to 18 decimals, sorted in token registration order
      * @param scalingFactors The token decimal scaling factors, sorted in token registration order
      * @param tokenRates The token rate scaling factors, sorted in token registration order
@@ -270,9 +272,8 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `toRawRoundDown`, but for an entire array. This function does not return anything, but instead
-     * *mutates* the `amounts` array.
-     *
+     * @notice Same as `toRawRoundDown`, but for an entire array.
+     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
      * @param amounts Amounts to be scaled down to native token decimals, sorted in token registration order
      * @param scalingFactors The token decimal scaling factors, sorted in token registration order
      */
@@ -286,9 +287,8 @@ library ScalingHelpers {
     }
 
     /**
-     * @dev Same as `toRawRoundUp`, but for an entire array. This function does not return anything, but instead
-     * *mutates* the `amounts` array.
-     *
+     * @notice Same as `toRawRoundUp`, but for an entire array.
+     * @dev This function does not return anything, but instead *mutates* the `amounts` array.
      * @param amounts Amounts to be scaled down to native token decimals, sorted in token registration order
      * @param scalingFactors The token decimal scaling factors, sorted in token registration order
      */
@@ -302,6 +302,7 @@ library ScalingHelpers {
     }
 
     /**
+     * @notice Convert the token `decimals` into a scaling factor.
      * @dev Called during registration, this reads the `decimals` from the token contract and constructs a conversion
      * factor to be used when scaling up to full precision and back down to native decimals.
      *
