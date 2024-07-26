@@ -7,6 +7,13 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IRateProvider } from "./IRateProvider.sol";
 
+/**
+ * @notice Represents a pool's liquidity management configuration.
+ * @param disableUnbalancedLiquidity If set, liquidity can only be added or removed proportionally
+ * @param enableAddLiquidityCustom If set, the pool has implemented `onAddLiquidityCustom`
+ * @param enableRemoveLiquidityCustom If set, the pool has implemented `onRemoveLiquidityCustom`
+ * @param enableDonation If set, the pool will not revert if liquidity is added with AddLiquidityKind.DONATION
+ */
 struct LiquidityManagement {
     bool disableUnbalancedLiquidity;
     bool enableAddLiquidityCustom;
@@ -17,7 +24,7 @@ struct LiquidityManagement {
 // @notice Config type to store the entire configuration of the pool.
 type PoolConfigBits is bytes32;
 
-/// @dev Represents a pool's configuration (hooks configuration are separated in another struct).
+/// @notice Represents a pool's configuration (hooks configuration are separated in another struct).
 struct PoolConfig {
     LiquidityManagement liquidityManagement;
     uint256 staticSwapFeePercentage;
@@ -32,6 +39,7 @@ struct PoolConfig {
 }
 
 /**
+ * @notice The flag portion of the `HooksConfig`.
  * @dev `enableHookAdjustedAmounts` must be true for all contracts that modify the `amountCalculated`
  * in after hooks. Otherwise, the Vault will ignore any "hookAdjusted" amounts. Setting any "shouldCall"
  * flags to true will cause the Vault to call the corresponding hook during operations.
@@ -49,7 +57,7 @@ struct HookFlags {
     bool shouldCallAfterRemoveLiquidity;
 }
 
-/// @dev Represents a hook contract configuration for a pool (HookFlags + hooksContract address).
+/// @notice Represents a hook contract configuration for a pool (HookFlags + hooksContract address).
 struct HooksConfig {
     bool enableHookAdjustedAmounts;
     bool shouldCallBeforeInitialize;
@@ -64,7 +72,7 @@ struct HooksConfig {
     address hooksContract;
 }
 
-/// @dev Represents temporary state used in a swap operation.
+/// @notice Represents temporary state used in a swap operation.
 struct SwapState {
     uint256 indexIn;
     uint256 indexOut;
@@ -73,7 +81,7 @@ struct SwapState {
 }
 
 /**
- * @dev Represents the Vault's configuration.
+ * @notice Represents the Vault's configuration.
  * @param isQueryDisabled If set to true, disables query functionality of the Vault. Can be modified only by
  * governance.
  * @param isVaultPaused If set to true, Swaps and Add/Remove Liquidity operations are halted
@@ -86,7 +94,7 @@ struct VaultState {
 }
 
 /**
- * @dev Represents the accounts holding certain roles for a given pool. This is passed in on pool registration.
+ * @notice Represents the accounts holding certain roles for a given pool. This is passed in on pool registration.
  * @param pauseManager Account empowered to pause/unpause the pool (or 0 to delegate to governance)
  * @param swapFeeManager Account empowered to set static swap fees for a pool (or 0 to delegate to governance)
  * @param poolCreator Account empowered to set the pool creator fee percentage
@@ -113,7 +121,9 @@ struct PoolFunctionPermission {
 }
 
 /**
- * @dev Token types supported by the Vault. In general, pools may contain any combination of these tokens.
+ * @notice Token types supported by the Vault.
+ * @dev In general, pools may contain any combination of these tokens.
+ *
  * STANDARD tokens (e.g., BAL, WETH) have no rate provider.
  * WITH_RATE tokens (e.g., wstETH) require a rate provider. These may be tokens like wstETH, which need to be wrapped
  * because the underlying stETH token is rebasing, and such tokens are unsupported by the Vault. They may also be
@@ -131,9 +141,9 @@ enum TokenType {
 }
 
 /**
- * @dev Encapsulate the data required for the Vault to support a token of the given type. For STANDARD tokens,
- * the rate provider address must be 0, and paysYieldFees must be false. All WITH_RATE tokens need a rate provider,
- * and may or may not be yield-bearing.
+ * @notice Encapsulate the data required for the Vault to support a token of the given type.
+ * @dev For STANDARD tokens, the rate provider address must be 0, and paysYieldFees must be false. All WITH_RATE tokens
+ * need a rate provider, and may or may not be yield-bearing.
  *
  * At registration time, it is useful to include the token address along with the token parameters in the structure
  * passed to `registerPool`, as the alternative would be parallel arrays, which would be error prone and require
@@ -152,8 +162,8 @@ struct TokenConfig {
 }
 
 /**
- * @dev This data structure is stored in `_poolTokenInfo`, a nested mapping from pool -> (token -> TokenInfo).
- * Since the token is already the key of the nested mapping, it would be redundant (and an extra SLOAD) to store
+ * @notice This data structure is stored in `_poolTokenInfo`, a nested mapping from pool -> (token -> TokenInfo).
+ * @dev Since the token is already the key of the nested mapping, it would be redundant (and an extra SLOAD) to store
  * it again in the struct. When we construct PoolData, the tokens are separated into their own array.
  *
  * @param tokenType The token type (see the enum for supported types)
@@ -167,7 +177,7 @@ struct TokenInfo {
 }
 
 /**
- * @dev Data structure used to represent the current pool state in memory
+ * @notice Data structure used to represent the current pool state in memory
  * @param poolConfigBits Custom type to store the entire configuration of the pool.
  * @param tokens Pool tokens, sorted in pool registration order
  * @param tokenInfo Configuration data for each token, sorted in pool registration order
@@ -202,7 +212,7 @@ enum SwapKind {
 }
 
 /**
- * @dev Data passed into primary Vault `swap` operations.
+ * @notice Data passed into primary Vault `swap` operations.
  * @param kind Type of swap (Exact In or Exact Out)
  * @param pool The pool with the tokens being swapped
  * @param tokenIn The token entering the Vault (balance increases)
@@ -222,7 +232,7 @@ struct SwapParams {
 }
 
 /**
- * @dev Data for the hook after a swap operation.
+ * @notice Data for the hook after a swap operation.
  * @param kind Type of swap (exact in or exact out)
  * @param tokenIn Token to be swapped from
  * @param tokenOut Token to be swapped to
@@ -253,7 +263,7 @@ struct AfterSwapParams {
 }
 
 /**
- * @dev Data for a swap operation, used by contracts implementing `IBasePool`.
+ * @notice Data for a swap operation, used by contracts implementing `IBasePool`.
  * @param kind Type of swap (exact in or exact out)
  * @param amountGivenScaled18 Amount given based on kind of the swap (e.g., tokenIn for exact in)
  * @param balancesScaled18 Current pool balances
@@ -285,7 +295,7 @@ enum AddLiquidityKind {
 }
 
 /**
- * @dev Data for an add liquidity operation.
+ * @notice Data for an add liquidity operation.
  * @param pool Address of the pool
  * @param to Address of user to mint to
  * @param maxAmountsIn Maximum amounts of input tokens
@@ -314,6 +324,7 @@ enum RemoveLiquidityKind {
 }
 
 /**
+ * @notice Data for an remove liquidity operation.
  * @param pool Address of the pool
  * @param from Address of user to burn from
  * @param maxBptAmountIn Maximum amount of input pool tokens
@@ -340,7 +351,7 @@ enum WrappingDirection {
 }
 
 /**
- * @dev Data for a wrap/unwrap operation.
+ * @notice Data for a wrap/unwrap operation.
  * @param kind Type of swap (Exact In or Exact Out)
  * @param direction Direction of the wrapping operation (Wrap or Unwrap)
  * @param wrappedToken Wrapped token, compatible with interface ERC4626

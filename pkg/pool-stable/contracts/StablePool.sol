@@ -95,7 +95,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     error AmpUpdateNotStarted();
 
     /**
-     * @dev Parameters used to deploy a new Stable Pool.
+     * @notice Parameters used to deploy a new Stable Pool.
      * @param name ERC20 token name
      * @param symbol ERC20 token symbol
      * @param amplificationParameter Controls the "flatness" of the invariant curve. higher values = lower slippage,

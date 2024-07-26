@@ -568,7 +568,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
     }
 
-    /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
+    // Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
     struct LiquidityLocals {
         uint256 numTokens;
         uint256 totalFeesRaw;

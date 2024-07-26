@@ -7,7 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IBasePool } from "../vault/IBasePool.sol";
 
 /**
- * @dev Stable Pool data that cannot change after deployment.
+ * @notice Stable Pool data that cannot change after deployment.
  * @param tokens Pool tokens, sorted in pool registration order
  * @param decimalScalingFactors Conversion factor used to adjust for token decimals for uniform precision in
  * calculations. FP(1) for 18-decimal tokens
@@ -21,7 +21,7 @@ struct StablePoolImmutableData {
 }
 
 /**
- * @dev Snapshot of current Stable Pool data that can change.
+ * @notice Snapshot of current Stable Pool data that can change.
  * @param balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
  * @param tokenRates 18-decimal FP values for rate tokens (e.g., yield-bearing), or FP(1) for standard tokens
  * @param staticSwapFeePercentage 18-decimal FP value of the static swap fee percentage

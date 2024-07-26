@@ -15,7 +15,7 @@ interface IRouter {
     ***************************************************************************/
 
     /**
-     * @dev Data for the pool initialization hook
+     * @notice Data for the pool initialization hook
      * @param sender Account originating the pool initialization operation
      * @param pool Address of the liquidity pool
      * @param tokens Pool tokens, in token registration order
@@ -58,7 +58,7 @@ interface IRouter {
     ***************************************************************************/
 
     /**
-     * @dev Data for the add liquidity hook.
+     * @notice Data for the add liquidity hook.
      * @param sender Account originating the add liquidity operation
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
@@ -167,7 +167,7 @@ interface IRouter {
     ***************************************************************************/
 
     /**
-     * @dev Data for the remove liquidity hook.
+     * @notice Data for the remove liquidity hook.
      * @param sender Account originating the remove liquidity operation
      * @param pool Address of the liquidity pool
      * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
@@ -278,7 +278,7 @@ interface IRouter {
     ***************************************************************************/
 
     /**
-     * @dev Data for the swap hook.
+     * @notice Data for the swap hook.
      * @param sender Account initiating the swap operation
      * @param kind Type of swap (exact in or exact out)
      * @param pool Address of the liquidity pool
