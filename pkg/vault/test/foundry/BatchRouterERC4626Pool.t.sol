@@ -437,6 +437,10 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
             new bytes(0)
         );
 
+        for (uint256 i = 0; i < amountsOut.length; i++) {
+            assertEq(amountsOut[i], expectedAmountsOut[i], "AmountOut should match expected");
+        }
+
         {
             uint256 afterUSDCBalance = usdc.balanceOf(bob);
             assertEq(beforeUSDCBalance, afterUSDCBalance - amountsOut[waUsdcIdx], "Bob: USDC balance should increase");
@@ -485,10 +489,6 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
                 erc4626PoolInitialAmount - amountsOut[waUsdcIdx],
                 "ERC4626 Pool: waUSDC balance should decrease"
             );
-        }
-
-        for (uint256 i = 0; i < amountsOut.length; i++) {
-            assertEq(amountsOut[i], expectedAmountsOut[i], "AmountOut should match expected");
         }
 
         uint256 afterBPTBalance = IERC20(address(erc4626Pool)).balanceOf(bob);

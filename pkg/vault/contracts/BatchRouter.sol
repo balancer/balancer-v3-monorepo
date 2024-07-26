@@ -903,7 +903,10 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             })
         );
 
-        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
+        if (EVMCallModeHelpers.isStaticCall()) {
+            return amountsOut;
+        }
+
         for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
             IERC20 underlyingToken = IERC20(wrappedToken.asset());
@@ -920,9 +923,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                 })
             );
 
-            if (isStaticCall == false) {
-                _sendTokenOut(params.sender, underlyingToken, underlyingAmountsOut[i], params.wethIsEth);
-            }
+            _sendTokenOut(params.sender, underlyingToken, underlyingAmountsOut[i], params.wethIsEth);
         }
     }
 
