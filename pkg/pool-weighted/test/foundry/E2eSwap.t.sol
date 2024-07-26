@@ -36,9 +36,9 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         poolCreator = lp;
 
         // If there are swap fees, the amountCalculated may be lower than MIN_TRADE_AMOUNT. So, multiplying
-        // MIN_TRADE_AMOUNT by 10 creates a margin.
-        minSwapAmountToken1 = 10 * MIN_TRADE_AMOUNT;
-        minSwapAmountToken2 = 10 * MIN_TRADE_AMOUNT;
+        // MIN_TRADE_AMOUNT by 1e4 creates a margin (especially for operations in the edge of the price curve).
+        minSwapAmountToken1 = 1e4 * MIN_TRADE_AMOUNT;
+        minSwapAmountToken2 = 1e4 * MIN_TRADE_AMOUNT;
 
         // Divide init amount by 10 to make sure weighted math ratios are respected (Cannot trade more than 30% of pool
         // balance).
