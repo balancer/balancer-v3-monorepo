@@ -28,11 +28,10 @@ contract BoostedPoolWithEmptyBufferTest is BaseVaultTest {
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
-    // Using older block number because convertToAssets function is bricked in the new version of the aToken wrapper
-    uint256 constant BLOCK_NUMBER = 17965150;
+    uint256 constant BLOCK_NUMBER = 20327000;
 
-    address constant aDAI_ADDRESS = 0x098256c06ab24F5655C5506A6488781BD711c14b;
-    address constant aUSDC_ADDRESS = 0x57d20c946A7A3812a7225B881CdcD8431D23431C;
+    address constant aDAI_ADDRESS = 0xaf270C38fF895EA3f95Ed488CEACe2386F038249;
+    address constant aUSDC_ADDRESS = 0x73edDFa87C71ADdC275c2b9890f5c3a8480bC9E6;
     address constant DAI_ADDRESS = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
     address constant USDC_ADDRESS = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
