@@ -670,8 +670,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
-     * @param sharesOwner Address of contract that will own the deposited liquidity. Only this contract will be able
-     * to remove liquidity from the buffer
+     * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to
+     * remove liquidity from the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts.
      * (This is the BPT of an internal ERC4626 buffer)
      */
@@ -710,7 +710,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @dev Can only be called by the Vault.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
-     *        total shares
+     * total shares
      * @param sharesOwner Address of contract that owns the deposited liquidity.
      * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
      * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
