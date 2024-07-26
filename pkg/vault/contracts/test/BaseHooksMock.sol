@@ -3,7 +3,6 @@
 pragma solidity ^0.8.24;
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import {
     HookFlags,
     LiquidityManagement,
@@ -142,7 +141,7 @@ contract BaseHooksMock is BaseHooks {
     }
 
     /// @inheritdoc IHooks
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata params, address pool) public override returns (bool) {
+    function onBeforeSwap(PoolSwapParams calldata params, address pool) public override returns (bool) {
         return super.onBeforeSwap(params, pool);
     }
 
@@ -153,7 +152,7 @@ contract BaseHooksMock is BaseHooks {
 
     /// @inheritdoc IHooks
     function onComputeDynamicSwapFeePercentage(
-        IBasePool.PoolSwapParams calldata params,
+        PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
     ) public view override returns (bool, uint256) {

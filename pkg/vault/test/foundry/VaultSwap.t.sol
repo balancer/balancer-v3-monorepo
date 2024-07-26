@@ -9,7 +9,12 @@ import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 
-import { SwapKind, SwapParams, HooksConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    SwapKind,
+    SwapParams,
+    HooksConfig,
+    PoolSwapParams
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -525,12 +530,12 @@ contract VaultSwapTest is BaseVaultTest {
 
         // Ensure raw and last live balances are in sync after the operation.
         uint256[] memory currentLiveBalances = vault.getCurrentLiveBalances(pool);
-        uint256[] memory lastLiveBalances = vault.getLastLiveBalances(pool);
+        uint256[] memory lastBalancesLiveScaled18 = vault.getLastLiveBalances(pool);
 
-        assertEq(currentLiveBalances.length, lastLiveBalances.length);
+        assertEq(currentLiveBalances.length, lastBalancesLiveScaled18.length);
 
         for (uint256 i = 0; i < currentLiveBalances.length; ++i) {
-            assertEq(currentLiveBalances[i], lastLiveBalances[i]);
+            assertEq(currentLiveBalances[i], lastBalancesLiveScaled18[i]);
         }
     }
 }

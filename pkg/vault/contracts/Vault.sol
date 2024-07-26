@@ -199,7 +199,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // State is fully populated here, and shall not be modified at a lower level.
         SwapState memory state = _loadSwapState(params, poolData);
 
-        IBasePool.PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
+        PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
 
         if (poolData.poolConfigBits.shouldCallBeforeSwap()) {
             HooksConfigLib.callBeforeSwapHook(swapParams, params.pool, _hooksContracts[params.pool]);
@@ -285,10 +285,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
-    ) internal view returns (IBasePool.PoolSwapParams memory) {
-        // Uses msg.sender as the router (the contract that called the vault).
+    ) internal view returns (PoolSwapParams memory) {
+        // Uses msg.sender as the router (the contract that called the vault)
         return
-            IBasePool.PoolSwapParams({
+            PoolSwapParams({
                 kind: params.kind,
                 amountGivenScaled18: state.amountGivenScaled18,
                 balancesScaled18: poolData.balancesLiveScaled18,
@@ -344,7 +344,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData,
-        IBasePool.PoolSwapParams memory swapParams
+        PoolSwapParams memory swapParams
     )
         internal
         nonReentrant
@@ -567,7 +567,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
     }
 
-    /// @dev Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
+    // Avoid "stack too deep" - without polluting the Add/RemoveLiquidity params interface.
     struct LiquidityLocals {
         uint256 numTokens;
         uint256 totalFeesRaw;
@@ -1102,9 +1102,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /**
-     * @dev If the buffer has enough liquidity, it uses the wrapped token buffer to perform the wrap operation without
-     * any external calls. If not, it wraps the assets needed to fulfill the trade + the surplus of assets in the
-     * buffer, so that the buffer is rebalanced at the end of the operation.
+     * @dev If the buffer has enough liquidity, it uses the internal ERC42626 buffer to perform the wrap
+     * operation without any external calls. If not, it wraps the assets needed to fulfill the trade + the surplus
+     * of assets in the buffer, so that the buffer is rebalanced at the end of the operation.
      *
      * Updates `_reservesOf` and token deltas in storage.
      */
@@ -1245,9 +1245,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /**
-     * @dev If the buffer has enough liquidity, it uses the wrapped token buffer to perform the unwrap operation
-     * without any external calls. If not, it unwraps the assets needed to fulfill the trade + the surplus of assets
-     * in the buffer, so that the buffer is rebalanced at the end of the operation.
+     * @dev If the buffer has enough liquidity, it uses the internal ERC4626 buffer to perform the unwrap
+     * operation without any external calls. If not, it unwraps the assets needed to fulfill the trade + the surplus
+     * of assets in the buffer, so that the buffer is rebalanced at the end of the operation.
      *
      * Updates `_reservesOf` and token deltas in storage.
      */

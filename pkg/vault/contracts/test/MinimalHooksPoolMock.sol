@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.24;
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
@@ -10,7 +11,9 @@ import {
     TokenConfig,
     LiquidityManagement,
     AddLiquidityKind,
-    RemoveLiquidityKind
+    RemoveLiquidityKind,
+    PoolSwapParams,
+    AfterSwapParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BaseHooks } from "../BaseHooks.sol";
@@ -47,18 +50,18 @@ contract MinimalHooksPoolMock is BaseHooks {
     }
 
     function onComputeDynamicSwapFeePercentage(
-        IBasePool.PoolSwapParams calldata,
+        PoolSwapParams calldata,
         address,
         uint256
     ) public pure override returns (bool, uint256) {
         return (true, 0);
     }
 
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata, address) public pure override returns (bool) {
+    function onBeforeSwap(PoolSwapParams calldata, address) public pure override returns (bool) {
         return true;
     }
 
-    function onAfterSwap(IHooks.AfterSwapParams calldata params) public pure override returns (bool, uint256) {
+    function onAfterSwap(AfterSwapParams calldata params) public pure override returns (bool, uint256) {
         return (true, params.amountCalculatedRaw);
     }
 

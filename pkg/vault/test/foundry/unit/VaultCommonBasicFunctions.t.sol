@@ -89,12 +89,12 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             IERC20[] memory newTokens,
             TokenInfo[] memory newTokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory lastLiveBalances
+            uint256[] memory lastBalancesLiveScaled18
         ) = vault.getPoolTokenInfo(pool);
         assertEq(newTokens.length, 3);
         assertEq(newTokenInfo.length, 3);
         assertEq(balancesRaw.length, 3);
-        assertEq(lastLiveBalances.length, 3);
+        assertEq(lastBalancesLiveScaled18.length, 3);
         for (uint256 i = 0; i < newTokens.length; ++i) {
             assertEq(
                 address(newTokens[i]),
@@ -124,9 +124,9 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             );
 
             assertEq(
-                lastLiveBalances[i],
+                lastBalancesLiveScaled18[i],
                 originalLastLiveBalances[i],
-                string.concat("token", Strings.toString(i), "lastLiveBalances should match set pool balance")
+                string.concat("token", Strings.toString(i), "lastBalancesLiveScaled18 should match set pool balance")
             );
         }
     }
@@ -217,13 +217,13 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             IERC20[] memory newTokens,
             TokenInfo[] memory newTokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory lastLiveBalances
+            uint256[] memory lastBalancesLiveScaled18
         ) = vault.getPoolTokenInfo(pool);
 
         assertEq(newTokens.length, 3);
         assertEq(newTokenInfo.length, 3);
         assertEq(balancesRaw.length, 3);
-        assertEq(lastLiveBalances.length, 3);
+        assertEq(lastBalancesLiveScaled18.length, 3);
 
         for (uint256 i = 0; i < newTokens.length; ++i) {
             assertEq(
@@ -253,7 +253,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
                 string.concat("token", Strings.toString(i), "balance should match set pool balance")
             );
             assertEq(
-                lastLiveBalances[i],
+                lastBalancesLiveScaled18[i],
                 originalLastLiveBalances[i],
                 string.concat("decimalScalingFactors of token", Strings.toString(i), "should match tokenDecimalDiffs")
             );

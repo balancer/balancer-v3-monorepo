@@ -68,7 +68,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onBeforeSwap.selector,
-                IBasePool.PoolSwapParams({
+                PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: _swapAmount,
                     balancesScaled18: originalBalances,
@@ -85,7 +85,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             pool,
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
-                IBasePool.PoolSwapParams({
+                PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: _swapAmount,
                     balancesScaled18: newBalances,

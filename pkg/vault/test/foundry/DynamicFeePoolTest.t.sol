@@ -8,7 +8,6 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -79,7 +78,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
     }
 
     function testSwapCallsComputeFee() public {
-        IBasePool.PoolSwapParams memory poolSwapParams = IBasePool.PoolSwapParams({
+        PoolSwapParams memory poolSwapParams = PoolSwapParams({
             kind: SwapKind.EXACT_IN,
             amountGivenScaled18: defaultAmount,
             balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
@@ -117,7 +116,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
     }
 
     function testSwapCallsComputeFeeWithSender() public {
-        IBasePool.PoolSwapParams memory poolSwapParams = IBasePool.PoolSwapParams({
+        PoolSwapParams memory poolSwapParams = PoolSwapParams({
             kind: SwapKind.EXACT_IN,
             amountGivenScaled18: defaultAmount,
             balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
@@ -174,7 +173,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
             address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onComputeDynamicSwapFeePercentage.selector,
-                IBasePool.PoolSwapParams({
+                PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: 0,
                     balancesScaled18: balances,
@@ -189,7 +188,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
             1 // callCount
         );
 
-        IBasePool.PoolSwapParams memory swapParams;
+        PoolSwapParams memory swapParams;
         uint256 dynamicSwapFeePercentage = 0.01e18;
 
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(dynamicSwapFeePercentage);

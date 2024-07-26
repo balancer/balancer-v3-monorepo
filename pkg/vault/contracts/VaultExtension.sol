@@ -528,7 +528,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             IERC20[] memory tokens,
             TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory lastLiveBalances
+            uint256[] memory lastBalancesLiveScaled18
         )
     {
         // Retrieve the mapping of tokens and their balances for the specified pool.
@@ -537,13 +537,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256 numTokens = tokens.length;
         tokenInfo = new TokenInfo[](numTokens);
         balancesRaw = new uint256[](numTokens);
-        lastLiveBalances = new uint256[](numTokens);
+        lastBalancesLiveScaled18 = new uint256[](numTokens);
 
         for (uint256 i = 0; i < numTokens; ++i) {
             bytes32 packedBalance = poolTokenBalances[i];
             tokenInfo[i] = _poolTokenInfo[pool][tokens[i]];
             balancesRaw[i] = packedBalance.getBalanceRaw();
-            lastLiveBalances[i] = packedBalance.getBalanceDerived();
+            lastBalancesLiveScaled18[i] = packedBalance.getBalanceDerived();
         }
     }
 
@@ -710,7 +710,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function computeDynamicSwapFeePercentage(
         address pool,
-        IBasePool.PoolSwapParams memory swapParams
+        PoolSwapParams memory swapParams
     )
         external
         view

@@ -5,9 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -116,7 +114,7 @@ contract VaultExtensionMutationTest is BaseVaultTest {
 
     function testComputeDynamicSwapFeeWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        IBasePool.PoolSwapParams memory swapParams;
+        PoolSwapParams memory swapParams;
         vaultExtension.computeDynamicSwapFeePercentage(pool, swapParams);
     }
 

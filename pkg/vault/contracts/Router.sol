@@ -454,7 +454,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param params Remove liquidity parameters (see IRouter for struct definition)
      * @return bptAmountIn BPT amount burned for the output tokens
      * @return amountsOut Actual token amounts transferred in exchange for the BPT
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function removeLiquidityHook(
         RemoveLiquidityHookParams calldata params
@@ -672,10 +672,10 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
-     * @param sharesOwner Address of contract that will own the deposited liquidity. Only
-     * this contract will be able to remove liquidity from the buffer
-     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts
-     * (it is the BPT of vault's internal linear pools)
+     * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to
+     * remove liquidity from the buffer
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts.
+     * (This is the BPT of an internal ERC4626 buffer)
      */
     function addLiquidityToBufferHook(
         IERC4626 wrappedToken,
@@ -861,7 +861,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param params Add liquidity parameters (see IRouter for struct definition)
      * @return amountsIn Actual token amounts in required as inputs
      * @return bptAmountOut Expected pool tokens to be minted
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function queryAddLiquidityHook(
         AddLiquidityHookParams calldata params
@@ -1025,7 +1025,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param params Remove liquidity parameters (see IRouter for struct definition)
      * @return bptAmountIn Pool token amount to be burned for the output tokens
      * @return amountsOut Expected token amounts to be transferred to the sender
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function queryRemoveLiquidityHook(
         RemoveLiquidityHookParams calldata params

@@ -78,7 +78,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
             pool,
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
-                IBasePool.PoolSwapParams({
+                PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: expectedBalances,
@@ -115,7 +115,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
             pool,
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
-                IBasePool.PoolSwapParams({
+                PoolSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     amountGivenScaled18: defaultAmount,
                     balancesScaled18: expectedBalances,

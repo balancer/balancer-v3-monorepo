@@ -70,7 +70,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             pool,
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
-                IBasePool.PoolSwapParams({
+                PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: rateAdjustedAmount,
                     balancesScaled18: expectedBalances,

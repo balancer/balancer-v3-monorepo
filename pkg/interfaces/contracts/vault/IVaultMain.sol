@@ -8,6 +8,11 @@ import { IAuthorizer } from "./IAuthorizer.sol";
 import { IRateProvider } from "./IRateProvider.sol";
 import "./VaultTypes.sol";
 
+/**
+ * @notice Interface for functions defined on the main Vault contract.
+ * @dev These are generally "critical path" functions (swap, add/remove liquidity) that are in the main contract
+ * for technical or performance reasons.
+ */
 interface IVaultMain {
     /*******************************************************************************
                               Transient Accounting
@@ -79,7 +84,7 @@ interface IVaultMain {
      * @param params Parameters for the add liquidity (see above for struct definition)
      * @return amountsIn Actual amounts of input tokens
      * @return bptAmountOut Output pool token amount
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function addLiquidity(
         AddLiquidityParams memory params
@@ -98,7 +103,7 @@ interface IVaultMain {
      * @param params Parameters for the remove liquidity (see above for struct definition)
      * @return bptAmountIn Actual amount of BPT burnt
      * @return amountsOut Actual amounts of output tokens
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function removeLiquidity(
         RemoveLiquidityParams memory params

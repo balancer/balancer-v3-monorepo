@@ -11,7 +11,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { SwapKind, PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
@@ -94,6 +94,14 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     /// @dev Cannot stop an amplification update before it starts.
     error AmpUpdateNotStarted();
 
+    /**
+     * @notice Parameters used to deploy a new Stable Pool.
+     * @param name ERC20 token name
+     * @param symbol ERC20 token symbol
+     * @param amplificationParameter Controls the "flatness" of the invariant curve. higher values = lower slippage,
+     * and assumes prices are near parity. lower values = closer to the constant product curve (e.g., more like a
+     * weighted pool). This has higher slippage, and accommodates greater price volatility.
+     */
     struct NewPoolParams {
         string name;
         string symbol;
@@ -146,7 +154,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(IBasePool.PoolSwapParams memory request) public view onlyVault returns (uint256) {
+    function onSwap(PoolSwapParams memory request) public view onlyVault returns (uint256) {
         uint256 invariant = computeInvariant(request.balancesScaled18);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
@@ -301,7 +309,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
 
     /// @inheritdoc IStablePool
     function getStablePoolDynamicData() external view returns (StablePoolDynamicData memory data) {
-        data.liveBalances = _vault.getCurrentLiveBalances(address(this));
+        data.balancesLiveScaled18 = _vault.getCurrentLiveBalances(address(this));
         (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
         data.staticSwapFeePercentage = _vault.getStaticSwapFeePercentage((address(this)));
         data.totalSupply = totalSupply();

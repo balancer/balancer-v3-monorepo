@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -181,7 +180,7 @@ library HooksConfigLib {
      * @return swapFeePercentage the calculated swap fee percentage. 0 if hook is disabled
      */
     function callComputeDynamicSwapFeeHook(
-        IBasePool.PoolSwapParams memory swapParams,
+        PoolSwapParams memory swapParams,
         address pool,
         uint256 staticSwapFeePercentage,
         IHooks hooksContract
@@ -205,11 +204,7 @@ library HooksConfigLib {
      * @param pool Pool address
      * @param hooksContract Storage slot with the address of the hooks contract
      */
-    function callBeforeSwapHook(
-        IBasePool.PoolSwapParams memory swapParams,
-        address pool,
-        IHooks hooksContract
-    ) internal {
+    function callBeforeSwapHook(PoolSwapParams memory swapParams, address pool, IHooks hooksContract) internal {
         if (hooksContract.onBeforeSwap(swapParams, pool) == false) {
             // Hook contract implements onBeforeSwap, but it has failed, so reverts the transaction.
             revert IVaultErrors.BeforeSwapHookFailed();
@@ -247,7 +242,7 @@ library HooksConfigLib {
             : (amountCalculatedScaled18, state.amountGivenScaled18);
 
         (bool success, uint256 hookAdjustedAmountCalculatedRaw) = hooksContract.onAfterSwap(
-            IHooks.AfterSwapParams({
+            AfterSwapParams({
                 kind: params.kind,
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,

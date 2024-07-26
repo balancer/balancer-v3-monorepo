@@ -551,7 +551,7 @@ contract VaultUnitSwapTest is BaseTest {
             pool,
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
-                IBasePool.PoolSwapParams({
+                PoolSwapParams({
                     kind: params.kind,
                     amountGivenScaled18: state.amountGivenScaled18,
                     balancesScaled18: poolData.balancesLiveScaled18,

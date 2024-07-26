@@ -38,13 +38,16 @@ interface IVaultAdmin {
     /**
      * @notice Get the minimum number of tokens in a pool.
      * @dev We expect the vast majority of pools to be 2-token.
-     * @return The token count of a minimal pool
+     * @return The minimum token count of a pool
      */
     function getMinimumPoolTokens() external pure returns (uint256);
 
     /**
      * @notice Get the maximum number of tokens in a pool.
-     * @return The token count of a minimal pool
+     * @dev This is 4 for v3, vs. 8 in v2. This was changed mainly for performance reasons, and because very few pools
+     * went over this token count.
+     *
+     * @return The maximum token count of a pool
      */
     function getMaximumPoolTokens() external pure returns (uint256);
 
@@ -155,14 +158,14 @@ interface IVaultAdmin {
     /**
      * @notice Enable recovery mode for a pool.
      * @dev This is a permissioned function.
-     * @param pool The pool
+     * @param pool The address of the pool
      */
     function enableRecoveryMode(address pool) external;
 
     /**
      * @notice Disable recovery mode for a pool.
      * @dev This is a permissioned function.
-     * @param pool The pool
+     * @param pool The address of the pool
      */
     function disableRecoveryMode(address pool) external;
 
@@ -170,7 +173,7 @@ interface IVaultAdmin {
                                     Queries
     *******************************************************************************/
 
-    /// @notice Disables queries functionality on the Vault. Can be called only by governance.
+    /// @notice Disables queries functionality on the Vault. Can only be called by governance.
     function disableQuery() external;
 
     /*******************************************************************************
@@ -194,15 +197,14 @@ interface IVaultAdmin {
     function unpauseVaultBuffers() external;
 
     /**
-     * @notice Adds liquidity to a yield-bearing token buffer (linear pool embedded in the vault).
-     *
+     * @notice Adds liquidity to an yield-bearing buffer (one of the Vault's internal ERC4626 buffers).
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
-     * @param sharesOwner Address of contract that will own the deposited liquidity. Only
-     *        this contract will be able to remove liquidity from the buffer
-     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts
-     *         (it is the BPT of the vault's internal linear pools)
+     * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to remove
+     * liquidity from the buffer
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts.
+     * (it is the BPT of an internal ERC4626 buffer)
      */
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
@@ -212,8 +214,8 @@ interface IVaultAdmin {
     ) external returns (uint256 issuedShares);
 
     /**
-     * @notice Removes liquidity from a yield-bearing token buffer (linear pool embedded in the vault).
-     * Only proportional exits are supported.
+     * @notice Removes liquidity from a yield-bearing buffer (one of the Vault's internal ERC4626 buffers).
+     * @dev Only proportional exits are supported.
      *
      * Pre-conditions:
      * - sharesOwner is the original msg.sender, it needs to be checked in the router. That's why
@@ -221,9 +223,9 @@ interface IVaultAdmin {
      * - The buffer needs to have some liquidity and have its asset registered in `_bufferAssets` storage.
      *
      * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
-     *        total shares
-     * @param sharesOwner Address of contract that owns the deposited liquidity.
+     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner's
+     * total shares
+     * @param sharesOwner Address that owns the deposited liquidity.
      * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
      * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
      */
@@ -248,7 +250,6 @@ interface IVaultAdmin {
 
     /**
      * @notice Returns the supply shares (internal buffer BPT) of the ERC4626 buffer.
-     *
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @return bufferShares Amount of supply shares of the buffer
      */

@@ -28,13 +28,13 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
     uint256 internal waDaiIdx;
     uint256 internal waUsdcIdx;
 
-    address internal boostedPool;
+    address internal yieldBearingPool;
 
-    // The boosted pool will have 100x the liquidity of the buffer
-    uint256 internal boostedPoolAmount = 10e6 * 1e18;
+    // The yield-bearing pool will have 100x the liquidity of the buffer
+    uint256 internal yieldBearingPoolAmount = 10e6 * 1e18;
     uint256 internal bufferAmount = 0;
-    // We will swap with 10% of the boostedPool.
-    uint256 internal swapAmount = boostedPoolAmount / 10;
+    // We will swap with 10% of the yield-bearing pool.
+    uint256 internal swapAmount = yieldBearingPoolAmount / 10;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -48,10 +48,10 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
 
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
 
-        initializeBoostedPool();
+        initializeYieldBearingPool();
     }
 
-    function initializeBoostedPool() private {
+    function initializeYieldBearingPool() private {
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[waDaiIdx].token = IERC20(waDAI);
         tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
@@ -60,12 +60,12 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         tokenConfig[waDaiIdx].rateProvider = IRateProvider(address(waDAI));
         tokenConfig[waUsdcIdx].rateProvider = IRateProvider(address(waUSDC));
 
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "Yield-bearing Pool", "YIELDYBOI");
 
         factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract);
 
-        vm.label(address(newPool), "boosted pool");
-        boostedPool = address(newPool);
+        vm.label(address(newPool), "yield-bearing pool");
+        yieldBearingPool = address(newPool);
 
         vm.startPrank(bob);
         waDAI.approve(address(permit2), MAX_UINT256);
@@ -75,28 +75,36 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
 
-        dai.mint(bob, boostedPoolAmount);
-        dai.approve(address(waDAI), boostedPoolAmount);
-        waDAI.deposit(boostedPoolAmount, bob);
+        dai.mint(bob, yieldBearingPoolAmount);
+        dai.approve(address(waDAI), yieldBearingPoolAmount);
+        waDAI.deposit(yieldBearingPoolAmount, bob);
 
-        usdc.mint(bob, boostedPoolAmount);
-        usdc.approve(address(waUSDC), boostedPoolAmount);
-        waUSDC.deposit(boostedPoolAmount, bob);
+        usdc.mint(bob, yieldBearingPoolAmount);
+        usdc.approve(address(waUSDC), yieldBearingPoolAmount);
+        waUSDC.deposit(yieldBearingPoolAmount, bob);
 
-        _initPool(boostedPool, [boostedPoolAmount, boostedPoolAmount].toMemoryArray(), boostedPoolAmount * 2 - MIN_BPT);
+        _initPool(
+            yieldBearingPool,
+            [yieldBearingPoolAmount, yieldBearingPoolAmount].toMemoryArray(),
+            yieldBearingPoolAmount * 2 - MIN_BPT
+        );
         vm.stopPrank();
     }
 
     function testSwapPreconditions() public view {
-        // bob should have the full boostedPool BPT.
-        assertEq(IERC20(boostedPool).balanceOf(bob), boostedPoolAmount * 2 - MIN_BPT, "Wrong boosted pool BPT amount");
+        // bob should have the full yieldBearingPool BPT.
+        assertEq(
+            IERC20(yieldBearingPool).balanceOf(bob),
+            yieldBearingPoolAmount * 2 - MIN_BPT,
+            "Wrong yield-bearing pool BPT amount"
+        );
 
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
-        // The boosted pool should have `boostedPoolAmount` of both tokens.
-        assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong boosted pool token (waDAI)");
-        assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong boosted pool token (waUSDC)");
-        assertEq(balancesRaw[0], boostedPoolAmount, "Wrong boosted pool balance [0]");
-        assertEq(balancesRaw[1], boostedPoolAmount, "Wrong boosted pool balance [1]");
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(yieldBearingPool);
+        // The yield-bearing pool should have `yieldBearingPoolAmount` of both tokens.
+        assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong yield-bearing pool token (waDAI)");
+        assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong yield-bearing pool token (waUSDC)");
+        assertEq(balancesRaw[0], yieldBearingPoolAmount, "Wrong yield-bearing pool balance [0]");
+        assertEq(balancesRaw[1], yieldBearingPoolAmount, "Wrong yield-bearing pool balance [1]");
 
         // Buffers should have zero liquidity.
         uint256 baseBalance;
@@ -112,7 +120,7 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         assertEq(wrappedBalance, 0, "Wrong waUSDC buffer balance for wrapped token");
     }
 
-    function testBoostedPoolSwapWithoutBufferExactIn() public {
+    function testYieldBearingPoolSwapWithoutBufferExactIn() public {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(swapAmount);
 
         vm.prank(alice);
@@ -122,7 +130,7 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, swapAmount, SwapKind.EXACT_IN);
     }
 
-    function testBoostedPoolSwapWithoutBufferExactOut() public {
+    function testYieldBearingPoolSwapWithoutBufferExactOut() public {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(swapAmount);
 
         vm.prank(alice);
@@ -139,11 +147,11 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
 
         // Since this is exact in, swaps will be executed in the order given.
-        // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the boosted pool,
+        // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the yield-bearing pool,
         // and finally post-swap the waUSDC through the USDC buffer to calculate the USDC amount out.
         // The only token transfers are DAI in (given) and USDC out (calculated).
         steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC, isBuffer: false });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: yieldBearingPool, tokenOut: waUSDC, isBuffer: false });
         steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
 
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
@@ -161,11 +169,11 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         paths = new IBatchRouter.SwapPathExactAmountOut[](1);
 
         // Since this is exact out, swaps will be executed in reverse order (though we submit in logical order).
-        // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the boosted pool,
+        // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the yield-bearing pool,
         // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
         // The only token transfers are DAI in (calculated) and USDC out (given).
         steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC, isBuffer: false });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: yieldBearingPool, tokenOut: waUSDC, isBuffer: false });
         steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
 
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
@@ -200,9 +208,9 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         uint256[] memory balancesRaw;
 
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
-        (, , balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
-        assertEq(balancesRaw[daiIdx], boostedPoolAmount + expectedDelta, "Wrong boosted pool DAI balance");
-        assertEq(balancesRaw[usdcIdx], boostedPoolAmount - expectedDelta, "Wrong boosted pool USDC balance");
+        (, , balancesRaw, ) = vault.getPoolTokenInfo(yieldBearingPool);
+        assertEq(balancesRaw[daiIdx], yieldBearingPoolAmount + expectedDelta, "Wrong yield-bearing pool DAI balance");
+        assertEq(balancesRaw[usdcIdx], yieldBearingPoolAmount - expectedDelta, "Wrong yield-bearing pool USDC balance");
 
         // Buffers should have 0 liquidity, since they were not initialized.
         uint256 baseBalance;
