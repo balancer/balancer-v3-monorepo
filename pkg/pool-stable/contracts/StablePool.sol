@@ -129,6 +129,20 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IBasePool
+    function computeInvariantRatio(
+        uint256[] memory currentBalancesLiveScaled18,
+        uint256[] memory newBalancesLiveScaled18
+    ) public view returns (uint256) {
+        (uint256 currentAmp, ) = _getAmplificationParameter();
+
+        return
+            FixedPoint.divDown(
+                StableMath.computeInvariant(currentAmp, newBalancesLiveScaled18),
+                StableMath.computeInvariant(currentAmp, currentBalancesLiveScaled18)
+            );
+    }
+
+    /// @inheritdoc IBasePool
     function computeBalance(
         uint256[] memory balancesLiveScaled18,
         uint256 tokenInIndex,

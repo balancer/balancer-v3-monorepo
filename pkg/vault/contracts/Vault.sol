@@ -626,7 +626,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 maxAmountsInScaled18,
                 _totalSupply(params.pool),
                 poolData.poolConfigBits.getStaticSwapFeePercentage(),
-                IBasePool(params.pool).computeInvariant
+                IBasePool(params.pool).computeInvariantRatio
             );
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
@@ -879,7 +879,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 amountsOutScaled18[locals.tokenIndex],
                 _totalSupply(params.pool),
                 poolData.poolConfigBits.getStaticSwapFeePercentage(),
-                IBasePool(params.pool).computeInvariant
+                IBasePool(params.pool).computeInvariantRatio
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
             poolData.poolConfigBits.requireRemoveCustomLiquidityEnabled();

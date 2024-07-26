@@ -187,7 +187,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             exactAmountsInScaled18,
             IERC20(pool).totalSupply(),
             0,
-            IBasePool(pool).computeInvariant
+            IBasePool(pool).computeInvariantRatio
         );
 
         uint256 snapshotId = vm.snapshot();
@@ -394,7 +394,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             exactAmountOut.mulUp(daiMockRate),
             IERC20(pool).totalSupply(),
             0,
-            IBasePool(pool).computeInvariant
+            IBasePool(pool).computeInvariantRatio
         );
 
         uint256 snapshotId = vm.snapshot();

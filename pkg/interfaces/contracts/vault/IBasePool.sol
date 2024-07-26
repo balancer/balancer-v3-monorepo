@@ -21,6 +21,11 @@ interface IBasePool is ISwapFeePercentageBounds {
      */
     function computeInvariant(uint256[] memory balancesLiveScaled18) external view returns (uint256 invariant);
 
+    function computeInvariantRatio(
+        uint256[] memory currentBalancesLiveScaled18,
+        uint256[] memory newBalancesLiveScaled18
+    ) external view returns (uint256 invariantRatio);
+
     /**
      * @dev Computes the new balance of a token after an operation, given the invariant growth ratio and all other
      * balances.

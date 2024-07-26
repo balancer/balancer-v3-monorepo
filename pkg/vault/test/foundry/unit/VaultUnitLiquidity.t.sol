@@ -113,7 +113,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         (uint256 currentInvariant, uint256 newInvariantAndInvariantWithFeesApplied) = (1e16, 1e18);
         vm.mockCall(
             params.pool,
-            abi.encodeWithSelector(IBasePool.computeInvariant.selector, poolData.balancesLiveScaled18),
+            abi.encodeWithSelector(IBasePool.computeInvariantRatio.selector, poolData.balancesLiveScaled18),
             abi.encode(currentInvariant)
         );
 
@@ -124,7 +124,7 @@ contract VaultUnitLiquidityTest is BaseTest {
 
         vm.mockCall(
             params.pool,
-            abi.encodeWithSelector(IBasePool.computeInvariant.selector, newBalances),
+            abi.encodeWithSelector(IBasePool.computeInvariantRatio.selector, newBalances),
             abi.encode(newInvariantAndInvariantWithFeesApplied)
         );
 
@@ -133,7 +133,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             maxAmountsInScaled18,
             vault.totalSupply(params.pool),
             swapFeePercentage,
-            IBasePool(params.pool).computeInvariant
+            IBasePool(params.pool).computeInvariantRatio
         );
 
         _testAddLiquidity(
@@ -457,7 +457,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             (uint256 currentInvariant, uint256 invariantAndInvariantWithFeesApplied) = (3e8, 3e9);
             vm.mockCall(
                 params.pool,
-                abi.encodeWithSelector(IBasePool.computeInvariant.selector, poolData.balancesLiveScaled18),
+                abi.encodeWithSelector(IBasePool.computeInvariantRatio.selector, poolData.balancesLiveScaled18),
                 abi.encode(currentInvariant)
             );
 
@@ -469,7 +469,7 @@ contract VaultUnitLiquidityTest is BaseTest {
 
             vm.mockCall(
                 params.pool,
-                abi.encodeWithSelector(IBasePool.computeInvariant.selector, newBalances),
+                abi.encodeWithSelector(IBasePool.computeInvariantRatio.selector, newBalances),
                 abi.encode(invariantAndInvariantWithFeesApplied)
             );
 
@@ -483,7 +483,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             uint256 newInvariantAndInvariantWithFeesApplied = 1e5;
             vm.mockCall(
                 params.pool,
-                abi.encodeWithSelector(IBasePool.computeInvariant.selector, newBalances),
+                abi.encodeWithSelector(IBasePool.computeInvariantRatio.selector, newBalances),
                 abi.encode(newInvariantAndInvariantWithFeesApplied)
             );
         }
@@ -495,7 +495,7 @@ contract VaultUnitLiquidityTest is BaseTest {
                 minAmountsOutScaled18[tokenIndex],
                 vault.totalSupply(params.pool),
                 swapFeePercentage,
-                IBasePool(params.pool).computeInvariant
+                IBasePool(params.pool).computeInvariantRatio
             );
 
         _testRemoveLiquidity(

@@ -96,7 +96,7 @@ library BasePoolMath {
      * @param exactAmounts Array of exact amounts for each token to be added to the pool
      * @param totalSupply Current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the transaction
-     * @param computeInvariant A function pointer to the invariant calculation function
+     * @param computeInvariantRatio A function pointer to the invariant calculation function
      * @return bptAmountOut The amount of pool tokens (BPT) that will be minted as a result of the liquidity addition
      * @return swapFeeAmounts The amount of swap fees charged for each token
      */
@@ -105,7 +105,7 @@ library BasePoolMath {
         uint256[] memory exactAmounts,
         uint256 totalSupply,
         uint256 swapFeePercentage,
-        function(uint256[] memory) external view returns (uint256) computeInvariant
+        function(uint256[] memory, uint256[] memory) external view returns (uint256) computeInvariantRatio
     ) internal view returns (uint256 bptAmountOut, uint256[] memory swapFeeAmounts) {
         /***********************************************************************
         //                                                                    //
@@ -130,14 +130,8 @@ library BasePoolMath {
             newBalances[i] = currentBalances[i] + exactAmounts[i];
         }
 
-        // Calculate the invariant using the current balances (before the addition).
-        uint256 currentInvariant = computeInvariant(currentBalances);
-
-        // Calculate the new invariant using the new balances (after the addition).
-        uint256 newInvariant = computeInvariant(newBalances);
-
         // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
-        uint256 invariantRatio = newInvariant.divDown(currentInvariant);
+        uint256 invariantRatio = computeInvariantRatio(currentBalances, newBalances);
 
         // Loop through each token to apply fees if necessary.
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -155,13 +149,9 @@ library BasePoolMath {
             }
         }
 
-        // Calculate the new invariant with fees applied.
-        uint256 invariantWithFeesApplied = computeInvariant(newBalances);
-
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
-        // Since we multiply and divide we don't need to use FP math.
-        bptAmountOut = (totalSupply * (invariantWithFeesApplied - currentInvariant)) / currentInvariant;
+        bptAmountOut = totalSupply * (computeInvariantRatio(currentBalances, newBalances) - FixedPoint.ONE);
     }
 
     /**
@@ -233,7 +223,7 @@ library BasePoolMath {
         uint256 exactAmountOut,
         uint256 totalSupply,
         uint256 swapFeePercentage,
-        function(uint256[] memory) external view returns (uint256) computeInvariant
+        function(uint256[] memory, uint256[] memory) external view returns (uint256) computeInvariantRatio
     ) internal view returns (uint256 bptAmountIn, uint256[] memory swapFeeAmounts) {
         // Determine the number of tokens in the pool.
         uint256 numTokens = currentBalances.length;
@@ -249,8 +239,6 @@ library BasePoolMath {
         // Update the balance of tokenOutIndex with exactAmountOut.
         newBalances[tokenOutIndex] = newBalances[tokenOutIndex] - exactAmountOut;
 
-        // Calculate the invariant using the current balances (before the removal).
-        uint256 currentInvariant = computeInvariant(currentBalances);
 
         // Calculate the new invariant using the new balances (after the removal).
         // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
@@ -259,8 +247,7 @@ library BasePoolMath {
         // Since we multiply and divide we don't need to use FP math.
         // We round down for simplicity, as rounding up doesn't really affect the result in a meaningful way down the
         // line (fee calculation is rounded up anyways which is more straightforward).
-        uint256 taxableAmount = (computeInvariant(newBalances) * currentBalances[tokenOutIndex]) /
-            currentInvariant -
+        uint256 taxableAmount = computeInvariantRatio(currentBalances, newBalances) * currentBalances[tokenOutIndex] -
             newBalances[tokenOutIndex];
 
         // Calculate the swap fee based on the taxable amount and the swap fee percentage
@@ -268,9 +255,6 @@ library BasePoolMath {
 
         // Update new balances array with a fee
         newBalances[tokenOutIndex] = newBalances[tokenOutIndex] - fee;
-
-        // Calculate the new invariant with fees applied.
-        uint256 invariantWithFeesApplied = computeInvariant(newBalances);
 
         // Create swap fees amount array and set the single fee we charge
         swapFeeAmounts = new uint256[](numTokens);
@@ -280,7 +264,10 @@ library BasePoolMath {
         // total supply with the ratio of the change in invariant.
         // Since we multiply and divide we don't need to use FP math.
         // Calculating BPT amount in, so we round up.
-        bptAmountIn = totalSupply.mulDivUp(currentInvariant - invariantWithFeesApplied, currentInvariant);
+        bptAmountIn = totalSupply * (FixedPoint.ONE - computeInvariantRatio(currentBalances, newBalances));
+        unchecked {
+            bptAmountIn = (bptAmountIn == 0 ? 0 : bptAmountIn + 1);
+        }
     }
 
     /**

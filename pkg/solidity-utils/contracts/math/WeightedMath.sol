@@ -24,6 +24,10 @@ library WeightedMath {
     /// @dev User attempted to add a disproportionate amountIn of tokens to a pool.
     error MaxInRatio();
 
+    error InvariantRatioAboveMax(uint256 invariantRatio);
+
+    error InvariantRatioBelowMin(uint256 invariantRatio);
+
     /**
      * @dev Error thrown when the calculated invariant is zero, indicating an issue with the invariant calculation.
      * Most commonly, this happens when a token balance is zero.
@@ -82,6 +86,12 @@ library WeightedMath {
         uint256 weight,
         uint256 invariantRatio
     ) internal pure returns (uint256 invariant) {
+        if (invariantRatio > _MAX_INVARIANT_RATIO) {
+            revert InvariantRatioAboveMax(invariantRatio);
+        } else if (invariantRatio < _MIN_INVARIANT_RATIO) {
+            revert InvariantRatioBelowMin(invariantRatio);
+        }
+
         /******************************************************************************************
         // calculateBalanceGivenInvariant                                                       //
         // o = balanceOut                                                                        //

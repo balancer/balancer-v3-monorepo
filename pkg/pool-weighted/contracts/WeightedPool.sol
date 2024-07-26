@@ -104,6 +104,19 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     }
 
     /// @inheritdoc IBasePool
+    function computeInvariantRatio(
+        uint256[] memory currentBalancesLiveScaled18,
+        uint256[] memory newBalancesLiveScaled18
+    ) external view returns (uint256 invariantRatio) {
+        uint256[] memory normalizedWeights = _getNormalizedWeights();
+        return
+            FixedPoint.divDown(
+                WeightedMath.computeInvariant(normalizedWeights, newBalancesLiveScaled18),
+                WeightedMath.computeInvariant(normalizedWeights, currentBalancesLiveScaled18)
+            );
+    }
+
+    /// @inheritdoc IBasePool
     function computeBalance(
         uint256[] memory balancesLiveScaled18,
         uint256 tokenInIndex,
