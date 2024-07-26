@@ -36,7 +36,11 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     // Minimum values help make the math well-behaved (i.e., the swap fee should overwhelm any rounding error).
     // Maximum values protect users by preventing permissioned actors from setting excessively high swap fees.
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 0.1e18; // 10%
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
+
+    // A minimum normalized weight imposes a maximum weight ratio. We need this due to limitations in the
+    // implementation of the power function, as these ratios are often exponents.
+    uint256 private constant _MIN_WEIGHT = 1e16; // 1%
 
     uint256 private immutable _totalTokens;
 
@@ -77,7 +81,7 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
         for (uint8 i = 0; i < numTokens; ++i) {
             uint256 normalizedWeight = params.normalizedWeights[i];
 
-            if (normalizedWeight < WeightedMath._MIN_WEIGHT) {
+            if (normalizedWeight < _MIN_WEIGHT) {
                 revert MinWeight();
             }
             normalizedSum = normalizedSum + normalizedWeight;
