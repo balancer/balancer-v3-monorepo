@@ -19,7 +19,7 @@ library StorageSlotExtension {
         }
     }
 
-    /// @dev UDVT that represents a slot holding an address.
+    /// @dev Custom type that represents a slot holding an address.
     type AddressSlotType is bytes32;
 
     /// @dev Cast an arbitrary slot to a AddressSlotType.
@@ -27,7 +27,7 @@ library StorageSlotExtension {
         return AddressSlotType.wrap(slot);
     }
 
-    /// @dev UDVT that represents a slot holding a boolean.
+    /// @dev Custom type that represents a slot holding a boolean.
     type BooleanSlotType is bytes32;
 
     /// @dev Cast an arbitrary slot to a BooleanSlotType.
@@ -35,7 +35,7 @@ library StorageSlotExtension {
         return BooleanSlotType.wrap(slot);
     }
 
-    /// @dev UDVT that represents a slot holding a bytes32.
+    /// @dev Custom type that represents a slot holding a bytes32.
     type Bytes32SlotType is bytes32;
 
     /// @dev Cast an arbitrary slot to a Bytes32SlotType.
@@ -43,7 +43,7 @@ library StorageSlotExtension {
         return Bytes32SlotType.wrap(slot);
     }
 
-    /// @dev UDVT that represents a slot holding a uint256.
+    /// @dev Custom type that represents a slot holding a uint256.
     type Uint256SlotType is bytes32;
 
     /// @dev Cast an arbitrary slot to a Uint256SlotType.
@@ -51,7 +51,7 @@ library StorageSlotExtension {
         return Uint256SlotType.wrap(slot);
     }
 
-    /// @dev UDVT that represents a slot holding an int256.
+    /// @dev Custom type that represents a slot holding an int256.
     type Int256SlotType is bytes32;
 
     /// @dev Cast an arbitrary slot to an Int256SlotType.

@@ -12,7 +12,6 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 contract ERC4626TokenMock is IERC4626, ERC20, IRateProvider {
-    using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
     uint256 internal _assets;

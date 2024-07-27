@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 contract RateProviderMock is IRateProvider {
     uint256 internal _rate;

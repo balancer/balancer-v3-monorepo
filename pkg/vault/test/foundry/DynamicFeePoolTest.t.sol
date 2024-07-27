@@ -4,24 +4,18 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 import { PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
-import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -154,10 +148,10 @@ contract DynamicFeePoolTest is BaseVaultTest {
         router.swapSingleTokenExactIn(pool, dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
 
         uint256 aliceBalanceAfter = usdc.balanceOf(alice);
-        // 100% fee; should get nothing
+        // 100% fee; should get nothing.
         assertEq(aliceBalanceAfter - aliceBalanceBefore, 0, "Wrong alice balance (high fee)");
 
-        // Now set Alice as the special 0-fee sender
+        // Now set Alice as the special 0-fee sender.
         PoolHooksMock(poolHooksContract).setSpecialSender(alice);
         aliceBalanceBefore = aliceBalanceAfter;
 
@@ -165,7 +159,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         router.swapSingleTokenExactIn(pool, dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
 
         aliceBalanceAfter = usdc.balanceOf(alice);
-        // No fee; should get full swap amount
+        // No fee; should get full swap amount.
         assertEq(aliceBalanceAfter - aliceBalanceBefore, defaultAmount, "Wrong alice balance (zero fee)");
     }
 

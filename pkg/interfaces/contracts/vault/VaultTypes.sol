@@ -21,7 +21,7 @@ struct LiquidityManagement {
     bool enableDonation;
 }
 
-// @notice Config type to store the entire configuration of the pool.
+// @notice Custom type to store the entire configuration of the pool.
 type PoolConfigBits is bytes32;
 
 /// @notice Represents a pool's configuration (hooks configuration are separated in another struct).
