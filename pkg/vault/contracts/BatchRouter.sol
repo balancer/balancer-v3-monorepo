@@ -451,11 +451,11 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
                     if (stepLocals.isLastStep) {
                         pathAmountsIn[i] = amountIn;
-                        // since the token was taken in advance, returns to the user what is left from the
+                        // Since the token was taken in advance, returns to the user what is left from the
                         // wrap/unwrap operation.
                         _currentSwapTokensOut().add(address(stepTokenIn));
                         _currentSwapTokenOutAmounts().tAdd(address(stepTokenIn), path.maxAmountIn - amountIn);
-                        // settledTokenAmounts is used to return the amountsIn at the end of the operation, which
+                        // `settledTokenAmounts` is used to return the `amountsIn` at the end of the operation, which
                         // is only amountIn. The difference between maxAmountIn and amountIn will be paid during
                         // settle.
                         _settledTokenAmounts().tAdd(address(path.tokenIn), amountIn);

@@ -210,11 +210,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         // DAI buffer receives DAI from user.
         vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai + swapAmount;
         vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai - swapAmount;
-<<<<<<< HEAD:pkg/vault/test/foundry/BoostedPoolBufferAsVaultPrimitive.t.sol
-        // BoostedPool receives WaDai from DAI buffer, and gives waUSDC to USDC buffer.
-=======
-        // Yield-bearing pool receives WaDai from DAI buffer, and gives waUSDC to USDC buffer
->>>>>>> main:pkg/vault/test/foundry/YieldBearingPoolBufferAsVaultPrimitive.t.sol
+        // Yield-bearing pool receives WaDai from DAI buffer, and gives waUSDC to USDC buffer.
         vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc + swapAmount;
         // USDC buffer gives USDC to user.
         vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc - swapAmount;
@@ -236,11 +232,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         // DAI buffer receives DAI from user.
         vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai + swapAmount;
         vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai - swapAmount;
-<<<<<<< HEAD:pkg/vault/test/foundry/BoostedPoolBufferAsVaultPrimitive.t.sol
-        // BoostedPool receives WaDai from DAI buffer, and gives waUSDC to USDC buffer.
-=======
-        // Yield-bearing pool receives WaDai from DAI buffer, and gives waUSDC to USDC buffer
->>>>>>> main:pkg/vault/test/foundry/YieldBearingPoolBufferAsVaultPrimitive.t.sol
+        // Yield-bearing pool receives WaDai from DAI buffer, and gives waUSDC to USDC buffer.
         vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc + swapAmount;
         // USDC buffer gives USDC to user.
         vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc - swapAmount;

@@ -131,7 +131,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         assertEq(poolToken.nonces(user), CURRENT_NONCE + 1, "nonce mismatch");
     }
 
-    /// @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitBadNonce() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
@@ -147,7 +147,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
     }
 
-    /// @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitBadDeadline() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
@@ -162,7 +162,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp + 1, v, r, s);
     }
 
-    /// @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitPastDeadline() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
@@ -177,7 +177,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp - 1, v, r, s);
     }
 
-    /// @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitReplay() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
@@ -219,7 +219,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         assertEq(poolToken.nonces(usr), CURRENT_NONCE + 1, "nonce mismatch");
     }
 
-    /// @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitBadNonce__Fuzz(
         uint256 privKey,
         address to,
@@ -247,7 +247,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(usr, to, amount, deadline, v, r, s);
     }
 
-    /// @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitBadDeadline__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
         deadline = bound(deadline, 0, block.timestamp - 1);
         vm.assume(privKey != 0);
@@ -289,7 +289,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(usr, to, amount, deadline, v, r, s);
     }
 
-    /// @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitReplay__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
         vm.assume(privKey != 0);
         vm.assume(to != address(0));
