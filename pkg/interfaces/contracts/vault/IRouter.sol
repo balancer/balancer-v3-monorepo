@@ -354,7 +354,7 @@ interface IRouter {
     *******************************************************************************/
 
     /**
-     * @notice Adds liquidity to a yield-bearing token buffer (linear pools embedded in the vault).
+     * @notice Adds liquidity to a yield-bearing token buffer (internal ERC4626 buffer in the Vault).
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
@@ -371,7 +371,7 @@ interface IRouter {
     ) external returns (uint256 issuedShares);
 
     /**
-     * @notice Removes liquidity from a yield-bearing token buffer (an embedded "Linear Pool").
+     * @notice Removes liquidity from a yield-bearing token buffer (internal ERC4626 buffer in the Vault).
      * @dev Only proportional withdrawals are supported, and removing liquidity is permissioned.
      * @param wrappedToken Address of a wrapped token that implements IERC4626
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
