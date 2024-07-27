@@ -4,15 +4,12 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultMain.sol";
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
-import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
@@ -21,8 +18,12 @@ import {
 
 import { RouterCommon } from "./RouterCommon.sol";
 
+/**
+ * @notice Entrypoint for swaps, liquidity operations, and corresponding queries.
+ * @dev The external API functions unlock the Vault, which calls back into the corresponding hook functions.
+ * These interact with the Vault, transfer tokens, settle accounting, and handle wrapping and unwrapping ETH.
+ */
 contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
-    using SafeERC20 for IERC20;
     using Address for address payable;
 
     constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
@@ -85,7 +86,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
 
-            // There can be only one WETH token in the pool
+            // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
                 if (address(this).balance < amountIn) {
                     revert InsufficientEth();
@@ -93,17 +94,17 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
                 _weth.deposit{ value: amountIn }();
                 ethAmountIn = amountIn;
-                // transfer WETH from the router to the Vault
+                // Transfer WETH from the router to the Vault.
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
             } else {
-                // transfer tokens from the user to the Vault
+                // Rransfer tokens from the user to the Vault.
                 _permit2.transferFrom(params.sender, address(_vault), uint160(amountIn), address(token));
                 _vault.settle(token, amountIn);
             }
         }
 
-        // return ETH dust
+        // Return ETH dust.
         _returnEth(params.sender);
     }
 
@@ -258,6 +259,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param params Add liquidity parameters (see IRouter for struct definition)
      * @return amountsIn Actual amounts in required for the join
      * @return bptAmountOut BPT amount minted in exchange for the input tokens
+     * @return returnData Arbitrary data with encoded response from the pool
      */
     function addLiquidityHook(
         AddLiquidityHookParams calldata params
@@ -286,7 +288,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
 
-            // There can be only one WETH token in the pool
+            // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
                 if (address(this).balance < amountIn) {
                     revert InsufficientEth();
@@ -302,7 +304,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             }
         }
 
-        // Send remaining ETH to the user
+        // Send remaining ETH to the user.
         _returnEth(params.sender);
     }
 
@@ -481,19 +483,19 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             uint256 amountOut = amountsOut[i];
             IERC20 token = tokens[i];
 
-            // There can be only one WETH token in the pool
+            // There can be only one WETH token in the pool.
             if (params.wethIsEth && address(token) == address(_weth)) {
-                // Send WETH here and unwrap to native ETH
+                // Send WETH here and unwrap to native ETH.
                 _vault.sendTo(_weth, address(this), amountOut);
                 _weth.withdraw(amountOut);
                 ethAmountOut = amountOut;
             } else {
-                // Transfer the token to the sender (amountOut)
+                // Transfer the token to the sender (amountOut).
                 _vault.sendTo(token, params.sender, amountOut);
             }
         }
 
-        // Send ETH to sender
+        // Send ETH to sender.
         payable(params.sender).sendValue(ethAmountOut);
     }
 
@@ -596,7 +598,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @notice Hook for swaps.
      * @dev Can only be called by the Vault. Also handles native ETH.
      * @param params Swap parameters (see IRouter for struct definition)
-     * @return Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
+     * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
      */
     function swapSingleTokenHook(
         SwapSingleTokenHookParams calldata params
@@ -745,8 +747,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeWithSelector(
                     Router.queryAddLiquidityHook.selector,
                     AddLiquidityHookParams({
-                        // we use router as a sender to simplify basic query functions
-                        // but it is possible to add liquidity to any recipient
+                        // We use the Router as a sender to simplify basic query functions,
+                        // but it is possible to add liquidity to any recipient.
                         sender: address(this),
                         pool: pool,
                         maxAmountsIn: maxAmountsIn,
@@ -772,8 +774,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeWithSelector(
                     Router.queryAddLiquidityHook.selector,
                     AddLiquidityHookParams({
-                        // we use router as a sender to simplify basic query functions
-                        // but it is possible to add liquidity to any recipient
+                        // We use the Router as a sender to simplify basic query functions,
+                        // but it is possible to add liquidity to any recipient.
                         sender: address(this),
                         pool: pool,
                         maxAmountsIn: exactAmountsIn,
@@ -806,8 +808,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeWithSelector(
                     Router.queryAddLiquidityHook.selector,
                     AddLiquidityHookParams({
-                        // we use router as a sender to simplify basic query functions
-                        // but it is possible to add liquidity to any recipient
+                        // We use the Router as a sender to simplify basic query functions,
+                        // but it is possible to add liquidity to any recipient.
                         sender: address(this),
                         pool: pool,
                         maxAmountsIn: maxAmountsIn,
@@ -837,8 +839,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                     abi.encodeWithSelector(
                         Router.queryAddLiquidityHook.selector,
                         AddLiquidityHookParams({
-                            // we use router as a sender to simplify basic query functions
-                            // but it is possible to add liquidity to any recipient
+                            // We use the Router as a sender to simplify basic query functions,
+                            // but it is possible to add liquidity to any recipient.
                             sender: address(this),
                             pool: pool,
                             maxAmountsIn: maxAmountsIn,
@@ -888,8 +890,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeWithSelector(
                     Router.queryRemoveLiquidityHook.selector,
                     RemoveLiquidityHookParams({
-                        // We use router as a sender to simplify basic query functions
-                        // but it is possible to remove liquidity from any sender
+                        // We use the Router as a sender to simplify basic query functions,
+                        // but it is possible to remove liquidity from any sender.
                         sender: address(this),
                         pool: pool,
                         minAmountsOut: minAmountsOut,
@@ -911,7 +913,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         IERC20 tokenOut,
         bytes memory userData
     ) external saveSender returns (uint256 amountOut) {
-        // We cannot use 0 as min amount out, as the value is used to figure out the token index.
+        // We cannot use 0 as min amount out, as this value is used to figure out the token index.
         (uint256[] memory minAmountsOut, uint256 tokenIndex) = _getSingleInputArrayAndTokenIndex(pool, tokenOut, 1);
 
         (, uint256[] memory amountsOut, ) = abi.decode(
@@ -919,8 +921,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeWithSelector(
                     Router.queryRemoveLiquidityHook.selector,
                     RemoveLiquidityHookParams({
-                        // We use router as a sender to simplify basic query functions
-                        // but it is possible to remove liquidity from any sender
+                        // We use the Router as a sender to simplify basic query functions,
+                        // but it is possible to remove liquidity from any sender.
                         sender: address(this),
                         pool: pool,
                         minAmountsOut: minAmountsOut,
@@ -951,8 +953,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 abi.encodeWithSelector(
                     Router.queryRemoveLiquidityHook.selector,
                     RemoveLiquidityHookParams({
-                        // We use router as a sender to simplify basic query functions
-                        // but it is possible to remove liquidity from any sender
+                        // We use the Router as a sender to simplify basic query functions,
+                        // but it is possible to remove liquidity from any sender.
                         sender: address(this),
                         pool: pool,
                         minAmountsOut: minAmountsOut,
@@ -982,8 +984,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                     abi.encodeWithSelector(
                         Router.queryRemoveLiquidityHook.selector,
                         RemoveLiquidityHookParams({
-                            // We use router as a sender to simplify basic query functions
-                            // but it is possible to remove liquidity from any sender
+                            // We use the Router as a sender to simplify basic query functions,
+                            // but it is possible to remove liquidity from any sender.
                             sender: address(this),
                             pool: pool,
                             minAmountsOut: minAmountsOut,
@@ -1125,7 +1127,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @notice Hook for swap queries.
      * @dev Can only be called by the Vault. Also handles native ETH.
      * @param params Swap parameters (see IRouter for struct definition)
-     * @return Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
+     * @return amountCalculated Token amount calculated by the pool math (e.g., amountOut for a exact in swap)
      */
     function querySwapHook(
         SwapSingleTokenHookParams calldata params

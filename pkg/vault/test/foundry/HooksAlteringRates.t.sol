@@ -55,7 +55,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
     }
 
     function testOnBeforeSwapHookAltersRate() public {
-        // Change rate of first token
+        // Change rate of first token.
         PoolHooksMock(poolHooksContract).setChangeTokenRateOnBeforeSwapHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
@@ -64,7 +64,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         expectedBalances[daiIdx] = rateAdjustedAmount;
         expectedBalances[usdcIdx] = defaultAmount;
 
-        // Check that the swap gets balances and amount given that reflect the updated rate
+        // Check that the swap gets balances and amount given that reflect the updated rate.
         vm.prank(bob);
         vm.expectCall(
             pool,
@@ -104,7 +104,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         config.shouldCallAfterInitialize = true;
         vault.manualSetHooksConfig(address(newPool), config);
 
-        // Change rate of first token
+        // Change rate of first token.
         PoolHooksMock(poolHooksContract).setChangeTokenRateOnBeforeInitializeHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
@@ -115,7 +115,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         expectedAmounts[daiIdx] = rateAdjustedAmount;
         expectedAmounts[usdcIdx] = defaultAmount;
 
-        // Cannot intercept _initialize, but can check the same values in the AfterInitialize hook
+        // Cannot intercept _initialize, but can check the same values in the AfterInitialize hook.
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
@@ -138,7 +138,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         config.shouldCallAfterAddLiquidity = true;
         vault.manualSetHooksConfig(pool, config);
 
-        // Change rate of first token
+        // Change rate of first token.
         PoolHooksMock(poolHooksContract).setChangeTokenRateOnBeforeAddLiquidityHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
@@ -185,7 +185,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         config.shouldCallBeforeRemoveLiquidity = true;
         vault.manualSetHooksConfig(pool, config);
 
-        // Change rate of first token
+        // Change rate of first token.
         PoolHooksMock(poolHooksContract).setChangeTokenRateOnBeforeRemoveLiquidityHook(true, rateProvider, 0.5e18);
 
         uint256 rateAdjustedAmount = defaultAmount / 2;

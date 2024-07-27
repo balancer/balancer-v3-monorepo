@@ -79,7 +79,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         _setupTokens();
         _setupLPAndVault();
         _setupBuffers();
-        _createAndInitializeBoostedPool();
+        _createAndInitializeYieldBearingPool();
     }
 
     function setUpForkTestVariables() internal virtual;
@@ -1004,7 +1004,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function _createAndInitializeBoostedPool() private {
+    function _createAndInitializeYieldBearingPool() private {
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[_ybToken2Idx].token = IERC20(address(ybToken2));
         tokenConfig[_ybToken1Idx].token = IERC20(address(ybToken1));

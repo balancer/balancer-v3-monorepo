@@ -6,25 +6,19 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { TokenConfig, TokenType, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract QueryERC4626BufferTest is BaseVaultTest {
-    using FixedPoint for uint256;
     using ArrayHelpers for *;
 
     ERC4626TestToken internal waDAI;
@@ -36,11 +30,11 @@ contract QueryERC4626BufferTest is BaseVaultTest {
 
     address internal yieldBearingPool;
 
-    // The yield-bearing pool will have 100x the liquidity of the buffer
+    // The yield-bearing pool will have 100x the liquidity of the buffer.
     uint256 internal yieldBearingPoolAmount = 10e6 * 1e18;
     uint256 internal bufferAmount = yieldBearingPoolAmount / 100;
     uint256 internal tooLargeSwapAmount = yieldBearingPoolAmount / 2;
-    // We will swap with 10% of the buffer
+    // We will swap with 10% of the buffer.
     uint256 internal swapAmount = bufferAmount / 10;
 
     function setUp() public virtual override {
@@ -61,7 +55,7 @@ contract QueryERC4626BufferTest is BaseVaultTest {
     }
 
     function testSwapPreconditions() public view {
-        // bob should have the full yieldBearingPool BPT.
+        // Bob should have the full yield-bearing pool BPT.
         assertEq(
             IERC20(yieldBearingPool).balanceOf(bob),
             yieldBearingPoolAmount * 2 - MIN_BPT,
@@ -75,7 +69,7 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         assertEq(balancesRaw[0], yieldBearingPoolAmount, "Wrong yield-bearing pool balance [0]");
         assertEq(balancesRaw[1], yieldBearingPoolAmount, "Wrong yield-bearing pool balance [1]");
 
-        // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
+        // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs").
         assertEq(
             vault.getBufferOwnerShares(IERC20(waDAI), lp),
             bufferAmount * 2 - MIN_BPT,
@@ -87,7 +81,7 @@ contract QueryERC4626BufferTest is BaseVaultTest {
             "Wrong share of waUSDC buffer belonging to LP"
         );
 
-        // Buffer should have the correct amount of issued shares
+        // Buffer should have the correct amount of issued shares.
         assertEq(vault.getBufferTotalShares(IERC20(waDAI)), bufferAmount * 2, "Wrong issued shares of waDAI buffer");
         assertEq(vault.getBufferTotalShares(IERC20(waUSDC)), bufferAmount * 2, "Wrong issued shares of waUSDC buffer");
 
@@ -123,22 +117,22 @@ contract QueryERC4626BufferTest is BaseVaultTest {
     function _testQuerySwapExactIn(uint256 amount) private {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amount);
 
-        // Snapshots the current state of the network
+        // Snapshots the current state of the network.
         uint256 snapshotId = vm.snapshot();
 
         _prankStaticCall();
         // Not using staticCall because it does not allow changes in the transient storage, and reverts with
-        // a StateChangeDuringStaticCall error
+        // a StateChangeDuringStaticCall error.
         (
             uint256[] memory queryPathAmountsOut,
             address[] memory queryTokensOut,
             uint256[] memory queryAmountsOut
         ) = batchRouter.querySwapExactIn(paths, bytes(""));
 
-        // Restores the network state to snapshot
+        // Restores the network state to snapshot.
         vm.revertTo(snapshotId);
 
-        // Executes the actual operation
+        // Executes the actual operation.
         vm.prank(alice);
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
@@ -152,27 +146,27 @@ contract QueryERC4626BufferTest is BaseVaultTest {
     function _testQuerySwapExactOut(uint256 amount) private {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(amount);
 
-        // Snapshots the current state of the network
+        // Snapshots the current state of the network.
         uint256 snapshotId = vm.snapshot();
 
         _prankStaticCall();
         // Not using staticCall because it does not allow changes in the transient storage, and reverts with
-        // a StateChangeDuringStaticCall error
+        // a StateChangeDuringStaticCall error.
         (
             uint256[] memory queryPathAmountsIn,
             address[] memory queryTokensIn,
             uint256[] memory queryAmountsIn
         ) = batchRouter.querySwapExactOut(paths, bytes(""));
 
-        // Restores the network state to snapshot
+        // Restores the network state to snapshot.
         vm.revertTo(snapshotId);
 
-        // Executes the actual operation
+        // Executes the actual operation.
         vm.prank(alice);
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        // Check if results of query and actual operations are equal
+        // Check if results of query and actual operations are equal.
         assertEq(pathAmountsIn[0], queryPathAmountsIn[0], "pathAmountsIn's do not match");
         assertEq(tokensIn[0], queryTokensIn[0], "tokensIn's do not match");
         assertEq(amountsIn[0], queryAmountsIn[0], "amountsIn's do not match");
@@ -223,7 +217,7 @@ contract QueryERC4626BufferTest is BaseVaultTest {
     }
 
     function _initializeBuffers() private {
-        // Create and fund buffer pools
+        // Create and fund buffer pools.
         vm.startPrank(lp);
         dai.mint(lp, bufferAmount);
         dai.approve(address(waDAI), bufferAmount);

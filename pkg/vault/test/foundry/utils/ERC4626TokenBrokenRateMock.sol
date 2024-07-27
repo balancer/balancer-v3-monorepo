@@ -2,19 +2,11 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { ERC4626TokenMock } from "./ERC4626TokenMock.sol";
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
 contract ERC4626TokenBrokenRateMock is ERC4626TokenMock {
-    using FixedPoint for uint256;
-    using SafeERC20 for IERC20;
-
     constructor(
         string memory tokenName,
         string memory tokenSymbol,
