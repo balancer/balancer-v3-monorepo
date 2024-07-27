@@ -4,16 +4,24 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { PoolData, TokenInfo, TokenType, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { PoolConfigBits, PoolConfigLib } from "./PoolConfigLib.sol";
 
+/**
+ * @notice Helper functions to read/write a `PoolData` struct.
+ * @dev Note that the entire configuration of each pool is stored in the `_poolConfigBits` mapping (one slot per pool).
+ * This includes the data in the `PoolConfig` struct, plus the data in the `HookFlags` struct. The layout (i.e.,
+ * offsets for each data field) is specified in `PoolConfigConst`.
+ *
+ * The `PoolData` struct contains the raw bitmap with the entire pool state (`PoolConfigBits`), plus the token
+ * configuration, scaling factors, and dynamic information such as current balances and rates.
+ */
 library PoolDataLib {
     using PackedTokenBalance for bytes32;
     using FixedPoint for *;
@@ -50,21 +58,21 @@ library PoolDataLib {
             poolData.tokenRates[i] = getTokenRate(tokenInfo);
             updateRawAndLiveBalance(poolData, i, packedBalance.getBalanceRaw(), roundingDirection);
 
-            // Nothing else to do here.
+            // If there are no yield fees, we can save gas by skipping to the next token now.
             if (poolSubjectToYieldFees == false) {
                 continue;
             }
 
-            // poolData already has live balances computed from raw balances according to the token rates and the
+            // `poolData` already has live balances computed from raw balances according to the token rates and the
             // given rounding direction. Charging a yield fee changes the raw balance, in which case the safest and
             // most numerically precise way to adjust the live balance is to simply repeat the scaling (hence the
             // second call below).
 
-            // The Vault actually guarantees a token with paysYieldFees set is a WITH_RATE token, so technically we
-            // could just check the flag, but we don't want to introduce that dependency for a slight gas savings.
+            // The Vault actually guarantees that a token with paysYieldFees set is a WITH_RATE token, so technically
+            // we could just check the flag, but we don't want to introduce that dependency for a slight gas savings.
             bool tokenSubjectToYieldFees = tokenInfo.paysYieldFees && tokenInfo.tokenType == TokenType.WITH_RATE;
 
-            // Do not charge yield fees until the pool is initialized, and is not in recovery mode.
+            // Do not charge yield fees before the pool is initialized, or in recovery mode.
             if (tokenSubjectToYieldFees) {
                 uint256 aggregateYieldFeePercentage = poolData.poolConfigBits.getAggregateYieldFeePercentage();
                 uint256 balanceRaw = poolData.balancesRaw[i];
@@ -95,10 +103,10 @@ library PoolDataLib {
             bytes32 packedBalances = poolTokenBalances[i];
             uint256 storedBalanceRaw = packedBalances.getBalanceRaw();
 
-            // poolData has balances updated with yield fees now.
+            // `poolData` now has balances updated with yield fees.
             // If yield fees are not 0, then the stored balance is greater than the one in memory.
             if (storedBalanceRaw > poolData.balancesRaw[i]) {
-                // Both Swap and Yield fees are stored together in a PackedTokenBalance.
+                // Both Swap and Yield fees are stored together in a `PackedTokenBalance`.
                 // We have designated "Derived" the derived half for Yield fee storage.
                 bytes32 packedProtocolFeeAmounts = poolAggregateProtocolFeeAmounts[token];
                 poolAggregateProtocolFeeAmounts[token] = packedProtocolFeeAmounts.setBalanceDerived(
@@ -189,7 +197,7 @@ library PoolDataLib {
         // well-behaved rate provider.
         if (currentLiveBalance > lastLiveBalance) {
             unchecked {
-                // Magnitudes checked above, so it's safe to do unchecked math here.
+                // Magnitudes are checked above, so it's safe to do unchecked math here.
                 uint256 aggregateYieldFeeAmountScaled18 = (currentLiveBalance - lastLiveBalance).mulUp(
                     aggregateYieldFeePercentage
                 );

@@ -4,41 +4,28 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolFunctionPermission, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
-import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
-import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
-import {
-    ReentrancyGuardTransient
-} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
-import { PoolConfigLib } from "./lib/PoolConfigLib.sol";
+import { PoolConfigLib, PoolConfigBits } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 
 /**
- * @dev Bytecode extension for the Vault containing permissioned functions. Complementary to the `VaultExtension`.
- * Has access to the same storage layout as the main vault.
+ * @dev Bytecode extension for the Vault containing permissioned functions. Complementary to `VaultExtension`,
+ * it has access to the same storage layout as the main vault.
  *
- * The functions in this contract are not meant to be called directly ever. They should just be called by the Vault
- * via delegate calls instead, and any state modification produced by this contract's code will actually target
+ * The functions in this contract are not meant to be called directly. They must only be called by the Vault
+ * via delegate calls, so that any state modifications produced by this contract's code will actually target
  * the main Vault's state.
  *
  * The storage of this contract is in practice unused.
@@ -46,10 +33,8 @@ import { VaultCommon } from "./VaultCommon.sol";
 contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfigBits;
+    using VaultStateLib for VaultStateBits;
     using VaultExtensionsLib for IVault;
-    using EnumerableSet for EnumerableSet.AddressSet;
-    using SafeERC20 for IERC20;
-    using FixedPoint for uint256;
 
     IVault private immutable _vault;
 
@@ -59,6 +44,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _;
     }
 
+    /// @dev Functions with this modifier can only be called by the pool creator.
     modifier onlyProtocolFeeController() {
         if (msg.sender != address(_protocolFeeController)) {
             revert SenderNotAllowed();
@@ -66,6 +52,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _;
     }
 
+    /// @dev Validate aggregate percentage values.
     modifier withValidPercentage(uint256 aggregatePercentage) {
         if (aggregatePercentage > FixedPoint.ONE) {
             revert ProtocolFeesExceedTotalCollected();
@@ -73,6 +60,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _;
     }
 
+    /// @dev Use with permissioned functions that use `PoolRoleAccounts`.
     modifier authenticateByRole(address pool) {
         _ensureAuthenticatedByRole(pool);
         _;
@@ -274,7 +262,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         address pool,
         uint256 swapFeePercentage
     ) external onlyVaultDelegateCall withRegisteredPool(pool) authenticateByRole(pool) {
-        // Saving bits by not implementing a new modifier
+        // Saving bits by not implementing a new modifier.
         _ensureUnpaused(pool);
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
@@ -437,27 +425,27 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     {
         address underlyingToken = wrappedToken.asset();
 
-        // amount of shares to issue is the total underlying token that the user is depositing
+        // Amount of shares to issue is the total underlying token that the user is depositing.
         issuedShares = wrappedToken.convertToAssets(amountWrapped) + amountUnderlying;
 
         if (_bufferAssets[IERC20(address(wrappedToken))] == address(0)) {
-            // Buffer is not initialized yet, so we initialize it
+            // Buffer is not initialized yet, so we initialize it.
 
-            // Register asset of wrapper, so it cannot change
+            // Register asset of wrapper, so it cannot change.
             _bufferAssets[IERC20(address(wrappedToken))] = underlyingToken;
 
-            // Burn MINIMUM_TOTAL_SUPPLY shares, so the buffer can never go back to liquidity 0
-            // (avoids rounding issues with low liquidity)
+            // Burn MINIMUM_TOTAL_SUPPLY shares, so the buffer can never go back to zero liquidity
+            // (avoids rounding issues with low liquidity).
             _bufferTotalShares[IERC20(wrappedToken)] = _MINIMUM_TOTAL_SUPPLY;
             issuedShares -= _MINIMUM_TOTAL_SUPPLY;
         } else if (_bufferAssets[IERC20(address(wrappedToken))] != underlyingToken) {
-            // Asset was changed since the first bufferAddLiquidity call
+            // Asset was changed since the first bufferAddLiquidity call.
             revert WrongWrappedTokenAsset(address(wrappedToken));
         }
 
         bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
 
-        // Adds the issued shares to the total shares of the liquidity pool
+        // Adds the issued shares to the total shares of the liquidity pool.
         _bufferLpShares[IERC20(wrappedToken)][sharesOwner] += issuedShares;
         _bufferTotalShares[IERC20(wrappedToken)] += issuedShares;
 
@@ -549,11 +537,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         emit AuthorizerChanged(newAuthorizer);
     }
 
-    /// @dev Access control is delegated to the Authorizer
+    /// @dev Access control is delegated to the Authorizer.
     function _canPerform(bytes32 actionId, address user) internal view override returns (bool) {
         return _authorizer.canPerform(actionId, user, address(this));
     }
 
+    /// @dev Access control is delegated to the Authorizer. `where` refers to the target contract.
     function _canPerform(bytes32 actionId, address user, address where) internal view returns (bool) {
         return _authorizer.canPerform(actionId, user, where);
     }
