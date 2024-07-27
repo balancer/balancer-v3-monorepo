@@ -15,7 +15,6 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
@@ -34,13 +33,13 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
     address internal yieldBearingPool;
 
-    // The yield-bearing pool will have 100x the liquidity of the buffer
+    // The yield-bearing pool will have 100x the liquidity of the buffer.
     uint256 internal yieldBearingPoolAmount = 10e6 * 1e18;
     uint256 internal bufferAmount = yieldBearingPoolAmount / 100;
     uint256 internal tooLargeSwapAmount = yieldBearingPoolAmount / 2;
-    // We will swap with 10% of the buffer
+    // We will swap with 10% of the buffer.
     uint256 internal swapAmount = bufferAmount / 10;
-    // LP can unbalance buffer with this amount
+    // LP can unbalance buffer with this amount.
     uint256 internal unbalanceDelta = bufferAmount / 2;
 
     function setUp() public virtual override {
@@ -62,7 +61,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     function testAddLiquidityEvents() public {
         initializeBuffers();
 
-        // Can add the same amount again, since twice as much was minted
+        // Can add the same amount again, since twice as much was minted.
         vm.expectEmit();
         emit IVaultEvents.LiquidityAddedToBuffer(waDAI, lp, bufferAmount, bufferAmount, bufferAmount * 2);
         router.addLiquidityToBuffer(waDAI, bufferAmount, bufferAmount, lp);
@@ -75,7 +74,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     function testRemoveLiquidityEvents() public {
         initializeBuffers();
 
-        // Authorizes router to call removeLiquidityFromBuffer (trusted router)
+        // Authorizes router to call removeLiquidityFromBuffer (trusted router).
         authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
 
         vm.expectEmit();
@@ -90,7 +89,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     }
 
     function initializeBuffers() private {
-        // Create and fund buffer pools
+        // Create and fund buffer pools.
         vm.startPrank(lp);
         dai.mint(lp, 2 * bufferAmount);
         dai.approve(address(waDAI), 2 * bufferAmount);
@@ -208,12 +207,12 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         // When the buffer has enough liquidity to wrap/unwrap, buffer balances should change by swapAmount
-        // DAI buffer receives DAI from user
+        // DAI buffer receives DAI from user.
         vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai + swapAmount;
         vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai - swapAmount;
-        // Yield-bearing pool receives WaDai from DAI buffer, and gives waUSDC to USDC buffer
+        // Yield-bearing pool receives WaDai from DAI buffer, and gives waUSDC to USDC buffer.
         vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc + swapAmount;
-        // USDC buffer gives USDC to user
+        // USDC buffer gives USDC to user.
         vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc - swapAmount;
         vars.expectedAliceDelta = swapAmount;
 
@@ -230,12 +229,12 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
         // When the buffer has enough liquidity to wrap/unwrap, buffer balances should change by swapAmount
-        // DAI buffer receives DAI from user
+        // DAI buffer receives DAI from user.
         vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai + swapAmount;
         vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai - swapAmount;
-        // Yield-bearing pool receives WaDai from DAI buffer, and gives waUSDC to USDC buffer
+        // Yield-bearing pool receives WaDai from DAI buffer, and gives waUSDC to USDC buffer.
         vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc + swapAmount;
-        // USDC buffer gives USDC to user
+        // USDC buffer gives USDC to user.
         vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc - swapAmount;
         vars.expectedAliceDelta = swapAmount;
 
@@ -272,7 +271,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
         // When the buffer has not enough liquidity to wrap/unwrap and buffers were balanced, buffer balances should
-        // not change
+        // not change.
         vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai;
         vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai;
         vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc;
@@ -284,9 +283,9 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
     function testYieldBearingPoolSwapUnbalancedBufferExactIn() public {
         vm.startPrank(lp);
-        // Surplus of underlying
+        // Surplus of underlying.
         router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, lp);
-        // Surplus of wrapped
+        // Surplus of wrapped.
         router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, lp);
         vm.stopPrank();
 
@@ -315,9 +314,9 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
     function testYieldBearingPoolSwapUnbalancedBufferExactOut() public {
         vm.startPrank(lp);
-        // Surplus of underlying
+        // Surplus of underlying.
         router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, lp);
-        // Surplus of wrapped
+        // Surplus of wrapped.
         router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, lp);
         vm.stopPrank();
 

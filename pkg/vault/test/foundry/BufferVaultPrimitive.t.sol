@@ -41,10 +41,10 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
         vm.label(address(waUSDC), "waUSDC");
 
-        // Authorizes user "admin" to pause/unpause vault's buffer
+        // Authorizes user "admin" to pause/unpause vault's buffer.
         authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
         authorizer.grantRole(vault.getActionId(IVaultAdmin.unpauseVaultBuffers.selector), admin);
-        // Authorizes router to call removeLiquidityFromBuffer (trusted router)
+        // Authorizes router to call removeLiquidityFromBuffer (trusted router).
         authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
 
         initializeLp();
@@ -62,7 +62,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         usdc.approve(address(waUSDC), _userAmount);
         waUSDC.deposit(_userAmount, lp);
 
-        // Minting wrong token to wrapped token contracts, to test changing the asset
+        // Minting wrong token to wrapped token contracts, to test changing the asset.
         dai.mint(address(waUSDC), _userAmount);
         usdc.mint(address(waDAI), _userAmount);
 
@@ -82,7 +82,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Change Asset to wrong underlying
         waDAI.setAsset(usdc);
 
-        // Wrap token should pass, since there's no liquidity in the buffer
+        // Wrap token should pass, since there's no liquidity in the buffer.
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount,
             0,
@@ -94,17 +94,17 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.prank(lp);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        // Change Asset to correct asset
+        // Change Asset to correct asset.
         waDAI.setAsset(dai);
 
-        // Add Liquidity with the right asset
+        // Add Liquidity with the right asset.
         vm.prank(lp);
         router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, lp);
 
-        // Change Asset to the wrong asset
+        // Change Asset to the wrong asset.
         waDAI.setAsset(usdc);
 
-        // Wrap token should fail, since buffer has liquidity
+        // Wrap token should fail, since buffer has liquidity.
         vm.prank(lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedTokenAsset.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
@@ -204,7 +204,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         waDAI.setAssetsToConsume(changedWrapAmount);
 
-        // When the assets amount is higher than predicted, vault did not give allowance to make the transfer
+        // When the assets amount is higher than predicted, vault did not give allowance to make the transfer.
         vm.expectRevert(
             abi.encodeWithSelector(
                 IERC20Errors.ERC20InsufficientAllowance.selector,
@@ -307,7 +307,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         waDAI.setAssetsToConsume(changedWrapAmount);
 
-        // When the assets amount is higher than predicted, vault did not give allowance to make the transfer
+        // When the assets amount is higher than predicted, vault did not give allowance to make the transfer.
         vm.expectRevert(
             abi.encodeWithSelector(
                 IERC20Errors.ERC20InsufficientAllowance.selector,
@@ -382,7 +382,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         vm.startPrank(lp);
         // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount (but not enough to dismiss
-        // wrap/unwrap)
+        // wrap/unwrap).
         router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount / 2, _wrapAmount / 2, lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
@@ -479,7 +479,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         vm.startPrank(lp);
         // Call addLiquidity so vault has enough liquidity to cover extra wrapped amount (but not enough to dismiss
-        // wrap/unwrap)
+        // wrap/unwrap).
         router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount / 2, _wrapAmount / 2, lp);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedAmount.selector, address(waDAI)));
         batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
@@ -521,10 +521,10 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     /********************************************************************************
                                 Disable Vault Buffers
     ********************************************************************************/
-    // Make sure only authorized users can disable/enable vault buffers
+    // Make sure only authorized users can disable/enable vault buffers.
     function testDisableVaultBufferAuthentication() public {
         vm.prank(alice);
-        // Should revert, since alice has no rights to disable buffer
+        // Should revert, since alice has no rights to disable buffer.
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         IVaultAdmin(address(vault)).pauseVaultBuffers();
 
@@ -533,12 +533,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         IVaultAdmin(address(vault)).pauseVaultBuffers();
 
         vm.prank(alice);
-        // Should revert, since alice has no rights to enable buffer
+        // Should revert, since alice has no rights to enable buffer.
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         IVaultAdmin(address(vault)).unpauseVaultBuffers();
 
         vm.prank(admin);
-        // Should pass, since admin has access
+        // Should pass, since admin has access.
         IVaultAdmin(address(vault)).unpauseVaultBuffers();
     }
 
@@ -557,7 +557,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             IERC20(address(waDAI))
         );
 
-        // wrap/unwrap, add and remove liquidity should fail, since vault buffers are disabled
+        // Wrap/unwrap, add and remove liquidity should fail, since vault buffers are disabled.
         vm.startPrank(lp);
 
         vm.expectRevert(IVaultErrors.VaultBuffersArePaused.selector);
@@ -566,7 +566,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.expectRevert(IVaultErrors.VaultBuffersArePaused.selector);
         router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, lp);
 
-        // remove liquidity is supposed to pass even with buffers paused, so revert is not expected
+        // Remove liquidity is supposed to pass even with buffers paused, so revert is not expected.
         router.removeLiquidityFromBuffer(IERC4626(address(waDAI)), _wrapAmount);
 
         vm.stopPrank();
@@ -574,7 +574,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.prank(admin);
         IVaultAdmin(address(vault)).unpauseVaultBuffers();
 
-        // deposit should pass, since vault buffers are enabled
+        // Deposit should pass, since vault buffers are enabled.
         vm.prank(lp);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }

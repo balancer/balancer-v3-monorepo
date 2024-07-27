@@ -227,10 +227,10 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         assertEq(poolCreatorSwapFee, POOL_CREATOR_SWAP_FEE, "Wrong Pool Creator swap fee");
         assertEq(poolCreatorYieldFee, POOL_CREATOR_YIELD_FEE, "Wrong Pool Creator yield fee");
 
-        // Pool percentages should be the same
+        // Pool percentages should be the same.
         _verifyPoolProtocolFeePercentages(pool);
 
-        // But aggregates should be different
+        // But aggregates should be different.
         uint256 expectedAggregateSwapFee = feeController.computeAggregateFeePercentage(
             MAX_PROTOCOL_SWAP_FEE,
             POOL_CREATOR_SWAP_FEE
@@ -256,7 +256,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.prank(lp);
         feeController.setProtocolSwapFeePercentage(pool, CUSTOM_PROTOCOL_SWAP_FEE);
 
-        // Have governance override a swap fee
+        // Have governance override a swap fee.
         vm.prank(admin);
         feeController.setProtocolSwapFeePercentage(pool, CUSTOM_PROTOCOL_SWAP_FEE);
 
@@ -269,7 +269,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         assertEq(feePercentage, 0, "Pool protocol yield fee != 0");
         assertFalse(isOverride, "Pool protocol yield fee is an override");
 
-        // Check that pool config has the right value
+        // Check that pool config has the right value.
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
         assertEq(poolConfigBits.aggregateSwapFeePercentage, CUSTOM_PROTOCOL_SWAP_FEE);
     }
@@ -283,7 +283,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.prank(lp);
         feeController.setPoolCreatorSwapFeePercentage(pool, 0);
 
-        // Add bits to the fee, but keep them >= 24 bits
+        // Add bits to the fee, but keep them >= 24 bits.
         extraFee = bound(uint256(extraFee), FEE_SCALING_FACTOR, MAX_PROTOCOL_SWAP_FEE - CUSTOM_PROTOCOL_SWAP_FEE);
 
         uint256 lowPrecisionFee = ((CUSTOM_PROTOCOL_SWAP_FEE + extraFee) / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
@@ -291,7 +291,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.prank(admin);
         feeController.setProtocolSwapFeePercentage(pool, lowPrecisionFee);
 
-        // Retrieve it from the Vault - should be the same as we set
+        // Retrieve it from the Vault - should be the same as we set.
         PoolConfig memory config = vault.getPoolConfig(pool);
         assertEq(config.aggregateSwapFeePercentage, lowPrecisionFee);
     }
@@ -324,7 +324,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.prank(lp);
         feeController.setPoolCreatorSwapFeePercentage(pool, 0);
 
-        // Add bits to the fee, but keep them >= 24 bits
+        // Add bits to the fee, but keep them >= 24 bits.
         extraFee = bound(uint256(extraFee), FEE_SCALING_FACTOR, MAX_PROTOCOL_YIELD_FEE - CUSTOM_PROTOCOL_YIELD_FEE);
 
         uint256 lowPrecisionFee = ((CUSTOM_PROTOCOL_YIELD_FEE + extraFee) / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
@@ -332,7 +332,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.prank(admin);
         feeController.setProtocolYieldFeePercentage(pool, lowPrecisionFee);
 
-        // Retrieve it from the Vault - should be the same as we set
+        // Retrieve it from the Vault - should be the same as we set.
         PoolConfig memory config = vault.getPoolConfig(pool);
         assertEq(config.aggregateYieldFeePercentage, lowPrecisionFee);
     }
@@ -362,7 +362,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             admin
         );
 
-        // Have governance override a swap fee
+        // Have governance override a swap fee.
         vm.prank(admin);
         vm.expectRevert(IProtocolFeeController.ProtocolSwapFeePercentageTooHigh.selector);
         feeController.setProtocolSwapFeePercentage(pool, MAX_PROTOCOL_SWAP_FEE + 1);
@@ -377,7 +377,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.expectEmit();
         emit IProtocolFeeController.ProtocolSwapFeePercentageChanged(pool, CUSTOM_PROTOCOL_SWAP_FEE);
 
-        // Have governance override a swap fee
+        // Have governance override a swap fee.
         vm.prank(admin);
         feeController.setProtocolSwapFeePercentage(pool, CUSTOM_PROTOCOL_SWAP_FEE);
     }
@@ -393,7 +393,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.prank(lp);
         feeController.setProtocolYieldFeePercentage(pool, CUSTOM_PROTOCOL_YIELD_FEE);
 
-        // Have governance override a yield fee
+        // Have governance override a yield fee.
         vm.prank(admin);
         feeController.setProtocolYieldFeePercentage(pool, CUSTOM_PROTOCOL_YIELD_FEE);
 
@@ -406,7 +406,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         assertEq(feePercentage, 0, "Pool protocol swap fee != 0");
         assertFalse(isOverride, "Pool protocol swap fee is an override");
 
-        // Check that pool config has the right value
+        // Check that pool config has the right value.
         PoolConfig memory poolConfigBits = vault.getPoolConfig(pool);
         assertEq(poolConfigBits.aggregateYieldFeePercentage, CUSTOM_PROTOCOL_YIELD_FEE);
     }
@@ -417,7 +417,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             admin
         );
 
-        // Have governance override a swap fee
+        // Have governance override a swap fee.
         vm.prank(admin);
         vm.expectRevert(IProtocolFeeController.ProtocolYieldFeePercentageTooHigh.selector);
         feeController.setProtocolYieldFeePercentage(pool, MAX_PROTOCOL_YIELD_FEE + 1);
@@ -432,7 +432,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.expectEmit();
         emit IProtocolFeeController.ProtocolYieldFeePercentageChanged(pool, CUSTOM_PROTOCOL_YIELD_FEE);
 
-        // Have governance override a swap fee
+        // Have governance override a swap fee.
         vm.prank(admin);
         feeController.setProtocolYieldFeePercentage(pool, CUSTOM_PROTOCOL_YIELD_FEE);
     }
@@ -443,10 +443,10 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         _registerPoolWithMaxProtocolFees();
         _verifyPoolProtocolFeePercentages(pool);
 
-        // Way to check that events weren't emitted
+        // This checks that events weren't emitted.
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        // Calling update now will do nothing, as it hasn't changed
+        // Calling update now will do nothing, as it hasn't changed.
         feeController.updateProtocolSwapFeePercentage(pool);
         assertEq(entries.length, 0, "swap fee update emitted an event");
 
@@ -486,14 +486,14 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         assertEq(feePercentage, MAX_PROTOCOL_SWAP_FEE, "Pool protocol swap fee != MAX");
         assertTrue(isOverride, "Pool protocol swap fee is not an override");
 
-        // Global fee is still the custom one
+        // Global fee is still the custom one.
         assertEq(feeController.getGlobalProtocolSwapFeePercentage(), CUSTOM_PROTOCOL_SWAP_FEE);
 
-        // Change the global one
+        // Change the global one.
         vm.prank(admin);
         feeController.setGlobalProtocolSwapFeePercentage(LOW_PROTOCOL_SWAP_FEE);
 
-        // Now trying to change it permissionlessly will do nothing
+        // Now trying to change it permissionlessly will do nothing.
         feeController.updateProtocolSwapFeePercentage(pool);
         (feePercentage, isOverride) = feeController.getPoolProtocolSwapFeeInfo(pool);
         assertEq(feePercentage, MAX_PROTOCOL_SWAP_FEE, "Pool protocol swap fee != MAX");
@@ -506,10 +506,10 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         _registerPoolWithMaxProtocolFees();
         _verifyPoolProtocolFeePercentages(pool);
 
-        // Way to check that events weren't emitted
+        // This checks that events weren't emitted.
         Vm.Log[] memory entries = vm.getRecordedLogs();
 
-        // Calling update now will do nothing, as it hasn't changed
+        // Calling update now will do nothing, as it hasn't changed.
         feeController.updateProtocolYieldFeePercentage(pool);
         assertEq(entries.length, 0, "yield fee update emitted an event");
 
@@ -549,14 +549,14 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         assertEq(feePercentage, MAX_PROTOCOL_YIELD_FEE, "Pool protocol yield fee != MAX");
         assertTrue(isOverride, "Pool protocol yield fee is not an override");
 
-        // Global fee is still the custom one
+        // Global fee is still the custom one.
         assertEq(feeController.getGlobalProtocolYieldFeePercentage(), CUSTOM_PROTOCOL_YIELD_FEE);
 
-        // Change the global one
+        // Change the global one.
         vm.prank(admin);
         feeController.setGlobalProtocolYieldFeePercentage(LOW_PROTOCOL_YIELD_FEE);
 
-        // Now trying to change it permissionlessly will do nothing
+        // Now trying to change it permissionlessly will do nothing.
         feeController.updateProtocolYieldFeePercentage(pool);
         (feePercentage, isOverride) = feeController.getPoolProtocolYieldFeeInfo(pool);
         assertEq(feePercentage, MAX_PROTOCOL_YIELD_FEE, "Pool protocol yield fee != MAX");
@@ -736,7 +736,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             "Wrong disaggregated USDC pool creator fee amount"
         );
 
-        // withdrawPoolCreatorFees is overloaded.
+        // `withdrawPoolCreatorFees` is overloaded.
         bytes4 permissionedSelector = bytes4(keccak256("withdrawPoolCreatorFees(address,address)"));
 
         // Now all that's left is to withdraw them.
@@ -765,7 +765,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.prank(admin);
         feeController.withdrawProtocolFees(pool, admin);
 
-        // Should be zeroed out in the controller
+        // Should be zeroed out in the controller.
         protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
         assertEq(protocolFeeAmounts[0], 0, "Non-zero protocol fee amounts after withdrawal [0]");
         assertEq(protocolFeeAmounts[1], 0, "Non-zero protocol fee amounts after withdrawal [1]");
@@ -784,7 +784,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.prank(lp);
         feeController.withdrawPoolCreatorFees(pool, lp);
 
-        // Should be zeroed out in the controller
+        // Should be zeroed out in the controller.
         poolCreatorFeeAmounts = feeController.getPoolCreatorFeeAmounts(pool);
         assertEq(poolCreatorFeeAmounts[0], 0, "Non-zero creator fee amounts after withdrawal [0]");
         assertEq(poolCreatorFeeAmounts[1], 0, "Non-zero creator fee amounts after withdrawal [1]");

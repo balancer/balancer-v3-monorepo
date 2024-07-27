@@ -16,7 +16,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
-import { PoolConfigBits } from "../../contracts/lib/PoolConfigLib.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -27,19 +26,19 @@ contract HooksTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
-    // Another factory and pool to test hook onRegister
+    // Another factory and pool to test hook onRegister.
     PoolFactoryMock internal anotherFactory;
     address internal anotherPool;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        // Sets the pool address in the hook, so we can check balances of the pool inside the hook
+        // Sets the pool address in the hook, so we can check balances of the pool inside the hook.
         PoolHooksMock(poolHooksContract).setPool(pool);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
-        // Create another pool and pool factory to test onRegister
+        // Create another pool and pool factory to test onRegister.
         uint32 pauseWindowEndTime = vault.getPauseWindowEndTime();
         uint32 bufferPeriodDuration = vault.getBufferPeriodDuration();
         anotherFactory = new PoolFactoryMock(IVault(vault), pauseWindowEndTime - bufferPeriodDuration);
@@ -86,7 +85,7 @@ contract HooksTest is BaseVaultTest {
         PoolRoleAccounts memory roleAccounts;
         LiquidityManagement memory liquidityManagement;
 
-        // Should succeed, since factory is allowed in the poolHooksContract
+        // Should succeed, since factory is allowed in the poolHooksContract.
         PoolHooksMock(poolHooksContract).allowFactory(address(anotherFactory));
 
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
@@ -121,7 +120,7 @@ contract HooksTest is BaseVaultTest {
         PoolHooksMock(poolHooksContract).allowFactory(address(anotherFactory));
 
         // Enable hook adjusted amounts in the hooks, so hooks can change the amount calculated of add/remove liquidity
-        // and swap operations
+        // and swap operations.
         HookFlags memory hookFlags;
         hookFlags.enableHookAdjustedAmounts = true;
         PoolHooksMock(poolHooksContract).setHookFlags(hookFlags);
@@ -130,7 +129,7 @@ contract HooksTest is BaseVaultTest {
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
 
-        // Register should fail, because `enableHookAdjustedAmounts` flag requires unbalanced liquidity to be disabled
+        // Register should fail, because `enableHookAdjustedAmounts` flag requires unbalanced liquidity to be disabled.
         vm.expectRevert(
             abi.encodeWithSelector(
                 IVaultErrors.HookRegistrationFailed.selector,
@@ -616,7 +615,7 @@ contract HooksTest is BaseVaultTest {
         hooksConfig.shouldCallAfterRemoveLiquidity = true;
         vault.manualSetHooksConfig(pool, hooksConfig);
 
-        // Add liquidity first, so Alice can remove it later
+        // Add liquidity first, so Alice can remove it later.
         vm.prank(alice);
         router.addLiquidityUnbalanced(
             pool,
@@ -626,7 +625,7 @@ contract HooksTest is BaseVaultTest {
             bytes("")
         );
 
-        // Force failure on AfterRemoveLiquidityHook
+        // Force failure on AfterRemoveLiquidityHook.
         PoolHooksMock(poolHooksContract).setFailOnAfterRemoveLiquidityHook(true);
 
         vm.prank(alice);
@@ -645,7 +644,7 @@ contract HooksTest is BaseVaultTest {
         hooksConfig.shouldCallAfterRemoveLiquidity = true;
         vault.manualSetHooksConfig(pool, hooksConfig);
 
-        // Add liquidity first, so Alice can remove it later
+        // Add liquidity first, so Alice can remove it later.
         vm.prank(alice);
         router.addLiquidityUnbalanced(
             pool,
@@ -655,7 +654,7 @@ contract HooksTest is BaseVaultTest {
             bytes("")
         );
 
-        // Return empty hook adjusted amounts
+        // Return empty hook adjusted amounts.
         PoolHooksMock(poolHooksContract).enableForcedHookAdjustedAmountsLiquidity(new uint256[](0));
 
         vm.prank(alice);

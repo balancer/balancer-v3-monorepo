@@ -87,17 +87,17 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
 
     function testSpendAllowanceWhenAllowanceIsMax() public {
         _approveWithBPTEmitApprovalMock(POOL, OWNER, SPENDER, type(uint256).max);
-        assertEq(token.allowance(POOL, OWNER, SPENDER), type(uint256).max, "Unexpected allowance");
+        assertEq(token.allowance(POOL, OWNER, SPENDER), type(uint256).max, "Unexpected allowance (emit approval)");
 
         token.manualSpendAllowance(POOL, OWNER, SPENDER, 1);
-        assertEq(token.allowance(POOL, OWNER, SPENDER), type(uint256).max, "Unexpected allowance");
+        assertEq(token.allowance(POOL, OWNER, SPENDER), type(uint256).max, "Unexpected allowance (manual spend)");
     }
 
     function testSpendAllowanceWhenOwnerIsSender() public {
-        assertEq(token.allowance(POOL, OWNER, OWNER), type(uint256).max, "Unexpected allowance");
+        assertEq(token.allowance(POOL, OWNER, OWNER), type(uint256).max, "Unexpected allowance (no manual spend)");
 
         token.manualSpendAllowance(POOL, OWNER, OWNER, 1);
-        assertEq(token.allowance(POOL, OWNER, OWNER), type(uint256).max, "Unexpected allowance");
+        assertEq(token.allowance(POOL, OWNER, OWNER), type(uint256).max, "Unexpected allowance (manual spend)");
     }
 
     function testSpendAllowanceRevertIfInsufficientAllowance() public {
@@ -147,12 +147,12 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
 
         _mintWithBPTEmitTransferMock(POOL, OWNER, firstMintAmount);
 
-        assertEq(token.balanceOf(POOL, OWNER), firstMintAmount, "Unexpected balance");
-        assertEq(token.totalSupply(POOL), firstMintAmount, "Unexpected total supply");
+        assertEq(token.balanceOf(POOL, OWNER), firstMintAmount, "Unexpected balance (first)");
+        assertEq(token.totalSupply(POOL), firstMintAmount, "Unexpected total supply (first)");
 
         _mintWithBPTEmitTransferMock(POOL, OWNER2, secondMintAmount);
-        assertEq(token.balanceOf(POOL, OWNER2), secondMintAmount, "Unexpected balance");
-        assertEq(token.totalSupply(POOL), firstMintAmount + secondMintAmount, "Unexpected total supply");
+        assertEq(token.balanceOf(POOL, OWNER2), secondMintAmount, "Unexpected balance (second)");
+        assertEq(token.totalSupply(POOL), firstMintAmount + secondMintAmount, "Unexpected total supply (second)");
     }
 
     function testMintRevertIfToIsZeroAddress() public {
@@ -216,15 +216,15 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
         _mintWithBPTEmitTransferMock(POOL, OWNER2, secondMintAmount);
 
         _burnWithBPTEmitTransferMock(POOL, OWNER, burnAmount);
-        assertEq(token.balanceOf(POOL, OWNER), firstMintAmount - burnAmount, "Unexpected balance");
+        assertEq(token.balanceOf(POOL, OWNER), firstMintAmount - burnAmount, "Unexpected balance (first)");
 
         uint256 totalSupplyAfterFirstBurn = (firstMintAmount + secondMintAmount) - burnAmount;
-        assertEq(token.totalSupply(POOL), totalSupplyAfterFirstBurn, "Unexpected total supply");
+        assertEq(token.totalSupply(POOL), totalSupplyAfterFirstBurn, "Unexpected total supply (first)");
 
         uint256 totalSupplyAfterSecondBurn = totalSupplyAfterFirstBurn - burnAmount;
         _burnWithBPTEmitTransferMock(POOL, OWNER2, burnAmount);
-        assertEq(token.balanceOf(POOL, OWNER2), secondMintAmount - burnAmount, "Unexpected balance");
-        assertEq(token.totalSupply(POOL), totalSupplyAfterSecondBurn, "Unexpected total supply");
+        assertEq(token.balanceOf(POOL, OWNER2), secondMintAmount - burnAmount, "Unexpected balance (second)");
+        assertEq(token.totalSupply(POOL), totalSupplyAfterSecondBurn, "Unexpected total supply (second)");
     }
 
     function testBurnRevertIfFromIsZeroAddress() public {
@@ -268,8 +268,8 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
         emit ERC20MultiToken.Transfer(POOL, OWNER, OWNER2, MINIMUM_TOTAL_SUPPLY);
         token.manualTransfer(POOL, OWNER, OWNER2, MINIMUM_TOTAL_SUPPLY);
 
-        assertEq(token.balanceOf(POOL, OWNER), 0, "Unexpected balance");
-        assertEq(token.balanceOf(POOL, OWNER2), MINIMUM_TOTAL_SUPPLY, "Unexpected balance");
+        assertEq(token.balanceOf(POOL, OWNER), 0, "Unexpected balance (owner)");
+        assertEq(token.balanceOf(POOL, OWNER2), MINIMUM_TOTAL_SUPPLY, "Unexpected balance (owner2)");
     }
 
     function testTransferRevertIfFromIsZeroAddress() public {

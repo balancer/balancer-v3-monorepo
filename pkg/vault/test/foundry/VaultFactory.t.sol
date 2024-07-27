@@ -7,11 +7,9 @@ import "forge-std/Test.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { V2VaultMock } from "@balancer-labs/v3-vault/contracts/test/V2VaultMock.sol";
 
-import { VaultExtension } from "../../contracts/VaultExtension.sol";
 import { VaultFactory } from "../../contracts/VaultFactory.sol";
 
 contract VaultFactoryTest is Test {

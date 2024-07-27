@@ -371,13 +371,13 @@ contract VaultExplorerTest is BaseVaultTest {
     function testGetPoolConfig() public {
         PoolConfig memory poolConfig = explorer.getPoolConfig(pool);
 
-        // Check the flags
+        // Check the flags.
         assertTrue(poolConfig.isPoolRegistered, "Pool not registered");
         assertTrue(poolConfig.isPoolInitialized, "Pool not initialized");
         assertFalse(poolConfig.isPoolPaused, "Pool is paused");
         assertFalse(poolConfig.isPoolInRecoveryMode, "Pool is in recovery mode");
 
-        // Change something
+        // Change something.
         vault.manualSetPoolPauseWindowEndTime(pool, uint32(block.timestamp) + 365 days);
         vault.manualPausePool(pool);
 
@@ -391,7 +391,7 @@ contract VaultExplorerTest is BaseVaultTest {
         assertEq(hooksConfig.hooksContract, poolHooksContract, "Wrong hooks contract");
         assertFalse(hooksConfig.shouldCallComputeDynamicSwapFee, "Dynamic swap fee flag is true");
 
-        // Change something
+        // Change something.
         hooksConfig.shouldCallComputeDynamicSwapFee = true;
         vault.manualSetHooksConfig(pool, hooksConfig);
 
@@ -459,7 +459,7 @@ contract VaultExplorerTest is BaseVaultTest {
         assertEq(poolBufferPeriodEndTime, vault.getBufferPeriodDuration(), "Wrong initial buffer time");
         assertEq(pauseManager, address(0), "Pool has a pause manager");
 
-        // Change the state
+        // Change the state.
         uint32 newEndTime = uint32(block.timestamp) + 365 days;
 
         vault.manualSetPoolPauseWindowEndTime(pool, newEndTime);
@@ -535,7 +535,7 @@ contract VaultExplorerTest is BaseVaultTest {
         );
 
         assertTrue(success, "Vault dynamic fee call failed");
-        // Should default to the static fee
+        // Should default to the static fee.
         assertEq(dynamicSwapFeePercentage, swapFeePercentage, "Wrong dynamic fee percentage");
     }
 
@@ -744,7 +744,7 @@ contract VaultExplorerTest is BaseVaultTest {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens, rateProviders, yieldFeeFlags);
         vault.manualSetPoolTokenInfo(pool, tokenConfig);
 
-        // decimalScalingFactors depends on balances array (it's used gto calculate number of tokens)
+        // `decimalScalingFactors` depends on balances array (it's used to calculate the number of tokens).
         uint256[] memory rawBalances = new uint256[](2);
         rawBalances[daiIdx] = DAI_RAW_BALANCE;
         rawBalances[usdcIdx] = USDC_RAW_BALANCE;
