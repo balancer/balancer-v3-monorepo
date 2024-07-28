@@ -67,14 +67,12 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
         NewPoolParams memory params,
         IVault vault
     ) BalancerPoolToken(vault, params.name, params.symbol) PoolInfo(vault) Version(params.version) {
-        uint256 numTokens = params.numTokens;
-        InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
-
-        _totalTokens = numTokens;
+        _totalTokens = params.numTokens;
+        InputHelpers.ensureInputLengthMatch(_totalTokens, params.normalizedWeights.length);
 
         // Ensure each normalized weight is above the minimum
         uint256 normalizedSum = 0;
-        for (uint8 i = 0; i < numTokens; ++i) {
+        for (uint8 i = 0; i < _totalTokens; ++i) {
             uint256 normalizedWeight = params.normalizedWeights[i];
 
             if (normalizedWeight < WeightedMath._MIN_WEIGHT) {
