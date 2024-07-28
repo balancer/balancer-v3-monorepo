@@ -41,8 +41,14 @@ contract WeightedPoolTest is BaseVaultTest {
     uint256[] internal weights;
     uint256 internal bptAmountOut;
 
+    uint256 daiIdx;
+    uint256 usdcIdx;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+
         weightedPool = WeightedPool(pool);
     }
 
@@ -215,8 +221,6 @@ contract WeightedPoolTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT + DAI_AMOUNT_IN, "Vault: Wrong DAI balance");
 
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-
-        (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
         assertEq(balances[daiIdx], DAI_AMOUNT + DAI_AMOUNT_IN, "Pool: Wrong DAI balance");
         assertEq(balances[usdcIdx], USDC_AMOUNT - amountCalculated, "Pool: Wrong USDC balance");
