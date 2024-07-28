@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import "../../contracts/math/FixedPoint.sol";
-import "../../contracts/test/WeightedMathMock.sol";
+import { FixedPoint } from "../../contracts/math/FixedPoint.sol";
+import { WeightedMathMock } from "../../contracts/test/WeightedMathMock.sol";
 
 contract WeightedMathRoundingTest is Test {
     uint256 constant MIN_WEIGHT = 0.1e18;
