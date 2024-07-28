@@ -50,7 +50,7 @@ contract WeightedPoolTest is BaseVaultTest {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
-        weights = [uint256(0.50e18), uint256(0.50e18)].toMemoryArray();
+        weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         // Allow pools created by `factory` to use PoolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
@@ -274,7 +274,7 @@ contract WeightedPoolTest is BaseVaultTest {
             "ERC20 Pool",
             "ERC20POOL",
             tokens,
-            [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+            [uint256(50e16), uint256(50e16)].toMemoryArray(),
             roleAccounts,
             MIN_SWAP_FEE - 1, // Swap fee too low
             poolHooksContract,

@@ -8,8 +8,8 @@ import "../../contracts/math/FixedPoint.sol";
 import "../../contracts/test/WeightedMathMock.sol";
 
 contract WeightedMathRoundingTest is Test {
-    uint256 constant MIN_WEIGHT = 0.1e18;
-    uint256 constant MAX_WEIGHT = 0.9e18;
+    uint256 constant MIN_WEIGHT = 10e16; // 10%
+    uint256 constant MAX_WEIGHT = 90e16; // 90%
     uint256 constant MIN_BALANCE = 1e18;
     uint256 constant MIN_AMOUNT = 1e12;
     uint256 constant MAX_AMOUNT = 1000e18;
@@ -19,7 +19,7 @@ contract WeightedMathRoundingTest is Test {
     uint256 constant MAX_OUT_RATIO = 0.3e18;
 
     uint256 constant MIN_SWAP_FEE = 0;
-    uint256 constant MAX_SWAP_FEE = 0.8e18;
+    uint256 constant MAX_SWAP_FEE = 80e16; // 80%
     uint256 constant DELTA = 1e8;
 
     WeightedMathMock mock;
