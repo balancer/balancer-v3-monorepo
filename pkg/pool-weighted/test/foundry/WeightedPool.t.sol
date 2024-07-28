@@ -111,8 +111,8 @@ contract WeightedPoolTest is BaseVaultTest {
 
         // Tokens are deposited to the pool
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], DAI_AMOUNT, "Pool: Wrong DAI balance");
-        assertEq(balances[1], USDC_AMOUNT, "Pool: Wrong USDC balance");
+        assertEq(balances[daiIdx], DAI_AMOUNT, "Pool: Wrong DAI balance");
+        assertEq(balances[usdcIdx], USDC_AMOUNT, "Pool: Wrong USDC balance");
 
         // should mint correct amount of BPT tokens
         // Account for the precision loss
@@ -135,8 +135,8 @@ contract WeightedPoolTest is BaseVaultTest {
 
         // Tokens are deposited to the pool
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], DAI_AMOUNT * 2, "Pool: Wrong DAI balance");
-        assertEq(balances[1], USDC_AMOUNT * 2, "Pool: Wrong USDC balance");
+        assertEq(balances[daiIdx], DAI_AMOUNT * 2, "Pool: Wrong DAI balance");
+        assertEq(balances[usdcIdx], USDC_AMOUNT * 2, "Pool: Wrong USDC balance");
 
         // should mint correct amount of BPT tokens
         assertApproxEqAbs(weightedPool.balanceOf(bob), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
@@ -178,12 +178,12 @@ contract WeightedPoolTest is BaseVaultTest {
 
         // Tokens are deposited to the pool
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-        assertApproxEqAbs(balances[0], DAI_AMOUNT, DELTA, "Pool: Wrong DAI balance");
-        assertApproxEqAbs(balances[1], USDC_AMOUNT, DELTA, "Pool: Wrong USDC balance");
+        assertApproxEqAbs(balances[daiIdx], DAI_AMOUNT, DELTA, "Pool: Wrong DAI balance");
+        assertApproxEqAbs(balances[usdcIdx], USDC_AMOUNT, DELTA, "Pool: Wrong USDC balance");
 
         // amountsOut are correct
-        assertApproxEqAbs(amountsOut[0], DAI_AMOUNT, DELTA, "Wrong DAI AmountOut");
-        assertApproxEqAbs(amountsOut[1], USDC_AMOUNT, DELTA, "Wrong USDC AmountOut");
+        assertApproxEqAbs(amountsOut[daiIdx], DAI_AMOUNT, DELTA, "Wrong DAI AmountOut");
+        assertApproxEqAbs(amountsOut[usdcIdx], USDC_AMOUNT, DELTA, "Wrong USDC AmountOut");
 
         // should mint correct amount of BPT tokens
         assertEq(weightedPool.balanceOf(bob), 0, "LP: Non-zero BPT balance");
@@ -267,8 +267,8 @@ contract WeightedPoolTest is BaseVaultTest {
     function testFailSwapFeeTooLow() public {
         TokenConfig[] memory tokens = new TokenConfig[](2);
         PoolRoleAccounts memory roleAccounts;
-        tokens[0].token = IERC20(dai);
-        tokens[1].token = IERC20(usdc);
+        tokens[daiIdx].token = IERC20(dai);
+        tokens[usdcIdx].token = IERC20(usdc);
 
         address lowFeeWeightedPool = factory.create(
             "ERC20 Pool",

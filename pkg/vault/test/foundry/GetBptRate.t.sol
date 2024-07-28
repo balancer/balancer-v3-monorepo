@@ -29,8 +29,13 @@ contract GetBptRateTest is BaseVaultTest {
     uint256 private daiMockRate = 1.5e18;
     uint256 private usdcMockRate = 0.5e18;
 
+    uint256 daiIdx;
+    uint256 usdcIdx;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
@@ -44,6 +49,7 @@ contract GetBptRateTest is BaseVaultTest {
         RateProviderMock rateProviderUsdc = new RateProviderMock();
         rateProviderUsdc.mockRate(usdcMockRate);
 
+        // The rate providers will be sorted along with the tokens, by `buildTokenConfig`
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProviders[0] = IRateProvider(rateProviderDai);
         rateProviders[1] = IRateProvider(rateProviderUsdc);
@@ -74,19 +80,25 @@ contract GetBptRateTest is BaseVaultTest {
 
     function testGetBptRateWithRateProvider() public {
         uint256 totalSupply = initBptAmountOut + MIN_BPT;
-        uint256[] memory liveBalances = [defaultAmount.mulDown(daiMockRate), defaultAmount.mulDown(usdcMockRate)]
-            .toMemoryArray();
+        uint256[] memory liveBalances = new uint256[](2);
+        liveBalances[daiIdx] = defaultAmount.mulDown(daiMockRate);
+        liveBalances[usdcIdx] = defaultAmount.mulDown(usdcMockRate);
+
         uint256 weightedInvariant = WeightedMath.computeInvariant(weights, liveBalances);
         uint256 expectedRate = weightedInvariant.divDown(totalSupply);
         uint256 actualRate = vault.getBptRate(pool);
         assertEq(actualRate, expectedRate, "Wrong rate");
 
-        uint256[] memory amountsIn = [defaultAmount, 0].toMemoryArray();
+        uint256[] memory amountsIn = new uint256[](2);
+        amountsIn[daiIdx] = defaultAmount;
+
         vm.prank(bob);
         uint256 addLiquidityBptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, 0, false, bytes(""));
 
         totalSupply += addLiquidityBptAmountOut;
-        liveBalances = [2 * defaultAmount.mulDown(daiMockRate), defaultAmount.mulDown(usdcMockRate)].toMemoryArray();
+        liveBalances[daiIdx] = 2 * defaultAmount.mulDown(daiMockRate);
+        liveBalances[usdcIdx] = defaultAmount.mulDown(usdcMockRate);
+
         weightedInvariant = WeightedMath.computeInvariant(weights, liveBalances);
 
         expectedRate = weightedInvariant.divDown(totalSupply);
