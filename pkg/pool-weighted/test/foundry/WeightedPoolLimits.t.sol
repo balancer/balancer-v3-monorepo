@@ -130,21 +130,18 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         initPool();
         _testInitialize();
 
-        uint256 preRateSnapshot = vm.snapshot();
+        uint256 postInitSnapshot = vm.snapshot();
         _testGetBptRate();
-        vm.revertTo(preRateSnapshot);
+        vm.revertTo(postInitSnapshot);
 
-        uint256 preAddSnapshot = vm.snapshot();
         _testAddLiquidity();
-        vm.revertTo(preAddSnapshot);
+        vm.revertTo(postInitSnapshot);
 
-        uint256 preRemoveSnapshot = vm.snapshot();
         _testRemoveLiquidity();
-        vm.revertTo(preRemoveSnapshot);
+        vm.revertTo(postInitSnapshot);
 
-        uint256 preSwapSnapshot = vm.snapshot();
         _testSwap();
-        vm.revertTo(preSwapSnapshot);
+        vm.revertTo(postInitSnapshot);
 
         _testAddLiquidityUnbalanced(swapFeePercentage);
     }
