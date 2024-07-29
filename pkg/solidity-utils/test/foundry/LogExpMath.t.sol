@@ -6,7 +6,8 @@ import "forge-std/Test.sol";
 
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-import "../../contracts/test/LogExpMathMock.sol";
+import { LogExpMath } from "../../contracts/math/LogExpMath.sol";
+import { LogExpMathMock } from "../../contracts/test/LogExpMathMock.sol";
 
 contract LogExpMathTest is Test {
     uint256 internal constant EXPECTED_RELATIVE_ERROR = 1e4;
