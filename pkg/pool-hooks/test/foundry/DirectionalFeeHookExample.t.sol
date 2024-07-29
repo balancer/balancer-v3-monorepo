@@ -39,8 +39,8 @@ contract DirectionalHookExampleTest is BaseVaultTest {
     StablePoolFactory internal stablePoolFactory;
 
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
-    // 10% swap fee
-    uint256 internal constant SWAP_FEE_PERCENTAGE = 0.1e18;
+
+    uint256 internal constant SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
     function setUp() public override {
         super.setUp();

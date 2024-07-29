@@ -45,7 +45,7 @@ contract ExitFeeHookExampleWeightedPoolTest is BaseVaultTest {
         weightedPoolFactory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
-        weights = [uint256(0.50e18), uint256(0.50e18)].toMemoryArray();
+        weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         address newPool = weightedPoolFactory.create(
             "ERC20 Pool",

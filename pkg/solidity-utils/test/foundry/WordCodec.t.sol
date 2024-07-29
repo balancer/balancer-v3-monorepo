@@ -4,7 +4,10 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import "../../contracts/helpers/WordCodec.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { SignedMath } from "@openzeppelin/contracts/utils/math/SignedMath.sol";
+
+import { WordCodec } from "../../contracts/helpers/WordCodec.sol";
 
 contract WordCodecTest is Test {
     function testEncodeUint255Bits__Fuzz(uint256 input) external pure {

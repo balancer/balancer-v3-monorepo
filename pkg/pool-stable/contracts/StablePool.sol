@@ -65,7 +65,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     // Minimum values help make the math well-behaved (i.e., the swap fee should overwhelm any rounding error).
     // Maximum values protect users by preventing permissioned actors from setting excessively high swap fees.
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 0.1e18; // 10%
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
     /// @dev Store amplification state.
     AmplificationState private _amplificationState;
