@@ -133,7 +133,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             maxAmountsInScaled18,
             vault.totalSupply(params.pool),
             swapFeePercentage,
-            IBasePool(params.pool).computeInvariantRatio
+            IBasePool(params.pool)
         );
 
         _testAddLiquidity(
@@ -495,7 +495,7 @@ contract VaultUnitLiquidityTest is BaseTest {
                 minAmountsOutScaled18[tokenIndex],
                 vault.totalSupply(params.pool),
                 swapFeePercentage,
-                IBasePool(params.pool).computeInvariantRatio
+                IBasePool(params.pool)
             );
 
         _testRemoveLiquidity(

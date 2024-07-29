@@ -22,8 +22,8 @@ interface IBasePool is ISwapFeePercentageBounds {
     function computeInvariant(uint256[] memory balancesLiveScaled18) external view returns (uint256 invariant);
 
     function computeInvariantRatio(
-        uint256[] memory currentBalancesLiveScaled18,
-        uint256[] memory newBalancesLiveScaled18
+        uint256[] memory newBalancesLiveScaled18,
+        uint256 currentInvariant
     ) external view returns (uint256 invariantRatio);
 
     /**

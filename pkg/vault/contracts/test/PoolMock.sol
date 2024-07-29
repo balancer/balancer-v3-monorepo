@@ -46,8 +46,8 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
     }
 
     /// @inheritdoc IBasePool
-    function computeInvariantRatio(uint256[] memory currentBalances, uint256[] memory newBalances) public pure returns (uint256) {
-        return FixedPoint.divDown(computeInvariant(newBalances), computeInvariant(currentBalances));
+    function computeInvariantRatio(uint256[] memory newBalances, uint256 currentInvariant) public pure returns (uint256) {
+        return FixedPoint.divDown(computeInvariant(newBalances), currentInvariant);
     }
 
     /// @inheritdoc IBasePool

@@ -81,16 +81,25 @@ library WeightedMath {
         }
     }
 
+    function computeInvariantRatio(
+        uint256[] memory normalizedWeights,
+        uint256[] memory newBalancesLiveScaled18,
+        uint256 currentInvariant
+    ) internal pure returns (uint256 invariantRatio) {
+        invariantRatio = FixedPoint.divDown(
+            WeightedMath.computeInvariant(normalizedWeights, newBalancesLiveScaled18),
+            currentInvariant
+        );
+
+        _checkInvariantRatio(invariantRatio);
+    }
+
     function computeBalanceOutGivenInvariant(
         uint256 currentBalance,
         uint256 weight,
         uint256 invariantRatio
     ) internal pure returns (uint256 invariant) {
-        if (invariantRatio > _MAX_INVARIANT_RATIO) {
-            revert InvariantRatioAboveMax(invariantRatio);
-        } else if (invariantRatio < _MIN_INVARIANT_RATIO) {
-            revert InvariantRatioBelowMin(invariantRatio);
-        }
+        _checkInvariantRatio(invariantRatio);
 
         /******************************************************************************************
         // calculateBalanceGivenInvariant                                                       //
@@ -578,5 +587,13 @@ library WeightedMath {
         // toMint = totalSupply * (weightSumRatio - 1)
 
         return totalSupply.mulDown(weightSumRatio - FixedPoint.ONE);
+    }
+
+    function _checkInvariantRatio(uint256 invariantRatio) internal pure {
+        if (invariantRatio > _MAX_INVARIANT_RATIO) {
+            revert InvariantRatioAboveMax(invariantRatio);
+        } else if (invariantRatio < _MIN_INVARIANT_RATIO) {
+            revert InvariantRatioBelowMin(invariantRatio);
+        }
     }
 }

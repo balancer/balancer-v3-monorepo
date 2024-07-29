@@ -187,7 +187,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             exactAmountsInScaled18,
             IERC20(pool).totalSupply(),
             0,
-            IBasePool(pool).computeInvariantRatio
+            IBasePool(pool)
         );
 
         uint256 snapshotId = vm.snapshot();
