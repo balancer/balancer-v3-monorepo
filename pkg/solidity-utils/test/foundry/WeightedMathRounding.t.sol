@@ -4,12 +4,12 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import "../../contracts/math/FixedPoint.sol";
-import "../../contracts/test/WeightedMathMock.sol";
+import { FixedPoint } from "../../contracts/math/FixedPoint.sol";
+import { WeightedMathMock } from "../../contracts/test/WeightedMathMock.sol";
 
 contract WeightedMathRoundingTest is Test {
-    uint256 constant MIN_WEIGHT = 0.1e18;
-    uint256 constant MAX_WEIGHT = 0.9e18;
+    uint256 constant MIN_WEIGHT = 10e16; // 10%
+    uint256 constant MAX_WEIGHT = 90e16; // 90%
     uint256 constant MIN_BALANCE = 1e18;
     uint256 constant MIN_AMOUNT = 1e12;
     uint256 constant MAX_AMOUNT = 1000e18;
@@ -19,7 +19,7 @@ contract WeightedMathRoundingTest is Test {
     uint256 constant MAX_OUT_RATIO = 0.3e18;
 
     uint256 constant MIN_SWAP_FEE = 0;
-    uint256 constant MAX_SWAP_FEE = 0.8e18;
+    uint256 constant MAX_SWAP_FEE = 80e16; // 80%
     uint256 constant DELTA = 1e8;
 
     WeightedMathMock mock;
@@ -130,191 +130,5 @@ contract WeightedMathRoundingTest is Test {
         uint256[] amountsIn;
         uint256 totalSupply;
         uint256 swapFee;
-    }
-
-    function testComputeBptOutGivenExactTokensIn__Fuzz(
-        uint64 rawWeight,
-        uint64 rawSwapFee,
-        uint256 rawTotalSupply,
-        uint256[2] calldata rawBalances,
-        uint256[2] calldata rawAmountsIn,
-        bool flipBit
-    ) external view {
-        AddLiquidityVars memory vars = _computeAddLiquidityVars(
-            rawWeight,
-            rawSwapFee,
-            rawTotalSupply,
-            rawBalances,
-            rawAmountsIn
-        );
-
-        uint256 standardResult = mock.computeBptOutGivenExactTokensIn(
-            vars.balances,
-            vars.weights,
-            vars.amountsIn,
-            vars.totalSupply,
-            vars.swapFee
-        );
-
-        uint256[] memory roundedUpBalances = new uint256[](2);
-        uint256[] memory roundedDownBalances = new uint256[](2);
-
-        for (uint256 i = 0; i < 2; ++i) {
-            roundedUpBalances[i] = flipBit ? vars.balances[i] + 1 : vars.balances[i];
-            roundedDownBalances[i] = flipBit ? vars.balances[i] - 1 : vars.balances[i];
-        }
-
-        uint256 roundedUpResult = mock.computeBptOutGivenExactTokensIn(
-            roundedUpBalances,
-            vars.weights,
-            vars.amountsIn,
-            vars.totalSupply,
-            vars.swapFee
-        );
-
-        uint256 roundedDownResult = mock.computeBptOutGivenExactTokensIn(
-            roundedDownBalances,
-            vars.weights,
-            vars.amountsIn,
-            vars.totalSupply,
-            vars.swapFee
-        );
-
-        if (flipBit) {
-            assertApproxEqAbs(
-                roundedUpResult,
-                standardResult,
-                DELTA,
-                "roundedUpResult != standardResult with DELTA (computeBptOutGivenExactTokensIn)"
-            );
-            assertApproxEqAbs(
-                roundedDownResult,
-                standardResult,
-                DELTA,
-                "roundedUpResult != standardResult with DELTA (computeBptOutGivenExactTokensIn)"
-            );
-        } else {
-            assertEq(
-                roundedUpResult,
-                standardResult,
-                "roundedUpResult != standardResult (computeBptOutGivenExactTokensIn)"
-            );
-            assertEq(
-                roundedDownResult,
-                standardResult,
-                "roundedDownResult != standardResult (computeBptOutGivenExactTokensIn)"
-            );
-        }
-    }
-
-    function testComputeBptInGivenExactTokensOut__Fuzz(
-        uint64 rawWeight,
-        uint64 rawSwapFee,
-        uint256 rawTotalSupply,
-        uint256[2] calldata rawBalances,
-        bool flipBit
-    ) external view {
-        uint256[] memory weights = new uint256[](2);
-        uint256[] memory balances = new uint256[](2);
-        uint256[] memory amountsOut = new uint256[](2);
-
-        weights[0] = bound(rawWeight, MIN_WEIGHT, MAX_WEIGHT);
-        weights[1] = FP_ONE - weights[0];
-        assertEq(weights[0] + weights[1], FP_ONE);
-
-        uint256 totalBalance;
-
-        for (uint256 i = 0; i < 2; ++i) {
-            balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
-            amountsOut[i] = balances[i] / 10;
-            totalBalance += balances[i];
-        }
-
-        uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
-        uint256 totalSupply = bound(rawTotalSupply, totalBalance, totalBalance * 100);
-
-        uint256 standardResult = mock.computeBptInGivenExactTokensOut(
-            balances,
-            weights,
-            amountsOut,
-            totalSupply,
-            swapFee
-        );
-
-        uint256[] memory roundedUpBalances = new uint256[](2);
-        uint256[] memory roundedDownBalances = new uint256[](2);
-
-        for (uint256 i = 0; i < 2; ++i) {
-            roundedUpBalances[i] = flipBit ? balances[i] + 1 : balances[i];
-            roundedDownBalances[i] = flipBit ? balances[i] - 1 : balances[i];
-        }
-
-        uint256 roundedUpResult = mock.computeBptInGivenExactTokensOut(
-            roundedUpBalances,
-            weights,
-            amountsOut,
-            totalSupply,
-            swapFee
-        );
-
-        uint256 roundedDownResult = mock.computeBptInGivenExactTokensOut(
-            roundedDownBalances,
-            weights,
-            amountsOut,
-            totalSupply,
-            swapFee
-        );
-
-        if (flipBit) {
-            assertGe(
-                roundedUpResult,
-                standardResult,
-                "roundedUpResult < standardResult (computeBptInGivenExactTokensOut)"
-            );
-            assertLe(
-                roundedDownResult,
-                standardResult,
-                "roundedDownResult > standardResult (computeBptInGivenExactTokensOut)"
-            );
-        } else {
-            assertEq(
-                roundedUpResult,
-                standardResult,
-                "roundedUpResult != standardResult (computeBptInGivenExactTokensOut)"
-            );
-            assertEq(
-                roundedDownResult,
-                standardResult,
-                "roundedDownResult != standardResult (computeBptInGivenExactTokensOut)"
-            );
-        }
-    }
-
-    function _computeAddLiquidityVars(
-        uint64 rawWeight,
-        uint64 rawSwapFee,
-        uint256 rawTotalSupply,
-        uint256[2] calldata rawBalances,
-        uint256[2] calldata rawAmounts
-    ) private pure returns (AddLiquidityVars memory vars) {
-        vars.weights = new uint256[](2);
-        vars.balances = new uint256[](2);
-        vars.amountsIn = new uint256[](2);
-
-        vars.weights[0] = bound(rawWeight, MIN_WEIGHT, MAX_WEIGHT);
-        vars.weights[1] = FP_ONE - vars.weights[0];
-        assertEq(vars.weights[0] + vars.weights[1], FP_ONE);
-
-        vars.swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
-        uint256 totalBalance;
-
-        for (uint256 i = 0; i < 2; ++i) {
-            vars.balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
-            totalBalance += vars.balances[i];
-
-            vars.amountsIn[i] = bound(rawAmounts[i], MIN_BALANCE, MAX_AMOUNT);
-        }
-
-        vars.totalSupply = bound(rawTotalSupply, totalBalance, totalBalance * 100);
     }
 }

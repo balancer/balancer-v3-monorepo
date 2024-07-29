@@ -42,7 +42,7 @@ contract LotteryHookExample is BaseHooks, Ownable {
     // The chance of winning is 1/MAX_NUMBER (i.e. 5%).
     uint8 public constant MAX_NUMBER = 20;
 
-    // Percentages are represented as 18-decimal FP numbers, which have a maximum value of 1e18 (100%),
+    // Percentages are represented as 18-decimal FP numbers, which have a maximum value of 100e16 (100%),
     // so 60 bits are sufficient.
     uint64 public hookSwapFeePercentage;
 
