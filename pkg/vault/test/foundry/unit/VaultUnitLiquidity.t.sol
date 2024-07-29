@@ -13,7 +13,6 @@ import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -113,7 +112,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         (uint256 currentInvariant, uint256 newInvariantAndInvariantWithFeesApplied) = (1e16, 1e18);
         vm.mockCall(
             params.pool,
-            abi.encodeWithSelector(IBasePool.computeInvariantRatio.selector, poolData.balancesLiveScaled18),
+            abi.encodeWithSelector(IBasePool.computeInvariant.selector, poolData.balancesLiveScaled18),
             abi.encode(currentInvariant)
         );
 
@@ -124,7 +123,7 @@ contract VaultUnitLiquidityTest is BaseTest {
 
         vm.mockCall(
             params.pool,
-            abi.encodeWithSelector(IBasePool.computeInvariantRatio.selector, newBalances),
+            abi.encodeWithSelector(IBasePool.computeInvariant.selector, newBalances),
             abi.encode(newInvariantAndInvariantWithFeesApplied)
         );
 
@@ -185,7 +184,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             params.minBptAmountOut,
             totalSupply,
             swapFeePercentage,
-            IBasePool(params.pool).computeBalance
+            IBasePool(params.pool)
         );
 
         _testAddLiquidity(
@@ -421,7 +420,7 @@ contract VaultUnitLiquidityTest is BaseTest {
                 expectBPTAmountIn,
                 totalSupply,
                 swapFeePercentage,
-                IBasePool(params.pool).computeBalance
+                IBasePool(params.pool)
             );
 
         _testRemoveLiquidity(
@@ -457,7 +456,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             (uint256 currentInvariant, uint256 invariantAndInvariantWithFeesApplied) = (3e8, 3e9);
             vm.mockCall(
                 params.pool,
-                abi.encodeWithSelector(IBasePool.computeInvariantRatio.selector, poolData.balancesLiveScaled18),
+                abi.encodeWithSelector(IBasePool.computeInvariant.selector, poolData.balancesLiveScaled18),
                 abi.encode(currentInvariant)
             );
 
@@ -469,7 +468,7 @@ contract VaultUnitLiquidityTest is BaseTest {
 
             vm.mockCall(
                 params.pool,
-                abi.encodeWithSelector(IBasePool.computeInvariantRatio.selector, newBalances),
+                abi.encodeWithSelector(IBasePool.computeInvariant.selector, newBalances),
                 abi.encode(invariantAndInvariantWithFeesApplied)
             );
 
@@ -483,7 +482,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             uint256 newInvariantAndInvariantWithFeesApplied = 1e5;
             vm.mockCall(
                 params.pool,
-                abi.encodeWithSelector(IBasePool.computeInvariantRatio.selector, newBalances),
+                abi.encodeWithSelector(IBasePool.computeInvariant.selector, newBalances),
                 abi.encode(newInvariantAndInvariantWithFeesApplied)
             );
         }
@@ -792,8 +791,8 @@ contract VaultUnitLiquidityTest is BaseTest {
         uint256 protocolSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
 
         for (uint256 i = 0; i < poolData_.tokens.length; i++) {
-            assertEq(amountsInRaw[i], expectedAmountsInRaw[i], "Unexpected tokenIn amount");
-            assertEq(amountsInScaled18[i], params_.expectedAmountsInScaled18[i], "Unexpected tokenIn amount");
+            assertEq(amountsInRaw[i], expectedAmountsInRaw[i], "Unexpected tokenIn raw amount");
+            assertEq(amountsInScaled18[i], params_.expectedAmountsInScaled18[i], "Unexpected tokenIn scaled amount");
 
             uint256 protocolSwapFeeAmountRaw = _checkProtocolFeeResult(
                 poolData_,
@@ -853,12 +852,12 @@ contract VaultUnitLiquidityTest is BaseTest {
         assertEq(
             vault.balanceOf(address(params.removeLiquidityParams.pool), alice),
             initTotalSupply - bptAmountIn,
-            "Token burned with unexpected amount"
+            "Token burned with unexpected amount (balance)"
         );
         assertEq(
             vault.allowance(address(vault), params.removeLiquidityParams.from, address(this)),
             0,
-            "Token burned with unexpected amount"
+            "Token burned with unexpected amount (allowance)"
         );
 
         // NOTE: stack too deep fix

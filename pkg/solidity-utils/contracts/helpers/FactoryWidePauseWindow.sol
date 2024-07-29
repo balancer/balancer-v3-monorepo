@@ -3,8 +3,8 @@
 pragma solidity ^0.8.24;
 
 /**
- * @dev Base contract for V3 factories to support pause windows for pools based on the factory deployment time.
- * Each pool deployment calls `getPauseWindowDuration` on the factory so that all Pools created by this factory
+ * @notice Base contract for v3 factories to support pause windows for pools based on the factory deployment time.
+ * @dev Each pool deployment calls `getPauseWindowDuration` on the factory so that all Pools created by this factory
  * will share the same Pause Window end time, after which both old and new Pools will not be pausable.
  *
  * All pools are reversibly pausable until the pause window expires. Afterward, there is an additional buffer

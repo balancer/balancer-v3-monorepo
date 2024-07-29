@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -9,11 +10,8 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 import {
@@ -23,16 +21,17 @@ import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts
 
 import { VaultGuard } from "./VaultGuard.sol";
 
-contract RouterCommon is IRouterCommon, VaultGuard {
+/// @notice Contract for functions shared between the `Router` and `BatchRouter`.
+abstract contract RouterCommon is IRouterCommon, VaultGuard {
     using Address for address payable;
     using SafeERC20 for IWETH;
     using StorageSlotExtension for *;
     using TransientStorageHelpers for StorageSlotExtension.Uint256SlotType;
 
-    // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used
-    // by what is written after =. If you use immutable, the value is first calculated and
-    // then replaced everywhere. That means that if a constant has executable variables,
-    // they will be executed every time the constant is used.
+    // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used by what is written
+    // after =. If you use immutable, the value is first calculated and then replaced everywhere. That means that if a
+    // constant has executable variables, they will be executed every time the constant is used.
+
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
 
@@ -45,8 +44,8 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     /// @dev The swap transaction was not validated before the specified deadline timestamp.
     error SwapDeadline();
 
-    // Raw token balances are stored in half a slot, so the max is uint128. Moreover, given amounts are usually scaled
-    // inside the Vault, so sending max uint256 would result in an overflow and revert.
+    // Raw token balances are stored in half a slot, so the max is uint128. Moreover, given that amounts are usually
+    // scaled inside the Vault, sending type(uint256).max would result in an overflow and revert.
     uint256 internal constant _MAX_AMOUNT = type(uint128).max;
 
     // solhint-disable-next-line var-name-mixedcase
@@ -108,7 +107,7 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     }
 
     /*******************************************************************************
-                                         Utils
+                                      Utilities
     *******************************************************************************/
 
     struct SignatureParts {
@@ -228,11 +227,11 @@ contract RouterCommon is IRouterCommon, VaultGuard {
             }
 
             ethAmountIn = amountIn;
-            // wrap amountIn to WETH
+            // wrap amountIn to WETH.
             _weth.deposit{ value: amountIn }();
-            // send WETH to Vault
+            // send WETH to Vault.
             _weth.safeTransfer(address(_vault), amountIn);
-            // update Vault accounting
+            // update Vault accounting.
             _vault.settle(_weth, amountIn);
         } else {
             // Send the tokenIn amount to the Vault
@@ -244,14 +243,14 @@ contract RouterCommon is IRouterCommon, VaultGuard {
     function _sendTokenOut(address sender, IERC20 tokenOut, uint256 amountOut, bool wethIsEth) internal {
         // If the tokenOut is ETH, then unwrap `amountOut` into ETH.
         if (wethIsEth && tokenOut == _weth) {
-            // Receive the WETH amountOut
+            // Receive the WETH amountOut.
             _vault.sendTo(tokenOut, address(this), amountOut);
-            // Withdraw WETH to ETH
+            // Withdraw WETH to ETH.
             _weth.withdraw(amountOut);
-            // Send ETH to sender
+            // Send ETH to sender.
             payable(sender).sendValue(amountOut);
         } else {
-            // Receive the tokenOut amountOut
+            // Receive the tokenOut amountOut.
             _vault.sendTo(tokenOut, sender, amountOut);
         }
     }

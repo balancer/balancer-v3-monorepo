@@ -6,25 +6,19 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { TokenConfig, TokenType, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract QueryERC4626BufferTest is BaseVaultTest {
-    using FixedPoint for uint256;
     using ArrayHelpers for *;
 
     ERC4626TestToken internal waDAI;
@@ -34,13 +28,13 @@ contract QueryERC4626BufferTest is BaseVaultTest {
     uint256 internal waDaiIdx;
     uint256 internal waUsdcIdx;
 
-    address internal boostedPool;
+    address internal yieldBearingPool;
 
-    // The boosted pool will have 100x the liquidity of the buffer
-    uint256 internal boostedPoolAmount = 10e6 * 1e18;
-    uint256 internal bufferAmount = boostedPoolAmount / 100;
-    uint256 internal tooLargeSwapAmount = boostedPoolAmount / 2;
-    // We will swap with 10% of the buffer
+    // The yield-bearing pool will have 100x the liquidity of the buffer.
+    uint256 internal yieldBearingPoolAmount = 10e6 * 1e18;
+    uint256 internal bufferAmount = yieldBearingPoolAmount / 100;
+    uint256 internal tooLargeSwapAmount = yieldBearingPoolAmount / 2;
+    // We will swap with 10% of the buffer.
     uint256 internal swapAmount = bufferAmount / 10;
 
     function setUp() public virtual override {
@@ -56,22 +50,26 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
 
         _initializeBuffers();
-        _initializeBoostedPool();
+        _initializeYieldBearingPool();
         _initializeUser();
     }
 
     function testSwapPreconditions() public view {
-        // bob should have the full boostedPool BPT.
-        assertEq(IERC20(boostedPool).balanceOf(bob), boostedPoolAmount * 2 - MIN_BPT, "Wrong boosted pool BPT amount");
+        // Bob should have the full yield-bearing pool BPT.
+        assertEq(
+            IERC20(yieldBearingPool).balanceOf(bob),
+            yieldBearingPoolAmount * 2 - MIN_BPT,
+            "Wrong yield-bearing pool BPT amount"
+        );
 
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(boostedPool);
-        // The boosted pool should have `boostedPoolAmount` of both tokens.
-        assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong boosted pool token (waDAI)");
-        assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong boosted pool token (waUSDC)");
-        assertEq(balancesRaw[0], boostedPoolAmount, "Wrong boosted pool balance [0]");
-        assertEq(balancesRaw[1], boostedPoolAmount, "Wrong boosted pool balance [1]");
+        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(yieldBearingPool);
+        // The yield-bearing pool should have `yieldBearingPoolAmount` of both tokens.
+        assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong yield-bearing pool token (waDAI)");
+        assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong yield-bearing pool token (waUSDC)");
+        assertEq(balancesRaw[0], yieldBearingPoolAmount, "Wrong yield-bearing pool balance [0]");
+        assertEq(balancesRaw[1], yieldBearingPoolAmount, "Wrong yield-bearing pool balance [1]");
 
-        // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
+        // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs").
         assertEq(
             vault.getBufferOwnerShares(IERC20(waDAI), lp),
             bufferAmount * 2 - MIN_BPT,
@@ -83,7 +81,7 @@ contract QueryERC4626BufferTest is BaseVaultTest {
             "Wrong share of waUSDC buffer belonging to LP"
         );
 
-        // Buffer should have the correct amount of issued shares
+        // Buffer should have the correct amount of issued shares.
         assertEq(vault.getBufferTotalShares(IERC20(waDAI)), bufferAmount * 2, "Wrong issued shares of waDAI buffer");
         assertEq(vault.getBufferTotalShares(IERC20(waUSDC)), bufferAmount * 2, "Wrong issued shares of waUSDC buffer");
 
@@ -119,22 +117,22 @@ contract QueryERC4626BufferTest is BaseVaultTest {
     function _testQuerySwapExactIn(uint256 amount) private {
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _buildExactInPaths(amount);
 
-        // Snapshots the current state of the network
+        // Snapshots the current state of the network.
         uint256 snapshotId = vm.snapshot();
 
         _prankStaticCall();
         // Not using staticCall because it does not allow changes in the transient storage, and reverts with
-        // a StateChangeDuringStaticCall error
+        // a StateChangeDuringStaticCall error.
         (
             uint256[] memory queryPathAmountsOut,
             address[] memory queryTokensOut,
             uint256[] memory queryAmountsOut
         ) = batchRouter.querySwapExactIn(paths, bytes(""));
 
-        // Restores the network state to snapshot
+        // Restores the network state to snapshot.
         vm.revertTo(snapshotId);
 
-        // Executes the actual operation
+        // Executes the actual operation.
         vm.prank(alice);
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
@@ -148,27 +146,27 @@ contract QueryERC4626BufferTest is BaseVaultTest {
     function _testQuerySwapExactOut(uint256 amount) private {
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _buildExactOutPaths(amount);
 
-        // Snapshots the current state of the network
+        // Snapshots the current state of the network.
         uint256 snapshotId = vm.snapshot();
 
         _prankStaticCall();
         // Not using staticCall because it does not allow changes in the transient storage, and reverts with
-        // a StateChangeDuringStaticCall error
+        // a StateChangeDuringStaticCall error.
         (
             uint256[] memory queryPathAmountsIn,
             address[] memory queryTokensIn,
             uint256[] memory queryAmountsIn
         ) = batchRouter.querySwapExactOut(paths, bytes(""));
 
-        // Restores the network state to snapshot
+        // Restores the network state to snapshot.
         vm.revertTo(snapshotId);
 
-        // Executes the actual operation
+        // Executes the actual operation.
         vm.prank(alice);
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        // Check if results of query and actual operations are equal
+        // Check if results of query and actual operations are equal.
         assertEq(pathAmountsIn[0], queryPathAmountsIn[0], "pathAmountsIn's do not match");
         assertEq(tokensIn[0], queryTokensIn[0], "tokensIn's do not match");
         assertEq(amountsIn[0], queryAmountsIn[0], "amountsIn's do not match");
@@ -181,11 +179,11 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
 
         // Since this is exact in, swaps will be executed in the order given.
-        // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the boosted pool,
+        // Pre-swap through DAI buffer to get waDAI, then main swap waDAI for waUSDC in the yield-bearing pool,
         // and finally post-swap the waUSDC through the USDC buffer to calculate the USDC amount out.
         // The only token transfers are DAI in (given) and USDC out (calculated).
         steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC, isBuffer: false });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: yieldBearingPool, tokenOut: waUSDC, isBuffer: false });
         steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
 
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
@@ -203,11 +201,11 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         paths = new IBatchRouter.SwapPathExactAmountOut[](1);
 
         // Since this is exact out, swaps will be executed in reverse order (though we submit in logical order).
-        // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the boosted pool,
+        // Pre-swap through the USDC buffer to get waUSDC, then main swap waUSDC for waDAI in the yield-bearing pool,
         // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
         // The only token transfers are DAI in (calculated) and USDC out (given).
         steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: boostedPool, tokenOut: waUSDC, isBuffer: false });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: yieldBearingPool, tokenOut: waUSDC, isBuffer: false });
         steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
 
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
@@ -219,7 +217,7 @@ contract QueryERC4626BufferTest is BaseVaultTest {
     }
 
     function _initializeBuffers() private {
-        // Create and fund buffer pools
+        // Create and fund buffer pools.
         vm.startPrank(lp);
         dai.mint(lp, bufferAmount);
         dai.approve(address(waDAI), bufferAmount);
@@ -243,7 +241,7 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function _initializeBoostedPool() private {
+    function _initializeYieldBearingPool() private {
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[waDaiIdx].token = IERC20(waDAI);
         tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
@@ -252,12 +250,12 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         tokenConfig[waDaiIdx].rateProvider = IRateProvider(address(waDAI));
         tokenConfig[waUsdcIdx].rateProvider = IRateProvider(address(waUSDC));
 
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "Boosted Pool", "BOOSTYBOI");
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "Yield-bearing Pool", "YIELDYBOI");
 
         factoryMock.registerTestPool(address(newPool), tokenConfig);
 
-        vm.label(address(newPool), "boosted pool");
-        boostedPool = address(newPool);
+        vm.label(address(newPool), "yield-bearing pool");
+        yieldBearingPool = address(newPool);
 
         vm.startPrank(bob);
         waDAI.approve(address(permit2), MAX_UINT256);
@@ -267,19 +265,23 @@ contract QueryERC4626BufferTest is BaseVaultTest {
         permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
 
-        dai.mint(bob, boostedPoolAmount);
-        dai.approve(address(waDAI), boostedPoolAmount);
-        waDAI.deposit(boostedPoolAmount, bob);
+        dai.mint(bob, yieldBearingPoolAmount);
+        dai.approve(address(waDAI), yieldBearingPoolAmount);
+        waDAI.deposit(yieldBearingPoolAmount, bob);
 
-        usdc.mint(bob, boostedPoolAmount);
-        usdc.approve(address(waUSDC), boostedPoolAmount);
-        waUSDC.deposit(boostedPoolAmount, bob);
+        usdc.mint(bob, yieldBearingPoolAmount);
+        usdc.approve(address(waUSDC), yieldBearingPoolAmount);
+        waUSDC.deposit(yieldBearingPoolAmount, bob);
 
-        _initPool(boostedPool, [boostedPoolAmount, boostedPoolAmount].toMemoryArray(), boostedPoolAmount * 2 - MIN_BPT);
+        _initPool(
+            yieldBearingPool,
+            [yieldBearingPoolAmount, yieldBearingPoolAmount].toMemoryArray(),
+            yieldBearingPoolAmount * 2 - MIN_BPT
+        );
         vm.stopPrank();
     }
 
     function _initializeUser() private {
-        dai.mint(alice, boostedPoolAmount);
+        dai.mint(alice, yieldBearingPoolAmount);
     }
 }

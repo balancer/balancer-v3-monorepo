@@ -39,7 +39,7 @@ contract PoolInfoTest is BaseTest {
         vm.mockCall(
             address(poolInfo),
             abi.encodeWithSelector(ISwapFeePercentageBounds.getMaximumSwapFeePercentage.selector),
-            abi.encode(1e18)
+            abi.encode(100e16)
         );
         vault.manualRegisterPool(address(poolInfo), poolTokens);
     }
@@ -78,7 +78,7 @@ contract PoolInfoTest is BaseTest {
             IERC20[] memory actualTokens,
             TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory lastLiveBalances
+            uint256[] memory lastBalancesLiveScaled18
         ) = poolInfo.getTokenInfo();
 
         // Tokens
@@ -123,9 +123,9 @@ contract PoolInfoTest is BaseTest {
         assertEq(balancesRaw.length, 2, "Incorrect balancesRaw length");
         assertEq(balancesRaw[0], expectedRawBalances[0], "Incorrect balancesRaw[0]");
         assertEq(balancesRaw[1], expectedRawBalances[1], "Incorrect balancesRaw[1]");
-        assertEq(lastLiveBalances.length, 2, "Incorrect lastLiveBalances length");
-        assertEq(lastLiveBalances[0], expectedLastLiveBalances[0], "Incorrect lastLiveBalances[0]");
-        assertEq(lastLiveBalances[1], expectedLastLiveBalances[1], "Incorrect lastLiveBalances[1]");
+        assertEq(lastBalancesLiveScaled18.length, 2, "Incorrect lastBalancesLiveScaled18 length");
+        assertEq(lastBalancesLiveScaled18[0], expectedLastLiveBalances[0], "Incorrect lastBalancesLiveScaled18[0]");
+        assertEq(lastBalancesLiveScaled18[1], expectedLastLiveBalances[1], "Incorrect lastBalancesLiveScaled18[1]");
     }
 
     function testGetCurrentLiveBalances() public {

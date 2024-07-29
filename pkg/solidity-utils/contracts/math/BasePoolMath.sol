@@ -9,6 +9,10 @@ import { FixedPoint } from "./FixedPoint.sol";
 library BasePoolMath {
     using FixedPoint for uint256;
 
+    error InvariantRatioAboveMax(uint256 invariantRatio, uint256 maxInvariantRatio);
+
+    error InvariantRatioBelowMin(uint256 invariantRatio, uint256 minInvariantRatio);
+
     // For security reasons, to help ensure that for all possible "round trip" paths
     // the caller always receives the same or fewer tokens than supplied,
     // we have chosen the rounding direction to favor the protocol in all cases.
@@ -59,10 +63,10 @@ library BasePoolMath {
      * Calculation: For each token, amountOut = balance * (bptAmountIn / bptTotalSupply).
      * Rounding down is used to prevent withdrawing more than the pool can afford.
      *
-     * @param balances Array of current token balances in the pool.
-     * @param bptTotalSupply Total supply of the pool tokens (BPT).
-     * @param bptAmountIn The amount of pool tokens that will be burned.
-     * @return amountsOut Array of amounts for each token to be withdrawn.
+     * @param balances Array of current token balances in the pool
+     * @param bptTotalSupply Total supply of the pool tokens (BPT)
+     * @param bptAmountIn The amount of pool tokens that will be burned
+     * @return amountsOut Array of amounts for each token to be withdrawn
      */
     function computeProportionalAmountsOut(
         uint256[] memory balances,
@@ -96,7 +100,7 @@ library BasePoolMath {
      *
      * @param currentBalances Current pool balances, sorted in token registration order
      * @param exactAmounts Array of exact amounts for each token to be added to the pool
-     * @param totalSupply Current total supply of the pool tokens (BPT)
+     * @param totalSupply The current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the transaction
      * @param pool Pool to add liquidity
      * @return bptAmountOut The amount of pool tokens (BPT) that will be minted as a result of the liquidity addition
@@ -134,7 +138,9 @@ library BasePoolMath {
 
         // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
         uint256 currentInvariant = pool.computeInvariant(currentBalances);
-        uint256 invariantRatio = pool.computeInvariantRatio(newBalances, currentInvariant);
+        uint256 invariantRatio = pool.computeInvariant(newBalances).divDown(currentInvariant);
+
+        ensureInvariantRatioWithinMaximumBounds(pool, invariantRatio);
 
         // Loop through each token to apply fees if necessary.
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -152,9 +158,14 @@ library BasePoolMath {
             }
         }
 
+        // Calculate the new invariant with fees applied.
+        // This invariant should be lower than the original one, so we don't need to check invariant ratio bounds again.
+        uint256 invariantWithFeesApplied = pool.computeInvariant(newBalances);
+
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
-        bptAmountOut = totalSupply.mulDown(pool.computeInvariantRatio(newBalances, currentInvariant) - FixedPoint.ONE);
+        // Since we multiply and divide we don't need to use FP math.
+        bptAmountOut = (totalSupply * (invariantWithFeesApplied - currentInvariant)) / currentInvariant;
     }
 
     /**
@@ -167,7 +178,7 @@ library BasePoolMath {
      * @param currentBalances Array of current token balances in the pool, sorted in token registration order
      * @param tokenInIndex Index of the input token for which the amount needs to be calculated
      * @param exactBptAmountOut Exact amount of pool tokens (BPT) the user wants to receive
-     * @param totalSupply Current total supply of the pool tokens (BPT)
+     * @param totalSupply The current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount
      * @param pool Pool to operate with
      * @return amountInWithFee The amount of input token needed, including the swap fee, to receive the exact BPT amount
@@ -183,10 +194,14 @@ library BasePoolMath {
     ) internal view returns (uint256 amountInWithFee, uint256[] memory swapFeeAmounts) {
         // Calculate new supply after minting exactBptAmountOut
         uint256 newSupply = exactBptAmountOut + totalSupply;
+
         // Calculate the initial amount of the input token needed for the desired amount of BPT out
         // "divUp" leads to a higher "newBalance", which in turn results in a larger "amountIn".
         // This leads to receiving more tokens for the same amount of BPT minted.
-        uint256 newBalance = pool.computeBalance(currentBalances, tokenInIndex, newSupply.divUp(totalSupply));
+        uint256 invariantRatio = newSupply.divUp(totalSupply);
+        ensureInvariantRatioWithinMaximumBounds(pool, invariantRatio);
+
+        uint256 newBalance = pool.computeBalance(currentBalances, tokenInIndex, invariantRatio);
 
         // Compute the amount to be deposited into the pool.
         uint256 amountIn = newBalance - currentBalances[tokenInIndex];
@@ -215,7 +230,7 @@ library BasePoolMath {
      * @param currentBalances Current pool balances, sorted in token registration order
      * @param tokenOutIndex Index of the token to receive in exchange for pool tokens burned
      * @param exactAmountOut Exact amount of tokens to receive
-     * @param totalSupply Current total supply of the pool tokens (BPT)
+     * @param totalSupply The current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount
      * @return bptAmountIn Amount of pool tokens to burn
      * @return swapFeeAmounts The amount of swap fees charged for each token
@@ -247,9 +262,13 @@ library BasePoolMath {
         // Calculate the new proportional balance by multiplying the new invariant ratio by the current balance.
         // Calculate the taxable amount by subtracting the new balance from the equivalent proportional balance.
         uint256 currentInvariant = pool.computeInvariant(currentBalances);
+        uint256 invariantRatio = currentInvariant.divDown(pool.computeInvariant(newBalances));
+
+        ensureInvariantRatioWithinMinimumBounds(pool, currentInvariant);
+
         // We round down for simplicity, as rounding up doesn't really affect the result in a meaningful way down the
         // line (fee calculation is rounded up anyways which is more straightforward).
-        uint256 taxableAmount = pool.computeInvariantRatio(newBalances, currentInvariant).mulDown(
+        uint256 taxableAmount = invariantRatio.mulDown(
             currentBalances[tokenOutIndex]
         );
         taxableAmount -= newBalances[tokenOutIndex];
@@ -260,6 +279,9 @@ library BasePoolMath {
         // Update new balances array with a fee
         newBalances[tokenOutIndex] = newBalances[tokenOutIndex] - fee;
 
+        // Calculate the new invariant with fees applied.
+        uint256 invariantWithFeesApplied = pool.computeInvariant(newBalances);
+
         // Create swap fees amount array and set the single fee we charge
         swapFeeAmounts = new uint256[](numTokens);
         swapFeeAmounts[tokenOutIndex] = fee;
@@ -268,7 +290,7 @@ library BasePoolMath {
         // total supply with the ratio of the change in invariant.
         // Since we multiply and divide we don't need to use FP math.
         // Calculating BPT amount in, so we round up.
-        bptAmountIn = totalSupply.mulUp(FixedPoint.ONE - pool.computeInvariantRatio(newBalances, currentInvariant));
+        bptAmountIn = totalSupply.mulDivUp(currentInvariant - invariantWithFeesApplied, currentInvariant);
     }
 
     /**
@@ -279,7 +301,7 @@ library BasePoolMath {
      * @param currentBalances The current token balances in the pool.
      * @param tokenOutIndex The index of the token to be withdrawn.
      * @param exactBptAmountIn The exact amount of BPT the user wants to burn.
-     * @param totalSupply The total supply of BPT in the pool.
+     * @param totalSupply The current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount.
      * @param pool Pool to operate with.
      * @return amountOutWithFee The amount of the output token the user receives, accounting for swap fees.
@@ -294,12 +316,15 @@ library BasePoolMath {
     ) internal view returns (uint256 amountOutWithFee, uint256[] memory swapFeeAmounts) {
         // Calculate new supply accounting for burning exactBptAmountIn
         uint256 newSupply = totalSupply - exactBptAmountIn;
+        uint256 invariantRatio = newSupply.divUp(totalSupply);
+        ensureInvariantRatioWithinMinimumBounds(pool, invariantRatio);
+
         // Calculate the new balance of the output token after the BPT burn.
         // "divUp" leads to a higher "newBalance", which in turn results in a lower "amountOut", but also a lower
         // "taxableAmount". Although the former leads to giving less tokens for the same amount of BPT burned,
         // the latter leads to charging less swap fees. In consequence, a conflict of interests arises regarding
         // the rounding of "newBalance"; we prioritize getting a lower "amountOut".
-        uint256 newBalance = pool.computeBalance(currentBalances, tokenOutIndex, newSupply.divUp(totalSupply));
+        uint256 newBalance = pool.computeBalance(currentBalances, tokenOutIndex, invariantRatio);
 
         // Compute the amount to be withdrawn from the pool.
         uint256 amountOut = currentBalances[tokenOutIndex] - newBalance;
@@ -321,5 +346,19 @@ library BasePoolMath {
 
         // Return the net amount after subtracting the fee.
         amountOutWithFee = amountOut - fee;
+    }
+
+    function ensureInvariantRatioWithinMaximumBounds(IBasePool pool, uint256 invariantRatio) internal view {
+        uint256 maxInvariantRatio = pool.getMaximumInvariantRatio();
+        if (invariantRatio > maxInvariantRatio) {
+            revert InvariantRatioAboveMax(invariantRatio, maxInvariantRatio);
+        }
+    }
+
+    function ensureInvariantRatioWithinMinimumBounds(IBasePool pool, uint256 invariantRatio) internal view {
+        uint256 minInvariantRatio = pool.getMinimumInvariantRatio();
+        if (invariantRatio < minInvariantRatio) {
+            revert InvariantRatioBelowMin(invariantRatio, minInvariantRatio);
+        }
     }
 }

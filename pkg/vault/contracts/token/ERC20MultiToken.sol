@@ -3,8 +3,8 @@
 pragma solidity ^0.8.24;
 
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
-import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+
+import { IERC20MultiTokenErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiTokenErrors.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 
@@ -12,12 +12,10 @@ import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
 /**
  * @notice Store Token data and handle accounting for pool tokens in the Vault.
- * @dev The ERC20MultiToken is an ERC20-focused multi-token implementation that is fully compatible
- * with the ERC20 API on the token side. It also allows for the minting and burning of tokens on the multi-token side.
+ * @dev The ERC20MultiToken is an ERC20-focused multi-token implementation that is fully compatible with the ERC20 API
+ * on the token side. It also allows for the minting and burning of tokens on the multi-token side.
  */
-abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
-    using Address for address;
-
+abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiTokenErrors {
     // Minimum total supply amount.
     uint256 internal constant _MINIMUM_TOTAL_SUPPLY = 1e6;
 
@@ -88,7 +86,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
 
         uint256 newTotalSupply = _totalSupplyOf[pool] + amount;
         unchecked {
-            // Overflow not possible: balance + amount is at most totalSupply + amount, which is checked above.
+            // Overflow is not possible. balance + amount is at most totalSupply + amount, which is checked above.
             _balances[pool][to] += amount;
         }
 
@@ -98,7 +96,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
 
         emit Transfer(pool, address(0), to, amount);
 
-        // We also emit the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
+        // We also emit the "transfer" event on the pool token to ensure full compliance with the ERC20 standard.
         BalancerPoolToken(pool).emitTransfer(address(0), to, amount);
     }
 
@@ -111,12 +109,12 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
     function _mintMinimumSupplyReserve(address pool) internal {
         _totalSupplyOf[pool] += _MINIMUM_TOTAL_SUPPLY;
         unchecked {
-            // Overflow not possible: balance + amount is at most totalSupply + amount, which is checked above.
+            // Overflow is not possible. balance + amount is at most totalSupply + amount, which is checked above.
             _balances[pool][address(0)] += _MINIMUM_TOTAL_SUPPLY;
         }
         emit Transfer(pool, address(0), address(0), _MINIMUM_TOTAL_SUPPLY);
 
-        // We also emit the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
+        // We also emit the "transfer" event on the pool token to ensure full compliance with the ERC20 standard.
         BalancerPoolToken(pool).emitTransfer(address(0), address(0), _MINIMUM_TOTAL_SUPPLY);
     }
 
@@ -141,7 +139,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
 
         emit Transfer(pool, from, address(0), amount);
 
-        // We also emit the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
+        // We also emit the "transfer" event on the pool token to ensure full compliance with the ERC20 standard.
         BalancerPoolToken(pool).emitTransfer(from, address(0), amount);
     }
 
@@ -161,14 +159,14 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
 
         unchecked {
             _balances[pool][from] = fromBalance - amount;
-            // Overflow not possible: the sum of all balances is capped by totalSupply, and the sum is preserved by
+            // Overflow is not possible. The sum of all balances is capped by totalSupply, and that sum is preserved by
             // decrementing then incrementing.
             _balances[pool][to] += amount;
         }
 
         emit Transfer(pool, from, to, amount);
 
-        // We also emit the "transfer" event on the pool token to ensure full compliance with ERC20 standards.
+        // We also emit the "transfer" event on the pool token to ensure full compliance with the ERC20 standard.
         BalancerPoolToken(pool).emitTransfer(from, to, amount);
     }
 
@@ -184,7 +182,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiToken {
         _allowances[pool][owner][spender] = amount;
 
         emit Approval(pool, owner, spender, amount);
-        // We also emit the "approve" event on the pool token to ensure full compliance with ERC20 standards.
+        // We also emit the "approve" event on the pool token to ensure full compliance with the ERC20 standard.
         BalancerPoolToken(pool).emitApproval(owner, spender, amount);
     }
 

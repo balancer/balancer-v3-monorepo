@@ -6,7 +6,6 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -15,7 +14,8 @@ import {
     LiquidityManagement,
     PoolRoleAccounts,
     SwapKind,
-    TokenConfig
+    TokenConfig,
+    PoolSwapParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -39,8 +39,8 @@ contract DirectionalHookExampleTest is BaseVaultTest {
     StablePoolFactory internal stablePoolFactory;
 
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
-    // 10% swap fee
-    uint256 internal constant SWAP_FEE_PERCENTAGE = 0.1e18;
+
+    uint256 internal constant SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
     function setUp() public override {
         super.setUp();
@@ -225,7 +225,7 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         vm.prank(address(vault));
         (, uint256 expectedSwapFeePercentage) = DirectionalFeeHookExample(poolHooksContract)
             .onComputeDynamicSwapFeePercentage(
-                IBasePool.PoolSwapParams({
+                PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: daiExactAmountIn,
                     balancesScaled18: balancesScaled18,

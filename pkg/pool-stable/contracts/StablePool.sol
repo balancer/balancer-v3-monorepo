@@ -10,8 +10,11 @@ import {
     StablePoolImmutableData
 } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
+import {
+    IUnbalancedLiquidityInvariantRatioBounds
+} from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { SwapKind, PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
@@ -65,7 +68,12 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     // Minimum values help make the math well-behaved (i.e., the swap fee should overwhelm any rounding error).
     // Maximum values protect users by preventing permissioned actors from setting excessively high swap fees.
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 0.1e18; // 10%
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
+
+    // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
+    uint256 private constant _MIN_INVARIANT_RATIO = 0.6e18;
+    // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
+    uint256 private constant _MAX_INVARIANT_RATIO = 5e18;
 
     /// @dev Store amplification state.
     AmplificationState private _amplificationState;
@@ -94,6 +102,14 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     /// @dev Cannot stop an amplification update before it starts.
     error AmpUpdateNotStarted();
 
+    /**
+     * @notice Parameters used to deploy a new Stable Pool.
+     * @param name ERC20 token name
+     * @param symbol ERC20 token symbol
+     * @param amplificationParameter Controls the "flatness" of the invariant curve. higher values = lower slippage,
+     * and assumes prices are near parity. lower values = closer to the constant product curve (e.g., more like a
+     * weighted pool). This has higher slippage, and accommodates greater price volatility.
+     */
     struct NewPoolParams {
         string name;
         string symbol;
@@ -129,20 +145,6 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IBasePool
-    function computeInvariantRatio(
-        uint256[] memory newBalancesLiveScaled18,
-        uint256 currentInvariant
-    ) public view returns (uint256) {
-        (uint256 currentAmp, ) = _getAmplificationParameter();
-
-        return
-            FixedPoint.divDown(
-                StableMath.computeInvariant(currentAmp, newBalancesLiveScaled18),
-                currentInvariant
-            );
-    }
-
-    /// @inheritdoc IBasePool
     function computeBalance(
         uint256[] memory balancesLiveScaled18,
         uint256 tokenInIndex,
@@ -160,7 +162,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(IBasePool.PoolSwapParams memory request) public view onlyVault returns (uint256) {
+    function onSwap(PoolSwapParams memory request) public view onlyVault returns (uint256) {
         uint256 invariant = computeInvariant(request.balancesScaled18);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
@@ -313,9 +315,19 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
         return _MAX_SWAP_FEE_PERCENTAGE;
     }
 
+    /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
+    function getMinimumInvariantRatio() external pure returns (uint256) {
+        return _MIN_INVARIANT_RATIO;
+    }
+
+    /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
+    function getMaximumInvariantRatio() external pure returns (uint256) {
+        return _MAX_INVARIANT_RATIO;
+    }
+
     /// @inheritdoc IStablePool
     function getStablePoolDynamicData() external view returns (StablePoolDynamicData memory data) {
-        data.liveBalances = _vault.getCurrentLiveBalances(address(this));
+        data.balancesLiveScaled18 = _vault.getCurrentLiveBalances(address(this));
         (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
         data.staticSwapFeePercentage = _vault.getStaticSwapFeePercentage((address(this)));
         data.totalSupply = totalSupply();

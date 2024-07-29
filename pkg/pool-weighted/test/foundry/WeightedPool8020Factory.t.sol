@@ -43,6 +43,7 @@ contract WeightedPool8020FactoryTest is Test {
         tokenConfig[0].token = highToken;
         tokenConfig[1].token = lowToken;
 
+        // The factory will sort the tokens.
         return WeightedPool(factory.create(tokenConfig[0], tokenConfig[1], roleAccounts, DEFAULT_SWAP_FEE));
     }
 

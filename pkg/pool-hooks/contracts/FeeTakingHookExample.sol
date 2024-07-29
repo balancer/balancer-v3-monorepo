@@ -12,6 +12,7 @@ import {
     AddLiquidityKind,
     LiquidityManagement,
     RemoveLiquidityKind,
+    AfterSwapParams,
     SwapKind,
     TokenConfig,
     HookFlags
@@ -36,7 +37,7 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
-    // Percentages are represented as 18-decimal FP numbers, which have a maximum value of 1e18 (100%),
+    // Percentages are represented as 18-decimal FP numbers, which have a maximum value of 100e16 (100%),
     // so 60 bits are sufficient.
     uint64 public hookSwapFeePercentage;
     uint64 public addLiquidityHookFeePercentage;
