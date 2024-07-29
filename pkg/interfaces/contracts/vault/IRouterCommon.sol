@@ -4,10 +4,11 @@ pragma solidity ^0.8.24;
 
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
+/// @notice Interface for funtions shared between the `Router` and `BatchRouter`.
 interface IRouterCommon {
     /**
      * @notice Get the first sender which initialized the call to Router.
-     * @return address The sender address.
+     * @return address The sender address
      */
     function getSender() external view returns (address);
 

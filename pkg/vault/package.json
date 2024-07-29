@@ -26,7 +26,7 @@
     "prettier": "npx prettier --write --plugin=prettier-plugin-solidity 'contracts/**/*.sol' 'test/**/*.sol'",
     "test": "yarn test:hardhat && yarn test:forge",
     "test:hardhat": "hardhat test",
-    "test:forge": "forge test -vvv",
+    "test:forge": "./forge-test.sh",
     "test:forgeonly": "forge test -vvv --no-match-test Fork",
     "test:stress": "FOUNDRY_PROFILE=intense forge test -vvv",
     "coverage": "./coverage.sh",

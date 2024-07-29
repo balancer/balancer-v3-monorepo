@@ -8,7 +8,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
@@ -26,7 +25,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
     uint256 internal usdcIdx;
 
     // A bigger pool init amount is needed, so we can manipulate the token rates safely, without breaking the linear
-    // math of PoolMock (Linear math can return amounts out outside of pool balances since it does not have protections
+    // math of PoolMock (linear math can return amounts out outside of pool balances since it does not have protections
     // in the edge of the pricing curve).
     uint256 internal constant biggerPoolInitAmount = 1e6 * 1e18;
 
@@ -64,8 +63,8 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
         RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
 
-        // 1% of biggerPoolInitAmount, so we have flexibility to handle rate variations (Pool is linear, so edges are
-        // not limited and pool math can return a bigger amountOut than the pool balance).
+        // 1% of biggerPoolInitAmount, so we have flexibility to handle rate variations. The mock pool math is linear,
+        // so edges are not limited, and the pool math can return a bigger amountOut than the pool balance.
         uint256 exactAmountIn = biggerPoolInitAmount.mulUp(0.01e18);
         // Round down to favor vault.
         uint256 expectedAmountOut = exactAmountIn.mulDown(daiMockRate).divDown(usdcMockRate);
@@ -99,8 +98,8 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[daiIdx])).mockRate(daiMockRate);
         RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
 
-        // 1% of biggerPoolInitAmount, so we have flexibility to handle rate variations (Pool is linear, so edges are
-        // not limited and pool math can return a bigger amountOut than the pool balance).
+        // 1% of biggerPoolInitAmount, so we have flexibility to handle rate variations. The mock pool math is linear,
+        // so edges are not limited, and the pool math can return a bigger amountOut than the pool balance.
         uint256 exactAmountOut = biggerPoolInitAmount.mulUp(0.01e18);
         // Round up to favor vault.
         uint256 expectedAmountIn = exactAmountOut.mulUp(usdcMockRate).divUp(daiMockRate);

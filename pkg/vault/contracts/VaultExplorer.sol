@@ -5,7 +5,6 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVaultExplorer } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExplorer.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -14,7 +13,8 @@ import {
     PoolRoleAccounts,
     PoolConfig,
     HooksConfig,
-    PoolData
+    PoolData,
+    PoolSwapParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 contract VaultExplorer is IVaultExplorer {
@@ -211,7 +211,7 @@ contract VaultExplorer is IVaultExplorer {
     /// @inheritdoc IVaultExplorer
     function computeDynamicSwapFeePercentage(
         address pool,
-        IBasePool.PoolSwapParams memory swapParams
+        PoolSwapParams memory swapParams
     ) external view returns (bool success, uint256 dynamicSwapFee) {
         return _vault.computeDynamicSwapFeePercentage(pool, swapParams);
     }
@@ -287,7 +287,7 @@ contract VaultExplorer is IVaultExplorer {
     }
 
     /*******************************************************************************
-                                Wrapped Token Buffers
+                              Yield-bearing Token Buffers
     *******************************************************************************/
 
     /// @inheritdoc IVaultExplorer

@@ -15,7 +15,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { VaultGuard } from "./VaultGuard.sol";
 
 /**
- * @notice A fully ERC20-compatible token to be used as the base contract for Balancer Pools,
+ * @notice `BalancerPoolToken` is a fully ERC20-compatible token to be used as the base contract for Balancer Pools,
  * with all the data and implementation delegated to the ERC20Multitoken contract.
 
  * @dev Implementation of the ERC-20 Permit extension allowing approvals to be made via signatures, as defined in
