@@ -7,7 +7,6 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
-import { VaultFactory } from "../../../contracts/VaultFactory.sol";
 import { VaultAdminMock } from "../../../contracts/test/VaultAdminMock.sol";
 import { VaultExtensionMock } from "../../../contracts/test/VaultExtensionMock.sol";
 import { VaultMock } from "../../../contracts/test/VaultMock.sol";

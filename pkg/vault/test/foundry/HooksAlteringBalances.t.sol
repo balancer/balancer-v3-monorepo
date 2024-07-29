@@ -34,7 +34,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         config.shouldCallBeforeSwap = true;
         vault.manualSetHooksConfig(pool, config);
 
-        // Sets the pool address in the hook, so we can change pool balances inside the hook
+        // Sets the pool address in the hook, so we can change pool balances inside the hook.
         PoolHooksMock(poolHooksContract).setPool(pool);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
@@ -55,20 +55,20 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
 
     function testOnBeforeSwapHookAltersBalances() public {
         uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
-        // newBalances are raw and scaled18, because rate is 1 and decimals are 18
+        // `newBalances` are raw and scaled18, because rate is 1 and decimals are 18.
         uint256[] memory newBalances = [poolInitAmount / 2, poolInitAmount / 3].toMemoryArray();
 
-        // Change balances of the pool on before hook
+        // Change balances of the pool on before hook.
         PoolHooksMock(poolHooksContract).setChangePoolBalancesOnBeforeSwapHook(true, newBalances);
 
-        // Check that the swap gets updated balances that reflect the updated balance in the before hook
+        // Check that the swap gets updated balances that reflect the updated balance in the before hook.
         vm.prank(bob);
-        // Check if balances were not changed before onBeforeHook
+        // Check that balances were not changed before onBeforeHook.
         vm.expectCall(
             address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onBeforeSwap.selector,
-                IBasePool.PoolSwapParams({
+                PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: _swapAmount,
                     balancesScaled18: originalBalances,
@@ -85,7 +85,7 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
             pool,
             abi.encodeWithSelector(
                 IBasePool.onSwap.selector,
-                IBasePool.PoolSwapParams({
+                PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: _swapAmount,
                     balancesScaled18: newBalances,
@@ -106,15 +106,15 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         vault.manualSetHooksConfig(pool, config);
 
         uint256[] memory originalBalances = [poolInitAmount, poolInitAmount].toMemoryArray();
-        // newBalances are raw and scaled18, because rate is 1 and decimals are 18
+        // `newBalances` are raw and scaled18, because rate is 1 and decimals are 18.
         uint256[] memory newBalances = [poolInitAmount / 2, poolInitAmount / 3].toMemoryArray();
         uint256[] memory amountsIn = [defaultAmount, defaultAmount].toMemoryArray();
 
-        // Change balances of the pool on before hook
+        // Change balances of the pool on before hook.
         PoolHooksMock(poolHooksContract).setChangePoolBalancesOnBeforeAddLiquidityHook(true, newBalances);
 
         vm.prank(bob);
-        // Check if balances were not changed before onBeforeHook
+        // Check that balances were not changed before onBeforeHook.
         vm.expectCall(
             address(poolHooksContract),
             abi.encodeWithSelector(
@@ -152,20 +152,20 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         uint256[] memory amountsOut = [defaultAmount, defaultAmount].toMemoryArray();
 
         vm.prank(alice);
-        // Add liquidity to have BPTs to remove liquidity later
+        // Add liquidity to have BPTs to remove liquidity later.
         router.addLiquidityUnbalanced(pool, amountsOut, 0, false, bytes(""));
 
         uint256 balanceAfterLiquidity = poolInitAmount + defaultAmount;
 
         uint256[] memory originalBalances = [balanceAfterLiquidity, balanceAfterLiquidity].toMemoryArray();
         // We set balances to something related to balanceAfterLiquidity because bptAmountsOut is simpler to calculate.
-        // newBalances are raw and scaled18, because rate is 1 and decimals are 18
+        // `newBalances` are raw and scaled18, because rate is 1 and decimals are 18.
         uint256[] memory newBalances = [2 * balanceAfterLiquidity, 3 * balanceAfterLiquidity].toMemoryArray();
 
-        // Change balances of the pool on before hook
+        // Change balances of the pool on before hook.
         PoolHooksMock(poolHooksContract).setChangePoolBalancesOnBeforeRemoveLiquidityHook(true, newBalances);
 
-        // Check if balances were not changed before onBeforeHook
+        // Check if balances were not changed before onBeforeHook.
         vm.expectCall(
             address(poolHooksContract),
             abi.encodeWithSelector(

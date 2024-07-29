@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+/// @notice Library of helper functions used to convert between fixed size and dynamic arrays of various types.
 library ArrayHelpers {
     function toMemoryArray(address[1] memory array) internal pure returns (address[] memory) {
         address[] memory ret = new address[](1);

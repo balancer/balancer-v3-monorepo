@@ -4,35 +4,26 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
-
-import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
-import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    AddLiquidityKind,
+    RemoveLiquidityKind,
+    SwapKind,
+    HooksConfig
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
-import { PoolMock } from "../../../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../../../contracts/test/PoolHooksMock.sol";
 import { Router } from "../../../../contracts/Router.sol";
-import { RouterCommon } from "../../../../contracts/RouterCommon.sol";
-import { VaultMock } from "../../../../contracts/test/VaultMock.sol";
-import { VaultExtensionMock } from "../../../../contracts/test/VaultExtensionMock.sol";
-import { VaultMockDeployer } from "../../utils/VaultMockDeployer.sol";
 import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
 
 contract RouterMutationTest is BaseVaultTest {

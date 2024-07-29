@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
@@ -14,9 +12,7 @@ import { VaultAdmin } from "./VaultAdmin.sol";
 import { VaultExtension } from "./VaultExtension.sol";
 import { ProtocolFeeController } from "./ProtocolFeeController.sol";
 
-/**
- * @dev One-off factory to deploy the Vault at a specific address.
- */
+/// @notice One-off factory to deploy the Vault at a specific address.
 contract VaultFactory is Authentication {
     /// @dev Emitted when the Vault is deployed.
     event VaultCreated(address);
@@ -54,6 +50,7 @@ contract VaultFactory is Authentication {
      * @notice Deploys the Vault.
      * @dev The Vault can only be deployed once. Therefore, this function is permissioned to ensure that it is
      * deployed to the right address.
+     *
      * @param salt Salt used to create the vault. See `getDeploymentAddress`.
      * @param targetAddress Expected Vault address. The function will revert if the given salt does not deploy the
      * Vault to the target address.
@@ -70,9 +67,7 @@ contract VaultFactory is Authentication {
         }
 
         VaultAdmin vaultAdmin = new VaultAdmin(IVault(vaultAddress), _pauseWindowDuration, _bufferPeriodDuration);
-
         VaultExtension vaultExtension = new VaultExtension(IVault(vaultAddress), vaultAdmin);
-
         ProtocolFeeController feeController = new ProtocolFeeController(IVault(vaultAddress));
 
         address deployedAddress = _create(abi.encode(vaultExtension, _authorizer, feeController), salt);
