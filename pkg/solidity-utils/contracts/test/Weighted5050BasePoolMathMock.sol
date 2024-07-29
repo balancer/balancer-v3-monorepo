@@ -4,9 +4,9 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
+import { WeightedMath } from "../math/WeightedMath.sol";
 import "../math/FixedPoint.sol";
 import "./BasePoolMathMock.sol";
 
