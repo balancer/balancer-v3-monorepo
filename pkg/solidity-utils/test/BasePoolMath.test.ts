@@ -15,15 +15,15 @@ import {
   computeRemoveLiquiditySingleTokenExactIn,
 } from '@balancer-labs/v3-helpers/src/math/base';
 
-import { BasePoolMathMock } from '../typechain-types/contracts/test/BasePoolMathMock';
+import { LinearBasePoolMathMock } from '../typechain-types/contracts/test/LinearBasePoolMathMock';
 
 const SWAP_FEE = fp(0.01);
 
 describe('BasePoolMath', function () {
-  let math: BasePoolMathMock;
+  let math: LinearBasePoolMathMock;
 
   sharedBeforeEach('deploy', async function () {
-    math = await deploy('BasePoolMathMock');
+    math = await deploy('LinearBasePoolMathMock');
   });
 
   it('test computeProportionalAmountsIn', async () => {
