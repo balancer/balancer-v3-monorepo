@@ -360,8 +360,4 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         // This will vary with the swap fee.
         assertApproxEqAbs(bptAmountOut, expectedBptAmountOut, BPT_DELTA, "Wrong BPT amount out");
     }
-
-    function less(uint256 amount, uint256 base) internal pure returns (uint256) {
-        return (amount * (base - 1)) / base;
-    }
 }
