@@ -54,15 +54,24 @@ export const bnSum = (bnArr: BigNumberish[]): bigint => {
 export const arrayAdd = (arrA: BigNumberish[], arrB: BigNumberish[]): bigint[] =>
   arrA.map((a, i) => bn(a) + bn(arrB[i]));
 
-export const arrayFpMul = (arrA: BigNumberish[], arrB: BigNumberish[]): bigint[] =>
-  arrA.map((a, i) => fpMul(a, arrB[i]));
+export const arrayFpMulDown = (arrA: BigNumberish[], arrB: BigNumberish[]): bigint[] =>
+  arrA.map((a, i) => fpMulDown(a, arrB[i]));
 
 export const arraySub = (arrA: BigNumberish[], arrB: BigNumberish[]): bigint[] =>
   arrA.map((a, i) => bn(a) - bn(arrB[i]));
 
-export const fpMul = (a: BigNumberish, b: BigNumberish): bigint => (bn(a) * bn(b)) / FP_SCALING_FACTOR;
+export const fpMulDown = (a: BigNumberish, b: BigNumberish): bigint => (bn(a) * bn(b)) / FP_SCALING_FACTOR;
 
-export const fpDiv = (a: BigNumberish, b: BigNumberish): bigint => (bn(a) * FP_SCALING_FACTOR) / bn(b);
+export const fpDivDown = (a: BigNumberish, b: BigNumberish): bigint => (bn(a) * FP_SCALING_FACTOR) / bn(b);
+
+export const fpDivUp = (a: BigNumberish, b: BigNumberish): bigint => fpMulDivUp(bn(a), FP_SCALING_FACTOR, bn(b));
+
+export const fpMulUp = (a: BigNumberish, b: BigNumberish): bigint => fpMulDivUp(bn(a), bn(b), FP_SCALING_FACTOR);
+
+export const fpMulDivUp = (a: bigint, b: bigint, c: bigint) => {
+  const product = a * b;
+  return product === 0n ? 0n : (product - 1n) / c + 1n;
+};
 
 // ceil(x/y) == (x + y - 1) / y
 export const divCeil = (x: bigint, y: bigint): bigint => (x + y - 1n) / y;
