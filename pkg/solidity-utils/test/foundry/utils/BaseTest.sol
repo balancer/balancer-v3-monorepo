@@ -142,7 +142,7 @@ abstract contract BaseTest is Test, GasSnapshot {
         return scalingFactor;
     }
 
-    /// @dev Decrease `amount` proportional to `base`; e.g., if base = 100, decrease by 1%; if 1000, 0.1%, etc.
+    /// @dev Returns `amount - amount/base`; e.g., if base = 100, decrease `amount` by 1%; if 1000, 0.1%, etc.
     function less(uint256 amount, uint256 base) internal pure returns (uint256) {
         return (amount * (base - 1)) / base;
     }
