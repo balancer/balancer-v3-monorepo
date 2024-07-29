@@ -32,6 +32,7 @@ contract PoolDataTest is BaseVaultTest {
         wstETHRateProvider = new RateProviderMock();
         daiRateProvider = new RateProviderMock();
 
+        // Providers will be sorted along with the tokens by `buildTokenConfig`.
         rateProviders[0] = daiRateProvider;
         rateProviders[1] = wstETHRateProvider;
 

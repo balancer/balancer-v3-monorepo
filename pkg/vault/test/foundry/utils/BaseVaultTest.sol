@@ -91,13 +91,13 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Default rate for the rate provider mock.
     uint256 internal mockRate = 2e18;
     // Default swap fee percentage.
-    uint256 internal swapFeePercentage = 0.01e18; // 1%
+    uint256 internal swapFeePercentage = 1e16; // 1%
     // Default protocol swap fee percentage.
-    uint64 internal protocolSwapFeePercentage = 0.50e18; // 50%
+    uint64 internal protocolSwapFeePercentage = 50e16; // 50%
 
     // Applies to Weighted Pools.
     uint256 constant MIN_SWAP_FEE = 1e12; // 0.00001%
-    uint256 constant MAX_SWAP_FEE = 0.1e18; // 10%
+    uint256 constant MAX_SWAP_FEE = 10e16; // 10%
     uint256 constant MIN_TRADE_AMOUNT = 1e6;
 
     function setUp() public virtual override {
