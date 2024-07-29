@@ -253,10 +253,6 @@ contract StablePoolTest is BaseVaultTest {
         assertEq(actualRate, expectedRate, "Wrong rate after addLiquidity");
     }
 
-    function less(uint256 amount, uint256 base) internal pure returns (uint256) {
-        return (amount * (base - 1)) / base;
-    }
-
     function testAddLiquidityUnbalanced() public {
         authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
         vm.prank(alice);
