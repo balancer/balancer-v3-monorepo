@@ -39,7 +39,7 @@ contract PoolInfoTest is BaseTest {
         vm.mockCall(
             address(poolInfo),
             abi.encodeWithSelector(ISwapFeePercentageBounds.getMaximumSwapFeePercentage.selector),
-            abi.encode(1e18)
+            abi.encode(100e16)
         );
         vault.manualRegisterPool(address(poolInfo), poolTokens);
     }

@@ -46,7 +46,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
                 "ERC20 Pool",
                 "ERC20POOL",
                 vault.buildTokenConfig(tokens.asIERC20()),
-                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                [uint256(50e16), uint256(50e16)].toMemoryArray(),
                 roleAccounts,
                 DEFAULT_SWAP_FEE,
                 poolHooksContract,

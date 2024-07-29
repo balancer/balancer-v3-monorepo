@@ -42,7 +42,7 @@ contract GetBptRateTest is BaseVaultTest {
         PoolRoleAccounts memory roleAccounts;
 
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Weighted Pool v1");
-        weights = [uint256(0.50e18), uint256(0.50e18)].toMemoryArray();
+        weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         RateProviderMock rateProviderDai = new RateProviderMock();
         rateProviderDai.mockRate(daiMockRate);
