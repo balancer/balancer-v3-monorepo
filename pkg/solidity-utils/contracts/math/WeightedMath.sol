@@ -32,7 +32,7 @@ library WeightedMath {
 
     // A minimum normalized weight imposes a maximum weight ratio. We need this due to limitations in the
     // implementation of the power function, as these ratios are often exponents.
-    uint256 internal constant _MIN_WEIGHT = 0.01e18;
+    uint256 internal constant _MIN_WEIGHT = 1e16; // 1%
 
     // Pool limits that arise from limitations in the fixed point power function (and the imposed 1:100 maximum weight
     // ratio).
