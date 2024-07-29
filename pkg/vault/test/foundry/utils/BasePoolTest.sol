@@ -10,10 +10,8 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
-
 import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
 
 import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
@@ -137,7 +135,7 @@ abstract contract BasePoolTest is BaseVaultTest {
 
         uint256[] memory minAmountsOut = new uint256[](poolTokens.length);
         for (uint256 i = 0; i < poolTokens.length; ++i) {
-            minAmountsOut[i] = _less(tokenAmounts[i], 1e4);
+            minAmountsOut[i] = tokenAmounts[i] - DELTA;
         }
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
@@ -205,7 +203,7 @@ abstract contract BasePoolTest is BaseVaultTest {
             tokenIn,
             tokenOut,
             tokenAmountIn,
-            _less(tokenAmountOut, 1e3),
+            tokenAmountOut - DELTA,
             MAX_UINT256,
             false,
             bytes("")
@@ -287,9 +285,5 @@ abstract contract BasePoolTest is BaseVaultTest {
         expectedRate = invariantAfter.divDown(totalSupply);
         actualRate = IRateProvider(pool).getRate();
         assertEq(actualRate, expectedRate, "Wrong rate after addLiquidity");
-    }
-
-    function _less(uint256 amount, uint256 base) private pure returns (uint256) {
-        return (amount * (base - 1)) / base;
     }
 }
