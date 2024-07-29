@@ -41,16 +41,23 @@ contract StablePoolTest is BaseVaultTest {
     StablePool internal stablePool;
     uint256 internal bptAmountOut;
 
+    uint256 daiIdx;
+    uint256 usdcIdx;
+
     InputHelpersMock internal immutable inputHelpersMock = new InputHelpersMock();
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
     function createPool() internal override returns (address) {
         factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+
         TokenConfig[] memory tokens = new TokenConfig[](2);
         PoolRoleAccounts memory roleAccounts;
+        // Tokens will be sorted going into the factory.
         tokens[0].token = IERC20(dai);
         tokens[1].token = IERC20(usdc);
 
@@ -115,8 +122,8 @@ contract StablePoolTest is BaseVaultTest {
 
         // Tokens are deposited to the pool
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], TOKEN_AMOUNT, "Pool: Wrong DAI balance");
-        assertEq(balances[1], TOKEN_AMOUNT, "Pool: Wrong USDC balance");
+        assertEq(balances[daiIdx], TOKEN_AMOUNT, "Pool: Wrong DAI balance");
+        assertEq(balances[usdcIdx], TOKEN_AMOUNT, "Pool: Wrong USDC balance");
 
         // should mint correct amount of BPT tokens
         // Account for the precision loss
@@ -139,8 +146,8 @@ contract StablePoolTest is BaseVaultTest {
 
         // Tokens are deposited to the pool
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], TOKEN_AMOUNT * 2, "Pool: Wrong DAI balance");
-        assertEq(balances[1], TOKEN_AMOUNT * 2, "Pool: Wrong USDC balance");
+        assertEq(balances[daiIdx], TOKEN_AMOUNT * 2, "Pool: Wrong DAI balance");
+        assertEq(balances[usdcIdx], TOKEN_AMOUNT * 2, "Pool: Wrong USDC balance");
 
         // should mint correct amount of BPT tokens
         assertApproxEqAbs(stablePool.balanceOf(bob), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
@@ -182,12 +189,12 @@ contract StablePoolTest is BaseVaultTest {
 
         // Tokens are deposited to the pool
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-        assertApproxEqAbs(balances[0], TOKEN_AMOUNT, DELTA, "Pool: Wrong DAI balance");
-        assertApproxEqAbs(balances[1], TOKEN_AMOUNT, DELTA, "Pool: Wrong USDC balance");
+        assertApproxEqAbs(balances[daiIdx], TOKEN_AMOUNT, DELTA, "Pool: Wrong DAI balance");
+        assertApproxEqAbs(balances[usdcIdx], TOKEN_AMOUNT, DELTA, "Pool: Wrong USDC balance");
 
         // amountsOut are correct
-        assertApproxEqAbs(amountsOut[0], TOKEN_AMOUNT, DELTA, "Wrong DAI AmountOut");
-        assertApproxEqAbs(amountsOut[1], TOKEN_AMOUNT, DELTA, "Wrong USDC AmountOut");
+        assertApproxEqAbs(amountsOut[daiIdx], TOKEN_AMOUNT, DELTA, "Wrong DAI AmountOut");
+        assertApproxEqAbs(amountsOut[usdcIdx], TOKEN_AMOUNT, DELTA, "Wrong USDC AmountOut");
 
         // should mint correct amount of BPT tokens
         assertEq(stablePool.balanceOf(bob), 0, "LP: Wrong BPT balance");
@@ -216,8 +223,6 @@ contract StablePoolTest is BaseVaultTest {
         assertEq(dai.balanceOf(address(vault)), TOKEN_AMOUNT + TOKEN_AMOUNT_IN, "Vault: Wrong DAI balance");
 
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-
-        (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
         assertEq(balances[daiIdx], TOKEN_AMOUNT + TOKEN_AMOUNT_IN, "Pool: Wrong DAI balance");
         assertEq(balances[usdcIdx], TOKEN_AMOUNT - amountCalculated, "Pool: Wrong USDC balance");

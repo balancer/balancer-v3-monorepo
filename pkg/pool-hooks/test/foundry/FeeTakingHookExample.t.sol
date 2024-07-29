@@ -222,7 +222,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
             BalancerPoolToken(pool).totalSupply(),
             expectedBptOut
         );
-        uint256 actualAmountIn = actualAmountsIn[0];
+        uint256 actualAmountIn = actualAmountsIn[daiIdx]; // Proportional, so doesn't matter which token
         uint256 hookFee = actualAmountIn.mulDown(hookFeePercentage);
 
         uint256[] memory expectedBalances = [poolInitAmount + actualAmountIn, poolInitAmount + actualAmountIn]
@@ -278,7 +278,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
             BalancerPoolToken(pool).totalSupply(),
             expectedBptIn
         );
-        uint256 actualAmountOut = actualAmountsOut[0];
+        uint256 actualAmountOut = actualAmountsOut[usdcIdx];
         uint256 hookFee = actualAmountOut.mulDown(hookFeePercentage);
 
         uint256[] memory expectedBalances = [2 * poolInitAmount - actualAmountOut, 2 * poolInitAmount - actualAmountOut]
