@@ -3,9 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { TokenInfo, PoolRoleAccounts, PoolData, PoolConfig, HooksConfig } from "./VaultTypes.sol";
-
-import { IBasePool } from "./IBasePool.sol";
+import { TokenInfo, PoolRoleAccounts, PoolData, PoolConfig, PoolSwapParams, HooksConfig } from "./VaultTypes.sol";
 
 interface IVaultExplorer {
     /***************************************************************************
@@ -278,7 +276,7 @@ interface IVaultExplorer {
      */
     function computeDynamicSwapFeePercentage(
         address pool,
-        IBasePool.PoolSwapParams memory swapParams
+        PoolSwapParams memory swapParams
     ) external view returns (bool, uint256);
 
     /*******************************************************************************
@@ -367,7 +365,7 @@ interface IVaultExplorer {
     function collectAggregateFees(address pool) external;
 
     /*******************************************************************************
-                                Wrapped Token Buffers
+                              Yield-bearing Token Buffers
     *******************************************************************************/
 
     /**

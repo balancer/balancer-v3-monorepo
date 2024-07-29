@@ -4,13 +4,21 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
-import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
+import {
+    TokenConfig,
+    TokenInfo,
+    TokenType,
+    FEE_SCALING_FACTOR,
+    MAX_FEE_PERCENTAGE
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -24,17 +32,17 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     using SafeCast for *;
     using ArrayHelpers for *;
 
-    // The balance and live balance are stored in the same bytes32 word, each uses 128 bits
+    // The balance and live balance are stored in the same bytes32 word, each uses 128 bits.
     uint256 private constant _MAX_RAW_BALANCE = 2 ** 128 - 1;
     uint256 private constant MAX_TEST_SWAP_FEE = 10e16; // 10%
     uint256 private constant MIN_TEST_SWAP_FEE = 1e10; // 0.0001%
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-        // Generates a "random" address for a non-existent pool
+        // Generates a "random" address for a non-existent pool.
         pool = address(bytes20(keccak256(abi.encode(block.timestamp))));
 
-        // Allow manual pool registration
+        // Allow manual pool registration.
         vm.mockCall(
             pool,
             abi.encodeWithSelector(ISwapFeePercentageBounds.getMinimumSwapFeePercentage.selector),
@@ -81,12 +89,12 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             IERC20[] memory newTokens,
             TokenInfo[] memory newTokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory lastLiveBalances
+            uint256[] memory lastBalancesLiveScaled18
         ) = vault.getPoolTokenInfo(pool);
         assertEq(newTokens.length, 3);
         assertEq(newTokenInfo.length, 3);
         assertEq(balancesRaw.length, 3);
-        assertEq(lastLiveBalances.length, 3);
+        assertEq(lastBalancesLiveScaled18.length, 3);
         for (uint256 i = 0; i < newTokens.length; ++i) {
             assertEq(
                 address(newTokens[i]),
@@ -116,9 +124,9 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             );
 
             assertEq(
-                lastLiveBalances[i],
+                lastBalancesLiveScaled18[i],
                 originalLastLiveBalances[i],
-                string.concat("token", Strings.toString(i), "lastLiveBalances should match set pool balance")
+                string.concat("token", Strings.toString(i), "lastBalancesLiveScaled18 should match set pool balance")
             );
         }
     }
@@ -193,7 +201,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens);
         vault.manualSetPoolTokenInfo(pool, tokenConfig);
 
-        // decimalScalingFactors depends on balances array (it's used gto calculate number of tokens)
+        // decimalScalingFactors depends on balances array (it's used gto calculate number of tokens).
         uint256[] memory originalBalancesRaw = new uint256[](3);
         originalBalancesRaw[0] = balance1;
         originalBalancesRaw[1] = balance2;
@@ -209,13 +217,13 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             IERC20[] memory newTokens,
             TokenInfo[] memory newTokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory lastLiveBalances
+            uint256[] memory lastBalancesLiveScaled18
         ) = vault.getPoolTokenInfo(pool);
 
         assertEq(newTokens.length, 3);
         assertEq(newTokenInfo.length, 3);
         assertEq(balancesRaw.length, 3);
-        assertEq(lastLiveBalances.length, 3);
+        assertEq(lastBalancesLiveScaled18.length, 3);
 
         for (uint256 i = 0; i < newTokens.length; ++i) {
             assertEq(
@@ -245,7 +253,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
                 string.concat("token", Strings.toString(i), "balance should match set pool balance")
             );
             assertEq(
-                lastLiveBalances[i],
+                lastBalancesLiveScaled18[i],
                 originalLastLiveBalances[i],
                 string.concat("decimalScalingFactors of token", Strings.toString(i), "should match tokenDecimalDiffs")
             );
@@ -387,7 +395,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
             abi.encode(MAX_FEE_PERCENTAGE + 10)
         );
 
-        // Also revert if it's above the maximum limit
+        // Also revert if it's above the maximum limit.
         vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
         vault.manualSetStaticSwapFeePercentage(pool, MAX_FEE_PERCENTAGE + 1);
     }

@@ -4,8 +4,6 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -65,7 +63,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         uint256 swapFeeAmount = defaultAmount / 200;
 
-        // protocol swap fee = (defaultAmount * 1% / 2 ) * 50%
+        // Protocol swap fee = (defaultAmount * 1% / 2 ) * 50%.
         protocolSwapFees[daiIdx] = swapFeeAmount / 2;
         poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2;
 
@@ -75,7 +73,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         vm.prank(alice);
         bptAmountOut = router.addLiquidityUnbalanced(pool, amountsIn, expectedBptAmountOut, false, bytes(""));
 
-        // should mint correct amount of BPT tokens
+        // Should mint correct amount of BPT tokens.
         assertEq(bptAmountOut, expectedBptAmountOut, "Invalid amount of BPT");
     }
 
@@ -99,7 +97,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2);
 
-        // protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
+        // Protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
         protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1; // mulUp
         poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2 + 1; // mulUp
 
@@ -116,7 +114,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         (amountsIn, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountIn);
 
-        // should mint correct amount of BPT tokens
+        // Should mint correct amount of BPT tokens.
         assertEq(bptAmountOut, defaultAmount, "Invalid amount of BPT");
     }
 
@@ -142,7 +140,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         uint256 swapFeeAmount = defaultAmount / 100;
 
-        // protocol swap fee = 2 * (defaultAmount * 1% / 2 ) * 50%
+        // Protocol swap fee = 2 * (defaultAmount * 1% / 2 ) * 50%
         protocolSwapFees[daiIdx] = swapFeeAmount / 2;
         poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2;
 
@@ -157,8 +155,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         (amountsOut, ) = router.getSingleInputArrayAndTokenIndex(pool, dai, amountOut);
 
-        // amountsOut are correct
-        // 2 * amount - (amount * swapFee%)
+        // Ensure `amountsOut` are correct.
+        // 2 * amount - (amount * swapFee%).
         assertEq(amountsOut[daiIdx], defaultAmount * 2 - defaultAmount / 100, "Wrong AmountOut[DAI]");
         assertEq(amountsOut[usdcIdx], 0, "AmountOut[USDC] > 0");
     }
@@ -184,7 +182,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2);
 
-        // protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
+        // Protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
         protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1; // mulUp
         poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2 + 1; // mulUp
 
@@ -221,7 +219,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         Balances memory balancesAfter = getBalances(alice);
 
-        // Tokens are transferred from the user to the vault
+        // Tokens are transferred from the user to the vault.
         assertEq(
             balancesAfter.userTokens[0],
             balancesBefore.userTokens[0] - amountsIn[0],
@@ -233,7 +231,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             "Add - User balance: token 1"
         );
 
-        // Tokens are now in the vault / pool
+        // Tokens are now in the vault / pool.
         assertEq(
             balancesAfter.poolTokens[0],
             balancesBefore.poolTokens[0] + amountsIn[0] - protocolSwapFees[0] - poolCreatorFees[0],
@@ -246,7 +244,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             "Add - Pool balance: token 1"
         );
 
-        // Protocol + creator fees are charged
+        // Protocol + creator fees are charged.
         assertEq(
             protocolSwapFees[daiIdx] + poolCreatorFees[daiIdx],
             vault.manualGetAggregateSwapFeeAmount(pool, dai),
@@ -267,7 +265,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             assertTrue(poolCreatorFees[1] > 0);
         }
 
-        // User now has BPT
+        // User now has BPT.
         assertEq(balancesBefore.userBpt, 0, "Add - User BPT balance before");
         assertEq(balancesAfter.userBpt, bptAmountOut, "Add - User BPT balance after");
     }
@@ -298,7 +296,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         Balances memory balancesAfter = getBalances(alice);
 
-        // Tokens are transferred back to user
+        // Tokens are transferred back to user.
         assertEq(
             balancesAfter.userTokens[0],
             balancesBefore.userTokens[0] + amountsOut[0],
@@ -310,7 +308,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             "Remove - User balance: token 1"
         );
 
-        // Tokens are no longer in the vault / pool
+        // Tokens are no longer in the vault / pool.
         assertEq(
             balancesAfter.poolTokens[0],
             balancesBefore.poolTokens[0] - amountsOut[0] - protocolSwapFees[0] - poolCreatorFees[0],
@@ -331,7 +329,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             assertTrue(poolCreatorFees[1] > 0);
         }
 
-        // User has burnt the correct amount of BPT
+        // User has burnt the correct amount of BPT.
         assertEq(balancesBefore.userBpt - balancesAfter.userBpt, bptAmountIn, "Wrong amount of BPT burned");
     }
 }
