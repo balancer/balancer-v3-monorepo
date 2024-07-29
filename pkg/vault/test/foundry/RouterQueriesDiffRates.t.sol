@@ -65,7 +65,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         // 1% of biggerPoolInitAmount, so we have flexibility to handle rate variations. The mock pool math is linear,
         // so edges are not limited, and the pool math can return a bigger amountOut than the pool balance.
-        uint256 exactAmountIn = biggerPoolInitAmount.mulUp(0.01e18);
+        uint256 exactAmountIn = biggerPoolInitAmount.mulUp(1e16);
         // Round down to favor vault.
         uint256 expectedAmountOut = exactAmountIn.mulDown(daiMockRate).divDown(usdcMockRate);
 
@@ -100,7 +100,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         // 1% of biggerPoolInitAmount, so we have flexibility to handle rate variations. The mock pool math is linear,
         // so edges are not limited, and the pool math can return a bigger amountOut than the pool balance.
-        uint256 exactAmountOut = biggerPoolInitAmount.mulUp(0.01e18);
+        uint256 exactAmountOut = biggerPoolInitAmount.mulUp(1e16);
         // Round up to favor vault.
         uint256 expectedAmountIn = exactAmountOut.mulUp(usdcMockRate).divUp(daiMockRate);
 
@@ -134,7 +134,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
 
         // 1% of biggerPoolInitAmount, arbitrarily.
-        uint256 exactBptAmountOut = biggerPoolInitAmount.mulUp(0.01e18);
+        uint256 exactBptAmountOut = biggerPoolInitAmount.mulUp(1e16);
         // Proportional add is proportional to pool balance, in terms of raw values. So, since the pool has the same
         // balance for USDC and DAI, and the invariant of PoolMock is linear (the sum of both balances),
         // the expectedAmountsIn is `exactBptAmountOut / 2`.
@@ -176,7 +176,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
 
         // DAI is 1% of biggerPoolInitAmount, USDC is 0.5% of biggerPoolInitAmount, arbitrarily.
-        uint256[] memory exactAmountsInRaw = [biggerPoolInitAmount.mulUp(0.01e18), biggerPoolInitAmount.mulUp(0.005e18)]
+        uint256[] memory exactAmountsInRaw = [biggerPoolInitAmount.mulUp(1e16), biggerPoolInitAmount.mulUp(0.005e18)]
             .toMemoryArray();
         uint256[] memory exactAmountsInScaled18 = new uint256[](2);
         exactAmountsInScaled18[daiIdx] = exactAmountsInRaw[daiIdx].mulUp(daiMockRate);
@@ -216,7 +216,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
 
         // 1% of biggerPoolInitAmount, arbitrarily.
-        uint256 exactBptAmountOut = biggerPoolInitAmount.mulUp(0.01e18);
+        uint256 exactBptAmountOut = biggerPoolInitAmount.mulUp(1e16);
         (uint256 expectedAmountInScaled18, ) = BasePoolMath.computeAddLiquiditySingleTokenExactOut(
             vault.getCurrentLiveBalances(pool),
             daiIdx,
@@ -255,7 +255,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
 
         // 1% of biggerPoolInitAmount, arbitrarily.
-        uint256 expectedBptAmountOut = biggerPoolInitAmount.mulUp(0.01e18);
+        uint256 expectedBptAmountOut = biggerPoolInitAmount.mulUp(1e16);
         // Arbitrary numbers.
         uint256[] memory maxAmountsIn = [expectedBptAmountOut.divUp(3e18), expectedBptAmountOut.divUp(5e18)]
             .toMemoryArray();
@@ -303,7 +303,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
 
         // 1% of biggerPoolInitAmount, arbitrarily.
-        uint256 exactBptAmountIn = biggerPoolInitAmount.mulUp(0.01e18);
+        uint256 exactBptAmountIn = biggerPoolInitAmount.mulUp(1e16);
         // Proportional remove is proportional to pool balance, in terms of raw values. So, since the pool has the same
         // balance for USDC and DAI, and the invariant of PoolMock is linear (the sum of both balances),
         // the expectedAmountsOut is `exactBptAmountIn / 2`.
@@ -343,7 +343,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
 
         // 1% of biggerPoolInitAmount, arbitrarily.
-        uint256 exactBptAmountIn = biggerPoolInitAmount.mulUp(0.01e18);
+        uint256 exactBptAmountIn = biggerPoolInitAmount.mulUp(1e16);
         (uint256 expectedAmountOutScaled18, ) = BasePoolMath.computeRemoveLiquiditySingleTokenExactIn(
             vault.getCurrentLiveBalances(pool),
             daiIdx,
@@ -385,7 +385,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
 
         // 1% of biggerPoolInitAmount, arbitrarily.
-        uint256 exactAmountOut = biggerPoolInitAmount.mulUp(0.01e18);
+        uint256 exactAmountOut = biggerPoolInitAmount.mulUp(1e16);
         (uint256 expectedBptAmountIn, ) = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
             vault.getCurrentLiveBalances(pool),
             daiIdx,
@@ -424,7 +424,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
 
         // 1% of biggerPoolInitAmount, arbitrarily.
-        uint256 expectedBptAmountIn = biggerPoolInitAmount.mulUp(0.01e18);
+        uint256 expectedBptAmountIn = biggerPoolInitAmount.mulUp(1e16);
         // Arbitrary numbers.
         uint256[] memory minAmountsOut = [expectedBptAmountIn.divUp(3e18), expectedBptAmountIn.divUp(5e18)]
             .toMemoryArray();
@@ -472,7 +472,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         RateProviderMock(address(rateProviders[usdcIdx])).mockRate(usdcMockRate);
 
         // 1% of biggerPoolInitAmount, arbitrarily.
-        uint256 exactBptAmountIn = biggerPoolInitAmount.mulUp(0.01e18);
+        uint256 exactBptAmountIn = biggerPoolInitAmount.mulUp(1e16);
         // Recovery remove is proportional to pool balance, in terms of raw values. So, since the pool has the same
         // balance for USDC and DAI, and the invariant of PoolMock is linear (the sum of both balances),
         // the expectedAmountsOut is `exactBptAmountIn / 2`.

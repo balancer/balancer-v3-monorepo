@@ -82,7 +82,7 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
     function _deployAndInitializeWeightedPool(bool supportsDonation) private returns (address) {
         PoolRoleAccounts memory roleAccounts;
         IERC20[] memory tokens = [address(dai), address(usdc)].toMemoryArray().asIERC20();
-        uint256[] memory weights = [uint256(0.50e18), uint256(0.50e18)].toMemoryArray();
+        uint256[] memory weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         address weightedPool = weightedPoolFactory.create(
             supportsDonation ? "Pool With Donation" : "Pool Without Donation",

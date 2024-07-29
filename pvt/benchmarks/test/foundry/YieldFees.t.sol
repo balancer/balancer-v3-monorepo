@@ -75,7 +75,7 @@ contract YieldFeesTest is BaseVaultTest {
                     rateProviders,
                     yieldFeeFlags
                 ),
-                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                [uint256(50e16), uint256(50e16)].toMemoryArray(),
                 poolRoleAccounts,
                 swapFee,
                 address(0),

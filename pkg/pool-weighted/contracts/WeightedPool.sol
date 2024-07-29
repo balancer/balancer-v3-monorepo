@@ -36,7 +36,11 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     // Minimum values help make the math well-behaved (i.e., the swap fee should overwhelm any rounding error).
     // Maximum values protect users by preventing permissioned actors from setting excessively high swap fees.
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 0.1e18; // 10%
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
+
+    // A minimum normalized weight imposes a maximum weight ratio. We need this due to limitations in the
+    // implementation of the fixed point power function, as these ratios are often exponents.
+    uint256 private constant _MIN_WEIGHT = 1e16; // 1%
 
     uint256 private immutable _totalTokens;
 
@@ -67,35 +71,34 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
         NewPoolParams memory params,
         IVault vault
     ) BalancerPoolToken(vault, params.name, params.symbol) PoolInfo(vault) Version(params.version) {
-        uint256 numTokens = params.numTokens;
-        InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
-
-        _totalTokens = numTokens;
+        _totalTokens = params.numTokens;
+        InputHelpers.ensureInputLengthMatch(_totalTokens, params.normalizedWeights.length);
 
         // Ensure each normalized weight is above the minimum
         uint256 normalizedSum = 0;
-        for (uint8 i = 0; i < numTokens; ++i) {
+        for (uint8 i = 0; i < _totalTokens; ++i) {
             uint256 normalizedWeight = params.normalizedWeights[i];
 
-            if (normalizedWeight < WeightedMath._MIN_WEIGHT) {
+            if (normalizedWeight < _MIN_WEIGHT) {
                 revert MinWeight();
             }
             normalizedSum = normalizedSum + normalizedWeight;
+
+            // prettier-ignore
+            if (i == 0) { _normalizedWeight0 = normalizedWeight; }
+            else if (i == 1) { _normalizedWeight1 = normalizedWeight; }
+            else if (i == 2) { _normalizedWeight2 = normalizedWeight; }
+            else if (i == 3) { _normalizedWeight3 = normalizedWeight; }
+            else if (i == 4) { _normalizedWeight4 = normalizedWeight; }
+            else if (i == 5) { _normalizedWeight5 = normalizedWeight; }
+            else if (i == 6) { _normalizedWeight6 = normalizedWeight; }
+            else if (i == 7) { _normalizedWeight7 = normalizedWeight; }
         }
+
         // Ensure that the normalized weights sum to ONE
         if (normalizedSum != FixedPoint.ONE) {
             revert NormalizedWeightInvariant();
         }
-
-        // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _normalizedWeight0 = params.normalizedWeights[0];
-        _normalizedWeight1 = params.normalizedWeights[1];
-        _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
-        _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
-        _normalizedWeight4 = numTokens > 4 ? params.normalizedWeights[4] : 0;
-        _normalizedWeight5 = numTokens > 5 ? params.normalizedWeights[5] : 0;
-        _normalizedWeight6 = numTokens > 6 ? params.normalizedWeights[6] : 0;
-        _normalizedWeight7 = numTokens > 7 ? params.normalizedWeights[7] : 0;
     }
 
     /// @inheritdoc IBasePool
