@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
@@ -108,9 +109,10 @@ contract WeightedPoolTest is BasePoolTest {
             poolHooksContract,
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity
-            ZERO_BYTES32
+            "Low fee pool"
         );
 
+        vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
         factoryMock.registerTestPool(lowFeeWeightedPool, tokenConfigs);
     }
 }
