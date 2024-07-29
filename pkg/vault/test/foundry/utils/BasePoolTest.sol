@@ -14,7 +14,7 @@ import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/tes
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
 
-import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
+import { BaseVaultTest } from "./BaseVaultTest.sol";
 
 abstract contract BasePoolTest is BaseVaultTest {
     using FixedPoint for uint256;
