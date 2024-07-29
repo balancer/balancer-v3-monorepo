@@ -2,31 +2,16 @@
 
 pragma solidity ^0.8.24;
 
-import "../math/FixedPoint.sol";
-import "../math/WeightedMath.sol";
 import "../math/BasePoolMath.sol";
 
-contract BasePoolMathMock {
-    using FixedPoint for uint256;
+abstract contract BasePoolMathMock {
+    function computeInvariant(uint256[] memory balances) public pure virtual returns (uint256);
 
-    function computeInvariantMock(uint256[] memory balances) public pure returns (uint256) {
-        // inv = x + y
-        uint256 invariant;
-        for (uint256 i = 0; i < balances.length; ++i) {
-            invariant += balances[i];
-        }
-        return invariant;
-    }
-
-    function computeBalanceMock(
+    function computeBalance(
         uint256[] memory balances,
         uint256 tokenInIndex,
         uint256 invariantRatio
-    ) external pure returns (uint256 newBalance) {
-        // inv = x + y
-        uint256 invariant = computeInvariantMock(balances);
-        return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
-    }
+    ) external pure virtual returns (uint256 newBalance);
 
     function computeProportionalAmountsIn(
         uint256[] memory balances,
@@ -56,7 +41,7 @@ contract BasePoolMathMock {
                 exactAmounts,
                 totalSupply,
                 swapFeePercentage,
-                this.computeInvariantMock
+                this.computeInvariant
             );
     }
 
@@ -74,7 +59,7 @@ contract BasePoolMathMock {
                 exactBptAmountOut,
                 totalSupply,
                 swapFeePercentage,
-                this.computeBalanceMock
+                this.computeBalance
             );
     }
 
@@ -92,7 +77,7 @@ contract BasePoolMathMock {
                 exactAmountOut,
                 totalSupply,
                 swapFeePercentage,
-                this.computeInvariantMock
+                this.computeInvariant
             );
     }
 
@@ -110,7 +95,7 @@ contract BasePoolMathMock {
                 exactBptAmountIn,
                 totalSupply,
                 swapFeePercentage,
-                this.computeBalanceMock
+                this.computeBalance
             );
     }
 }

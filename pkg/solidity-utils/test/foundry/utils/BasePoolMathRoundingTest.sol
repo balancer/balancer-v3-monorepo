@@ -4,23 +4,26 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import "../../contracts/math/FixedPoint.sol";
-import "../../contracts/test/BasePoolMathMock.sol";
+import "../../../contracts/math/FixedPoint.sol";
+import "../../../contracts/test/BasePoolMathMock.sol";
 
-contract BasePoolMathRoundingTest is Test {
+abstract contract BasePoolMathRoundingTest is Test {
     uint256 constant MIN_BALANCE = 1e18;
     uint256 constant MIN_AMOUNT = 1e12;
     uint256 constant MAX_AMOUNT = 1000e18;
 
     uint256 constant MIN_SWAP_FEE = 0;
     uint256 constant MAX_SWAP_FEE = 0.8e18;
-    uint256 constant DELTA = 1e3;
+
+    uint256 delta = 1e3;
 
     BasePoolMathMock mock;
 
-    function setUp() public {
-        mock = new BasePoolMathMock();
+    function setUp() public virtual {
+        mock = createMathMock();
     }
+
+    function createMathMock() internal virtual returns (BasePoolMathMock);
 
     function testComputeProportionalAmountsIn__Fuzz(
         uint256[2] calldata rawBalances,
@@ -30,7 +33,7 @@ contract BasePoolMathRoundingTest is Test {
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
         }
-        uint256 totalSupply = mock.computeInvariantMock(balances);
+        uint256 totalSupply = mock.computeInvariant(balances);
         uint256 bptAmountOut = bound(rawBptAmountOut, MIN_AMOUNT, totalSupply);
 
         uint256[] memory standardResult = mock.computeProportionalAmountsIn(balances, totalSupply, bptAmountOut);
@@ -71,7 +74,7 @@ contract BasePoolMathRoundingTest is Test {
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
         }
-        uint256 totalSupply = mock.computeInvariantMock(balances);
+        uint256 totalSupply = mock.computeInvariant(balances);
         uint256 bptAmountIn = bound(rawBptAmountIn, MIN_AMOUNT, totalSupply);
 
         uint256[] memory standardResult = mock.computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
@@ -115,7 +118,7 @@ contract BasePoolMathRoundingTest is Test {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
             amountsIn[i] = bound(rawAmountsIn[i], MIN_BALANCE, MAX_AMOUNT);
         }
-        uint256 totalSupply = mock.computeInvariantMock(balances);
+        uint256 totalSupply = mock.computeInvariant(balances);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
         uint256 standardResultBpt;
@@ -163,14 +166,14 @@ contract BasePoolMathRoundingTest is Test {
 
         for (uint256 i = 0; i < balances.length; ++i) {
             assertGe(
-                roundedUpFees[i] + DELTA,
+                roundedUpFees[i] + delta,
                 standardResultFees[i],
-                "roundedUpFees + DELTA > standardResultFees (computeAddLiquidityUnbalanced)"
+                "roundedUpFees + delta > standardResultFees (computeAddLiquidityUnbalanced)"
             );
             assertLe(
                 roundedDownFees[i],
-                standardResultFees[i] + DELTA,
-                "roundedDownFees < standardResultFees + DELTA (computeAddLiquidityUnbalanced)"
+                standardResultFees[i] + delta,
+                "roundedDownFees < standardResultFees + delta (computeAddLiquidityUnbalanced)"
             );
         }
     }
@@ -189,7 +192,7 @@ contract BasePoolMathRoundingTest is Test {
 
         uint256 tokenInIndex = bound(rawTokenInIndex, 0, 1);
         uint256 bptAmountOut = bound(rawBptAmountOut, MIN_AMOUNT, MAX_AMOUNT);
-        uint256 totalSupply = mock.computeInvariantMock(balances);
+        uint256 totalSupply = mock.computeInvariant(balances);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
         uint256 standardResultAmountInWithFee;
@@ -227,26 +230,26 @@ contract BasePoolMathRoundingTest is Test {
         );
 
         assertGe(
-            roundedUpAmountInWithFee + DELTA,
+            roundedUpAmountInWithFee + delta,
             standardResultAmountInWithFee,
-            "roundedUpAmountInWithFee + DELTA < standardResultAmountInWithFee (computeAddLiquiditySingleTokenExactOut)"
+            "roundedUpAmountInWithFee + delta < standardResultAmountInWithFee (computeAddLiquiditySingleTokenExactOut)"
         );
         assertLe(
             roundedDownAmountInWithFee,
-            standardResultAmountInWithFee + DELTA,
-            "roundedDownAmountInWithFee > standardResultAmountInWithFee + DELTA (computeAddLiquiditySingleTokenExactOut)"
+            standardResultAmountInWithFee + delta,
+            "roundedDownAmountInWithFee > standardResultAmountInWithFee + delta (computeAddLiquiditySingleTokenExactOut)"
         );
 
         for (uint256 i = 0; i < balances.length; ++i) {
             assertGe(
-                roundedUpFees[i] + DELTA,
+                roundedUpFees[i] + delta,
                 standardResultFees[i],
-                "roundedUpFees + DELTA > standardResultFees (computeAddLiquiditySingleTokenExactOut)"
+                "roundedUpFees + delta > standardResultFees (computeAddLiquiditySingleTokenExactOut)"
             );
             assertLe(
                 roundedDownFees[i],
-                standardResultFees[i] + DELTA,
-                "roundedDownFees < standardResultFees + DELTA (computeAddLiquiditySingleTokenExactOut)"
+                standardResultFees[i] + delta,
+                "roundedDownFees < standardResultFees + delta (computeAddLiquiditySingleTokenExactOut)"
             );
         }
     }
@@ -266,7 +269,7 @@ contract BasePoolMathRoundingTest is Test {
         uint256 tokenOutIndex = bound(rawTokenOutIndex, 0, 1);
         uint256 amountOut = bound(rawAmountOut, MIN_BALANCE, balances[tokenOutIndex] / 4);
 
-        uint256 totalSupply = mock.computeInvariantMock(balances);
+        uint256 totalSupply = mock.computeInvariant(balances);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
         uint256 standardResultBptAmountIn;
@@ -304,26 +307,26 @@ contract BasePoolMathRoundingTest is Test {
         );
 
         assertGe(
-            roundedUpBptAmountIn + DELTA,
+            roundedUpBptAmountIn + delta,
             standardResultBptAmountIn,
-            "roundedUpBptAmountIn + DELTA < standardResultBptAmountIn (computeRemoveLiquiditySingleTokenExactOut)"
+            "roundedUpBptAmountIn + delta < standardResultBptAmountIn (computeRemoveLiquiditySingleTokenExactOut)"
         );
         assertLe(
             roundedDownBptAmountIn,
-            standardResultBptAmountIn + DELTA,
-            "roundedDownBptAmountIn > standardResultBptAmountIn + DELTA (computeRemoveLiquiditySingleTokenExactOut)"
+            standardResultBptAmountIn + delta,
+            "roundedDownBptAmountIn > standardResultBptAmountIn + delta (computeRemoveLiquiditySingleTokenExactOut)"
         );
 
         for (uint256 i = 0; i < balances.length; ++i) {
             assertGe(
-                roundedUpFees[i] + DELTA,
+                roundedUpFees[i] + delta,
                 standardResultFees[i],
-                "roundedUpFees + DELTA > standardResultFees (computeRemoveLiquiditySingleTokenExactOut)"
+                "roundedUpFees + delta > standardResultFees (computeRemoveLiquiditySingleTokenExactOut)"
             );
             assertLe(
                 roundedDownFees[i],
-                standardResultFees[i] + DELTA,
-                "roundedDownFees < standardResultFees + DELTA (computeRemoveLiquiditySingleTokenExactOut)"
+                standardResultFees[i] + delta,
+                "roundedDownFees < standardResultFees + delta (computeRemoveLiquiditySingleTokenExactOut)"
             );
         }
     }
@@ -342,7 +345,7 @@ contract BasePoolMathRoundingTest is Test {
         }
 
         uint256 tokenOutIndex = bound(rawTokenOutIndex, 0, 1);
-        uint256 totalSupply = mock.computeInvariantMock(balances);
+        uint256 totalSupply = mock.computeInvariant(balances);
         uint256 bptAmountIn = bound(rawBptAmountIn, MIN_AMOUNT, totalSupply / 4);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
@@ -393,14 +396,14 @@ contract BasePoolMathRoundingTest is Test {
 
         for (uint256 i = 0; i < balances.length; ++i) {
             assertGe(
-                roundedUpFees[i] + DELTA,
+                roundedUpFees[i] + delta,
                 standardResultFees[i],
-                "roundedUpFees + DELTA > standardResultFees (computeRemoveLiquiditySingleTokenExactIn)"
+                "roundedUpFees + delta > standardResultFees (computeRemoveLiquiditySingleTokenExactIn)"
             );
             assertLe(
                 roundedDownFees[i],
-                standardResultFees[i] + DELTA,
-                "roundedDownFees < standardResultFees + DELTA (computeRemoveLiquiditySingleTokenExactIn)"
+                standardResultFees[i] + delta,
+                "roundedDownFees < standardResultFees + delta (computeRemoveLiquiditySingleTokenExactIn)"
             );
         }
     }
