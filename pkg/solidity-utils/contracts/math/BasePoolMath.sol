@@ -151,7 +151,7 @@ library BasePoolMath {
 
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
-        bptAmountOut = totalSupply * (computeInvariantRatio(currentBalances, newBalances) - FixedPoint.ONE);
+        bptAmountOut = totalSupply.mulDown(computeInvariantRatio(currentBalances, newBalances) - FixedPoint.ONE);
     }
 
     /**
@@ -239,7 +239,6 @@ library BasePoolMath {
         // Update the balance of tokenOutIndex with exactAmountOut.
         newBalances[tokenOutIndex] = newBalances[tokenOutIndex] - exactAmountOut;
 
-
         // Calculate the new invariant using the new balances (after the removal).
         // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
         // Calculate the new proportional balance by multiplying the new invariant ratio by the current balance.
@@ -247,8 +246,10 @@ library BasePoolMath {
         // Since we multiply and divide we don't need to use FP math.
         // We round down for simplicity, as rounding up doesn't really affect the result in a meaningful way down the
         // line (fee calculation is rounded up anyways which is more straightforward).
-        uint256 taxableAmount = computeInvariantRatio(currentBalances, newBalances) * currentBalances[tokenOutIndex] -
-            newBalances[tokenOutIndex];
+        uint256 taxableAmount = computeInvariantRatio(currentBalances, newBalances).mulDown(
+            currentBalances[tokenOutIndex]
+        );
+        taxableAmount -= newBalances[tokenOutIndex];
 
         // Calculate the swap fee based on the taxable amount and the swap fee percentage
         uint256 fee = taxableAmount.divUp(swapFeePercentage.complement()) - taxableAmount;
@@ -264,10 +265,7 @@ library BasePoolMath {
         // total supply with the ratio of the change in invariant.
         // Since we multiply and divide we don't need to use FP math.
         // Calculating BPT amount in, so we round up.
-        bptAmountIn = totalSupply * (FixedPoint.ONE - computeInvariantRatio(currentBalances, newBalances));
-        unchecked {
-            bptAmountIn = (bptAmountIn == 0 ? 0 : bptAmountIn + 1);
-        }
+        bptAmountIn = totalSupply.mulUp(FixedPoint.ONE - computeInvariantRatio(currentBalances, newBalances));
     }
 
     /**
