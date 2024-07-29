@@ -14,7 +14,7 @@ import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/tes
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
 
-import { BaseVaultTest } from "./BaseVaultTest.sol";
+import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
 abstract contract BasePoolTest is BaseVaultTest {
     using FixedPoint for uint256;
@@ -135,7 +135,7 @@ abstract contract BasePoolTest is BaseVaultTest {
 
         uint256[] memory minAmountsOut = new uint256[](poolTokens.length);
         for (uint256 i = 0; i < poolTokens.length; ++i) {
-            minAmountsOut[i] = tokenAmounts[i] - DELTA;
+            minAmountsOut[i] = _less(tokenAmounts[i], 1e4);
         }
 
         uint256[] memory amountsOut = router.removeLiquidityProportional(
@@ -203,7 +203,7 @@ abstract contract BasePoolTest is BaseVaultTest {
             tokenIn,
             tokenOut,
             tokenAmountIn,
-            tokenAmountOut - DELTA,
+            _less(tokenAmountOut, 1e3),
             MAX_UINT256,
             false,
             bytes("")
@@ -285,5 +285,10 @@ abstract contract BasePoolTest is BaseVaultTest {
         expectedRate = invariantAfter.divDown(totalSupply);
         actualRate = IRateProvider(pool).getRate();
         assertEq(actualRate, expectedRate, "Wrong rate after addLiquidity");
+    }
+
+    // Decreases the amount value by base value. Example: base = 100, decrease by 1% / base = 1e4, 0.01% and etc.
+    function _less(uint256 amount, uint256 base) private pure returns (uint256) {
+        return (amount * (base - 1)) / base;
     }
 }
