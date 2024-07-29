@@ -71,7 +71,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
                 "ERC20 Pool",
                 "ERC20POOL",
                 vault.buildTokenConfig(tokens.asIERC20()),
-                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                [uint256(50e16), uint256(50e16)].toMemoryArray(),
                 roleAccounts,
                 DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it.
                 poolHooksContract,
