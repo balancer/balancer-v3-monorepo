@@ -19,6 +19,11 @@ contract ProtocolFeeControllerMock is ProtocolFeeController {
         return (_poolCreators[pool], _poolCreatorSwapFeePercentages[pool], _poolCreatorYieldFeePercentages[pool]);
     }
 
+    /**
+     * @notice Sets the pool creator address, allowing the address to change the pool creator fee percentage.
+     * @dev Standard Balancer Pools specifically disallow pool creators to be passed in through PoolRoleAccounts;
+     * otherwise, this wouldn't be necessary.
+     */
     function manualSetPoolCreator(address pool, address poolCreator) external {
         _poolCreators[pool] = poolCreator;
     }

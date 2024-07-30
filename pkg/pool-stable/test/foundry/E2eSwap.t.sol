@@ -29,19 +29,19 @@ contract E2eSwapStableTest is E2eSwapTest {
     }
 
     function _setUpVariables() internal override {
-        token1 = dai;
-        token2 = usdc;
+        tokenA = dai;
+        tokenB = usdc;
         sender = lp;
         poolCreator = lp;
 
         // If there are swap fees, the amountCalculated may be lower than MIN_TRADE_AMOUNT. So, multiplying
         // MIN_TRADE_AMOUNT by 10 creates a margin.
-        minSwapAmountToken1 = 10 * MIN_TRADE_AMOUNT;
-        minSwapAmountToken2 = 10 * MIN_TRADE_AMOUNT;
+        minSwapAmountTokenA = 10 * MIN_TRADE_AMOUNT;
+        minSwapAmountTokenB = 10 * MIN_TRADE_AMOUNT;
 
         // Divide init amount by 2 to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
-        maxSwapAmountToken1 = poolInitAmount / 2;
-        maxSwapAmountToken2 = poolInitAmount / 2;
+        maxSwapAmountTokenA = poolInitAmount / 2;
+        maxSwapAmountTokenB = poolInitAmount / 2;
 
         // 0.0001% max swap fee.
         minPoolSwapFeePercentage = 1e12;
