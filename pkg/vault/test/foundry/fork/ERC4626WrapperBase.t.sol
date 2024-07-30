@@ -5,10 +5,13 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 abstract contract ERC4626WrapperBaseTest is Test {
+    using SafeERC20 for IERC20;
+
     // Variables to be defined by setUpForkTestVariables().
     string internal network;
     uint256 internal blockNumber;
@@ -62,7 +65,7 @@ abstract contract ERC4626WrapperBaseTest is Test {
         uint256 balanceSharesBefore = wrapper.balanceOf(user);
 
         vm.startPrank(user);
-        underlyingToken.approve(address(wrapper), amountToDeposit);
+        underlyingToken.forceApprove(address(wrapper), amountToDeposit);
         uint256 mintedShares = wrapper.deposit(amountToDeposit, user);
         vm.stopPrank();
 
@@ -103,7 +106,7 @@ abstract contract ERC4626WrapperBaseTest is Test {
         uint256 balanceSharesBefore = wrapper.balanceOf(user);
 
         vm.startPrank(user);
-        underlyingToken.approve(address(wrapper), previewedUnderlying);
+        underlyingToken.forceApprove(address(wrapper), previewedUnderlying);
         uint256 depositedUnderlying = wrapper.mint(amountToMint, user);
         vm.stopPrank();
 
@@ -201,10 +204,10 @@ abstract contract ERC4626WrapperBaseTest is Test {
         uint256 initialDeposit = amountToDonate / 2;
 
         vm.prank(underlyingDonor);
-        underlyingToken.transfer(user, amountToDonate);
+        underlyingToken.safeTransfer(user, amountToDonate);
 
         vm.startPrank(user);
-        underlyingToken.approve(address(wrapper), initialDeposit);
+        underlyingToken.forceApprove(address(wrapper), initialDeposit);
         userInitialShares = wrapper.deposit(initialDeposit, user);
         vm.stopPrank();
 
