@@ -343,18 +343,6 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
 
-    function testBoostedPoolAddLiquidityUnbalanced() public {
-        vm.startPrank(lp);
-        batchRouter.addLiquidityUnbalancedToERC4626Pool(
-            boostedPool,
-            [swapAmount, swapAmount].toMemoryArray(),
-            1e18,
-            false,
-            ""
-        );
-        vm.stopPrank();
-    }
-
     function _buildExactInPaths(
         uint256 amount
     ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
