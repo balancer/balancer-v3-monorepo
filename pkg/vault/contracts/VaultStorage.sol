@@ -63,10 +63,6 @@ contract VaultStorage {
     uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
     uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
 
-    // When wrapping/unwrapping an IERC4626, the actual operation can return a different result from convertToAssets
-    // and convertToShares. _MAX_CONVERT_ERROR is the maximum tolerance to convert errors.
-    uint256 internal constant _MAX_CONVERT_ERROR = 2;
-
     // Code extension for the Vault.
     IVaultExtension internal immutable _vaultExtension;
 

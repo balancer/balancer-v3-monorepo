@@ -1174,11 +1174,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // The mint operation returns exactly `vaultWrappedDelta` shares. To do so, it withdraws underlying
                 // from the vault and returns the shares. So, the vault needs to approve the transfer of underlying
                 // tokens to the wrapper.
-                // Add convert error because mint can consume a different amount of tokens than we anticipated.
-                underlyingToken.forceApprove(
-                    address(wrappedToken),
-                    _addConvertError(amountInUnderlying + bufferUnderlyingSurplus)
-                );
+                // Add 2 because mint can consume up to 2 wei more tokens than we anticipated.
+                underlyingToken.forceApprove(address(wrappedToken), amountInUnderlying + bufferUnderlyingSurplus + 2);
 
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called.
                 wrappedToken.mint(amountOutWrapped + bufferWrappedSurplus, address(this));
@@ -1192,16 +1189,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (uint256 vaultUnderlyingDelta, uint256 vaultWrappedDelta) = _updateReservesAfterWrapping(
                 underlyingToken,
                 IERC20(wrappedToken)
-            );
-
-            _checkWrapOrUnwrapResults(
-                wrappedToken,
-                amountInUnderlying,
-                bufferUnderlyingSurplus,
-                vaultUnderlyingDelta,
-                amountOutWrapped,
-                0,
-                vaultWrappedDelta
             );
 
             // Only updates buffer balances if buffer has a surplus of underlying tokens.
@@ -1322,16 +1309,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IERC20(wrappedToken)
             );
 
-            _checkWrapOrUnwrapResults(
-                wrappedToken,
-                amountOutUnderlying,
-                0,
-                vaultUnderlyingDelta,
-                amountInWrapped,
-                bufferWrappedSurplus,
-                vaultWrappedDelta
-            );
-
             // Only updates buffer balances if buffer has a surplus of wrapped tokens.
             if (bufferWrappedSurplus > 0) {
                 if (kind == SwapKind.EXACT_IN) {
@@ -1418,73 +1395,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // wrappedBefore - wrappedAfter.
             vaultWrappedDelta = vaultWrappedBefore - vaultWrappedAfter;
         }
-    }
-
-    /**
-     * @dev Check whether vault deltas after wrap or unwrap operation match the expected amount calculated by
-     * convertToAssets/convertToShares, with an error tolerance of _MAX_CONVERT_ERROR.
-     */
-    function _checkWrapOrUnwrapResults(
-        IERC4626 wrappedToken,
-        uint256 wrapUnwrapUnderlyingExpected,
-        uint256 bufferUnderlyingSurplus,
-        uint256 vaultUnderlyingDelta,
-        uint256 wrapUnwrapWrappedExpected,
-        uint256 bufferWrappedSurplus,
-        uint256 vaultWrappedDelta
-    ) private view {
-        uint256 expectedUnderlyingDelta;
-        uint256 expectedWrappedDelta;
-        if (bufferUnderlyingSurplus > 0) {
-            // If the buffer has a surplus of underlying, the expected underlying delta is the underlying amountIn from
-            // the user (wrapUnwrapUnderlyingExpected) + bufferUnderlyingSurplus. This value left vault's reserves
-            // because it was wrapped.
-            expectedUnderlyingDelta = wrapUnwrapUnderlyingExpected + bufferUnderlyingSurplus;
-            // If the buffer has a surplus of underlying, the expected wrapped delta is the wrapped amountOut to the
-            // user (wrapUnwrapWrappedExpected) + converted bufferUnderlyingSurplus. This value was added to vault's
-            // reserves because underlying was wrapped.
-            expectedWrappedDelta = wrapUnwrapWrappedExpected + wrappedToken.convertToShares(bufferUnderlyingSurplus);
-        } else if (bufferWrappedSurplus > 0) {
-            // If the buffer has a surplus of wrapped, the expected wrapped delta is the wrapped amountIn from the
-            // user (wrapUnwrapWrappedExpected) + bufferWrappedSurplus. This value left vault's reserves because
-            // it was unwrapped.
-            expectedWrappedDelta = wrapUnwrapWrappedExpected + bufferWrappedSurplus;
-            // If the buffer has a surplus of wrapped, the expected underlying delta is the underlying amountOut to the
-            // user (wrapUnwrapUnderlyingExpected) + converted bufferWrappedSurplus. This value was added to vault's
-            // reserves because wrapped was redeemed.
-            expectedUnderlyingDelta = wrapUnwrapUnderlyingExpected + wrappedToken.convertToAssets(bufferWrappedSurplus);
-        } else {
-            // If no surplus, the expected delta is the amountsIn and amountsOut (perfectly balanced buffer or
-            // operation was not in favor of rebalance).
-            expectedUnderlyingDelta = wrapUnwrapUnderlyingExpected;
-            expectedWrappedDelta = wrapUnwrapWrappedExpected;
-        }
-
-        if (vaultUnderlyingDelta.getAbsoluteDifference(expectedUnderlyingDelta) > _MAX_CONVERT_ERROR) {
-            // If this error is thrown, it means the convert result had an absolute error greater than
-            // _MAX_CONVERT_ERROR in comparison with the actual operation.
-            revert WrongUnderlyingAmount(address(wrappedToken));
-        }
-
-        // If underlying and wrapped token don't have the same amount of decimals, the error tolerance needs to be
-        // converted.
-        if (
-            vaultWrappedDelta.getAbsoluteDifference(expectedWrappedDelta) >
-            wrappedToken.convertToShares(_MAX_CONVERT_ERROR)
-        ) {
-            // If this error is thrown, it means the convert result had an absolute error greater than
-            // _MAX_CONVERT_ERROR in comparison with the actual operation.
-            revert WrongWrappedAmount(address(wrappedToken));
-        }
-    }
-
-    /**
-     * @dev IERC4626 `convert` and `preview` may have different results for the same input, and `preview` is usually
-     * more accurate, but more expensive than `convert`. _MAX_CONVERT_ERROR limits the error between these two
-     * functions and allow us to use `convert` safely.
-     */
-    function _addConvertError(uint256 amount) private pure returns (uint256) {
-        return amount + _MAX_CONVERT_ERROR;
     }
 
     // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential

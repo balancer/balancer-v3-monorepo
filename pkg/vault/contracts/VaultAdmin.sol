@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -36,6 +37,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     using PoolConfigLib for PoolConfigBits;
     using VaultStateLib for VaultStateBits;
     using VaultExtensionsLib for IVault;
+    using SafeERC20 for IERC20;
 
     IVault private immutable _vault;
 
@@ -291,7 +293,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
             if (totalSwapFees[i] > 0 || totalYieldFees[i] > 0) {
                 // The ProtocolFeeController will pull tokens from the Vault.
-                token.approve(feeController, totalSwapFees[i] + totalYieldFees[i]);
+                token.forceApprove(feeController, totalSwapFees[i] + totalYieldFees[i]);
 
                 _aggregateFeeAmounts[pool][token] = 0;
             }
