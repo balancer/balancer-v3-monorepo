@@ -86,7 +86,7 @@ contract E2eSwapTest is BaseVaultTest {
         // 0.0001% min swap fee.
         minPoolSwapFeePercentage = 1e12;
         // 10% max swap fee.
-        maxPoolSwapFeePercentage = 1e17;
+        maxPoolSwapFeePercentage = 10e16;
     }
 
     function testDoExactInUndoExactInNoFees__Fuzz(uint256 exactAmountIn) public {
