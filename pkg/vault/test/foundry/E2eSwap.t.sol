@@ -49,7 +49,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         // Set protocol and creator fees to 50%, so we can measure the charged fees.
         vm.prank(admin);
-        feeController.setGlobalProtocolSwapFeePercentage(5e17);
+        feeController.setGlobalProtocolSwapFeePercentage(50e16);
 
         vm.prank(poolCreator);
         // Set pool creator fee to 100%, so protocol + creator fees equals the total charged fees.
