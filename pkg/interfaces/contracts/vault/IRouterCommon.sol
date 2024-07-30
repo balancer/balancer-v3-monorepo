@@ -5,16 +5,17 @@ pragma solidity ^0.8.24;
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import { AddLiquidityKind, RemoveLiquidityKind } from "./VaultTypes.sol";
 
+/// @notice Interface for funtions shared between the `Router` and `BatchRouter`.
 interface IRouterCommon {
     /**
-     * @dev Data for the add liquidity hook.
+     * @notice Data for the add liquidity hook.
      * @param sender Account originating the add liquidity operation
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param kind Type of join (e.g., single or multi-token)
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data required for adding liquidity
+     * @param userData Additional (optional) data sent with the request to add liquidity
      */
     struct AddLiquidityHookParams {
         address sender;
@@ -27,14 +28,14 @@ interface IRouterCommon {
     }
 
     /**
-     * @dev Data for the remove liquidity hook.
+     * @notice Data for the remove liquidity hook.
      * @param sender Account originating the remove liquidity operation
      * @param pool Address of the liquidity pool
      * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
      * @param maxBptAmountIn Maximum amount of pool tokens provided
      * @param kind Type of exit (e.g., single or multi-token)
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data required for removing liquidity
+     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
+     * @param userData Additional (optional) data sent with the request to remove liquidity
      */
     struct RemoveLiquidityHookParams {
         address sender;
@@ -48,7 +49,7 @@ interface IRouterCommon {
 
     /**
      * @notice Get the first sender which initialized the call to Router.
-     * @return address The sender address.
+     * @return address The sender address
      */
     function getSender() external view returns (address);
 

@@ -6,20 +6,16 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
-import { EnumerableSet } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableSet.sol";
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import {
     TransientStorageHelpers,
     AddressArraySlotType,
     TokenDeltaMappingSlotType
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
-import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
 
 import { VaultStateBits } from "./lib/VaultStateLib.sol";
 import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
@@ -27,7 +23,10 @@ import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
 // solhint-disable max-states-count
 
 /**
- * @dev Storage layout for Vault. This contract has no code other than a thin abstraction for transient storage slots.
+ * @notice Storage layout for the Vault.
+ * @dev This contract has no code, but is inherited by all three Vault contracts. In order to ensure that *only* the
+ * Vault contract's storage is actually used, calls to the extension contracts must be delegate calls made through the
+ * main Vault.
  */
 contract VaultStorage {
     using StorageSlotExtension for *;
@@ -47,14 +46,14 @@ contract VaultStorage {
     // Minimum BPT amount minted upon initialization.
     uint256 internal constant _MINIMUM_BPT = 1e6;
 
-    // Minimum given amount to wrap/unwrap (applied to native decimal values), to avoid rounding issues
+    // Minimum given amount to wrap/unwrap (applied to native decimal values), to avoid rounding issues.
     uint256 internal constant _MINIMUM_WRAP_AMOUNT = 1e3;
 
     // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
     // exploitation of rounding errors
     uint256 internal constant _MINIMUM_TRADE_AMOUNT = 1e6;
 
-    // Pools can have two, three, or four tokens.
+    // Pools can have between two and eight tokens.
     uint256 internal constant _MIN_TOKENS = 2;
     // This maximum token count is also implicitly hard-coded in `PoolConfigLib` (through packing `tokenDecimalDiffs`).
     uint256 internal constant _MAX_TOKENS = 8;
@@ -67,7 +66,7 @@ contract VaultStorage {
     // and convertToShares. _MAX_CONVERT_ERROR is the maximum tolerance to convert errors.
     uint256 internal constant _MAX_CONVERT_ERROR = 2;
 
-    // Code extension for Vault.
+    // Code extension for the Vault.
     IVaultExtension internal immutable _vaultExtension;
 
     // Registry of pool configs.
@@ -116,7 +115,7 @@ contract VaultStorage {
     // pool -> PoolRoleAccounts (accounts assigned to specific roles; e.g., pauseManager).
     mapping(address => PoolRoleAccounts) internal _poolRoleAccounts;
 
-    // Contract that receives aggregate swap and yield fees
+    // Contract that receives aggregate swap and yield fees.
     IProtocolFeeController internal _protocolFeeController;
 
     // Buffers are a vault internal concept, keyed on the wrapped token address.
@@ -125,13 +124,13 @@ contract VaultStorage {
 
     // A buffer will only ever have two tokens: wrapped and underlying
     // we pack the wrapped and underlying balance into a single bytes32
-    // wrapped token address -> PackedTokenBalance
+    // wrapped token address -> PackedTokenBalance.
     mapping(IERC20 => bytes32) internal _bufferTokenBalances;
 
     // The LP balances for buffers. To start, LP balances will not be represented as ERC20 shares.
     // If we end up with a need to incentivize buffers, we can wrap this in an ERC20 wrapper without
     // introducing more complexity to the vault.
-    // wrapped token address -> user address -> LP balance
+    // wrapped token address -> user address -> LP balance.
     mapping(IERC20 => mapping(address => uint256)) internal _bufferLpShares;
     // total LP shares
     mapping(IERC20 => uint256) internal _bufferTotalShares;

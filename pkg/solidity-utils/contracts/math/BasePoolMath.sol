@@ -39,15 +39,12 @@ library BasePoolMath {
         // bpt = bptTotalSupply                                                            //
         ************************************************************************************/
 
-        // Since we're computing amounts in, we round up overall. This means rounding up on both the
-        // multiplication and division.
-
-        uint256 bptRatio = bptAmountOut.divUp(bptTotalSupply);
-
         // Create a new array to hold the amounts of each token to be deposited.
         amountsIn = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
-            amountsIn[i] = balances[i].mulUp(bptRatio);
+            // Since we multiply and divide we don't need to use FP math.
+            // We're calculating amounts in so we round up.
+            amountsIn[i] = balances[i].mulDivUp(bptAmountOut, bptTotalSupply);
         }
     }
 
@@ -60,10 +57,10 @@ library BasePoolMath {
      * Calculation: For each token, amountOut = balance * (bptAmountIn / bptTotalSupply).
      * Rounding down is used to prevent withdrawing more than the pool can afford.
      *
-     * @param balances Array of current token balances in the pool.
-     * @param bptTotalSupply Total supply of the pool tokens (BPT).
-     * @param bptAmountIn The amount of pool tokens that will be burned.
-     * @return amountsOut Array of amounts for each token to be withdrawn.
+     * @param balances Array of current token balances in the pool
+     * @param bptTotalSupply Total supply of the pool tokens (BPT)
+     * @param bptAmountIn The amount of pool tokens that will be burned
+     * @return amountsOut Array of amounts for each token to be withdrawn
      */
     function computeProportionalAmountsOut(
         uint256[] memory balances,
@@ -79,15 +76,11 @@ library BasePoolMath {
         // bpt = bptTotalSupply                                                                      //
         **********************************************************************************************/
 
-        // Since we're computing an amount out, we round down overall. This means rounding down on both the
-        // multiplication and division.
-
-        uint256 bptRatio = bptAmountIn.divDown(bptTotalSupply);
-
         // Create a new array to hold the amounts of each token to be withdrawn.
         amountsOut = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
-            amountsOut[i] = balances[i].mulDown(bptRatio);
+            // Since we multiply and divide we don't need to use FP math.
+            amountsOut[i] = (balances[i] * bptAmountIn) / bptTotalSupply;
         }
     }
 
@@ -101,7 +94,7 @@ library BasePoolMath {
      *
      * @param currentBalances Current pool balances, sorted in token registration order
      * @param exactAmounts Array of exact amounts for each token to be added to the pool
-     * @param totalSupply Current total supply of the pool tokens (BPT)
+     * @param totalSupply The current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the transaction
      * @param computeInvariant A function pointer to the invariant calculation function
      * @return bptAmountOut The amount of pool tokens (BPT) that will be minted as a result of the liquidity addition
@@ -167,8 +160,8 @@ library BasePoolMath {
 
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
-        // mulDown/divDown minimizes the amount of pool tokens to mint for security reasons.
-        bptAmountOut = totalSupply.mulDown((invariantWithFeesApplied - currentInvariant).divDown(currentInvariant));
+        // Since we multiply and divide we don't need to use FP math.
+        bptAmountOut = (totalSupply * (invariantWithFeesApplied - currentInvariant)) / currentInvariant;
     }
 
     /**
@@ -181,7 +174,7 @@ library BasePoolMath {
      * @param currentBalances Array of current token balances in the pool, sorted in token registration order
      * @param tokenInIndex Index of the input token for which the amount needs to be calculated
      * @param exactBptAmountOut Exact amount of pool tokens (BPT) the user wants to receive
-     * @param totalSupply Current total supply of the pool tokens (BPT)
+     * @param totalSupply The current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount
      * @param computeBalance A function pointer to the balance calculation function
      * @return amountInWithFee The amount of input token needed, including the swap fee, to receive the exact BPT amount
@@ -206,9 +199,8 @@ library BasePoolMath {
         uint256 amountIn = newBalance - currentBalances[tokenInIndex];
 
         // Calculate the non-taxable amount, which is the new balance proportionate to the BPT minted.
-        // Round the `nonTaxableBalance` down to favor the protocol by increasing the taxable amount, which charges
-        // higher swap fees, ultimately increasing the amount of `tokenIn` that will be transferred from the caller.
-        uint256 nonTaxableBalance = newSupply.mulDown(currentBalances[tokenInIndex]).divDown(totalSupply);
+        // Since we multiply and divide we don't need to use FP math.
+        uint256 nonTaxableBalance = (newSupply * currentBalances[tokenInIndex]) / totalSupply;
 
         // Calculate the taxable amount, which is the difference
         // between the actual new balance and the non-taxable balance
@@ -230,7 +222,7 @@ library BasePoolMath {
      * @param currentBalances Current pool balances, sorted in token registration order
      * @param tokenOutIndex Index of the token to receive in exchange for pool tokens burned
      * @param exactAmountOut Exact amount of tokens to receive
-     * @param totalSupply Current total supply of the pool tokens (BPT)
+     * @param totalSupply The current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount
      * @return bptAmountIn Amount of pool tokens to burn
      * @return swapFeeAmounts The amount of swap fees charged for each token
@@ -263,12 +255,13 @@ library BasePoolMath {
         // Calculate the new invariant using the new balances (after the removal).
         // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
         // Calculate the new proportional balance by multiplying the new invariant ratio by the current balance.
-        // Calculate the taxable amount by subtracting the new balance from the equivalent proportional balance,
-        // rounding in favor of the protocol. We round the first term up to subtract from more and get a higher
-        // `taxableAmount`, which charges higher swap fees, augmenting the amount of BPT that will be burned.
-        uint256 taxableAmount = computeInvariant(newBalances).divUp(currentInvariant).mulUp(
-            currentBalances[tokenOutIndex]
-        ) - newBalances[tokenOutIndex];
+        // Calculate the taxable amount by subtracting the new balance from the equivalent proportional balance.
+        // Since we multiply and divide we don't need to use FP math.
+        // We round down for simplicity, as rounding up doesn't really affect the result in a meaningful way down the
+        // line (fee calculation is rounded up anyways which is more straightforward).
+        uint256 taxableAmount = (computeInvariant(newBalances) * currentBalances[tokenOutIndex]) /
+            currentInvariant -
+            newBalances[tokenOutIndex];
 
         // Calculate the swap fee based on the taxable amount and the swap fee percentage
         uint256 fee = taxableAmount.divUp(swapFeePercentage.complement()) - taxableAmount;
@@ -285,8 +278,9 @@ library BasePoolMath {
 
         // Calculate the amount of BPT to burn. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
-        // mulUp/divUp maximizes the amount of pool tokens to burn for security reasons.
-        bptAmountIn = totalSupply.mulUp(currentInvariant - invariantWithFeesApplied).divUp(currentInvariant);
+        // Since we multiply and divide we don't need to use FP math.
+        // Calculating BPT amount in, so we round up.
+        bptAmountIn = totalSupply.mulDivUp(currentInvariant - invariantWithFeesApplied, currentInvariant);
     }
 
     /**
@@ -297,7 +291,7 @@ library BasePoolMath {
      * @param currentBalances The current token balances in the pool.
      * @param tokenOutIndex The index of the token to be withdrawn.
      * @param exactBptAmountIn The exact amount of BPT the user wants to burn.
-     * @param totalSupply The total supply of BPT in the pool.
+     * @param totalSupply The current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount.
      * @param computeBalance A function pointer to the balance calculation function.
      * @return amountOutWithFee The amount of the output token the user receives, accounting for swap fees.
@@ -323,9 +317,9 @@ library BasePoolMath {
         uint256 amountOut = currentBalances[tokenOutIndex] - newBalance;
 
         // Calculate the new balance proportionate to the BPT burnt.
-        // Round the `newBalanceBeforeTax` up to favor the protocol by increasing the taxable amount, which charges
-        // higher swap fees, ultimately decreasing the amount of `tokenOut` that will be transferred to the caller.
-        uint256 newBalanceBeforeTax = newSupply.mulUp(currentBalances[tokenOutIndex]).divUp(totalSupply);
+        // Since we multiply and divide we don't need to use FP math.
+        // We round down here since we're already rounding up the fee below.
+        uint256 newBalanceBeforeTax = (newSupply * currentBalances[tokenOutIndex]) / totalSupply;
 
         // Compute the taxable amount: the difference between the new proportional and disproportional balances.
         uint256 taxableAmount = newBalanceBeforeTax - newBalance;

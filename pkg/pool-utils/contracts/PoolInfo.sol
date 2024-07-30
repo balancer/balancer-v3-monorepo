@@ -6,8 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { TokenInfo } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenInfo, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 contract PoolInfo is IPoolInfo {
     IVault private immutable _vault;
@@ -29,7 +28,7 @@ contract PoolInfo is IPoolInfo {
             IERC20[] memory tokens,
             TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory lastLiveBalances
+            uint256[] memory lastBalancesLiveScaled18
         )
     {
         return _vault.getPoolTokenInfo(address(this));
@@ -43,5 +42,17 @@ contract PoolInfo is IPoolInfo {
     /// @inheritdoc IPoolInfo
     function getStaticSwapFeePercentage() external view returns (uint256) {
         return _vault.getStaticSwapFeePercentage((address(this)));
+    }
+
+    /// @inheritdoc IPoolInfo
+    function getAggregateFeePercentages()
+        external
+        view
+        returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage)
+    {
+        PoolConfig memory poolConfig = _vault.getPoolConfig(address(this));
+
+        aggregateSwapFeePercentage = poolConfig.aggregateSwapFeePercentage;
+        aggregateYieldFeePercentage = poolConfig.aggregateYieldFeePercentage;
     }
 }

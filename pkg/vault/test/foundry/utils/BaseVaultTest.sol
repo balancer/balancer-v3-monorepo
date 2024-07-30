@@ -7,13 +7,10 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { HookFlags, FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
@@ -21,9 +18,6 @@ import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/Ba
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
-import { VaultMock } from "../../../contracts/test/VaultMock.sol";
-import { Router } from "../../../contracts/Router.sol";
-import { BatchRouter } from "../../../contracts/BatchRouter.sol";
 import { VaultStorage } from "../../../contracts/VaultStorage.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
@@ -97,13 +91,13 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Default rate for the rate provider mock.
     uint256 internal mockRate = 2e18;
     // Default swap fee percentage.
-    uint256 internal swapFeePercentage = 0.01e18; // 1%
+    uint256 internal swapFeePercentage = 1e16; // 1%
     // Default protocol swap fee percentage.
-    uint64 internal protocolSwapFeePercentage = 0.50e18; // 50%
+    uint64 internal protocolSwapFeePercentage = 50e16; // 50%
 
     // Applies to Weighted Pools.
     uint256 constant MIN_SWAP_FEE = 1e12; // 0.00001%
-    uint256 constant MAX_SWAP_FEE = 0.1e18; // 10%
+    uint256 constant MAX_SWAP_FEE = 10e16; // 10%
     uint256 constant MIN_TRADE_AMOUNT = 1e6;
 
     function setUp() public virtual override {

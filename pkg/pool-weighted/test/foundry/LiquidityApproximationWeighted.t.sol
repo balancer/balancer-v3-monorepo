@@ -19,9 +19,9 @@ import { WeightedPool } from "../../contracts/WeightedPool.sol";
 import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry/LiquidityApproximation.t.sol";
 
 contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
-    uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
-
     using ArrayHelpers for *;
+
+    uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
 
     uint256 poolCreationNonce;
 
@@ -38,7 +38,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         );
         PoolRoleAccounts memory roleAccounts;
 
-        // Allow pools created by `factory` to use poolHooksMock hooks
+        // Allow pools created by `factory` to use PoolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
         WeightedPool newPool = WeightedPool(
@@ -46,7 +46,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
                 "ERC20 Pool",
                 "ERC20POOL",
                 vault.buildTokenConfig(tokens.asIERC20()),
-                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                [uint256(50e16), uint256(50e16)].toMemoryArray(),
                 roleAccounts,
                 DEFAULT_SWAP_FEE,
                 poolHooksContract,

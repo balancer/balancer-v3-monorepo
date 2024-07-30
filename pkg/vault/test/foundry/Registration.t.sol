@@ -35,7 +35,7 @@ contract RegistrationTest is BaseVaultTest {
         pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
     }
 
-    // Do not register the pool in the base test
+    // Do not register the pool in the base test.
     function createPool() internal pure override returns (address) {
         return address(0);
     }
@@ -118,7 +118,7 @@ contract RegistrationTest is BaseVaultTest {
     }
 
     function testRegisterSetSwapFeePercentage__Fuzz(uint256 swapFeePercentage) public {
-        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
+        swapFeePercentage = bound(swapFeePercentage, 0, 100e16);
         PoolRoleAccounts memory roleAccounts;
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(standardPoolTokens);
         LiquidityManagement memory liquidityManagement;
@@ -133,7 +133,7 @@ contract RegistrationTest is BaseVaultTest {
             address(0),
             liquidityManagement
         );
-        // Stored value is truncated
+        // Stored value is truncated.
         assertEq(
             vault.getStaticSwapFeePercentage(pool),
             (swapFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR,
@@ -142,7 +142,7 @@ contract RegistrationTest is BaseVaultTest {
     }
 
     function testRegisterSetSwapFeePercentageAboveMax() public {
-        swapFeePercentage = 1e18 + 1;
+        swapFeePercentage = 100e16 + 1;
         PoolRoleAccounts memory roleAccounts;
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(standardPoolTokens);
         LiquidityManagement memory liquidityManagement;

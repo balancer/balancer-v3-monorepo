@@ -5,28 +5,21 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { TokenConfig, PoolConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
+import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
-import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
-import { PoolConfigBits } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
+import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
-
-import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 contract WeightedPoolTest is BaseVaultTest {
     using ArrayHelpers for *;
@@ -48,8 +41,14 @@ contract WeightedPoolTest is BaseVaultTest {
     uint256[] internal weights;
     uint256 internal bptAmountOut;
 
+    uint256 daiIdx;
+    uint256 usdcIdx;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+
         weightedPool = WeightedPool(pool);
     }
 
@@ -57,9 +56,9 @@ contract WeightedPoolTest is BaseVaultTest {
         factory = new WeightedPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
-        weights = [uint256(0.50e18), uint256(0.50e18)].toMemoryArray();
+        weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
-        // Allow pools created by `factory` to use poolHooksMock hooks
+        // Allow pools created by `factory` to use PoolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
         WeightedPool newPool = WeightedPool(
@@ -85,7 +84,7 @@ contract WeightedPoolTest is BaseVaultTest {
         bptAmountOut = _initPool(
             pool,
             [uint256(DAI_AMOUNT), uint256(USDC_AMOUNT)].toMemoryArray(),
-            // Account for the precision loss
+            // Account for the precision loss.
             DAI_AMOUNT - DELTA
         );
         vm.stopPrank();
@@ -118,8 +117,8 @@ contract WeightedPoolTest is BaseVaultTest {
 
         // Tokens are deposited to the pool
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], DAI_AMOUNT, "Pool: Wrong DAI balance");
-        assertEq(balances[1], USDC_AMOUNT, "Pool: Wrong USDC balance");
+        assertEq(balances[daiIdx], DAI_AMOUNT, "Pool: Wrong DAI balance");
+        assertEq(balances[usdcIdx], USDC_AMOUNT, "Pool: Wrong USDC balance");
 
         // should mint correct amount of BPT tokens
         // Account for the precision loss
@@ -142,8 +141,8 @@ contract WeightedPoolTest is BaseVaultTest {
 
         // Tokens are deposited to the pool
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], DAI_AMOUNT * 2, "Pool: Wrong DAI balance");
-        assertEq(balances[1], USDC_AMOUNT * 2, "Pool: Wrong USDC balance");
+        assertEq(balances[daiIdx], DAI_AMOUNT * 2, "Pool: Wrong DAI balance");
+        assertEq(balances[usdcIdx], USDC_AMOUNT * 2, "Pool: Wrong USDC balance");
 
         // should mint correct amount of BPT tokens
         assertApproxEqAbs(weightedPool.balanceOf(bob), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
@@ -185,15 +184,15 @@ contract WeightedPoolTest is BaseVaultTest {
 
         // Tokens are deposited to the pool
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-        assertApproxEqAbs(balances[0], DAI_AMOUNT, DELTA, "Pool: Wrong DAI balance");
-        assertApproxEqAbs(balances[1], USDC_AMOUNT, DELTA, "Pool: Wrong USDC balance");
+        assertApproxEqAbs(balances[daiIdx], DAI_AMOUNT, DELTA, "Pool: Wrong DAI balance");
+        assertApproxEqAbs(balances[usdcIdx], USDC_AMOUNT, DELTA, "Pool: Wrong USDC balance");
 
         // amountsOut are correct
-        assertApproxEqAbs(amountsOut[0], DAI_AMOUNT, DELTA, "Wrong DAI AmountOut");
-        assertApproxEqAbs(amountsOut[1], USDC_AMOUNT, DELTA, "Wrong USDC AmountOut");
+        assertApproxEqAbs(amountsOut[daiIdx], DAI_AMOUNT, DELTA, "Wrong DAI AmountOut");
+        assertApproxEqAbs(amountsOut[usdcIdx], USDC_AMOUNT, DELTA, "Wrong USDC AmountOut");
 
         // should mint correct amount of BPT tokens
-        assertEq(weightedPool.balanceOf(bob), 0, "LP: Wrong BPT balance");
+        assertEq(weightedPool.balanceOf(bob), 0, "LP: Non-zero BPT balance");
         assertEq(bobBptBalance, bptAmountIn, "LP: Wrong bptAmountIn");
     }
 
@@ -213,17 +212,15 @@ contract WeightedPoolTest is BaseVaultTest {
             bytes("")
         );
 
-        // Tokens are transferred from Bob
+        // Tokens are transferred from Bob.
         assertEq(usdc.balanceOf(bob), defaultBalance + amountCalculated, "LP: Wrong USDC balance");
         assertEq(dai.balanceOf(bob), defaultBalance - DAI_AMOUNT_IN, "LP: Wrong DAI balance");
 
-        // Tokens are stored in the Vault
+        // Tokens are stored in the Vault.
         assertEq(usdc.balanceOf(address(vault)), USDC_AMOUNT - amountCalculated, "Vault: Wrong USDC balance");
         assertEq(dai.balanceOf(address(vault)), DAI_AMOUNT + DAI_AMOUNT_IN, "Vault: Wrong DAI balance");
 
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-
-        (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
         assertEq(balances[daiIdx], DAI_AMOUNT + DAI_AMOUNT_IN, "Pool: Wrong DAI balance");
         assertEq(balances[usdcIdx], USDC_AMOUNT - amountCalculated, "Pool: Wrong USDC balance");
@@ -248,10 +245,6 @@ contract WeightedPoolTest is BaseVaultTest {
         assertEq(actualRate, expectedRate, "Wrong rate after addLiquidity");
     }
 
-    function less(uint256 amount, uint256 base) internal pure returns (uint256) {
-        return (amount * (base - 1)) / base;
-    }
-
     function testAddLiquidityUnbalanced() public {
         authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
         vm.prank(alice);
@@ -274,14 +267,14 @@ contract WeightedPoolTest is BaseVaultTest {
     function testFailSwapFeeTooLow() public {
         TokenConfig[] memory tokens = new TokenConfig[](2);
         PoolRoleAccounts memory roleAccounts;
-        tokens[0].token = IERC20(dai);
-        tokens[1].token = IERC20(usdc);
+        tokens[daiIdx].token = IERC20(dai);
+        tokens[usdcIdx].token = IERC20(usdc);
 
         address lowFeeWeightedPool = factory.create(
             "ERC20 Pool",
             "ERC20POOL",
             tokens,
-            [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+            [uint256(50e16), uint256(50e16)].toMemoryArray(),
             roleAccounts,
             MIN_SWAP_FEE - 1, // Swap fee too low
             poolHooksContract,

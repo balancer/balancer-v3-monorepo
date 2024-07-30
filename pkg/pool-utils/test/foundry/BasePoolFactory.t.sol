@@ -7,7 +7,11 @@ import "forge-std/Test.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    TokenConfig,
+    PoolRoleAccounts,
+    LiquidityManagement
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 
@@ -67,19 +71,19 @@ contract BasePoolFactoryTest is BaseVaultTest {
         authorizer.grantRole(testFactory.getActionId(IBasePoolFactory.disable.selector), admin);
 
         assertFalse(testFactory.isDisabled(), "Factory is disabled");
-        // Should pass, since factory is enabled.
+        // Should pass, since the factory is enabled.
         testFactory.manualEnsureEnabled();
 
         vm.prank(admin);
         testFactory.disable();
 
-        // Should revert, since factory is disabled.
+        // Should revert, since the factory is disabled.
         vm.expectRevert(IBasePoolFactory.Disabled.selector);
         testFactory.manualEnsureEnabled();
     }
 
     function testRegisterPoolWithFactoryDisabled() public {
-        // Disable factory.
+        // Disable the factory.
         authorizer.grantRole(testFactory.getActionId(IBasePoolFactory.disable.selector), admin);
         vm.prank(admin);
         testFactory.disable();
@@ -160,9 +164,9 @@ contract BasePoolFactoryTest is BaseVaultTest {
     function testGetDefaultLiquidityManagement() public view {
         LiquidityManagement memory liquidityManagement = testFactory.getDefaultLiquidityManagement();
 
-        assertFalse(liquidityManagement.enableDonation, "enableDonation is wrong");
-        assertFalse(liquidityManagement.disableUnbalancedLiquidity, "disableUnbalancedLiquidity is wrong");
-        assertFalse(liquidityManagement.enableAddLiquidityCustom, "enableAddLiquidityCustom is wrong");
-        assertFalse(liquidityManagement.enableRemoveLiquidityCustom, "enableRemoveLiquidityCustom is wrong");
+        assertFalse(liquidityManagement.enableDonation, "enableDonation is true");
+        assertFalse(liquidityManagement.disableUnbalancedLiquidity, "disableUnbalancedLiquidity is true");
+        assertFalse(liquidityManagement.enableAddLiquidityCustom, "enableAddLiquidityCustom is true");
+        assertFalse(liquidityManagement.enableRemoveLiquidityCustom, "enableRemoveLiquidityCustom is true");
     }
 }

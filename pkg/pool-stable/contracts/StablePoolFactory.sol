@@ -2,21 +2,25 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    TokenConfig,
+    PoolRoleAccounts,
+    LiquidityManagement
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
+import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
 import { StablePool } from "./StablePool.sol";
 
 /**
  * @notice General Stable Pool factory
- * @dev This is the most general factory, which allows up to four tokens.
+ * @dev This is the most general factory, which allows up to `StableMath.MAX_STABLE_TOKENS` (5) tokens.
+ * Since this limit is less than Vault's maximum of 8 tokens, we need to enforce this at the factory level.
  */
 contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
     // solhint-disable not-rely-on-time
@@ -42,7 +46,7 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
      * @param name The name of the pool
      * @param symbol The symbol of the pool
      * @param tokens An array of descriptors for the tokens the pool will manage
-     * @param amplificationParameter The starting Amplification Parameter
+     * @param amplificationParameter Starting value of the amplificationParameter (see StablePool)
      * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
      * @param poolHooksContract Contract that implements the hooks for the pool
@@ -64,6 +68,12 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
     ) external returns (address pool) {
         if (roleAccounts.poolCreator != address(0)) {
             revert StandardPoolWithCreator();
+        }
+
+        // As the Stable Pool deployment does not know about the tokens, and the registration doesn't know about the
+        // pool type, we enforce the token limit at the factory level.
+        if (tokens.length > StableMath.MAX_STABLE_TOKENS) {
+            revert IVaultErrors.MaxTokens();
         }
 
         LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();

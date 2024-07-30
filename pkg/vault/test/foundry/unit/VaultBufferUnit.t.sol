@@ -34,7 +34,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
     }
 
     function testUnderlyingSurplusWrongBalance() public {
-        // Unbalances buffer so that buffer has less underlying than wrapped
+        // Unbalances buffer so that buffer has less underlying than wrapped.
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
             0,
@@ -51,7 +51,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
     }
 
     function testUnderlyingSurplusCorrectBalance() public {
-        // Unbalances buffer so that buffer has more underlying than wrapped (so it has a surplus of underlying)
+        // Unbalances buffer so that buffer has more underlying than wrapped (so it has a surplus of underlying).
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
             0,
@@ -71,9 +71,9 @@ contract VaultBufferUnitTest is BaseVaultTest {
         assertApproxEqAbs(wDaiInitialized.getRate(), 2e18, 1, "Wrong wDAI rate");
 
         uint256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wDaiInitialized)));
-        // Before swap, buffer had _wrapAmount of underlying and wrapped
+        // Before swap, buffer had _wrapAmount of underlying and wrapped.
         // After swap, buffer has 3/2 _wrapAmount of underlying and 1/2 _wrapAmount of wrapped
-        // surplus = (3/2 _wrapAmount - (1/2 _wrapAmount * rate)) / 2 = 1/4 _wrapAmount
+        // surplus = (3/2 _wrapAmount - (1/2 _wrapAmount * rate)) / 2 = 1/4 _wrapAmount.
         assertApproxEqAbs(surplus, _wrapAmount / 4, 1, "Wrong underlying surplus");
     }
 
@@ -83,7 +83,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
     }
 
     function testWrappedSurplusWrongBalance() public {
-        // Unbalances buffer so that buffer has more underlying than wrapped
+        // Unbalances buffer so that buffer has more underlying than wrapped.
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
             0,
@@ -100,7 +100,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
     }
 
     function testWrappedSurplusCorrectBalance() public {
-        // Unbalances buffer so that buffer has less underlying than wrapped (so it has a surplus of wrapped)
+        // Unbalances buffer so that buffer has less underlying than wrapped (so it has a surplus of wrapped).
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
             0,
@@ -113,16 +113,16 @@ contract VaultBufferUnitTest is BaseVaultTest {
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         // rate = assets / supply. If we double the assets, we double the rate.
-        // Donate to wrapped token to inflate rate to 2
+        // Donate to wrapped token to inflate rate to 2.
         dai.transfer(address(wDaiInitialized), wDaiInitialized.totalAssets());
         vm.stopPrank();
 
         assertApproxEqAbs(wDaiInitialized.getRate(), 2e18, 1, "Wrong wDAI rate");
 
         uint256 surplus = vault.internalGetBufferWrappedSurplus(IERC4626(address(wDaiInitialized)));
-        // Before swap, buffer had _wrapAmount of underlying and wrapped
+        // Before swap, buffer had _wrapAmount of underlying and wrapped.
         // After swap, buffer has 1/2 _wrapAmount of underlying and 3/2 _wrapAmount of wrapped
-        // surplus = (3/2 _wrapAmount - (1/2 _wrapAmount / rate)) / 2 = 5/8 _wrapAmount
+        // surplus = (3/2 _wrapAmount - (1/2 _wrapAmount / rate)) / 2 = 5/8 _wrapAmount.
         assertApproxEqAbs(surplus, (5 * _wrapAmount) / 8, 1, "Wrong wrapped surplus");
     }
 
@@ -130,26 +130,26 @@ contract VaultBufferUnitTest is BaseVaultTest {
         uint256 underlyingDeposited = 4e6;
         uint256 wrappedMinted = 2e5;
 
-        // Simulate a wrapping operation
+        // Simulate a wrapping operation.
 
-        // 1) Vault deposits underlying tokens into yield bearing protocol (a.k.a. Bob)
+        // 1) Vault deposits underlying tokens into yield bearing protocol (a.k.a. Bob).
         vault.manualTransfer(dai, bob, underlyingDeposited);
 
         vm.prank(bob);
-        // 2) Yield bearing protocol transfers wrapped tokens to vault (simulating an yield bearing protocol)
+        // 2) Yield bearing protocol transfers wrapped tokens to vault (simulating a yield-bearing protocol).
         IERC20(address(wDaiInitialized)).transfer(address(vault), wrappedMinted);
 
-        // Measure reserves
+        // Measure reserves.
         uint256 wrappedReservesBefore = vault.getReservesOf(IERC20(address(wDaiInitialized)));
         uint256 underlyingReservesBefore = vault.getReservesOf(dai);
 
-        // Call _updateReservesAfterWrapping
+        // Call _updateReservesAfterWrapping.
         (uint256 actualUnderlying, uint256 actualWrapped) = vault.manualUpdateReservesAfterWrapping(
             dai,
             IERC20(address(wDaiInitialized))
         );
 
-        // Measure output of _updateReservesAfterWrapping
+        // Measure output of _updateReservesAfterWrapping.
         assertEq(actualUnderlying, underlyingDeposited, "Wrong underlying deposited");
         assertEq(actualWrapped, wrappedMinted, "Wrong wrapped minted");
 
@@ -169,13 +169,13 @@ contract VaultBufferUnitTest is BaseVaultTest {
         uint256 underlyingWithdrawn = 4e6;
         uint256 wrappedBurned = 2e5;
 
-        // Simulate a wrapping operation
+        // Simulate a wrapping operation.
 
-        // 1) Vault burns wrapped tokens (simulated by depositing to Bob, the YB Protocol)
+        // 1) Vault burns wrapped tokens (simulated by depositing to Bob, the YB Protocol).
         vault.manualTransfer(IERC20(address(wDaiInitialized)), bob, wrappedBurned);
 
         vm.prank(bob);
-        // 2) Yield bearing protocol transfers underlying tokens to vault (simulating an yield bearing protocol)
+        // 2) Yield bearing protocol transfers underlying tokens to vault (simulating a yield-bearing protocol).
         dai.transfer(address(vault), underlyingWithdrawn);
 
         // Measure reserves
@@ -233,7 +233,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         permit2.approve(address(wUSDCNotInitialized), address(batchRouter), type(uint160).max, type(uint48).max);
         vm.stopPrank();
 
-        // Fund an Yield-Bearing Protocol, in this case represented by Bob
+        // Fund a yield-bearing protocol, in this case represented by Bob.
         vm.startPrank(bob);
 
         dai.mint(bob, 3 * _userAmount);

@@ -5,7 +5,6 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -105,7 +104,7 @@ contract PoolHooksMock is BaseHooks {
     }
 
     function onComputeDynamicSwapFeePercentage(
-        IBasePool.PoolSwapParams calldata params,
+        PoolSwapParams calldata params,
         address,
         uint256
     ) public view override returns (bool, uint256) {
@@ -122,7 +121,7 @@ contract PoolHooksMock is BaseHooks {
         return (!failOnComputeDynamicSwapFeeHook, finalSwapFee);
     }
 
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata params, address) public override returns (bool) {
+    function onBeforeSwap(PoolSwapParams calldata params, address) public override returns (bool) {
         if (shouldIgnoreSavedSender == false) {
             _savedSender = IRouterCommon(params.router).getSender();
         }
@@ -145,7 +144,7 @@ contract PoolHooksMock is BaseHooks {
         return !failOnBeforeSwapHook;
     }
 
-    function onAfterSwap(IHooks.AfterSwapParams calldata params) public override returns (bool, uint256) {
+    function onAfterSwap(AfterSwapParams calldata params) public override returns (bool, uint256) {
         // check that actual pool balances match
         (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = _vault.getPoolTokenInfo(params.pool);
 

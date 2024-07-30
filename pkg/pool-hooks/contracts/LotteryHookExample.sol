@@ -10,9 +10,8 @@ import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol"
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
-    AddLiquidityKind,
+    AfterSwapParams,
     LiquidityManagement,
-    RemoveLiquidityKind,
     SwapKind,
     TokenConfig,
     HookFlags
@@ -23,27 +22,31 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
-// In this example, every time a swap is executed in a pool registered with this hook, a "random" number is drawn.
-// If the drawn number is not equal to the LUCKY_NUMBER, the user will pay fees to the hook contract. But, if the
-// drawn number is equal to LUCKY_NUMBER, the user won't pay hook fees and will receive all fees accrued by the hook.
+/**
+ * @notice Hook that randomly rewards accumulated fees to a user performing a swap.
+ * @dev In this example, every time a swap is executed in a pool registered with this hook, a "random" number is drawn.
+ * If the drawn number is not equal to the LUCKY_NUMBER, the user will pay fees to the hook contract. But, if the
+ * drawn number is equal to LUCKY_NUMBER, the user won't pay hook fees and will receive all fees accrued by the hook.
+ */
 contract LotteryHookExample is BaseHooks, Ownable {
     using FixedPoint for uint256;
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using SafeERC20 for IERC20;
 
-    // Trusted router is needed since we rely on getSender() to know which user should receive the prize.
+    // Trusted router is needed since we rely on `getSender` to know which user should receive the prize.
     address private immutable _trustedRouter;
 
-    // When calling onAfterSwap, a random number is generated. If the number is equal to LUCKY_NUMBER, the user will
-    // get the accrued fees. It must be a number between 1 and MAX_NUMBER, or else nobody will win.
+    // When calling `onAfterSwap`, a random number is generated. If the number is equal to LUCKY_NUMBER, the user will
+    // win the accrued fees. It must be a number between 1 and MAX_NUMBER, or else nobody will win.
     uint8 public constant LUCKY_NUMBER = 10;
     // The chance of winning is 1/MAX_NUMBER (i.e. 5%).
     uint8 public constant MAX_NUMBER = 20;
 
-    // Percentages are represented as 18-decimal FP, with maximum value of 1e18 (100%), so 60 bits are enough.
+    // Percentages are represented as 18-decimal FP numbers, which have a maximum value of 100e16 (100%),
+    // so 60 bits are sufficient.
     uint64 public hookSwapFeePercentage;
 
-    // Tokens with accrued fees.
+    // Map of tokens with accrued fees.
     EnumerableMap.IERC20ToUint256Map private _tokensWithAccruedFees;
 
     uint256 private _counter = 0;
@@ -60,8 +63,8 @@ contract LotteryHookExample is BaseHooks, Ownable {
         LiquidityManagement calldata
     ) public view override onlyVault returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
-        // that the given pool is from the factory). Returning true allows any pool, with any configuration, to use
-        // this hook.
+        // that the given pool is from the factory). Returning true unconditionally allows any pool, with any
+        // configuration, to use this hook.
         return true;
     }
 
@@ -82,12 +85,12 @@ contract LotteryHookExample is BaseHooks, Ownable {
     ) public override onlyVault returns (bool success, uint256 hookAdjustedAmountCalculatedRaw) {
         uint8 drawnNumber;
         if (params.router == _trustedRouter) {
-            // If router is trusted, draws a number to be able to get the accrued fees. (If router is not trusted, the
-            // user can perform swaps and contribute to the pot, but is not eligible to win.)
+            // If the router is trusted, draw a number as a lottery entry. (If router is not trusted, the user can
+            // perform swaps and contribute to the pot, but is not eligible to win.)
             drawnNumber = _getRandomNumber();
         }
 
-        // Increment counter to help randomize the drawn number in the next swap.
+        // Increment the counter to help randomize the number drawn in the next swap.
         _counter++;
 
         hookAdjustedAmountCalculatedRaw = params.amountCalculatedRaw;
@@ -125,21 +128,30 @@ contract LotteryHookExample is BaseHooks, Ownable {
         return (true, hookAdjustedAmountCalculatedRaw);
     }
 
-    // Sets the hook swap fee percentage, which will be accrued after a swap was executed. This function must be
-    // permissioned.
-    function setHookSwapFeePercentage(uint64 feePercentage) external onlyOwner {
-        hookSwapFeePercentage = feePercentage;
+    /**
+     * @dev Sets the hook swap fee percentage, which will be accrued after a swap was executed.
+     * This function must be permissioned.
+     *
+     * @param swapFeePercentage The new swap fee percentage
+     */
+    function setHookSwapFeePercentage(uint64 swapFeePercentage) external onlyOwner {
+        hookSwapFeePercentage = swapFeePercentage;
     }
 
-    // @dev This external function was created to allow the test to access the same random number that will be used by
-    // onAfterSwap hook, so we can predict whether the current call is a winner. In real applications, this function
-    // should not exist, or should return a different number every time, even if called in the same transaction.
+    /**
+     * @notice Generate a pseudo-random number.
+     * @dev This external function was created to allow the test to access the same random number that will be used by
+     * the `onAfterSwap` hook, so we can predict whether the current call is a winner. In real applications, this
+     * function should not exist, or should return a different number every time, even if called in the same
+     * transaction.
+     *
+     * @return number A pseudo-random number
+     */
     function getRandomNumber() external view returns (uint8) {
         return _getRandomNumber();
     }
 
-    // @notice If drawnNumber = LUCKY_NUMBER, user wins the pot and pay no fees. Else, user adds the hook fee to the
-    // pot.
+    // If drawnNumber == LUCKY_NUMBER, user wins the pot and pays no fees. Otherwise, the hook fee adds to the pot.
     function _chargeFeeOrPayWinner(
         address router,
         uint8 drawnNumber,
@@ -149,24 +161,25 @@ contract LotteryHookExample is BaseHooks, Ownable {
         if (drawnNumber == LUCKY_NUMBER) {
             address user = IRouterCommon(router).getSender();
 
-            // Iterating backwards is more efficient since the last element is removed from the map on each iteration.
+            // Iterating backwards is more efficient, since the last element is removed from the map on each iteration.
             for (uint256 i = _tokensWithAccruedFees.size; i > 0; i--) {
                 (IERC20 feeToken, ) = _tokensWithAccruedFees.at(i - 1);
                 _tokensWithAccruedFees.remove(feeToken);
 
                 // There are multiple reasons to use a direct transfer of hook fees to the user instead of hook
                 // adjusted amounts:
-                // * We can transfer all fees from all tokens;
+                //
+                // * We can transfer all fees from all tokens
                 // * For EXACT_OUT transactions, the maximum prize we might give is amountsIn, because the maximum
-                //   discount is 100%;
+                //   discount is 100%
                 // * We don't need to send tokens to the vault and then settle, which would be more expensive than
-                //   transferring tokens to the user directly.
+                //   transferring tokens to the user directly
                 feeToken.safeTransfer(user, feeToken.balanceOf(address(this)));
             }
             // Winner pays no fees.
             return 0;
         } else {
-            // Add token to map of tokens with accrued fees.
+            // Add token to the map of tokens with accrued fees.
             _tokensWithAccruedFees.set(token, 1);
 
             // Collect fees from the vault; user will pay them when the router settles the swap.
@@ -175,9 +188,9 @@ contract LotteryHookExample is BaseHooks, Ownable {
         }
     }
 
-    // @notice Generates a "random" number from 1 to MAX_NUMBER
-    // @dev Be aware that, for real applications, the random number must be generated with a help of an oracle, or
-    // other off-chain method. The output of this function is predictable.
+    // Generates a "random" number from 1 to MAX_NUMBER.
+    // Be aware that in real applications the random number must be generated with a help of an oracle, or some
+    // other off-chain method. The output of this function is predictable on-chain.
     function _getRandomNumber() private view returns (uint8) {
         return uint8((uint(keccak256(abi.encodePacked(block.prevrandao, _counter))) % MAX_NUMBER) + 1);
     }

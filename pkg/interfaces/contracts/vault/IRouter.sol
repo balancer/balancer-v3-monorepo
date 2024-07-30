@@ -6,24 +6,23 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
-import { SwapKind } from "./VaultTypes.sol";
-import { IBasePool } from "./IBasePool.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 
+/// @notice User-friendly interface to basic Vault operations: swap, add/remove liquidity, and associated queries.
 interface IRouter {
     /***************************************************************************
                                 Pool Initialization
     ***************************************************************************/
 
     /**
-     * @dev Data for the pool initialization hook
+     * @notice Data for the pool initialization hook
      * @param sender Account originating the pool initialization operation
      * @param pool Address of the liquidity pool
-     * @param tokens Pool tokens
+     * @param tokens Pool tokens, in token registration order
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data required for adding initial liquidity
+     * @param userData Additional (optional) data sent with the request to add initial liquidity
      */
     struct InitializeHookParams {
         address sender;
@@ -38,11 +37,11 @@ interface IRouter {
     /**
      * @notice Initialize a liquidity pool.
      * @param pool Address of the liquidity pool
-     * @param tokens Pool tokens
+     * @param tokens Pool tokens, in token registration order
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data required for adding initial liquidity
+     * @param userData Additional (optional) data sent with the request to add initial liquidity
      * @return bptAmountOut Actual amount of pool tokens minted in exchange for initial liquidity
      */
     function initialize(
@@ -64,7 +63,7 @@ interface IRouter {
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data required for adding liquidity
+     * @param userData Additional (optional) data sent with the request to add liquidity
      * @return amountsIn Actual amounts of tokens added, sorted in token registration order
      */
     function addLiquidityProportional(
@@ -81,7 +80,7 @@ interface IRouter {
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data required for adding liquidity
+     * @param userData Additional (optional) data sent with the request to add liquidity
      * @return bptAmountOut Actual amount of pool tokens received
      */
     function addLiquidityUnbalanced(
@@ -99,7 +98,7 @@ interface IRouter {
      * @param maxAmountIn Maximum amount of tokens to be added
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data required for adding liquidity
+     * @param userData Additional (optional) data sent with the request to add liquidity
      * @return amountIn Actual amount of tokens added
      */
     function addLiquiditySingleTokenExactOut(
@@ -117,7 +116,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param amountsIn Amounts of tokens to be donated, sorted in token registration order
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data required for adding liquidity
+     * @param userData Additional (optional) data sent with the request to donate liquidity
      */
     function donate(address pool, uint256[] memory amountsIn, bool wethIsEth, bytes memory userData) external payable;
 
@@ -130,10 +129,10 @@ interface IRouter {
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data required for adding liquidity
+     * @param userData Additional (optional) data sent with the request to add liquidity
      * @return amountsIn Actual amounts of tokens added, sorted in token registration order
      * @return bptAmountOut Actual amount of pool tokens received
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function addLiquidityCustom(
         address pool,
@@ -153,7 +152,7 @@ interface IRouter {
      * @param exactBptAmountIn Exact amount of pool tokens provided
      * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
      * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
-     * @param userData Additional (optional) data required for removing liquidity
+     * @param userData Additional (optional) data sent with the request to remove liquidity
      * @return amountsOut Actual amounts of tokens received, sorted in token registration order
      */
     function removeLiquidityProportional(
@@ -171,7 +170,7 @@ interface IRouter {
      * @param tokenOut Token used to remove liquidity
      * @param minAmountOut Minimum amount of tokens to be received
      * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
-     * @param userData Additional (optional) data required for removing liquidity
+     * @param userData Additional (optional) data sent with the request to remove liquidity
      * @return amountOut Actual amount of tokens received
      */
     function removeLiquiditySingleTokenExactIn(
@@ -190,7 +189,7 @@ interface IRouter {
      * @param tokenOut Token used to remove liquidity
      * @param exactAmountOut Exact amount of tokens to be received
      * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
-     * @param userData Additional (optional) data required for removing liquidity
+     * @param userData Additional (optional) data sent with the request to remove liquidity
      * @return bptAmountIn Actual amount of pool tokens burned
      */
     function removeLiquiditySingleTokenExactOut(
@@ -210,10 +209,10 @@ interface IRouter {
      * @param maxBptAmountIn Maximum amount of pool tokens provided
      * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
      * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
-     * @param userData Additional (optional) data required for removing liquidity
+     * @param userData Additional (optional) data sent with the request to remove liquidity
      * @return bptAmountIn Actual amount of pool tokens burned
      * @return amountsOut Actual amounts of tokens received, sorted in token registration order
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function removeLiquidityCustom(
         address pool,
@@ -239,7 +238,7 @@ interface IRouter {
     ***************************************************************************/
 
     /**
-     * @dev Data for the swap hook.
+     * @notice Data for the swap hook.
      * @param sender Account initiating the swap operation
      * @param kind Type of swap (exact in or exact out)
      * @param pool Address of the liquidity pool
@@ -247,9 +246,9 @@ interface IRouter {
      * @param tokenOut Token to be swapped to
      * @param amountGiven Amount given based on kind of the swap (e.g., tokenIn for exact in)
      * @param limit Maximum or minimum amount based on the kind of swap (e.g., maxAmountIn for exact out)
-     * @param deadline Deadline for the swap
+     * @param deadline Deadline for the swap, after which it will revert
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data required for the swap
+     * @param userData Additional (optional) data sent with the swap request
      */
     struct SwapSingleTokenHookParams {
         address sender;
@@ -271,9 +270,9 @@ interface IRouter {
      * @param tokenOut Token to be swapped to
      * @param exactAmountIn Exact amounts of input tokens to send
      * @param minAmountOut Minimum amount of tokens to be received
-     * @param deadline Deadline for the swap
+     * @param deadline Deadline for the swap, after which it will revert
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data required for the swap
+     * @param userData Additional (optional) data sent with the swap request
      * @return amountOut Calculated amount of output tokens to be received in exchange for the given input tokens
      */
     function swapSingleTokenExactIn(
@@ -294,8 +293,8 @@ interface IRouter {
      * @param tokenOut Token to be swapped to
      * @param exactAmountOut Exact amounts of input tokens to receive
      * @param maxAmountIn Maximum amount of tokens to be sent
-     * @param deadline Deadline for the swap
-     * @param userData Additional (optional) data required for the swap
+     * @param deadline Deadline for the swap, after which it will revert
+     * @param userData Additional (optional) data sent with the swap request
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @return amountIn Calculated amount of input tokens to be sent in exchange for the requested output tokens
      */
@@ -315,14 +314,14 @@ interface IRouter {
     *******************************************************************************/
 
     /**
-     * @notice Adds liquidity to a yield-bearing token buffer (linear pools embedded in the vault).
+     * @notice Adds liquidity to a yield-bearing token buffer (internal ERC4626 buffer in the Vault).
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
-     * @param sharesOwner Address of the contract that will own the liquidity.
-     *        Only this contract will be able to remove liquidity from the buffer
+     * @param sharesOwner Address that will own the liquidity. Only this contract will be able to remove liquidity
+     * from the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in underlying tokens
-     *         (This is the BPT of the vault's internal "Linear Pools")
+     * (This is the BPT of the vault's internal ERC4626 buffers)
      */
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
@@ -332,11 +331,11 @@ interface IRouter {
     ) external returns (uint256 issuedShares);
 
     /**
-     * @notice Removes liquidity from a yield-bearing token buffer (an embedded "Linear Pool").
+     * @notice Removes liquidity from a yield-bearing token buffer (internal ERC4626 buffer in the Vault).
      * @dev Only proportional withdrawals are supported, and removing liquidity is permissioned.
      * @param wrappedToken Address of a wrapped token that implements IERC4626
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
-     *        total shares
+     * total shares
      * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
      * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
      */
@@ -354,7 +353,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param exactBptAmountOut Exact amount of pool tokens to be received
-     * @param userData Additional (optional) data required for the query
+     * @param userData Additional (optional) data sent with the query request
      * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
      */
     function queryAddLiquidityProportional(
@@ -368,7 +367,7 @@ interface IRouter {
      * @notice Queries an `addLiquidityUnbalanced` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactAmountsIn Exact amounts of tokens to be added, sorted in token registration order
-     * @param userData Additional (optional) data required for the query
+     * @param userData Additional (optional) data sent with the query request
      * @return bptAmountOut Expected amount of pool tokens to receive
      */
     function queryAddLiquidityUnbalanced(
@@ -382,7 +381,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param tokenIn Token used to add liquidity
      * @param exactBptAmountOut Expected exact amount of pool tokens to receive
-     * @param userData Additional (optional) data required for the query
+     * @param userData Additional (optional) data sent with the query request
      * @return amountIn Expected amount of tokens to add
      */
     function queryAddLiquiditySingleTokenExactOut(
@@ -397,10 +396,10 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param minBptAmountOut Expected minimum amount of pool tokens to receive
-     * @param userData Additional (optional) data required for the query
+     * @param userData Additional (optional) data sent with the query request
      * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
      * @return bptAmountOut Expected amount of pool tokens to receive
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function queryAddLiquidityCustom(
         address pool,
@@ -413,7 +412,7 @@ interface IRouter {
      * @notice Queries a `removeLiquidityProportional` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
-     * @param userData Additional (optional) data required for the query
+     * @param userData Additional (optional) data sent with the query request
      * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
      */
     function queryRemoveLiquidityProportional(
@@ -427,7 +426,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @param tokenOut Token used to remove liquidity
-     * @param userData Additional (optional) data required for the query
+     * @param userData Additional (optional) data sent with the query request
      * @return amountOut Expected amount of tokens to receive
      */
     function queryRemoveLiquiditySingleTokenExactIn(
@@ -442,7 +441,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param tokenOut Token used to remove liquidity
      * @param exactAmountOut Expected exact amount of tokens to receive
-     * @param userData Additional (optional) data required for the query
+     * @param userData Additional (optional) data sent with the query request
      * @return bptAmountIn Expected amount of pool tokens to burn
      */
     function queryRemoveLiquiditySingleTokenExactOut(
@@ -457,10 +456,10 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxBptAmountIn Maximum amount of pool tokens provided
      * @param minAmountsOut Expected minimum amounts of tokens to receive, sorted in token registration order
-     * @param userData Additional (optional) data required for the query
+     * @param userData Additional (optional) data sent with the query request
      * @return bptAmountIn Expected amount of pool tokens to burn
      * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function queryRemoveLiquidityCustom(
         address pool,
@@ -486,7 +485,7 @@ interface IRouter {
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
      * @param exactAmountIn Exact amounts of input tokens to send
-     * @param userData Additional (optional) data required for the query
+     * @param userData Additional (optional) data sent with the query request
      * @return amountOut Calculated amount of output tokens to be received in exchange for the given input tokens
      */
     function querySwapSingleTokenExactIn(
@@ -503,7 +502,7 @@ interface IRouter {
      * @param tokenIn Token to be swapped from
      * @param tokenOut Token to be swapped to
      * @param exactAmountOut Exact amounts of input tokens to receive
-     * @param userData Additional (optional) data required for the query
+     * @param userData Additional (optional) data sent with the query request
      * @return amountIn Calculated amount of input tokens to be sent in exchange for the requested output tokens
      */
     function querySwapSingleTokenExactOut(
