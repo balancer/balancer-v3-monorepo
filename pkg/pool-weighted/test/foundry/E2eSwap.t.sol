@@ -40,20 +40,20 @@ contract E2eSwapWeightedTest is E2eSwapTest {
     }
 
     function _setUpVariables() internal override {
-        token1 = dai;
-        token2 = usdc;
+        tokenA = dai;
+        tokenB = usdc;
         sender = lp;
         poolCreator = lp;
 
         // If there are swap fees, the amountCalculated may be lower than MIN_TRADE_AMOUNT. So, multiplying
         // MIN_TRADE_AMOUNT by 1e4 creates a margin (especially for operations in the edge of the price curve).
-        minSwapAmountToken1 = 1e4 * MIN_TRADE_AMOUNT;
-        minSwapAmountToken2 = 1e4 * MIN_TRADE_AMOUNT;
+        minSwapAmountTokenA = 1e4 * MIN_TRADE_AMOUNT;
+        minSwapAmountTokenB = 1e4 * MIN_TRADE_AMOUNT;
 
         // Divide init amount by 10 to make sure weighted math ratios are respected (Cannot trade more than 30% of pool
         // balance).
-        maxSwapAmountToken1 = poolInitAmount / 10;
-        maxSwapAmountToken2 = poolInitAmount / 10;
+        maxSwapAmountTokenA = poolInitAmount / 10;
+        maxSwapAmountTokenB = poolInitAmount / 10;
 
         // 0.0001% max swap fee.
         minPoolSwapFeePercentage = 1e12;
