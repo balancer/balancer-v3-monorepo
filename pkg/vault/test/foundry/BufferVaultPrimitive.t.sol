@@ -27,12 +27,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     uint256 private constant _userAmount = 10e6 * 1e18;
     uint256 private constant _wrapAmount = _userAmount / 100;
 
-    uint256 private _ABOVE_CONVERT_ERROR;
-
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-
-        _ABOVE_CONVERT_ERROR = vault.getMaxConvertError() + 1;
 
         waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
         vm.label(address(waDAI), "waDAI");

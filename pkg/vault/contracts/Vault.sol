@@ -1172,11 +1172,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // The mint operation returns exactly `vaultWrappedDelta` shares. To do so, it withdraws underlying
                 // from the vault and returns the shares. So, the vault needs to approve the transfer of underlying
                 // tokens to the wrapper.
-                // Add convert error because mint can consume a different amount of tokens than we anticipated.
-                underlyingToken.forceApprove(
-                    address(wrappedToken),
-                    _addConvertError(amountInUnderlying + bufferUnderlyingSurplus)
-                );
+                // Add 2 because mint can consume up to 2 wei more tokens than we anticipated.
+                underlyingToken.forceApprove(address(wrappedToken), amountInUnderlying + bufferUnderlyingSurplus + 2);
 
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called.
                 wrappedToken.mint(amountOutWrapped + bufferWrappedSurplus, address(this));
@@ -1396,15 +1393,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // wrappedBefore - wrappedAfter.
             vaultWrappedDelta = vaultWrappedBefore - vaultWrappedAfter;
         }
-    }
-
-    /**
-     * @dev IERC4626 `convert` and `preview` may have different results for the same input, and `preview` is usually
-     * more accurate, but more expensive than `convert`. _MAX_CONVERT_ERROR limits the error between these two
-     * functions and allow us to use `convert` safely.
-     */
-    function _addConvertError(uint256 amount) private pure returns (uint256) {
-        return amount + _MAX_CONVERT_ERROR;
     }
 
     // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
