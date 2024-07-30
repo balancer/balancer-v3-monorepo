@@ -203,12 +203,12 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
 
     /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
     function getMinimumInvariantRatio() external pure returns (uint256) {
-        return WeightedMath.MIN_INVARIANT_RATIO;
+        return WeightedMath._MIN_INVARIANT_RATIO;
     }
 
     /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
     function getMaximumInvariantRatio() external pure returns (uint256) {
-        return WeightedMath.MAX_INVARIANT_RATIO;
+        return WeightedMath._MAX_INVARIANT_RATIO;
     }
 
     /// @inheritdoc IWeightedPool

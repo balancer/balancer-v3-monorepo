@@ -268,9 +268,7 @@ library BasePoolMath {
 
         // We round down for simplicity, as rounding up doesn't really affect the result in a meaningful way down the
         // line (fee calculation is rounded up anyways which is more straightforward).
-        uint256 taxableAmount = invariantRatio.mulDown(
-            currentBalances[tokenOutIndex]
-        );
+        uint256 taxableAmount = invariantRatio.mulDown(currentBalances[tokenOutIndex]);
         taxableAmount -= newBalances[tokenOutIndex];
 
         // Calculate the swap fee based on the taxable amount and the swap fee percentage

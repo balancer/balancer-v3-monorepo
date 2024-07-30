@@ -36,9 +36,9 @@ library WeightedMath {
     uint256 internal constant _MAX_OUT_RATIO = 0.3e18;
 
     // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
-    uint256 internal constant MAX_INVARIANT_RATIO = 3e18;
+    uint256 internal constant _MAX_INVARIANT_RATIO = 3e18;
     // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
-    uint256 internal constant MIN_INVARIANT_RATIO = 0.7e18;
+    uint256 internal constant _MIN_INVARIANT_RATIO = 0.7e18;
 
     // The invariant is used to collect protocol swap fees by comparing its value between two times.
     // So we can round always to the same direction. It is also used to initiate the BPT amount and,
