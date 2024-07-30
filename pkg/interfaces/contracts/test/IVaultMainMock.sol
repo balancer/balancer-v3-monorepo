@@ -72,8 +72,6 @@ interface IVaultMainMock {
 
     function getBufferTokenBalancesBytes(IERC4626 wrappedToken) external view returns (bytes32);
 
-    function getMaxConvertError() external pure returns (uint256);
-
     function recoveryModeExit(address pool) external view;
 
     function loadPoolDataUpdatingBalancesAndYieldFees(
