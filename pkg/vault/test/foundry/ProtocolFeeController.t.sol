@@ -35,7 +35,6 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     uint256 internal constant PROTOCOL_SWAP_FEE_AMOUNT = 100e18;
     uint256 internal constant PROTOCOL_YIELD_FEE_AMOUNT = 50e18;
 
-    IProtocolFeeController feeController;
     IAuthentication feeControllerAuth;
 
     uint256 internal daiIdx;
@@ -44,7 +43,6 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     function setUp() public override {
         BaseVaultTest.setUp();
 
-        feeController = vault.getProtocolFeeController();
         feeControllerAuth = IAuthentication(address(feeController));
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
