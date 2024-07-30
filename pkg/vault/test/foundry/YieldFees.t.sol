@@ -94,17 +94,14 @@ contract YieldFeesTest is BaseVaultTest {
     function testNoYieldFeesIfExempt__Fuzz(
         uint256 wstethRate,
         uint256 daiRate,
-        uint256 protocolYieldFeePercentage,
-        uint256 poolCreatorFeePercentage,
+        uint256 aggregateYieldFeePercentage,
         bool roundUp
     ) public {
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
-
-        (protocolYieldFeePercentage, poolCreatorFeePercentage) = _initializeFees(
-            protocolYieldFeePercentage,
-            poolCreatorFeePercentage
-        );
+        aggregateYieldFeePercentage = bound(aggregateYieldFeePercentage, 1e12, 10e16);
+        // Prevent PrecisionTooHigh error.
+        aggregateYieldFeePercentage = (aggregateYieldFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
 
         pool = createPool();
         wstETHRateProvider.mockRate(wstethRate);
@@ -112,10 +109,6 @@ contract YieldFeesTest is BaseVaultTest {
 
         initPool();
 
-        uint256 aggregateYieldFeePercentage = _getAggregateFeePercentage(
-            protocolYieldFeePercentage,
-            poolCreatorFeePercentage
-        );
         // Set non-zero yield fee.
         vault.manualSetAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage);
 
@@ -155,9 +148,7 @@ contract YieldFeesTest is BaseVaultTest {
             wstethRate
         );
         vars.liveBalanceBeforeRaw = vars.liveBalanceAfterRaw + actualProtocolFee;
-        vars.expectedProtocolFee = vars.liveBalanceBeforeRaw.mulDown(
-            _getAggregateFeePercentage(protocolYieldFeePercentage, poolCreatorFeePercentage)
-        );
+        vars.expectedProtocolFee = vars.liveBalanceBeforeRaw.mulDown(aggregateYieldFeePercentage);
 
         assertApproxEqAbs(actualProtocolFee, vars.expectedProtocolFee, 1e3, "Wrong protocol fee");
     }
@@ -228,37 +219,35 @@ contract YieldFeesTest is BaseVaultTest {
     function testYieldFeesOnSwap__Fuzz(
         uint256 wstethRate,
         uint256 daiRate,
-        uint256 protocolYieldFeePercentage,
-        uint256 poolCreatorFeePercentage
+        uint256 aggregateYieldFeePercentage
     ) public {
-        (protocolYieldFeePercentage, poolCreatorFeePercentage) = _initializeFees(
-            protocolYieldFeePercentage,
-            poolCreatorFeePercentage
-        );
+        aggregateYieldFeePercentage = bound(aggregateYieldFeePercentage, 1e12, 10e16);
+        // Prevent PrecisionTooHigh error.
+        aggregateYieldFeePercentage = (aggregateYieldFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
 
         wstethRate = bound(wstethRate, 1e18, 1.5e18);
         daiRate = bound(daiRate, 1e18, 1.5e18);
 
-        _testYieldFeesOnSwap(wstethRate, daiRate, protocolYieldFeePercentage, poolCreatorFeePercentage);
+        _testYieldFeesOnSwap(wstethRate, daiRate, aggregateYieldFeePercentage);
     }
 
     function testYieldFeesOnSwap() public {
         // Protocol yield fee 20%, and pool creator yield fees 100%.
         uint256 protocolYieldFeePercentage = 20e16;
-        uint256 poolCreatorFeePercentage = 1e18;
+        uint256 poolCreatorFeePercentage = 100e16;
+
+        uint256 aggregateYieldFeePercentage = feeController.computeAggregateFeePercentage(
+            protocolYieldFeePercentage,
+            poolCreatorFeePercentage
+        );
 
         uint256 wstethRate = 1.3e18;
         uint256 daiRate = 1.3e18;
 
-        _testYieldFeesOnSwap(wstethRate, daiRate, protocolYieldFeePercentage, poolCreatorFeePercentage);
+        _testYieldFeesOnSwap(wstethRate, daiRate, aggregateYieldFeePercentage);
     }
 
-    function _testYieldFeesOnSwap(
-        uint256 wstethRate,
-        uint256 daiRate,
-        uint256 protocolYieldFeePercentage,
-        uint256 poolCreatorFeePercentage
-    ) private {
+    function _testYieldFeesOnSwap(uint256 wstethRate, uint256 daiRate, uint256 aggregateYieldFeePercentage) private {
         pool = createPool();
         wstETHRateProvider.mockRate(wstethRate);
         daiRateProvider.mockRate(daiRate);
@@ -267,11 +256,6 @@ contract YieldFeesTest is BaseVaultTest {
 
         require(vault.manualGetAggregateYieldFeeAmount(pool, dai) == 0, "Initial protocol fees for DAI not 0");
         require(vault.manualGetAggregateYieldFeeAmount(pool, wsteth) == 0, "Initial protocol fees for wstETH not 0");
-
-        uint256 aggregateYieldFeePercentage = _getAggregateFeePercentage(
-            protocolYieldFeePercentage,
-            poolCreatorFeePercentage
-        );
 
         vault.manualSetAggregateYieldFeePercentage(pool, aggregateYieldFeePercentage);
 

@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -43,9 +44,12 @@ contract VaultUnitSwapTest is BaseTest {
     uint256[] decimalScalingFactors = [uint256(1e18), 1e18];
     uint256[] tokenRates = [uint256(1e18), 2e18];
 
+    IProtocolFeeController feeController;
+
     function setUp() public virtual override {
         BaseTest.setUp();
         vault = IVaultMock(address(VaultMockDeployer.deploy()));
+        feeController = vault.getProtocolFeeController();
 
         swapTokens = [dai, usdc];
         // We don't care about last live balances, so we set them equal to the raw ones.
@@ -60,7 +64,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 limitRaw = 1000e18;
         uint256 swapFeePercentage = 1e16;
         uint256 protocolFeePercentage = 20e16;
-        uint256 poolCreatorFeePercentage = 5e17;
+        uint256 poolCreatorFeePercentage = 50e16;
 
         (, SwapState memory state, PoolData memory poolData) = _makeParams(
             SwapKind.EXACT_IN,
@@ -117,13 +121,6 @@ contract VaultUnitSwapTest is BaseTest {
             locals.swapState,
             locals.poolData
         );
-    }
-
-    function _getAggregateFeePercentage(
-        uint256 protocolFeePercentage,
-        uint256 creatorFeePercentage
-    ) internal pure returns (uint256) {
-        return protocolFeePercentage + protocolFeePercentage.complement().mulDown(creatorFeePercentage);
     }
 
     function testSwapExactInWithFee() public {
@@ -315,7 +312,9 @@ contract VaultUnitSwapTest is BaseTest {
         poolData.poolConfigBits = poolData
             .poolConfigBits
             .setStaticSwapFeePercentage(swapFeePercentage)
-            .setAggregateSwapFeePercentage(_getAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage));
+            .setAggregateSwapFeePercentage(
+                feeController.computeAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage)
+            );
 
         poolData.balancesLiveScaled18 = new uint256[](initialBalances.length);
     }
