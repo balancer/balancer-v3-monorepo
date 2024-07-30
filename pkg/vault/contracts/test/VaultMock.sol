@@ -387,10 +387,6 @@ contract VaultMock is IVaultMainMock, Vault {
         }
     }
 
-    function getMaxConvertError() external pure returns (uint256) {
-        return _MAX_CONVERT_ERROR;
-    }
-
     function guardedCheckEntered() external nonReentrant {
         require(reentrancyGuardEntered());
     }
