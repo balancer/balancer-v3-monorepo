@@ -72,7 +72,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
 
     function testHookFeeAddLiquidity__Fuzz(uint256 expectedBptOut, uint256 hookFeePercentage) public {
         // Add fee between 0 and 100%.
-        hookFeePercentage = bound(hookFeePercentage, 0, FixedPoint.ONE);
+        hookFeePercentage = bound(hookFeePercentage, 0, 100e16);
         PoolHooksMock(poolHooksContract).setAddLiquidityHookFeePercentage(hookFeePercentage);
 
         // Since operation is not settled in advance, max expected bpt out can't generate a hook fee higher than
@@ -131,7 +131,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
 
     function testHookDiscountAddLiquidity__Fuzz(uint256 expectedBptOut, uint256 hookDiscountPercentage) public {
         // Add discount between 0 and 100%.
-        hookDiscountPercentage = bound(hookDiscountPercentage, 0, FixedPoint.ONE);
+        hookDiscountPercentage = bound(hookDiscountPercentage, 0, 100e16);
         PoolHooksMock(poolHooksContract).setAddLiquidityHookDiscountPercentage(hookDiscountPercentage);
 
         // Make sure bob has enough to pay for the transaction.
@@ -235,7 +235,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         );
 
         // Add fee between 0 and 100%.
-        hookFeePercentage = bound(hookFeePercentage, 0, FixedPoint.ONE);
+        hookFeePercentage = bound(hookFeePercentage, 0, 100e16);
         PoolHooksMock(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
 
         // Make sure Bob has enough to pay for the transaction.
@@ -289,7 +289,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         );
 
         // Add discount between 0 and 100%.
-        hookDiscountPercentage = bound(hookDiscountPercentage, 0, FixedPoint.ONE);
+        hookDiscountPercentage = bound(hookDiscountPercentage, 0, 100e16);
         PoolHooksMock(poolHooksContract).setRemoveLiquidityHookDiscountPercentage(hookDiscountPercentage);
 
         // Make sure Bob has enough to pay for the transaction.

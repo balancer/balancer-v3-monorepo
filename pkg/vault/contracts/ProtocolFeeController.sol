@@ -77,7 +77,7 @@ contract ProtocolFeeController is
         bool isOverride;
     }
 
-    // Maximum protocol swap fee percentage. 1e18 corresponds to a 100% fee.
+    // Maximum protocol swap fee percentage. 100e16 corresponds to a 100% fee.
     uint256 internal constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
     // Maximum protocol yield fee percentage.
