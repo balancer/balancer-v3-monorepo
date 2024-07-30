@@ -70,7 +70,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
 
         // Fee between 0 and 100%.
-        hookFeePercentage = bound(hookFeePercentage, 0, 100e16);
+        hookFeePercentage = bound(hookFeePercentage, 0, FixedPoint.ONE);
         PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
@@ -127,7 +127,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
 
         // Discount between 0 and 100%
-        hookDiscountPercentage = bound(hookDiscountPercentage, 0, 100e16);
+        hookDiscountPercentage = bound(hookDiscountPercentage, 0, FixedPoint.ONE);
         PoolHooksMock(poolHooksContract).setHookSwapDiscountPercentage(hookDiscountPercentage);
         uint256 hookDiscount = swapAmount.mulDown(hookDiscountPercentage);
 
@@ -189,7 +189,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
 
         // Fee between 0 and 100%.
-        hookFeePercentage = bound(hookFeePercentage, 0, 100e16);
+        hookFeePercentage = bound(hookFeePercentage, 0, FixedPoint.ONE);
         PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
@@ -257,7 +257,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
 
         // Discount between 0 and 100%
-        hookDiscountPercentage = bound(hookDiscountPercentage, 0, 100e16);
+        hookDiscountPercentage = bound(hookDiscountPercentage, 0, FixedPoint.ONE);
         PoolHooksMock(poolHooksContract).setHookSwapDiscountPercentage(hookDiscountPercentage);
         uint256 hookDiscount = swapAmount.mulDown(hookDiscountPercentage);
 

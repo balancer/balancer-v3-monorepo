@@ -43,7 +43,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
     function testWithValidPercentageRevert() public {
         // Any percentage above 100% is not valid and modifier should revert.
         vm.expectRevert(IVaultErrors.ProtocolFeesExceedTotalCollected.selector);
-        vault.mockWithValidPercentage(100e16 + 1);
+        vault.mockWithValidPercentage(FixedPoint.ONE + 1);
     }
 
     // _setVaultPaused

@@ -51,7 +51,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         vm.mockCall(
             pool,
             abi.encodeWithSelector(ISwapFeePercentageBounds.getMaximumSwapFeePercentage.selector),
-            abi.encode(100e16)
+            abi.encode(FixedPoint.ONE) // 100%
         );
     }
 

@@ -107,7 +107,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
     function testSwapTooSmallAmountCalculated() public {
         // Near 100% swap fee will result in near 0 amount calculated
-        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(100e16 - 1);
+        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(FixedPoint.ONE - 1);
         PoolHooksMock(poolHooksContract).setSpecialSender(bob);
 
         vm.prank(alice);
@@ -139,7 +139,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         );
 
         // Set a 100% fee, and bob as 0 swap fee sender.
-        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(100e16);
+        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(FixedPoint.ONE);
         PoolHooksMock(poolHooksContract).setSpecialSender(bob);
 
         uint256 aliceBalanceBefore = usdc.balanceOf(alice);
