@@ -62,7 +62,6 @@ contract VaultExplorerTest is BaseVaultTest {
     uint256 internal constant PROTOCOL_YIELD_FEE_AMOUNT = 50e18;
 
     VaultExplorer internal explorer;
-    IProtocolFeeController feeController;
     IAuthentication feeControllerAuth;
     ERC4626TestToken internal waDAI;
 
@@ -97,7 +96,6 @@ contract VaultExplorerTest is BaseVaultTest {
 
         _setComplexPoolData();
 
-        feeController = vault.getProtocolFeeController();
         feeControllerAuth = IAuthentication(address(feeController));
 
         waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);

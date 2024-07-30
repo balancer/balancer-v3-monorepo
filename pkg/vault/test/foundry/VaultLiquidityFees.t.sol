@@ -4,8 +4,6 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -17,16 +15,12 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
     // `BaseVaultTest` defines the `protocolSwapFeePercentage`.
     uint64 poolCreatorFeePercentage = 50e16; // 50%
 
-    IProtocolFeeController feeController;
-
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-
-        feeController = vault.getProtocolFeeController();
 
         setSwapFeePercentage(swapFeePercentage);
         vault.manualSetAggregateSwapFeePercentage(

@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -26,16 +25,12 @@ contract YieldFeesTest is BaseVaultTest {
     RateProviderMock wstETHRateProvider;
     RateProviderMock daiRateProvider;
 
-    IProtocolFeeController feeController;
-
     // Track the indices for the local dai/wsteth pool.
     uint256 internal wstethIdx;
     uint256 internal daiIdx;
 
     function setUp() public override {
         BaseVaultTest.setUp();
-
-        feeController = vault.getProtocolFeeController();
 
         (daiIdx, wstethIdx) = getSortedIndexes(address(dai), address(wsteth));
     }
