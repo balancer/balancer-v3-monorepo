@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
@@ -67,6 +68,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     BatchRouterMock internal batchRouter;
     // Authorizer mock.
     BasicAuthorizerMock internal authorizer;
+    // Fee controller deployed with the Vault.
+    IProtocolFeeController internal feeController;
     // Pool for tests.
     address internal pool;
     // Rate provider mock.
@@ -117,6 +120,9 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         vm.label(address(router), "router");
         batchRouter = new BatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
+        feeController = vault.getProtocolFeeController();
+        vm.label(address(feeController), "fee controller");
+
         poolHooksContract = createHook();
         pool = createPool();
 
@@ -248,16 +254,6 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     function getSalt(address addr) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
-    }
-
-    function _getAggregateFeePercentage(
-        uint256 protocolFeePercentage,
-        uint256 creatorFeePercentage
-    ) internal pure returns (uint256) {
-        // Address precision issues with 24-bit fees.
-        return
-            ((protocolFeePercentage + protocolFeePercentage.complement().mulDown(creatorFeePercentage)) /
-                FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
     }
 
     function _prankStaticCall() internal {
