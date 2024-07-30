@@ -13,7 +13,7 @@ import { TokenInfo } from "../vault/VaultTypes.sol";
 interface IPoolInfo {
     /**
      * @notice Gets the tokens registered in the pool.
-     * @return tokens Pool tokens, sorted in pool registration order
+     * @return tokens List of tokens in the pool, sorted in registration order
      */
     function getTokens() external view returns (IERC20[] memory tokens);
 
@@ -35,7 +35,7 @@ interface IPoolInfo {
         );
 
     /**
-     * @notice Gets current live balances of the pool (fixed-point, 18 decimals).
+     * @notice Gets the current live balances of the pool as fixed point, 18-decimal numbers.
      * @return balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
      */
     function getCurrentLiveBalances() external view returns (uint256[] memory balancesLiveScaled18);
@@ -45,4 +45,15 @@ interface IPoolInfo {
      * @return staticSwapFeePercentage 18-decimal FP value of the static swap fee percentage
      */
     function getStaticSwapFeePercentage() external view returns (uint256 staticSwapFeePercentage);
+
+    /**
+     * @notice Gets the aggregate swap and yield fee percentages for a pool.
+     * @dev These are determined by the current protocol and pool creator fees, set in the `ProtocolFeeController`.
+     * @return aggregateSwapFeePercentage The aggregate percentage fee applied to swaps
+     * @return aggregateYieldFeePercentage The aggregate percentage fee applied to yield
+     */
+    function getAggregateFeePercentages()
+        external
+        view
+        returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage);
 }
