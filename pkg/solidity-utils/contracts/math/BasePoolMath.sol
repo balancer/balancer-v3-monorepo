@@ -262,7 +262,7 @@ library BasePoolMath {
         // Calculate the new proportional balance by multiplying the new invariant ratio by the current balance.
         // Calculate the taxable amount by subtracting the new balance from the equivalent proportional balance.
         uint256 currentInvariant = pool.computeInvariant(currentBalances);
-        uint256 invariantRatio = currentInvariant.divDown(pool.computeInvariant(newBalances));
+        uint256 invariantRatio = pool.computeInvariant(newBalances).divDown(currentInvariant);
 
         ensureInvariantRatioWithinMinimumBounds(pool, currentInvariant);
 

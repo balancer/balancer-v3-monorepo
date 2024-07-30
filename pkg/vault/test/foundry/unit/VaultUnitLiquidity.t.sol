@@ -7,6 +7,9 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import {
+    IUnbalancedLiquidityInvariantRatioBounds
+} from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
@@ -73,6 +76,18 @@ contract VaultUnitLiquidityTest is BaseTest {
         for (uint256 i = 0; i < tokens.length; i++) {
             vault.manualSetAggregateSwapFeeAmount(pool, tokens[i], 0);
         }
+
+        // Mock invariant ratio bounds
+        vm.mockCall(
+            pool,
+            abi.encodeWithSelector(IUnbalancedLiquidityInvariantRatioBounds.getMinimumInvariantRatio.selector),
+            abi.encode(0)
+        );
+        vm.mockCall(
+            pool,
+            abi.encodeWithSelector(IUnbalancedLiquidityInvariantRatioBounds.getMaximumInvariantRatio.selector),
+            abi.encode(1_000_000e18)
+        );
     }
 
     // #region AddLiquidity tests
