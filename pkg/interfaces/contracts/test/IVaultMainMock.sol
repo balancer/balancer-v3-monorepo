@@ -52,6 +52,7 @@ interface IVaultMainMock {
 
     function manualSetStaticSwapFeePercentage(address pool, uint256 value) external;
 
+    /// @dev Does not check the value against any min/max limits normally enforced by the pool.
     function manualUnsafeSetStaticSwapFeePercentage(address pool, uint256 value) external;
 
     function manualSetPoolTokensAndBalances(address, IERC20[] memory, uint256[] memory, uint256[] memory) external;
