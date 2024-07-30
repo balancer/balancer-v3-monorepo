@@ -64,7 +64,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 limitRaw = 1000e18;
         uint256 swapFeePercentage = 1e16;
         uint256 protocolFeePercentage = 20e16;
-        uint256 poolCreatorFeePercentage = 5e17;
+        uint256 poolCreatorFeePercentage = 50e16;
 
         (, SwapState memory state, PoolData memory poolData) = _makeParams(
             SwapKind.EXACT_IN,

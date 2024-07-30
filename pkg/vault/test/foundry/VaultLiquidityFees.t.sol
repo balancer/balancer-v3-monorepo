@@ -14,7 +14,8 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract VaultLiquidityWithFeesTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    uint64 poolCreatorFeePercentage = 5e17; // 50%
+    // `BaseVaultTest` defines the `protocolSwapFeePercentage`.
+    uint64 poolCreatorFeePercentage = 50e16; // 50%
 
     IProtocolFeeController feeController;
 
