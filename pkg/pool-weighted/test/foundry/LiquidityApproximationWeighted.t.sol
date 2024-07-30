@@ -21,9 +21,9 @@ import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry
 contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     using ArrayHelpers for *;
 
-    uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
+    uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
 
-    uint256 poolCreationNonce;
+    uint256 internal poolCreationNonce;
 
     function setUp() public virtual override {
         LiquidityApproximationTest.setUp();
