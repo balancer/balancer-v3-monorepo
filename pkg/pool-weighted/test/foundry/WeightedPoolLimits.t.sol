@@ -93,18 +93,23 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
     }
 
     function initPool() internal override {
+        // `_updatePoolParams` needs the indices to be set, so take the snapshot *after* this line.
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+
+        // Initialization test also needs these to be set.
+        startingBalances[daiIdx] = dai.balanceOf(lp);
+        startingBalances[usdcIdx] = usdc.balanceOf(lp);
+
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
+
         preInitSnapshotId = vm.snapshot();
 
-        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
         uint256[] memory weights = weightedPool.getNormalizedWeights();
 
         amountsIn[daiIdx] = TOKEN_AMOUNT.mulDown(weights[daiIdx]);
         amountsIn[usdcIdx] = TOKEN_AMOUNT.mulDown(weights[usdcIdx]);
 
         uint256 expectedBptAmountOut = math.computeInvariant(weights, amountsIn) - MIN_BPT;
-
-        startingBalances[daiIdx] = dai.balanceOf(lp);
-        startingBalances[usdcIdx] = usdc.balanceOf(lp);
 
         // Cannot use vm.prank, because `_initPool` does multiple calls.
         vm.startPrank(lp);
@@ -115,20 +120,12 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
     }
 
     function testWeightLimits__Fuzz(uint256 daiWeight, uint256 swapFeePercentage) public {
+        // It doesn't let me do the `bound` operations in `_updatePoolParams`.
+        // Nor can I say `_updatePoolParams(bound(...))`.
+        daiWeight = bound(daiWeight, 1e16, 99e16);
         swapFeePercentage = bound(swapFeePercentage, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
-        uint256[2] memory weights;
-
-        weights[daiIdx] = bound(daiWeight, 1e16, 99e16);
-        weights[usdcIdx] = FixedPoint.ONE - weights[daiIdx];
-
-        weightedPool.setNormalizedWeights(weights);
-
-        // Return to state before initialization
-        vm.revertTo(preInitSnapshotId);
-
-        initPool();
-        _testInitialize();
+        _updatePoolParams(daiWeight, swapFeePercentage);
 
         uint256 postInitSnapshot = vm.snapshot();
         _testGetBptRate();
@@ -146,6 +143,30 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         _testAddLiquidityUnbalanced(swapFeePercentage);
     }
 
+    function testInitialize__Fuzz(uint256 daiWeight, uint256 swapFeePercentage) public {
+        vm.revertTo(preInitSnapshotId);
+
+        daiWeight = bound(daiWeight, 1e16, 99e16);
+        swapFeePercentage = bound(swapFeePercentage, MIN_SWAP_FEE, MAX_SWAP_FEE);
+
+        _updatePoolParams(daiWeight, swapFeePercentage);
+
+        initPool();
+        _testInitialize();
+    }
+
+    function _updatePoolParams(uint256 daiWeight, uint256 swapFeePercentage) internal {
+        uint256[2] memory weights;
+
+        weights[daiIdx] = daiWeight;
+        weights[usdcIdx] = FixedPoint.ONE - daiWeight;
+
+        WeightedPoolMock(pool).setNormalizedWeights(weights);
+
+        vm.prank(alice);
+        vault.setStaticSwapFeePercentage(pool, swapFeePercentage);
+    }
+
     function _testInitialize() internal view {
         // Tokens are transferred from lp.
         assertEq(startingBalances[usdcIdx] - usdc.balanceOf(lp), amountsIn[usdcIdx], "LP: Wrong USDC balance");
@@ -157,8 +178,8 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
 
         // Tokens are deposited to the pool
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
-        assertEq(balances[0], amountsIn[daiIdx], "Pool: Wrong DAI balance");
-        assertEq(balances[1], amountsIn[usdcIdx], "Pool: Wrong USDC balance");
+        assertEq(balances[daiIdx], amountsIn[daiIdx], "Pool: Wrong DAI balance");
+        assertEq(balances[usdcIdx], amountsIn[usdcIdx], "Pool: Wrong USDC balance");
 
         // Should mint correct amount of BPT tokens.
         // Account for the precision loss.
@@ -327,7 +348,6 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
     }
 
     function _testAddLiquidityUnbalanced(uint256 swapFeePercentage) public {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
         vm.prank(alice);
         vault.setStaticSwapFeePercentage(address(pool), swapFeePercentage);
 
