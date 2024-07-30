@@ -27,6 +27,15 @@ library ArrayHelpers {
         return ret;
     }
 
+    function toMemoryArray(address[4] memory array) internal pure returns (address[] memory) {
+        address[] memory ret = new address[](4);
+        ret[0] = array[0];
+        ret[1] = array[1];
+        ret[2] = array[2];
+        ret[3] = array[3];
+        return ret;
+    }
+
     function toMemoryArray(address payable[1] memory array) internal pure returns (address[] memory) {
         address[] memory ret = new address[](1);
         ret[0] = array[0];

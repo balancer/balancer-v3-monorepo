@@ -246,6 +246,32 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         }
     }
 
+    function getBalances(address user, IERC20[] memory tokensToTrack) internal view returns (Balances memory balances) {
+        balances.userBpt = IERC20(pool).balanceOf(user);
+        balances.aliceBpt = IERC20(pool).balanceOf(alice);
+        balances.bobBpt = IERC20(pool).balanceOf(bob);
+        balances.hookBpt = IERC20(pool).balanceOf(poolHooksContract);
+        balances.lpBpt = IERC20(pool).balanceOf(lp);
+
+        balances.userTokens = new uint256[](tokensToTrack.length);
+        balances.aliceTokens = new uint256[](tokensToTrack.length);
+        balances.bobTokens = new uint256[](tokensToTrack.length);
+        balances.hookTokens = new uint256[](tokensToTrack.length);
+        balances.lpTokens = new uint256[](tokensToTrack.length);
+        balances.vaultTokens = new uint256[](tokensToTrack.length);
+        balances.vaultReserves = new uint256[](tokensToTrack.length);
+        for (uint256 i = 0; i < tokensToTrack.length; ++i) {
+            // Don't assume token ordering.
+            balances.userTokens[i] = tokensToTrack[i].balanceOf(user);
+            balances.aliceTokens[i] = tokensToTrack[i].balanceOf(alice);
+            balances.bobTokens[i] = tokensToTrack[i].balanceOf(bob);
+            balances.hookTokens[i] = tokensToTrack[i].balanceOf(poolHooksContract);
+            balances.lpTokens[i] = tokensToTrack[i].balanceOf(lp);
+            balances.vaultTokens[i] = tokensToTrack[i].balanceOf(address(vault));
+            balances.vaultReserves[i] = vault.getReservesOf(tokensToTrack[i]);
+        }
+    }
+
     function getSalt(address addr) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
     }
