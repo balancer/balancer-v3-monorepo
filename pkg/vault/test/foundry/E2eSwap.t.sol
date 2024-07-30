@@ -10,6 +10,7 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -17,8 +18,8 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract E2eSwapTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    IERC20 internal token1;
-    IERC20 internal token2;
+    ERC20TestToken internal token1;
+    ERC20TestToken internal token2;
     uint256 private _idxToken1;
     uint256 private _idxToken2;
     address internal sender;
@@ -57,11 +58,11 @@ contract E2eSwapTest is BaseVaultTest {
         (_idxToken1, _idxToken2) = _getTokenIndexes();
 
         // Donate tokens to vault, so liquidity tests are possible.
-        dai.mint(address(vault), 100 * poolInitAmount);
-        usdc.mint(address(vault), 100 * poolInitAmount);
+        token1.mint(address(vault), 100 * poolInitAmount);
+        token2.mint(address(vault), 100 * poolInitAmount);
         // Override vault liquidity, to make sure the extra liquidity is registered.
-        vault.manualSetReservesOf(dai, 100 * poolInitAmount);
-        vault.manualSetReservesOf(usdc, 100 * poolInitAmount);
+        vault.manualSetReservesOf(token1, 100 * poolInitAmount);
+        vault.manualSetReservesOf(token2, 100 * poolInitAmount);
     }
 
     /**
