@@ -250,16 +250,6 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         return bytes32(uint256(uint160(addr)));
     }
 
-    function _getAggregateFeePercentage(
-        uint256 protocolFeePercentage,
-        uint256 creatorFeePercentage
-    ) internal pure returns (uint256) {
-        // Address precision issues with 24-bit fees.
-        return
-            ((protocolFeePercentage + protocolFeePercentage.complement().mulDown(creatorFeePercentage)) /
-                FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
-    }
-
     function _prankStaticCall() internal {
         // Prank address 0x0 for both msg.sender and tx.origin (to identify as a staticcall)
         vm.prank(address(0), address(0));
