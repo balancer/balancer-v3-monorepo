@@ -15,6 +15,8 @@ contract E2eSwapWeightedSmallDecimalsToBigTest is E2eSwapWeightedTest {
         tokenB = new ERC20TestToken("tokenB", "tokenB", 14);
         vm.label(address(tokenB), "tokenB");
 
+        // At this point, poolInitAmountTokenA and poolInitAmountTokenB are not defined, so use poolInitAmount, which
+        // is 18 decimals.
         tokenA.mint(lp, 100 * poolInitAmount);
         tokenB.mint(lp, 100 * poolInitAmount);
 
