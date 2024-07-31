@@ -369,10 +369,9 @@ interface IVaultExplorer {
      * @return aggregateSwapFeePercentage The aggregate percentage fee applied to swaps
      * @return aggregateYieldFeePercentage The aggregate percentage fee applied to yield
      */
-    function getAggregateFeePercentages(address pool)
-        external
-        view
-        returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage);
+    function getAggregateFeePercentages(
+        address pool
+    ) external view returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage);
 
     /**
      * @notice Collects accumulated aggregate swap and yield fees for the specified pool.
