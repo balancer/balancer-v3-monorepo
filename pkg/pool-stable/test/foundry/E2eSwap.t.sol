@@ -28,9 +28,7 @@ contract E2eSwapStableTest is E2eSwapTest {
         E2eSwapTest.setUp();
     }
 
-    function _setUpVariables() internal override {
-        tokenA = dai;
-        tokenB = usdc;
+    function setUpVariables() internal override {
         sender = lp;
         poolCreator = lp;
 
@@ -46,7 +44,7 @@ contract E2eSwapStableTest is E2eSwapTest {
         // 0.0001% max swap fee.
         minPoolSwapFeePercentage = 1e12;
         // 10% max swap fee.
-        maxPoolSwapFeePercentage = 1e17;
+        maxPoolSwapFeePercentage = 10e16;
     }
 
     /**

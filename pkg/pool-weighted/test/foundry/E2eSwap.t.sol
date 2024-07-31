@@ -39,9 +39,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
 
-    function _setUpVariables() internal override {
-        tokenA = dai;
-        tokenB = usdc;
+    function setUpVariables() internal override {
         sender = lp;
         poolCreator = lp;
 
