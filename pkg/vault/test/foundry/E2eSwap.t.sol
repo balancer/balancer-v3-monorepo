@@ -124,17 +124,8 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertLe(exactAmountOutUndo, exactAmountIn, "Amount out undo should be <= exactAmountIn");
-        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
-        assertLe(
-            balancesAfter.userTokens[tokenAIdx],
-            balancesBefore.userTokens[tokenAIdx],
-            "Wrong sender tokenA balance"
-        );
-        assertLe(
-            balancesAfter.userTokens[tokenBIdx],
-            balancesBefore.userTokens[tokenBIdx],
-            "Wrong sender tokenB balance"
-        );
+
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
     }
 
     function testDoExactInUndoExactInLiquidity__Fuzz(uint256 liquidityTokenA, uint256 liquidityTokenB) public {
@@ -180,17 +171,8 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertLe(exactAmountOutUndo, exactAmountIn, "Amount out undo should be <= exactAmountIn");
-        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
-        assertLe(
-            balancesAfter.userTokens[tokenAIdx],
-            balancesBefore.userTokens[tokenAIdx],
-            "Wrong sender tokenA balance"
-        );
-        assertLe(
-            balancesAfter.userTokens[tokenBIdx],
-            balancesBefore.userTokens[tokenBIdx],
-            "Wrong sender tokenB balance"
-        );
+
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
     }
 
     function testDoExactInUndoExactInVariableFees__Fuzz(uint256 poolSwapFeePercentage) public {
@@ -235,17 +217,8 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertLe(exactAmountOutUndo, exactAmountIn - feesTokenA, "Amount out undo should be <= exactAmountIn");
-        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
-        assertLe(
-            balancesAfter.userTokens[tokenAIdx],
-            balancesBefore.userTokens[tokenAIdx] - feesTokenA,
-            "Wrong sender tokenA balance"
-        );
-        assertLe(
-            balancesAfter.userTokens[tokenBIdx],
-            balancesBefore.userTokens[tokenBIdx] - feesTokenB,
-            "Wrong sender tokenB balance"
-        );
+
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
 
     function testDoExactInUndoExactInVariableFeesAmountInAndLiquidity__Fuzz(
@@ -306,17 +279,8 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertLe(exactAmountOutUndo, exactAmountIn - feesTokenA, "Amount out undo should be <= exactAmountIn");
-        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
-        assertLe(
-            balancesAfter.userTokens[tokenAIdx],
-            balancesBefore.userTokens[tokenAIdx] - feesTokenA,
-            "Wrong sender tokenA balance"
-        );
-        assertLe(
-            balancesAfter.userTokens[tokenBIdx],
-            balancesBefore.userTokens[tokenBIdx] - feesTokenB,
-            "Wrong sender tokenB balance"
-        );
+
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
 
     function testDoExactOutUndoExactOutNoFees__Fuzz(uint256 exactAmountOut) public {
@@ -354,17 +318,8 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertGe(exactAmountInUndo, exactAmountOut, "Amount in undo should be >= exactAmountOut");
-        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
-        assertLe(
-            balancesAfter.userTokens[tokenAIdx],
-            balancesBefore.userTokens[tokenAIdx],
-            "Wrong sender tokenA balance"
-        );
-        assertLe(
-            balancesAfter.userTokens[tokenBIdx],
-            balancesBefore.userTokens[tokenBIdx],
-            "Wrong sender tokenB balance"
-        );
+
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
     }
 
     function testDoExactOutUndoExactOutLiquidity__Fuzz(uint256 liquidityTokenA, uint256 liquidityTokenB) public {
@@ -411,17 +366,8 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertGe(exactAmountInUndo, exactAmountOut, "Amount in undo should be >= exactAmountOut");
-        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
-        assertLe(
-            balancesAfter.userTokens[tokenAIdx],
-            balancesBefore.userTokens[tokenAIdx],
-            "Wrong sender tokenA balance"
-        );
-        assertLe(
-            balancesAfter.userTokens[tokenBIdx],
-            balancesBefore.userTokens[tokenBIdx],
-            "Wrong sender tokenB balance"
-        );
+
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
     }
 
     function testDoExactOutUndoExactOutVariableFees__Fuzz(uint256 poolSwapFeePercentage) public {
@@ -466,17 +412,8 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertGe(exactAmountInUndo, exactAmountOut + feesTokenB, "Amount in undo should be >= exactAmountOut");
-        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
-        assertLe(
-            balancesAfter.userTokens[tokenAIdx],
-            balancesBefore.userTokens[tokenAIdx] - feesTokenA,
-            "Wrong sender tokenA balance"
-        );
-        assertLe(
-            balancesAfter.userTokens[tokenBIdx],
-            balancesBefore.userTokens[tokenBIdx] - feesTokenB,
-            "Wrong sender tokenB balance"
-        );
+
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
 
     function testDoExactOutUndoExactOutVariableFeesAmountOutAndLiquidity__Fuzz(
@@ -537,7 +474,21 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
         assertGe(exactAmountInUndo, exactAmountOut + feesTokenB, "Amount in undo should be >= exactAmountOut");
-        // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
+
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
+    }
+
+    function _checkUserBalancesAndPoolInvariant(
+        BaseVaultTest.Balances memory balancesBefore,
+        BaseVaultTest.Balances memory balancesAfter,
+        uint256 feesTokenA,
+        uint256 feesTokenB
+    ) private {
+        // Pool invariant cannot decrease after the swaps. All fees should be paid by the user.
+        assertLe(balancesBefore.poolInvariant, balancesAfter.poolInvariant, "Pool ,invariant is wrong");
+
+        // The user balance of each token cannot be greater than before because the swap and the reversed swap were
+        // executed. Also, fees were paid to the protocol and pool creator, so make sure the user paid for them.
         assertLe(
             balancesAfter.userTokens[tokenAIdx],
             balancesBefore.userTokens[tokenAIdx] - feesTokenA,

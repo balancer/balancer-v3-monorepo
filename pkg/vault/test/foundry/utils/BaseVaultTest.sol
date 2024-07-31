@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
@@ -49,6 +50,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         uint256[] vaultReserves;
         uint256[] poolTokens;
         uint256 poolSupply;
+        uint256 poolInvariant;
     }
 
     uint256 constant MIN_BPT = 1e6;
@@ -231,8 +233,10 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
         balances.poolSupply = IERC20(pool).totalSupply();
 
-        (IERC20[] memory tokens, , uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(pool);
+        (IERC20[] memory tokens, , uint256[] memory poolBalances, uint256[] memory lastBalancesLiveScaled18) = vault
+            .getPoolTokenInfo(pool);
         balances.poolTokens = poolBalances;
+        balances.poolInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18);
         balances.userTokens = new uint256[](poolBalances.length);
         balances.aliceTokens = new uint256[](poolBalances.length);
         balances.bobTokens = new uint256[](poolBalances.length);
