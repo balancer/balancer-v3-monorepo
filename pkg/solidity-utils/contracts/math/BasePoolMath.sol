@@ -271,7 +271,7 @@ library BasePoolMath {
         // We round invariant ratio up (see reason below).
         uint256 invariantRatio = pool.computeInvariant(newBalances).divUp(currentInvariant);
 
-        ensureInvariantRatioWithinMinimumBounds(pool, currentInvariant);
+        ensureInvariantRatioWithinMinimumBounds(pool, invariantRatio);
 
         // Taxable amount is proportional to invariant ratio; a larger taxable amount rounds in the Vault's favor.
         uint256 taxableAmount = invariantRatio.mulUp(currentBalances[tokenOutIndex]);

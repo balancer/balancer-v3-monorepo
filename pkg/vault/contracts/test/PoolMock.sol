@@ -20,6 +20,10 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
     // Amounts in are multiplied by the multiplier, amounts out are divided by it.
     uint256 private _multiplier = FixedPoint.ONE;
 
+    // Default min / max invariant ratio.
+    uint256 private _minimumInvariantRatio = 0;
+    uint256 private _maximumInvariantRatio = 1e6 * FixedPoint.ONE;
+
     constructor(IVault vault, string memory name, string memory symbol) BalancerPoolToken(vault, name, symbol) {
         // solhint-previous-line no-empty-blocks
     }
@@ -80,21 +84,27 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
         (scalingFactors, ) = _vault.getPoolTokenRates(address(this));
     }
 
-    /// @inheritdoc ISwapFeePercentageBounds
-    function getMinimumSwapFeePercentage() external pure returns (uint256) {
+    function getMinimumSwapFeePercentage() external pure override returns (uint256) {
         return 0;
     }
 
-    /// @inheritdoc ISwapFeePercentageBounds
-    function getMaximumSwapFeePercentage() external pure returns (uint256) {
+    function getMaximumSwapFeePercentage() external pure override returns (uint256) {
         return FixedPoint.ONE;
     }
 
-    function getMinimumInvariantRatio() external pure override returns (uint256) {
-        return 0;
+    function setMinimumInvariantRatio(uint256 minimumInvariantRatio) external {
+        _minimumInvariantRatio = minimumInvariantRatio;
     }
 
-    function getMaximumInvariantRatio() external pure override returns (uint256) {
-        return 1e24; // 1M
+    function getMinimumInvariantRatio() external view override returns (uint256) {
+        return _minimumInvariantRatio;
+    }
+
+    function setMaximumInvariantRatio(uint256 maximumInvariantRatio) external {
+        _maximumInvariantRatio = maximumInvariantRatio;
+    }
+
+    function getMaximumInvariantRatio() external view override returns (uint256) {
+        return _maximumInvariantRatio;
     }
 }
