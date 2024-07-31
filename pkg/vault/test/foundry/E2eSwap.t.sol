@@ -483,7 +483,7 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter,
         uint256 feesTokenA,
         uint256 feesTokenB
-    ) private {
+    ) private view {
         // Pool invariant cannot decrease after the swaps. All fees should be paid by the user.
         assertGe(balancesAfter.poolInvariant, balancesBefore.poolInvariant, "Pool invariant is smaller than before");
 
