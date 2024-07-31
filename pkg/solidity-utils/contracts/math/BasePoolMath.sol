@@ -262,22 +262,24 @@ library BasePoolMath {
         // Calculate the new proportional balance by multiplying the new invariant ratio by the current balance.
         // Calculate the taxable amount by subtracting the new balance from the equivalent proportional balance.
         uint256 currentInvariant = pool.computeInvariant(currentBalances);
-        uint256 invariantRatio = pool.computeInvariant(newBalances).divDown(currentInvariant);
+        // We round invariant ratio up (see reason below).
+        uint256 invariantRatio = pool.computeInvariant(newBalances).divUp(currentInvariant);
 
         ensureInvariantRatioWithinMinimumBounds(pool, currentInvariant);
 
-        // We round down for simplicity, as rounding up doesn't really affect the result in a meaningful way down the
-        // line (fee calculation is rounded up anyways which is more straightforward).
-        uint256 taxableAmount = invariantRatio.mulDown(currentBalances[tokenOutIndex]);
+        // Taxable amount is proportional to invariant ratio; a larger taxable amount rounds in the Vault's favor.
+        uint256 taxableAmount = invariantRatio.mulUp(currentBalances[tokenOutIndex]);
         taxableAmount -= newBalances[tokenOutIndex];
 
-        // Calculate the swap fee based on the taxable amount and the swap fee percentage
+        // Calculate the swap fee based on the taxable amount and the swap fee percentage.
+        // Fee is proportional to taxable amount; larger fee rounds in the Vault's favor.
         uint256 fee = taxableAmount.divUp(swapFeePercentage.complement()) - taxableAmount;
 
         // Update new balances array with a fee
         newBalances[tokenOutIndex] = newBalances[tokenOutIndex] - fee;
 
         // Calculate the new invariant with fees applied.
+        // Larger fee means `invariantWithFeesApplied` goes lower.
         uint256 invariantWithFeesApplied = pool.computeInvariant(newBalances);
 
         // Create swap fees amount array and set the single fee we charge
@@ -288,6 +290,8 @@ library BasePoolMath {
         // total supply with the ratio of the change in invariant.
         // Since we multiply and divide we don't need to use FP math.
         // Calculating BPT amount in, so we round up.
+        // Finally, lower `invariantWithFeesApplied` makes the subtraction larger, which also helps `bptAmountIn` to be
+        // larger since it's in the numerator.
         bptAmountIn = totalSupply.mulDivUp(currentInvariant - invariantWithFeesApplied, currentInvariant);
     }
 
