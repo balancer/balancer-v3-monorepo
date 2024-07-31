@@ -32,14 +32,12 @@ contract E2eSwapStableTest is E2eSwapTest {
         sender = lp;
         poolCreator = lp;
 
-        // If there are swap fees, the amountCalculated may be lower than MIN_TRADE_AMOUNT. So, multiplying
-        // MIN_TRADE_AMOUNT by 10 creates a margin.
-        minSwapAmountTokenA = 10 * MIN_TRADE_AMOUNT;
-        minSwapAmountTokenB = 10 * MIN_TRADE_AMOUNT;
+        minSwapAmountTokenA = poolInitAmountTokenA / 1e3;
+        minSwapAmountTokenB = poolInitAmountTokenB / 1e3;
 
         // Divide init amount by 2 to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
-        maxSwapAmountTokenA = poolInitAmount / 2;
-        maxSwapAmountTokenB = poolInitAmount / 2;
+        maxSwapAmountTokenA = poolInitAmountTokenA / 2;
+        maxSwapAmountTokenB = poolInitAmountTokenB / 2;
 
         // 0.0001% max swap fee.
         minPoolSwapFeePercentage = 1e12;
@@ -47,9 +45,7 @@ contract E2eSwapStableTest is E2eSwapTest {
         maxPoolSwapFeePercentage = 10e16;
     }
 
-    /**
-     * @notice Overrides BaseVaultTest _createPool().
-     */
+    /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
         StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;

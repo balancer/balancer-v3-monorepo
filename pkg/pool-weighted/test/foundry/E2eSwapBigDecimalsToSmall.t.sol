@@ -6,17 +6,15 @@ import "forge-std/Test.sol";
 
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 
-import { E2eSwapStableTest } from "./E2eSwap.t.sol";
+import { E2eSwapWeightedTest } from "./E2eSwap.t.sol";
 
-contract E2eSwapStableSmallDecimalsToBigTest is E2eSwapStableTest {
+contract E2eSwapWeightedBigDecimalsToSmallTest is E2eSwapWeightedTest {
     function setUpTokens() internal override {
-        tokenA = new ERC20TestToken("tokenA", "tokenA", 8);
+        tokenA = new ERC20TestToken("tokenA", "tokenA", 12);
         vm.label(address(tokenA), "tokenA");
-        tokenB = new ERC20TestToken("tokenB", "tokenB", 14);
+        tokenB = new ERC20TestToken("tokenB", "tokenB", 6);
         vm.label(address(tokenB), "tokenB");
 
-        // At this point, poolInitAmountTokenA and poolInitAmountTokenB are not defined, so use poolInitAmount, which
-        // is 18 decimals.
         tokenA.mint(lp, 100 * poolInitAmount);
         tokenB.mint(lp, 100 * poolInitAmount);
 
