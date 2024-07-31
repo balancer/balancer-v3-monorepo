@@ -86,6 +86,7 @@ library BasePoolMath {
         amountsOut = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
             // Since we multiply and divide we don't need to use FP math.
+            // Round down since we're calculating amounts out.
             amountsOut[i] = (balances[i] * bptAmountIn) / bptTotalSupply;
         }
     }
@@ -138,6 +139,7 @@ library BasePoolMath {
 
         // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
         uint256 currentInvariant = pool.computeInvariant(currentBalances);
+        // Round down to make `taxableAmount` larger below.
         uint256 invariantRatio = pool.computeInvariant(newBalances).divDown(currentInvariant);
 
         ensureInvariantRatioWithinMaximumBounds(pool, invariantRatio);
@@ -147,7 +149,8 @@ library BasePoolMath {
             // Check if the new balance is greater than the equivalent proportional balance.
             // If so, calculate the taxable amount, rounding in favor of the protocol.
             // We round the second term down to subtract less and get a higher `taxableAmount`,
-            // which charges higher swap fees, reducing the amount of BPT that will be minted.
+            // which charges higher swap fees. This will lower `newBalances`, which in turn lowers
+            // `invariantWithFeesApplied` below.
             if (newBalances[i] > invariantRatio.mulDown(currentBalances[i])) {
                 uint256 taxableAmount = newBalances[i] - invariantRatio.mulDown(currentBalances[i]);
                 // Calculate fee amount
@@ -165,6 +168,8 @@ library BasePoolMath {
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
         // Since we multiply and divide we don't need to use FP math.
+        // Round down since we're calculating BPT amount out. `invariantWithFeesApplied` was rounded down before, which
+        // also contributes to a lower `bptAmountOut`.
         bptAmountOut = (totalSupply * (invariantWithFeesApplied - currentInvariant)) / currentInvariant;
     }
 
@@ -208,6 +213,7 @@ library BasePoolMath {
 
         // Calculate the non-taxable amount, which is the new balance proportionate to the BPT minted.
         // Since we multiply and divide we don't need to use FP math.
+        // Rounding down makes `taxableAmount` larger, which in turn makes `fee` larger below.
         uint256 nonTaxableBalance = (newSupply * currentBalances[tokenInIndex]) / totalSupply;
 
         // Calculate the taxable amount, which is the difference
@@ -332,9 +338,8 @@ library BasePoolMath {
         uint256 amountOut = currentBalances[tokenOutIndex] - newBalance;
 
         // Calculate the new balance proportionate to the BPT burnt.
-        // Since we multiply and divide we don't need to use FP math.
-        // We round down here since we're already rounding up the fee below.
-        uint256 newBalanceBeforeTax = (newSupply * currentBalances[tokenOutIndex]) / totalSupply;
+        // We round up: higher `newBalanceBeforeTax` makes `taxableAmount` go up, which rounds in the Vault's favor.
+        uint256 newBalanceBeforeTax = newSupply.mulDivUp(currentBalances[tokenOutIndex], totalSupply);
 
         // Compute the taxable amount: the difference between the new proportional and disproportional balances.
         uint256 taxableAmount = newBalanceBeforeTax - newBalance;
