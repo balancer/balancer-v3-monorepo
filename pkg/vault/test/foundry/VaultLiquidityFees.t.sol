@@ -14,7 +14,8 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
 
-    uint64 poolCreatorFeePercentage = 5e17; // 50%
+    // `BaseVaultTest` defines the `protocolSwapFeePercentage`.
+    uint64 poolCreatorFeePercentage = 50e16; // 50%
     uint256 aggregateSwapFeePercentage; // Computed in `setUp`.
 
     // Track the indices for the standard dai/usdc pool.
@@ -25,7 +26,10 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         setSwapFeePercentage(swapFeePercentage);
-        aggregateSwapFeePercentage = _getAggregateFeePercentage(protocolSwapFeePercentage, poolCreatorFeePercentage);
+        aggregateSwapFeePercentage = feeController.computeAggregateFeePercentage(
+            protocolSwapFeePercentage,
+            poolCreatorFeePercentage
+        );
         vault.manualSetAggregateSwapFeePercentage(pool, aggregateSwapFeePercentage);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
@@ -41,7 +45,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         assertEq(config.staticSwapFeePercentage, swapFeePercentage);
         assertEq(
             config.aggregateSwapFeePercentage,
-            _getAggregateFeePercentage(protocolSwapFeePercentage, poolCreatorFeePercentage)
+            feeController.computeAggregateFeePercentage(protocolSwapFeePercentage, poolCreatorFeePercentage)
         );
     }
 

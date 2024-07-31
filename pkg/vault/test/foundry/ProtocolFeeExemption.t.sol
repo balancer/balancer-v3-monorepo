@@ -19,7 +19,6 @@ contract ProtocolFeeExemptionTest is BaseVaultTest {
     uint256 internal GLOBAL_SWAP_FEE = 50e16;
     uint256 internal GLOBAL_YIELD_FEE = 20e16;
 
-    IProtocolFeeController internal feeController;
     PoolRoleAccounts internal roleAccounts;
 
     uint256 daiIdx;
@@ -30,7 +29,6 @@ contract ProtocolFeeExemptionTest is BaseVaultTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
-        feeController = vault.getProtocolFeeController();
         IAuthentication feeControllerAuth = IAuthentication(address(feeController));
 
         // Set default protocol fees.
