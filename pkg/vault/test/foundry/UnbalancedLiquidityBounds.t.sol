@@ -6,12 +6,13 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { PoolMockFlexibleInvariantRatio } from "../../contracts/test/PoolMockFlexibleInvariantRatio.sol";
 
 contract UnbalancedLiquidityBounds is BaseVaultTest {
     using ArrayHelpers for *;
@@ -19,6 +20,16 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+    }
+
+    // Create a pool with flexible invariant ratio bounds.
+    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+        address newPool = address(new PoolMockFlexibleInvariantRatio(IVault(address(vault)), "", ""));
+        vm.label(newPool, label);
+
+        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), poolHooksContract, lp);
+
+        return newPool;
     }
 
     /// @dev Proportional add is not affected by min / max invariant ratio.
@@ -37,8 +48,8 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         uint256[] memory maxAmountsIn = [defaultBalance, defaultBalance].toMemoryArray();
 
         // Strict invariant ratio
-        PoolMock(pool).setMinimumInvariantRatio(FixedPoint.ONE);
-        PoolMock(pool).setMaximumInvariantRatio(FixedPoint.ONE);
+        PoolMockFlexibleInvariantRatio(pool).setMinimumInvariantRatio(FixedPoint.ONE);
+        PoolMockFlexibleInvariantRatio(pool).setMaximumInvariantRatio(FixedPoint.ONE);
 
         // Does not affect invariant ratio; does not revert.
         vm.prank(alice);
@@ -51,7 +62,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         uint256 maxInvariantRatio = FixedPoint.ONE * 2;
 
         // Reasonable invariant ratio
-        PoolMock(pool).setMaximumInvariantRatio(maxInvariantRatio);
+        PoolMockFlexibleInvariantRatio(pool).setMaximumInvariantRatio(maxInvariantRatio);
         // Pool balances are [defaultAmount, defaultAmount]; invariant is `2 * defaultAmount`.
         // Adding `[8, 10] defaultAmount` will make the new invariant `20 * defaultAmount` (10x ratio).
         uint256[] memory amountsIn = [defaultAmount * 8, defaultAmount * 10].toMemoryArray();
@@ -72,7 +83,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         uint256 maxAmountIn = defaultBalance;
 
         // Reasonable invariant ratio
-        PoolMock(pool).setMaximumInvariantRatio(maxInvariantRatio);
+        PoolMockFlexibleInvariantRatio(pool).setMaximumInvariantRatio(maxInvariantRatio);
 
         vm.expectRevert(
             abi.encodeWithSelector(BasePoolMath.InvariantRatioAboveMax.selector, 6 * FixedPoint.ONE, maxInvariantRatio)
@@ -87,8 +98,8 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         uint256[] memory minAmountsOut = [uint256(0), uint256(0)].toMemoryArray();
 
         // Strict invariant ratio
-        PoolMock(pool).setMinimumInvariantRatio(FixedPoint.ONE);
-        PoolMock(pool).setMaximumInvariantRatio(FixedPoint.ONE);
+        PoolMockFlexibleInvariantRatio(pool).setMinimumInvariantRatio(FixedPoint.ONE);
+        PoolMockFlexibleInvariantRatio(pool).setMaximumInvariantRatio(FixedPoint.ONE);
 
         vm.prank(lp);
         router.removeLiquidityProportional(pool, bptAmountIn, minAmountsOut, false, bytes(""));
@@ -99,8 +110,8 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         bptAmountIn = bound(bptAmountIn, FixedPoint.ONE, IERC20(pool).balanceOf(lp));
 
         // Strict invariant ratio
-        PoolMock(pool).setMinimumInvariantRatio(FixedPoint.ONE);
-        PoolMock(pool).setMaximumInvariantRatio(FixedPoint.ONE);
+        PoolMockFlexibleInvariantRatio(pool).setMinimumInvariantRatio(FixedPoint.ONE);
+        PoolMockFlexibleInvariantRatio(pool).setMaximumInvariantRatio(FixedPoint.ONE);
 
         // Put pool in recovery mode.
         vault.manualEnableRecoveryMode(pool);
@@ -116,7 +127,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         uint256 minAmountOut = 1;
         uint256 minInvariantRatio = FixedPoint.ONE.mulDown(0.8e18);
 
-        PoolMock(pool).setMinimumInvariantRatio(minInvariantRatio);
+        PoolMockFlexibleInvariantRatio(pool).setMinimumInvariantRatio(minInvariantRatio);
 
         vm.expectRevert(
             abi.encodeWithSelector(BasePoolMath.InvariantRatioBelowMin.selector, FixedPoint.ONE / 2, minInvariantRatio)
@@ -133,7 +144,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         uint256 maxBptAmountIn = IERC20(pool).balanceOf(lp);
         uint256 minInvariantRatio = FixedPoint.ONE.mulDown(0.8e18);
 
-        PoolMock(pool).setMinimumInvariantRatio(minInvariantRatio);
+        PoolMockFlexibleInvariantRatio(pool).setMinimumInvariantRatio(minInvariantRatio);
 
         vm.expectRevert(
             abi.encodeWithSelector(BasePoolMath.InvariantRatioBelowMin.selector, FixedPoint.ONE / 2, minInvariantRatio)
