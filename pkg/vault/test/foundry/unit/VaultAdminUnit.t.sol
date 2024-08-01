@@ -9,6 +9,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
@@ -43,7 +44,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
     function testWithValidPercentageRevert() public {
         // Any percentage above 100% is not valid and modifier should revert.
         vm.expectRevert(IVaultErrors.ProtocolFeesExceedTotalCollected.selector);
-        vault.mockWithValidPercentage(1e18 + 1);
+        vault.mockWithValidPercentage(FixedPoint.ONE + 1);
     }
 
     // _setVaultPaused
