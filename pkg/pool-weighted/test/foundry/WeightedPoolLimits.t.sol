@@ -168,7 +168,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
     }
 
     function _testInitialize() internal view {
-        // Tokens are transferred from lp.
+        // Tokens are transferred from `lp`.
         assertEq(startingBalances[usdcIdx] - usdc.balanceOf(lp), amountsIn[usdcIdx], "LP: Wrong USDC balance");
         assertEq(startingBalances[daiIdx] - dai.balanceOf(lp), amountsIn[daiIdx], "LP: Wrong DAI balance");
 
@@ -176,7 +176,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         assertEq(usdc.balanceOf(address(vault)), amountsIn[usdcIdx], "Vault: Wrong USDC balance");
         assertEq(dai.balanceOf(address(vault)), amountsIn[daiIdx], "Vault: Wrong DAI balance");
 
-        // Tokens are deposited to the pool
+        // Tokens are deposited to the pool.
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertEq(balances[daiIdx], amountsIn[daiIdx], "Pool: Wrong DAI balance");
         assertEq(balances[usdcIdx], amountsIn[usdcIdx], "Pool: Wrong USDC balance");
@@ -203,23 +203,23 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
             bytes("")
         );
 
-        // Tokens are transferred from Bob
+        // Tokens are transferred from Bob.
         assertEq(initialBalances[usdcIdx] - usdc.balanceOf(bob), newAmountsIn[usdcIdx], "LP: Wrong USDC balance");
         assertEq(initialBalances[daiIdx] - dai.balanceOf(bob), newAmountsIn[daiIdx], "LP: Wrong DAI balance");
 
         expectedBalances[daiIdx] = amountsIn[daiIdx] + TOKEN_AMOUNT;
         expectedBalances[usdcIdx] = amountsIn[usdcIdx] + TOKEN_AMOUNT;
 
-        // Tokens are stored in the Vault
+        // Tokens are stored in the Vault.
         assertEq(usdc.balanceOf(address(vault)), expectedBalances[usdcIdx], "Vault: Wrong USDC balance");
         assertEq(dai.balanceOf(address(vault)), expectedBalances[daiIdx], "Vault: Wrong DAI balance");
 
-        // Tokens are deposited to the pool
+        // Tokens are deposited to the pool.
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(weightedPool));
         assertEq(balances[daiIdx], expectedBalances[daiIdx], "Pool: Wrong DAI balance");
         assertEq(balances[usdcIdx], expectedBalances[usdcIdx], "Pool: Wrong USDC balance");
 
-        // should mint correct amount of BPT tokens
+        // Should mint correct amount of BPT tokens.
         assertApproxEqAbs(weightedPool.balanceOf(bob), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
         assertApproxEqAbs(bptAmountOut, TOKEN_AMOUNT, DELTA, "Wrong bptAmountOut");
     }
@@ -247,7 +247,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
 
         vm.stopPrank();
 
-        // Tokens are transferred to Bob
+        // Tokens are transferred to Bob.
         assertApproxEqAbs(
             usdc.balanceOf(bob) - startingBalances[usdcIdx],
             TOKEN_AMOUNT,
@@ -259,7 +259,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         expectedBalances[daiIdx] = TOKEN_AMOUNT - amountsIn[daiIdx];
         expectedBalances[usdcIdx] = TOKEN_AMOUNT - amountsIn[usdcIdx];
 
-        // Tokens are stored in the Vault
+        // Tokens are stored in the Vault.
         assertApproxEqAbs(
             usdc.balanceOf(address(vault)),
             expectedBalances[usdcIdx],
@@ -268,16 +268,16 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         );
         assertApproxEqAbs(dai.balanceOf(address(vault)), expectedBalances[daiIdx], DELTA, "Vault: Wrong DAI balance");
 
-        // Tokens are deposited to the pool
+        // Tokens are deposited to the pool.
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(pool));
         assertApproxEqAbs(balances[daiIdx], expectedBalances[daiIdx], DELTA, "Pool: Wrong DAI balance");
         assertApproxEqAbs(balances[usdcIdx], expectedBalances[usdcIdx], DELTA, "Pool: Wrong USDC balance");
 
-        // amountsOut are correct
+        // Ensure `amountsOut` are correct.
         assertApproxEqAbs(amountsOut[daiIdx], TOKEN_AMOUNT, DELTA, "Wrong DAI AmountOut");
         assertApproxEqAbs(amountsOut[usdcIdx], TOKEN_AMOUNT, DELTA, "Wrong USDC AmountOut");
 
-        // should mint correct amount of BPT tokens
+        // Should mint correct amount of BPT tokens.
         assertEq(weightedPool.balanceOf(bob), 0, "LP: Non-zero BPT balance");
         assertEq(bobBptBalance, bptAmountIn, "LP: Wrong bptAmountIn");
     }
@@ -294,7 +294,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
             dai,
             usdc,
             TOKEN_AMOUNT_IN,
-            0, // don't worry about limit here; will test results anyway
+            0, // Don't worry about limit here; will test results anyway
             MAX_UINT256,
             false,
             bytes("")
