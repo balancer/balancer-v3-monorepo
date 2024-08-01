@@ -168,8 +168,8 @@ library BasePoolMath {
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
         // Since we multiply and divide we don't need to use FP math.
-        // Round down since we're calculating BPT amount out. `invariantWithFeesApplied` was rounded down before, which
-        // also contributes to a lower `bptAmountOut`.
+        // Round down since we're calculating BPT amount out. `invariantWithFeesApplied` calculated with `newBalances`
+        // rounded down, which also contributes to a lower `bptAmountOut`.
         bptAmountOut = (totalSupply * (invariantWithFeesApplied - currentInvariant)) / currentInvariant;
     }
 
