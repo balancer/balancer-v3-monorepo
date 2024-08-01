@@ -274,8 +274,7 @@ library BasePoolMath {
         ensureInvariantRatioWithinMinimumBounds(pool, invariantRatio);
 
         // Taxable amount is proportional to invariant ratio; a larger taxable amount rounds in the Vault's favor.
-        uint256 taxableAmount = invariantRatio.mulUp(currentBalances[tokenOutIndex]);
-        taxableAmount -= newBalances[tokenOutIndex];
+        uint256 taxableAmount = invariantRatio.mulUp(currentBalances[tokenOutIndex]) - newBalances[tokenOutIndex];
 
         // Calculate the swap fee based on the taxable amount and the swap fee percentage.
         // Fee is proportional to taxable amount; larger fee rounds in the Vault's favor.
