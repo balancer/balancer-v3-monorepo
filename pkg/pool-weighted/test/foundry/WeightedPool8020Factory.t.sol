@@ -69,8 +69,8 @@ contract WeightedPool8020FactoryTest is Test {
         WeightedPool pool = _createPool(tokenA, tokenB);
 
         uint256[] memory poolWeights = pool.getNormalizedWeights();
-        assertEq(poolWeights[highWeightIdx], 8e17, "Higher weight token is not 80%");
-        assertEq(poolWeights[lowWeightIdx], 2e17, "Lower weight token is not 20%");
+        assertEq(poolWeights[highWeightIdx], 80e16, "Higher weight token is not 80%");
+        assertEq(poolWeights[lowWeightIdx], 20e16, "Lower weight token is not 20%");
         assertEq(pool.name(), "Balancer 80 TKNA 20 TKNB", "Wrong pool name");
         assertEq(pool.symbol(), "B-80TKNA-20TKNB", "Wrong pool symbol");
     }

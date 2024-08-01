@@ -12,7 +12,7 @@ contract BasicAuthorizerMock is IAuthorizer {
     mapping(bytes32 => mapping(address => mapping(address => bool))) private _specificRoles;
 
     /// @inheritdoc IAuthorizer
-    function canPerform(bytes32 role, address account, address where) external view override returns (bool) {
+    function canPerform(bytes32 role, address account, address where) external view returns (bool) {
         return hasSpecificRole(role, account, where) || hasRole(role, account);
     }
 

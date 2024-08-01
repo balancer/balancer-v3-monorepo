@@ -1,27 +1,26 @@
 // SPDX-License-Identifier: MIT
 
-// Based on the EnumerableMap library from OpenZeppelin Contracts, altered to include the following:
-//  * a map from IERC20 to UInt256
-//  * entries are stored in mappings instead of arrays, reducing implicit storage reads for out-of-bounds checks
-//  * unchecked_at and unchecked_valueAt, which allow for more gas efficient data reads in some scenarios
-//  * indexOf, unchecked_indexOf and unchecked_setAt, which allow for more gas efficient data writes in some scenarios
-//
-// Additionally, the base private functions that work on bytes32 were removed and replaced with a native implementation
-// for IERC20 keys, to reduce bytecode size and runtime costs.
-
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
- * @dev Library for managing an enumerable variant of Solidity's
- * https://solidity.readthedocs.io/en/latest/types.html#mapping-types[`mapping`]
- * type.
+ * @notice Library for managing an enumerable variant of Solidity's
+ * https://solidity.readthedocs.io/en/latest/types.html#mapping-types[`mapping`] type.
+ *
+ * @dev Based on the EnumerableMap library from OpenZeppelin Contracts, altered to include the following:
+ * a map from IERC20 to Uint256.
+ *
+ * Entries are stored in mappings instead of arrays, reducing implicit storage reads for out-of-bounds checks
+ * unchecked_at and unchecked_valueAt, which allow for more gas efficient data reads in some scenarios
+ * indexOf, unchecked_indexOf and unchecked_setAt, which allow for more gas efficient data writes in some scenarios.
+ *
+ * Additionally, the base private functions that work on bytes32 were removed and replaced with a native implementation
+ * for IERC20 keys, to reduce bytecode size and runtime costs.
  *
  * Maps have the following properties:
  *
  * - Entries are added, removed, and checked for existence in constant time (O(1)).
- *
  * - Entries are enumerated in O(n). No guarantees are made on the ordering.
  *
  * ```
@@ -148,16 +147,12 @@ library EnumerableMap {
         }
     }
 
-    /**
-     * @dev Returns true if the key is in the map. O(1).
-     */
+    /// @dev Returns true if the key is in the map. O(1).
     function contains(IERC20ToBytes32Map storage map, IERC20 key) internal view returns (bool) {
         return map.indexes[key] != 0;
     }
 
-    /**
-     * @dev Returns the number of key-value pairs in the map. O(1).
-     */
+    /// @dev Returns the number of key-value pairs in the map. O(1).
     function length(IERC20ToBytes32Map storage map) internal view returns (uint256) {
         return map._length;
     }
