@@ -358,6 +358,22 @@ interface IVaultExplorer {
     *******************************************************************************/
 
     /**
+     * @notice Gets the aggregate swap and yield fee percentages for a pool.
+     * @dev These are determined by the current protocol and pool creator fees, set in the `ProtocolFeeController`.
+     * These data are accessible as part of the `PoolConfig` (accessible through `getPoolConfig`), and also through
+     * the `IPoolInfo` on the pool itself. Standard Balancer pools implement this interface, but custom pools are not
+     * required to. We add this as a convenience function with the same interface, but it will fetch from the Vault
+     * directly to ensure it is always supported.
+     *
+     * @param pool Address of the pool
+     * @return aggregateSwapFeePercentage The aggregate percentage fee applied to swaps
+     * @return aggregateYieldFeePercentage The aggregate percentage fee applied to yield
+     */
+    function getAggregateFeePercentages(
+        address pool
+    ) external view returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage);
+
+    /**
      * @notice Collects accumulated aggregate swap and yield fees for the specified pool.
      * @dev Fees are sent to the ProtocolFeeController address.
      * @param pool The pool on which all aggregate fees should be collected

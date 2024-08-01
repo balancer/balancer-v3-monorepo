@@ -282,6 +282,15 @@ contract VaultExplorer is IVaultExplorer {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExplorer
+    function getAggregateFeePercentages(
+        address pool
+    ) external view returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) {
+        PoolConfig memory poolConfig = _vault.getPoolConfig(pool);
+
+        return (poolConfig.aggregateSwapFeePercentage, poolConfig.aggregateYieldFeePercentage);
+    }
+
+    /// @inheritdoc IVaultExplorer
     function collectAggregateFees(address pool) external {
         return _vault.collectAggregateFees(pool);
     }
