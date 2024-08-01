@@ -151,12 +151,19 @@ library BasePoolMath {
             // We round the second term down to subtract less and get a higher `taxableAmount`,
             // which charges higher swap fees. This will lower `newBalances`, which in turn lowers
             // `invariantWithFeesApplied` below.
-            if (newBalances[i] > invariantRatio.mulDown(currentBalances[i])) {
-                uint256 taxableAmount = newBalances[i] - invariantRatio.mulDown(currentBalances[i]);
+            uint256 proportionalTokenBalance = invariantRatio.mulDown(currentBalances[i]);
+            if (newBalances[i] > proportionalTokenBalance) {
+                uint256 taxableAmount;
+                unchecked {
+                    taxableAmount = newBalances[i] - proportionalTokenBalance;
+                }
                 // Calculate fee amount
                 swapFeeAmounts[i] = taxableAmount.mulUp(swapFeePercentage);
+
                 // Subtract the fee from the new balance.
                 // We are essentially imposing swap fees on non-proportional incoming amounts.
+                // Note: `swapFeeAmounts` should always be <= `taxableAmount` since `swapFeePercentage` is <= FP(1),
+                // but since that's not verifiable within this contract, a checked subtraction is preferred.
                 newBalances[i] = newBalances[i] - swapFeeAmounts[i];
             }
         }

@@ -14,7 +14,6 @@ import { PoolMock } from "./PoolMock.sol";
 import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
 contract PoolMockFlexibleInvariantRatio is PoolMock {
-
     // Default min / max invariant ratio.
     uint256 private _minimumInvariantRatio = 0;
     uint256 private _maximumInvariantRatio = 1e6 * FixedPoint.ONE;
