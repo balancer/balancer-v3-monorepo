@@ -628,24 +628,19 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(explorerIsPaused, "Explorer says Vault is not paused");
     }
 
+    function testGetAggregateFeePercentages() public {
+        _setProtocolFees();
+
+        (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) = explorer.getAggregateFeePercentages(
+            pool
+        );
+
+        assertEq(aggregateSwapFeePercentage, PROTOCOL_SWAP_FEE, "Wrong aggregate swap fee");
+        assertEq(aggregateYieldFeePercentage, PROTOCOL_YIELD_FEE, "Wrong aggregate yield fee");
+    }
+
     function testCollectAggregateFees() public {
-        authorizer.grantRole(
-            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
-            admin
-        );
-        authorizer.grantRole(
-            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolYieldFeePercentage.selector),
-            admin
-        );
-
-        vm.startPrank(admin);
-        feeController.setGlobalProtocolSwapFeePercentage(PROTOCOL_SWAP_FEE);
-        feeController.setGlobalProtocolYieldFeePercentage(PROTOCOL_YIELD_FEE);
-        vm.stopPrank();
-
-        // Permissionlessly update the pool's fee percentages.
-        feeController.updateProtocolSwapFeePercentage(pool);
-        feeController.updateProtocolYieldFeePercentage(pool);
+        _setProtocolFees();
 
         // Check that the fee percentages are set in the pool.
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
@@ -669,6 +664,26 @@ contract VaultExplorerTest is BaseVaultTest {
         feeAmounts = feeController.getProtocolFeeAmounts(pool);
         assertTrue(feeAmounts[daiIdx] > 0, "Zero DAI fees");
         assertTrue(feeAmounts[usdcIdx] > 0, "Zero USDC fees");
+    }
+
+    function _setProtocolFees() private {
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
+            admin
+        );
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolYieldFeePercentage.selector),
+            admin
+        );
+
+        vm.startPrank(admin);
+        feeController.setGlobalProtocolSwapFeePercentage(PROTOCOL_SWAP_FEE);
+        feeController.setGlobalProtocolYieldFeePercentage(PROTOCOL_YIELD_FEE);
+        vm.stopPrank();
+
+        // Permissionlessly update the pool's fee percentages.
+        feeController.updateProtocolSwapFeePercentage(pool);
+        feeController.updateProtocolYieldFeePercentage(pool);
     }
 
     function testGetBufferOwnerShares() public {

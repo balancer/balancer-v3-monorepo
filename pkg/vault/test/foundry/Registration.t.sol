@@ -15,6 +15,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { HooksConfigLib } from "../../contracts/lib/HooksConfigLib.sol";
@@ -118,7 +119,7 @@ contract RegistrationTest is BaseVaultTest {
     }
 
     function testRegisterSetSwapFeePercentage__Fuzz(uint256 swapFeePercentage) public {
-        swapFeePercentage = bound(swapFeePercentage, 0, 100e16);
+        swapFeePercentage = bound(swapFeePercentage, 0, FixedPoint.ONE);
         PoolRoleAccounts memory roleAccounts;
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(standardPoolTokens);
         LiquidityManagement memory liquidityManagement;
@@ -142,7 +143,7 @@ contract RegistrationTest is BaseVaultTest {
     }
 
     function testRegisterSetSwapFeePercentageAboveMax() public {
-        swapFeePercentage = 100e16 + 1;
+        swapFeePercentage = FixedPoint.ONE + 1;
         PoolRoleAccounts memory roleAccounts;
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(standardPoolTokens);
         LiquidityManagement memory liquidityManagement;
