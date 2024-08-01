@@ -14,7 +14,6 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract E2eSwapTest is BaseVaultTest {
@@ -71,7 +70,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         // Set protocol and creator fees to 50%, so we can measure the charged fees.
         vm.prank(admin);
-        feeController.setGlobalProtocolSwapFeePercentage(50e16);
+        feeController.setGlobalProtocolSwapFeePercentage(FIFTY_PERCENT);
 
         vm.prank(poolCreator);
         // Set pool creator fee to 100%, so protocol + creator fees equals the total charged fees.
@@ -506,7 +505,7 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter,
         uint256 feesTokenA,
         uint256 feesTokenB
-    ) private view {
+    ) internal view {
         // Pool invariant cannot decrease after the swaps. All fees should be paid by the user.
         assertGe(balancesAfter.poolInvariant, balancesBefore.poolInvariant, "Pool invariant is smaller than before");
 
@@ -521,6 +520,19 @@ contract E2eSwapTest is BaseVaultTest {
             balancesAfter.userTokens[tokenBIdx],
             balancesBefore.userTokens[tokenBIdx] - feesTokenB,
             "Wrong sender tokenB balance"
+        );
+
+        // The vault balance of each token cannot be smaller than before because the swap and the reversed swap were
+        // executed.
+        assertGe(
+            balancesAfter.vaultTokens[tokenAIdx],
+            balancesBefore.vaultTokens[tokenAIdx],
+            "Wrong vault tokenA balance"
+        );
+        assertGe(
+            balancesAfter.vaultTokens[tokenBIdx],
+            balancesBefore.vaultTokens[tokenBIdx],
+            "Wrong vault tokenB balance"
         );
     }
 
