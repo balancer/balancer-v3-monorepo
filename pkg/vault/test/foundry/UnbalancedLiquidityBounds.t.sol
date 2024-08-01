@@ -81,7 +81,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
         router.addLiquiditySingleTokenExactOut(pool, dai, maxAmountIn, bptAmountOut, false, bytes(""));
     }
 
-    /// @dev Proportional add is not affected by min / max invariant ratio.
+    /// @dev Proportional remove is not affected by min / max invariant ratio.
     function testRemoveLiquidityProportionalInvariantRatio__Fuzz(uint256 bptAmountIn) public {
         bptAmountIn = bound(bptAmountIn, FixedPoint.ONE, IERC20(pool).balanceOf(lp));
         uint256[] memory minAmountsOut = [uint256(0), uint256(0)].toMemoryArray();
@@ -92,6 +92,21 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
 
         vm.prank(lp);
         router.removeLiquidityProportional(pool, bptAmountIn, minAmountsOut, false, bytes(""));
+    }
+
+    /// @dev Recovery remove is not affected by min / max invariant ratio.
+    function testRemoveLiquidityRecoveryInvariantRatio__Fuzz(uint256 bptAmountIn) public {
+        bptAmountIn = bound(bptAmountIn, FixedPoint.ONE, IERC20(pool).balanceOf(lp));
+
+        // Strict invariant ratio
+        PoolMock(pool).setMinimumInvariantRatio(FixedPoint.ONE);
+        PoolMock(pool).setMaximumInvariantRatio(FixedPoint.ONE);
+
+        // Put pool in recovery mode.
+        vault.manualEnableRecoveryMode(pool);
+
+        vm.prank(lp);
+        router.removeLiquidityRecovery(pool, bptAmountIn);
     }
 
     /// @dev Unbalanced remove (single token exact in); new invariant is smaller than allowed.

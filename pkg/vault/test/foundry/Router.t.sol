@@ -376,6 +376,7 @@ contract RouterTest is BaseVaultTest {
     }
 
     function testRemoveLiquidityRecovery__Fuzz(uint256 amountIn1, uint256 amountIn2, uint256 exitPercentage) public {
+        PoolMock(pool).setMaximumInvariantRatio(type(uint256).max); // Unlimited invariant ratio for initial `add`.
         amountIn1 = bound(amountIn1, 1e18, defaultBalance); // 1 to max user balance
         amountIn2 = bound(amountIn2, 1e18, defaultBalance); // 1 to max user balance
         exitPercentage = bound(exitPercentage, 0, 1e18); // 0 to 100%
