@@ -27,7 +27,7 @@ library PoolConfigLib {
     using WordCodec for bytes32;
     using PoolConfigLib for PoolConfigBits;
 
-    /// @dev Given percentage is above FP(1) (1e18 wei).
+    /// @dev Given percentage is above FixedPoint.ONE (1e18 wei).
     error InvalidPercentage(uint256 value);
 
     // #region Bit offsets for main pool config settings

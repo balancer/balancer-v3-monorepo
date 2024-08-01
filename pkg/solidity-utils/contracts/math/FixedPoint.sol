@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import "./LogExpMath.sol";
 
+/// @notice Support 18-decimal fixed point arithmetic. All Vault calculations use this for high and uniform precision.
 library FixedPoint {
     /// @dev Attempted division by zero.
     error ZeroDivision();
