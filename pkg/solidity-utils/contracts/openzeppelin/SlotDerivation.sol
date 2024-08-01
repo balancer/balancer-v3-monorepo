@@ -6,9 +6,9 @@
 pragma solidity ^0.8.20;
 
 /**
- * @dev Library for computing storage (and transient storage) locations from namespaces and deriving slots
- * corresponding to standard patterns. The derivation method for array and mapping matches the storage layout used by
- * the solidity language / compiler.
+ * @notice Library for computing storage (and transient storage) locations from namespaces and deriving slots
+ * corresponding to standard patterns.
+ * @dev The derivation method for array and mapping matches the storage layout used by the solidity language/compiler.
  *
  * See https://docs.soliditylang.org/en/v0.8.20/internals/layout_in_storage.html#mappings-and-dynamic-arrays[Solidity docs for mappings and dynamic arrays.].
  *
@@ -38,9 +38,7 @@ pragma solidity ^0.8.20;
  * upgrade safety will ignore the slots accessed through this library.
  */
 library SlotDerivation {
-    /**
-     * @dev Derive an ERC-7201 slot from a string (namespace).
-     */
+    /// @dev Derive an ERC-7201 slot from a string (namespace).
     function erc7201Slot(string memory namespace) internal pure returns (bytes32 slot) {
         /// @solidity memory-safe-assembly
         assembly {
@@ -49,18 +47,14 @@ library SlotDerivation {
         }
     }
 
-    /**
-     * @dev Add an offset to a slot to get the n-th element of a structure or an array.
-     */
+    /// @dev Add an offset to a slot to get the n-th element of a structure or an array.
     function offset(bytes32 slot, uint256 pos) internal pure returns (bytes32 result) {
         unchecked {
             return bytes32(uint256(slot) + pos);
         }
     }
 
-    /**
-     * @dev Derive the location of the first element in an array from the slot where the length is stored.
-     */
+    /// @dev Derive the location of the first element in an array from the slot where the length is stored.
     function deriveArray(bytes32 slot) internal pure returns (bytes32 result) {
         /// @solidity memory-safe-assembly
         assembly {
@@ -69,9 +63,7 @@ library SlotDerivation {
         }
     }
 
-    /**
-     * @dev Derive the location of a mapping element from the key.
-     */
+    /// @dev Derive the location of a mapping element from the key.
     function deriveMapping(bytes32 slot, address key) internal pure returns (bytes32 result) {
         /// @solidity memory-safe-assembly
         assembly {
@@ -81,9 +73,7 @@ library SlotDerivation {
         }
     }
 
-    /**
-     * @dev Derive the location of a mapping element from the key.
-     */
+    /// @dev Derive the location of a mapping element from the key.
     function deriveMapping(bytes32 slot, bool key) internal pure returns (bytes32 result) {
         /// @solidity memory-safe-assembly
         assembly {
@@ -93,9 +83,7 @@ library SlotDerivation {
         }
     }
 
-    /**
-     * @dev Derive the location of a mapping element from the key.
-     */
+    /// @dev Derive the location of a mapping element from the key.
     function deriveMapping(bytes32 slot, bytes32 key) internal pure returns (bytes32 result) {
         /// @solidity memory-safe-assembly
         assembly {
@@ -105,9 +93,7 @@ library SlotDerivation {
         }
     }
 
-    /**
-     * @dev Derive the location of a mapping element from the key.
-     */
+    /// @dev Derive the location of a mapping element from the key.
     function deriveMapping(bytes32 slot, uint256 key) internal pure returns (bytes32 result) {
         /// @solidity memory-safe-assembly
         assembly {
@@ -117,9 +103,7 @@ library SlotDerivation {
         }
     }
 
-    /**
-     * @dev Derive the location of a mapping element from the key.
-     */
+    /// @dev Derive the location of a mapping element from the key.
     function deriveMapping(bytes32 slot, int256 key) internal pure returns (bytes32 result) {
         /// @solidity memory-safe-assembly
         assembly {
@@ -129,9 +113,7 @@ library SlotDerivation {
         }
     }
 
-    /**
-     * @dev Derive the location of a mapping element from the key.
-     */
+    /// @dev Derive the location of a mapping element from the key.
     function deriveMapping(bytes32 slot, string memory key) internal pure returns (bytes32 result) {
         /// @solidity memory-safe-assembly
         assembly {
@@ -145,9 +127,7 @@ library SlotDerivation {
         }
     }
 
-    /**
-     * @dev Derive the location of a mapping element from the key.
-     */
+    /// @dev Derive the location of a mapping element from the key.
     function deriveMapping(bytes32 slot, bytes memory key) internal pure returns (bytes32 result) {
         /// @solidity memory-safe-assembly
         assembly {

@@ -4,9 +4,13 @@ pragma solidity ^0.8.24;
 
 import { Bytes32AddressLib } from "./Bytes32AddressLib.sol";
 
-/// @notice Deploy to deterministic addresses without an initcode factor.
-/// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/utils/CREATE3.sol)
-/// @author Modified from 0xSequence (https://github.com/0xSequence/create3/blob/master/contracts/Create3.sol)
+/**
+ * @notice Deploy to deterministic addresses without an initcode factor.
+ * @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/utils/CREATE3.sol)
+ * @dev Modified from 0xSequence (https://github.com/0xSequence/create3/blob/master/contracts/Create3.sol)
+ * Also avoids dependence on a particular deployer account, and allows for more secure "salt mining" of addresses,
+ * vs. web-based vanity address mining.
+ */
 library CREATE3 {
     using Bytes32AddressLib for bytes32;
     // solhint-disable no-inline-assembly

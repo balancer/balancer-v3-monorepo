@@ -500,6 +500,130 @@ contract E2eSwapTest is BaseVaultTest {
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
 
+    function testExactInRepeatExactOutNoFees__Fuzz(uint256 exactAmountIn) public {
+        exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
+
+        // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
+        vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
+
+        vm.startPrank(sender);
+        uint256 snapshotId = vm.snapshot();
+        uint256 exactAmountOut = router.swapSingleTokenExactIn(
+            pool,
+            tokenA,
+            tokenB,
+            exactAmountIn,
+            0,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+        vm.revertTo(snapshotId);
+        uint256 exactAmountInSwap = router.swapSingleTokenExactOut(
+            pool,
+            tokenA,
+            tokenB,
+            exactAmountOut,
+            MAX_UINT128,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        if (decimalsTokenA != decimalsTokenB) {
+            // If tokens have different decimals, an error is introduced in the computeBalance in the order of the
+            // difference of the decimals.
+            uint256 tolerance;
+            if (decimalsTokenA < decimalsTokenB) {
+                tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 1);
+            } else {
+                tolerance = 10 ** (decimalsTokenB - decimalsTokenA + 1);
+            }
+            assertApproxEqAbs(
+                exactAmountInSwap,
+                exactAmountIn,
+                tolerance,
+                "ExactOut and ExactIn amountsIn should match"
+            );
+        } else {
+            // Accepts an error of 0.0000001% between amountIn from ExactOut and ExactIn swaps. This error is caused by
+            // differences in computeInGivenExactOut and computeOutGivenExactIn functions of the pool math.
+            assertApproxEqRel(exactAmountInSwap, exactAmountIn, 1e9, "ExactOut and ExactIn amountsIn should match");
+        }
+    }
+
+    function testExactInRepeatExactOutVariableFees__Fuzz(uint256 exactAmountIn, uint256 poolSwapFeePercentage) public {
+        exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
+
+        poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
+        vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
+
+        vm.startPrank(sender);
+        uint256 snapshotId = vm.snapshot();
+        uint256 exactAmountOut = router.swapSingleTokenExactIn(
+            pool,
+            tokenA,
+            tokenB,
+            exactAmountIn,
+            0,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+
+        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
+
+        vm.revertTo(snapshotId);
+        uint256 exactAmountInSwap = router.swapSingleTokenExactOut(
+            pool,
+            tokenA,
+            tokenB,
+            exactAmountOut + feesTokenB,
+            MAX_UINT128,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
+        vm.stopPrank();
+
+        console.log("exactAmountIn    ", exactAmountIn);
+        console.log("exactAmountInSwap", exactAmountInSwap);
+        console.log("feesTokenA       ", feesTokenA);
+        console.log("feesTokenB       ", feesTokenB);
+        console.log("exactAmountOut   ", exactAmountOut);
+        console.log("AmountOut fee    ", exactAmountOut + feesTokenB);
+        console.log("AmountIn + fee   ", exactAmountInSwap + feesTokenA);
+        console.log("AmountIn - fee   ", exactAmountInSwap - feesTokenA);
+
+        if (decimalsTokenA != decimalsTokenB) {
+            // If tokens have different decimals, an error is introduced in the computeBalance in the order of the
+            // difference of the decimals.
+            uint256 tolerance;
+            if (decimalsTokenA < decimalsTokenB) {
+                tolerance = 10 ** (decimalsTokenB - decimalsTokenA + 1);
+            } else {
+                tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 1);
+            }
+            assertApproxEqAbs(
+                exactAmountInSwap - feesTokenA,
+                exactAmountIn,
+                tolerance,
+                "ExactOut and ExactIn amountsIn should match"
+            );
+        } else {
+            // Accepts an error of 0.0000001% between amountIn from ExactOut and ExactIn swaps. This error is caused by
+            // differences in computeInGivenOut and computeOutGivenIn functions of the pool math.
+            assertApproxEqRel(
+                exactAmountInSwap - feesTokenA,
+                exactAmountIn,
+                1e9,
+                "ExactOut and ExactIn amountsIn should match"
+            );
+        }
+    }
+
     function _checkUserBalancesAndPoolInvariant(
         BaseVaultTest.Balances memory balancesBefore,
         BaseVaultTest.Balances memory balancesAfter,
