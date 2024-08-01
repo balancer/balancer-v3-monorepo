@@ -4,12 +4,16 @@ pragma solidity ^0.8.24;
 
 import "./FixedPoint.sol";
 
+/**
+ * @notice Implementation of Balancer Weighted Math, essentially unchanged since v1.
+ * @dev It is a generalization of the x * y = k constant product formula, accounting for cases with more than two
+ * tokens, and weights that are not 50/50. See https://docs.qr68.com/tech-implementations/weighted-math.
+ *
+ * For security reasons, to help ensure that for all possible "round trip" paths the caller always receives the same
+ * or fewer tokens than supplied, we have chosen the rounding direction to favor the protocol in all cases.
+ */
 library WeightedMath {
     using FixedPoint for uint256;
-
-    // For security reasons, to help ensure that for all possible "round trip" paths
-    // the caller always receives the same or fewer tokens than supplied,
-    // we have chosen the rounding direction to favor the protocol in all cases.
 
     /// @dev User Attempted to burn less BPT than allowed for a specific amountOut.
     error MinBPTInForTokenOut();

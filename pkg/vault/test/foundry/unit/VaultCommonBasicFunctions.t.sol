@@ -22,6 +22,7 @@ import {
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolConfigLib, PoolConfigBits } from "../../../contracts/lib/PoolConfigLib.sol";
 
@@ -51,7 +52,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         vm.mockCall(
             pool,
             abi.encodeWithSelector(ISwapFeePercentageBounds.getMaximumSwapFeePercentage.selector),
-            abi.encode(100e16)
+            abi.encode(FixedPoint.ONE) // 100%
         );
     }
 
