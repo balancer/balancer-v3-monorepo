@@ -505,7 +505,7 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter,
         uint256 feesTokenA,
         uint256 feesTokenB
-    ) private view {
+    ) internal view {
         // Pool invariant cannot decrease after the swaps. All fees should be paid by the user.
         assertGe(balancesAfter.poolInvariant, balancesBefore.poolInvariant, "Pool invariant is smaller than before");
 
@@ -520,6 +520,19 @@ contract E2eSwapTest is BaseVaultTest {
             balancesAfter.userTokens[tokenBIdx],
             balancesBefore.userTokens[tokenBIdx] - feesTokenB,
             "Wrong sender tokenB balance"
+        );
+
+        // The vault balance of each token cannot be smaller than before because the swap and the reversed swap were
+        // executed.
+        assertGe(
+            balancesAfter.vaultTokens[tokenAIdx],
+            balancesBefore.vaultTokens[tokenAIdx],
+            "Wrong vault tokenA balance"
+        );
+        assertGe(
+            balancesAfter.vaultTokens[tokenBIdx],
+            balancesBefore.vaultTokens[tokenBIdx],
+            "Wrong vault tokenB balance"
         );
     }
 
