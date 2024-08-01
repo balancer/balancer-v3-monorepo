@@ -33,7 +33,9 @@ library TransientStorageHelpers {
             ) & ~bytes32(uint256(0xff));
     }
 
-    // Mappings
+    /***************************************************************************
+                                    Mappings
+    ***************************************************************************/
 
     function tGet(TokenDeltaMappingSlotType slot, IERC20 k1) internal view returns (int256) {
         return TokenDeltaMappingSlotType.unwrap(slot).deriveMapping(address(k1)).asInt256().tload();
@@ -60,7 +62,9 @@ library TransientStorageHelpers {
         AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(tGet(slot, key) - value);
     }
 
-    // Arrays
+    /***************************************************************************
+                                      Arrays
+    ***************************************************************************/
 
     function tLength(AddressArraySlotType slot) internal view returns (uint256) {
         return AddressArraySlotType.unwrap(slot).asUint256().tload();
@@ -114,7 +118,9 @@ library TransientStorageHelpers {
         lastElementSlot.tstore(address(0));
     }
 
-    // Uint256 values
+    /***************************************************************************
+                                  Uint256 Values
+    ***************************************************************************/
 
     function tIncrement(StorageSlotExtension.Uint256SlotType slot) internal {
         slot.tstore(slot.tload() + 1);
