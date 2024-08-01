@@ -59,7 +59,7 @@ contract UnbalancedLiquidityBounds is BaseVaultTest {
     /// @dev Unbalanced add; new invariant exceeds the invariant ratio limits.
     function testAddLiquidityUnbalancedAboveMaxInvariantRatio() public {
         uint256 minBptAmountOut = defaultAmount;
-        uint256 maxInvariantRatio = FixedPoint.ONE * 2;
+        uint256 maxInvariantRatio = FixedPoint.ONE * 2; // 200%
 
         // Reasonable invariant ratio
         PoolMockFlexibleInvariantRatio(pool).setMaximumInvariantRatio(maxInvariantRatio);

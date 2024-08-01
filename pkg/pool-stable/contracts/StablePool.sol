@@ -71,9 +71,9 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
     // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
-    uint256 private constant _MIN_INVARIANT_RATIO = 0.6e18;
+    uint256 private constant _MIN_INVARIANT_RATIO = 60e16; // 60%
     // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
-    uint256 private constant _MAX_INVARIANT_RATIO = 5e18;
+    uint256 private constant _MAX_INVARIANT_RATIO = 500e16; // 500%
 
     /// @dev Store amplification state.
     AmplificationState private _amplificationState;
