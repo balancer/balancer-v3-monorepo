@@ -536,9 +536,9 @@ contract E2eSwapTest is BaseVaultTest {
             // difference of the decimals.
             uint256 tolerance;
             if (decimalsTokenA < decimalsTokenB) {
-                tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 1);
-            } else {
                 tolerance = 10 ** (decimalsTokenB - decimalsTokenA + 1);
+            } else {
+                tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 1);
             }
             assertApproxEqAbs(
                 exactAmountInSwap,
