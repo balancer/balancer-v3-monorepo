@@ -4,7 +4,16 @@ pragma solidity ^0.8.24;
 
 import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
 
-/// @notice Retrieves a contract's version set at creation time from storage.
+/**
+ * @notice Retrieves a contract's version from storage.
+ * @dev The version is set at deployment time and cannot be changed. It would be immutable, but immutable strings
+ * are not yet supported.
+ *
+ * Contracts like factories and pools should have versions. These typically take the form of JSON strings containing
+ * detailed information about the deployment. For instance:
+ *
+ * `{name: 'ChildChainGaugeFactory', version: 2, deployment: '20230316-child-chain-gauge-factory-v2'}`
+ */
 contract Version is IVersion {
     string private _version;
 
