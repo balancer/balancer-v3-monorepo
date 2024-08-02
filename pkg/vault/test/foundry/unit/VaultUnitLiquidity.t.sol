@@ -13,7 +13,7 @@ import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
@@ -25,7 +25,7 @@ import { VaultMockDeployer } from "../../../test/foundry/utils/VaultMockDeployer
 import { BalancerPoolToken } from "../../../contracts/BalancerPoolToken.sol";
 
 contract VaultUnitLiquidityTest is BaseTest {
-    using ArrayHelpers for *;
+    using CastingHelpers for uint256[];
     using ScalingHelpers for *;
     using FixedPoint for *;
     using PoolConfigLib for PoolConfigBits;

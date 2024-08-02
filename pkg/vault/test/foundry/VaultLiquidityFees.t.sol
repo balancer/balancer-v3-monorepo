@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";

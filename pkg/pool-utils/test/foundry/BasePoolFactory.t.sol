@@ -13,7 +13,8 @@ import {
     LiquidityManagement
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
@@ -21,6 +22,7 @@ import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 import { BasePoolFactoryMock } from "../../contracts/test/BasePoolFactoryMock.sol";
 
 contract BasePoolFactoryTest is BaseVaultTest {
+    using CastingHelpers for address[];
     using ArrayHelpers for *;
 
     uint32 private constant _DEFAULT_PAUSE_WINDOW = 365 days;
