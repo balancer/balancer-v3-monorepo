@@ -13,11 +13,12 @@
   },
   "packageManager": "yarn@4.0.0-rc.42",
   "contributors": [
-    "Nicolás Venturo <nico@balancerlabs.dev>",
-    "Jeffrey Bennett <jeff@balancerlabs.dev>",
     "Juan Ignacio Ubeira <juani@balancerlabs.dev>",
+    "Jeffrey Bennett <jeff@balancerlabs.dev>",
     "Igor Yalovoy <igor@balancerlabs.dev>",
-    "Mike McDonald <mike@balancer.finance>"
+    "João Bruno Abou Hatem de Liz <joao@balancerlabs.dev>",
+    "Elshan Dzhafarov <elshan@balancerlabs.dev>",
+    "Nicolás Venturo <nico@balancerlabs.dev>"
   ],
   "scripts": {
     "build": "yarn workspaces foreach --parallel --verbose run build",
