@@ -197,7 +197,13 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         uint256 expectedBptAmountOut = math.computeInvariant(weights, newAmountsIn);
 
         vm.prank(bob);
-        uint256[] memory actualAmountsIn = router.addLiquidityProportional(pool, newAmountsIn, expectedBptAmountOut, false, bytes(""));
+        uint256[] memory actualAmountsIn = router.addLiquidityProportional(
+            pool,
+            newAmountsIn,
+            expectedBptAmountOut,
+            false,
+            bytes("")
+        );
 
         // Tokens are transferred from Bob.
         assertEq(initialBalances[usdcIdx] - usdc.balanceOf(bob), actualAmountsIn[usdcIdx], "LP: Wrong USDC balance");
