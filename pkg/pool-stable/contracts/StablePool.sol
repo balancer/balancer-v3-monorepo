@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {
@@ -168,6 +170,12 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
                 invariant
             );
 
+            console.log("Exact In");
+            console.log("AmountIn           ", request.amountGivenScaled18);
+            console.log("AmountOut          ", amountOutScaled18);
+            console.log("balancesScaled18[0]", request.balancesScaled18[0]);
+            console.log("balancesScaled18[1]", request.balancesScaled18[1]);
+
             return amountOutScaled18;
         } else {
             uint256 amountInScaled18 = StableMath.computeInGivenExactOut(
@@ -178,6 +186,12 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
                 request.amountGivenScaled18,
                 invariant
             );
+
+            console.log("Exact Out");
+            console.log("AmountIn           ", amountInScaled18);
+            console.log("AmountOut          ", request.amountGivenScaled18);
+            console.log("balancesScaled18[0]", request.balancesScaled18[0]);
+            console.log("balancesScaled18[1]", request.balancesScaled18[1]);
 
             return amountInScaled18;
         }

@@ -153,6 +153,26 @@ contract E2eBatchSwapTest is BaseVaultTest {
         _checkUserBalancesAndPoolInvariants(balancesBefore, balancesAfter, invariantsBefore, invariantsAfter);
     }
 
+    function testExactInRepeatExactOut__Fuzz(uint256 exactAmountIn) public {
+        exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
+
+        // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
+        vault.manualUnsafeSetStaticSwapFeePercentage(poolA, 0);
+        vault.manualUnsafeSetStaticSwapFeePercentage(poolB, 0);
+        vault.manualUnsafeSetStaticSwapFeePercentage(poolC, 0);
+
+        vm.startPrank(sender);
+        uint256 snapshotId = vm.snapshot();
+        uint256 amountOut = _executeAndCheckBatchExactIn(IERC20(address(tokenA)), exactAmountIn);
+        vm.revertTo(snapshotId);
+        uint256 amountIn = _executeAndCheckBatchExactOut(IERC20(address(tokenA)), amountOut);
+        vm.stopPrank();
+
+        // 0.0000001% error tolerance, since computeInGivenExactOut and computeOutGivenExactIn can calculate slightly
+        // different results
+        assertApproxEqRel(amountIn, exactAmountIn, 1e9, "ExactIn and ExactOut amountsIn should match");
+    }
+
     function _executeAndCheckBatchExactIn(IERC20 tokenIn, uint256 exactAmountIn) private returns (uint256 amountOut) {
         IBatchRouter.SwapPathExactAmountIn[] memory swapPath = _buildExactInPaths(tokenIn, exactAmountIn, 0);
 
@@ -202,9 +222,9 @@ contract E2eBatchSwapTest is BaseVaultTest {
         uint256[] memory invariantsAfter
     ) private view {
         // The invariants of all pools should not decrease after the batch swap operation.
-        for (uint256 i = 0; i < invariantsBefore.length; i++) {
-            assertGe(invariantsAfter[i], invariantsBefore[i], "Wrong pool invariant");
-        }
+        assertGe(invariantsAfter[0], invariantsBefore[0], "Wrong poolA invariant");
+        assertGe(invariantsAfter[1], invariantsBefore[1], "Wrong poolB invariant");
+        assertGe(invariantsAfter[2], invariantsBefore[2], "Wrong poolC invariant");
 
         // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
         assertLe(

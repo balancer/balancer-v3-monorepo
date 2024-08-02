@@ -200,7 +200,7 @@ library StableMath {
         // Use divUpRaw with inv2, as it is a "raw" 36 decimal value.
         uint256 inv2 = invariant * invariant;
         // We remove the balance from c by multiplying it.
-        uint256 c = (inv2.divUpRaw(ampTimesTotal * P_D) * AMP_PRECISION) * balances[tokenIndex];
+        uint256 c = (inv2 * AMP_PRECISION).divUpRaw(ampTimesTotal * P_D) * balances[tokenIndex];
         uint256 b = sum + ((invariant / ampTimesTotal) * AMP_PRECISION);
         // We iterate to find the balance.
         uint256 prevTokenBalance = 0;
