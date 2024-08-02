@@ -19,7 +19,8 @@ contract StableMathTest is Test {
     uint256 constant NUM_TOKENS = 4;
 
     uint256 constant MIN_BALANCE_BASE = 1e18;
-    uint256 constant MAX_BALANCE_BASE = 1000e18;
+    // Max balance of each token of a stable pool to don't overflow the stable math.
+    uint256 constant MAX_BALANCE_BASE = 10_000_000_000_000_000e18;
     uint256 constant MAX_BALANCE_RATIO = 1000e16; // 1000 %
 
     uint256 constant MIN_AMOUNT_RATIO = 0.01e16; // 0.01 %
