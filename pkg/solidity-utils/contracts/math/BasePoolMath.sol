@@ -10,7 +10,7 @@ library BasePoolMath {
     using FixedPoint for uint256;
 
     /**
-     * @dev An add liquidity operation increases the invariant above the limit. This value is determined by each pool
+     * @dev An add liquidity operation increased the invariant above the limit. This value is determined by each pool
      * type, and depends on the specific math used to compute the price curve.
      *
      * @param invariantRatio The ratio of the new invariant (after an operation) to the old
@@ -19,7 +19,7 @@ library BasePoolMath {
     error InvariantRatioAboveMax(uint256 invariantRatio, uint256 maxInvariantRatio);
 
     /**
-     * @dev A remove liquidity operation decreases the invariant below the limit. This value is determined by each pool
+     * @dev A remove liquidity operation decreased the invariant below the limit. This value is determined by each pool
      * type, and depends on the specific math used to compute the price curve.
      *
      * @param invariantRatio The ratio of the new invariant (after an operation) to the old
@@ -117,7 +117,7 @@ library BasePoolMath {
      * @param exactAmounts Array of exact amounts for each token to be added to the pool
      * @param totalSupply The current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the transaction
-     * @param pool Pool to add liquidity
+     * @param pool The pool to which we're adding liquidity
      * @return bptAmountOut The amount of pool tokens (BPT) that will be minted as a result of the liquidity addition
      * @return swapFeeAmounts The amount of swap fees charged for each token
      */
@@ -206,7 +206,7 @@ library BasePoolMath {
      * @param exactBptAmountOut Exact amount of pool tokens (BPT) the user wants to receive
      * @param totalSupply The current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount
-     * @param pool Pool to operate with
+     * @param pool The pool to which we're adding liquidity
      * @return amountInWithFee The amount of input token needed, including the swap fee, to receive the exact BPT amount
      * @return swapFeeAmounts The amount of swap fees charged for each token
      */
@@ -259,6 +259,7 @@ library BasePoolMath {
      * @param exactAmountOut Exact amount of tokens to receive
      * @param totalSupply The current total supply of the pool tokens (BPT)
      * @param swapFeePercentage The swap fee percentage applied to the taxable amount
+     * @param pool The pool from which we're removing liquidity
      * @return bptAmountIn Amount of pool tokens to burn
      * @return swapFeeAmounts The amount of swap fees charged for each token
      */
@@ -326,13 +327,13 @@ library BasePoolMath {
      * @dev It computes the output token amount for an exact input of BPT, considering current balances,
      * total supply, and swap fees.
      *
-     * @param currentBalances The current token balances in the pool.
-     * @param tokenOutIndex The index of the token to be withdrawn.
-     * @param exactBptAmountIn The exact amount of BPT the user wants to burn.
+     * @param currentBalances The current token balances in the pool
+     * @param tokenOutIndex The index of the token to be withdrawn
+     * @param exactBptAmountIn The exact amount of BPT the user wants to burn
      * @param totalSupply The current total supply of the pool tokens (BPT)
-     * @param swapFeePercentage The swap fee percentage applied to the taxable amount.
-     * @param pool Pool to operate with.
-     * @return amountOutWithFee The amount of the output token the user receives, accounting for swap fees.
+     * @param swapFeePercentage The swap fee percentage applied to the taxable amount
+     * @param pool The pool from which we're removing liquidity
+     * @return amountOutWithFee The amount of the output token the user receives, accounting for swap fees
      */
     function computeRemoveLiquiditySingleTokenExactIn(
         uint256[] memory currentBalances,
@@ -375,6 +376,12 @@ library BasePoolMath {
         amountOutWithFee = amountOut - fee;
     }
 
+    /**
+     * @notice Validate the invariant ratio against the maximum bound.
+     * @dev This is checked when we're adding liquidity, so the `invariantRatio` > 1.
+     * @param pool The pool to which we're adding liquidity
+     * @param invariantRatio The ratio of the new invariant (after an operation) to the old
+     */
     function ensureInvariantRatioBelowMaximumBound(IBasePool pool, uint256 invariantRatio) internal view {
         uint256 maxInvariantRatio = pool.getMaximumInvariantRatio();
         if (invariantRatio > maxInvariantRatio) {
@@ -382,6 +389,12 @@ library BasePoolMath {
         }
     }
 
+    /**
+     * @notice Validate the invariant ratio against the maximum bound.
+     * @dev This is checked when we're removing liquidity, so the `invariantRatio` < 1.
+     * @param pool The pool from which we're removing liquidity
+     * @param invariantRatio The ratio of the new invariant (after an operation) to the old
+     */
     function ensureInvariantRatioAboveMinimumBound(IBasePool pool, uint256 invariantRatio) internal view {
         uint256 minInvariantRatio = pool.getMinimumInvariantRatio();
         if (invariantRatio < minInvariantRatio) {
