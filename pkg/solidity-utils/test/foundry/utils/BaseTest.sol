@@ -53,7 +53,7 @@ abstract contract BaseTest is Test, GasSnapshot {
     IERC20[] internal tokens;
 
     // Default balance for accounts
-    uint256 internal defaultBalance = 1e7 * 1e18;
+    uint256 internal defaultBalance = 1e9 * 1e18;
 
     function setUp() public virtual {
         // Set timestamp only if testing locally

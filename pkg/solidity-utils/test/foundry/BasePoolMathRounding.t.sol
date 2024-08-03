@@ -13,7 +13,8 @@ contract BasePoolMathRoundingTest is Test {
     uint256 constant MAX_AMOUNT = 1000e18;
 
     uint256 constant MIN_SWAP_FEE = 0;
-    uint256 constant MAX_SWAP_FEE = 0.8e18;
+    // Max swap fee of 50%. In practice this is way too high for a static fee anyways.
+    uint256 constant MAX_SWAP_FEE = 50e16;
     uint256 constant DELTA = 1e3;
 
     BasePoolMathMock mock;
@@ -30,7 +31,7 @@ contract BasePoolMathRoundingTest is Test {
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
         }
-        uint256 totalSupply = mock.computeInvariantMock(balances);
+        uint256 totalSupply = mock.computeInvariant(balances);
         uint256 bptAmountOut = bound(rawBptAmountOut, MIN_AMOUNT, totalSupply);
 
         uint256[] memory standardResult = mock.computeProportionalAmountsIn(balances, totalSupply, bptAmountOut);
@@ -71,7 +72,7 @@ contract BasePoolMathRoundingTest is Test {
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
         }
-        uint256 totalSupply = mock.computeInvariantMock(balances);
+        uint256 totalSupply = mock.computeInvariant(balances);
         uint256 bptAmountIn = bound(rawBptAmountIn, MIN_AMOUNT, totalSupply);
 
         uint256[] memory standardResult = mock.computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
@@ -115,7 +116,7 @@ contract BasePoolMathRoundingTest is Test {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
             amountsIn[i] = bound(rawAmountsIn[i], MIN_BALANCE, MAX_AMOUNT);
         }
-        uint256 totalSupply = mock.computeInvariantMock(balances);
+        uint256 totalSupply = mock.computeInvariant(balances);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
         uint256 standardResultBpt;
@@ -189,7 +190,7 @@ contract BasePoolMathRoundingTest is Test {
 
         uint256 tokenInIndex = bound(rawTokenInIndex, 0, 1);
         uint256 bptAmountOut = bound(rawBptAmountOut, MIN_AMOUNT, MAX_AMOUNT);
-        uint256 totalSupply = mock.computeInvariantMock(balances);
+        uint256 totalSupply = mock.computeInvariant(balances);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
         uint256 standardResultAmountInWithFee;
@@ -266,7 +267,7 @@ contract BasePoolMathRoundingTest is Test {
         uint256 tokenOutIndex = bound(rawTokenOutIndex, 0, 1);
         uint256 amountOut = bound(rawAmountOut, MIN_BALANCE, balances[tokenOutIndex] / 4);
 
-        uint256 totalSupply = mock.computeInvariantMock(balances);
+        uint256 totalSupply = mock.computeInvariant(balances);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
         uint256 standardResultBptAmountIn;
@@ -342,7 +343,7 @@ contract BasePoolMathRoundingTest is Test {
         }
 
         uint256 tokenOutIndex = bound(rawTokenOutIndex, 0, 1);
-        uint256 totalSupply = mock.computeInvariantMock(balances);
+        uint256 totalSupply = mock.computeInvariant(balances);
         uint256 bptAmountIn = bound(rawBptAmountIn, MIN_AMOUNT, totalSupply / 4);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
