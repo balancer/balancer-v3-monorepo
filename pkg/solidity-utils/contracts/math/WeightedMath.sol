@@ -40,7 +40,7 @@ library WeightedMath {
     // In computing `balance^normalizedWeight`, `log(balance) * normalizedWeight` must fall within the `pow` function
     // bounds described above. Since 0.01 <= normalizedWeight <= 0.99, the balance is constrained to the range between
     // e^(ExpMin) and e^(ExpMax).
-    // 
+    //
     // This corresponds to 10^(-18) < balance < 2^(188.56). Since the maximum balance is 2^(128) - 1, the invariant
     // calculation is unconstrained by the `pow` function limits.
     //
