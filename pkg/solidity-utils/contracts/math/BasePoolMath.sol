@@ -9,8 +9,22 @@ import { FixedPoint } from "./FixedPoint.sol";
 library BasePoolMath {
     using FixedPoint for uint256;
 
+    /**
+     * @dev An add liquidity operation increases the invariant above the limit. This value is determined by each pool
+     * type, and depends on the specific math used to compute the price curve.
+     *
+     * @param invariantRatio The ratio of the new invariant (after an operation) to the old
+     * @param maxInvariantRatio The maximum allowed invariant ratio
+     */
     error InvariantRatioAboveMax(uint256 invariantRatio, uint256 maxInvariantRatio);
 
+    /**
+     * @dev A remove liquidity operation decreases the invariant below the limit. This value is determined by each pool
+     * type, and depends on the specific math used to compute the price curve.
+     *
+     * @param invariantRatio The ratio of the new invariant (after an operation) to the old
+     * @param minInvariantRatio The minimum allowed invariant ratio
+     */
     error InvariantRatioBelowMin(uint256 invariantRatio, uint256 minInvariantRatio);
 
     // For security reasons, to help ensure that for all possible "round trip" paths
@@ -142,7 +156,7 @@ library BasePoolMath {
         // Round down to make `taxableAmount` larger below.
         uint256 invariantRatio = pool.computeInvariant(newBalances).divDown(currentInvariant);
 
-        ensureInvariantRatioWithinMaximumBounds(pool, invariantRatio);
+        ensureInvariantRatioBelowMaximumBound(pool, invariantRatio);
 
         // Loop through each token to apply fees if necessary.
         for (uint256 i = 0; i < numTokens; ++i) {
@@ -211,7 +225,7 @@ library BasePoolMath {
         // "divUp" leads to a higher "newBalance", which in turn results in a larger "amountIn".
         // This leads to receiving more tokens for the same amount of BPT minted.
         uint256 invariantRatio = newSupply.divUp(totalSupply);
-        ensureInvariantRatioWithinMaximumBounds(pool, invariantRatio);
+        ensureInvariantRatioBelowMaximumBound(pool, invariantRatio);
 
         uint256 newBalance = pool.computeBalance(currentBalances, tokenInIndex, invariantRatio);
 
@@ -278,7 +292,7 @@ library BasePoolMath {
         // We round invariant ratio up (see reason below).
         uint256 invariantRatio = pool.computeInvariant(newBalances).divUp(currentInvariant);
 
-        ensureInvariantRatioWithinMinimumBounds(pool, invariantRatio);
+        ensureInvariantRatioAboveMinimumBound(pool, invariantRatio);
 
         // Taxable amount is proportional to invariant ratio; a larger taxable amount rounds in the Vault's favor.
         uint256 taxableAmount = invariantRatio.mulUp(currentBalances[tokenOutIndex]) - newBalances[tokenOutIndex];
@@ -331,7 +345,7 @@ library BasePoolMath {
         // Calculate new supply accounting for burning exactBptAmountIn
         uint256 newSupply = totalSupply - exactBptAmountIn;
         uint256 invariantRatio = newSupply.divUp(totalSupply);
-        ensureInvariantRatioWithinMinimumBounds(pool, invariantRatio);
+        ensureInvariantRatioAboveMinimumBound(pool, invariantRatio);
 
         // Calculate the new balance of the output token after the BPT burn.
         // "divUp" leads to a higher "newBalance", which in turn results in a lower "amountOut", but also a lower
@@ -361,14 +375,14 @@ library BasePoolMath {
         amountOutWithFee = amountOut - fee;
     }
 
-    function ensureInvariantRatioWithinMaximumBounds(IBasePool pool, uint256 invariantRatio) internal view {
+    function ensureInvariantRatioBelowMaximumBound(IBasePool pool, uint256 invariantRatio) internal view {
         uint256 maxInvariantRatio = pool.getMaximumInvariantRatio();
         if (invariantRatio > maxInvariantRatio) {
             revert InvariantRatioAboveMax(invariantRatio, maxInvariantRatio);
         }
     }
 
-    function ensureInvariantRatioWithinMinimumBounds(IBasePool pool, uint256 invariantRatio) internal view {
+    function ensureInvariantRatioAboveMinimumBound(IBasePool pool, uint256 invariantRatio) internal view {
         uint256 minInvariantRatio = pool.getMinimumInvariantRatio();
         if (invariantRatio < minInvariantRatio) {
             revert InvariantRatioBelowMin(invariantRatio, minInvariantRatio);
