@@ -62,9 +62,6 @@ contract VaultStorage {
     uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
     uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
 
-    // Code extension for the Vault.
-    IVaultExtension internal immutable _vaultExtension;
-
     // Registry of pool configs.
     mapping(address => PoolConfigBits) internal _poolConfigBits;
 
