@@ -31,17 +31,14 @@ import { PoolConfigBits } from "./lib/PoolConfigLib.sol";
 contract VaultStorage {
     using StorageSlotExtension for *;
 
-    // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used
-    // by what is written after =. If you use immutable, the value is first calculated and
-    // then replaced everywhere. That means that if a constant has executable variables,
-    // they will be executed every time the constant is used.
+    /***************************************************************************
+                                     Constants
+    ***************************************************************************/
 
-    // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _IS_UNLOCKED_SLOT = _calculateVaultStorageSlot("isUnlocked");
-    // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _NON_ZERO_DELTA_COUNT_SLOT = _calculateVaultStorageSlot("nonZeroDeltaCount");
-    // solhint-disable-next-line var-name-mixedcase
-    bytes32 private immutable _TOKEN_DELTAS_SLOT = _calculateVaultStorageSlot("tokenDeltas");
+    // Pools can have between two and eight tokens.
+    uint256 internal constant _MIN_TOKENS = 2;
+    // This maximum token count is also implicitly hard-coded in `PoolConfigLib` (through packing `tokenDecimalDiffs`).
+    uint256 internal constant _MAX_TOKENS = 8;
 
     // Minimum BPT amount minted upon initialization.
     uint256 internal constant _MINIMUM_BPT = 1e6;
@@ -53,86 +50,120 @@ contract VaultStorage {
     // exploitation of rounding errors
     uint256 internal constant _MINIMUM_TRADE_AMOUNT = 1e6;
 
-    // Pools can have between two and eight tokens.
-    uint256 internal constant _MIN_TOKENS = 2;
-    // This maximum token count is also implicitly hard-coded in `PoolConfigLib` (through packing `tokenDecimalDiffs`).
-    uint256 internal constant _MAX_TOKENS = 8;
-
     // Maximum pause and buffer period durations.
     uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
     uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
 
+    /***************************************************************************
+                          Transient Storage Declarations
+    ***************************************************************************/
+
+    // NOTE: If you use a constant, then it is simply replaced everywhere when this constant is used
+    // by what is written after =. If you use immutable, the value is first calculated and
+    // then replaced everywhere. That means that if a constant has executable variables,
+    // they will be executed every time the constant is used.
+
+    // solhint-disable var-name-mixedcase
+    bytes32 private immutable _IS_UNLOCKED_SLOT = _calculateVaultStorageSlot("isUnlocked");
+    bytes32 private immutable _NON_ZERO_DELTA_COUNT_SLOT = _calculateVaultStorageSlot("nonZeroDeltaCount");
+    bytes32 private immutable _TOKEN_DELTAS_SLOT = _calculateVaultStorageSlot("tokenDeltas");
+    // solhint-enable var-name-mixedcase
+
+    /***************************************************************************
+                                Contract References
+    ***************************************************************************/
+
     // Code extension for the Vault.
     IVaultExtension internal immutable _vaultExtension;
 
-    // Registry of pool configs.
-    mapping(address => PoolConfigBits) internal _poolConfigBits;
-
-    // Registry of pool hooks contracts.
-    mapping(address => IHooks) internal _hooksContracts;
-
-    // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
-    // Last live balances are used for yield fee computation, and since these have rates applied, they are stored
-    // as scaled 18-decimal FP values. Each value takes up half the storage slot (i.e., 128 bits).
-    mapping(address => mapping(uint256 => bytes32)) internal _poolTokenBalances;
-    mapping(address => IERC20[]) internal _poolTokens;
-
-    // Pool -> (token -> TokenInfo): The token configuration of each Pool's tokens.
-    mapping(address => mapping(IERC20 => TokenInfo)) internal _poolTokenInfo;
-
-    // Pool -> (Token -> fee): aggregate protocol swap/yield fees accumulated in the Vault for harvest.
-    // Reusing PackedTokenBalance to save bytecode (despite differing semantics).
-    // It's arbitrary which is which: we define raw=swap; derived=yield
-    mapping(address => mapping(IERC20 => bytes32)) internal _aggregateFeeAmounts;
-
-    /**
-     * @dev Represents the total reserve of each ERC20 token. It should be always equal to `token.balanceOf(vault)`,
-     * except during `unlock`.
-     */
-    mapping(IERC20 => uint256) internal _reservesOf;
-
-    // Upgradeable contract in charge of setting permissions.
+    // Contract in charge of setting permissions.
     IAuthorizer internal _authorizer;
 
+    // Contract that receives aggregate swap and yield fees.
+    IProtocolFeeController internal _protocolFeeController;
+
+    /***************************************************************************
+                                    Vault State
+    ***************************************************************************/
+
     // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
-    // solhint-disable not-rely-on-time
 
     uint32 internal immutable _vaultPauseWindowEndTime;
     uint32 internal immutable _vaultBufferPeriodEndTime;
     // Stored as a convenience, to avoid calculating it on every operation.
     uint32 internal immutable _vaultBufferPeriodDuration;
 
-    // Bytes32 with protocol fees and paused flags.
+    // Bytes32 with pause flags for the Vault, buffers, and queries.
     VaultStateBits internal _vaultStateBits;
 
-    // pool -> roleId (corresponding to a particular function) -> PoolFunctionPermission.
-    mapping(address => mapping(bytes32 => PoolFunctionPermission)) internal _poolFunctionPermissions;
+    /**
+     * @dev Represents the total reserve of each ERC20 token. It should always be equal to `token.balanceOf(vault)`,
+     * except during `unlock`.
+     */
+    mapping(IERC20 => uint256) internal _reservesOf;
 
-    // pool -> PoolRoleAccounts (accounts assigned to specific roles; e.g., pauseManager).
+    /***************************************************************************
+                                    Pool State
+    ***************************************************************************/
+
+    // Pool -> PoolConfig (fees, pause window, configuration flags).
+    mapping(address => PoolConfigBits) internal _poolConfigBits;
+
+    // Pool -> PoolRoleAccounts (accounts assigned to specific roles; e.g., pauseManager).
     mapping(address => PoolRoleAccounts) internal _poolRoleAccounts;
 
-    // Contract that receives aggregate swap and yield fees.
-    IProtocolFeeController internal _protocolFeeController;
+    // Pool -> roleId (corresponding to a particular function) -> PoolFunctionPermission.
+    mapping(address => mapping(bytes32 => PoolFunctionPermission)) internal _poolFunctionPermissions;
 
-    // Buffers are a vault internal concept, keyed on the wrapped token address.
-    // There will only ever be one buffer per wrapped token. This also means they are permissionless and
-    // have no registration function. You can always add liquidity to a buffer.
+    // Pool -> hooks contracts.
+    mapping(address => IHooks) internal _hooksContracts;
 
-    // A buffer will only ever have two tokens: wrapped and underlying
-    // we pack the wrapped and underlying balance into a single bytes32
-    // wrapped token address -> PackedTokenBalance.
+    // Pool -> set of tokens.
+    mapping(address => IERC20[]) internal _poolTokens;
+
+    // Pool -> (token -> TokenInfo): The token configuration of each Pool's tokens.
+    mapping(address => mapping(IERC20 => TokenInfo)) internal _poolTokenInfo;
+
+    // Pool -> (token -> PackedTokenBalance): structure containing the current raw and "last live" scaled balances.
+    // Last live balances are used for yield fee computation, and since these have rates applied, they are stored
+    // as scaled 18-decimal FP values. Each value takes up half the storage slot (i.e., 128 bits).
+    mapping(address => mapping(uint256 => bytes32)) internal _poolTokenBalances;
+
+    // Pool -> (Token -> fee): aggregate protocol swap/yield fees accumulated in the Vault for harvest.
+    // Reusing PackedTokenBalance to save bytecode (despite differing semantics).
+    // It's arbitrary which is which: we define raw=swap; derived=yield
+    mapping(address => mapping(IERC20 => bytes32)) internal _aggregateFeeAmounts;
+
+    /***************************************************************************
+                                  ERC4626 Buffers
+    ***************************************************************************/
+
+    // Any ERC4626 token can trade using a buffer, which is like a pool, but internal to the Vault.
+    // The registry key is the wrapped token address, so there can only ever be one buffer per wrapped token.
+    // This means they are permissionless, and have no registration function.
+    //
+    // Anyone can add liquidity to a buffer
+
+    // A buffer will only ever have two tokens: wrapped and underlying. We pack the wrapped and underlying balances
+    // into a single bytes32, interpreted with the `PackedTokenBalance` library.
+
+    // ERC4626 token address -> PackedTokenBalance.
     mapping(IERC20 => bytes32) internal _bufferTokenBalances;
 
-    // The LP balances for buffers. To start, LP balances will not be represented as ERC20 shares.
-    // If we end up with a need to incentivize buffers, we can wrap this in an ERC20 wrapper without
-    // introducing more complexity to the vault.
-    // wrapped token address -> user address -> LP balance.
+    // The LP balances for buffers. LP balances are not tokenized (i.e., represented by ERC20 tokens like BPT), but
+    // rather accounted for within the Vault.
+
+    // Wrapped token address -> user address -> LP balance.
     mapping(IERC20 => mapping(address => uint256)) internal _bufferLpShares;
-    // total LP shares
+    // Total LP shares
     mapping(IERC20 => uint256) internal _bufferTotalShares;
 
     // Prevents a malicious ERC4626 from changing the asset after the buffer was initialized.
     mapping(IERC20 => address) internal _bufferAssets;
+
+    /***************************************************************************
+                             Transient Storage Access
+    ***************************************************************************/
 
     function _isUnlocked() internal view returns (StorageSlotExtension.BooleanSlotType slot) {
         return _IS_UNLOCKED_SLOT.asBoolean();
