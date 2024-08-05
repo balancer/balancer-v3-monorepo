@@ -715,8 +715,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256[] memory amountsIn) {
-        amountsIn = abi.decode(
+    ) external payable saveSender returns (uint256[] memory underlyingAmountsIn) {
+        underlyingAmountsIn = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(
                     BatchRouter.addLiquidityERC4626PoolProportionalHook.selector,
@@ -742,8 +742,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         uint256[] memory minUnderlyingAmountsOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256[] memory amountsOut) {
-        amountsOut = abi.decode(
+    ) external payable saveSender returns (uint256[] memory underlyingAmountsOut) {
+        underlyingAmountsOut = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(
                     BatchRouter.removeLiquidityERC4626PoolProportionalHook.selector,
@@ -790,18 +790,17 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     /// @inheritdoc IBatchRouter
     function queryAddLiquidityProportionalToERC4626Pool(
         address pool,
-        uint256[] memory maxUnderlyingAmountsIn,
         uint256 exactBptAmountOut,
         bytes memory userData
-    ) external saveSender returns (uint256[] memory amountsIn) {
-        amountsIn = abi.decode(
+    ) external saveSender returns (uint256[] memory underlyingAmountsIn) {
+        underlyingAmountsIn = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
                     BatchRouter.addLiquidityERC4626PoolProportionalHook.selector,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
-                        maxAmountsIn: maxUnderlyingAmountsIn,
+                        maxAmountsIn: _maxTokenLimits(pool),
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.PROPORTIONAL,
                         wethIsEth: false,
@@ -818,8 +817,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         address pool,
         uint256 exactBptAmountIn,
         bytes memory userData
-    ) external saveSender returns (uint256[] memory amountsOut) {
-        amountsOut = abi.decode(
+    ) external saveSender returns (uint256[] memory underlyingAmountsOut) {
+        underlyingAmountsOut = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
                     BatchRouter.removeLiquidityERC4626PoolProportionalHook.selector,
@@ -870,7 +869,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
         uint256[] memory maxUint128TypeAmounts = new uint256[](erc4626PoolTokens.length);
         for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
-            maxUint128TypeAmounts[i] = type(uint128).max;
+            maxUint128TypeAmounts[i] = _MAX_AMOUNT;
         }
 
         // Add wrapped amounts to the ERC4626 pool.

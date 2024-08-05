@@ -12,7 +12,7 @@ import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatc
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/test/ArrayHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
@@ -135,22 +135,22 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
         _;
 
         uint256 afterUSDCBalance = usdc.balanceOf(sender);
-        assertEq(beforeUSDCBalance - afterUSDCBalance, 0, "USDC balance should be the same");
+        assertEq(beforeUSDCBalance, afterUSDCBalance, "USDC balance should be the same");
 
         uint256 afterDAIBalance = dai.balanceOf(sender);
-        assertEq(beforeDAIBalance - afterDAIBalance, 0, "DAI balance should be the same");
+        assertEq(beforeDAIBalance, afterDAIBalance, "DAI balance should be the same");
 
         (uint256 afterWaUSDCBufferBalanceUnderlying, uint256 afterWaUSDCBufferBalanceWrapped) = vault.getBufferBalance(
             waUSDC
         );
         assertEq(
-            beforeWaUSDCBufferBalanceWrapped - afterWaUSDCBufferBalanceWrapped,
-            0,
+            beforeWaUSDCBufferBalanceWrapped,
+            afterWaUSDCBufferBalanceWrapped,
             "waUSDC wrapped buffer balance should be the same"
         );
         assertEq(
-            afterWaUSDCBufferBalanceUnderlying - beforeWaUSDCBufferBalanceUnderlying,
-            0,
+            beforeWaUSDCBufferBalanceUnderlying,
+            afterWaUSDCBufferBalanceUnderlying,
             "waUSDC underlying buffer balance should be the same"
         );
 
@@ -158,13 +158,13 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
             waDAI
         );
         assertEq(
-            beforeWaDAIBufferBalanceWrapped - afterWaDAIBufferBalanceWrapped,
-            0,
+            beforeWaDAIBufferBalanceWrapped,
+            afterWaDAIBufferBalanceWrapped,
             "waDAI wrapped buffer balance should be the same"
         );
         assertEq(
-            afterWaDAIBufferBalanceUnderlying - beforeWaDAIBufferBalanceUnderlying,
-            0,
+            beforeWaDAIBufferBalanceUnderlying,
+            afterWaDAIBufferBalanceUnderlying,
             "waDAI underlying buffer balance should be the same"
         );
     }
@@ -298,7 +298,6 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
         _prankStaticCall();
         uint256[] memory expectedAmountsIn = router.queryAddLiquidityProportional(
             erc4626Pool,
-            maxAmountsIn,
             exactBptAmountOut,
             new bytes(0)
         );
@@ -387,12 +386,7 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
         uint256[] memory maxAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
         vm.prank(alice, address(0));
-        batchRouter.queryAddLiquidityProportionalToERC4626Pool(
-            erc4626Pool,
-            maxAmountsIn,
-            operationAmount,
-            new bytes(0)
-        );
+        batchRouter.queryAddLiquidityProportionalToERC4626Pool(erc4626Pool, operationAmount, new bytes(0));
     }
 
     function testRemoveLiquidityProportionalFromERC4626Pool_Fuzz(uint256 rawOperationAmount) public {

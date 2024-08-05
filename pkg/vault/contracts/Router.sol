@@ -741,12 +741,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 exactBptAmountOut,
         bytes memory userData
     ) external saveSender returns (uint256[] memory amountsIn) {
-        uint256 numTokens = _vault.getPoolTokens(pool).length;
-        uint256[] memory maxAmountsIn = new uint256[](numTokens);
-        for (uint256 i = 0; i < numTokens; ++i) {
-            maxAmountsIn[i] = _MAX_AMOUNT;
-        }
-
         (amountsIn, , ) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
@@ -756,7 +750,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         // but it is possible to add liquidity to any recipient.
                         sender: address(this),
                         pool: pool,
-                        maxAmountsIn: maxAmountsIn,
+                        maxAmountsIn: _maxTokenLimits(pool),
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.PROPORTIONAL,
                         wethIsEth: false,

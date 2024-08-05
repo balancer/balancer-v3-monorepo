@@ -165,7 +165,7 @@ interface IBatchRouter {
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
-     * @return amountsIn Actual amounts of tokens added, sorted in token registration order
+     * @return underlyingAmountsIn Actual amounts of tokens added, sorted in token registration order
      */
     function addLiquidityProportionalToERC4626Pool(
         address pool,
@@ -173,7 +173,7 @@ interface IBatchRouter {
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsIn);
+    ) external payable returns (uint256[] memory underlyingAmountsIn);
 
     /**
      * @dev An "ERC4626 pool" is one in which all tokens conform to the IERC4626 yield-bearing token standard (e.g., waDAI).
@@ -183,7 +183,7 @@ interface IBatchRouter {
      * @param minUnderlyingAmountsOut Minimum amounts of underlying tokens to be received, sorted in token registration order
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for removing liquidity
-     * @return amountsOut Actual amounts of tokens received, sorted in token registration order
+     * @return underlyingAmountsOut Actual amounts of tokens received, sorted in token registration order
      */
     function removeLiquidityProportionalFromERC4626Pool(
         address pool,
@@ -191,7 +191,7 @@ interface IBatchRouter {
         uint256[] memory minUnderlyingAmountsOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable returns (uint256[] memory amountsOut);
+    ) external payable returns (uint256[] memory underlyingAmountsOut);
 
     /**
      * @dev An "ERC4626 pool" is one in which all tokens conform to the IERC4626 yield-bearing token standard (e.g., waDAI).
@@ -211,17 +211,15 @@ interface IBatchRouter {
      * @dev An "ERC4626 pool" is one in which all tokens conform to the IERC4626 yield-bearing token standard (e.g., waDAI).
      * @notice Queries an `addLiquidityProportionalToERC4626Pool` operation without actually executing it.
      * @param pool Address of the liquidity pool
-     * @param maxUnderlyingAmountsIn Maximum amounts of underlying tokens to be added, sorted in token registration order
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param userData Additional (optional) data required for the query
-     * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
+     * @return underlyingAmountsIn Expected amounts of tokens to add, sorted in token registration order
      */
     function queryAddLiquidityProportionalToERC4626Pool(
         address pool,
-        uint256[] memory maxUnderlyingAmountsIn,
         uint256 exactBptAmountOut,
         bytes memory userData
-    ) external returns (uint256[] memory amountsIn);
+    ) external returns (uint256[] memory underlyingAmountsIn);
 
     /**
      * @dev An "ERC4626 pool" is one in which all tokens conform to the IERC4626 yield-bearing token standard (e.g., waDAI).
@@ -229,11 +227,11 @@ interface IBatchRouter {
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @param userData Additional (optional) data required for the query
-     * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
+     * @return underlyingAmountsOut Expected amounts of tokens to receive, sorted in token registration order
      */
     function queryRemoveLiquidityProportionalFromERC4626Pool(
         address pool,
         uint256 exactBptAmountIn,
         bytes memory userData
-    ) external returns (uint256[] memory amountsOut);
+    ) external returns (uint256[] memory underlyingAmountsOut);
 }
