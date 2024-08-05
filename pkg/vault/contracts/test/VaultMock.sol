@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -248,6 +249,22 @@ contract VaultMock is IVaultMainMock, Vault {
         }
 
         _poolTokens[pool] = tokens;
+    }
+
+    function manualSetPoolBalances(
+        address pool,
+        uint256[] memory tokenBalanceRaw,
+        uint256[] memory tokenBalanceLiveScaled18
+    ) public {
+        IERC20[] memory tokens = _poolTokens[pool];
+
+        require(tokens.length == tokenBalanceRaw.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
+        require(tokens.length == tokenBalanceLiveScaled18.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
+
+        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            poolTokenBalances[i] = PackedTokenBalance.toPackedBalance(tokenBalanceRaw[i], tokenBalanceLiveScaled18[i]);
+        }
     }
 
     function mockIsUnlocked() public view onlyWhenUnlocked {}
@@ -571,17 +588,17 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256) {
-        bytes32 bufferBalance = _bufferTokenBalances[IERC20(address(wrappedToken))];
+        bytes32 bufferBalance = _bufferTokenBalances[wrappedToken];
         return bufferBalance.getBufferUnderlyingSurplus(wrappedToken);
     }
 
     function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256) {
-        bytes32 bufferBalance = _bufferTokenBalances[IERC20(address(wrappedToken))];
+        bytes32 bufferBalance = _bufferTokenBalances[wrappedToken];
         return bufferBalance.getBufferWrappedSurplus(wrappedToken);
     }
 
     function getBufferTokenBalancesBytes(IERC4626 wrappedToken) external view returns (bytes32) {
-        return _bufferTokenBalances[IERC20(address(wrappedToken))];
+        return _bufferTokenBalances[wrappedToken];
     }
 
     function manualUpdateReservesAfterWrapping(

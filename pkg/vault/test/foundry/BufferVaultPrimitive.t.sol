@@ -338,7 +338,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         assertEq(afterBalances.lp.dai, beforeBalances.lp.dai - underlyingAmountIn, "LP DAI balance is wrong");
         assertEq(afterBalances.lp.waDai, beforeBalances.lp.waDai - wrappedAmountIn, "LP waDAI balance is wrong");
 
-        assertEq(lpShares, vault.getBufferOwnerShares(IERC20(address(waDAI)), lp), "LP Buffer shares is wrong");
+        assertEq(lpShares, vault.getBufferOwnerShares(IERC4626(address(waDAI)), lp), "LP Buffer shares is wrong");
         assertEq(
             lpShares,
             underlyingAmountIn + waDAI.convertToAssets(wrappedAmountIn) - MIN_BPT,
@@ -407,7 +407,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         assertEq(afterBalances.lp.dai, beforeBalances.lp.dai + underlyingRemoved, "LP DAI balance is wrong");
         assertEq(afterBalances.lp.waDai, beforeBalances.lp.waDai + wrappedRemoved, "LP waDAI balance is wrong");
 
-        assertEq(vault.getBufferOwnerShares(IERC20(address(waDAI)), lp), 0, "LP Buffer shares is wrong");
+        assertEq(vault.getBufferOwnerShares(IERC4626(address(waDAI)), lp), 0, "LP Buffer shares is wrong");
         // If math has rounding issues, the rounding occurs in favor of the vault with a max of 1 wei error.
         assertApproxEqAbs(
             lpShares,
@@ -433,7 +433,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vars.lp.dai = dai.balanceOf(lp);
         vars.lp.waDai = waDAI.balanceOf(lp);
 
-        (vars.buffer.dai, vars.buffer.waDai) = vault.getBufferBalance(IERC20(address(waDAI)));
+        (vars.buffer.dai, vars.buffer.waDai) = vault.getBufferBalance(IERC4626(address(waDAI)));
 
         vars.vault.dai = dai.balanceOf(address(vault));
         vars.vault.waDai = waDAI.balanceOf(address(vault));

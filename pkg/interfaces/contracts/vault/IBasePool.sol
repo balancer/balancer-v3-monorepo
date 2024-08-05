@@ -3,14 +3,16 @@
 pragma solidity ^0.8.24;
 
 import { ISwapFeePercentageBounds } from "./ISwapFeePercentageBounds.sol";
+import { IUnbalancedLiquidityInvariantRatioBounds } from "./IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { SwapKind, PoolSwapParams } from "./VaultTypes.sol";
 
 /**
  * @notice Base interface for a Balancer Pool.
- * @dev All pool types should implement this interface. Note that it also requires implementation of
- * `ISwapFeePercentageBounds` for all pools, to specify the minimum and maximum swap fee percentages.
+ * @dev All pool types should implement this interface. Note that it also requires implementation of:
+ * - `ISwapFeePercentageBounds` to specify the minimum and maximum swap fee percentages.
+ * - `IUnbalancedLiquidityInvariantRatioBounds` to specify how much the invariant can change during an unbalanced liquidity operation.
  */
-interface IBasePool is ISwapFeePercentageBounds {
+interface IBasePool is ISwapFeePercentageBounds, IUnbalancedLiquidityInvariantRatioBounds {
     /***************************************************************************
                                    Invariant
     ***************************************************************************/

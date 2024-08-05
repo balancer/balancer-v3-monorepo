@@ -33,11 +33,35 @@ library WeightedMath {
      */
     error ZeroInvariant();
 
-    // Pool limits that arise from limitations in the fixed point power function
+    // Pool limits that arise from limitations in the fixed point power function. When computing x^y, the valid range
+    // of `x` is -41 (ExpMin) to 130 (ExpMax). See `LogExpMath.sol` for the derivation of these values.
+    //
+    // Invariant calculation:
+    // In computing `balance^normalizedWeight`, `log(balance) * normalizedWeight` must fall within the `pow` function
+    // bounds described above. Since 0.01 <= normalizedWeight <= 0.99, the balance is constrained to the range between
+    // e^(ExpMin) and e^(ExpMax).
+    //
+    // This corresponds to 10^(-18) < balance < 2^(188.56). Since the maximum balance is 2^(128) - 1, the invariant
+    // calculation is unconstrained by the `pow` function limits.
+    //
+    // It's a different story with `computeBalanceOutGivenInvariant` (inverse invariant):
+    // This uses the power function to raise the invariant ratio to the power of 1/weight. Similar to the computation
+    // for the invariant, this means the following expression must hold:
+    // ExpMin < log(invariantRatio) * 1/weight < ExpMax
+    //
+    // Given the valid range of weights (i.e., 1 < 1/weight < 100), we have:
+    // ExpMin/100 < log(invariantRatio) < ExpMax/100, or e^(-0.41) < invariantRatio < e^(1.3). Numerically, this
+    // constrains the invariantRatio to between 0.661 and 3.695. For an added safety margin, we set the limits to
+    // 0.7 < invariantRatio < 3.
 
     // Swap limits: amounts swapped may not be larger than this percentage of the total balance.
-    uint256 internal constant _MAX_IN_RATIO = 0.3e18;
-    uint256 internal constant _MAX_OUT_RATIO = 0.3e18;
+    uint256 internal constant _MAX_IN_RATIO = 30e16; // 30%
+    uint256 internal constant _MAX_OUT_RATIO = 30e16; // 30%
+
+    // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
+    uint256 internal constant _MAX_INVARIANT_RATIO = 300e16; // 300%
+    // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
+    uint256 internal constant _MIN_INVARIANT_RATIO = 70e16; // 70%
 
     // The invariant is used to collect protocol swap fees by comparing its value between two times.
     // So we can round always to the same direction. It is also used to initiate the BPT amount and,
@@ -69,7 +93,7 @@ library WeightedMath {
         uint256 invariantRatio
     ) internal pure returns (uint256 invariant) {
         /******************************************************************************************
-        // calculateBalanceGivenInvariant                                                       //
+        // calculateBalanceGivenInvariant                                                        //
         // o = balanceOut                                                                        //
         // b = balanceIn                      (1 / w)                                            //
         // w = weight              o = b * i ^                                                   //
@@ -94,7 +118,7 @@ library WeightedMath {
         uint256 amountIn
     ) internal pure returns (uint256) {
         /**********************************************************************************************
-        // outGivenExactIn                                                                                //
+        // outGivenExactIn                                                                           //
         // aO = amountOut                                                                            //
         // bO = balanceOut                                                                           //
         // bI = balanceIn              /      /            bI             \    (wI / wO) \           //
@@ -132,7 +156,7 @@ library WeightedMath {
         uint256 amountOut
     ) internal pure returns (uint256) {
         /**********************************************************************************************
-        // inGivenExactOut                                                                                //
+        // inGivenExactOut                                                                           //
         // aO = amountOut                                                                            //
         // bO = balanceOut                                                                           //
         // bI = balanceIn              /  /            bO             \    (wO / wI)      \          //
