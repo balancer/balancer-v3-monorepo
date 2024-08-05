@@ -17,19 +17,20 @@ import {
 import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
 import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
 
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 contract YieldFeesTest is BaseVaultTest {
-    using ArrayHelpers for *;
-    using FixedPoint for uint256;
+    using CastingHelpers for address[];
     using ScalingHelpers for uint256;
+    using FixedPoint for uint256;
+    using ArrayHelpers for *;
 
     RateProviderMock internal wstETHRateProvider;
     RateProviderMock internal daiRateProvider;

@@ -20,7 +20,8 @@ import {
     MAX_FEE_PERCENTAGE
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -30,8 +31,9 @@ import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 contract VaultCommonBasicFunctionsTest is BaseVaultTest {
     using PoolConfigLib for PoolConfigBits;
-    using SafeCast for *;
+    using CastingHelpers for address[];
     using ArrayHelpers for *;
+    using SafeCast for *;
 
     // The balance and live balance are stored in the same bytes32 word, each uses 128 bits.
     uint256 private constant _MAX_RAW_BALANCE = 2 ** 128 - 1;

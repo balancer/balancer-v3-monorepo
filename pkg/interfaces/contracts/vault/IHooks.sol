@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 // Explicitly import VaultTypes structs because we expect this interface to be heavily used by external developers.
 // Internally, when this list gets too long, we usually just do a simple import to keep things tidy.
 import {
@@ -16,7 +14,6 @@ import {
     RemoveLiquidityKind,
     SwapKind
 } from "./VaultTypes.sol";
-import { IVault } from "./IVault.sol";
 
 /**
  * @notice Interface for pool hooks.

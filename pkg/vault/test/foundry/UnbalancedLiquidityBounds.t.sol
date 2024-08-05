@@ -7,7 +7,8 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -15,8 +16,9 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 import { PoolMockFlexibleInvariantRatio } from "../../contracts/test/PoolMockFlexibleInvariantRatio.sol";
 
 contract UnbalancedLiquidityBounds is BaseVaultTest {
-    using ArrayHelpers for *;
     using FixedPoint for uint256;
+    using CastingHelpers for address[];
+    using ArrayHelpers for *;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();

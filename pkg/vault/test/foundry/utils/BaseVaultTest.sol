@@ -15,7 +15,8 @@ import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMo
 import { HookFlags, FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -32,6 +33,7 @@ import { VaultMockDeployer } from "./VaultMockDeployer.sol";
 import { Permit2Helpers } from "./Permit2Helpers.sol";
 
 abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
+    using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
