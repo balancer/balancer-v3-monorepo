@@ -58,7 +58,7 @@ contract E2eSwapStableTest is E2eSwapTest {
                 vault.buildTokenConfig(tokens.asIERC20()),
                 DEFAULT_AMP_FACTOR,
                 roleAccounts,
-                DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it.
+                DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
                 poolHooksContract,
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity
