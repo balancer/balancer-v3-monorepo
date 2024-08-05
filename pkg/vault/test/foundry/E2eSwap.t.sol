@@ -78,7 +78,7 @@ contract E2eSwapTest is BaseVaultTest {
     }
 
     /**
-     * @notice Override pool created by BaseVaultTest
+     * @notice Override pool created by BaseVaultTest.
      * @dev For this test to be generic and support tokens with different decimals, tokenA and tokenB must be set by
      * _setUpVariables function. If this function runs before `BaseVaultTest.setUp()`, in the `setUp()` function, tokens
      * defined by BaseTest (like dai and usdc) cannot be used. If it runs after, we don't know which tokens are used to
