@@ -28,19 +28,19 @@ contract E2eSwapWeightedTest is E2eSwapTest {
 
     uint256 internal poolCreationNonce;
 
-    WeightedPoolMock internal poolWithChangeableWeights;
+    WeightedPoolMock internal poolWithMutableWeights;
 
     function setUp() public override {
         E2eSwapTest.setUp();
-        poolWithChangeableWeights = WeightedPoolMock(_createAndInitPoolWithChangeableWeights());
+        poolWithMutableWeights = WeightedPoolMock(_createAndInitPoolWithMutableWeights());
 
         // Set swap fees to 0.0001% (Min swap fee percentage of weighted pools).
-        vault.manualSetStaticSwapFeePercentage(address(poolWithChangeableWeights), 1e12);
+        vault.manualSetStaticSwapFeePercentage(address(poolWithMutableWeights), 1e12);
 
         vm.prank(poolCreator);
         // Weighted pools may be drained if there are no lp fees. So, set the creator fee to 99% to add some lp fee
         // back to the pool and ensure the invariant doesn't decrease.
-        feeController.setPoolCreatorSwapFeePercentage(address(poolWithChangeableWeights), 99e16);
+        feeController.setPoolCreatorSwapFeePercentage(address(poolWithMutableWeights), 99e16);
     }
 
     function setUpVariables() internal override {
@@ -81,11 +81,11 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
         // `BaseVaultTest.getBalances` checks the poolInvariant of `pool`. In this test, a different pool is used, so
         // poolInvariant should be overwritten.
-        balancesBefore.poolInvariant = _calculatePoolInvariant(address(poolWithChangeableWeights));
+        balancesBefore.poolInvariant = _calculatePoolInvariant(address(poolWithMutableWeights));
 
         vm.startPrank(sender);
         uint256 exactAmountOutDo = router.swapSingleTokenExactIn(
-            address(poolWithChangeableWeights),
+            address(poolWithMutableWeights),
             tokenA,
             tokenB,
             exactAmountIn,
@@ -102,7 +102,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         // with exact_in `exactAmountOutDo + feesTokenB` is comparable to `exactAmountIn`, given that the fees are
         // known.
         uint256 exactAmountOutUndo = router.swapSingleTokenExactIn(
-            address(poolWithChangeableWeights),
+            address(poolWithMutableWeights),
             tokenB,
             tokenA,
             exactAmountOutDo + feesTokenB,
@@ -117,7 +117,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
         // `BaseVaultTest.getBalances` checks the poolInvariant of `pool`. In this test, a different pool is used, so
         // poolInvariant should be overwritten.
-        balancesAfter.poolInvariant = _calculatePoolInvariant(address(poolWithChangeableWeights));
+        balancesAfter.poolInvariant = _calculatePoolInvariant(address(poolWithMutableWeights));
 
         assertLe(exactAmountOutUndo, exactAmountIn - feesTokenA, "Amount out undo should be <= exactAmountIn");
 
@@ -144,11 +144,11 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
         // `BaseVaultTest.getBalances` checks the poolInvariant of `pool`. In this test, a different pool is used, so
         // poolInvariant should be overwritten.
-        balancesBefore.poolInvariant = _calculatePoolInvariant(address(poolWithChangeableWeights));
+        balancesBefore.poolInvariant = _calculatePoolInvariant(address(poolWithMutableWeights));
 
         vm.startPrank(sender);
         uint256 exactAmountInDo = router.swapSingleTokenExactOut(
-            address(poolWithChangeableWeights),
+            address(poolWithMutableWeights),
             tokenA,
             tokenB,
             exactAmountOut,
@@ -165,7 +165,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         // with exact_out `exactAmountInDo - feesTokenA` is comparable to `exactAmountOut`, given that the fees are
         // known.
         uint256 exactAmountInUndo = router.swapSingleTokenExactOut(
-            address(poolWithChangeableWeights),
+            address(poolWithMutableWeights),
             tokenB,
             tokenA,
             exactAmountInDo - feesTokenA,
@@ -180,7 +180,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
         // `BaseVaultTest.getBalances` checks the poolInvariant of `pool`. In this test, a different pool is used, so
         // poolInvariant should be overwritten.
-        balancesAfter.poolInvariant = _calculatePoolInvariant(address(poolWithChangeableWeights));
+        balancesAfter.poolInvariant = _calculatePoolInvariant(address(poolWithMutableWeights));
 
         assertGe(exactAmountInUndo, exactAmountOut + feesTokenB, "Amount in undo should be >= exactAmountOut");
 
@@ -230,7 +230,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
      * @notice Creates and initializes a weighted pool with a setter for weights, so weights can be changed without
      * initializing the pool again. This pool is used by fuzz tests that require changing the weight.
      */
-    function _createAndInitPoolWithChangeableWeights() internal returns (address) {
+    function _createAndInitPoolWithMutableWeights() internal returns (address) {
         address[] memory tokens = new address[](2);
         tokens[tokenAIdx] = address(tokenA);
         tokens[tokenBIdx] = address(tokenB);
@@ -280,7 +280,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         newWeights[tokenAIdx] = weightTokenA;
         newWeights[tokenBIdx] = FixedPoint.ONE - weightTokenA;
 
-        poolWithChangeableWeights.setNormalizedWeights(newWeights);
+        poolWithMutableWeights.setNormalizedWeights(newWeights);
 
         newPoolBalances = new uint256[](2);
         // This operation will change the invariant of the pool, but what matters is the proportion of each token.
@@ -292,10 +292,10 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         newPoolBalanceLiveScaled18[tokenAIdx] = newPoolBalances[tokenAIdx] * 10 ** (18 - decimalsTokenA);
         newPoolBalanceLiveScaled18[tokenBIdx] = newPoolBalances[tokenBIdx] * 10 ** (18 - decimalsTokenB);
 
-        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(poolWithChangeableWeights));
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(address(poolWithMutableWeights));
         // liveBalances = rawBalances because rate is 1 and both tokens are 18 decimals.
         vault.manualSetPoolTokensAndBalances(
-            address(poolWithChangeableWeights),
+            address(poolWithMutableWeights),
             tokens,
             newPoolBalances,
             newPoolBalanceLiveScaled18
