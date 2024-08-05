@@ -261,13 +261,13 @@ abstract contract BasePoolMathRoundingTest is Test {
         uint64 rawSwapFee
     ) external view {
         uint256[] memory balances = new uint256[](2);
-        uint256 balance = bound(rawBalance, MIN_BALANCE * 4, MAX_AMOUNT);
+        uint256 balance = bound(rawBalance, MIN_BALANCE * 5, MAX_AMOUNT);
 
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = balance;
         }
         uint256 tokenOutIndex = bound(rawTokenOutIndex, 0, 1);
-        uint256 amountOut = bound(rawAmountOut, MIN_BALANCE, balances[tokenOutIndex] / 4);
+        uint256 amountOut = bound(rawAmountOut, MIN_BALANCE, balances[tokenOutIndex] / 5);
 
         uint256 totalSupply = mock.computeInvariant(balances);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);

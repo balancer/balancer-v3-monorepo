@@ -8,7 +8,7 @@ import { BasePoolMathMock } from "../../contracts/test/BasePoolMathMock.sol";
 import { WeightedBasePoolMathMock } from "../../contracts/test/WeightedBasePoolMathMock.sol";
 import { BasePoolMathRoundingTest } from "./utils/BasePoolMathRoundingTest.sol";
 
-contract Weighted5050BasePoolMathRounding is BasePoolMathRoundingTest {
+contract Weighted8020BasePoolMathRounding is BasePoolMathRoundingTest {
     using ArrayHelpers for *;
 
     function setUp() public override {
@@ -20,6 +20,6 @@ contract Weighted5050BasePoolMathRounding is BasePoolMathRoundingTest {
     }
 
     function createMathMock() internal override returns (BasePoolMathMock) {
-        return BasePoolMathMock(address(new WeightedBasePoolMathMock([uint256(50e16), 50e16].toMemoryArray())));
+        return BasePoolMathMock(address(new WeightedBasePoolMathMock([uint256(80e16), 20e16].toMemoryArray())));
     }
 }

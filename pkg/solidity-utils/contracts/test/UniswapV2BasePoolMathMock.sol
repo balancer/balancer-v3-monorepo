@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../math/FixedPoint.sol";
 import "./BasePoolMathMock.sol";
 
+// Mock UniswapV2 to test rounding in BasePoolMath for consistency with other implementations. This example is from the Balancer V3 documentation.
 contract UniswapV2BasePoolMathMock is BasePoolMathMock {
     using FixedPoint for uint256;
 

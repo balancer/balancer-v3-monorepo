@@ -5,13 +5,13 @@ pragma solidity ^0.8.24;
 import "../math/BasePoolMath.sol";
 
 abstract contract BasePoolMathMock {
-    function computeInvariant(uint256[] memory balances) public pure virtual returns (uint256);
+    function computeInvariant(uint256[] memory balances) public view virtual returns (uint256);
 
     function computeBalance(
         uint256[] memory balances,
         uint256 tokenInIndex,
         uint256 invariantRatio
-    ) external pure virtual returns (uint256 newBalance);
+    ) external view virtual returns (uint256 newBalance);
 
     function computeProportionalAmountsIn(
         uint256[] memory balances,

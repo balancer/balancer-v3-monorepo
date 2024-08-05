@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "../math/FixedPoint.sol";
 import "./BasePoolMathMock.sol";
 
+// Mock the linear math that we use in pool mocks for testing.
 contract LinearBasePoolMathMock is BasePoolMathMock {
     using FixedPoint for uint256;
 
