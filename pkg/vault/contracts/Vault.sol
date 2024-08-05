@@ -20,7 +20,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import {
     TransientStorageHelpers
@@ -43,7 +43,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using InputHelpers for uint256;
     using FixedPoint for *;
     using Address for *;
-    using ArrayHelpers for uint256[];
+    using CastingHelpers for uint256[];
     using SafeERC20 for IERC20;
     using PoolConfigLib for PoolConfigBits;
     using HooksConfigLib for PoolConfigBits;

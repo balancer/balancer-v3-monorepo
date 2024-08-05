@@ -13,7 +13,8 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IERC20MultiTokenErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiTokenErrors.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
@@ -25,6 +26,7 @@ import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RouterTest is BaseVaultTest {
+    using CastingHelpers for address[];
     using ArrayHelpers for *;
     using FixedPoint for *;
 

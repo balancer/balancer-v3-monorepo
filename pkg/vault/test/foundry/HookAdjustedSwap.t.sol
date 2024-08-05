@@ -10,7 +10,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
@@ -18,8 +18,8 @@ import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract HookAdjustedSwapTest is BaseVaultTest {
+    using CastingHelpers for address[];
     using FixedPoint for uint256;
-    using ArrayHelpers for *;
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;

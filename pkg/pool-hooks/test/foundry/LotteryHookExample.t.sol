@@ -12,7 +12,7 @@ import {
     SwapKind
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
@@ -21,8 +21,8 @@ import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 import { LotteryHookExample } from "../../contracts/LotteryHookExample.sol";
 
 contract LotteryHookExampleTest is BaseVaultTest {
+    using CastingHelpers for address[];
     using FixedPoint for uint256;
-    using ArrayHelpers for *;
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
