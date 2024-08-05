@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import {
     AddLiquidityKind,
@@ -57,7 +58,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testAddLiquidityHookWhenNotVault() public {
-        IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
+        IRouterCommon.AddLiquidityHookParams memory hookParams = IRouterCommon.AddLiquidityHookParams(
             msg.sender,
             pool,
             amountsIn,
@@ -77,7 +78,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testRemoveLiquidityHookWhenNotVault() public {
-        IRouter.RemoveLiquidityHookParams memory params = IRouter.RemoveLiquidityHookParams(
+        IRouterCommon.RemoveLiquidityHookParams memory params = IRouterCommon.RemoveLiquidityHookParams(
             msg.sender,
             pool,
             [uint256(0), uint256(0)].toMemoryArray(),
@@ -173,7 +174,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testQueryAddLiquidityHookWhenNotVault() public {
-        IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
+        IRouterCommon.AddLiquidityHookParams memory hookParams = IRouterCommon.AddLiquidityHookParams(
             msg.sender,
             pool,
             amountsIn,
@@ -188,7 +189,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testQueryRemoveLiquidityHookWhenNotVault() public {
-        IRouter.RemoveLiquidityHookParams memory params = IRouter.RemoveLiquidityHookParams(
+        IRouterCommon.RemoveLiquidityHookParams memory params = IRouterCommon.RemoveLiquidityHookParams(
             msg.sender,
             pool,
             amountsIn,

@@ -57,26 +57,6 @@ interface IRouter {
     ***************************************************************************/
 
     /**
-     * @notice Data for the add liquidity hook.
-     * @param sender Account originating the add liquidity operation
-     * @param pool Address of the liquidity pool
-     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
-     * @param minBptAmountOut Minimum amount of pool tokens to be received
-     * @param kind Type of join (e.g., single or multi-token)
-     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
-     * @param userData Additional (optional) data sent with the request to add liquidity
-     */
-    struct AddLiquidityHookParams {
-        address sender;
-        address pool;
-        uint256[] maxAmountsIn;
-        uint256 minBptAmountOut;
-        AddLiquidityKind kind;
-        bool wethIsEth;
-        bytes userData;
-    }
-
-    /**
      * @notice Adds liquidity to a pool with proportional token amounts, receiving an exact amount of pool tokens.
      * @param pool Address of the liquidity pool
      * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
@@ -166,31 +146,11 @@ interface IRouter {
     ***************************************************************************/
 
     /**
-     * @notice Data for the remove liquidity hook.
-     * @param sender Account originating the remove liquidity operation
-     * @param pool Address of the liquidity pool
-     * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
-     * @param maxBptAmountIn Maximum amount of pool tokens provided
-     * @param kind Type of exit (e.g., single or multi-token)
-     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
-     * @param userData Additional (optional) data sent with the request to remove liquidity
-     */
-    struct RemoveLiquidityHookParams {
-        address sender;
-        address pool;
-        uint256[] minAmountsOut;
-        uint256 maxBptAmountIn;
-        RemoveLiquidityKind kind;
-        bool wethIsEth;
-        bytes userData;
-    }
-
-    /**
      * @notice Removes liquidity with proportional token amounts from a pool, burning an exact pool token amount.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided
      * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
-     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data sent with the request to remove liquidity
      * @return amountsOut Actual amounts of tokens received, sorted in token registration order
      */
@@ -208,7 +168,7 @@ interface IRouter {
      * @param exactBptAmountIn Exact amount of pool tokens provided
      * @param tokenOut Token used to remove liquidity
      * @param minAmountOut Minimum amount of tokens to be received
-     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data sent with the request to remove liquidity
      * @return amountOut Actual amount of tokens received
      */
@@ -227,7 +187,7 @@ interface IRouter {
      * @param maxBptAmountIn Maximum amount of pool tokens provided
      * @param tokenOut Token used to remove liquidity
      * @param exactAmountOut Exact amount of tokens to be received
-     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data sent with the request to remove liquidity
      * @return bptAmountIn Actual amount of pool tokens burned
      */
@@ -247,7 +207,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxBptAmountIn Maximum amount of pool tokens provided
      * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
-     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data sent with the request to remove liquidity
      * @return bptAmountIn Actual amount of pool tokens burned
      * @return amountsOut Actual amounts of tokens received, sorted in token registration order
