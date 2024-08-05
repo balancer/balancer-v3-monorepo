@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { VaultState } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
 // @notice Custom type to store the Vault configuration.

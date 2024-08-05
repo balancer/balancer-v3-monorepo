@@ -2,10 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-
 import { WeightedMath } from "../math/WeightedMath.sol";
-import "../math/FixedPoint.sol";
 import "./BasePoolMathMock.sol";
 
 // Mock Weighted5050 to test rounding in BasePoolMath for consistency with other implementations.

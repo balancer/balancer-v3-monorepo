@@ -2,9 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import {
-    IUnbalancedLiquidityInvariantRatioBounds
-} from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import "../math/BasePoolMath.sol";
