@@ -244,7 +244,7 @@ contract RouterMutationTest is BaseVaultTest {
 
         // tx.origin needs to be 0x0 for the transaction to be considered a query
         vm.prank(address(bob), address(0));
-        router.queryAddLiquidityProportional(pool, amountsIn, poolInitAmount.mulDown(2e18), bytes(""));
+        router.queryAddLiquidityProportional(pool, poolInitAmount.mulDown(2e18), bytes(""));
 
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
     }

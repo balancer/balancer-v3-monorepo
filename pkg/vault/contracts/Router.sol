@@ -738,10 +738,15 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     /// @inheritdoc IRouter
     function queryAddLiquidityProportional(
         address pool,
-        uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
         bytes memory userData
     ) external saveSender returns (uint256[] memory amountsIn) {
+        uint256 numTokens = _vault.getPoolTokens(pool).length;
+        uint256[] memory maxAmountsIn = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            maxAmountsIn[i] = _MAX_AMOUNT;
+        }
+
         (amountsIn, , ) = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
