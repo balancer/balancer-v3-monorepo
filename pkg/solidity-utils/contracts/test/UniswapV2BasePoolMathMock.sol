@@ -18,7 +18,7 @@ contract UniswapV2BasePoolMathMock is BasePoolMathMock {
         for (uint256 i = 0; i < balancesLiveScaled18.length; ++i) {
             invariant = invariant.mulDown(balancesLiveScaled18[i]);
         }
-        // scale the invariant to 1e18
+        // Scale the invariant to 1e18.
         invariant = Math.sqrt(invariant) * 1e9;
     }
 
