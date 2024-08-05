@@ -9,11 +9,13 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract E2eSwapTest is BaseVaultTest {
@@ -318,6 +320,69 @@ contract E2eSwapTest is BaseVaultTest {
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
 
+    function testDoUndoExactInVariableDecimals__Fuzz(
+        uint256 exactAmountIn,
+        uint256 poolSwapFeePercentage,
+        uint256 liquidityTokenA,
+        uint256 liquidityTokenB,
+        uint256 newDecimalsTokenA,
+        uint256 newDecimalsTokenB
+    ) public {
+        decimalsTokenA = bound(newDecimalsTokenA, 6, 18);
+        decimalsTokenB = bound(newDecimalsTokenB, 6, 18);
+
+        _setTokenDecimalsInPool();
+
+        liquidityTokenA = bound(liquidityTokenA, poolInitAmountTokenA / 10, 10 * poolInitAmountTokenA);
+        liquidityTokenB = bound(liquidityTokenB, poolInitAmountTokenB / 10, 10 * poolInitAmountTokenB);
+
+        uint256 maxAmountIn = _setPoolBalancesAndGetAmountIn(liquidityTokenA, liquidityTokenB);
+
+        exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxAmountIn);
+        poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
+
+        vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
+
+        vm.startPrank(sender);
+        uint256 exactAmountOutDo = router.swapSingleTokenExactIn(
+            pool,
+            tokenA,
+            tokenB,
+            exactAmountIn,
+            0,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+
+        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
+
+        // In the first swap, the trade was exactAmountIn => exactAmountOutDo + feesTokenB. So, if
+        // there were no fees, trading `exactAmountOutDo + feesTokenB` would get exactAmountIn. Therefore, a swap
+        // with exact_in `exactAmountOutDo + feesTokenB` is comparable to `exactAmountIn`, given that the fees are
+        // known.
+        uint256 exactAmountOutUndo = router.swapSingleTokenExactIn(
+            pool,
+            tokenB,
+            tokenA,
+            exactAmountOutDo + feesTokenB,
+            0,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
+        vm.stopPrank();
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
+
+        assertLe(exactAmountOutUndo, exactAmountIn - feesTokenA, "Amount out undo should be <= exactAmountIn");
+
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
+    }
+
     function testDoUndoExactOutNoFees__Fuzz(uint256 exactAmountOut) public {
         exactAmountOut = bound(exactAmountOut, minSwapAmountTokenB, maxSwapAmountTokenB);
 
@@ -451,6 +516,68 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 liquidityTokenA,
         uint256 liquidityTokenB
     ) public {
+        liquidityTokenA = bound(liquidityTokenA, poolInitAmountTokenA / 10, 10 * poolInitAmountTokenA);
+        liquidityTokenB = bound(liquidityTokenB, poolInitAmountTokenB / 10, 10 * poolInitAmountTokenB);
+
+        uint256 maxAmountOut = _setPoolBalancesAndGetAmountOut(liquidityTokenA, liquidityTokenB);
+        exactAmountOut = bound(exactAmountOut, minSwapAmountTokenB, maxAmountOut);
+
+        poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
+        vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
+
+        vm.startPrank(sender);
+        uint256 exactAmountInDo = router.swapSingleTokenExactOut(
+            pool,
+            tokenA,
+            tokenB,
+            exactAmountOut,
+            MAX_UINT128,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+
+        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
+
+        // In the first swap, the trade was exactAmountInDo => exactAmountOut (tokenB) + feesTokenA (tokenA). So, if
+        // there were no fees, trading `exactAmountInDo - feesTokenA` would get exactAmountOut. Therefore, a swap
+        // with exact_out `exactAmountInDo - feesTokenA` is comparable to `exactAmountOut`, given that the fees are
+        // known.
+        uint256 exactAmountInUndo = router.swapSingleTokenExactOut(
+            pool,
+            tokenB,
+            tokenA,
+            exactAmountInDo - feesTokenA,
+            MAX_UINT128,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
+        vm.stopPrank();
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
+
+        assertGe(exactAmountInUndo, exactAmountOut + feesTokenB, "Amount in undo should be >= exactAmountOut");
+
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
+    }
+
+    function testDoUndoExactOutVariableDecimals__Fuzz(
+        uint256 exactAmountOut,
+        uint256 poolSwapFeePercentage,
+        uint256 liquidityTokenA,
+        uint256 liquidityTokenB,
+        uint256 newDecimalsTokenA,
+        uint256 newDecimalsTokenB
+    ) public {
+        decimalsTokenA = bound(newDecimalsTokenA, 6, 18);
+        decimalsTokenB = bound(newDecimalsTokenB, 6, 18);
+
+        _setTokenDecimalsInPool();
+
         liquidityTokenA = bound(liquidityTokenA, poolInitAmountTokenA / 10, 10 * poolInitAmountTokenA);
         liquidityTokenB = bound(liquidityTokenB, poolInitAmountTokenB / 10, 10 * poolInitAmountTokenB);
 
@@ -692,5 +819,38 @@ contract E2eSwapTest is BaseVaultTest {
         newPoolBalanceLiveScaled18[tokenBIdx] = liquidityTokenB * 10 ** (18 - decimalsTokenB);
 
         vault.manualSetPoolTokensAndBalances(pool, tokens, newPoolBalance, newPoolBalanceLiveScaled18);
+    }
+
+    function _setTokenDecimalsInPool() private {
+        uint8[] memory tokenDecimalDiffs = new uint8[](2);
+        tokenDecimalDiffs[tokenAIdx] = uint8(18 - decimalsTokenA);
+        tokenDecimalDiffs[tokenBIdx] = uint8(18 - decimalsTokenB);
+
+        PoolConfig memory poolConfig = vault.getPoolConfig(pool);
+        poolConfig.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
+        vault.manualSetPoolConfig(pool, poolConfig);
+
+        // Fix pool init amounts, adjusting to new decimals. These values will be used to calculate max swap values and
+        // pool liquidity.
+        poolInitAmountTokenA = poolInitAmount.mulDown(10 ** decimalsTokenA);
+        poolInitAmountTokenB = poolInitAmount.mulDown(10 ** decimalsTokenB);
+
+        // If there are swap fees, the amountCalculated may be lower than MIN_TRADE_AMOUNT. So, multiplying
+        // MIN_TRADE_AMOUNT by 10 creates a margin.
+        minSwapAmountTokenA = 10 * MIN_TRADE_AMOUNT;
+        minSwapAmountTokenB = 10 * MIN_TRADE_AMOUNT;
+
+        if (decimalsTokenA != decimalsTokenB) {
+            if (decimalsTokenA < decimalsTokenB) {
+                uint256 decimalsFactor = 10 ** (decimalsTokenB - decimalsTokenA);
+                minSwapAmountTokenB = 10 * (MIN_TRADE_AMOUNT > decimalsFactor ? MIN_TRADE_AMOUNT : decimalsFactor);
+            } else {
+                uint256 decimalsFactor = 10 ** (decimalsTokenA - decimalsTokenB);
+                minSwapAmountTokenA = 10 * (MIN_TRADE_AMOUNT > decimalsFactor ? MIN_TRADE_AMOUNT : decimalsFactor);
+            }
+        }
+
+        maxSwapAmountTokenA = poolInitAmountTokenA;
+        maxSwapAmountTokenB = poolInitAmountTokenB;
     }
 }
