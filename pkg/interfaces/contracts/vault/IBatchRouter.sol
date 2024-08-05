@@ -205,7 +205,7 @@ interface IBatchRouter {
     ) external returns (uint256[] memory amountsIn);
 
     /**
-     * @notice Queries `removeLiquidityProportionalToERC4626Pool` operation without actually executing it.
+     * @notice Queries a `removeLiquidityProportionalToERC4626Pool` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @param userData Additional (optional) data required for the query
