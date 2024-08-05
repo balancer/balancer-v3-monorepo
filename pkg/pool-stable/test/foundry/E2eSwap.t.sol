@@ -30,17 +30,19 @@ contract E2eSwapStableTest is E2eSwapTest {
         sender = lp;
         poolCreator = lp;
 
+        // 0.0001% max swap fee.
+        minPoolSwapFeePercentage = 1e12;
+        // 10% max swap fee.
+        maxPoolSwapFeePercentage = 10e16;
+    }
+
+    function calculateMinAndMaxSwapAmounts() internal override {
         minSwapAmountTokenA = poolInitAmountTokenA / 1e3;
         minSwapAmountTokenB = poolInitAmountTokenB / 1e3;
 
         // Divide init amount by 2 to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
         maxSwapAmountTokenA = poolInitAmountTokenA / 2;
         maxSwapAmountTokenB = poolInitAmountTokenB / 2;
-
-        // 0.0001% max swap fee.
-        minPoolSwapFeePercentage = 1e12;
-        // 10% max swap fee.
-        maxPoolSwapFeePercentage = 10e16;
     }
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.

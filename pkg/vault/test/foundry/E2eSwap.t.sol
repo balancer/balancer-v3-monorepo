@@ -58,6 +58,7 @@ contract E2eSwapTest is BaseVaultTest {
         poolInitAmountTokenB = poolInitAmount.mulDown(10 ** decimalsTokenB);
 
         setUpVariables();
+        calculateMinAndMaxSwapAmounts();
         createAndInitCustomPool();
 
         _donateToVault();
@@ -116,18 +117,30 @@ contract E2eSwapTest is BaseVaultTest {
         sender = lp;
         poolCreator = lp;
 
-        // If there are swap fees, the amountCalculated may be lower than MIN_TRADE_AMOUNT. So, multiplying
-        // MIN_TRADE_AMOUNT by 10 creates a margin.
-        minSwapAmountTokenA = 10 * MIN_TRADE_AMOUNT;
-        maxSwapAmountTokenA = poolInitAmountTokenA;
-
-        minSwapAmountTokenB = 10 * MIN_TRADE_AMOUNT;
-        maxSwapAmountTokenB = poolInitAmountTokenB;
-
         // 0.0001% min swap fee.
         minPoolSwapFeePercentage = 1e12;
         // 10% max swap fee.
         maxPoolSwapFeePercentage = 10e16;
+    }
+
+    function calculateMinAndMaxSwapAmounts() internal virtual {
+        // If there are swap fees, the amountCalculated may be lower than MIN_TRADE_AMOUNT. So, multiplying
+        // MIN_TRADE_AMOUNT by 10 creates a margin.
+        minSwapAmountTokenA = 10 * MIN_TRADE_AMOUNT;
+        minSwapAmountTokenB = 10 * MIN_TRADE_AMOUNT;
+
+        if (decimalsTokenA != decimalsTokenB) {
+            if (decimalsTokenA < decimalsTokenB) {
+                uint256 decimalsFactor = 10 ** (decimalsTokenB - decimalsTokenA);
+                minSwapAmountTokenB = 10 * (MIN_TRADE_AMOUNT > decimalsFactor ? MIN_TRADE_AMOUNT : decimalsFactor);
+            } else {
+                uint256 decimalsFactor = 10 ** (decimalsTokenA - decimalsTokenB);
+                minSwapAmountTokenA = 10 * (MIN_TRADE_AMOUNT > decimalsFactor ? MIN_TRADE_AMOUNT : decimalsFactor);
+            }
+        }
+
+        maxSwapAmountTokenA = poolInitAmountTokenA;
+        maxSwapAmountTokenB = poolInitAmountTokenB;
     }
 
     /// @notice Donate tokens to vault, so liquidity tests are possible.
@@ -845,22 +858,6 @@ contract E2eSwapTest is BaseVaultTest {
         poolInitAmountTokenA = poolInitAmount.mulDown(10 ** decimalsTokenA);
         poolInitAmountTokenB = poolInitAmount.mulDown(10 ** decimalsTokenB);
 
-        // If there are swap fees, the amountCalculated may be lower than MIN_TRADE_AMOUNT. So, multiplying
-        // MIN_TRADE_AMOUNT by 10 creates a margin.
-        minSwapAmountTokenA = 10 * MIN_TRADE_AMOUNT;
-        minSwapAmountTokenB = 10 * MIN_TRADE_AMOUNT;
-
-        if (decimalsTokenA != decimalsTokenB) {
-            if (decimalsTokenA < decimalsTokenB) {
-                uint256 decimalsFactor = 10 ** (decimalsTokenB - decimalsTokenA);
-                minSwapAmountTokenB = 10 * (MIN_TRADE_AMOUNT > decimalsFactor ? MIN_TRADE_AMOUNT : decimalsFactor);
-            } else {
-                uint256 decimalsFactor = 10 ** (decimalsTokenA - decimalsTokenB);
-                minSwapAmountTokenA = 10 * (MIN_TRADE_AMOUNT > decimalsFactor ? MIN_TRADE_AMOUNT : decimalsFactor);
-            }
-        }
-
-        maxSwapAmountTokenA = poolInitAmountTokenA;
-        maxSwapAmountTokenB = poolInitAmountTokenB;
+        calculateMinAndMaxSwapAmounts();
     }
 }

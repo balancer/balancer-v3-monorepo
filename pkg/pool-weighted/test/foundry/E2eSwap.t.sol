@@ -47,6 +47,13 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         sender = lp;
         poolCreator = lp;
 
+        // 0.0001% max swap fee.
+        minPoolSwapFeePercentage = 1e12;
+        // 10% max swap fee.
+        maxPoolSwapFeePercentage = 10e16;
+    }
+
+    function calculateMinAndMaxSwapAmounts() internal override {
         minSwapAmountTokenA = poolInitAmountTokenA / 1e3;
         minSwapAmountTokenB = poolInitAmountTokenB / 1e3;
 
@@ -54,11 +61,6 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         // balance).
         maxSwapAmountTokenA = poolInitAmountTokenA / 10;
         maxSwapAmountTokenB = poolInitAmountTokenB / 10;
-
-        // 0.0001% max swap fee.
-        minPoolSwapFeePercentage = 1e12;
-        // 10% max swap fee.
-        maxPoolSwapFeePercentage = 10e16;
     }
 
     function testDoUndoExactInDifferentWeights(uint256 weightTokenA) public {
