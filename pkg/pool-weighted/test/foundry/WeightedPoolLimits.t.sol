@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { PoolRoleAccounts, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -195,20 +197,20 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         uint256 expectedBptAmountOut = math.computeInvariant(weights, newAmountsIn);
 
         vm.prank(bob);
-        bptAmountOut = router.addLiquidityUnbalanced(
-            address(pool),
+        uint256[] memory actualAmountsIn = router.addLiquidityProportional(
+            pool,
             newAmountsIn,
-            expectedBptAmountOut - DELTA,
+            expectedBptAmountOut,
             false,
             bytes("")
         );
 
         // Tokens are transferred from Bob.
-        assertEq(initialBalances[usdcIdx] - usdc.balanceOf(bob), newAmountsIn[usdcIdx], "LP: Wrong USDC balance");
-        assertEq(initialBalances[daiIdx] - dai.balanceOf(bob), newAmountsIn[daiIdx], "LP: Wrong DAI balance");
+        assertEq(initialBalances[usdcIdx] - usdc.balanceOf(bob), actualAmountsIn[usdcIdx], "LP: Wrong USDC balance");
+        assertEq(initialBalances[daiIdx] - dai.balanceOf(bob), actualAmountsIn[daiIdx], "LP: Wrong DAI balance");
 
-        expectedBalances[daiIdx] = amountsIn[daiIdx] + TOKEN_AMOUNT;
-        expectedBalances[usdcIdx] = amountsIn[usdcIdx] + TOKEN_AMOUNT;
+        expectedBalances[daiIdx] = actualAmountsIn[daiIdx] + amountsIn[daiIdx];
+        expectedBalances[usdcIdx] = actualAmountsIn[usdcIdx] + amountsIn[usdcIdx];
 
         // Tokens are stored in the Vault.
         assertEq(usdc.balanceOf(address(vault)), expectedBalances[usdcIdx], "Vault: Wrong USDC balance");
@@ -220,14 +222,13 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         assertEq(balances[usdcIdx], expectedBalances[usdcIdx], "Pool: Wrong USDC balance");
 
         // Should mint correct amount of BPT tokens.
-        assertApproxEqAbs(weightedPool.balanceOf(bob), bptAmountOut, DELTA, "LP: Wrong bptAmountOut");
-        assertApproxEqAbs(bptAmountOut, TOKEN_AMOUNT, DELTA, "Wrong bptAmountOut");
+        assertEq(weightedPool.balanceOf(bob), expectedBptAmountOut, "LP: Wrong bptAmountOut");
+        assertApproxEqAbs(expectedBptAmountOut, TOKEN_AMOUNT, DELTA, "Wrong bptAmountOut");
     }
 
     function _testRemoveLiquidity() public {
         vm.startPrank(bob);
-        router.addLiquidityUnbalanced(address(pool), newAmountsIn, TOKEN_AMOUNT - DELTA, false, bytes(""));
-
+        router.addLiquidityProportional(pool, newAmountsIn, TOKEN_AMOUNT - DELTA, false, bytes(""));
         weightedPool.approve(address(vault), MAX_UINT256);
 
         uint256 bobBptBalance = weightedPool.balanceOf(bob);
@@ -348,6 +349,12 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
     }
 
     function _testAddLiquidityUnbalanced(uint256 swapFeePercentage) public {
+        uint256[] memory maxAmountsIn = [defaultBalance, defaultBalance].toMemoryArray();
+        // Enlarge the pool so that adding liquidity unbalanced does not hit the invariant ratio limit.
+        uint256 currentBPTSupply = IERC20(weightedPool).totalSupply();
+        vm.prank(alice);
+        router.addLiquidityProportional(pool, maxAmountsIn, currentBPTSupply * 100, false, bytes(""));
+
         vm.prank(alice);
         vault.setStaticSwapFeePercentage(address(pool), swapFeePercentage);
 
@@ -363,7 +370,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
             unbalancedAmountsIn,
             weightedPool.totalSupply(),
             swapFeePercentage,
-            IBasePool(address(weightedPool)).computeInvariant
+            IBasePool(address(weightedPool))
         );
 
         vm.prank(bob);

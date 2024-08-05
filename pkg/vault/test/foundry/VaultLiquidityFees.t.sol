@@ -4,16 +4,19 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultLiquidityWithFeesTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     // `BaseVaultTest` defines the `protocolSwapFeePercentage`.
     uint64 poolCreatorFeePercentage = 50e16; // 50%
+    uint256 aggregateSwapFeePercentage; // Computed in `setUp`.
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
@@ -23,10 +26,11 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         setSwapFeePercentage(swapFeePercentage);
-        vault.manualSetAggregateSwapFeePercentage(
-            pool,
-            feeController.computeAggregateFeePercentage(protocolSwapFeePercentage, poolCreatorFeePercentage)
+        aggregateSwapFeePercentage = feeController.computeAggregateFeePercentage(
+            protocolSwapFeePercentage,
+            poolCreatorFeePercentage
         );
+        vault.manualSetAggregateSwapFeePercentage(pool, aggregateSwapFeePercentage);
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
     }
@@ -49,24 +53,15 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
     function addLiquidityUnbalanced()
         public
-        returns (
-            uint256[] memory amountsIn,
-            uint256 bptAmountOut,
-            uint256[] memory protocolSwapFees,
-            uint256[] memory poolCreatorFees
-        )
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut, uint256[] memory aggregateSwapFees)
     {
         amountsIn = new uint256[](2);
-        protocolSwapFees = new uint256[](2);
-        poolCreatorFees = new uint256[](2);
+        aggregateSwapFees = new uint256[](2);
 
         amountsIn[daiIdx] = defaultAmount;
 
         uint256 swapFeeAmount = defaultAmount / 200;
-
-        // Protocol swap fee = (defaultAmount * 1% / 2 ) * 50%.
-        protocolSwapFees[daiIdx] = swapFeeAmount / 2;
-        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2;
+        aggregateSwapFees[daiIdx] = swapFeeAmount.mulUp(aggregateSwapFeePercentage);
 
         // expectedBptAmountOut = defaultAmount - defaultAmount * 1% / 2
         uint256 expectedBptAmountOut = (defaultAmount * 995) / 1000;
@@ -84,23 +79,13 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
     function addLiquiditySingleTokenExactOut()
         public
-        returns (
-            uint256[] memory amountsIn,
-            uint256 bptAmountOut,
-            uint256[] memory protocolSwapFees,
-            uint256[] memory poolCreatorFees
-        )
+        returns (uint256[] memory amountsIn, uint256 bptAmountOut, uint256[] memory aggregateSwapFees)
     {
         bptAmountOut = defaultAmount;
 
-        protocolSwapFees = new uint256[](2);
-        poolCreatorFees = new uint256[](2);
-
-        uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2);
-
-        // Protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
-        protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1; // mulUp
-        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2 + 1; // mulUp
+        aggregateSwapFees = new uint256[](2);
+        uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2) + 1;
+        aggregateSwapFees[daiIdx] = swapFeeAmount.mulUp(aggregateSwapFeePercentage);
 
         vm.prank(alice);
         uint256 amountIn = router.addLiquiditySingleTokenExactOut(
@@ -127,23 +112,13 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
     function removeLiquiditySingleTokenExactIn()
         public
-        returns (
-            uint256[] memory amountsOut,
-            uint256 bptAmountIn,
-            uint256[] memory protocolSwapFees,
-            uint256[] memory poolCreatorFees
-        )
+        returns (uint256[] memory amountsOut, uint256 bptAmountIn, uint256[] memory aggregateSwapFees)
     {
         bptAmountIn = defaultAmount * 2;
 
-        protocolSwapFees = new uint256[](2);
-        poolCreatorFees = new uint256[](2);
-
+        aggregateSwapFees = new uint256[](2);
         uint256 swapFeeAmount = defaultAmount / 100;
-
-        // Protocol swap fee = 2 * (defaultAmount * 1% / 2 ) * 50%
-        protocolSwapFees[daiIdx] = swapFeeAmount / 2;
-        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2;
+        aggregateSwapFees[daiIdx] = swapFeeAmount.mulUp(aggregateSwapFeePercentage);
 
         uint256 amountOut = router.removeLiquiditySingleTokenExactIn(
             pool,
@@ -168,24 +143,14 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
     function removeLiquiditySingleTokenExactOut()
         public
-        returns (
-            uint256[] memory amountsOut,
-            uint256 bptAmountIn,
-            uint256[] memory protocolSwapFees,
-            uint256[] memory poolCreatorFees
-        )
+        returns (uint256[] memory amountsOut, uint256 bptAmountIn, uint256[] memory aggregateSwapFees)
     {
         amountsOut = new uint256[](2);
-        protocolSwapFees = new uint256[](2);
-        poolCreatorFees = new uint256[](2);
+        aggregateSwapFees = new uint256[](2);
 
         amountsOut[daiIdx] = defaultAmount;
-
-        uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2);
-
-        // Protocol swap fee = (defaultAmount / 99% / 2 ) * 50% + 1
-        protocolSwapFees[daiIdx] = swapFeeAmount / 2 + 1; // mulUp
-        poolCreatorFees[daiIdx] = (swapFeeAmount - protocolSwapFees[daiIdx]) / 2 + 1; // mulUp
+        uint256 swapFeeAmount = uint256((defaultAmount / 99) / 2) + 1;
+        aggregateSwapFees[daiIdx] = swapFeeAmount.mulUp(aggregateSwapFeePercentage);
 
         bptAmountIn = router.removeLiquiditySingleTokenExactOut(
             pool,
@@ -206,17 +171,10 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
     /// Utils
 
-    function assertAddLiquidity(
-        function() returns (uint256[] memory, uint256, uint256[] memory, uint256[] memory) testFunc
-    ) internal {
+    function assertAddLiquidity(function() returns (uint256[] memory, uint256, uint256[] memory) testFunc) internal {
         Balances memory balancesBefore = getBalances(alice);
 
-        (
-            uint256[] memory amountsIn,
-            uint256 bptAmountOut,
-            uint256[] memory protocolSwapFees,
-            uint256[] memory poolCreatorFees
-        ) = testFunc();
+        (uint256[] memory amountsIn, uint256 bptAmountOut, uint256[] memory aggregateSwapFees) = testFunc();
 
         Balances memory balancesAfter = getBalances(alice);
 
@@ -235,45 +193,34 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         // Tokens are now in the vault / pool.
         assertEq(
             balancesAfter.poolTokens[0],
-            balancesBefore.poolTokens[0] + amountsIn[0] - protocolSwapFees[0] - poolCreatorFees[0],
+            balancesBefore.poolTokens[0] + amountsIn[0] - aggregateSwapFees[0],
             "Add - Pool balance: token 0"
         );
 
         assertEq(
             balancesAfter.poolTokens[1],
-            balancesBefore.poolTokens[1] + amountsIn[1] - protocolSwapFees[1] - poolCreatorFees[1],
+            balancesBefore.poolTokens[1] + amountsIn[1] - aggregateSwapFees[1],
             "Add - Pool balance: token 1"
         );
 
         // Protocol + creator fees are charged.
         assertEq(
-            protocolSwapFees[daiIdx] + poolCreatorFees[daiIdx],
+            aggregateSwapFees[daiIdx],
             vault.manualGetAggregateSwapFeeAmount(pool, dai),
             "Aggregate fee amount is wrong"
         );
         assertEq(
-            protocolSwapFees[usdcIdx] + poolCreatorFees[usdcIdx],
+            aggregateSwapFees[usdcIdx],
             vault.manualGetAggregateSwapFeeAmount(pool, usdc),
             "Aggregate fee amount is wrong"
         );
-
-        // Pool creator fees are charged if protocol fees are charged.
-        if (protocolSwapFees[0] > 0) {
-            assertTrue(poolCreatorFees[0] > 0);
-        }
-
-        if (protocolSwapFees[1] > 0) {
-            assertTrue(poolCreatorFees[1] > 0);
-        }
 
         // User now has BPT.
         assertEq(balancesBefore.userBpt, 0, "Add - User BPT balance before");
         assertEq(balancesAfter.userBpt, bptAmountOut, "Add - User BPT balance after");
     }
 
-    function assertRemoveLiquidity(
-        function() returns (uint256[] memory, uint256, uint256[] memory, uint256[] memory) testFunc
-    ) internal {
+    function assertRemoveLiquidity(function() returns (uint256[] memory, uint256, uint256[] memory) testFunc) internal {
         vm.startPrank(alice);
 
         router.addLiquidityUnbalanced(
@@ -286,12 +233,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
 
         Balances memory balancesBefore = getBalances(alice);
 
-        (
-            uint256[] memory amountsOut,
-            uint256 bptAmountIn,
-            uint256[] memory protocolSwapFees,
-            uint256[] memory poolCreatorFees
-        ) = testFunc();
+        (uint256[] memory amountsOut, uint256 bptAmountIn, uint256[] memory aggregateSwapFees) = testFunc();
 
         vm.stopPrank();
 
@@ -312,23 +254,14 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
         // Tokens are no longer in the vault / pool.
         assertEq(
             balancesAfter.poolTokens[0],
-            balancesBefore.poolTokens[0] - amountsOut[0] - protocolSwapFees[0] - poolCreatorFees[0],
+            balancesBefore.poolTokens[0] - amountsOut[0] - aggregateSwapFees[0],
             "Remove - Pool balance: token 0"
         );
         assertEq(
             balancesAfter.poolTokens[1],
-            balancesBefore.poolTokens[1] - amountsOut[1] - protocolSwapFees[1] - poolCreatorFees[1],
+            balancesBefore.poolTokens[1] - amountsOut[1] - aggregateSwapFees[1],
             "Remove - Pool balance: token 1"
         );
-
-        // Pool creator fees are charged if protocol fees are charged.
-        if (protocolSwapFees[0] > 0) {
-            assertTrue(poolCreatorFees[0] > 0);
-        }
-
-        if (protocolSwapFees[1] > 0) {
-            assertTrue(poolCreatorFees[1] > 0);
-        }
 
         // User has burnt the correct amount of BPT.
         assertEq(balancesBefore.userBpt - balancesAfter.userBpt, bptAmountIn, "Wrong amount of BPT burned");
