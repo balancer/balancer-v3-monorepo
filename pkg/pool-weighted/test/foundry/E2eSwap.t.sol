@@ -213,13 +213,13 @@ contract E2eSwapWeightedTest is E2eSwapTest {
                 poolHooksContract,
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity
-                // NOTE: sends a unique salt
+                // NOTE: sends a unique salt.
                 bytes32(poolCreationNonce++)
             )
         );
         vm.label(address(newPool), label);
 
-        // Cannot set pool creator directly with stable pool factory.
+        // Cannot set the pool creator directly on a standard Balancer stable pool factory.
         vault.manualSetPoolCreator(address(newPool), lp);
 
         ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));

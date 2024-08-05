@@ -78,9 +78,9 @@ contract E2eSwapTest is BaseVaultTest {
     }
 
     /**
-     * @notice Override pool created by BaseVaultTest
+     * @notice Override pool created by BaseVaultTest.
      * @dev For this test to be generic and support tokens with different decimals, tokenA and tokenB must be set by
-     * _setUpVariables function. If this function runs before `BaseVaultTest.setUp()`, in the `setUp()` function, tokens
+     * `_setUpVariables`. If this function runs before `BaseVaultTest.setUp()`, in the `setUp()` function, tokens
      * defined by BaseTest (like dai and usdc) cannot be used. If it runs after, we don't know which tokens are used to
      * use createPool and initPool. So, the solution is to create a parallel function to create and init a custom pool
      * after BaseVaultTest setUp finishes.
@@ -181,7 +181,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         uint256 exactAmountIn = _setPoolBalancesAndGetAmountIn(liquidityTokenA, liquidityTokenB);
 
-        // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
+        // Set swap fees to 0 (do not check pool fee percentage limits; some pool types do not accept 0 fees).
         vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
