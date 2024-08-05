@@ -12,7 +12,8 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
@@ -23,8 +24,9 @@ import { WeightedPoolMock } from "../../contracts/test/WeightedPoolMock.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 
 contract WeightedPoolLimitsTest is BaseVaultTest {
-    using ArrayHelpers for *;
+    using CastingHelpers for address[];
     using FixedPoint for uint256;
+    using ArrayHelpers for *;
 
     uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
 

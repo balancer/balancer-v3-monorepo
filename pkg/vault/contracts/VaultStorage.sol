@@ -73,9 +73,6 @@ contract VaultStorage {
                                 Contract References
     ***************************************************************************/
 
-    // Code extension for the Vault.
-    IVaultExtension internal immutable _vaultExtension;
-
     // Contract in charge of setting permissions.
     IAuthorizer internal _authorizer;
 
