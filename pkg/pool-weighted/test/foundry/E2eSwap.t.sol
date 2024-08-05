@@ -199,7 +199,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         );
         PoolRoleAccounts memory roleAccounts;
 
-        // Allow pools created by `factory` to use poolHooksMock hooks
+        // Allow pools created by `factory` to use poolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
         WeightedPool newPool = WeightedPool(
@@ -209,7 +209,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
                 vault.buildTokenConfig(tokens.asIERC20()),
                 [uint256(50e16), uint256(50e16)].toMemoryArray(),
                 roleAccounts,
-                DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it.
+                DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
                 poolHooksContract,
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity
