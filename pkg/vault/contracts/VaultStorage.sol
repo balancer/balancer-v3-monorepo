@@ -148,18 +148,18 @@ contract VaultStorage {
     // into a single bytes32, interpreted with the `PackedTokenBalance` library.
 
     // ERC4626 token address -> PackedTokenBalance.
-    mapping(IERC20 => bytes32) internal _bufferTokenBalances;
+    mapping(IERC4626 => bytes32) internal _bufferTokenBalances;
 
     // The LP balances for buffers. LP balances are not tokenized (i.e., represented by ERC20 tokens like BPT), but
     // rather accounted for within the Vault.
 
     // Wrapped token address -> user address -> LP balance.
-    mapping(IERC20 => mapping(address => uint256)) internal _bufferLpShares;
+    mapping(IERC4626 => mapping(address => uint256)) internal _bufferLpShares;
     // Total LP shares
-    mapping(IERC20 => uint256) internal _bufferTotalShares;
+    mapping(IERC4626 => uint256) internal _bufferTotalShares;
 
     // Prevents a malicious ERC4626 from changing the asset after the buffer was initialized.
-    mapping(IERC20 => address) internal _bufferAssets;
+    mapping(IERC4626 => address) internal _bufferAssets;
 
     /***************************************************************************
                              Transient Storage Access
