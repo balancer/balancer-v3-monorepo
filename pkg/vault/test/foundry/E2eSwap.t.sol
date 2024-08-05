@@ -588,14 +588,6 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
         vm.stopPrank();
 
-        console.log("exactAmountIn    ", exactAmountIn);
-        console.log("exactAmountInSwap", exactAmountInSwap);
-        console.log("feesTokenA       ", feesTokenA);
-        console.log("feesTokenB       ", feesTokenB);
-        console.log("exactAmountOut   ", exactAmountOut);
-        console.log("AmountOut fee    ", exactAmountOut + feesTokenB);
-        console.log("AmountIn + fee   ", exactAmountInSwap + feesTokenA);
-        console.log("AmountIn - fee   ", exactAmountInSwap - feesTokenA);
 
         if (decimalsTokenA != decimalsTokenB) {
             // If tokens have different decimals, an error is introduced in the computeBalance in the order of the
@@ -664,7 +656,7 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 liquidityTokenA,
         uint256 liquidityTokenB
     ) private returns (uint256 amountIn) {
-        // Set liquidity of pool.
+        // Set pool liquidity.
         _setPoolBalances(liquidityTokenA, liquidityTokenB);
 
         // Since tokens can have different decimals and amountIn is in relation to tokenA, normalize tokenB liquidity.
