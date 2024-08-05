@@ -61,6 +61,8 @@ contract E2eSwapTest is BaseVaultTest {
         calculateMinAndMaxSwapAmounts();
         createAndInitCustomPool();
 
+        // Donate tokens to vault as a shortcut to change the pool balances without the need to pass through add/remove
+        // liquidity operations. (No need to deal with BPTs, pranking LPs, guardrails, etc).
         _donateToVault();
 
         IProtocolFeeController feeController = vault.getProtocolFeeController();
@@ -152,192 +154,45 @@ contract E2eSwapTest is BaseVaultTest {
         vault.manualSetReservesOf(tokenB, 100 * poolInitAmountTokenB);
     }
 
-    function testDoUndoExactInNoFees__Fuzz(uint256 exactAmountIn) public {
-        exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
+    function testDoUndoExactInSwapAmount__Fuzz(uint256 exactAmountIn) public {
+        DoUndoLocals memory testLocals;
 
-        // Set swap fees to 0 (do not check pool fee percentage limits; some pool types do not accept 0 fees).
-        vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
-
-        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
-
-        vm.startPrank(sender);
-        uint256 exactAmountOutDo = router.swapSingleTokenExactIn(
-            pool,
-            tokenA,
-            tokenB,
-            exactAmountIn,
-            0,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-        uint256 exactAmountOutUndo = router.swapSingleTokenExactIn(
-            pool,
-            tokenB,
-            tokenA,
-            exactAmountOutDo,
-            0,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-        vm.stopPrank();
-
-        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
-
-        // User does not get any value out of the Vault.
-        assertLe(exactAmountOutUndo, exactAmountIn, "Amount out undo should be <= exactAmountIn");
-
-        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
+        _testDoUndoExactInBase(exactAmountIn, testLocals);
     }
 
     function testDoUndoExactInLiquidity__Fuzz(uint256 liquidityTokenA, uint256 liquidityTokenB) public {
-        liquidityTokenA = bound(liquidityTokenA, poolInitAmountTokenA / 10, 10 * poolInitAmountTokenA);
-        liquidityTokenB = bound(liquidityTokenB, poolInitAmountTokenB / 10, 10 * poolInitAmountTokenB);
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestLiquidity = true;
+        testLocals.liquidityTokenA = liquidityTokenA;
+        testLocals.liquidityTokenB = liquidityTokenB;
 
-        uint256 exactAmountIn = _setPoolBalancesAndGetAmountIn(liquidityTokenA, liquidityTokenB);
-
-        // Set swap fees to 0 (do not check pool fee percentage limits; some pool types do not accept 0 fees).
-        vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
-
-        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
-
-        vm.startPrank(sender);
-        uint256 exactAmountOutDo = router.swapSingleTokenExactIn(
-            pool,
-            tokenA,
-            tokenB,
-            exactAmountIn,
-            0,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-        uint256 exactAmountOutUndo = router.swapSingleTokenExactIn(
-            pool,
-            tokenB,
-            tokenA,
-            exactAmountOutDo,
-            0,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-        vm.stopPrank();
-
-        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
-
-        // User does not get any value out of the Vault.
-        assertLe(exactAmountOutUndo, exactAmountIn, "Amount out undo should be <= exactAmountIn");
-
-        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
-    }
-
-    function testDoUndoExactInVariableFees__Fuzz(uint256 poolSwapFeePercentage) public {
         uint256 exactAmountIn = maxSwapAmountTokenA;
-        poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
 
-        vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
-
-        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
-
-        vm.startPrank(sender);
-        uint256 exactAmountOutDo = router.swapSingleTokenExactIn(
-            pool,
-            tokenA,
-            tokenB,
-            exactAmountIn,
-            0,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-
-        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
-
-        // In the first swap, the trade was exactAmountIn => exactAmountOutDo + feesTokenB. So, if
-        // there were no fees, trading `exactAmountOutDo + feesTokenB` would get exactAmountIn. Therefore, a swap
-        // with exact_in `exactAmountOutDo + feesTokenB` is comparable to `exactAmountIn`, given that the fees are
-        // known.
-        uint256 exactAmountOutUndo = router.swapSingleTokenExactIn(
-            pool,
-            tokenB,
-            tokenA,
-            exactAmountOutDo + feesTokenB,
-            0,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
-        vm.stopPrank();
-
-        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
-
-        // User does not get any value out of the Vault.
-        assertLe(exactAmountOutUndo, exactAmountIn - feesTokenA, "Amount out undo should be <= exactAmountIn");
-
-        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
+        _testDoUndoExactInBase(exactAmountIn, testLocals);
     }
 
-    function testDoUndoExactInVariableFeesAmountInAndLiquidity__Fuzz(
-        uint256 exactAmountIn,
-        uint256 poolSwapFeePercentage,
-        uint256 liquidityTokenA,
-        uint256 liquidityTokenB
-    ) public {
-        liquidityTokenA = bound(liquidityTokenA, poolInitAmountTokenA / 10, 10 * poolInitAmountTokenA);
-        liquidityTokenB = bound(liquidityTokenB, poolInitAmountTokenB / 10, 10 * poolInitAmountTokenB);
+    function testDoUndoExactInFees__Fuzz(uint256 poolSwapFeePercentage) public {
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestFee = true;
+        testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
 
-        uint256 maxAmountIn = _setPoolBalancesAndGetAmountIn(liquidityTokenA, liquidityTokenB);
+        uint256 exactAmountIn = maxSwapAmountTokenA;
 
-        exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxAmountIn);
-        poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
-
-        vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
-
-        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
-
-        vm.startPrank(sender);
-        uint256 exactAmountOutDo = router.swapSingleTokenExactIn(
-            pool,
-            tokenA,
-            tokenB,
-            exactAmountIn,
-            0,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-
-        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
-
-        // In the first swap, the trade was exactAmountIn => exactAmountOutDo + feesTokenB. So, if
-        // there were no fees, trading `exactAmountOutDo + feesTokenB` would get exactAmountIn. Therefore, a swap
-        // with exact_in `exactAmountOutDo + feesTokenB` is comparable to `exactAmountIn`, given that the fees are
-        // known.
-        uint256 exactAmountOutUndo = router.swapSingleTokenExactIn(
-            pool,
-            tokenB,
-            tokenA,
-            exactAmountOutDo + feesTokenB,
-            0,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
-        vm.stopPrank();
-
-        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
-
-        // User does not get any value out of the Vault.
-        assertLe(exactAmountOutUndo, exactAmountIn - feesTokenA, "Amount out undo should be <= exactAmountIn");
-
-        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
+        _testDoUndoExactInBase(exactAmountIn, testLocals);
     }
 
-    function testDoUndoExactInVariableDecimals__Fuzz(
+    function testDoUndoExactInDecimals__Fuzz(uint256 newDecimalsTokenA, uint256 newDecimalsTokenB) public {
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestDecimals = true;
+        testLocals.newDecimalsTokenA = newDecimalsTokenA;
+        testLocals.newDecimalsTokenB = newDecimalsTokenB;
+
+        uint256 exactAmountIn = maxSwapAmountTokenA;
+
+        _testDoUndoExactInBase(exactAmountIn, testLocals);
+    }
+
+    function testDoUndoExactIn__Fuzz(
         uint256 exactAmountIn,
         uint256 poolSwapFeePercentage,
         uint256 liquidityTokenA,
@@ -345,249 +200,59 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 newDecimalsTokenA,
         uint256 newDecimalsTokenB
     ) public {
-        decimalsTokenA = bound(newDecimalsTokenA, 6, 18);
-        decimalsTokenB = bound(newDecimalsTokenB, 6, 18);
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestDecimals = true;
+        testLocals.shouldTestLiquidity = true;
+        testLocals.shouldTestSwapAmount = true;
+        testLocals.shouldTestFee = true;
+        testLocals.liquidityTokenA = liquidityTokenA;
+        testLocals.liquidityTokenB = liquidityTokenB;
+        testLocals.newDecimalsTokenA = newDecimalsTokenA;
+        testLocals.newDecimalsTokenB = newDecimalsTokenB;
+        testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
 
-        _setTokenDecimalsInPool();
-
-        liquidityTokenA = bound(liquidityTokenA, poolInitAmountTokenA / 10, 10 * poolInitAmountTokenA);
-        liquidityTokenB = bound(liquidityTokenB, poolInitAmountTokenB / 10, 10 * poolInitAmountTokenB);
-
-        uint256 maxAmountIn = _setPoolBalancesAndGetAmountIn(liquidityTokenA, liquidityTokenB);
-
-        exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxAmountIn);
-        poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
-
-        vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
-
-        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
-
-        vm.startPrank(sender);
-        uint256 exactAmountOutDo = router.swapSingleTokenExactIn(
-            pool,
-            tokenA,
-            tokenB,
-            exactAmountIn,
-            0,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-
-        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
-
-        // In the first swap, the trade was exactAmountIn => exactAmountOutDo + feesTokenB. So, if
-        // there were no fees, trading `exactAmountOutDo + feesTokenB` would get exactAmountIn. Therefore, a swap
-        // with exact_in `exactAmountOutDo + feesTokenB` is comparable to `exactAmountIn`, given that the fees are
-        // known.
-        uint256 exactAmountOutUndo = router.swapSingleTokenExactIn(
-            pool,
-            tokenB,
-            tokenA,
-            exactAmountOutDo + feesTokenB,
-            0,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
-        vm.stopPrank();
-
-        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
-
-        // User does not get any value out of the Vault.
-        assertLe(exactAmountOutUndo, exactAmountIn - feesTokenA, "Amount out undo should be <= exactAmountIn");
-
-        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
+        _testDoUndoExactInBase(exactAmountIn, testLocals);
     }
 
-    function testDoUndoExactOutNoFees__Fuzz(uint256 exactAmountOut) public {
-        exactAmountOut = bound(exactAmountOut, minSwapAmountTokenB, maxSwapAmountTokenB);
+    function testDoUndoExactOutSwapAmount__Fuzz(uint256 exactAmountOut) public {
+        DoUndoLocals memory testLocals;
 
-        // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
-        vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
-
-        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
-
-        vm.startPrank(sender);
-        uint256 exactAmountInDo = router.swapSingleTokenExactOut(
-            pool,
-            tokenA,
-            tokenB,
-            exactAmountOut,
-            MAX_UINT128,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-
-        uint256 exactAmountInUndo = router.swapSingleTokenExactOut(
-            pool,
-            tokenB,
-            tokenA,
-            exactAmountInDo,
-            MAX_UINT128,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-        vm.stopPrank();
-
-        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
-
-        // User does not get any value out of the Vault.
-        assertGe(exactAmountInUndo, exactAmountOut, "Amount in undo should be >= exactAmountOut");
-
-        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
+        _testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
     function testDoUndoExactOutLiquidity__Fuzz(uint256 liquidityTokenA, uint256 liquidityTokenB) public {
-        liquidityTokenA = bound(liquidityTokenA, poolInitAmountTokenA / 10, 10 * poolInitAmountTokenA);
-        liquidityTokenB = bound(liquidityTokenB, poolInitAmountTokenB / 10, 10 * poolInitAmountTokenB);
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestLiquidity = true;
+        testLocals.liquidityTokenA = liquidityTokenA;
+        testLocals.liquidityTokenB = liquidityTokenB;
 
-        uint256 exactAmountOut = _setPoolBalancesAndGetAmountOut(liquidityTokenA, liquidityTokenB);
-
-        // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
-        vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
-
-        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
-
-        vm.startPrank(sender);
-        uint256 exactAmountInDo = router.swapSingleTokenExactOut(
-            pool,
-            tokenA,
-            tokenB,
-            exactAmountOut,
-            MAX_UINT128,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-
-        uint256 exactAmountInUndo = router.swapSingleTokenExactOut(
-            pool,
-            tokenB,
-            tokenA,
-            exactAmountInDo,
-            MAX_UINT128,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-        vm.stopPrank();
-
-        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
-
-        // User does not get any value out of the Vault.
-        assertGe(exactAmountInUndo, exactAmountOut, "Amount in undo should be >= exactAmountOut");
-
-        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
-    }
-
-    function testDoUndoExactOutVariableFees__Fuzz(uint256 poolSwapFeePercentage) public {
         uint256 exactAmountOut = maxSwapAmountTokenB;
-        poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
 
-        vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
-
-        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
-
-        vm.startPrank(sender);
-        uint256 exactAmountInDo = router.swapSingleTokenExactOut(
-            pool,
-            tokenA,
-            tokenB,
-            exactAmountOut,
-            MAX_UINT128,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-
-        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
-
-        // In the first swap, the trade was exactAmountInDo => exactAmountOut (tokenB) + feesTokenA (tokenA). So, if
-        // there were no fees, trading `exactAmountInDo - feesTokenA` would get exactAmountOut. Therefore, a swap
-        // with exact_out `exactAmountInDo - feesTokenA` is comparable to `exactAmountOut`, given that the fees are
-        // known.
-        uint256 exactAmountInUndo = router.swapSingleTokenExactOut(
-            pool,
-            tokenB,
-            tokenA,
-            exactAmountInDo - feesTokenA,
-            MAX_UINT128,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
-        vm.stopPrank();
-
-        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
-
-        // User does not get any value out of the Vault.
-        assertGe(exactAmountInUndo, exactAmountOut + feesTokenB, "Amount in undo should be >= exactAmountOut");
-
-        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
+        _testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
-    function testDoUndoExactOutVariableFeesAmountOutAndLiquidity__Fuzz(
-        uint256 exactAmountOut,
-        uint256 poolSwapFeePercentage,
-        uint256 liquidityTokenA,
-        uint256 liquidityTokenB
-    ) public {
-        liquidityTokenA = bound(liquidityTokenA, poolInitAmountTokenA / 10, 10 * poolInitAmountTokenA);
-        liquidityTokenB = bound(liquidityTokenB, poolInitAmountTokenB / 10, 10 * poolInitAmountTokenB);
+    function testDoUndoExactOutFees__Fuzz(uint256 poolSwapFeePercentage) public {
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestFee = true;
+        testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
 
-        uint256 maxAmountOut = _setPoolBalancesAndGetAmountOut(liquidityTokenA, liquidityTokenB);
-        exactAmountOut = bound(exactAmountOut, minSwapAmountTokenB, maxAmountOut);
+        uint256 exactAmountOut = maxSwapAmountTokenB;
 
-        poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
-        vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
-
-        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
-
-        vm.startPrank(sender);
-        uint256 exactAmountInDo = router.swapSingleTokenExactOut(
-            pool,
-            tokenA,
-            tokenB,
-            exactAmountOut,
-            MAX_UINT128,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-
-        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
-
-        // In the first swap, the trade was exactAmountInDo => exactAmountOut (tokenB) + feesTokenA (tokenA). So, if
-        // there were no fees, trading `exactAmountInDo - feesTokenA` would get exactAmountOut. Therefore, a swap
-        // with exact_out `exactAmountInDo - feesTokenA` is comparable to `exactAmountOut`, given that the fees are
-        // known.
-        uint256 exactAmountInUndo = router.swapSingleTokenExactOut(
-            pool,
-            tokenB,
-            tokenA,
-            exactAmountInDo - feesTokenA,
-            MAX_UINT128,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
-        vm.stopPrank();
-
-        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
-
-        // User does not get any value out of the Vault.
-        assertGe(exactAmountInUndo, exactAmountOut + feesTokenB, "Amount in undo should be >= exactAmountOut");
-
-        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
+        _testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
-    function testDoUndoExactOutVariableDecimals__Fuzz(
+    function testDoUndoExactOutDecimals__Fuzz(uint256 newDecimalsTokenA, uint256 newDecimalsTokenB) public {
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestDecimals = true;
+        testLocals.newDecimalsTokenA = newDecimalsTokenA;
+        testLocals.newDecimalsTokenB = newDecimalsTokenB;
+
+        uint256 exactAmountOut = maxSwapAmountTokenB;
+
+        _testDoUndoExactOutBase(exactAmountOut, testLocals);
+    }
+
+    function testDoUndoExactOut__Fuzz(
         uint256 exactAmountOut,
         uint256 poolSwapFeePercentage,
         uint256 liquidityTokenA,
@@ -595,112 +260,18 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 newDecimalsTokenA,
         uint256 newDecimalsTokenB
     ) public {
-        decimalsTokenA = bound(newDecimalsTokenA, 6, 18);
-        decimalsTokenB = bound(newDecimalsTokenB, 6, 18);
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestDecimals = true;
+        testLocals.shouldTestLiquidity = true;
+        testLocals.shouldTestSwapAmount = true;
+        testLocals.shouldTestFee = true;
+        testLocals.liquidityTokenA = liquidityTokenA;
+        testLocals.liquidityTokenB = liquidityTokenB;
+        testLocals.newDecimalsTokenA = newDecimalsTokenA;
+        testLocals.newDecimalsTokenB = newDecimalsTokenB;
+        testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
 
-        _setTokenDecimalsInPool();
-
-        liquidityTokenA = bound(liquidityTokenA, poolInitAmountTokenA / 10, 10 * poolInitAmountTokenA);
-        liquidityTokenB = bound(liquidityTokenB, poolInitAmountTokenB / 10, 10 * poolInitAmountTokenB);
-
-        uint256 maxAmountOut = _setPoolBalancesAndGetAmountOut(liquidityTokenA, liquidityTokenB);
-        exactAmountOut = bound(exactAmountOut, minSwapAmountTokenB, maxAmountOut);
-
-        poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
-        vault.manualSetStaticSwapFeePercentage(pool, poolSwapFeePercentage);
-
-        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
-
-        vm.startPrank(sender);
-        uint256 exactAmountInDo = router.swapSingleTokenExactOut(
-            pool,
-            tokenA,
-            tokenB,
-            exactAmountOut,
-            MAX_UINT128,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-
-        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
-
-        // In the first swap, the trade was exactAmountInDo => exactAmountOut (tokenB) + feesTokenA (tokenA). So, if
-        // there were no fees, trading `exactAmountInDo - feesTokenA` would get exactAmountOut. Therefore, a swap
-        // with exact_out `exactAmountInDo - feesTokenA` is comparable to `exactAmountOut`, given that the fees are
-        // known.
-        uint256 exactAmountInUndo = router.swapSingleTokenExactOut(
-            pool,
-            tokenB,
-            tokenA,
-            exactAmountInDo - feesTokenA,
-            MAX_UINT128,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
-        vm.stopPrank();
-
-        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
-
-        // User does not get any value out of the Vault.
-        assertGe(exactAmountInUndo, exactAmountOut + feesTokenB, "Amount in undo should be >= exactAmountOut");
-
-        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
-    }
-
-    function testExactInRepeatExactOutNoFees__Fuzz(uint256 exactAmountIn) public {
-        exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
-
-        // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
-        vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
-
-        vm.startPrank(sender);
-        uint256 snapshotId = vm.snapshot();
-        uint256 exactAmountOut = router.swapSingleTokenExactIn(
-            pool,
-            tokenA,
-            tokenB,
-            exactAmountIn,
-            0,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-        vm.revertTo(snapshotId);
-        uint256 exactAmountInSwap = router.swapSingleTokenExactOut(
-            pool,
-            tokenA,
-            tokenB,
-            exactAmountOut,
-            MAX_UINT128,
-            MAX_UINT128,
-            false,
-            bytes("")
-        );
-        vm.stopPrank();
-
-        if (decimalsTokenA != decimalsTokenB) {
-            // If tokens have different decimals, `computeBalance` will be off by an order of magnitude proportional to
-            // the difference in decimals.
-            uint256 tolerance;
-            if (decimalsTokenA < decimalsTokenB) {
-                tolerance = 10 ** (decimalsTokenB - decimalsTokenA + 1);
-            } else {
-                tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 1);
-            }
-            assertApproxEqAbs(
-                exactAmountInSwap,
-                exactAmountIn,
-                tolerance,
-                "ExactOut and ExactIn amountsIn should match"
-            );
-        } else {
-            // Accepts an error of 0.0000001% between amountIn from ExactOut and ExactIn swaps. This error is caused by
-            // differences in the computeInGivenExactOut and computeOutGivenExactIn functions of the pool math.
-            assertApproxEqRel(exactAmountInSwap, exactAmountIn, 1e9, "ExactOut and ExactIn amountsIn should match");
-        }
+        _testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
     function testExactInRepeatExactOutVariableFees__Fuzz(uint256 exactAmountIn, uint256 poolSwapFeePercentage) public {
@@ -763,6 +334,186 @@ contract E2eSwapTest is BaseVaultTest {
                 "ExactOut and ExactIn amountsIn should match"
             );
         }
+    }
+
+    struct DoUndoLocals {
+        bool shouldTestDecimals;
+        bool shouldTestLiquidity;
+        bool shouldTestSwapAmount;
+        bool shouldTestFee;
+        uint256 liquidityTokenA;
+        uint256 liquidityTokenB;
+        uint256 newDecimalsTokenA;
+        uint256 newDecimalsTokenB;
+        uint256 poolSwapFeePercentage;
+    }
+
+    function _testDoUndoExactInBase(uint256 exactAmountIn, DoUndoLocals memory testLocals) private {
+        if (testLocals.shouldTestDecimals) {
+            decimalsTokenA = bound(testLocals.newDecimalsTokenA, 6, 18);
+            decimalsTokenB = bound(testLocals.newDecimalsTokenB, 6, 18);
+
+            _setTokenDecimalsInPool();
+        }
+
+        uint256 maxAmountIn = maxSwapAmountTokenA;
+        if (testLocals.shouldTestLiquidity) {
+            testLocals.liquidityTokenA = bound(
+                testLocals.liquidityTokenA,
+                poolInitAmountTokenA / 10,
+                10 * poolInitAmountTokenA
+            );
+            testLocals.liquidityTokenB = bound(
+                testLocals.liquidityTokenB,
+                poolInitAmountTokenB / 10,
+                10 * poolInitAmountTokenB
+            );
+
+            maxAmountIn = _setPoolBalancesAndGetAmountIn(testLocals.liquidityTokenA, testLocals.liquidityTokenB);
+
+            console.log("maxAmountIn", maxAmountIn);
+        }
+
+        if (testLocals.shouldTestSwapAmount) {
+            exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxAmountIn);
+        } else {
+            exactAmountIn = maxAmountIn;
+        }
+
+        if (testLocals.shouldTestFee) {
+            testLocals.poolSwapFeePercentage = bound(
+                testLocals.poolSwapFeePercentage,
+                minPoolSwapFeePercentage,
+                maxPoolSwapFeePercentage
+            );
+        } else {
+            testLocals.poolSwapFeePercentage = minPoolSwapFeePercentage;
+        }
+
+        vault.manualSetStaticSwapFeePercentage(pool, testLocals.poolSwapFeePercentage);
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
+
+        vm.startPrank(sender);
+        uint256 exactAmountOutDo = router.swapSingleTokenExactIn(
+            pool,
+            tokenA,
+            tokenB,
+            exactAmountIn,
+            0,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+
+        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
+
+        // In the first swap, the trade was exactAmountIn => exactAmountOutDo + feesTokenB. So, if
+        // there were no fees, trading `exactAmountOutDo + feesTokenB` would get exactAmountIn. Therefore, a swap
+        // with exact_in `exactAmountOutDo + feesTokenB` is comparable to `exactAmountIn`, given that the fees are
+        // known.
+        uint256 exactAmountOutUndo = router.swapSingleTokenExactIn(
+            pool,
+            tokenB,
+            tokenA,
+            exactAmountOutDo + feesTokenB,
+            0,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
+        vm.stopPrank();
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
+
+        // User does not get any value out of the Vault.
+        assertLe(exactAmountOutUndo, exactAmountIn - feesTokenA, "Amount out undo should be <= exactAmountIn");
+
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
+    }
+
+    function _testDoUndoExactOutBase(uint256 exactAmountOut, DoUndoLocals memory testLocals) private {
+        if (testLocals.shouldTestDecimals) {
+            decimalsTokenA = bound(testLocals.newDecimalsTokenA, 6, 18);
+            decimalsTokenB = bound(testLocals.newDecimalsTokenB, 6, 18);
+
+            _setTokenDecimalsInPool();
+        }
+
+        uint256 maxAmountOut = maxSwapAmountTokenB;
+        if (testLocals.shouldTestLiquidity) {
+            testLocals.liquidityTokenA = bound(
+                testLocals.liquidityTokenA,
+                poolInitAmountTokenA / 10,
+                10 * poolInitAmountTokenA
+            );
+            testLocals.liquidityTokenB = bound(
+                testLocals.liquidityTokenB,
+                poolInitAmountTokenB / 10,
+                10 * poolInitAmountTokenB
+            );
+
+            maxAmountOut = _setPoolBalancesAndGetAmountOut(testLocals.liquidityTokenA, testLocals.liquidityTokenB);
+        }
+
+        if (testLocals.shouldTestSwapAmount) {
+            exactAmountOut = bound(exactAmountOut, minSwapAmountTokenB, maxAmountOut);
+        } else {
+            exactAmountOut = maxAmountOut;
+        }
+
+        if (testLocals.shouldTestFee) {
+            testLocals.poolSwapFeePercentage = bound(
+                testLocals.poolSwapFeePercentage,
+                minPoolSwapFeePercentage,
+                maxPoolSwapFeePercentage
+            );
+        } else {
+            testLocals.poolSwapFeePercentage = minPoolSwapFeePercentage;
+        }
+
+        vault.manualSetStaticSwapFeePercentage(pool, testLocals.poolSwapFeePercentage);
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
+
+        vm.startPrank(sender);
+        uint256 exactAmountInDo = router.swapSingleTokenExactOut(
+            pool,
+            tokenA,
+            tokenB,
+            exactAmountOut,
+            MAX_UINT128,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+
+        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
+
+        // In the first swap, the trade was exactAmountInDo => exactAmountOut (tokenB) + feesTokenA (tokenA). So, if
+        // there were no fees, trading `exactAmountInDo - feesTokenA` would get exactAmountOut. Therefore, a swap
+        // with exact_out `exactAmountInDo - feesTokenA` is comparable to `exactAmountOut`, given that the fees are
+        // known.
+        uint256 exactAmountInUndo = router.swapSingleTokenExactOut(
+            pool,
+            tokenB,
+            tokenA,
+            exactAmountInDo - feesTokenA,
+            MAX_UINT128,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+        uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
+        vm.stopPrank();
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
+
+        // User does not get any value out of the Vault.
+        assertGe(exactAmountInUndo, exactAmountOut + feesTokenB, "Amount in undo should be >= exactAmountOut");
+
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
 
     function _checkUserBalancesAndPoolInvariant(
