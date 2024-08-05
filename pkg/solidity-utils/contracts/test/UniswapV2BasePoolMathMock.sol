@@ -14,10 +14,7 @@ contract UniswapV2BasePoolMathMock is BasePoolMathMock {
         require(balancesLiveScaled18.length == 2, "UniswapV2BasePoolMathMock: Only 2 tokens are supported");
 
         // Expected to work with 2 tokens only.
-        invariant = FixedPoint.ONE;
-        for (uint256 i = 0; i < balancesLiveScaled18.length; ++i) {
-            invariant = invariant.mulDown(balancesLiveScaled18[i]);
-        }
+        invariant = balancesLiveScaled18[0].mulDown(balancesLiveScaled18[1]);
         // Scale the invariant to 1e18.
         invariant = Math.sqrt(invariant) * 1e9;
     }
