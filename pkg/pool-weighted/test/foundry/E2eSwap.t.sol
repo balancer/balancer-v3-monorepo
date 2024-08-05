@@ -27,8 +27,6 @@ contract E2eSwapWeightedTest is E2eSwapTest {
     uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
 
     uint256 internal poolCreationNonce;
-    uint256 internal daiIdx;
-    uint256 internal usdcIdx;
 
     WeightedPoolMock internal poolWithChangeableWeights;
 
