@@ -121,18 +121,18 @@ contract VaultStorage {
     // A buffer will only ever have two tokens: wrapped and underlying
     // we pack the wrapped and underlying balance into a single bytes32
     // wrapped token address -> PackedTokenBalance.
-    mapping(IERC20 => bytes32) internal _bufferTokenBalances;
+    mapping(IERC4626 => bytes32) internal _bufferTokenBalances;
 
     // The LP balances for buffers. To start, LP balances will not be represented as ERC20 shares.
     // If we end up with a need to incentivize buffers, we can wrap this in an ERC20 wrapper without
     // introducing more complexity to the vault.
     // wrapped token address -> user address -> LP balance.
-    mapping(IERC20 => mapping(address => uint256)) internal _bufferLpShares;
+    mapping(IERC4626 => mapping(address => uint256)) internal _bufferLpShares;
     // total LP shares
-    mapping(IERC20 => uint256) internal _bufferTotalShares;
+    mapping(IERC4626 => uint256) internal _bufferTotalShares;
 
     // Prevents a malicious ERC4626 from changing the asset after the buffer was initialized.
-    mapping(IERC20 => address) internal _bufferAssets;
+    mapping(IERC4626 => address) internal _bufferAssets;
 
     function _isUnlocked() internal view returns (StorageSlotExtension.BooleanSlotType slot) {
         return _IS_UNLOCKED_SLOT.asBoolean();
