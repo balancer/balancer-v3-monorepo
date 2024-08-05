@@ -255,6 +255,14 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         }
     }
 
+    function _maxTokenLimits(address pool) internal view returns (uint256[] memory maxLimits) {
+        uint256 numTokens = _vault.getPoolTokens(pool).length;
+        maxLimits = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            maxLimits[i] = _MAX_AMOUNT;
+        }
+    }
+
     /**
      * @dev Enables the Router to receive ETH. This is required for it to be able to unwrap WETH, which sends ETH to the
      * caller.

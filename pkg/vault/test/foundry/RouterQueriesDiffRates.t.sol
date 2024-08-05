@@ -145,12 +145,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory queryAmountsIn = router.queryAddLiquidityProportional(
-            pool,
-            expectedAmountsIn,
-            exactBptAmountOut,
-            bytes("")
-        );
+        uint256[] memory queryAmountsIn = router.queryAddLiquidityProportional(pool, exactBptAmountOut, bytes(""));
 
         vm.revertTo(snapshotId);
 
