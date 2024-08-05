@@ -136,7 +136,7 @@ interface IBatchRouter {
      * @param userData Additional (optional) data required for removing liquidity
      * @return amountsOut Actual amounts of tokens received, sorted in token registration order
      */
-    function removeLiquidityProportionalToERC4626Pool(
+    function removeLiquidityProportionalFromERC4626Pool(
         address pool,
         uint256 exactBptAmountIn,
         uint256[] memory minUnderlyingAmountsOut,
@@ -205,13 +205,13 @@ interface IBatchRouter {
     ) external returns (uint256[] memory amountsIn);
 
     /**
-     * @notice Queries `removeLiquidityProportionalToERC4626Pool` operation without actually executing it.
+     * @notice Queries `removeLiquidityProportionalFromERC4626Pool` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @param userData Additional (optional) data required for the query
      * @return amountsOut Expected amounts of tokens to receive, sorted in token registration order
      */
-    function queryRemoveLiquidityProportionalToERC4626Pool(
+    function queryRemoveLiquidityProportionalFromERC4626Pool(
         address pool,
         uint256 exactBptAmountIn,
         bytes memory userData

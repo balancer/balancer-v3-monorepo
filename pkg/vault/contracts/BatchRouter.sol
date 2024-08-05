@@ -736,7 +736,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     }
 
     /// @inheritdoc IBatchRouter
-    function removeLiquidityProportionalToERC4626Pool(
+    function removeLiquidityProportionalFromERC4626Pool(
         address pool,
         uint256 exactBptAmountIn,
         uint256[] memory minUnderlyingAmountsOut,
@@ -814,7 +814,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     }
 
     /// @inheritdoc IBatchRouter
-    function queryRemoveLiquidityProportionalToERC4626Pool(
+    function queryRemoveLiquidityProportionalFromERC4626Pool(
         address pool,
         uint256 exactBptAmountIn,
         bytes memory userData
@@ -849,7 +849,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             SwapKind.EXACT_IN
         );
 
-        // Add wrapped amounts to the boosted pool
+        // Add wrapped amounts to the ERC4626 pool.
         (, bptAmountOut, ) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
@@ -872,7 +872,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             maxWrappedAmountsIn[i] = IERC4626(address(erc4626PoolTokens[i])).convertToShares(params.maxAmountsIn[i]);
         }
 
-        // Add wrapped amounts to the boosted pool
+        // Add wrapped amounts to the ERC4626 pool.
         (amountsIn, , ) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
@@ -945,7 +945,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
         // Wrap given underlying tokens for wrapped tokens
         for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
-            // Boosted pool tokens are the wrappers
+            // ERC4626 pool tokens are all wrapped tokens.
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
             IERC20 underlyingToken = IERC20(wrappedToken.asset());
 

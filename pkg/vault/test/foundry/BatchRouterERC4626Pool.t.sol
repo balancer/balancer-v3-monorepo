@@ -395,7 +395,7 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
         );
     }
 
-    function testRemoveLiquidityProportionalToERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
+    function testRemoveLiquidityProportionalFromERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
         uint256 exactBptAmountIn = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
 
         uint256 snapshot = vm.snapshot();
@@ -429,7 +429,7 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
         );
 
         vm.prank(bob);
-        uint256[] memory amountsOut = batchRouter.removeLiquidityProportionalToERC4626Pool(
+        uint256[] memory amountsOut = batchRouter.removeLiquidityProportionalFromERC4626Pool(
             erc4626Pool,
             exactBptAmountIn,
             minAmountsOut,
@@ -495,10 +495,10 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
         assertEq(afterBPTBalance, beforeBPTBalance - exactBptAmountIn, "Bob: BPT balance should decrease");
     }
 
-    function testRemoveLiquidityProportionalToERC4626PoolWhenStaticCall() public checkBuffersWhenStaticCall(bob) {
+    function testRemoveLiquidityProportionalFromERC4626PoolWhenStaticCall() public checkBuffersWhenStaticCall(bob) {
         uint256 exactBptAmountIn = bufferInitialAmount / 2;
 
         vm.prank(bob, address(0));
-        batchRouter.queryRemoveLiquidityProportionalToERC4626Pool(erc4626Pool, exactBptAmountIn, new bytes(0));
+        batchRouter.queryRemoveLiquidityProportionalFromERC4626Pool(erc4626Pool, exactBptAmountIn, new bytes(0));
     }
 }
