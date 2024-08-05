@@ -137,7 +137,7 @@ contract E2eSwapTest is BaseVaultTest {
         vault.manualSetReservesOf(tokenB, 100 * poolInitAmountTokenB);
     }
 
-    function testDoExactInUndoExactInNoFees__Fuzz(uint256 exactAmountIn) public {
+    function testDoUndoExactInNoFees__Fuzz(uint256 exactAmountIn) public {
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
         // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
@@ -175,7 +175,7 @@ contract E2eSwapTest is BaseVaultTest {
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
     }
 
-    function testDoExactInUndoExactInLiquidity__Fuzz(uint256 liquidityTokenA, uint256 liquidityTokenB) public {
+    function testDoUndoExactInLiquidity__Fuzz(uint256 liquidityTokenA, uint256 liquidityTokenB) public {
         liquidityTokenA = bound(liquidityTokenA, poolInitAmountTokenA / 10, 10 * poolInitAmountTokenA);
         liquidityTokenB = bound(liquidityTokenB, poolInitAmountTokenB / 10, 10 * poolInitAmountTokenB);
 
@@ -216,7 +216,7 @@ contract E2eSwapTest is BaseVaultTest {
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
     }
 
-    function testDoExactInUndoExactInVariableFees__Fuzz(uint256 poolSwapFeePercentage) public {
+    function testDoUndoExactInVariableFees__Fuzz(uint256 poolSwapFeePercentage) public {
         uint256 exactAmountIn = maxSwapAmountTokenA;
         poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
 
@@ -262,7 +262,7 @@ contract E2eSwapTest is BaseVaultTest {
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
 
-    function testDoExactInUndoExactInVariableFeesAmountInAndLiquidity__Fuzz(
+    function testDoUndoExactInVariableFeesAmountInAndLiquidity__Fuzz(
         uint256 exactAmountIn,
         uint256 poolSwapFeePercentage,
         uint256 liquidityTokenA,
@@ -318,7 +318,7 @@ contract E2eSwapTest is BaseVaultTest {
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
 
-    function testDoExactOutUndoExactOutNoFees__Fuzz(uint256 exactAmountOut) public {
+    function testDoUndoExactOutNoFees__Fuzz(uint256 exactAmountOut) public {
         exactAmountOut = bound(exactAmountOut, minSwapAmountTokenB, maxSwapAmountTokenB);
 
         // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
@@ -357,7 +357,7 @@ contract E2eSwapTest is BaseVaultTest {
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
     }
 
-    function testDoExactOutUndoExactOutLiquidity__Fuzz(uint256 liquidityTokenA, uint256 liquidityTokenB) public {
+    function testDoUndoExactOutLiquidity__Fuzz(uint256 liquidityTokenA, uint256 liquidityTokenB) public {
         liquidityTokenA = bound(liquidityTokenA, poolInitAmountTokenA / 10, 10 * poolInitAmountTokenA);
         liquidityTokenB = bound(liquidityTokenB, poolInitAmountTokenB / 10, 10 * poolInitAmountTokenB);
 
@@ -399,7 +399,7 @@ contract E2eSwapTest is BaseVaultTest {
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
     }
 
-    function testDoExactOutUndoExactOutVariableFees__Fuzz(uint256 poolSwapFeePercentage) public {
+    function testDoUndoExactOutVariableFees__Fuzz(uint256 poolSwapFeePercentage) public {
         uint256 exactAmountOut = maxSwapAmountTokenB;
         poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
 
@@ -445,7 +445,7 @@ contract E2eSwapTest is BaseVaultTest {
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
 
-    function testDoExactOutUndoExactOutVariableFeesAmountOutAndLiquidity__Fuzz(
+    function testDoUndoExactOutVariableFeesAmountOutAndLiquidity__Fuzz(
         uint256 exactAmountOut,
         uint256 poolSwapFeePercentage,
         uint256 liquidityTokenA,

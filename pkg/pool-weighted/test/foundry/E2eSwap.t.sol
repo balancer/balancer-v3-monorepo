@@ -63,7 +63,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         maxPoolSwapFeePercentage = 10e16;
     }
 
-    function testDoExactInUndoExactInDifferentWeights(uint256 weightTokenA) public {
+    function testDoUndoExactInDifferentWeights(uint256 weightTokenA) public {
         // Vary from 0.1% to 99.9%.
         weightTokenA = bound(weightTokenA, 0.1e16, 99.9e16);
 
@@ -126,7 +126,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
 
-    function testDoExactOutUndoExactOutDifferentWeights(uint256 weightTokenA) public {
+    function testDoUndoExactOutDifferentWeights(uint256 weightTokenA) public {
         // Vary from 0.1% to 99.9%.
         weightTokenA = bound(weightTokenA, 0.1e16, 99.9e16);
 
