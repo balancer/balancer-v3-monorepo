@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -587,17 +588,17 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function internalGetBufferUnderlyingSurplus(IERC4626 wrappedToken) external view returns (uint256) {
-        bytes32 bufferBalance = _bufferTokenBalances[IERC20(address(wrappedToken))];
+        bytes32 bufferBalance = _bufferTokenBalances[wrappedToken];
         return bufferBalance.getBufferUnderlyingSurplus(wrappedToken);
     }
 
     function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256) {
-        bytes32 bufferBalance = _bufferTokenBalances[IERC20(address(wrappedToken))];
+        bytes32 bufferBalance = _bufferTokenBalances[wrappedToken];
         return bufferBalance.getBufferWrappedSurplus(wrappedToken);
     }
 
     function getBufferTokenBalancesBytes(IERC4626 wrappedToken) external view returns (bytes32) {
-        return _bufferTokenBalances[IERC20(address(wrappedToken))];
+        return _bufferTokenBalances[wrappedToken];
     }
 
     function manualUpdateReservesAfterWrapping(
