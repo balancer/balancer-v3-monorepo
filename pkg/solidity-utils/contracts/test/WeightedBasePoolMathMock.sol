@@ -11,6 +11,7 @@ import "./BasePoolMathMock.sol";
 // Mock Weighted5050 to test rounding in BasePoolMath for consistency with other implementations.
 contract WeightedBasePoolMathMock is BasePoolMathMock {
     uint256[] public weights;
+
     constructor(uint256[] memory _weights) {
         weights = _weights;
     }
