@@ -945,7 +945,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
         // Wrap given underlying tokens for wrapped tokens
         for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
-            // Boosted pool tokens are the wrappers
+            // ERC4626 pool tokens are all wrapped tokens.
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
             IERC20 underlyingToken = IERC20(wrappedToken.asset());
 
