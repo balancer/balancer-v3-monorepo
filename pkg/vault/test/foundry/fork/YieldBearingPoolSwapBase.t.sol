@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
@@ -19,6 +20,7 @@ import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
+    using SafeERC20 for IERC20;
     using BufferHelpers for bytes32;
     using FixedPoint for uint256;
 
@@ -106,13 +108,13 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
         assertApproxEqAbs(
-            vault.getBufferOwnerShares(IERC20(ybToken1), lp),
+            vault.getBufferOwnerShares(ybToken1, lp),
             _token1BufferInitAmount * 2 - MIN_BPT,
             1,
             "Wrong share of ybToken1 buffer belonging to LP"
         );
         assertApproxEqAbs(
-            vault.getBufferOwnerShares(IERC20(ybToken2), lp),
+            vault.getBufferOwnerShares(ybToken2, lp),
             (_token2BufferInitAmount * 2) - MIN_BPT,
             1,
             "Wrong share of ybToken2 buffer belonging to LP"
@@ -120,13 +122,13 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         // Buffer should have the correct amount of issued shares
         assertApproxEqAbs(
-            vault.getBufferTotalShares(IERC20(ybToken1)),
+            vault.getBufferTotalShares(ybToken1),
             _token1BufferInitAmount * 2,
             1,
             "Wrong issued shares of ybToken1 buffer"
         );
         assertApproxEqAbs(
-            vault.getBufferTotalShares(IERC20(ybToken2)),
+            vault.getBufferTotalShares(ybToken2),
             (_token2BufferInitAmount * 2),
             1,
             "Wrong issued shares of ybToken2 buffer"
@@ -136,7 +138,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         uint256 wrappedBalance;
 
         // The vault buffers should each have `bufferAmount` of their respective tokens.
-        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(ybToken1));
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(ybToken1);
         assertEq(underlyingBalance, _token1BufferInitAmount, "Wrong ybToken1 buffer balance for underlying token");
         assertEq(
             wrappedBalance,
@@ -144,7 +146,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             "Wrong ybToken1 buffer balance for wrapped token"
         );
 
-        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(ybToken2));
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(ybToken2);
         assertEq(underlyingBalance, _token2BufferInitAmount, "Wrong ybToken2 buffer balance for underlying token");
         assertEq(
             wrappedBalance,
@@ -806,10 +808,10 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         uint256 underlyingBalance;
         uint256 wrappedBalance;
-        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(address(ybTokenIn)));
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(ybTokenIn);
         vars.bufferBeforeSwapTokenIn = underlyingBalance;
         vars.bufferBeforeSwapYbTokenIn = wrappedBalance;
-        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(address(ybTokenOut)));
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(ybTokenOut);
         vars.bufferBeforeSwapTokenOut = underlyingBalance;
         vars.bufferBeforeSwapYbTokenOut = wrappedBalance;
 
@@ -955,18 +957,18 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
     function _setupLPAndVault() private {
         vm.startPrank(donorToken1);
         // Donate token1 (underlying) to LP.
-        _token1Fork.transfer(lp, 100 * _token1BufferInitAmount);
+        _token1Fork.safeTransfer(lp, 100 * _token1BufferInitAmount);
         vm.stopPrank();
 
         vm.startPrank(donorToken2);
         // Donate token2 (underlying) to LP.
-        _token2Fork.transfer(lp, 100 * _token2BufferInitAmount);
+        _token2Fork.safeTransfer(lp, 100 * _token2BufferInitAmount);
         vm.stopPrank();
 
         vm.startPrank(lp);
         // Allow Permit2 to get tokens from LP.
-        _token1Fork.approve(address(permit2), type(uint256).max);
-        _token2Fork.approve(address(permit2), type(uint256).max);
+        _token1Fork.forceApprove(address(permit2), type(uint256).max);
+        _token2Fork.forceApprove(address(permit2), type(uint256).max);
         ybToken2.approve(address(permit2), type(uint256).max);
         ybToken1.approve(address(permit2), type(uint256).max);
         // Allow Permit2 to move DAI and USDC from LP to Router.
@@ -980,9 +982,9 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         permit2.approve(address(ybToken2), address(batchRouter), type(uint160).max, type(uint48).max);
         permit2.approve(address(ybToken1), address(batchRouter), type(uint160).max, type(uint48).max);
         // Wrap part of LP balances.
-        _token1Fork.approve(address(ybToken1), 4 * _token1YieldBearingPoolInitAmount);
+        _token1Fork.forceApprove(address(ybToken1), 4 * _token1YieldBearingPoolInitAmount);
         ybToken1.deposit(4 * _token1YieldBearingPoolInitAmount, lp);
-        _token2Fork.approve(address(ybToken2), 4 * _token2YieldBearingPoolInitAmount);
+        _token2Fork.forceApprove(address(ybToken2), 4 * _token2YieldBearingPoolInitAmount);
         ybToken2.deposit(4 * _token2YieldBearingPoolInitAmount, lp);
         vm.stopPrank();
     }
@@ -1046,7 +1048,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             // Do the actual operation to impact the rate used to calculate wrapped surplus.
             uint256 snapshotId = vm.snapshot();
             vm.startPrank(lp);
-            IERC20(wToken.asset()).approve(address(wToken), underlyingToDeposit + underlyingSurplus);
+            IERC20(wToken.asset()).forceApprove(address(wToken), underlyingToDeposit + underlyingSurplus);
             uint256 vaultWrappedDelta = wToken.deposit(underlyingToDeposit + underlyingSurplus, lp);
             vm.stopPrank();
             uint256 wrappedSurplusToLeaveInTheBuffer = wToken.convertToShares(underlyingSurplus);

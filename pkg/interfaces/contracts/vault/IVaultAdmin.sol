@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IProtocolFeeController } from "./IProtocolFeeController.sol";
@@ -244,7 +243,7 @@ interface IVaultAdmin {
      * @return ownerShares Amount of shares allocated to the liquidity owner
      */
     function getBufferOwnerShares(
-        IERC20 wrappedToken,
+        IERC4626 wrappedToken,
         address liquidityOwner
     ) external view returns (uint256 ownerShares);
 
@@ -253,7 +252,7 @@ interface IVaultAdmin {
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @return bufferShares Amount of supply shares of the buffer
      */
-    function getBufferTotalShares(IERC20 wrappedToken) external view returns (uint256 bufferShares);
+    function getBufferTotalShares(IERC4626 wrappedToken) external view returns (uint256 bufferShares);
 
     /**
      * @notice Returns the amount of underlying and wrapped tokens deposited in the internal buffer of the vault.
@@ -262,7 +261,7 @@ interface IVaultAdmin {
      * @return wrappedBalanceRaw Amount of wrapped tokens deposited into the buffer
      */
     function getBufferBalance(
-        IERC20 wrappedToken
+        IERC4626 wrappedToken
     ) external view returns (uint256 underlyingBalanceRaw, uint256 wrappedBalanceRaw);
 
     /*******************************************************************************
