@@ -60,7 +60,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         // 0.0001% max swap fee.
         minPoolSwapFeePercentage = 1e12;
         // 10% max swap fee.
-        maxPoolSwapFeePercentage = 1e17;
+        maxPoolSwapFeePercentage = 10e16;
     }
 
     function testDoExactInUndoExactInDifferentWeights(uint256 weightTokenA) public {
