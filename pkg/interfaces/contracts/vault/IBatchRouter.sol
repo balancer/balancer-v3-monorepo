@@ -225,7 +225,7 @@ interface IBatchRouter {
 
     /**
      * @dev An "ERC4626 pool" is one in which all tokens conform to the IERC4626 yield-bearing token standard (e.g., waDAI).
-     * @notice Queries `removeLiquidityProportionalFromERC4626Pool` operation without actually executing it.
+     * @notice Queries a `removeLiquidityProportionalFromERC4626Pool` operation without actually executing it.
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @param userData Additional (optional) data required for the query
