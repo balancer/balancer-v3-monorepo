@@ -10,6 +10,9 @@ import {
     StablePoolImmutableData
 } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
+import {
+    IUnbalancedLiquidityInvariantRatioBounds
+} from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { SwapKind, PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
@@ -66,6 +69,11 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     // Maximum values protect users by preventing permissioned actors from setting excessively high swap fees.
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
+
+    // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
+    uint256 private constant _MIN_INVARIANT_RATIO = 60e16; // 60%
+    // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
+    uint256 private constant _MAX_INVARIANT_RATIO = 500e16; // 500%
 
     /// @dev Store amplification state.
     AmplificationState private _amplificationState;
@@ -305,6 +313,16 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     /// @inheritdoc ISwapFeePercentageBounds
     function getMaximumSwapFeePercentage() external pure returns (uint256) {
         return _MAX_SWAP_FEE_PERCENTAGE;
+    }
+
+    /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
+    function getMinimumInvariantRatio() external pure returns (uint256) {
+        return _MIN_INVARIANT_RATIO;
+    }
+
+    /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
+    function getMaximumInvariantRatio() external pure returns (uint256) {
+        return _MAX_INVARIANT_RATIO;
     }
 
     /// @inheritdoc IStablePool

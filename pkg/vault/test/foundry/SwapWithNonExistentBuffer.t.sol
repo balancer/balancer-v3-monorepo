@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { TokenConfig, TokenType, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -111,11 +112,11 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         uint256 wrappedBalance;
 
         // The vault buffers should each have `bufferAmount` of their respective tokens.
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
+        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waDAI));
         assertEq(baseBalance, 0, "Wrong waDAI buffer balance for base token");
         assertEq(wrappedBalance, 0, "Wrong waDAI buffer balance for wrapped token");
 
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
+        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waUSDC));
         assertEq(baseBalance, 0, "Wrong waUSDC buffer balance for base token");
         assertEq(wrappedBalance, 0, "Wrong waUSDC buffer balance for wrapped token");
     }
@@ -215,11 +216,11 @@ contract SwapWithNonExistentBufferTest is BaseVaultTest {
         // Buffers should have 0 liquidity, since they were not initialized.
         uint256 baseBalance;
         uint256 wrappedBalance;
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
+        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waDAI));
         assertEq(baseBalance, 0, "DAI buffer pool base balance is not 0");
         assertEq(wrappedBalance, 0, "DAI buffer pool wrapped balance is not 0");
 
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
+        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waUSDC));
         assertEq(baseBalance, 0, "USDC buffer pool base balance is not 0");
         assertEq(wrappedBalance, 0, "USDC buffer pool wrapped balance is not 0");
     }

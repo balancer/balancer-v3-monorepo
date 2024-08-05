@@ -36,8 +36,13 @@ library WeightedMath {
     // Pool limits that arise from limitations in the fixed point power function
 
     // Swap limits: amounts swapped may not be larger than this percentage of the total balance.
-    uint256 internal constant _MAX_IN_RATIO = 0.3e18;
-    uint256 internal constant _MAX_OUT_RATIO = 0.3e18;
+    uint256 internal constant _MAX_IN_RATIO = 30e16; // 30%
+    uint256 internal constant _MAX_OUT_RATIO = 30e16; // 30%
+
+    // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
+    uint256 internal constant _MAX_INVARIANT_RATIO = 300e16; // 300%
+    // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
+    uint256 internal constant _MIN_INVARIANT_RATIO = 70e16; // 70%
 
     // The invariant is used to collect protocol swap fees by comparing its value between two times.
     // So we can round always to the same direction. It is also used to initiate the BPT amount and,
