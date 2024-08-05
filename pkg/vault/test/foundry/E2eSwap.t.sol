@@ -664,7 +664,7 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 liquidityTokenA,
         uint256 liquidityTokenB
     ) private returns (uint256 amountIn) {
-        // Set liquidity of pool.
+        // Set pool liquidity.
         _setPoolBalances(liquidityTokenA, liquidityTokenB);
 
         // Since tokens can have different decimals and amountIn is in relation to tokenA, normalize tokenB liquidity.
