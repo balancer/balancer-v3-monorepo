@@ -70,36 +70,6 @@ contract VaultStorage {
     // solhint-enable var-name-mixedcase
 
     /***************************************************************************
-                                Contract References
-    ***************************************************************************/
-
-    // Contract in charge of setting permissions.
-    IAuthorizer internal _authorizer;
-
-    // Contract that receives aggregate swap and yield fees.
-    IProtocolFeeController internal _protocolFeeController;
-
-    /***************************************************************************
-                                    Vault State
-    ***************************************************************************/
-
-    // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
-
-    uint32 internal immutable _vaultPauseWindowEndTime;
-    uint32 internal immutable _vaultBufferPeriodEndTime;
-    // Stored as a convenience, to avoid calculating it on every operation.
-    uint32 internal immutable _vaultBufferPeriodDuration;
-
-    // Bytes32 with pause flags for the Vault, buffers, and queries.
-    VaultStateBits internal _vaultStateBits;
-
-    /**
-     * @dev Represents the total reserve of each ERC20 token. It should always be equal to `token.balanceOf(vault)`,
-     * except during `unlock`.
-     */
-    mapping(IERC20 => uint256) internal _reservesOf;
-
-    /***************************************************************************
                                     Pool State
     ***************************************************************************/
 
@@ -132,6 +102,36 @@ contract VaultStorage {
     mapping(address => mapping(IERC20 => bytes32)) internal _aggregateFeeAmounts;
 
     /***************************************************************************
+                                    Vault State
+    ***************************************************************************/
+
+    // The Pause Window and Buffer Period are timestamp-based: they should not be relied upon for sub-minute accuracy.
+    uint32 internal immutable _vaultPauseWindowEndTime;
+    uint32 internal immutable _vaultBufferPeriodEndTime;
+
+    // Stored as a convenience, to avoid calculating it on every operation.
+    uint32 internal immutable _vaultBufferPeriodDuration;
+
+    // Bytes32 with pause flags for the Vault, buffers, and queries.
+    VaultStateBits internal _vaultStateBits;
+
+    /**
+     * @dev Represents the total reserve of each ERC20 token. It should be always equal to `token.balanceOf(vault)`,
+     * except during `unlock`.
+     */
+    mapping(IERC20 => uint256) internal _reservesOf;
+
+    /***************************************************************************
+                                Contract References
+    ***************************************************************************/
+
+    // Upgradeable contract in charge of setting permissions.
+    IAuthorizer internal _authorizer;
+
+    // Contract that receives aggregate swap and yield fees.
+    IProtocolFeeController internal _protocolFeeController;
+
+    /***************************************************************************
                                   ERC4626 Buffers
     ***************************************************************************/
 
@@ -154,7 +154,8 @@ contract VaultStorage {
 
     // Wrapped token address -> user address -> LP balance.
     mapping(IERC4626 => mapping(address => uint256)) internal _bufferLpShares;
-    // Total LP shares
+
+    // Total LP shares.
     mapping(IERC4626 => uint256) internal _bufferTotalShares;
 
     // Prevents a malicious ERC4626 from changing the asset after the buffer was initialized.
