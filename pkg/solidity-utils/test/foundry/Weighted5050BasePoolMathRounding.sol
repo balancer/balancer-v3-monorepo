@@ -8,7 +8,8 @@ import "./utils/BasePoolMathRoundingTest.sol";
 
 contract Weighted5050BasePoolMathRounding is BasePoolMathRoundingTest {
     function setUp() public override {
-        // The delta is dependent on the implementations of computeInvariant and computeBalances. For Weighted5050, the delta is slightly higher
+        // The delta is dependent on the implementations of computeInvariant and computeBalances.
+        // For Weighted5050, the delta is slightly higher
         delta = 1e4;
 
         BasePoolMathRoundingTest.setUp();

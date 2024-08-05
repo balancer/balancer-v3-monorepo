@@ -8,7 +8,8 @@ import "./utils/BasePoolMathRoundingTest.sol";
 
 contract UniswapV2BasePoolMathRoundingTest is BasePoolMathRoundingTest {
     function setUp() public override {
-        // The delta is dependent on the implementations of computeInvariant and computeBalances. For UniswapV2, the delta is slightly higher due to the sqrt operation.
+        // The delta is dependent on the implementations of computeInvariant and computeBalances.
+        // For UniswapV2, the delta is slightly higher due to the sqrt operation.
         delta = 1e9;
         BasePoolMathRoundingTest.setUp();
     }
