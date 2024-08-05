@@ -81,7 +81,7 @@ interface IRouterCommon {
         IAllowanceTransfer.PermitBatch calldata permit2Batch,
         bytes calldata permit2Signature,
         bytes[] calldata multicallData
-    ) external returns (bytes[] memory results);
+    ) external payable returns (bytes[] memory results);
 
     /**
      * @notice Executes a batch of function calls on this contract.

@@ -123,7 +123,7 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         IAllowanceTransfer.PermitBatch calldata permit2Batch,
         bytes calldata permit2Signature,
         bytes[] calldata multicallData
-    ) external virtual saveSender returns (bytes[] memory results) {
+    ) external payable virtual saveSender returns (bytes[] memory results) {
         // Use Permit (ERC-2612) to grant allowances to Permit2 for tokens to swap,
         // and grant allowances to Vault for BPT tokens.
         for (uint256 i = 0; i < permitBatch.length; ++i) {
