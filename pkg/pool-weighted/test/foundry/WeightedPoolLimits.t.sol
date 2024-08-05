@@ -201,7 +201,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         vm.prank(bob);
         uint256[] memory actualAmountsIn = router.addLiquidityProportional(
             pool,
-            newAmountsIn,
+            [newAmountsIn[0] + DELTA, newAmountsIn[1] + DELTA].toMemoryArray(),
             expectedBptAmountOut,
             false,
             bytes("")
