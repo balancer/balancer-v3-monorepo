@@ -903,7 +903,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                 pool: params.pool,
                 from: params.sender,
                 maxBptAmountIn: params.maxBptAmountIn,
-                minAmountsOut: minWrappedAmountsIn,
+                minAmountsOut: new uint256[](erc4626PoolTokens.length),
                 kind: params.kind,
                 userData: params.userData
             })
