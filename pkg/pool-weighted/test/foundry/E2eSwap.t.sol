@@ -9,6 +9,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
@@ -22,6 +23,7 @@ import { WeightedPoolMock } from "../../contracts/test/WeightedPoolMock.sol";
 
 contract E2eSwapWeightedTest is E2eSwapTest {
     using ArrayHelpers for *;
+    using CastingHelpers for address[];
     using FixedPoint for uint256;
 
     uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
