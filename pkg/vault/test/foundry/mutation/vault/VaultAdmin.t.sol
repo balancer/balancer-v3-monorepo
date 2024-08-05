@@ -296,17 +296,17 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     function testGetBufferOwnerSharesWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.getBufferOwnerShares(dai, alice);
+        vaultAdmin.getBufferOwnerShares(IERC4626(address(dai)), alice);
     }
 
     function testGetBufferTotalSharesWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.getBufferTotalShares(dai);
+        vaultAdmin.getBufferTotalShares(IERC4626(address(dai)));
     }
 
     function testGetBufferBalanceWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.getBufferBalance(dai);
+        vaultAdmin.getBufferBalance(IERC4626(address(dai)));
     }
 
     function testSetAuthorizerWhenNotAuthenticated() public {
