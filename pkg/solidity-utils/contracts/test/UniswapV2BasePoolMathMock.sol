@@ -13,7 +13,7 @@ contract UniswapV2BasePoolMathMock is BasePoolMathMock {
     function computeInvariant(uint256[] memory balancesLiveScaled18) public pure override returns (uint256 invariant) {
         require(balancesLiveScaled18.length == 2, "UniswapV2BasePoolMathMock: Only 2 tokens are supported");
 
-        // expected to work with 2 tokens only
+        // Expected to work with 2 tokens only.
         invariant = FixedPoint.ONE;
         for (uint256 i = 0; i < balancesLiveScaled18.length; ++i) {
             invariant = invariant.mulDown(balancesLiveScaled18[i]);
