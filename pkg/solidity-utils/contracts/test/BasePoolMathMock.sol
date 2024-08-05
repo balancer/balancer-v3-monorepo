@@ -7,31 +7,16 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import "../math/FixedPoint.sol";
-import "../math/WeightedMath.sol";
 import "../math/BasePoolMath.sol";
 
-contract BasePoolMathMock is IBasePool {
-    using FixedPoint for uint256;
-
-    function computeInvariant(uint256[] memory balances) public pure returns (uint256) {
-        // inv = x + y
-        uint256 invariant;
-        for (uint256 i = 0; i < balances.length; ++i) {
-            invariant += balances[i];
-        }
-        return invariant;
-    }
+abstract contract BasePoolMathMock is IBasePool {
+    function computeInvariant(uint256[] memory balances) public view virtual returns (uint256);
 
     function computeBalance(
         uint256[] memory balances,
         uint256 tokenInIndex,
         uint256 invariantRatio
-    ) external pure returns (uint256 newBalance) {
-        // inv = x + y
-        uint256 invariant = computeInvariant(balances);
-        return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
-    }
+    ) external view virtual returns (uint256 newBalance);
 
     function computeProportionalAmountsIn(
         uint256[] memory balances,
