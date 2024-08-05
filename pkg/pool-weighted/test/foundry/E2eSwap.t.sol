@@ -81,8 +81,8 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         ) / 4;
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
-        // getBalances measures the poolInvariant of `pool` variable. In this test another pool variable is used, so
-        // poolInvariant should be overriden.
+        // `BaseVaultTest.getBalances` checks the poolInvariant of `pool`. In this test, a different pool is used, so
+        // poolInvariant should be overwritten.
         balancesBefore.poolInvariant = _calculatePoolInvariant(address(poolWithChangeableWeights));
 
         vm.startPrank(sender);
@@ -117,8 +117,8 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         vm.stopPrank();
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
-        // getBalances measures the poolInvariant of `pool` variable. In this test another pool variable is used, so
-        // poolInvariant should be overriden.
+        // `BaseVaultTest.getBalances` checks the poolInvariant of `pool`. In this test, a different pool is used, so
+        // poolInvariant should be overwritten.
         balancesAfter.poolInvariant = _calculatePoolInvariant(address(poolWithChangeableWeights));
 
         assertLe(exactAmountOutUndo, exactAmountIn - feesTokenA, "Amount out undo should be <= exactAmountIn");
@@ -144,8 +144,8 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         ) / 4;
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
-        // getBalances measures the poolInvariant of `pool` variable. In this test another pool variable is used, so
-        // poolInvariant should be overriden.
+        // `BaseVaultTest.getBalances` checks the poolInvariant of `pool`. In this test, a different pool is used, so
+        // poolInvariant should be overwritten.
         balancesBefore.poolInvariant = _calculatePoolInvariant(address(poolWithChangeableWeights));
 
         vm.startPrank(sender);
@@ -180,8 +180,8 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         vm.stopPrank();
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
-        // getBalances measures the poolInvariant of `pool` variable. In this test another pool variable is used, so
-        // poolInvariant should be overriden.
+        // `BaseVaultTest.getBalances` checks the poolInvariant of `pool`. In this test, a different pool is used, so
+        // poolInvariant should be overwritten.
         balancesAfter.poolInvariant = _calculatePoolInvariant(address(poolWithChangeableWeights));
 
         assertGe(exactAmountInUndo, exactAmountOut + feesTokenB, "Amount in undo should be >= exactAmountOut");
