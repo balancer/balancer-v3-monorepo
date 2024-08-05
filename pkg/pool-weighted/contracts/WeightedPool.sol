@@ -8,6 +8,9 @@ import {
     WeightedPoolImmutableData
 } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
+import {
+    IUnbalancedLiquidityInvariantRatioBounds
+} from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { SwapKind, PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -37,6 +40,10 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     // Maximum values protect users by preventing permissioned actors from setting excessively high swap fees.
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
+
+    // A minimum normalized weight imposes a maximum weight ratio. We need this due to limitations in the
+    // implementation of the fixed point power function, as these ratios are often exponents.
+    uint256 private constant _MIN_WEIGHT = 1e16; // 1%
 
     uint256 private immutable _totalTokens;
 
@@ -75,7 +82,7 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
         for (uint8 i = 0; i < _totalTokens; ++i) {
             uint256 normalizedWeight = params.normalizedWeights[i];
 
-            if (normalizedWeight < WeightedMath._MIN_WEIGHT) {
+            if (normalizedWeight < _MIN_WEIGHT) {
                 revert MinWeight();
             }
             normalizedSum = normalizedSum + normalizedWeight;
@@ -192,6 +199,16 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     /// @inheritdoc ISwapFeePercentageBounds
     function getMaximumSwapFeePercentage() external pure returns (uint256) {
         return _MAX_SWAP_FEE_PERCENTAGE;
+    }
+
+    /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
+    function getMinimumInvariantRatio() external pure returns (uint256) {
+        return WeightedMath._MIN_INVARIANT_RATIO;
+    }
+
+    /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
+    function getMaximumInvariantRatio() external pure returns (uint256) {
+        return WeightedMath._MAX_INVARIANT_RATIO;
     }
 
     /// @inheritdoc IWeightedPool

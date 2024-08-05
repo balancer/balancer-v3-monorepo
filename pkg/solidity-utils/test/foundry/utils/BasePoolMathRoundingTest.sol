@@ -13,7 +13,8 @@ abstract contract BasePoolMathRoundingTest is Test {
     uint256 constant MAX_AMOUNT = 1000e18;
 
     uint256 constant MIN_SWAP_FEE = 0;
-    uint256 constant MAX_SWAP_FEE = 0.8e18;
+    // Max swap fee of 50%. In practice this is way too high for a static fee anyways.
+    uint256 constant MAX_SWAP_FEE = 50e16;
 
     uint256 delta = 1e3;
 

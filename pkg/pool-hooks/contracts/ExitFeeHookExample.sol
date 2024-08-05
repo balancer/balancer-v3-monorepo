@@ -38,7 +38,7 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 contract ExitFeeHookExample is BaseHooks, Ownable {
     using FixedPoint for uint256;
 
-    // Percentages are represented as 18-decimal FP numbers, which have a maximum value of 100e16 (100%),
+    // Percentages are represented as 18-decimal FP numbers, which have a maximum value of FixedPoint.ONE (100%),
     // so 60 bits are sufficient.
     uint64 public exitFeePercentage;
 

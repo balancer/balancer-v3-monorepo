@@ -2,9 +2,14 @@
 
 pragma solidity ^0.8.24;
 
+import {
+    IUnbalancedLiquidityInvariantRatioBounds
+} from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
+import { PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import "../math/BasePoolMath.sol";
 
-abstract contract BasePoolMathMock {
+abstract contract BasePoolMathMock is IBasePool {
     function computeInvariant(uint256[] memory balances) public view virtual returns (uint256);
 
     function computeBalance(
@@ -41,7 +46,7 @@ abstract contract BasePoolMathMock {
                 exactAmounts,
                 totalSupply,
                 swapFeePercentage,
-                this.computeInvariant
+                IBasePool(address(this))
             );
     }
 
@@ -59,7 +64,7 @@ abstract contract BasePoolMathMock {
                 exactBptAmountOut,
                 totalSupply,
                 swapFeePercentage,
-                this.computeBalance
+                IBasePool(address(this))
             );
     }
 
@@ -77,7 +82,7 @@ abstract contract BasePoolMathMock {
                 exactAmountOut,
                 totalSupply,
                 swapFeePercentage,
-                this.computeInvariant
+                IBasePool(address(this))
             );
     }
 
@@ -95,7 +100,27 @@ abstract contract BasePoolMathMock {
                 exactBptAmountIn,
                 totalSupply,
                 swapFeePercentage,
-                this.computeBalance
+                IBasePool(address(this))
             );
+    }
+
+    function getMinimumInvariantRatio() external pure override returns (uint256) {
+        return 0;
+    }
+
+    function getMaximumInvariantRatio() external pure override returns (uint256) {
+        return 1_000_000 * 1e18;
+    }
+
+    function getMinimumSwapFeePercentage() external pure override returns (uint256) {
+        return 0;
+    }
+
+    function getMaximumSwapFeePercentage() external pure override returns (uint256) {
+        return 1e18;
+    }
+
+    function onSwap(PoolSwapParams calldata) external pure returns (uint256) {
+        revert("Not implemented");
     }
 }

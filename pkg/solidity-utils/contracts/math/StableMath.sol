@@ -4,15 +4,18 @@ pragma solidity ^0.8.24;
 
 import "./FixedPoint.sol";
 
-// Some variables have non mixed case names (e.g. P_D) that relate to the mathematical derivations.
-// solhint-disable private-vars-leading-underscore, var-name-mixedcase
-
+/**
+ * @notice Stable Pool math library based on Curve's `StableSwap`.
+ * @dev See https://docs.curve.fi/references/whitepapers/stableswap/
+ *
+ * For security reasons, to help ensure that for all possible "round trip" paths the caller always receives the same
+ * or fewer tokens than supplied, we have chosen the rounding direction to favor the protocol in all cases.
+ */
 library StableMath {
     using FixedPoint for uint256;
 
-    // For security reasons, to help ensure that for all possible "round trip" paths
-    // the caller always receives the same or fewer tokens than supplied,
-    // we have chosen the rounding direction to favor the protocol in all cases.
+    // Some variables have non mixed case names (e.g. P_D) that relate to the mathematical derivations.
+    // solhint-disable private-vars-leading-underscore, var-name-mixedcase
 
     /// @dev The iterations to calculate the invariant didn't converge.
     error StableInvariantDidNotConverge();
@@ -20,7 +23,7 @@ library StableMath {
     /// @dev The iterations to calculate the balance didn't converge.
     error StableGetBalanceDidNotConverge();
 
-    // The max token count is limited by the math, and less than the Vault's maximum.
+    // The max token count is limited by the math, and is less than the Vault's maximum.
     uint256 public constant MAX_STABLE_TOKENS = 5;
 
     uint256 internal constant MIN_AMP = 1;

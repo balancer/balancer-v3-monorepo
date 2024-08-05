@@ -14,6 +14,7 @@ import { TokenInfo, TokenType, PoolConfig } from "@balancer-labs/v3-interfaces/c
 import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
 import { PoolInfo } from "../../contracts/PoolInfo.sol";
@@ -39,7 +40,7 @@ contract PoolInfoTest is BaseTest {
         vm.mockCall(
             address(poolInfo),
             abi.encodeWithSelector(ISwapFeePercentageBounds.getMaximumSwapFeePercentage.selector),
-            abi.encode(100e16)
+            abi.encode(FixedPoint.ONE) // 100%
         );
         vault.manualRegisterPool(address(poolInfo), poolTokens);
     }
@@ -155,5 +156,20 @@ contract PoolInfoTest is BaseTest {
 
         uint256 swapFeePercentage = poolInfo.getStaticSwapFeePercentage();
         assertEq(swapFeePercentage, expectedSwapFeePercentage, "Incorrect swap fee percentage");
+    }
+
+    function testGetAggregateFeePercentages() public {
+        // Use unusual values that aren't used anywhere else.
+        uint256 expectedSwapFeePercentage = 32e16;
+        uint256 expectedYieldFeePercentage = 21e16;
+
+        vault.manualSetAggregateSwapFeePercentage(address(poolInfo), expectedSwapFeePercentage);
+        vault.manualSetAggregateYieldFeePercentage(address(poolInfo), expectedYieldFeePercentage);
+
+        (uint256 actualAggregateSwapFeePercentage, uint256 actualAggregateYieldFeePercentage) = poolInfo
+            .getAggregateFeePercentages();
+
+        assertEq(actualAggregateSwapFeePercentage, expectedSwapFeePercentage, "Incorrect swap fee percentage");
+        assertEq(actualAggregateYieldFeePercentage, expectedYieldFeePercentage, "Incorrect yield fee percentage");
     }
 }

@@ -186,7 +186,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             exactAmountsInScaled18,
             IERC20(pool).totalSupply(),
             0,
-            IBasePool(pool).computeInvariant
+            IBasePool(pool)
         );
 
         uint256 snapshotId = vm.snapshot();
@@ -223,7 +223,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             exactBptAmountOut,
             IERC20(pool).totalSupply(),
             0,
-            IBasePool(pool).computeBalance
+            IBasePool(pool)
         );
         uint256 expectedAmountInRaw = expectedAmountInScaled18.divUp(daiMockRate);
 
@@ -350,7 +350,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             exactBptAmountIn,
             IERC20(pool).totalSupply(),
             0,
-            IBasePool(pool).computeBalance
+            IBasePool(pool)
         );
         uint256 expectedAmountOutRaw = expectedAmountOutScaled18.divDown(daiMockRate);
 
@@ -393,7 +393,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             exactAmountOut.mulUp(daiMockRate),
             IERC20(pool).totalSupply(),
             0,
-            IBasePool(pool).computeInvariant
+            IBasePool(pool)
         );
 
         uint256 snapshotId = vm.snapshot();
