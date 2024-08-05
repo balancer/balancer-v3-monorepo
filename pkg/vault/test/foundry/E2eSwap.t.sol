@@ -600,6 +600,9 @@ contract E2eSwapTest is BaseVaultTest {
         tokenDecimalDiffs[tokenAIdx] = uint8(18 - decimalsTokenA);
         tokenDecimalDiffs[tokenBIdx] = uint8(18 - decimalsTokenB);
 
+        // Token decimals are read only during the pool initialization and are then stored in the PoolConfig struct.
+        // During vault operations, the decimals used to scale token amounts accordingly are read from PoolConfig.
+        // This test leverages this behavior by setting the token decimals exclusively in the pool configuration.
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
         poolConfig.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         vault.manualSetPoolConfig(pool, poolConfig);
@@ -611,6 +614,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         _setPoolBalances(poolInitAmountTokenA, poolInitAmountTokenB);
 
+        // Min and Max swap amounts depends on the decimals of each token, so a recalculation is needed.
         calculateMinAndMaxSwapAmounts();
     }
 }
