@@ -609,6 +609,8 @@ contract E2eSwapTest is BaseVaultTest {
         poolInitAmountTokenA = poolInitAmount.mulDown(10 ** decimalsTokenA);
         poolInitAmountTokenB = poolInitAmount.mulDown(10 ** decimalsTokenB);
 
+        _setPoolBalances(poolInitAmountTokenA, poolInitAmountTokenB);
+
         calculateMinAndMaxSwapAmounts();
     }
 }
