@@ -172,6 +172,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
+        // User does not get any value out of the Vault.
         assertLe(exactAmountOutUndo, exactAmountIn, "Amount out undo should be <= exactAmountIn");
 
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
@@ -213,6 +214,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
+        // User does not get any value out of the Vault.
         assertLe(exactAmountOutUndo, exactAmountIn, "Amount out undo should be <= exactAmountIn");
 
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
@@ -259,6 +261,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
+        // User does not get any value out of the Vault.
         assertLe(exactAmountOutUndo, exactAmountIn - feesTokenA, "Amount out undo should be <= exactAmountIn");
 
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
@@ -315,6 +318,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
+        // User does not get any value out of the Vault.
         assertLe(exactAmountOutUndo, exactAmountIn - feesTokenA, "Amount out undo should be <= exactAmountIn");
 
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
@@ -378,6 +382,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
+        // User does not get any value out of the Vault.
         assertLe(exactAmountOutUndo, exactAmountIn - feesTokenA, "Amount out undo should be <= exactAmountIn");
 
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
@@ -417,6 +422,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
+        // User does not get any value out of the Vault.
         assertGe(exactAmountInUndo, exactAmountOut, "Amount in undo should be >= exactAmountOut");
 
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
@@ -459,6 +465,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
+        // User does not get any value out of the Vault.
         assertGe(exactAmountInUndo, exactAmountOut, "Amount in undo should be >= exactAmountOut");
 
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, 0, 0);
@@ -505,6 +512,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
+        // User does not get any value out of the Vault.
         assertGe(exactAmountInUndo, exactAmountOut + feesTokenB, "Amount in undo should be >= exactAmountOut");
 
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
@@ -560,6 +568,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
+        // User does not get any value out of the Vault.
         assertGe(exactAmountInUndo, exactAmountOut + feesTokenB, "Amount in undo should be >= exactAmountOut");
 
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
@@ -622,6 +631,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender);
 
+        // User does not get any value out of the Vault.
         assertGe(exactAmountInUndo, exactAmountOut + feesTokenB, "Amount in undo should be >= exactAmountOut");
 
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
