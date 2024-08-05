@@ -108,13 +108,13 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
         assertApproxEqAbs(
-            vault.getBufferOwnerShares(IERC20(ybToken1), lp),
+            vault.getBufferOwnerShares(ybToken1, lp),
             _token1BufferInitAmount * 2 - MIN_BPT,
             1,
             "Wrong share of ybToken1 buffer belonging to LP"
         );
         assertApproxEqAbs(
-            vault.getBufferOwnerShares(IERC20(ybToken2), lp),
+            vault.getBufferOwnerShares(ybToken2, lp),
             (_token2BufferInitAmount * 2) - MIN_BPT,
             1,
             "Wrong share of ybToken2 buffer belonging to LP"
@@ -122,13 +122,13 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         // Buffer should have the correct amount of issued shares
         assertApproxEqAbs(
-            vault.getBufferTotalShares(IERC20(ybToken1)),
+            vault.getBufferTotalShares(ybToken1),
             _token1BufferInitAmount * 2,
             1,
             "Wrong issued shares of ybToken1 buffer"
         );
         assertApproxEqAbs(
-            vault.getBufferTotalShares(IERC20(ybToken2)),
+            vault.getBufferTotalShares(ybToken2),
             (_token2BufferInitAmount * 2),
             1,
             "Wrong issued shares of ybToken2 buffer"
@@ -138,7 +138,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         uint256 wrappedBalance;
 
         // The vault buffers should each have `bufferAmount` of their respective tokens.
-        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(ybToken1));
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(ybToken1);
         assertEq(underlyingBalance, _token1BufferInitAmount, "Wrong ybToken1 buffer balance for underlying token");
         assertEq(
             wrappedBalance,
@@ -146,7 +146,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             "Wrong ybToken1 buffer balance for wrapped token"
         );
 
-        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(ybToken2));
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(ybToken2);
         assertEq(underlyingBalance, _token2BufferInitAmount, "Wrong ybToken2 buffer balance for underlying token");
         assertEq(
             wrappedBalance,
@@ -808,10 +808,10 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         uint256 underlyingBalance;
         uint256 wrappedBalance;
-        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(address(ybTokenIn)));
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(ybTokenIn);
         vars.bufferBeforeSwapTokenIn = underlyingBalance;
         vars.bufferBeforeSwapYbTokenIn = wrappedBalance;
-        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(address(ybTokenOut)));
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(ybTokenOut);
         vars.bufferBeforeSwapTokenOut = underlyingBalance;
         vars.bufferBeforeSwapYbTokenOut = wrappedBalance;
 

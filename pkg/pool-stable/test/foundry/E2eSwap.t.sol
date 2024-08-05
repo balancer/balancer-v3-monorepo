@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
@@ -17,7 +17,7 @@ import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
 
 contract E2eSwapStableTest is E2eSwapTest {
-    using ArrayHelpers for *;
+    using CastingHelpers for address[];
 
     uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
@@ -30,17 +30,19 @@ contract E2eSwapStableTest is E2eSwapTest {
         sender = lp;
         poolCreator = lp;
 
+        // 0.0001% max swap fee.
+        minPoolSwapFeePercentage = 1e12;
+        // 10% max swap fee.
+        maxPoolSwapFeePercentage = 10e16;
+    }
+
+    function calculateMinAndMaxSwapAmounts() internal override {
         minSwapAmountTokenA = poolInitAmountTokenA / 1e3;
         minSwapAmountTokenB = poolInitAmountTokenB / 1e3;
 
         // Divide init amount by 2 to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
         maxSwapAmountTokenA = poolInitAmountTokenA / 2;
         maxSwapAmountTokenB = poolInitAmountTokenB / 2;
-
-        // 0.0001% max swap fee.
-        minPoolSwapFeePercentage = 1e12;
-        // 10% max swap fee.
-        maxPoolSwapFeePercentage = 10e16;
     }
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
@@ -48,7 +50,7 @@ contract E2eSwapStableTest is E2eSwapTest {
         StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
-        // Allow pools created by `factory` to use poolHooksMock hooks
+        // Allow pools created by `factory` to use poolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
         StablePool newPool = StablePool(
@@ -58,7 +60,7 @@ contract E2eSwapStableTest is E2eSwapTest {
                 vault.buildTokenConfig(tokens.asIERC20()),
                 DEFAULT_AMP_FACTOR,
                 roleAccounts,
-                DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it.
+                DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
                 poolHooksContract,
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity
@@ -67,7 +69,7 @@ contract E2eSwapStableTest is E2eSwapTest {
         );
         vm.label(address(newPool), label);
 
-        // Cannot set pool creator directly with stable pool factory.
+        // Cannot set the pool creator directly on a standard Balancer stable pool factory.
         vault.manualSetPoolCreator(address(newPool), lp);
 
         ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));

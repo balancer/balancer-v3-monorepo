@@ -57,6 +57,8 @@ interface IVaultMainMock {
 
     function manualSetPoolTokensAndBalances(address, IERC20[] memory, uint256[] memory, uint256[] memory) external;
 
+    function manualSetPoolBalances(address, uint256[] memory, uint256[] memory) external;
+
     function manualSetPoolConfigBits(address pool, PoolConfigBits config) external;
 
     function mockIsUnlocked() external view;
