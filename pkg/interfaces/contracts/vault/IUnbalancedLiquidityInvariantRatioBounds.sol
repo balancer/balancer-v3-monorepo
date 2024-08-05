@@ -4,8 +4,10 @@ pragma solidity ^0.8.24;
 
 /**
  * @notice Return the minimum/maximum invariant ratios allowed during an unbalanced liquidity operation.
- * @dev The Vault does not enforce bounds on invariant ratios; `IBasePool` implements this interface to ensure
- * that new pool developers think about and set these bounds according to their specific pool type.
+ * @dev The Vault does not enforce any "baseline" bounds on invariant ratios, since such bounds are highly specific
+ * and dependent on the math of each pool type. Instead, the Vault reads invariant ratio bounds from the pools.
+ * `IBasePool` implements this interface to ensure that new pool developers think about and set these bounds according
+ * to their pool type's math.
  *
  * For instance, Balancer Weighted Pool math involves exponentiation (the `pow` function), which uses natural
  * logarithms and a discrete Taylor series expansion to compute x^y values for the 18-decimal floating point numbers
