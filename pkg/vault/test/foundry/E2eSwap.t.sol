@@ -548,7 +548,7 @@ contract E2eSwapTest is BaseVaultTest {
             );
         } else {
             // Accepts an error of 0.0000001% between amountIn from ExactOut and ExactIn swaps. This error is caused by
-            // differences in computeInGivenExactOut and computeOutGivenExactIn functions of the pool math.
+            // differences in the computeInGivenExactOut and computeOutGivenExactIn functions of the pool math.
             assertApproxEqRel(exactAmountInSwap, exactAmountIn, 1e9, "ExactOut and ExactIn amountsIn should match");
         }
     }
@@ -588,7 +588,6 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
         vm.stopPrank();
 
-
         if (decimalsTokenA != decimalsTokenB) {
             // If tokens have different decimals, an error is introduced in the computeBalance in the order of the
             // difference of the decimals.
@@ -606,7 +605,7 @@ contract E2eSwapTest is BaseVaultTest {
             );
         } else {
             // Accepts an error of 0.0000001% between amountIn from ExactOut and ExactIn swaps. This error is caused by
-            // differences in computeInGivenOut and computeOutGivenIn functions of the pool math.
+            // differences in the computeInGivenOut and computeOutGivenIn functions of the pool math.
             assertApproxEqRel(
                 exactAmountInSwap - feesTokenA,
                 exactAmountIn,
