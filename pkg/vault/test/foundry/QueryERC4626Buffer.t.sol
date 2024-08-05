@@ -84,7 +84,11 @@ contract QueryERC4626BufferTest is BaseVaultTest {
 
         // Buffer should have the correct amount of issued shares.
         assertEq(vault.getBufferTotalShares(IERC4626(waDAI)), bufferAmount * 2, "Wrong issued shares of waDAI buffer");
-        assertEq(vault.getBufferTotalShares(IERC4626(waUSDC)), bufferAmount * 2, "Wrong issued shares of waUSDC buffer");
+        assertEq(
+            vault.getBufferTotalShares(IERC4626(waUSDC)),
+            bufferAmount * 2,
+            "Wrong issued shares of waUSDC buffer"
+        );
 
         uint256 baseBalance;
         uint256 wrappedBalance;
