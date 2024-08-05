@@ -213,7 +213,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
                 poolHooksContract,
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity
-                // NOTE: sends a unique salt
+                // NOTE: sends a unique salt.
                 bytes32(poolCreationNonce++)
             )
         );
