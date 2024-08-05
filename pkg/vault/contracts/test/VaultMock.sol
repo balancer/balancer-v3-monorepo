@@ -196,6 +196,10 @@ contract VaultMock is IVaultMainMock, Vault {
         _setStaticSwapFeePercentage(pool, value);
     }
 
+    function manualUnsafeSetStaticSwapFeePercentage(address pool, uint256 value) public {
+        _poolConfigBits[pool] = _poolConfigBits[pool].setStaticSwapFeePercentage(value);
+    }
+
     function manualSetHooksConfig(address pool, HooksConfig memory hooksConfig) public {
         PoolConfigBits poolConfigBits = _poolConfigBits[pool];
 
@@ -655,5 +659,9 @@ contract VaultMock is IVaultMainMock, Vault {
         liquidityManagement.enableAddLiquidityCustom = true;
         liquidityManagement.enableRemoveLiquidityCustom = true;
         return liquidityManagement;
+    }
+
+    function manualSetPoolCreator(address pool, address newPoolCreator) public {
+        _poolRoleAccounts[pool].poolCreator = newPoolCreator;
     }
 }
