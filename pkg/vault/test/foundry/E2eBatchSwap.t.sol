@@ -11,7 +11,8 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
@@ -19,6 +20,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract E2eBatchSwapTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using CastingHelpers for address[];
 
     address internal poolA;
     address internal poolB;
@@ -109,7 +111,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
         maxSwapAmountTokenD = poolInitAmount;
     }
 
-    function testDoExactInUndoExactIn__Fuzz(uint256 exactAmountIn) public {
+    function testDoUndoExactIn__Fuzz(uint256 exactAmountIn) public {
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
         // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
@@ -131,7 +133,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
         _checkUserBalancesAndPoolInvariants(balancesBefore, balancesAfter, invariantsBefore, invariantsAfter);
     }
 
-    function testDoExactOutUndoExactOut__Fuzz(uint256 exactAmountOut) public {
+    function testDoUndoExactOut__Fuzz(uint256 exactAmountOut) public {
         exactAmountOut = bound(exactAmountOut, minSwapAmountTokenD, maxSwapAmountTokenD);
 
         // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
