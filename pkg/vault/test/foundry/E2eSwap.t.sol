@@ -532,7 +532,8 @@ contract E2eSwapTest is BaseVaultTest {
         vm.stopPrank();
 
         if (decimalsTokenA != decimalsTokenB) {
-            // If tokens have different decimals, `computeBalance` will be off by an order of magnitude proportional to the difference in decimals.
+            // If tokens have different decimals, `computeBalance` will be off by an order of magnitude proportional to
+            // the difference in decimals.
             uint256 tolerance;
             if (decimalsTokenA < decimalsTokenB) {
                 tolerance = 10 ** (decimalsTokenB - decimalsTokenA + 1);
