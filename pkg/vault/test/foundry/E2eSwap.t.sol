@@ -181,7 +181,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         uint256 exactAmountIn = _setPoolBalancesAndGetAmountIn(liquidityTokenA, liquidityTokenB);
 
-        // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
+        // Set swap fees to 0 (do not check pool fee percentage limits; some pool types do not accept 0 fees).
         vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
