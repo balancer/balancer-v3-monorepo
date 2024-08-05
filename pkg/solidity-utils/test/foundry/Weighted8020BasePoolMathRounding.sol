@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
 import { BasePoolMathMock } from "../../contracts/test/BasePoolMathMock.sol";
 import { WeightedBasePoolMathMock } from "../../contracts/test/WeightedBasePoolMathMock.sol";
