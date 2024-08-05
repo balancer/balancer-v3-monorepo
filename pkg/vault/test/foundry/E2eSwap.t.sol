@@ -140,7 +140,7 @@ contract E2eSwapTest is BaseVaultTest {
     function testDoExactInUndoExactInNoFees__Fuzz(uint256 exactAmountIn) public {
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
-        // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
+        // Set swap fees to 0 (do not check pool fee percentage limits; some pool types do not accept 0 fees).
         vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
