@@ -217,7 +217,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         );
         vm.label(address(newPool), label);
 
-        // Cannot set the pool creator directly on a standard Balancer stable pool factory.
+        // Cannot set the pool creator directly on a standard Balancer weighted pool factory.
         vault.manualSetPoolCreator(address(newPool), lp);
 
         ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
