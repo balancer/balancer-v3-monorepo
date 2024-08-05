@@ -128,7 +128,7 @@ contract VaultStorage {
 
     // Pool -> (Token -> fee): aggregate protocol swap/yield fees accumulated in the Vault for harvest.
     // Reusing PackedTokenBalance to save bytecode (despite differing semantics).
-    // It's arbitrary which is which: we define raw=swap; derived=yield
+    // It's arbitrary which is which: we define raw = swap; derived = yield.
     mapping(address => mapping(IERC20 => bytes32)) internal _aggregateFeeAmounts;
 
     /***************************************************************************
@@ -144,7 +144,9 @@ contract VaultStorage {
     // A buffer will only ever have two tokens: wrapped and underlying. We pack the wrapped and underlying balances
     // into a single bytes32, interpreted with the `PackedTokenBalance` library.
 
-    // ERC4626 token address -> PackedTokenBalance.
+    // ERC4626 token address -> PackedTokenBalance, which stores both the underlying and wrapped token balances.
+    // Reusing PackedTokenBalance to save bytecode (despite differing semantics).
+    // It's arbitrary which is which: we define raw = underlying token; derived = wrapped token.
     mapping(IERC4626 => bytes32) internal _bufferTokenBalances;
 
     // The LP balances for buffers. LP balances are not tokenized (i.e., represented by ERC20 tokens like BPT), but
