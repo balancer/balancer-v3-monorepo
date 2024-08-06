@@ -52,7 +52,12 @@ interface IVaultMainMock {
 
     function manualSetStaticSwapFeePercentage(address pool, uint256 value) external;
 
+    /// @dev Does not check the value against any min/max limits normally enforced by the pool.
+    function manualUnsafeSetStaticSwapFeePercentage(address pool, uint256 value) external;
+
     function manualSetPoolTokensAndBalances(address, IERC20[] memory, uint256[] memory, uint256[] memory) external;
+
+    function manualSetPoolBalances(address, uint256[] memory, uint256[] memory) external;
 
     function manualSetPoolConfigBits(address pool, PoolConfigBits config) external;
 
@@ -69,8 +74,6 @@ interface IVaultMainMock {
     function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256);
 
     function getBufferTokenBalancesBytes(IERC4626 wrappedToken) external view returns (bytes32);
-
-    function getMaxConvertError() external pure returns (uint256);
 
     function recoveryModeExit(address pool) external view;
 
@@ -252,4 +255,6 @@ interface IVaultMainMock {
     function manualSettleReentrancy(IERC20 token) external returns (uint256 paid);
 
     function manualSendToReentrancy(IERC20 token, address to, uint256 amount) external;
+
+    function manualSetPoolCreator(address pool, address newPoolCreator) external;
 }

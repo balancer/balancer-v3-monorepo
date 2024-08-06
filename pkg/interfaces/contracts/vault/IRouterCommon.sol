@@ -34,7 +34,7 @@ interface IRouterCommon {
      * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
      * @param maxBptAmountIn Maximum amount of pool tokens provided
      * @param kind Type of exit (e.g., single or multi-token)
-     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data sent with the request to remove liquidity
      */
     struct RemoveLiquidityHookParams {
@@ -81,7 +81,7 @@ interface IRouterCommon {
         IAllowanceTransfer.PermitBatch calldata permit2Batch,
         bytes calldata permit2Signature,
         bytes[] calldata multicallData
-    ) external returns (bytes[] memory results);
+    ) external payable returns (bytes[] memory results);
 
     /**
      * @notice Executes a batch of function calls on this contract.

@@ -678,7 +678,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     }
 
     /*******************************************************************************
-                            Yield-bearing token buffers
+                                ERC4626 Pools
     *******************************************************************************/
 
     /// @inheritdoc IBatchRouter
@@ -715,8 +715,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         uint256 exactBptAmountOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256[] memory amountsIn) {
-        amountsIn = abi.decode(
+    ) external payable saveSender returns (uint256[] memory underlyingAmountsIn) {
+        underlyingAmountsIn = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(
                     BatchRouter.addLiquidityERC4626PoolProportionalHook.selector,
@@ -736,14 +736,14 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     }
 
     /// @inheritdoc IBatchRouter
-    function removeLiquidityProportionalToERC4626Pool(
+    function removeLiquidityProportionalFromERC4626Pool(
         address pool,
         uint256 exactBptAmountIn,
         uint256[] memory minUnderlyingAmountsOut,
         bool wethIsEth,
         bytes memory userData
-    ) external payable saveSender returns (uint256[] memory amountsOut) {
-        amountsOut = abi.decode(
+    ) external payable saveSender returns (uint256[] memory underlyingAmountsOut) {
+        underlyingAmountsOut = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(
                     BatchRouter.removeLiquidityERC4626PoolProportionalHook.selector,
@@ -790,18 +790,17 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     /// @inheritdoc IBatchRouter
     function queryAddLiquidityProportionalToERC4626Pool(
         address pool,
-        uint256[] memory maxUnderlyingAmountsIn,
         uint256 exactBptAmountOut,
         bytes memory userData
-    ) external saveSender returns (uint256[] memory amountsIn) {
-        amountsIn = abi.decode(
+    ) external saveSender returns (uint256[] memory underlyingAmountsIn) {
+        underlyingAmountsIn = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
                     BatchRouter.addLiquidityERC4626PoolProportionalHook.selector,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
-                        maxAmountsIn: maxUnderlyingAmountsIn,
+                        maxAmountsIn: _maxTokenLimits(pool),
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.PROPORTIONAL,
                         wethIsEth: false,
@@ -814,12 +813,12 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     }
 
     /// @inheritdoc IBatchRouter
-    function queryRemoveLiquidityProportionalToERC4626Pool(
+    function queryRemoveLiquidityProportionalFromERC4626Pool(
         address pool,
         uint256 exactBptAmountIn,
         bytes memory userData
-    ) external saveSender returns (uint256[] memory amountsOut) {
-        amountsOut = abi.decode(
+    ) external saveSender returns (uint256[] memory underlyingAmountsOut) {
+        underlyingAmountsOut = abi.decode(
             _vault.quote(
                 abi.encodeWithSelector(
                     BatchRouter.removeLiquidityERC4626PoolProportionalHook.selector,
@@ -846,10 +845,11 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             params,
             erc4626PoolTokens,
             params.maxAmountsIn,
-            SwapKind.EXACT_IN
+            SwapKind.EXACT_IN,
+            new uint256[](erc4626PoolTokens.length)
         );
 
-        // Add wrapped amounts to the boosted pool
+        // Add wrapped amounts to the ERC4626 pool.
         (, bptAmountOut, ) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
@@ -866,44 +866,39 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         AddLiquidityHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256[] memory amountsIn) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
-        uint256[] memory maxWrappedAmountsIn = new uint256[](erc4626PoolTokens.length);
 
+        uint256[] memory maxUint128TypeAmounts = new uint256[](erc4626PoolTokens.length);
         for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
-            maxWrappedAmountsIn[i] = IERC4626(address(erc4626PoolTokens[i])).convertToShares(params.maxAmountsIn[i]);
+            maxUint128TypeAmounts[i] = _MAX_AMOUNT;
         }
 
-        // Add wrapped amounts to the boosted pool
+        // Add wrapped amounts to the ERC4626 pool.
         (amountsIn, , ) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                maxAmountsIn: maxWrappedAmountsIn,
+                maxAmountsIn: maxUint128TypeAmounts,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
             })
         );
 
-        _wrapTokens(params, erc4626PoolTokens, amountsIn, SwapKind.EXACT_OUT);
+        _wrapTokens(params, erc4626PoolTokens, amountsIn, SwapKind.EXACT_OUT, params.maxAmountsIn);
     }
 
     function removeLiquidityERC4626PoolProportionalHook(
         RemoveLiquidityHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
-        uint256[] memory minWrappedAmountsIn = new uint256[](erc4626PoolTokens.length);
         uint256[] memory underlyingAmountsOut = new uint256[](erc4626PoolTokens.length);
-
-        for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
-            minWrappedAmountsIn[i] = IERC4626(address(erc4626PoolTokens[i])).convertToAssets(params.minAmountsOut[i]);
-        }
 
         (, amountsOut, ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
                 pool: params.pool,
                 from: params.sender,
                 maxBptAmountIn: params.maxBptAmountIn,
-                minAmountsOut: minWrappedAmountsIn,
+                minAmountsOut: new uint256[](erc4626PoolTokens.length),
                 kind: params.kind,
                 userData: params.userData
             })
@@ -924,7 +919,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                     direction: WrappingDirection.UNWRAP,
                     wrappedToken: wrappedToken,
                     amountGivenRaw: amountsOut[i],
-                    limitRaw: 0, // We don't apply the limit here
+                    limitRaw: params.minAmountsOut[i],
                     userData: params.userData
                 })
             );
@@ -937,7 +932,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         AddLiquidityHookParams calldata params,
         IERC20[] memory erc4626PoolTokens,
         uint256[] memory amountsIn,
-        SwapKind kind
+        SwapKind kind,
+        uint256[] memory limits
     ) private returns (uint256[] memory wrappedAmounts) {
         wrappedAmounts = new uint256[](erc4626PoolTokens.length);
 
@@ -945,7 +941,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
         // Wrap given underlying tokens for wrapped tokens
         for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
-            // Boosted pool tokens are the wrappers
+            // ERC4626 pool tokens are all wrapped tokens.
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
             IERC20 underlyingToken = IERC20(wrappedToken.asset());
 
@@ -960,7 +956,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                     direction: WrappingDirection.WRAP,
                     wrappedToken: wrappedToken,
                     amountGivenRaw: amountsIn[i],
-                    limitRaw: kind == SwapKind.EXACT_IN ? 0 : type(uint128).max,
+                    limitRaw: limits[i],
                     userData: params.userData
                 })
             );

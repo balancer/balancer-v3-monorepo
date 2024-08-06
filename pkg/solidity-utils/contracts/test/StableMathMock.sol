@@ -6,10 +6,11 @@ import { StableMath } from "../math/StableMath.sol";
 import { FixedPoint } from "../math/FixedPoint.sol";
 import { RoundingMock } from "./RoundingMock.sol";
 
-// The `StableMathMock` contract mocks the `StableMath` library for testing purposes; hence its mock functions are meant
-// to be logically equivalent to the base ones (effectively copying them), but with the ability to control the rounding
-// permutation using the `RoundingMock` library.
-
+/**
+ * @dev This contract mocks the `StableMath` library for testing purposes. Its mock functions are meant to be
+ * logically equivalent to the base ones (effectively copying them), but with the ability to test all permutations
+ * of the rounding directions using the `RoundingMock` library.
+ */
 contract StableMathMock {
     using FixedPoint for uint256;
     using RoundingMock for uint256;
@@ -241,7 +242,7 @@ contract StableMathMock {
         sum = sum - balances[tokenIndex];
 
         uint256 inv2 = invariant * invariant;
-        uint256 c = (inv2.mockDivRaw(ampTimesTotal * P_D, roundingPermutation[0]) * StableMath.AMP_PRECISION) *
+        uint256 c = (inv2 * StableMath.AMP_PRECISION).mockDivRaw(ampTimesTotal * P_D, roundingPermutation[0]) *
             balances[tokenIndex];
         uint256 b = sum + ((invariant / ampTimesTotal) * StableMath.AMP_PRECISION);
         uint256 prevTokenBalance = 0;

@@ -17,7 +17,7 @@ import {
     HooksConfig
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import {
     ReentrancyGuardTransient
@@ -245,7 +245,7 @@ contract RouterMutationTest is BaseVaultTest {
 
         // tx.origin needs to be 0x0 for the transaction to be considered a query
         vm.prank(address(bob), address(0));
-        router.queryAddLiquidityProportional(pool, amountsIn, poolInitAmount.mulDown(2e18), bytes(""));
+        router.queryAddLiquidityProportional(pool, poolInitAmount.mulDown(2e18), bytes(""));
 
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
     }

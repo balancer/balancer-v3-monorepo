@@ -18,7 +18,7 @@ import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IV
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { RevertCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/RevertCodec.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
@@ -50,7 +50,7 @@ import { PoolDataLib } from "./lib/PoolDataLib.sol";
  */
 contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     using Address for *;
-    using ArrayHelpers for uint256[];
+    using CastingHelpers for uint256[];
     using FixedPoint for uint256;
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfigBits;

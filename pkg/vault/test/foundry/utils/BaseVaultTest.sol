@@ -6,6 +6,8 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
@@ -13,7 +15,8 @@ import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMo
 import { HookFlags, FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -30,6 +33,7 @@ import { VaultMockDeployer } from "./VaultMockDeployer.sol";
 import { Permit2Helpers } from "./Permit2Helpers.sol";
 
 abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
+    using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
@@ -48,6 +52,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         uint256[] vaultReserves;
         uint256[] poolTokens;
         uint256 poolSupply;
+        uint256 poolInvariant;
     }
 
     uint256 constant MIN_BPT = 1e6;
@@ -67,6 +72,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     BatchRouterMock internal batchRouter;
     // Authorizer mock.
     BasicAuthorizerMock internal authorizer;
+    // Fee controller deployed with the Vault.
+    IProtocolFeeController internal feeController;
     // Pool for tests.
     address internal pool;
     // Rate provider mock.
@@ -98,6 +105,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Applies to Weighted Pools.
     uint256 constant MIN_SWAP_FEE = 1e12; // 0.00001%
     uint256 constant MAX_SWAP_FEE = 10e16; // 10%
+    uint256 constant FIFTY_PERCENT = 50e16; // 50%
     uint256 constant MIN_TRADE_AMOUNT = 1e6;
 
     function setUp() public virtual override {
@@ -117,6 +125,9 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         vm.label(address(router), "router");
         batchRouter = new BatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
+        feeController = vault.getProtocolFeeController();
+        vm.label(address(feeController), "fee controller");
+
         poolHooksContract = createHook();
         pool = createPool();
 
@@ -225,8 +236,10 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
         balances.poolSupply = IERC20(pool).totalSupply();
 
-        (IERC20[] memory tokens, , uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(pool);
+        (IERC20[] memory tokens, , uint256[] memory poolBalances, uint256[] memory lastBalancesLiveScaled18) = vault
+            .getPoolTokenInfo(pool);
         balances.poolTokens = poolBalances;
+        balances.poolInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18);
         balances.userTokens = new uint256[](poolBalances.length);
         balances.aliceTokens = new uint256[](poolBalances.length);
         balances.bobTokens = new uint256[](poolBalances.length);
@@ -248,16 +261,6 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     function getSalt(address addr) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
-    }
-
-    function _getAggregateFeePercentage(
-        uint256 protocolFeePercentage,
-        uint256 creatorFeePercentage
-    ) internal pure returns (uint256) {
-        // Address precision issues with 24-bit fees.
-        return
-            ((protocolFeePercentage + protocolFeePercentage.complement().mulDown(creatorFeePercentage)) /
-                FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR;
     }
 
     function _prankStaticCall() internal {

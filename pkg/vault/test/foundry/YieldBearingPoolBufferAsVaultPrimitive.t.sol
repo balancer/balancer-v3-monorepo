@@ -4,13 +4,17 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+
+import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 
@@ -98,24 +102,20 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
 
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
         assertEq(
-            vault.getBufferOwnerShares(IERC20(waDAI), lp),
+            vault.getBufferOwnerShares(IERC4626(waDAI), lp),
             bufferInitialAmount * 2 - MIN_BPT,
             "Wrong share of waDAI buffer belonging to LP"
         );
         assertEq(
-            vault.getBufferOwnerShares(IERC20(waUSDC), lp),
+            vault.getBufferOwnerShares(IERC4626(waUSDC), lp),
             bufferInitialAmount * 2 - MIN_BPT,
             "Wrong share of waUSDC buffer belonging to LP"
         );
 
         // Buffer should have the correct amount of issued shares
+        assertEq(vault.getBufferTotalShares(IERC4626(waDAI)), bufferInitialAmount * 2, "Wrong issued shares of waDAI buffer");
         assertEq(
-            vault.getBufferTotalShares(IERC20(waDAI)),
-            bufferInitialAmount * 2,
-            "Wrong issued shares of waDAI buffer"
-        );
-        assertEq(
-            vault.getBufferTotalShares(IERC20(waUSDC)),
+            vault.getBufferTotalShares(IERC4626(waUSDC)),
             bufferInitialAmount * 2,
             "Wrong issued shares of waUSDC buffer"
         );
@@ -124,11 +124,11 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         uint256 wrappedBalance;
 
         // The vault buffers should each have `bufferInitialAmount` of their respective tokens.
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
+        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waDAI));
         assertEq(baseBalance, bufferInitialAmount, "Wrong waDAI buffer balance for base token");
         assertEq(wrappedBalance, bufferInitialAmount, "Wrong waDAI buffer balance for wrapped token");
 
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
+        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waUSDC));
         assertEq(baseBalance, bufferInitialAmount, "Wrong waUSDC buffer balance for base token");
         assertEq(wrappedBalance, bufferInitialAmount, "Wrong waUSDC buffer balance for wrapped token");
     }
@@ -347,10 +347,10 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
 
         uint256 underlyingBalance;
         uint256 wrappedBalance;
-        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waDAI));
         vars.bufferBalanceBeforeSwapDai = underlyingBalance;
         vars.bufferBalanceBeforeSwapWaDai = wrappedBalance;
-        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waUSDC));
         vars.bufferBalanceBeforeSwapUsdc = underlyingBalance;
         vars.bufferBalanceBeforeSwapWaUsdc = wrappedBalance;
 
@@ -432,7 +432,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
 
         uint256 underlyingBalance;
         uint256 wrappedBalance;
-        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waDAI));
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waDAI));
         assertApproxEqAbs(
             underlyingBalance,
             vars.expectedBufferBalanceAfterSwapDai,
@@ -446,7 +446,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             "Wrong DAI buffer pool wrapped balance"
         );
 
-        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC20(waUSDC));
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waUSDC));
         assertApproxEqAbs(
             underlyingBalance,
             vars.expectedBufferBalanceAfterSwapUsdc,

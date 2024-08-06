@@ -738,7 +738,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     /// @inheritdoc IRouter
     function queryAddLiquidityProportional(
         address pool,
-        uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
         bytes memory userData
     ) external saveSender returns (uint256[] memory amountsIn) {
@@ -751,7 +750,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         // but it is possible to add liquidity to any recipient.
                         sender: address(this),
                         pool: pool,
-                        maxAmountsIn: maxAmountsIn,
+                        maxAmountsIn: _maxTokenLimits(pool),
                         minBptAmountOut: exactBptAmountOut,
                         kind: AddLiquidityKind.PROPORTIONAL,
                         wethIsEth: false,

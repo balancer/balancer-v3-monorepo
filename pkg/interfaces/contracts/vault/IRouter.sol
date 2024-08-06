@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
-import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 
@@ -151,7 +150,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided
      * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
-     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data sent with the request to remove liquidity
      * @return amountsOut Actual amounts of tokens received, sorted in token registration order
      */
@@ -169,7 +168,7 @@ interface IRouter {
      * @param exactBptAmountIn Exact amount of pool tokens provided
      * @param tokenOut Token used to remove liquidity
      * @param minAmountOut Minimum amount of tokens to be received
-     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data sent with the request to remove liquidity
      * @return amountOut Actual amount of tokens received
      */
@@ -188,7 +187,7 @@ interface IRouter {
      * @param maxBptAmountIn Maximum amount of pool tokens provided
      * @param tokenOut Token used to remove liquidity
      * @param exactAmountOut Exact amount of tokens to be received
-     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data sent with the request to remove liquidity
      * @return bptAmountIn Actual amount of pool tokens burned
      */
@@ -208,7 +207,7 @@ interface IRouter {
      * @param pool Address of the liquidity pool
      * @param maxBptAmountIn Maximum amount of pool tokens provided
      * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
-     * @param wethIsEth If true, outgoing WETH will be unwrapped to ETH; otherwise the Vault will send WETH tokens
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data sent with the request to remove liquidity
      * @return bptAmountIn Actual amount of pool tokens burned
      * @return amountsOut Actual amounts of tokens received, sorted in token registration order
@@ -351,14 +350,12 @@ interface IRouter {
     /**
      * @notice Queries an `addLiquidityProportional` operation without actually executing it.
      * @param pool Address of the liquidity pool
-     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param userData Additional (optional) data sent with the query request
      * @return amountsIn Expected amounts of tokens to add, sorted in token registration order
      */
     function queryAddLiquidityProportional(
         address pool,
-        uint256[] memory maxAmountsIn,
         uint256 exactBptAmountOut,
         bytes memory userData
     ) external returns (uint256[] memory amountsIn);
