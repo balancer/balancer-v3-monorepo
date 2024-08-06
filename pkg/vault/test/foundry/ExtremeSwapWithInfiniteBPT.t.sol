@@ -9,6 +9,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
@@ -16,6 +17,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract ExtremeSwapWithInfiniteBPTTest is BaseVaultTest {
     using ArrayHelpers for *;
+    using CastingHelpers for *;
 
     uint256 internal poolInitialAmount = 1e18;
     PoolMock internal poolA;
