@@ -353,9 +353,6 @@ contract E2eBatchSwapTest is BaseVaultTest {
         assertGe(invariantsAfter[1], invariantsBefore[1], "Wrong poolB invariant");
         assertGe(invariantsAfter[2], invariantsBefore[2], "Wrong poolC invariant");
 
-        console.log("feesTokenA", feesTokenA);
-        console.log("balancesAfter.userTokens[tokenAIdx]", balancesAfter.userTokens[tokenAIdx]);
-        console.log("balancesBefore.userTokens[tokenAIdx]", balancesBefore.userTokens[tokenAIdx]);
 
         // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
 
