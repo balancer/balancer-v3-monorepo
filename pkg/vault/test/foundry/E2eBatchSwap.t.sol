@@ -381,7 +381,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
         // If feesTokenD is not 0, it means that an exact_in swap occurred and was reverted. So, an exactAmountIn of
         // tokenA was traded by an amountOutTokenD. The amountOutTokenD was used in another exact_in swap, but since
-        // there was fees, the amountIn used was `amountOutTokenD - feesTokenD`, which means that feesTokenD was added
+        // there were fees, the amountIn used was `amountOutTokenD - feesTokenD`, which means that feesTokenD was added
         // in the user wallet.
         assertLe(
             balancesAfter.userTokens[tokenDIdx],
