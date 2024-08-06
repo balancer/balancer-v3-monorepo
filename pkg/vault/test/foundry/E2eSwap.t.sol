@@ -370,8 +370,6 @@ contract E2eSwapTest is BaseVaultTest {
             );
 
             maxAmountIn = _setPoolBalancesAndGetAmountIn(testLocals.liquidityTokenA, testLocals.liquidityTokenB);
-
-            console.log("maxAmountIn", maxAmountIn);
         }
 
         if (testLocals.shouldTestSwapAmount) {
