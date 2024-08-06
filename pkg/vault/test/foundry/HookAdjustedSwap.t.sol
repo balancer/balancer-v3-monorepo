@@ -10,7 +10,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
@@ -18,8 +18,8 @@ import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract HookAdjustedSwapTest is BaseVaultTest {
+    using CastingHelpers for address[];
     using FixedPoint for uint256;
-    using ArrayHelpers for *;
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
@@ -70,7 +70,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
 
         // Fee between 0 and 100%.
-        hookFeePercentage = bound(hookFeePercentage, 0, 100e16);
+        hookFeePercentage = bound(hookFeePercentage, 0, FixedPoint.ONE);
         PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
@@ -127,7 +127,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
 
         // Discount between 0 and 100%
-        hookDiscountPercentage = bound(hookDiscountPercentage, 0, 100e16);
+        hookDiscountPercentage = bound(hookDiscountPercentage, 0, FixedPoint.ONE);
         PoolHooksMock(poolHooksContract).setHookSwapDiscountPercentage(hookDiscountPercentage);
         uint256 hookDiscount = swapAmount.mulDown(hookDiscountPercentage);
 
@@ -189,7 +189,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
 
         // Fee between 0 and 100%.
-        hookFeePercentage = bound(hookFeePercentage, 0, 100e16);
+        hookFeePercentage = bound(hookFeePercentage, 0, FixedPoint.ONE);
         PoolHooksMock(poolHooksContract).setHookSwapFeePercentage(hookFeePercentage);
         uint256 hookFee = swapAmount.mulDown(hookFeePercentage);
 
@@ -257,7 +257,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
 
         // Discount between 0 and 100%
-        hookDiscountPercentage = bound(hookDiscountPercentage, 0, 100e16);
+        hookDiscountPercentage = bound(hookDiscountPercentage, 0, FixedPoint.ONE);
         PoolHooksMock(poolHooksContract).setHookSwapDiscountPercentage(hookDiscountPercentage);
         uint256 hookDiscount = swapAmount.mulDown(hookDiscountPercentage);
 

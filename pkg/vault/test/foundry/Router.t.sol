@@ -13,7 +13,8 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IERC20MultiTokenErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiTokenErrors.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
@@ -25,6 +26,7 @@ import { RouterCommon } from "../../contracts/RouterCommon.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RouterTest is BaseVaultTest {
+    using CastingHelpers for address[];
     using ArrayHelpers for *;
     using FixedPoint for *;
 
@@ -378,7 +380,7 @@ contract RouterTest is BaseVaultTest {
     function testRemoveLiquidityRecovery__Fuzz(uint256 amountIn1, uint256 amountIn2, uint256 exitPercentage) public {
         amountIn1 = bound(amountIn1, 1e18, defaultBalance); // 1 to max user balance
         amountIn2 = bound(amountIn2, 1e18, defaultBalance); // 1 to max user balance
-        exitPercentage = bound(exitPercentage, 0, 1e18); // 0 to 100%
+        exitPercentage = bound(exitPercentage, 0, FixedPoint.ONE); // 0 to 100%
 
         // Add initial liquidity.
         uint256[] memory amountsIn = [uint256(amountIn1), uint256(amountIn2)].toMemoryArray();

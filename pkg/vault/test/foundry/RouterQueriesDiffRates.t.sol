@@ -9,7 +9,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -17,8 +18,9 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
 contract RouterQueriesDiffRatesTest is BaseVaultTest {
-    using ArrayHelpers for *;
+    using CastingHelpers for address[];
     using FixedPoint for uint256;
+    using ArrayHelpers for *;
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
@@ -143,12 +145,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory queryAmountsIn = router.queryAddLiquidityProportional(
-            pool,
-            expectedAmountsIn,
-            exactBptAmountOut,
-            bytes("")
-        );
+        uint256[] memory queryAmountsIn = router.queryAddLiquidityProportional(pool, exactBptAmountOut, bytes(""));
 
         vm.revertTo(snapshotId);
 
@@ -186,7 +183,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             exactAmountsInScaled18,
             IERC20(pool).totalSupply(),
             0,
-            IBasePool(pool).computeInvariant
+            IBasePool(pool)
         );
 
         uint256 snapshotId = vm.snapshot();
@@ -223,7 +220,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             exactBptAmountOut,
             IERC20(pool).totalSupply(),
             0,
-            IBasePool(pool).computeBalance
+            IBasePool(pool)
         );
         uint256 expectedAmountInRaw = expectedAmountInScaled18.divUp(daiMockRate);
 
@@ -350,7 +347,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             exactBptAmountIn,
             IERC20(pool).totalSupply(),
             0,
-            IBasePool(pool).computeBalance
+            IBasePool(pool)
         );
         uint256 expectedAmountOutRaw = expectedAmountOutScaled18.divDown(daiMockRate);
 
@@ -393,7 +390,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
             exactAmountOut.mulUp(daiMockRate),
             IERC20(pool).totalSupply(),
             0,
-            IBasePool(pool).computeInvariant
+            IBasePool(pool)
         );
 
         uint256 snapshotId = vm.snapshot();

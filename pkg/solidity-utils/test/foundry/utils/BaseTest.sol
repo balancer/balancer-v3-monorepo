@@ -2,19 +2,16 @@
 
 pragma solidity ^0.8.24;
 
-import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
-
 import "forge-std/Test.sol";
+
+import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ERC20TestToken } from "../../../contracts/test/ERC20TestToken.sol";
 import { WETHTestToken } from "../../../contracts/test/WETHTestToken.sol";
-import { ArrayHelpers } from "../../../contracts/helpers/ArrayHelpers.sol";
 
 abstract contract BaseTest is Test, GasSnapshot {
-    using ArrayHelpers for *;
-
     // Reasonable block.timestamp `MAY_1_2023`
     uint32 internal constant START_TIMESTAMP = 1_682_899_200;
 
@@ -56,7 +53,7 @@ abstract contract BaseTest is Test, GasSnapshot {
     IERC20[] internal tokens;
 
     // Default balance for accounts
-    uint256 internal defaultBalance = 1e7 * 1e18;
+    uint256 internal defaultBalance = 1e9 * 1e18;
 
     function setUp() public virtual {
         // Set timestamp only if testing locally

@@ -80,13 +80,19 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
         (scalingFactors, ) = _vault.getPoolTokenRates(address(this));
     }
 
-    /// @inheritdoc ISwapFeePercentageBounds
-    function getMinimumSwapFeePercentage() external pure returns (uint256) {
+    function getMinimumSwapFeePercentage() external pure override returns (uint256) {
         return 0;
     }
 
-    /// @inheritdoc ISwapFeePercentageBounds
-    function getMaximumSwapFeePercentage() external pure returns (uint256) {
+    function getMaximumSwapFeePercentage() external pure override returns (uint256) {
         return FixedPoint.ONE;
+    }
+
+    function getMinimumInvariantRatio() external view virtual override returns (uint256) {
+        return 0;
+    }
+
+    function getMaximumInvariantRatio() external view virtual override returns (uint256) {
+        return 1e40; // Something just really big; should always work.
     }
 }

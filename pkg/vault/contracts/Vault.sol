@@ -20,7 +20,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import {
     TransientStorageHelpers
@@ -43,7 +43,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using InputHelpers for uint256;
     using FixedPoint for *;
     using Address for *;
-    using ArrayHelpers for uint256[];
+    using CastingHelpers for uint256[];
     using SafeERC20 for IERC20;
     using PoolConfigLib for PoolConfigBits;
     using HooksConfigLib for PoolConfigBits;
@@ -52,6 +52,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using TransientStorageHelpers for *;
     using StorageSlotExtension for *;
     using PoolDataLib for PoolData;
+
+    IVaultExtension private immutable _vaultExtension;
 
     constructor(IVaultExtension vaultExtension, IAuthorizer authorizer, IProtocolFeeController protocolFeeController) {
         if (address(vaultExtension.vault()) != address(this)) {
@@ -627,7 +629,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 maxAmountsInScaled18,
                 _totalSupply(params.pool),
                 poolData.poolConfigBits.getStaticSwapFeePercentage(),
-                IBasePool(params.pool).computeInvariant
+                IBasePool(params.pool)
             );
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
@@ -643,7 +645,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     bptAmountOut,
                     _totalSupply(params.pool),
                     poolData.poolConfigBits.getStaticSwapFeePercentage(),
-                    IBasePool(params.pool).computeBalance
+                    IBasePool(params.pool)
                 );
         } else if (params.kind == AddLiquidityKind.CUSTOM) {
             poolData.poolConfigBits.requireAddCustomLiquidityEnabled();
@@ -868,7 +870,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     bptAmountIn,
                     _totalSupply(params.pool),
                     poolData.poolConfigBits.getStaticSwapFeePercentage(),
-                    IBasePool(params.pool).computeBalance
+                    IBasePool(params.pool)
                 );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
             poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
@@ -881,7 +883,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 amountsOutScaled18[locals.tokenIndex],
                 _totalSupply(params.pool),
                 poolData.poolConfigBits.getStaticSwapFeePercentage(),
-                IBasePool(params.pool).computeInvariant
+                IBasePool(params.pool)
             );
         } else if (params.kind == RemoveLiquidityKind.CUSTOM) {
             poolData.poolConfigBits.requireRemoveCustomLiquidityEnabled();
@@ -1056,7 +1058,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     {
         IERC20 underlyingToken = IERC20(params.wrappedToken.asset());
 
-        address bufferAsset = _bufferAssets[IERC20(params.wrappedToken)];
+        address bufferAsset = _bufferAssets[params.wrappedToken];
 
         if (bufferAsset != address(0) && bufferAsset != address(underlyingToken)) {
             // Asset was changed since the first addLiquidityToBuffer call.
@@ -1102,7 +1104,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /**
-     * @dev If the buffer has enough liquidity, it uses the internal ERC42626 buffer to perform the wrap
+     * @dev If the buffer has enough liquidity, it uses the internal ERC4626 buffer to perform the wrap
      * operation without any external calls. If not, it wraps the assets needed to fulfill the trade + the surplus
      * of assets in the buffer, so that the buffer is rebalanced at the end of the operation.
      *
@@ -1132,7 +1134,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountInUnderlying, amountOutWrapped) = (wrappedToken.convertToAssets(amountGiven), amountGiven);
         }
 
-        bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
+        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
         if (bufferBalances.getBalanceDerived() >= amountOutWrapped) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
@@ -1146,7 +1148,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bufferBalances.getBalanceRaw() + amountInUnderlying,
                 newDerivedBalance
             );
-            _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
+            _bufferTokenBalances[wrappedToken] = bufferBalances;
         } else {
             // The buffer does not have enough liquidity to facilitate the wrap without making an external call.
             // We wrap the user's tokens via an external call and additionally rebalance the buffer if it has a
@@ -1220,7 +1222,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     bufferBalances.getBalanceRaw() - bufferUnderlyingSurplus,
                     bufferBalances.getBalanceDerived() + bufferWrappedSurplus
                 );
-                _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
+                _bufferTokenBalances[wrappedToken] = bufferBalances;
             } else {
                 amountInUnderlying = vaultUnderlyingDelta;
                 amountOutWrapped = vaultWrappedDelta;
@@ -1260,7 +1262,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountOutUnderlying, amountInWrapped) = (amountGiven, wrappedToken.convertToShares(amountGiven));
         }
 
-        bytes32 bufferBalances = _bufferTokenBalances[IERC20(wrappedToken)];
+        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
         if (bufferBalances.getBalanceRaw() >= amountOutUnderlying) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
@@ -1273,7 +1275,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 newRawBalance,
                 bufferBalances.getBalanceDerived() + amountInWrapped
             );
-            _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
+            _bufferTokenBalances[wrappedToken] = bufferBalances;
         } else {
             // The buffer does not have enough liquidity to facilitate the unwrap without making an external call.
             // We unwrap the user's tokens via an external call and additionally rebalance the buffer if it has a
@@ -1338,7 +1340,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     bufferBalances.getBalanceRaw() + bufferUnderlyingSurplus,
                     bufferBalances.getBalanceDerived() - bufferWrappedSurplus
                 );
-                _bufferTokenBalances[IERC20(wrappedToken)] = bufferBalances;
+                _bufferTokenBalances[wrappedToken] = bufferBalances;
             } else {
                 amountOutUnderlying = vaultUnderlyingDelta;
                 amountInWrapped = vaultWrappedDelta;
@@ -1366,7 +1368,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 vaultUnderlyingAfter = underlyingToken.balanceOf(address(this));
         _reservesOf[underlyingToken] = vaultUnderlyingAfter;
 
-        uint256 vaultWrappedBefore = _reservesOf[IERC20(wrappedToken)];
+        uint256 vaultWrappedBefore = _reservesOf[wrappedToken];
         uint256 vaultWrappedAfter = wrappedToken.balanceOf(address(this));
         _reservesOf[wrappedToken] = vaultWrappedAfter;
 
