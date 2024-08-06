@@ -55,18 +55,7 @@ contract E2eSwapRateProvider is E2eSwapTest {
     }
 
     function testDoUndoExactInSwapRate__Fuzz(uint256 newRateTokenA, uint256 newRateTokenB) public {
-        newRateTokenA = bound(newRateTokenA, 1e16, 1e20);
-        newRateTokenB = bound(newRateTokenB, 1e16, 1e20);
-
-        rateProviderTokenA.mockRate(newRateTokenA);
-        rateProviderTokenB.mockRate(newRateTokenB);
-
-        // PoolInitAmounts and pool initial balances depend on the rate, so recalculates it.
-        setPoolInitAmounts();
-        setPoolBalances(poolInitAmountTokenA, poolInitAmountTokenB);
-
-        // Min and Max swap amounts depends on the decimals of each token, so a recalculation is needed.
-        calculateMinAndMaxSwapAmounts();
+        _setPoolRates(newRateTokenA, newRateTokenB);
 
         DoUndoLocals memory testLocals;
         uint256 exactAmountIn = maxSwapAmountTokenA;
@@ -84,18 +73,7 @@ contract E2eSwapRateProvider is E2eSwapTest {
         uint256 newRateTokenA,
         uint256 newRateTokenB
     ) public {
-        newRateTokenA = bound(newRateTokenA, 1e16, 1e20);
-        newRateTokenB = bound(newRateTokenB, 1e16, 1e20);
-
-        rateProviderTokenA.mockRate(newRateTokenA);
-        rateProviderTokenB.mockRate(newRateTokenB);
-
-        // PoolInitAmounts and pool initial balances depend on the rate.
-        setPoolInitAmounts();
-        setPoolBalances(poolInitAmountTokenA, poolInitAmountTokenB);
-
-        // Min and Max swap amounts depends on the decimals of each token, so a recalculation is needed.
-        calculateMinAndMaxSwapAmounts();
+        _setPoolRates(newRateTokenA, newRateTokenB);
 
         DoUndoLocals memory testLocals;
         testLocals.shouldTestDecimals = true;
@@ -112,18 +90,7 @@ contract E2eSwapRateProvider is E2eSwapTest {
     }
 
     function testDoUndoExactOutSwapRate__Fuzz(uint256 newRateTokenA, uint256 newRateTokenB) public {
-        newRateTokenA = bound(newRateTokenA, 1e16, 1e20);
-        newRateTokenB = bound(newRateTokenB, 1e16, 1e20);
-
-        rateProviderTokenA.mockRate(newRateTokenA);
-        rateProviderTokenB.mockRate(newRateTokenB);
-
-        // PoolInitAmounts and pool initial balances depend on the rate, so recalculates it.
-        setPoolInitAmounts();
-        setPoolBalances(poolInitAmountTokenA, poolInitAmountTokenB);
-
-        // Min and Max swap amounts depends on the decimals of each token, so a recalculation is needed.
-        calculateMinAndMaxSwapAmounts();
+        _setPoolRates(newRateTokenA, newRateTokenB);
 
         DoUndoLocals memory testLocals;
         uint256 exactAmountOut = maxSwapAmountTokenB;
@@ -141,18 +108,7 @@ contract E2eSwapRateProvider is E2eSwapTest {
         uint256 newRateTokenA,
         uint256 newRateTokenB
     ) public {
-        newRateTokenA = bound(newRateTokenA, 1e16, 1e20);
-        newRateTokenB = bound(newRateTokenB, 1e16, 1e20);
-
-        rateProviderTokenA.mockRate(newRateTokenA);
-        rateProviderTokenB.mockRate(newRateTokenB);
-
-        // PoolInitAmounts and pool initial balances depend on the rate.
-        setPoolInitAmounts();
-        setPoolBalances(poolInitAmountTokenA, poolInitAmountTokenB);
-
-        // Min and Max swap amounts depends on the decimals of each token, so a recalculation is needed.
-        calculateMinAndMaxSwapAmounts();
+        _setPoolRates(newRateTokenA, newRateTokenB);
 
         DoUndoLocals memory testLocals;
         testLocals.shouldTestDecimals = true;
@@ -166,5 +122,20 @@ contract E2eSwapRateProvider is E2eSwapTest {
         testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
 
         _testDoUndoExactOutBase(exactAmountOut, testLocals);
+    }
+
+    function _setPoolRates(uint256 newRateTokenA, uint256 newRateTokenB) private {
+        newRateTokenA = bound(newRateTokenA, 1e16, 1e20);
+        newRateTokenB = bound(newRateTokenB, 1e16, 1e20);
+
+        rateProviderTokenA.mockRate(newRateTokenA);
+        rateProviderTokenB.mockRate(newRateTokenB);
+
+        // PoolInitAmounts and pool initial balances depend on the rate.
+        setPoolInitAmounts();
+        setPoolBalances(poolInitAmountTokenA, poolInitAmountTokenB);
+
+        // Min and Max swap amounts depends on the decimals of each token, so a recalculation is needed.
+        calculateMinAndMaxSwapAmounts();
     }
 }
