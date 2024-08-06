@@ -14,6 +14,7 @@ import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/v
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -47,6 +48,9 @@ contract E2eBatchSwapTest is BaseVaultTest {
     uint256 internal minSwapAmountTokenD;
     uint256 internal maxSwapAmountTokenD;
 
+    // 0.0001% swap fee
+    uint256 internal constant DEFAULT_SWAP_FEE = 1e12;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
@@ -62,11 +66,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
         // Set protocol and creator fees to 50%, so we can measure the charged fees.
         vm.prank(admin);
-        feeController.setGlobalProtocolSwapFeePercentage(5e17);
-
-        vm.prank(poolCreator);
-        // Set pool creator fee to 100%, so protocol + creator fees equals the total charged fees.
-        feeController.setPoolCreatorSwapFeePercentage(pool, 1e18);
+        feeController.setGlobalProtocolSwapFeePercentage(FIFTY_PERCENT);
 
         // Initialize pools that will be used by batch router.
         // Create poolA
@@ -81,6 +81,13 @@ contract E2eBatchSwapTest is BaseVaultTest {
         _initPool(poolC, [poolInitAmount, poolInitAmount].toMemoryArray(), 0);
         vm.stopPrank();
 
+        vm.startPrank(poolCreator);
+        // Set pool creator fee to 100%, so protocol + creator fees equals the total charged fees.
+        feeController.setPoolCreatorSwapFeePercentage(poolA, FixedPoint.ONE);
+        feeController.setPoolCreatorSwapFeePercentage(poolB, FixedPoint.ONE);
+        feeController.setPoolCreatorSwapFeePercentage(poolC, FixedPoint.ONE);
+        vm.stopPrank();
+
         tokensToTrack = [address(tokenA), address(tokenB), address(tokenC), address(tokenD)].toMemoryArray().asIERC20();
 
         // Idx of the token in relation to `tokensToTrack`.
@@ -88,6 +95,13 @@ contract E2eBatchSwapTest is BaseVaultTest {
         tokenBIdx = 1;
         tokenCIdx = 2;
         tokenDIdx = 3;
+    }
+
+    function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
+        address newPool = super._createPool(tokens, label);
+        // Defining swap fees to 0.0001% (Pool Factory Mock sets the swap fee to 0).
+        vault.manualUnsafeSetStaticSwapFeePercentage(newPool, DEFAULT_SWAP_FEE);
+        return newPool;
     }
 
     /**
@@ -99,38 +113,45 @@ contract E2eBatchSwapTest is BaseVaultTest {
         tokenB = usdc;
         tokenC = ERC20TestToken(address(weth));
         tokenD = wsteth;
+
         sender = lp;
         poolCreator = lp;
 
         // If there are swap fees, the amountCalculated may be lower than MIN_TRADE_AMOUNT. So, multiplying
         // MIN_TRADE_AMOUNT by 10 creates a margin.
         minSwapAmountTokenA = 10 * MIN_TRADE_AMOUNT;
-        maxSwapAmountTokenA = poolInitAmount;
+        maxSwapAmountTokenA = poolInitAmount / 2;
 
         minSwapAmountTokenD = 10 * MIN_TRADE_AMOUNT;
-        maxSwapAmountTokenD = poolInitAmount;
+        maxSwapAmountTokenD = poolInitAmount / 2;
     }
 
     function testDoUndoExactIn__Fuzz(uint256 exactAmountIn) public {
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
-
-        // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
-        vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender, tokensToTrack);
         uint256[] memory invariantsBefore = _getPoolInvariants();
 
         vm.startPrank(sender);
         uint256 amountOutDo = _executeAndCheckBatchExactIn(IERC20(address(tokenA)), exactAmountIn);
-        uint256 amountOutUndo = _executeAndCheckBatchExactIn(IERC20(address(tokenD)), amountOutDo);
+        uint256 feesTokenD = vault.getAggregateSwapFeeAmount(poolC, tokenD);
+        uint256 amountOutUndo = _executeAndCheckBatchExactIn(IERC20(address(tokenD)), amountOutDo - feesTokenD);
+        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(poolA, tokenA);
         vm.stopPrank();
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender, tokensToTrack);
         uint256[] memory invariantsAfter = _getPoolInvariants();
 
-        assertLe(amountOutUndo, exactAmountIn, "Amount out undo should be <= exactAmountIn");
+        assertLe(amountOutUndo + feesTokenA, exactAmountIn, "Amount out undo should be <= exactAmountIn");
 
-        _checkUserBalancesAndPoolInvariants(balancesBefore, balancesAfter, invariantsBefore, invariantsAfter);
+        _checkUserBalancesAndPoolInvariants(
+            balancesBefore,
+            balancesAfter,
+            invariantsBefore,
+            invariantsAfter,
+            0,
+            feesTokenD
+        );
     }
 
     function testDoUndoExactOut__Fuzz(uint256 exactAmountOut) public {
@@ -144,7 +165,8 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
         vm.startPrank(sender);
         uint256 amountInDo = _executeAndCheckBatchExactOut(IERC20(address(tokenA)), exactAmountOut);
-        uint256 amountInUndo = _executeAndCheckBatchExactOut(IERC20(address(tokenD)), amountInDo);
+        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(poolA, tokenA);
+        uint256 amountInUndo = _executeAndCheckBatchExactOut(IERC20(address(tokenD)), amountInDo + feesTokenA);
         vm.stopPrank();
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender, tokensToTrack);
@@ -152,27 +174,62 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
         assertGe(amountInUndo, exactAmountOut, "Amount in undo should be >= exactAmountOut");
 
-        _checkUserBalancesAndPoolInvariants(balancesBefore, balancesAfter, invariantsBefore, invariantsAfter);
+        _checkUserBalancesAndPoolInvariants(
+            balancesBefore,
+            balancesAfter,
+            invariantsBefore,
+            invariantsAfter,
+            feesTokenA,
+            0
+        );
     }
 
     function testExactInRepeatExactOut__Fuzz(uint256 exactAmountIn) public {
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
-        // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
-        vault.manualUnsafeSetStaticSwapFeePercentage(poolA, 0);
-        vault.manualUnsafeSetStaticSwapFeePercentage(poolB, 0);
-        vault.manualUnsafeSetStaticSwapFeePercentage(poolC, 0);
+        vm.startPrank(sender);
+
+        uint256 snapshotId = vm.snapshot();
+
+        uint256 amountOut = _executeAndCheckBatchExactIn(IERC20(address(tokenA)), exactAmountIn);
+        uint256 feesTokenD = vault.getAggregateSwapFeeAmount(poolC, tokenD);
+
+        vm.revertTo(snapshotId);
+
+        uint256 amountIn = _executeAndCheckBatchExactOut(IERC20(address(tokenA)), amountOut - feesTokenD);
+        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(poolA, tokenA);
+
+        vm.stopPrank();
+
+        // 0.0001% error tolerance, since computeInGivenExactOut and computeOutGivenExactIn can calculate slightly
+        // different results
+        assertApproxEqRel(amountIn + feesTokenA, exactAmountIn, 1e12, "ExactIn and ExactOut amountsIn should match");
+    }
+
+    function testExactInRepeatEachOperation__Fuzz(uint256 exactAmountIn) public {
+        exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
         vm.startPrank(sender);
         uint256 snapshotId = vm.snapshot();
-        uint256 amountOut = _executeAndCheckBatchExactIn(IERC20(address(tokenA)), exactAmountIn);
+        uint256 amountOutBatch = _executeAndCheckBatchExactIn(IERC20(address(tokenA)), exactAmountIn);
         vm.revertTo(snapshotId);
-        uint256 amountIn = _executeAndCheckBatchExactOut(IERC20(address(tokenA)), amountOut);
+        uint256 amountOutEach = _executeEachOperationExactIn(exactAmountIn);
         vm.stopPrank();
 
-        // 0.0000001% error tolerance, since computeInGivenExactOut and computeOutGivenExactIn can calculate slightly
-        // different results
-        assertApproxEqRel(amountIn, exactAmountIn, 1e9, "ExactIn and ExactOut amountsIn should match");
+        assertEq(amountOutBatch, amountOutEach, "Batch and each operation amountsOut do not match");
+    }
+
+    function testExactOutRepeatEachOperation__Fuzz(uint256 exactAmountOut) public {
+        exactAmountOut = bound(exactAmountOut, minSwapAmountTokenD, maxSwapAmountTokenD);
+
+        vm.startPrank(sender);
+        uint256 snapshotId = vm.snapshot();
+        uint256 amountInBatch = _executeAndCheckBatchExactOut(IERC20(address(tokenA)), exactAmountOut);
+        vm.revertTo(snapshotId);
+        uint256 amountInEach = _executeEachOperationExactOut(exactAmountOut);
+        vm.stopPrank();
+
+        assertEq(amountInBatch, amountInEach, "Batch and each operation amountsIn do not match");
     }
 
     function _executeAndCheckBatchExactIn(IERC20 tokenIn, uint256 exactAmountIn) private returns (uint256 amountOut) {
@@ -194,6 +251,72 @@ contract E2eBatchSwapTest is BaseVaultTest {
         assertEq(pathAmountsOut[0], amountsOut[0], "pathAmountsOut and amountsOut do not match");
 
         amountOut = pathAmountsOut[0];
+    }
+
+    function _executeEachOperationExactIn(uint256 exactAmountIn) private returns (uint256 amountOut) {
+        uint256 amountOutTokenB = router.swapSingleTokenExactIn(
+            poolA,
+            tokenA,
+            tokenB,
+            exactAmountIn,
+            0,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+        uint256 amountOutTokenC = router.swapSingleTokenExactIn(
+            poolB,
+            tokenB,
+            tokenC,
+            amountOutTokenB,
+            0,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+        amountOut = router.swapSingleTokenExactIn(
+            poolC,
+            tokenC,
+            tokenD,
+            amountOutTokenC,
+            0,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+    }
+
+    function _executeEachOperationExactOut(uint256 exactAmountOut) private returns (uint256 amountIn) {
+        uint256 amountInTokenC = router.swapSingleTokenExactOut(
+            poolC,
+            tokenC,
+            tokenD,
+            exactAmountOut,
+            MAX_UINT128,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+        uint256 amountInTokenB = router.swapSingleTokenExactOut(
+            poolB,
+            tokenB,
+            tokenC,
+            amountInTokenC,
+            MAX_UINT128,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
+        amountIn = router.swapSingleTokenExactOut(
+            poolA,
+            tokenA,
+            tokenB,
+            amountInTokenB,
+            MAX_UINT128,
+            MAX_UINT128,
+            false,
+            bytes("")
+        );
     }
 
     function _executeAndCheckBatchExactOut(IERC20 tokenIn, uint256 exactAmountOut) private returns (uint256 amountIn) {
@@ -221,17 +344,28 @@ contract E2eBatchSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore,
         BaseVaultTest.Balances memory balancesAfter,
         uint256[] memory invariantsBefore,
-        uint256[] memory invariantsAfter
+        uint256[] memory invariantsAfter,
+        uint256 feesTokenA,
+        uint256 feesTokenD
     ) private view {
         // The invariants of all pools should not decrease after the batch swap operation.
         assertGe(invariantsAfter[0], invariantsBefore[0], "Wrong poolA invariant");
         assertGe(invariantsAfter[1], invariantsBefore[1], "Wrong poolB invariant");
         assertGe(invariantsAfter[2], invariantsBefore[2], "Wrong poolC invariant");
 
+        console.log("feesTokenA", feesTokenA);
+        console.log("balancesAfter.userTokens[tokenAIdx]", balancesAfter.userTokens[tokenAIdx]);
+        console.log("balancesBefore.userTokens[tokenAIdx]", balancesBefore.userTokens[tokenAIdx]);
+
         // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
+
+        // If feesTokenA is not 0, it means that an exact_out swap occurred and was reverted. So, an exactAmountOut of
+        // tokenD was traded by an amountInTokenA. The amountInTokenA was used in another exact_out swap, but since
+        // there was fees, the amountOut used was `amountInTokenA + feesTokenA`, which means that feesTokenA was added
+        // to the user wallet.
         assertLe(
             balancesAfter.userTokens[tokenAIdx],
-            balancesBefore.userTokens[tokenAIdx],
+            balancesBefore.userTokens[tokenAIdx] + feesTokenA,
             "Wrong sender tokenA balance"
         );
         assertEq(
@@ -244,9 +378,14 @@ contract E2eBatchSwapTest is BaseVaultTest {
             balancesBefore.userTokens[tokenCIdx],
             "Wrong sender tokenC balance"
         );
+
+        // If feesTokenD is not 0, it means that an exact_in swap occurred and was reverted. So, an exactAmountIn of
+        // tokenA was traded by an amountOutTokenD. The amountOutTokenD was used in another exact_in swap, but since
+        // there was fees, the amountIn used was `amountOutTokenD - feesTokenD`, which means that feesTokenD was added
+        // in the user wallet.
         assertLe(
             balancesAfter.userTokens[tokenDIdx],
-            balancesBefore.userTokens[tokenDIdx],
+            balancesBefore.userTokens[tokenDIdx] + feesTokenD,
             "Wrong sender tokenD balance"
         );
     }
