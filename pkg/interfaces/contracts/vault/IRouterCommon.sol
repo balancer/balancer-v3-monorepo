@@ -3,9 +3,50 @@
 pragma solidity ^0.8.24;
 
 import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.sol";
+import { AddLiquidityKind, RemoveLiquidityKind } from "./VaultTypes.sol";
 
 /// @notice Interface for funtions shared between the `Router` and `BatchRouter`.
 interface IRouterCommon {
+    /**
+     * @notice Data for the add liquidity hook.
+     * @param sender Account originating the add liquidity operation
+     * @param pool Address of the liquidity pool
+     * @param maxAmountsIn Maximum amounts of tokens to be added, sorted in token registration order
+     * @param minBptAmountOut Minimum amount of pool tokens to be received
+     * @param kind Type of join (e.g., single or multi-token)
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
+     * @param userData Additional (optional) data sent with the request to add liquidity
+     */
+    struct AddLiquidityHookParams {
+        address sender;
+        address pool;
+        uint256[] maxAmountsIn;
+        uint256 minBptAmountOut;
+        AddLiquidityKind kind;
+        bool wethIsEth;
+        bytes userData;
+    }
+
+    /**
+     * @notice Data for the remove liquidity hook.
+     * @param sender Account originating the remove liquidity operation
+     * @param pool Address of the liquidity pool
+     * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order
+     * @param maxBptAmountIn Maximum amount of pool tokens provided
+     * @param kind Type of exit (e.g., single or multi-token)
+     * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
+     * @param userData Additional (optional) data sent with the request to remove liquidity
+     */
+    struct RemoveLiquidityHookParams {
+        address sender;
+        address pool;
+        uint256[] minAmountsOut;
+        uint256 maxBptAmountIn;
+        RemoveLiquidityKind kind;
+        bool wethIsEth;
+        bytes userData;
+    }
+
     /**
      * @notice Get the first sender which initialized the call to Router.
      * @return address The sender address
@@ -40,7 +81,7 @@ interface IRouterCommon {
         IAllowanceTransfer.PermitBatch calldata permit2Batch,
         bytes calldata permit2Signature,
         bytes[] calldata multicallData
-    ) external returns (bytes[] memory results);
+    ) external payable returns (bytes[] memory results);
 
     /**
      * @notice Executes a batch of function calls on this contract.

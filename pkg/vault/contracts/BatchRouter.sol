@@ -677,6 +677,296 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         (pathAmountsIn, tokensIn, amountsIn) = _swapExactOutHook(params);
     }
 
+    /*******************************************************************************
+                                ERC4626 Pools
+    *******************************************************************************/
+
+    /// @inheritdoc IBatchRouter
+    function addLiquidityUnbalancedToERC4626Pool(
+        address pool,
+        uint256[] memory exactUnderlyingAmountsIn,
+        uint256 minBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable saveSender returns (uint256 bptAmountOut) {
+        bptAmountOut = abi.decode(
+            _vault.unlock(
+                abi.encodeWithSelector(
+                    BatchRouter.addLiquidityERC4626PoolUnbalancedHook.selector,
+                    AddLiquidityHookParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        maxAmountsIn: exactUnderlyingAmountsIn,
+                        minBptAmountOut: minBptAmountOut,
+                        kind: AddLiquidityKind.UNBALANCED,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256)
+        );
+    }
+
+    /// @inheritdoc IBatchRouter
+    function addLiquidityProportionalToERC4626Pool(
+        address pool,
+        uint256[] memory maxUnderlyingAmountsIn,
+        uint256 exactBptAmountOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable saveSender returns (uint256[] memory underlyingAmountsIn) {
+        underlyingAmountsIn = abi.decode(
+            _vault.unlock(
+                abi.encodeWithSelector(
+                    BatchRouter.addLiquidityERC4626PoolProportionalHook.selector,
+                    AddLiquidityHookParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        maxAmountsIn: maxUnderlyingAmountsIn,
+                        minBptAmountOut: exactBptAmountOut,
+                        kind: AddLiquidityKind.PROPORTIONAL,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[])
+        );
+    }
+
+    /// @inheritdoc IBatchRouter
+    function removeLiquidityProportionalFromERC4626Pool(
+        address pool,
+        uint256 exactBptAmountIn,
+        uint256[] memory minUnderlyingAmountsOut,
+        bool wethIsEth,
+        bytes memory userData
+    ) external payable saveSender returns (uint256[] memory underlyingAmountsOut) {
+        underlyingAmountsOut = abi.decode(
+            _vault.unlock(
+                abi.encodeWithSelector(
+                    BatchRouter.removeLiquidityERC4626PoolProportionalHook.selector,
+                    RemoveLiquidityHookParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        minAmountsOut: minUnderlyingAmountsOut,
+                        maxBptAmountIn: exactBptAmountIn,
+                        kind: RemoveLiquidityKind.PROPORTIONAL,
+                        wethIsEth: wethIsEth,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[])
+        );
+    }
+
+    /// @inheritdoc IBatchRouter
+    function queryAddLiquidityUnbalancedToERC4626Pool(
+        address pool,
+        uint256[] memory exactUnderlyingAmountsIn,
+        bytes memory userData
+    ) external saveSender returns (uint256 bptAmountOut) {
+        bptAmountOut = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    BatchRouter.addLiquidityERC4626PoolUnbalancedHook.selector,
+                    AddLiquidityHookParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        maxAmountsIn: exactUnderlyingAmountsIn,
+                        minBptAmountOut: 0,
+                        kind: AddLiquidityKind.UNBALANCED,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256)
+        );
+    }
+
+    /// @inheritdoc IBatchRouter
+    function queryAddLiquidityProportionalToERC4626Pool(
+        address pool,
+        uint256 exactBptAmountOut,
+        bytes memory userData
+    ) external saveSender returns (uint256[] memory underlyingAmountsIn) {
+        underlyingAmountsIn = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    BatchRouter.addLiquidityERC4626PoolProportionalHook.selector,
+                    AddLiquidityHookParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        maxAmountsIn: _maxTokenLimits(pool),
+                        minBptAmountOut: exactBptAmountOut,
+                        kind: AddLiquidityKind.PROPORTIONAL,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[])
+        );
+    }
+
+    /// @inheritdoc IBatchRouter
+    function queryRemoveLiquidityProportionalFromERC4626Pool(
+        address pool,
+        uint256 exactBptAmountIn,
+        bytes memory userData
+    ) external saveSender returns (uint256[] memory underlyingAmountsOut) {
+        underlyingAmountsOut = abi.decode(
+            _vault.quote(
+                abi.encodeWithSelector(
+                    BatchRouter.removeLiquidityERC4626PoolProportionalHook.selector,
+                    RemoveLiquidityHookParams({
+                        sender: msg.sender,
+                        pool: pool,
+                        minAmountsOut: new uint256[](2),
+                        maxBptAmountIn: exactBptAmountIn,
+                        kind: RemoveLiquidityKind.PROPORTIONAL,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            ),
+            (uint256[])
+        );
+    }
+
+    function addLiquidityERC4626PoolUnbalancedHook(
+        AddLiquidityHookParams calldata params
+    ) external nonReentrant onlyVault returns (uint256 bptAmountOut) {
+        IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
+        uint256[] memory wrappedAmounts = _wrapTokens(
+            params,
+            erc4626PoolTokens,
+            params.maxAmountsIn,
+            SwapKind.EXACT_IN,
+            new uint256[](erc4626PoolTokens.length)
+        );
+
+        // Add wrapped amounts to the ERC4626 pool.
+        (, bptAmountOut, ) = _vault.addLiquidity(
+            AddLiquidityParams({
+                pool: params.pool,
+                to: params.sender,
+                maxAmountsIn: wrappedAmounts,
+                minBptAmountOut: params.minBptAmountOut,
+                kind: params.kind,
+                userData: params.userData
+            })
+        );
+    }
+
+    function addLiquidityERC4626PoolProportionalHook(
+        AddLiquidityHookParams calldata params
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsIn) {
+        IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
+
+        uint256[] memory maxUint128TypeAmounts = new uint256[](erc4626PoolTokens.length);
+        for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
+            maxUint128TypeAmounts[i] = _MAX_AMOUNT;
+        }
+
+        // Add wrapped amounts to the ERC4626 pool.
+        (amountsIn, , ) = _vault.addLiquidity(
+            AddLiquidityParams({
+                pool: params.pool,
+                to: params.sender,
+                maxAmountsIn: maxUint128TypeAmounts,
+                minBptAmountOut: params.minBptAmountOut,
+                kind: params.kind,
+                userData: params.userData
+            })
+        );
+
+        _wrapTokens(params, erc4626PoolTokens, amountsIn, SwapKind.EXACT_OUT, params.maxAmountsIn);
+    }
+
+    function removeLiquidityERC4626PoolProportionalHook(
+        RemoveLiquidityHookParams calldata params
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
+        IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
+        uint256[] memory underlyingAmountsOut = new uint256[](erc4626PoolTokens.length);
+
+        (, amountsOut, ) = _vault.removeLiquidity(
+            RemoveLiquidityParams({
+                pool: params.pool,
+                from: params.sender,
+                maxBptAmountIn: params.maxBptAmountIn,
+                minAmountsOut: new uint256[](erc4626PoolTokens.length),
+                kind: params.kind,
+                userData: params.userData
+            })
+        );
+
+        if (EVMCallModeHelpers.isStaticCall()) {
+            return amountsOut;
+        }
+
+        for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
+            IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
+            IERC20 underlyingToken = IERC20(wrappedToken.asset());
+
+            // erc4626BufferWrapOrUnwrap will fail if the wrapper wasn't ERC4626
+            (, , underlyingAmountsOut[i]) = _vault.erc4626BufferWrapOrUnwrap(
+                BufferWrapOrUnwrapParams({
+                    kind: SwapKind.EXACT_IN,
+                    direction: WrappingDirection.UNWRAP,
+                    wrappedToken: wrappedToken,
+                    amountGivenRaw: amountsOut[i],
+                    limitRaw: params.minAmountsOut[i],
+                    userData: params.userData
+                })
+            );
+
+            _sendTokenOut(params.sender, underlyingToken, underlyingAmountsOut[i], params.wethIsEth);
+        }
+    }
+
+    function _wrapTokens(
+        AddLiquidityHookParams calldata params,
+        IERC20[] memory erc4626PoolTokens,
+        uint256[] memory amountsIn,
+        SwapKind kind,
+        uint256[] memory limits
+    ) private returns (uint256[] memory wrappedAmounts) {
+        wrappedAmounts = new uint256[](erc4626PoolTokens.length);
+
+        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
+
+        // Wrap given underlying tokens for wrapped tokens
+        for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
+            // ERC4626 pool tokens are all wrapped tokens.
+            IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
+            IERC20 underlyingToken = IERC20(wrappedToken.asset());
+
+            if (isStaticCall == false) {
+                _takeTokenIn(params.sender, underlyingToken, amountsIn[i], params.wethIsEth);
+            }
+
+            // erc4626BufferWrapOrUnwrap will fail if the wrapper wasn't ERC4626
+            (, , wrappedAmounts[i]) = _vault.erc4626BufferWrapOrUnwrap(
+                BufferWrapOrUnwrapParams({
+                    kind: kind,
+                    direction: WrappingDirection.WRAP,
+                    wrappedToken: wrappedToken,
+                    amountGivenRaw: amountsIn[i],
+                    limitRaw: limits[i],
+                    userData: params.userData
+                })
+            );
+        }
+    }
+
+    /*******************************************************************************
+                                    Settlement
+    *******************************************************************************/
+
     function _settlePaths(address sender, bool wethIsEth) internal {
         // numTokensIn / Out may be 0 if the inputs and / or outputs are not transient.
         // For example, a swap starting with a 'remove liquidity' step will already have burned the input tokens,
