@@ -11,7 +11,7 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -19,7 +19,7 @@ import { PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract E2eSwapTest is BaseVaultTest {
-    using ArrayHelpers for *;
+    using ScalingHelpers for uint256;
     using FixedPoint for uint256;
 
     ERC20TestToken internal tokenA;
@@ -49,13 +49,13 @@ contract E2eSwapTest is BaseVaultTest {
 
         // Tokens must be set before other variables, so the variables can be calculated based on tokens.
         setUpTokens();
+        decimalsTokenA = IERC20Metadata(address(tokenA)).decimals();
+        decimalsTokenB = IERC20Metadata(address(tokenB)).decimals();
 
         (tokenAIdx, tokenBIdx) = getSortedIndexes(address(tokenA), address(tokenB));
 
-        decimalsTokenA = IERC20Metadata(address(tokenA)).decimals();
-        decimalsTokenB = IERC20Metadata(address(tokenB)).decimals();
-        poolInitAmountTokenA = poolInitAmount.mulDown(10 ** decimalsTokenA);
-        poolInitAmountTokenB = poolInitAmount.mulDown(10 ** decimalsTokenB);
+        // Pool Init Amounts values are needed to setUp variables that rely on pool initial state.
+        setPoolInitAmounts();
 
         setUpVariables();
         calculateMinAndMaxSwapAmounts();
@@ -91,7 +91,12 @@ contract E2eSwapTest is BaseVaultTest {
      * after BaseVaultTest setUp finishes.
      */
     function createAndInitCustomPool() internal virtual {
-        pool = _createPool([address(tokenA), address(tokenB)].toMemoryArray(), "custom-pool");
+        address[] memory tokens = new address[](2);
+        tokens[tokenAIdx] = address(tokenA);
+        tokens[tokenBIdx] = address(tokenB);
+        pool = _createPool(tokens, "custom-pool");
+
+        setPoolInitAmounts();
 
         uint256[] memory initAmounts = new uint256[](2);
         initAmounts[tokenAIdx] = poolInitAmountTokenA;
@@ -141,6 +146,17 @@ contract E2eSwapTest is BaseVaultTest {
             }
         }
 
+        // If rates have a different magnitude, a small trade can result in 0 amountsOut, which would cause tests to
+        // fail. Prevent that by considering the token rates in the calculation of minSwapAmounts.
+        uint256 rateTokenA = getRate(tokenA);
+        uint256 rateTokenB = getRate(tokenB);
+        minSwapAmountTokenA = rateTokenB / rateTokenA >= 1
+            ? (minSwapAmountTokenA * rateTokenB) / rateTokenA
+            : minSwapAmountTokenA;
+        minSwapAmountTokenB = rateTokenA / rateTokenB >= 1
+            ? (minSwapAmountTokenB * rateTokenA) / rateTokenB
+            : minSwapAmountTokenB;
+
         maxSwapAmountTokenA = poolInitAmountTokenA;
         maxSwapAmountTokenB = poolInitAmountTokenB;
     }
@@ -152,6 +168,11 @@ contract E2eSwapTest is BaseVaultTest {
         // Override vault liquidity, to make sure the extra liquidity is registered.
         vault.manualSetReservesOf(tokenA, 100 * poolInitAmountTokenA);
         vault.manualSetReservesOf(tokenB, 100 * poolInitAmountTokenB);
+    }
+
+    /// @dev Override this function to introduce custom rates and rate providers.
+    function getRate(IERC20) internal view virtual returns (uint256) {
+        return FixedPoint.ONE;
     }
 
     function testDoUndoExactInSwapAmount__Fuzz(uint256 exactAmountIn) public {
@@ -192,7 +213,7 @@ contract E2eSwapTest is BaseVaultTest {
         _testDoUndoExactInBase(exactAmountIn, testLocals);
     }
 
-    function testDoUndoExactIn__Fuzz(
+    function testDoUndoExactInComplete__Fuzz(
         uint256 exactAmountIn,
         uint256 poolSwapFeePercentage,
         uint256 liquidityTokenA,
@@ -252,7 +273,7 @@ contract E2eSwapTest is BaseVaultTest {
         _testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
-    function testDoUndoExactOut__Fuzz(
+    function testDoUndoExactOutComplete__Fuzz(
         uint256 exactAmountOut,
         uint256 poolSwapFeePercentage,
         uint256 liquidityTokenA,
@@ -274,7 +295,17 @@ contract E2eSwapTest is BaseVaultTest {
         _testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
-    function testExactInRepeatExactOutVariableFees__Fuzz(uint256 exactAmountIn, uint256 poolSwapFeePercentage) public {
+    function testExactInRepeatExactOutVariableFees__Fuzz(
+        uint256 exactAmountIn,
+        uint256 poolSwapFeePercentage,
+        uint256 newDecimalsTokenA,
+        uint256 newDecimalsTokenB
+    ) public {
+        decimalsTokenA = bound(newDecimalsTokenA, 6, 18);
+        decimalsTokenB = bound(newDecimalsTokenB, 6, 18);
+
+        _setTokenDecimalsInPool();
+
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
         poolSwapFeePercentage = bound(poolSwapFeePercentage, minPoolSwapFeePercentage, maxPoolSwapFeePercentage);
@@ -325,12 +356,12 @@ contract E2eSwapTest is BaseVaultTest {
                 "ExactOut and ExactIn amountsIn should match"
             );
         } else {
-            // Accepts an error of 0.0000001% between amountIn from ExactOut and ExactIn swaps. This error is caused by
+            // Accepts an error of 0.0001% between amountIn from ExactOut and ExactIn swaps. This error is caused by
             // differences in the computeInGivenOut and computeOutGivenIn functions of the pool math.
             assertApproxEqRel(
                 exactAmountInSwap - feesTokenA,
                 exactAmountIn,
-                1e9,
+                1e12,
                 "ExactOut and ExactIn amountsIn should match"
             );
         }
@@ -348,7 +379,7 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 poolSwapFeePercentage;
     }
 
-    function _testDoUndoExactInBase(uint256 exactAmountIn, DoUndoLocals memory testLocals) private {
+    function _testDoUndoExactInBase(uint256 exactAmountIn, DoUndoLocals memory testLocals) internal {
         if (testLocals.shouldTestDecimals) {
             decimalsTokenA = bound(testLocals.newDecimalsTokenA, 6, 18);
             decimalsTokenB = bound(testLocals.newDecimalsTokenB, 6, 18);
@@ -370,12 +401,16 @@ contract E2eSwapTest is BaseVaultTest {
             );
 
             maxAmountIn = _setPoolBalancesAndGetAmountIn(testLocals.liquidityTokenA, testLocals.liquidityTokenB);
-
-            console.log("maxAmountIn", maxAmountIn);
         }
 
         if (testLocals.shouldTestSwapAmount) {
-            exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxAmountIn);
+            // If the liquidity is very small for one of the tokens and decimals are small too, the maxAmountIn may be
+            // smaller than minSwapAmount (usually 10^7), so just overwrite it.
+            if (minSwapAmountTokenA > maxAmountIn) {
+                exactAmountIn = bound(exactAmountIn, maxAmountIn, maxAmountIn);
+            } else {
+                exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxAmountIn);
+            }
         } else {
             exactAmountIn = maxAmountIn;
         }
@@ -433,7 +468,7 @@ contract E2eSwapTest is BaseVaultTest {
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
 
-    function _testDoUndoExactOutBase(uint256 exactAmountOut, DoUndoLocals memory testLocals) private {
+    function _testDoUndoExactOutBase(uint256 exactAmountOut, DoUndoLocals memory testLocals) internal {
         if (testLocals.shouldTestDecimals) {
             decimalsTokenA = bound(testLocals.newDecimalsTokenA, 6, 18);
             decimalsTokenB = bound(testLocals.newDecimalsTokenB, 6, 18);
@@ -458,7 +493,13 @@ contract E2eSwapTest is BaseVaultTest {
         }
 
         if (testLocals.shouldTestSwapAmount) {
-            exactAmountOut = bound(exactAmountOut, minSwapAmountTokenB, maxAmountOut);
+            // If the liquidity is very small for one of the tokens and decimals are small too, the maxAmountOut may be
+            // smaller than minSwapAmount (usually 10^7), so just overwrite it.
+            if (minSwapAmountTokenB > maxAmountOut) {
+                exactAmountOut = bound(exactAmountOut, maxAmountOut, maxAmountOut);
+            } else {
+                exactAmountOut = bound(exactAmountOut, minSwapAmountTokenB, maxAmountOut);
+            }
         } else {
             exactAmountOut = maxAmountOut;
         }
@@ -557,10 +598,14 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 liquidityTokenB
     ) private returns (uint256 amountIn) {
         // Set pool liquidity.
-        _setPoolBalances(liquidityTokenA, liquidityTokenB);
+        setPoolBalances(liquidityTokenA, liquidityTokenB);
+
+        uint256 rateTokenA = getRate(tokenA);
+        uint256 rateTokenB = getRate(tokenB);
 
         // Since tokens can have different decimals and amountIn is in relation to tokenA, normalize tokenB liquidity.
-        uint256 normalizedLiquidityTokenB = (liquidityTokenB * (10 ** decimalsTokenA)) / (10 ** decimalsTokenB);
+        uint256 normalizedLiquidityTokenB = (liquidityTokenB * (rateTokenB * 10 ** decimalsTokenA)) /
+            (rateTokenA * 10 ** decimalsTokenB);
 
         // 25% of tokenA or tokenB liquidity, the lowest value, to make sure the swap is executed.
         amountIn = (liquidityTokenA > normalizedLiquidityTokenB ? normalizedLiquidityTokenB : liquidityTokenA) / 4;
@@ -571,26 +616,38 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 liquidityTokenB
     ) private returns (uint256 amountOut) {
         // Set liquidity of pool.
-        _setPoolBalances(liquidityTokenA, liquidityTokenB);
+        setPoolBalances(liquidityTokenA, liquidityTokenB);
+
+        uint256 rateTokenA = getRate(tokenA);
+        uint256 rateTokenB = getRate(tokenB);
 
         // Since tokens can have different decimals and amountOut is in relation to tokenB, normalize tokenA liquidity.
-        uint256 normalizedLiquidityTokenA = (liquidityTokenA * (10 ** decimalsTokenB)) / (10 ** decimalsTokenA);
+        uint256 normalizedLiquidityTokenA = (liquidityTokenA * (rateTokenA * 10 ** decimalsTokenB)) /
+            (rateTokenB * 10 ** decimalsTokenA);
 
         // 25% of tokenA or tokenB liquidity, the lowest value, to make sure the swap is executed.
         amountOut = (normalizedLiquidityTokenA > liquidityTokenB ? liquidityTokenB : normalizedLiquidityTokenA) / 4;
     }
 
-    function _setPoolBalances(uint256 liquidityTokenA, uint256 liquidityTokenB) private {
+    function setPoolBalances(uint256 liquidityTokenA, uint256 liquidityTokenB) internal {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
 
         uint256[] memory newPoolBalance = new uint256[](2);
         newPoolBalance[tokenAIdx] = liquidityTokenA;
         newPoolBalance[tokenBIdx] = liquidityTokenB;
 
-        // Rate is 1, so we just need to compare 18 with token decimals to scale each liquidity accordingly.
+        uint256 rateTokenA = getRate(tokenA);
+        uint256 rateTokenB = getRate(tokenB);
+
         uint256[] memory newPoolBalanceLiveScaled18 = new uint256[](2);
-        newPoolBalanceLiveScaled18[tokenAIdx] = liquidityTokenA * 10 ** (18 - decimalsTokenA);
-        newPoolBalanceLiveScaled18[tokenBIdx] = liquidityTokenB * 10 ** (18 - decimalsTokenB);
+        newPoolBalanceLiveScaled18[tokenAIdx] = liquidityTokenA.toScaled18ApplyRateRoundUp(
+            10 ** (decimalsTokenA),
+            rateTokenA
+        );
+        newPoolBalanceLiveScaled18[tokenBIdx] = liquidityTokenB.toScaled18ApplyRateRoundUp(
+            10 ** (decimalsTokenB),
+            rateTokenB
+        );
 
         vault.manualSetPoolTokensAndBalances(pool, tokens, newPoolBalance, newPoolBalanceLiveScaled18);
     }
@@ -607,14 +664,20 @@ contract E2eSwapTest is BaseVaultTest {
         poolConfig.tokenDecimalDiffs = PoolConfigLib.toTokenDecimalDiffs(tokenDecimalDiffs);
         vault.manualSetPoolConfig(pool, poolConfig);
 
-        // Fix pool init amounts, adjusting to new decimals. These values will be used to calculate max swap values and
-        // pool liquidity.
-        poolInitAmountTokenA = poolInitAmount.mulDown(10 ** decimalsTokenA);
-        poolInitAmountTokenB = poolInitAmount.mulDown(10 ** decimalsTokenB);
-
-        _setPoolBalances(poolInitAmountTokenA, poolInitAmountTokenB);
+        setPoolInitAmounts();
+        setPoolBalances(poolInitAmountTokenA, poolInitAmountTokenB);
 
         // Min and Max swap amounts depends on the decimals of each token, so a recalculation is needed.
         calculateMinAndMaxSwapAmounts();
+    }
+
+    function setPoolInitAmounts() internal {
+        uint256 rateTokenA = getRate(tokenA);
+        uint256 rateTokenB = getRate(tokenB);
+
+        // Fix pool init amounts, adjusting to new decimals. These values will be used to calculate max swap values and
+        // pool liquidity.
+        poolInitAmountTokenA = poolInitAmount.mulDown(10 ** (decimalsTokenA)).divDown(rateTokenA);
+        poolInitAmountTokenB = poolInitAmount.mulDown(10 ** (decimalsTokenB)).divDown(rateTokenB);
     }
 }
