@@ -368,12 +368,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         // (1) and (2): get raw amounts and check limits.
         if (params.kind == SwapKind.EXACT_IN) {
-            // Set locals.swapFeeAmountScaled18 based on the amountCalculated.
-            if (state.swapFeePercentage > 0) {
-                // Swap fee is always a percentage of the amountCalculated. On ExactIn, subtract it from the calculated
-                // amountOut. Round up to avoid losses during precision loss.
-                locals.swapFeeAmountScaled18 = amountCalculatedScaled18.mulUp(state.swapFeePercentage);
-            }
+            // Swap fee is always a percentage of the amountCalculated. On ExactIn, subtract it from the calculated
+            // amountOut. Round up to avoid losses during precision loss.
+            locals.swapFeeAmountScaled18 = amountCalculatedScaled18.mulUp(state.swapFeePercentage);
+
             // Need to update `amountCalculatedScaled18` for the onAfterSwap hook.
             amountCalculatedScaled18 -= locals.swapFeeAmountScaled18;
 
@@ -389,15 +387,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert SwapLimit(amountOutRaw, params.limitRaw);
             }
         } else {
-            // Set locals.swapFeeAmountScaled18 based on the amountCalculated.
-            if (state.swapFeePercentage > 0) {
-                // To ensure symmetry with EXACT_IN, the swap fee used by ExactOut is
-                // `fee%/(100% - fee%) * amountCalculated`. Add it to the calculated amountIn. Round up to avoid losses
-                // during precision loss.
-                locals.swapFeeAmountScaled18 =
-                    (amountCalculatedScaled18 * state.swapFeePercentage) /
-                    (FixedPoint.ONE - state.swapFeePercentage);
-            }
+            // To ensure symmetry with EXACT_IN, the swap fee used by ExactOut is
+            // `fee%/(100% - fee%) * amountCalculated`. Add it to the calculated amountIn. Round up to avoid losses
+            // during precision loss.
+            locals.swapFeeAmountScaled18 = amountCalculatedScaled18.mulDivUp(
+                state.swapFeePercentage,
+                state.swapFeePercentage.complement()
+            );
 
             amountCalculatedScaled18 += locals.swapFeeAmountScaled18;
 
