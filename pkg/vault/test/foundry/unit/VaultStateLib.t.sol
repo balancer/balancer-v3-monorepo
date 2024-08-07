@@ -14,10 +14,14 @@ import { VaultStateLib, VaultStateBits, VaultStateBits } from "../../../contract
 contract VaultStateLibTest is BaseBitsConfigTest {
     using WordCodec for bytes32;
 
+    Bits[] bits;
+
     function testOffsets() public {
-        _checkBitsUsedOnce(VaultStateLib.QUERY_DISABLED_OFFSET);
-        _checkBitsUsedOnce(VaultStateLib.VAULT_PAUSED_OFFSET);
-        _checkBitsUsedOnce(VaultStateLib.BUFFER_PAUSED_OFFSET);
+        bits.push(Bits(VaultStateLib.QUERY_DISABLED_OFFSET, 1));
+        bits.push(Bits(VaultStateLib.VAULT_PAUSED_OFFSET, 1));
+        bits.push(Bits(VaultStateLib.BUFFER_PAUSED_OFFSET, 1));
+
+        _checkBitsUsedOnce(bits);
     }
 
     function testZeroConfigBytes() public pure {

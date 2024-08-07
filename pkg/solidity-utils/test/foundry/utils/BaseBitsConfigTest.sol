@@ -5,16 +5,33 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 contract BaseBitsConfigTest is Test {
+    struct Bits {
+        uint256 startBit;
+        uint256 size;
+    }
+
     mapping(uint256 => bool) usedBits;
 
-    function _checkBitsUsedOnce(uint256 startBit, uint256 size) internal {
-        uint256 endBit = startBit + size;
-        for (uint256 i = startBit; i < endBit; i++) {
-            _checkBitsUsedOnce(i);
+    function _checkBitsUsedOnce(Bits[] memory bits) internal {
+        uint256 nextStartBit = 0;
+        for (uint256 i = 0; i < bits.length; i++) {
+            uint256 startBit = bits[i].startBit;
+            if (i == 0) {
+                assertEq(startBit, 0, "First bit should start at 0");
+            } else {
+                assertEq(startBit, nextStartBit, "Bits do not follow each other");
+            }
+
+            uint256 endBit = startBit + bits[i].size;
+            for (uint256 j = startBit; j < endBit; j++) {
+                _checkBitUsedOnce(j);
+            }
+
+            nextStartBit = endBit;
         }
     }
 
-    function _checkBitsUsedOnce(uint256 bitNumber) internal {
+    function _checkBitUsedOnce(uint256 bitNumber) private {
         assertEq(usedBits[bitNumber], false, "Bit already used");
         usedBits[bitNumber] = true;
     }
