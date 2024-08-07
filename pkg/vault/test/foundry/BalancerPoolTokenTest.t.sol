@@ -5,17 +5,14 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { IEIP712 } from "permit2/src/interfaces/IEIP712.sol";
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
-import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
@@ -134,7 +131,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         assertEq(poolToken.nonces(user), CURRENT_NONCE + 1, "nonce mismatch");
     }
 
-    // @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitBadNonce() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
@@ -150,7 +147,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
     }
 
-    // @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitBadDeadline() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
@@ -165,7 +162,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp + 1, v, r, s);
     }
 
-    // @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitPastDeadline() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
@@ -180,7 +177,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp - 1, v, r, s);
     }
 
-    // @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitReplay() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
@@ -222,7 +219,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         assertEq(poolToken.nonces(usr), CURRENT_NONCE + 1, "nonce mismatch");
     }
 
-    // @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitBadNonce__Fuzz(
         uint256 privKey,
         address to,
@@ -250,7 +247,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(usr, to, amount, deadline, v, r, s);
     }
 
-    // @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitBadDeadline__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
         deadline = bound(deadline, 0, block.timestamp - 1);
         vm.assume(privKey != 0);
@@ -292,7 +289,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(usr, to, amount, deadline, v, r, s);
     }
 
-    // @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitReplay__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
         vm.assume(privKey != 0);
         vm.assume(to != address(0));

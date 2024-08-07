@@ -9,7 +9,8 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
@@ -17,6 +18,7 @@ import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract PoolSwapManagerTest is BaseVaultTest {
+    using CastingHelpers for address[];
     using ArrayHelpers for *;
 
     uint256 internal constant NEW_SWAP_FEE = 0.012345e18;
@@ -91,7 +93,7 @@ contract PoolSwapManagerTest is BaseVaultTest {
     function testSwapFeeManagerCanSetFees() public {
         require(vault.getStaticSwapFeePercentage(pool) == 0, "initial swap fee non-zero");
 
-        // swap fee manager can set the static swap fee.
+        // Swap fee manager can set the static swap fee.
         vm.prank(admin);
         vault.setStaticSwapFeePercentage(pool, NEW_SWAP_FEE);
 
@@ -121,13 +123,13 @@ contract PoolSwapManagerTest is BaseVaultTest {
 
         assertEq(vault.getStaticSwapFeePercentage(address(unmanagedPool)), NEW_SWAP_FEE, "Could not set swap fee");
 
-        // Granting specific permission to bob on unmanagedPool doesn't grant it on otherPool
+        // Granting specific permission to bob on `unmanagedPool` doesn't grant it on `otherPool`.
         vm.prank(bob);
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.setStaticSwapFeePercentage(address(otherPool), NEW_SWAP_FEE);
     }
 
-    // It is onlyOwner, so governance cannot override
+    // It is onlyOwner, so governance cannot override.
     function testGovernanceCannotSetSwapFeeWithManager() public {
         require(vault.getStaticSwapFeePercentage(pool) == 0, "initial swap fee non-zero");
 

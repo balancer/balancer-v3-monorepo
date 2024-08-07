@@ -51,7 +51,7 @@ You will also need to configure your environment variables to point to RPC endpo
 Write your preferred RPC URL to `.env`, and source it. For example:
 
 ```bash
-$ sed 's,YOUR_MAINNET_RPC_URL,<YOUR_RPC_URL>' .env.example > .env
+$ sed 's,YOUR_MAINNET_RPC_URL,<YOUR_RPC_URL>,g' .env.example > .env
 $ source .env
 ```
 

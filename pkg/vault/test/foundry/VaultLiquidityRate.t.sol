@@ -5,12 +5,13 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { PoolData, Rounding, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
@@ -19,6 +20,7 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultLiquidityWithRatesTest is BaseVaultTest {
+    using CastingHelpers for address[];
     using ArrayHelpers for *;
 
     // Track the indices for the local dai/wsteth pool.
@@ -51,7 +53,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
     }
 
     function testLastLiveBalanceInitialization() public {
-        // Need to set the rate before initialization for this test
+        // Need to set the rate before initialization for this test.
         pool = createPool();
         rateProvider.mockRate(mockRate);
         initPool();
@@ -127,7 +129,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             bytes("")
         );
 
-        // TODO: Find a way to test rates inside the Vault
+        // TODO: Find a way to test rates inside the Vault.
         router.removeLiquidityProportional(
             pool,
             defaultAmount * 2,

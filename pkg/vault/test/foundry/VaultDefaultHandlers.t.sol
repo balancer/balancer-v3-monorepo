@@ -30,8 +30,8 @@ contract VaultDefaultHandlers is BaseVaultTest {
     }
 
     function testDefaultHandler() public {
-        bytes32 result = VaultExtensionMock(payable(address(vault))).mockExtensionHash(bytes("V3"));
-        assertEq(result, keccak256(bytes("V3")));
+        bytes32 result = VaultExtensionMock(payable(address(vault))).mockExtensionHash(bytes("v3"));
+        assertEq(result, keccak256(bytes("v3")));
     }
 
     function testDefaultHandlerNonExistentFunction() public {
@@ -40,7 +40,7 @@ contract VaultDefaultHandlers is BaseVaultTest {
     }
 
     function testOnlyVault() public {
-        // Does not revert via Vault
+        // Does not revert via Vault.
         assertTrue(IVault(address(vault)).isPoolRegistered(pool));
 
         IVault vaultExtension = IVault(vault.getVaultExtension());

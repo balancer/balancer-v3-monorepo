@@ -4,8 +4,12 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    PoolConfigBits,
+    FEE_BITLENGTH,
+    MAX_FEE_PERCENTAGE,
+    FEE_SCALING_FACTOR
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { PoolConfigConst } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigConst.sol";
 import { PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";

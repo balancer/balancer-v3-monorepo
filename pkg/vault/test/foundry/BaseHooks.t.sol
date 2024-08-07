@@ -4,10 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BaseHooksMock } from "../../contracts/test/BaseHooksMock.sol";
@@ -20,7 +18,7 @@ contract BaseHooksTest is BaseVaultTest {
     function setUp() public override {
         BaseVaultTest.setUp();
 
-        // Not using poolHooksMock address because onRegister of BaseHooks fails, so the test does not run.
+        // Not using PoolHooksMock address because onRegister of BaseHooks fails, so the test does not run.
         testHook = new BaseHooksMock(IVault(address(vault)));
     }
 
@@ -92,7 +90,7 @@ contract BaseHooksTest is BaseVaultTest {
         );
         assertFalse(result, "onAfterAddLiquidity should be false");
 
-        // HookAdjustedAmounts should not be used in case result is false, so make sure it's an empty value.
+        // `hookAdjustedAmounts` should not be used in case result is false, so make sure it's an empty value.
         assertEq(hookAdjustedAmounts.length, 0, "hookAdjustedAmounts is not empty");
     }
 
@@ -135,30 +133,30 @@ contract BaseHooksTest is BaseVaultTest {
         );
         assertFalse(result, "onAfterRemoveLiquidity should be false");
 
-        // HookAdjustedAmounts should not be used in case result is false, so make sure it's an empty value.
+        // `hookAdjustedAmounts` should not be used in case result is false, so make sure it's an empty value.
         assertEq(hookAdjustedAmounts.length, 0, "hookAdjustedAmounts is not empty");
     }
 
     function testOnBeforeSwap() public {
-        IBasePool.PoolSwapParams memory params;
+        PoolSwapParams memory params;
 
         vm.prank(address(vault));
         assertFalse(testHook.onBeforeSwap(params, address(0)), "onBeforeSwap should be false");
     }
 
     function testOnAfterSwap() public {
-        IHooks.AfterSwapParams memory params;
+        AfterSwapParams memory params;
 
         vm.prank(address(vault));
         (bool success, uint256 hookAdjustedAmount) = testHook.onAfterSwap(params);
 
         assertFalse(success, "onAfterSwap should be false");
-        // HookAdjustedAmount should not be used in case result is false, so make sure it's zero.
+        // `hookAdjustedAmount` should not be used in case result is false, so make sure it's zero.
         assertEq(hookAdjustedAmount, 0, "hookAdjustedAmount is not zero");
     }
 
     function testOnComputeDynamicSwapFeePercentage() public {
-        IBasePool.PoolSwapParams memory params;
+        PoolSwapParams memory params;
         uint256 staticSwapFeePercentage;
 
         vm.prank(address(vault));
@@ -169,7 +167,7 @@ contract BaseHooksTest is BaseVaultTest {
         );
 
         assertFalse(success, "onComputeDynamicSwapFeePercentage should be false");
-        // newFee should not be used in case result is false, so make sure it's zero.
+        // `newFeePercentage` should not be used in case result is false, so make sure it's zero.
         assertEq(newFeePercentage, 0, "newFeePercentage is not zero");
     }
 }

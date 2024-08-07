@@ -7,8 +7,9 @@ import "forge-std/Test.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { PoolConfigBits } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
@@ -19,11 +20,12 @@ import { WeightedPool } from "../../contracts/WeightedPool.sol";
 import { LiquidityApproximationTest } from "@balancer-labs/v3-vault/test/foundry/LiquidityApproximation.t.sol";
 
 contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
-    uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
-
+    using CastingHelpers for address[];
     using ArrayHelpers for *;
 
-    uint256 poolCreationNonce;
+    uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
+
+    uint256 internal poolCreationNonce;
 
     function setUp() public virtual override {
         LiquidityApproximationTest.setUp();
@@ -38,7 +40,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         );
         PoolRoleAccounts memory roleAccounts;
 
-        // Allow pools created by `factory` to use poolHooksMock hooks
+        // Allow pools created by `factory` to use PoolHooksMock hooks.
         PoolHooksMock(poolHooksContract).allowFactory(address(factory));
 
         WeightedPool newPool = WeightedPool(
@@ -46,7 +48,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
                 "ERC20 Pool",
                 "ERC20POOL",
                 vault.buildTokenConfig(tokens.asIERC20()),
-                [uint256(0.50e18), uint256(0.50e18)].toMemoryArray(),
+                [uint256(50e16), uint256(50e16)].toMemoryArray(),
                 roleAccounts,
                 DEFAULT_SWAP_FEE,
                 poolHooksContract,

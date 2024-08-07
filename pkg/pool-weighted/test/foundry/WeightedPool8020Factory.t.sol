@@ -8,13 +8,12 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
 import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenConfig, TokenType, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WeightedPool8020Factory } from "../../contracts/WeightedPool8020Factory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
@@ -44,6 +43,7 @@ contract WeightedPool8020FactoryTest is Test {
         tokenConfig[0].token = highToken;
         tokenConfig[1].token = lowToken;
 
+        // The factory will sort the tokens.
         return WeightedPool(factory.create(tokenConfig[0], tokenConfig[1], roleAccounts, DEFAULT_SWAP_FEE));
     }
 
@@ -59,8 +59,8 @@ contract WeightedPool8020FactoryTest is Test {
         bytes32 salt = keccak256(abi.encode(block.chainid, tokenA, tokenB));
         address deploymentAddress = factory.getDeploymentAddress(salt);
 
-        assertEq(address(pool), expectedPoolAddress, "Unexpected pool address");
-        assertEq(deploymentAddress, expectedPoolAddress, "Unexpected deployment address");
+        assertEq(address(pool), expectedPoolAddress, "Wrong pool address");
+        assertEq(deploymentAddress, expectedPoolAddress, "Wrong deployment address");
     }
 
     function testPoolCreation() public {
@@ -69,8 +69,8 @@ contract WeightedPool8020FactoryTest is Test {
         WeightedPool pool = _createPool(tokenA, tokenB);
 
         uint256[] memory poolWeights = pool.getNormalizedWeights();
-        assertEq(poolWeights[highWeightIdx], 8e17, "Higher weight token is not 80%");
-        assertEq(poolWeights[lowWeightIdx], 2e17, "Lower weight token is not 20%");
+        assertEq(poolWeights[highWeightIdx], 80e16, "Higher weight token is not 80%");
+        assertEq(poolWeights[lowWeightIdx], 20e16, "Lower weight token is not 20%");
         assertEq(pool.name(), "Balancer 80 TKNA 20 TKNB", "Wrong pool name");
         assertEq(pool.symbol(), "B-80TKNA-20TKNB", "Wrong pool symbol");
     }
@@ -109,6 +109,7 @@ contract WeightedPool8020FactoryTest is Test {
 
     /// forge-config: default.fuzz.runs = 10
     function testPoolCrossChainProtection_Fuzz(uint16 chainId) public {
+        // Eliminate the test chain.
         vm.assume(chainId != 31337);
 
         vm.prank(alice);

@@ -2,29 +2,34 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import { ISwapFeePercentageBounds } from "./ISwapFeePercentageBounds.sol";
-import { SwapKind } from "./VaultTypes.sol";
+import { IUnbalancedLiquidityInvariantRatioBounds } from "./IUnbalancedLiquidityInvariantRatioBounds.sol";
+import { SwapKind, PoolSwapParams } from "./VaultTypes.sol";
 
-/// @notice Interface for a Base Pool
-interface IBasePool is ISwapFeePercentageBounds {
+/**
+ * @notice Base interface for a Balancer Pool.
+ * @dev All pool types should implement this interface. Note that it also requires implementation of:
+ * - `ISwapFeePercentageBounds` to specify the minimum and maximum swap fee percentages.
+ * - `IUnbalancedLiquidityInvariantRatioBounds` to specify how much the invariant can change during an unbalanced liquidity operation.
+ */
+interface IBasePool is ISwapFeePercentageBounds, IUnbalancedLiquidityInvariantRatioBounds {
     /***************************************************************************
                                    Invariant
     ***************************************************************************/
 
     /**
-     * @notice Computes and returns the pool's invariant.
-     * @dev This function computes the invariant based on current balances
-     * @param balancesLiveScaled18 Array of current pool balances for each token in the pool, scaled to 18 decimals
+     * @notice Computes the pool's invariant.
+     * @dev This function computes the invariant based on current balances (and potentially other pool state).
+     * @param balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
      * @return invariant The calculated invariant of the pool, represented as a uint256
      */
     function computeInvariant(uint256[] memory balancesLiveScaled18) external view returns (uint256 invariant);
 
     /**
      * @dev Computes the new balance of a token after an operation, given the invariant growth ratio and all other
-     * balances.
-     * @param balancesLiveScaled18 Current live balances (adjusted for decimals, rates, etc.)
+     * balances. Similar to V2's `_getTokenBalanceGivenInvariantAndAllOtherBalances` in StableMath.
+     *
+     * @param balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
      * @param tokenInIndex The index of the token we're computing the balance for, sorted in token registration order
      * @param invariantRatio The ratio of the new invariant (after an operation) to the old
      * @return newBalance The new balance of the selected token, after the operation
@@ -40,29 +45,9 @@ interface IBasePool is ISwapFeePercentageBounds {
     ***************************************************************************/
 
     /**
-     * @dev Data for a swap operation.
-     * @param kind Type of swap (exact in or exact out)
-     * @param amountGivenScaled18 Amount given based on kind of the swap (e.g., tokenIn for exact in)
-     * @param balancesScaled18 Current pool balances
-     * @param indexIn Index of tokenIn
-     * @param indexOut Index of tokenOut
-     * @param router The address (usually a router contract) that initiated a swap operation on the Vault
-     * @param userData Additional (optional) data required for the swap
-     */
-    struct PoolSwapParams {
-        SwapKind kind;
-        uint256 amountGivenScaled18;
-        uint256[] balancesScaled18;
-        uint256 indexIn;
-        uint256 indexOut;
-        address router;
-        bytes userData;
-    }
-
-    /**
      * @notice Execute a swap in the pool.
      * @param params Swap parameters (see above for struct definition)
-     * @return amountCalculatedScaled18 Calculated amount for the swap
+     * @return amountCalculatedScaled18 Calculated amount for the swap operation
      */
     function onSwap(PoolSwapParams calldata params) external returns (uint256 amountCalculatedScaled18);
 }

@@ -7,17 +7,21 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenInfo, TokenType, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
-import { VaultMock } from "@balancer-labs/v3-vault/contracts/test/VaultMock.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
 import { PoolInfo } from "../../contracts/PoolInfo.sol";
 
 contract PoolInfoTest is BaseTest {
+    using CastingHelpers for address[];
     using ArrayHelpers for *;
 
     IVaultMock vault;
@@ -38,7 +42,7 @@ contract PoolInfoTest is BaseTest {
         vm.mockCall(
             address(poolInfo),
             abi.encodeWithSelector(ISwapFeePercentageBounds.getMaximumSwapFeePercentage.selector),
-            abi.encode(1e18)
+            abi.encode(FixedPoint.ONE) // 100%
         );
         vault.manualRegisterPool(address(poolInfo), poolTokens);
     }
@@ -77,7 +81,7 @@ contract PoolInfoTest is BaseTest {
             IERC20[] memory actualTokens,
             TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory lastLiveBalances
+            uint256[] memory lastBalancesLiveScaled18
         ) = poolInfo.getTokenInfo();
 
         // Tokens
@@ -122,9 +126,9 @@ contract PoolInfoTest is BaseTest {
         assertEq(balancesRaw.length, 2, "Incorrect balancesRaw length");
         assertEq(balancesRaw[0], expectedRawBalances[0], "Incorrect balancesRaw[0]");
         assertEq(balancesRaw[1], expectedRawBalances[1], "Incorrect balancesRaw[1]");
-        assertEq(lastLiveBalances.length, 2, "Incorrect lastLiveBalances length");
-        assertEq(lastLiveBalances[0], expectedLastLiveBalances[0], "Incorrect lastLiveBalances[0]");
-        assertEq(lastLiveBalances[1], expectedLastLiveBalances[1], "Incorrect lastLiveBalances[1]");
+        assertEq(lastBalancesLiveScaled18.length, 2, "Incorrect lastBalancesLiveScaled18 length");
+        assertEq(lastBalancesLiveScaled18[0], expectedLastLiveBalances[0], "Incorrect lastBalancesLiveScaled18[0]");
+        assertEq(lastBalancesLiveScaled18[1], expectedLastLiveBalances[1], "Incorrect lastBalancesLiveScaled18[1]");
     }
 
     function testGetCurrentLiveBalances() public {
@@ -154,5 +158,20 @@ contract PoolInfoTest is BaseTest {
 
         uint256 swapFeePercentage = poolInfo.getStaticSwapFeePercentage();
         assertEq(swapFeePercentage, expectedSwapFeePercentage, "Incorrect swap fee percentage");
+    }
+
+    function testGetAggregateFeePercentages() public {
+        // Use unusual values that aren't used anywhere else.
+        uint256 expectedSwapFeePercentage = 32e16;
+        uint256 expectedYieldFeePercentage = 21e16;
+
+        vault.manualSetAggregateSwapFeePercentage(address(poolInfo), expectedSwapFeePercentage);
+        vault.manualSetAggregateYieldFeePercentage(address(poolInfo), expectedYieldFeePercentage);
+
+        (uint256 actualAggregateSwapFeePercentage, uint256 actualAggregateYieldFeePercentage) = poolInfo
+            .getAggregateFeePercentages();
+
+        assertEq(actualAggregateSwapFeePercentage, expectedSwapFeePercentage, "Incorrect swap fee percentage");
+        assertEq(actualAggregateYieldFeePercentage, expectedYieldFeePercentage, "Incorrect yield fee percentage");
     }
 }

@@ -2,9 +2,11 @@
 
 pragma solidity ^0.8.24;
 
-import "../vault/VaultTypes.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+
 import { IRateProvider } from "../vault/IRateProvider.sol";
-import { IBasePool } from "../vault/IBasePool.sol";
+import "../vault/VaultTypes.sol";
 
 interface IVaultMainMock {
     function getPoolFactoryMock() external view returns (address);
@@ -50,7 +52,12 @@ interface IVaultMainMock {
 
     function manualSetStaticSwapFeePercentage(address pool, uint256 value) external;
 
+    /// @dev Does not check the value against any min/max limits normally enforced by the pool.
+    function manualUnsafeSetStaticSwapFeePercentage(address pool, uint256 value) external;
+
     function manualSetPoolTokensAndBalances(address, IERC20[] memory, uint256[] memory, uint256[] memory) external;
+
+    function manualSetPoolBalances(address, uint256[] memory, uint256[] memory) external;
 
     function manualSetPoolConfigBits(address pool, PoolConfigBits config) external;
 
@@ -66,7 +73,7 @@ interface IVaultMainMock {
 
     function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256);
 
-    function getMaxConvertError() external pure returns (uint256);
+    function getBufferTokenBalancesBytes(IERC4626 wrappedToken) external view returns (bytes32);
 
     function recoveryModeExit(address pool) external view;
 
@@ -82,7 +89,7 @@ interface IVaultMainMock {
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw);
 
-    function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances);
+    function getLastLiveBalances(address pool) external view returns (uint256[] memory lastBalancesLiveScaled18);
 
     function updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,
@@ -172,7 +179,7 @@ interface IVaultMainMock {
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
-    ) external view returns (IBasePool.PoolSwapParams memory);
+    ) external view returns (PoolSwapParams memory);
 
     function manualComputeAndChargeAggregateSwapFees(
         PoolData memory poolData,
@@ -250,4 +257,6 @@ interface IVaultMainMock {
     function manualSendToReentrancy(IERC20 token, address to, uint256 amount) external;
 
     function manualFindTokenIndex(IERC20[] memory tokens, IERC20 token) external pure returns (uint256 index);
+
+    function manualSetPoolCreator(address pool, address newPoolCreator) external;
 }

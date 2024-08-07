@@ -5,7 +5,6 @@ pragma solidity ^0.8.24;
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 import { IVault } from "../vault/IVault.sol";
-import { IVaultEvents } from "../vault/IVaultEvents.sol";
 import { IVaultMainMock } from "./IVaultMainMock.sol";
 import { IVaultExtensionMock } from "./IVaultExtensionMock.sol";
 import { IVaultAdminMock } from "./IVaultAdminMock.sol";

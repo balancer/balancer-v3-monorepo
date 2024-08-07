@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import "../../contracts/math/FixedPoint.sol";
+import { FixedPoint } from "../../contracts/math/FixedPoint.sol";
 
 contract FixedPointTest is Test {
     function testComplement__Fuzz(uint256 x) external pure {
