@@ -388,7 +388,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
         } else {
             // To ensure symmetry with EXACT_IN, the swap fee used by ExactOut is
-            // `fee% / (100% - fee%) * amountCalculated`. Add it to the calculated amountIn. Round up to avoid losses.
+            // `amountCalculated * fee% / (100% - fee%)`. Add it to the calculated amountIn. Round up to avoid losses
             // during precision loss.
             locals.swapFeeAmountScaled18 = amountCalculatedScaled18.mulDivUp(
                 state.swapFeePercentage,
