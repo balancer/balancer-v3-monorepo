@@ -349,6 +349,11 @@ contract E2eSwapTest is BaseVaultTest {
             } else {
                 tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 1);
             }
+
+            // Tolerance should always be higher than 1e6. Smaller tolerances can catch rounding errors, which is not
+            // the purpose of the test.
+            tolerance = tolerance > MIN_TRADE_AMOUNT ? tolerance : MIN_TRADE_AMOUNT;
+
             assertApproxEqAbs(
                 exactAmountInSwap - feesTokenA,
                 exactAmountIn,
@@ -641,11 +646,11 @@ contract E2eSwapTest is BaseVaultTest {
 
         uint256[] memory newPoolBalanceLiveScaled18 = new uint256[](2);
         newPoolBalanceLiveScaled18[tokenAIdx] = liquidityTokenA.toScaled18ApplyRateRoundUp(
-            10 ** (decimalsTokenA),
+            10 ** (18 - decimalsTokenA),
             rateTokenA
         );
         newPoolBalanceLiveScaled18[tokenBIdx] = liquidityTokenB.toScaled18ApplyRateRoundUp(
-            10 ** (decimalsTokenB),
+            10 ** (18 - decimalsTokenB),
             rateTokenB
         );
 
