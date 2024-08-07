@@ -366,14 +366,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Intervening code cannot read balances from storage, as they are temporarily out-of-sync here. This function
         // is nonReentrant, to guard against read-only reentrancy issues.
 
-        // Set locals.swapFeeAmountScaled18 based on the amountCalculated.
-        if (state.swapFeePercentage > 0) {
-            // Swap fee is always a percentage of the amountCalculated. On ExactIn, subtract it from the calculated
-            // amountOut. On ExactOut, add it to the calculated amountIn.
-            // Round up to avoid losses during precision loss.
-            locals.swapFeeAmountScaled18 = amountCalculatedScaled18.mulUp(state.swapFeePercentage);
-        }
-
         // (1) and (2): get raw amounts and check limits.
         if (params.kind == SwapKind.EXACT_IN) {
             // Set locals.swapFeeAmountScaled18 based on the amountCalculated.
