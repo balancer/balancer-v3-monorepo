@@ -48,9 +48,6 @@ contract E2eBatchSwapTest is BaseVaultTest {
     uint256 internal minSwapAmountTokenD;
     uint256 internal maxSwapAmountTokenD;
 
-    // 0.0001% swap fee
-    uint256 internal constant DEFAULT_SWAP_FEE = 1e12;
-
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
@@ -97,13 +94,6 @@ contract E2eBatchSwapTest is BaseVaultTest {
         tokenDIdx = 3;
     }
 
-    function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
-        address newPool = super._createPool(tokens, label);
-        // Defining swap fees to 0.0001% (Pool Factory Mock sets the swap fee to 0).
-        vault.manualUnsafeSetStaticSwapFeePercentage(newPool, DEFAULT_SWAP_FEE);
-        return newPool;
-    }
-
     /**
      * @notice Set up test variables (tokens, pool swap fee, swap sizes).
      * @dev When extending the test, override this function and set the same variables.
@@ -126,7 +116,14 @@ contract E2eBatchSwapTest is BaseVaultTest {
         maxSwapAmountTokenD = poolInitAmount / 2;
     }
 
-    function testDoUndoExactIn__Fuzz(uint256 exactAmountIn) public {
+    function testDoUndoExactIn__Fuzz(
+        uint256 exactAmountIn,
+        uint256 poolAFeePercentage,
+        uint256 poolBFeePercentage,
+        uint256 poolCFeePercentage
+    ) public {
+        _setPoolSwapFees(poolAFeePercentage, poolBFeePercentage, poolCFeePercentage);
+
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender, tokensToTrack);
@@ -157,7 +154,14 @@ contract E2eBatchSwapTest is BaseVaultTest {
         );
     }
 
-    function testDoUndoExactOut__Fuzz(uint256 exactAmountOut) public {
+    function testDoUndoExactOut__Fuzz(
+        uint256 exactAmountOut,
+        uint256 poolAFeePercentage,
+        uint256 poolBFeePercentage,
+        uint256 poolCFeePercentage
+    ) public {
+        _setPoolSwapFees(poolAFeePercentage, poolBFeePercentage, poolCFeePercentage);
+
         exactAmountOut = bound(exactAmountOut, minSwapAmountTokenD, maxSwapAmountTokenD);
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender, tokensToTrack);
@@ -188,7 +192,10 @@ contract E2eBatchSwapTest is BaseVaultTest {
         );
     }
 
-    function testExactInRepeatExactOut__Fuzz(uint256 exactAmountIn) public {
+    function testExactInRepeatExactOut__Fuzz(uint256 exactAmountIn, uint256 poolFeePercentage) public {
+        // For this test, we need equal fees to ensure symetry between exact_in and out.
+        _setPoolSwapFees(poolFeePercentage, poolFeePercentage, poolFeePercentage);
+
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
         vm.startPrank(sender);
@@ -196,24 +203,26 @@ contract E2eBatchSwapTest is BaseVaultTest {
         uint256 snapshotId = vm.snapshot();
 
         uint256 amountOut = _executeAndCheckBatchExactIn(IERC20(address(tokenA)), exactAmountIn);
-        uint256 feesTokenD = vault.getAggregateSwapFeeAmount(poolC, tokenD);
 
         vm.revertTo(snapshotId);
 
-        uint256 amountIn = _executeAndCheckBatchExactOut(IERC20(address(tokenA)), amountOut - feesTokenD);
-        uint256 feesTokenA = vault.getAggregateSwapFeeAmount(poolA, tokenA);
+        uint256 amountIn = _executeAndCheckBatchExactOut(IERC20(address(tokenA)), amountOut);
 
         vm.stopPrank();
 
-        assertTrue(feesTokenA > 0, "No fees on tokenA");
-        assertTrue(feesTokenD > 0, "No fees on tokenD");
-
-        // 0.0001% error tolerance, since computeInGivenExactOut and computeOutGivenExactIn can calculate slightly
-        // different results
-        assertApproxEqRel(amountIn + feesTokenA, exactAmountIn, 1e12, "ExactIn and ExactOut amountsIn should match");
+        // Error tolerance is proportional to swap fee percentage.
+        uint256 tolerance = bound(poolFeePercentage, 1e12, 10e16);
+        assertApproxEqRel(amountIn, exactAmountIn, tolerance, "ExactIn and ExactOut amountsIn should match");
     }
 
-    function testExactInRepeatEachOperation__Fuzz(uint256 exactAmountIn) public {
+    function testExactInRepeatEachOperation__Fuzz(
+        uint256 exactAmountIn,
+        uint256 poolAFeePercentage,
+        uint256 poolBFeePercentage,
+        uint256 poolCFeePercentage
+    ) public {
+        _setPoolSwapFees(poolAFeePercentage, poolBFeePercentage, poolCFeePercentage);
+
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
         vm.startPrank(sender);
@@ -226,7 +235,14 @@ contract E2eBatchSwapTest is BaseVaultTest {
         assertEq(amountOutBatch, amountOutEach, "Batch and each operation amountsOut do not match");
     }
 
-    function testExactOutRepeatEachOperation__Fuzz(uint256 exactAmountOut) public {
+    function testExactOutRepeatEachOperation__Fuzz(
+        uint256 exactAmountOut,
+        uint256 poolAFeePercentage,
+        uint256 poolBFeePercentage,
+        uint256 poolCFeePercentage
+    ) public {
+        _setPoolSwapFees(poolAFeePercentage, poolBFeePercentage, poolCFeePercentage);
+
         exactAmountOut = bound(exactAmountOut, minSwapAmountTokenD, maxSwapAmountTokenD);
 
         vm.startPrank(sender);
@@ -443,5 +459,19 @@ contract E2eBatchSwapTest is BaseVaultTest {
             (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(pools[i]);
             poolInvariants[i] = IBasePool(pools[i]).computeInvariant(lastBalancesLiveScaled18);
         }
+    }
+
+    function _setPoolSwapFees(
+        uint256 poolAFeePercentage,
+        uint256 poolBFeePercentage,
+        uint256 poolCFeePercentage
+    ) private {
+        poolAFeePercentage = bound(poolAFeePercentage, 1e12, 10e16);
+        poolBFeePercentage = bound(poolBFeePercentage, 1e12, 10e16);
+        poolCFeePercentage = bound(poolCFeePercentage, 1e12, 10e16);
+
+        vault.manualSetStaticSwapFeePercentage(poolA, poolAFeePercentage);
+        vault.manualSetStaticSwapFeePercentage(poolB, poolBFeePercentage);
+        vault.manualSetStaticSwapFeePercentage(poolC, poolCFeePercentage);
     }
 }
