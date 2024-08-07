@@ -160,9 +160,6 @@ contract E2eBatchSwapTest is BaseVaultTest {
     function testDoUndoExactOut__Fuzz(uint256 exactAmountOut) public {
         exactAmountOut = bound(exactAmountOut, minSwapAmountTokenD, maxSwapAmountTokenD);
 
-        // Set swap fees to 0 (do not check pool fee percentage limits, some pool types do not accept 0 fees).
-        vault.manualUnsafeSetStaticSwapFeePercentage(pool, 0);
-
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender, tokensToTrack);
         uint256[] memory invariantsBefore = _getPoolInvariants();
 
