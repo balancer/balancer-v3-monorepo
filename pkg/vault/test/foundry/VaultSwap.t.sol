@@ -70,6 +70,43 @@ contract VaultSwapTest is BaseVaultTest {
         );
     }
 
+    function testSwapSymmetry() public {
+        setSwapFeePercentage(swapFeePercentage);
+
+        uint256 snapshotId = vm.snapshot();
+
+        vm.prank(alice);
+        uint256 amountOut = router.swapSingleTokenExactIn(
+            pool,
+            usdc,
+            dai,
+            defaultAmount,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        vm.revertTo(snapshotId);
+
+        vm.prank(alice);
+        uint256 amountIn = router.swapSingleTokenExactOut(
+            pool,
+            usdc,
+            dai,
+            amountOut,
+            MAX_UINT128,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+
+        // An ExactIn swap with `defaultAmount` tokenIn returned `amountOut` tokenOut.
+        // Since Exact_In and Exact_Out are symmetrical, an ExactOut swap with `amountOut` tokenOut should return the
+        // same amount of tokenIn.
+        assertEq(amountIn, defaultAmount, "Swap fees are not symmetric for ExactIn and ExactOut");
+    }
+
     function testSwapLimitExactIn() public {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapLimit.selector, defaultAmount - 1, defaultAmount));
