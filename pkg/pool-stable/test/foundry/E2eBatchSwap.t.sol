@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
