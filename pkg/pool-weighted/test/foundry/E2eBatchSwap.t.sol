@@ -11,7 +11,6 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 
-import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
 import { E2eBatchSwapTest } from "@balancer-labs/v3-vault/test/foundry/E2eBatchSwap.t.sol";
 
@@ -64,9 +63,6 @@ contract E2eBatchSwapWeightedTest is E2eBatchSwapTest {
         );
         PoolRoleAccounts memory roleAccounts;
 
-        // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
-
         WeightedPool newPool = WeightedPool(
             factory.create(
                 "50/50 Weighted Pool",
@@ -75,7 +71,7 @@ contract E2eBatchSwapWeightedTest is E2eBatchSwapTest {
                 [uint256(50e16), uint256(50e16)].toMemoryArray(),
                 roleAccounts,
                 DEFAULT_SWAP_FEE_WEIGHTED,
-                poolHooksContract,
+                address(0),
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity
                 // NOTE: sends a unique salt.

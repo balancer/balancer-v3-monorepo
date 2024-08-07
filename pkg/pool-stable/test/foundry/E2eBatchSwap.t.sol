@@ -10,7 +10,6 @@ import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/V
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ERC20TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC20TestToken.sol";
 
-import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
 import { E2eBatchSwapTest } from "@balancer-labs/v3-vault/test/foundry/E2eBatchSwap.t.sol";
 
@@ -47,9 +46,6 @@ contract E2eBatchSwapStableTest is E2eBatchSwapTest {
         StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         PoolRoleAccounts memory roleAccounts;
 
-        // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
-
         StablePool newPool = StablePool(
             factory.create(
                 "Stable Pool",
@@ -58,7 +54,7 @@ contract E2eBatchSwapStableTest is E2eBatchSwapTest {
                 DEFAULT_AMP_FACTOR,
                 roleAccounts,
                 DEFAULT_SWAP_FEE_STABLE,
-                poolHooksContract,
+                address(0),
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity
                 ZERO_BYTES32
