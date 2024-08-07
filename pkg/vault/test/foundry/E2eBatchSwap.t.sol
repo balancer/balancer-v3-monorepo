@@ -139,6 +139,9 @@ contract E2eBatchSwapTest is BaseVaultTest {
         uint256 feesTokenA = vault.getAggregateSwapFeeAmount(poolA, tokenA);
         vm.stopPrank();
 
+        assertTrue(feesTokenA > 0, "No fees on tokenA");
+        assertTrue(feesTokenD > 0, "No fees on tokenD");
+
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender, tokensToTrack);
         uint256[] memory invariantsAfter = _getPoolInvariants();
 
@@ -167,12 +170,16 @@ contract E2eBatchSwapTest is BaseVaultTest {
         uint256 amountInDo = _executeAndCheckBatchExactOut(IERC20(address(tokenA)), exactAmountOut);
         uint256 feesTokenA = vault.getAggregateSwapFeeAmount(poolA, tokenA);
         uint256 amountInUndo = _executeAndCheckBatchExactOut(IERC20(address(tokenD)), amountInDo + feesTokenA);
+        uint256 feesTokenD = vault.getAggregateSwapFeeAmount(poolC, tokenD);
         vm.stopPrank();
+
+        assertTrue(feesTokenA > 0, "No fees on tokenA");
+        assertTrue(feesTokenD > 0, "No fees on tokenD");
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(sender, tokensToTrack);
         uint256[] memory invariantsAfter = _getPoolInvariants();
 
-        assertGe(amountInUndo, exactAmountOut, "Amount in undo should be >= exactAmountOut");
+        assertGe(amountInUndo, exactAmountOut + feesTokenD, "Amount in undo should be >= exactAmountOut");
 
         _checkUserBalancesAndPoolInvariants(
             balancesBefore,
@@ -200,6 +207,9 @@ contract E2eBatchSwapTest is BaseVaultTest {
         uint256 feesTokenA = vault.getAggregateSwapFeeAmount(poolA, tokenA);
 
         vm.stopPrank();
+
+        assertTrue(feesTokenA > 0, "No fees on tokenA");
+        assertTrue(feesTokenD > 0, "No fees on tokenD");
 
         // 0.0001% error tolerance, since computeInGivenExactOut and computeOutGivenExactIn can calculate slightly
         // different results
