@@ -241,7 +241,8 @@ contract VaultUnitSwapTest is BaseTest {
     function testSwapExactOutWithFee() public {
         TestStateLocals memory locals;
         {
-            uint256 swapFeeAmount = mockedPoolAmountCalculatedScaled18.mulDown(defaultSwapFeePercentage);
+            uint256 swapFeeAmount = (mockedPoolAmountCalculatedScaled18 * defaultSwapFeePercentage) /
+                (FixedPoint.ONE - defaultSwapFeePercentage);
 
             uint256 amountCalculatedWithFee = mockedPoolAmountCalculatedScaled18 + swapFeeAmount;
             // This sets the protocol swap fee percentage to the same as the swap fee percentage
@@ -412,9 +413,9 @@ contract VaultUnitSwapTest is BaseTest {
             "Unexpected amount given scaled 18"
         );
 
-        uint256 expectedSwapFeeAmountScaled18 = mockedPoolAmountCalculatedScaled18.mulDown(
-            poolData.poolConfigBits.getStaticSwapFeePercentage()
-        );
+        uint256 swapFee = poolData.poolConfigBits.getStaticSwapFeePercentage();
+        uint256 expectedSwapFeeAmountScaled18 = (mockedPoolAmountCalculatedScaled18 * swapFee) /
+            (FixedPoint.ONE - swapFee);
 
         uint256 expectedAmountCalculatedScaled18 = mockedPoolAmountCalculatedScaled18 + expectedSwapFeeAmountScaled18;
         uint256 expectedAmountIn = expectedAmountCalculatedScaled18.toRawUndoRateRoundDown(
