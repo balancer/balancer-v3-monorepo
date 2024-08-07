@@ -2,18 +2,18 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-
 import {
     IWeightedPool,
     WeightedPoolDynamicData,
     WeightedPoolImmutableData
 } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
+import {
+    IUnbalancedLiquidityInvariantRatioBounds
+} from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { SwapKind, PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
@@ -23,14 +23,27 @@ import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/We
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
-/// @notice Basic Weighted Pool with immutable weights.
+/**
+ * @notice Standard Balancer Weighted Pool, with fixed weights.
+ * @dev Weighted Pools are designed for uncorrelated assets, and use `WeightedMath` (from Balancer v1 and v2)
+ * to compute the price curve.
+ *
+ * There can be up to 8 tokens in a weighted pool (same as v2), and the normalized weights (expressed as 18-decimal
+ * floating point numbers), must sum to FixedPoint.ONE. Weights cannot be changed after deployment.
+ *
+ * The swap fee percentage is bounded by minimum and maximum values (same as were used in v2).
+ */
 contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     // Fees are 18-decimal, floating point values, which will be stored in the Vault using 24 bits.
     // This means they have 0.00001% resolution (i.e., any non-zero bits < 1e11 will cause precision loss).
     // Minimum values help make the math well-behaved (i.e., the swap fee should overwhelm any rounding error).
     // Maximum values protect users by preventing permissioned actors from setting excessively high swap fees.
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 0.1e18; // 10%
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
+
+    // A minimum normalized weight imposes a maximum weight ratio. We need this due to limitations in the
+    // implementation of the fixed point power function, as these ratios are often exponents.
+    uint256 private constant _MIN_WEIGHT = 1e16; // 1%
 
     uint256 private immutable _totalTokens;
 
@@ -61,35 +74,34 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
         NewPoolParams memory params,
         IVault vault
     ) BalancerPoolToken(vault, params.name, params.symbol) PoolInfo(vault) Version(params.version) {
-        uint256 numTokens = params.numTokens;
-        InputHelpers.ensureInputLengthMatch(numTokens, params.normalizedWeights.length);
-
-        _totalTokens = numTokens;
+        _totalTokens = params.numTokens;
+        InputHelpers.ensureInputLengthMatch(_totalTokens, params.normalizedWeights.length);
 
         // Ensure each normalized weight is above the minimum
         uint256 normalizedSum = 0;
-        for (uint8 i = 0; i < numTokens; ++i) {
+        for (uint8 i = 0; i < _totalTokens; ++i) {
             uint256 normalizedWeight = params.normalizedWeights[i];
 
-            if (normalizedWeight < WeightedMath._MIN_WEIGHT) {
+            if (normalizedWeight < _MIN_WEIGHT) {
                 revert MinWeight();
             }
             normalizedSum = normalizedSum + normalizedWeight;
+
+            // prettier-ignore
+            if (i == 0) { _normalizedWeight0 = normalizedWeight; }
+            else if (i == 1) { _normalizedWeight1 = normalizedWeight; }
+            else if (i == 2) { _normalizedWeight2 = normalizedWeight; }
+            else if (i == 3) { _normalizedWeight3 = normalizedWeight; }
+            else if (i == 4) { _normalizedWeight4 = normalizedWeight; }
+            else if (i == 5) { _normalizedWeight5 = normalizedWeight; }
+            else if (i == 6) { _normalizedWeight6 = normalizedWeight; }
+            else if (i == 7) { _normalizedWeight7 = normalizedWeight; }
         }
+
         // Ensure that the normalized weights sum to ONE
         if (normalizedSum != FixedPoint.ONE) {
             revert NormalizedWeightInvariant();
         }
-
-        // Immutable variables cannot be initialized inside an if statement, so we must do conditional assignments
-        _normalizedWeight0 = params.normalizedWeights[0];
-        _normalizedWeight1 = params.normalizedWeights[1];
-        _normalizedWeight2 = numTokens > 2 ? params.normalizedWeights[2] : 0;
-        _normalizedWeight3 = numTokens > 3 ? params.normalizedWeights[3] : 0;
-        _normalizedWeight4 = numTokens > 4 ? params.normalizedWeights[4] : 0;
-        _normalizedWeight5 = numTokens > 5 ? params.normalizedWeights[5] : 0;
-        _normalizedWeight6 = numTokens > 6 ? params.normalizedWeights[6] : 0;
-        _normalizedWeight7 = numTokens > 7 ? params.normalizedWeights[7] : 0;
     }
 
     /// @inheritdoc IBasePool
@@ -106,7 +118,7 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
         return
             WeightedMath.computeBalanceOutGivenInvariant(
                 balancesLiveScaled18[tokenInIndex],
-                _getNormalizedWeights()[tokenInIndex],
+                _getNormalizedWeight(tokenInIndex),
                 invariantRatio
             );
     }
@@ -117,7 +129,7 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(IBasePool.PoolSwapParams memory request) public view onlyVault returns (uint256) {
+    function onSwap(PoolSwapParams memory request) public view onlyVault returns (uint256) {
         uint256 balanceTokenInScaled18 = request.balancesScaled18[request.indexIn];
         uint256 balanceTokenOutScaled18 = request.balancesScaled18[request.indexOut];
 
@@ -189,9 +201,19 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
         return _MAX_SWAP_FEE_PERCENTAGE;
     }
 
+    /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
+    function getMinimumInvariantRatio() external pure returns (uint256) {
+        return WeightedMath._MIN_INVARIANT_RATIO;
+    }
+
+    /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
+    function getMaximumInvariantRatio() external pure returns (uint256) {
+        return WeightedMath._MAX_INVARIANT_RATIO;
+    }
+
     /// @inheritdoc IWeightedPool
     function getWeightedPoolDynamicData() external view returns (WeightedPoolDynamicData memory data) {
-        data.liveBalances = _vault.getCurrentLiveBalances(address(this));
+        data.balancesLiveScaled18 = _vault.getCurrentLiveBalances(address(this));
         (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
         data.staticSwapFeePercentage = _vault.getStaticSwapFeePercentage((address(this)));
         data.totalSupply = totalSupply();

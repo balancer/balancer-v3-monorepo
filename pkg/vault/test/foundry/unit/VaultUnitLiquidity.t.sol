@@ -7,14 +7,16 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import {
+    IUnbalancedLiquidityInvariantRatioBounds
+} from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
@@ -26,7 +28,7 @@ import { VaultMockDeployer } from "../../../test/foundry/utils/VaultMockDeployer
 import { BalancerPoolToken } from "../../../contracts/BalancerPoolToken.sol";
 
 contract VaultUnitLiquidityTest is BaseTest {
-    using ArrayHelpers for *;
+    using CastingHelpers for uint256[];
     using ScalingHelpers for *;
     using FixedPoint for *;
     using PoolConfigLib for PoolConfigBits;
@@ -74,6 +76,18 @@ contract VaultUnitLiquidityTest is BaseTest {
         for (uint256 i = 0; i < tokens.length; i++) {
             vault.manualSetAggregateSwapFeeAmount(pool, tokens[i], 0);
         }
+
+        // Mock invariant ratio bounds
+        vm.mockCall(
+            pool,
+            abi.encodeWithSelector(IUnbalancedLiquidityInvariantRatioBounds.getMinimumInvariantRatio.selector),
+            abi.encode(0)
+        );
+        vm.mockCall(
+            pool,
+            abi.encodeWithSelector(IUnbalancedLiquidityInvariantRatioBounds.getMaximumInvariantRatio.selector),
+            abi.encode(1_000_000e18)
+        );
     }
 
     // #region AddLiquidity tests
@@ -133,7 +147,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             maxAmountsInScaled18,
             vault.totalSupply(params.pool),
             swapFeePercentage,
-            IBasePool(params.pool).computeInvariant
+            IBasePool(params.pool)
         );
 
         _testAddLiquidity(
@@ -185,7 +199,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             params.minBptAmountOut,
             totalSupply,
             swapFeePercentage,
-            IBasePool(params.pool).computeBalance
+            IBasePool(params.pool)
         );
 
         _testAddLiquidity(
@@ -421,7 +435,7 @@ contract VaultUnitLiquidityTest is BaseTest {
                 expectBPTAmountIn,
                 totalSupply,
                 swapFeePercentage,
-                IBasePool(params.pool).computeBalance
+                IBasePool(params.pool)
             );
 
         _testRemoveLiquidity(
@@ -495,7 +509,7 @@ contract VaultUnitLiquidityTest is BaseTest {
                 minAmountsOutScaled18[tokenIndex],
                 vault.totalSupply(params.pool),
                 swapFeePercentage,
-                IBasePool(params.pool).computeInvariant
+                IBasePool(params.pool)
             );
 
         _testRemoveLiquidity(
@@ -792,8 +806,8 @@ contract VaultUnitLiquidityTest is BaseTest {
         uint256 protocolSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
 
         for (uint256 i = 0; i < poolData_.tokens.length; i++) {
-            assertEq(amountsInRaw[i], expectedAmountsInRaw[i], "Unexpected tokenIn amount");
-            assertEq(amountsInScaled18[i], params_.expectedAmountsInScaled18[i], "Unexpected tokenIn amount");
+            assertEq(amountsInRaw[i], expectedAmountsInRaw[i], "Unexpected tokenIn raw amount");
+            assertEq(amountsInScaled18[i], params_.expectedAmountsInScaled18[i], "Unexpected tokenIn scaled amount");
 
             uint256 protocolSwapFeeAmountRaw = _checkProtocolFeeResult(
                 poolData_,
@@ -853,12 +867,12 @@ contract VaultUnitLiquidityTest is BaseTest {
         assertEq(
             vault.balanceOf(address(params.removeLiquidityParams.pool), alice),
             initTotalSupply - bptAmountIn,
-            "Token burned with unexpected amount"
+            "Token burned with unexpected amount (balance)"
         );
         assertEq(
             vault.allowance(address(vault), params.removeLiquidityParams.from, address(this)),
             0,
-            "Token burned with unexpected amount"
+            "Token burned with unexpected amount (allowance)"
         );
 
         // NOTE: stack too deep fix

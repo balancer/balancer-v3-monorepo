@@ -14,10 +14,13 @@ import { StableMathMock } from "../../contracts/test/StableMathMock.sol";
 // solutions (e.g., always rounding down or always rounding up).
 
 contract StableMathTest is Test {
+    using FixedPoint for uint256;
+
     uint256 constant NUM_TOKENS = 4;
 
     uint256 constant MIN_BALANCE_BASE = 1e18;
-    uint256 constant MAX_BALANCE_BASE = 1000e18;
+    // Max balance of a stable pool token that won't cause an overflow in stable math.
+    uint256 constant MAX_BALANCE_BASE = 10_000_000_000_000_000e18;
     uint256 constant MAX_BALANCE_RATIO = 1000e16; // 1000 %
 
     uint256 constant MIN_AMOUNT_RATIO = 0.01e16; // 0.01 %
@@ -49,16 +52,12 @@ contract StableMathTest is Test {
         uint256 balanceBase = bound(rawBalances[0], MIN_BALANCE_BASE, MAX_BALANCE_BASE);
         balances = new uint256[](NUM_TOKENS);
         for (uint256 i = 0; i < NUM_TOKENS; ++i) {
-            balances[i] = bound(rawBalances[i], balanceBase, FixedPoint.mulDown(balanceBase, MAX_BALANCE_RATIO));
+            balances[i] = bound(rawBalances[i], balanceBase, balanceBase.mulDown(MAX_BALANCE_RATIO));
         }
     }
 
     function boundAmount(uint256 rawAmount, uint256 balance) internal pure returns (uint256 amount) {
-        amount = bound(
-            rawAmount,
-            FixedPoint.mulDown(balance, MIN_AMOUNT_RATIO),
-            FixedPoint.mulDown(balance, MAX_AMOUNT_RATIO)
-        );
+        amount = bound(rawAmount, balance.mulDown(MIN_AMOUNT_RATIO), balance.mulDown(MAX_AMOUNT_RATIO));
     }
 
     function boundAmp(uint256 rawAmp) internal pure returns (uint256 amp) {
