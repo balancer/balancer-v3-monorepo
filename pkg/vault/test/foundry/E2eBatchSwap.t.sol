@@ -353,7 +353,6 @@ contract E2eBatchSwapTest is BaseVaultTest {
         assertGe(invariantsAfter[1], invariantsBefore[1], "Wrong poolB invariant");
         assertGe(invariantsAfter[2], invariantsBefore[2], "Wrong poolC invariant");
 
-
         // Since it was a do/undo operation, the user balance of each token cannot be greater than before.
 
         // If feesTokenA is not 0, it means that an exact_out swap occurred and was reverted. So, an exactAmountOut of
