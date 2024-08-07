@@ -218,7 +218,7 @@ contract VaultUnitTest is BaseTest {
             new uint256[](5),
             new uint256[](5)
         );
-        
+
         uint256 count;
         uint256 index;
 
