@@ -402,4 +402,37 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
         vault.manualSetStaticSwapFeePercentage(pool, MAX_FEE_PERCENTAGE + 1);
     }
+
+    function testFindTokenIndex__Fuzz(address[8] memory tokensRaw, uint256 tokenIndex, uint256 length) public view {
+        length = bound(length, 1, 8);
+        tokenIndex = bound(tokenIndex, 0, length - 1);
+
+        IERC20[] memory tokens = new IERC20[](length);
+        IERC20 lastToken = IERC20(address(0));
+        for (uint256 i = 0; i < length; ++i) {
+            IERC20 currentToken = IERC20(tokensRaw[i]);
+            vm.assume(currentToken > lastToken);
+            tokens[i] = currentToken;
+            lastToken = currentToken;
+        }
+        IERC20 token = IERC20(tokens[tokenIndex]);
+
+        uint256 actualTokenIndex = vault.manualFindTokenIndex(tokens, token);
+        assertEq(actualTokenIndex, tokenIndex, "Incorrect token index");
+    }
+
+    function testFindTokenIndexNotRegistered__Fuzz(address[8] memory tokensRaw, uint256 length) public {
+        length = bound(length, 1, 8);
+        IERC20 nonRegisteredToken = IERC20(0x0Ba1Ba1BA1ba1Ba1Ba1ba1BA1Ba1BA1Ba1ba1Ba1);
+
+        IERC20[] memory tokens = new IERC20[](length);
+        for (uint256 i = 0; i < length; ++i) {
+            IERC20 currentToken = IERC20(tokensRaw[i]);
+            vm.assume(currentToken != nonRegisteredToken);
+            tokens[i] = currentToken;
+        }
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenNotRegistered.selector, nonRegisteredToken));
+        vault.manualFindTokenIndex(tokens, nonRegisteredToken);
+    }
 }

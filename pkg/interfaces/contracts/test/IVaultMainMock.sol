@@ -256,5 +256,7 @@ interface IVaultMainMock {
 
     function manualSendToReentrancy(IERC20 token, address to, uint256 amount) external;
 
+    function manualFindTokenIndex(IERC20[] memory tokens, IERC20 token) external pure returns (uint256 index);
+
     function manualSetPoolCreator(address pool, address newPoolCreator) external;
 }
