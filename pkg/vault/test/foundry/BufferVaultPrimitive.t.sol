@@ -226,7 +226,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 vaultBalance = dai.balanceOf(address(vault));
 
         vm.expectRevert(
-            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(waDAI), 0, vaultBalance)
+            abi.encodeWithSelector(
+                IERC20Errors.ERC20InsufficientAllowance.selector,
+                address(waDAI),
+                0,
+                vaultBalance - MIN_WRAP_AMOUNT
+            )
         );
         vm.prank(address(waDAI));
         // Since MIN_WRAP_AMOUNT was spent, reduce it from the amount withdrawn.
