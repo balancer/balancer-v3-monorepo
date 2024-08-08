@@ -51,7 +51,7 @@ contract VaultStorage {
     uint256 internal constant _MINIMUM_TRADE_AMOUNT = 1e6;
 
     // Maximum pause and buffer period durations.
-    uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 356 days * 4;
+    uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 365 days * 4;
     uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
 
     /***************************************************************************
