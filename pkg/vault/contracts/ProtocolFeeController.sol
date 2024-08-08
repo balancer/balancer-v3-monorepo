@@ -162,7 +162,8 @@ contract ProtocolFeeController is
     }
 
     function collectAggregateFeesHook(address pool) external onlyVault {
-        getVault().collectAggregateFees(pool);
+        (uint256[] memory totalSwapFees, uint256[] memory totalYieldFees) = getVault().collectAggregateFees(pool);
+        _receiveAggregateFees(pool, totalSwapFees, totalYieldFees);
     }
 
     /// @inheritdoc IProtocolFeeController
@@ -320,12 +321,21 @@ contract ProtocolFeeController is
         YIELD
     }
 
-    /// @inheritdoc IProtocolFeeController
-    function receiveAggregateFees(
+    /**
+     * @notice Settle fee credits from the vault.
+     * @dev This must be called after calling `collectAggregateFees` in the Vault. Note that since charging protocol
+     * fees (i.e., distributing tokens between pool and fee balances) occurs in the Vault, but fee collection
+     * happens in the ProtocolFeeController, the swap fees reported here may encompass multiple operations.
+     *
+     * @param pool The address of the pool on which the swap fees were charged
+     * @param swapFeeAmounts An array parallel to the pool tokens, with the swap fees collected in each token
+     * @param yieldFeeAmounts An array parallel to the pool tokens, with the yield fees collected in each token
+     */
+    function _receiveAggregateFees(
         address pool,
         uint256[] memory swapFeeAmounts,
         uint256[] memory yieldFeeAmounts
-    ) external onlyVault {
+    ) internal {
         _receiveAggregateFees(pool, ProtocolFeeType.SWAP, swapFeeAmounts);
         _receiveAggregateFees(pool, ProtocolFeeType.YIELD, yieldFeeAmounts);
     }
@@ -402,12 +412,18 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
-    function setProtocolSwapFeePercentage(address pool, uint256 newProtocolSwapFeePercentage) external authenticate withValidSwapFee(newProtocolSwapFeePercentage) withLatestFees(pool) {
+    function setProtocolSwapFeePercentage(
+        address pool,
+        uint256 newProtocolSwapFeePercentage
+    ) external authenticate withValidSwapFee(newProtocolSwapFeePercentage) withLatestFees(pool) {
         _updatePoolSwapFeePercentage(pool, newProtocolSwapFeePercentage, true);
     }
 
     /// @inheritdoc IProtocolFeeController
-    function setProtocolYieldFeePercentage(address pool, uint256 newProtocolYieldFeePercentage) external authenticate withValidYieldFee(newProtocolYieldFeePercentage) withLatestFees(pool) {
+    function setProtocolYieldFeePercentage(
+        address pool,
+        uint256 newProtocolYieldFeePercentage
+    ) external authenticate withValidYieldFee(newProtocolYieldFeePercentage) withLatestFees(pool) {
         _updatePoolYieldFeePercentage(pool, newProtocolYieldFeePercentage, true);
     }
 

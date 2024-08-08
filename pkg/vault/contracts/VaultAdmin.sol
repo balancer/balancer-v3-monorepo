@@ -270,12 +270,20 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectAggregateFees(address pool) public onlyVaultDelegateCall onlyWhenUnlocked withRegisteredPool(pool) {
+    function collectAggregateFees(
+        address pool
+    )
+        public
+        onlyVaultDelegateCall
+        onlyWhenUnlocked
+        withRegisteredPool(pool)
+        returns (uint256[] memory totalSwapFees, uint256[] memory totalYieldFees)
+    {
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
         uint256 numTokens = poolTokens.length;
 
-        uint256[] memory totalSwapFees = new uint256[](numTokens);
-        uint256[] memory totalYieldFees = new uint256[](numTokens);
+        totalSwapFees = new uint256[](numTokens);
+        totalYieldFees = new uint256[](numTokens);
 
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             IERC20 token = poolTokens[i];
@@ -288,8 +296,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
                 _supplyCredit(token, totalSwapFees[i] + totalYieldFees[i]);
             }
         }
-
-        _protocolFeeController.receiveAggregateFees(pool, totalSwapFees, totalYieldFees);
     }
 
     /// @inheritdoc IVaultAdmin

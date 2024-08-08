@@ -119,7 +119,9 @@ interface IVaultAdmin {
      * @dev Fees are sent to the ProtocolFeeController address.
      * @param pool The pool on which all aggregate fees should be collected
      */
-    function collectAggregateFees(address pool) external;
+    function collectAggregateFees(
+        address pool
+    ) external returns (uint256[] memory totalSwapFees, uint256[] memory totalYieldFees);
 
     /**
      * @notice Update an aggregate swap fee percentage.

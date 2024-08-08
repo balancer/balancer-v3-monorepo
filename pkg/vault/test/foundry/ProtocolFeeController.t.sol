@@ -13,6 +13,7 @@ import { PoolConfig, FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/con
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { ProtocolFeeController } from "../../contracts/ProtocolFeeController.sol";
 import { ProtocolFeeControllerMock } from "../../contracts/test/ProtocolFeeControllerMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
@@ -704,12 +705,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
         vm.expectCall(
             address(feeController),
-            abi.encodeWithSelector(
-                IProtocolFeeController.receiveAggregateFees.selector,
-                pool,
-                swapAmounts,
-                yieldAmounts
-            )
+            abi.encodeWithSelector(ProtocolFeeController.collectAggregateFeesHook.selector, pool)
         );
         // Move them to the fee controller.
         feeController.collectAggregateFees(pool);
