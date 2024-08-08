@@ -1186,7 +1186,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
 
             // Remove approval, in case deposit/mint consumed less tokens than we approved.
-            // E.g., A malicious wrapper could not consume all the underlying tokens and use the vault approval to
+            // E.g., A malicious wrapper could not consume all of the underlying tokens and use the vault approval to
             // drain the vault.
             underlyingToken.forceApprove(address(wrappedToken), 0);
 

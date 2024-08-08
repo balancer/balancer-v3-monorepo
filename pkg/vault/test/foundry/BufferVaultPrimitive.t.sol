@@ -149,7 +149,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
     function testDepositMaliciousRouter() public {
         // Deposit will not take the underlying tokens, keeping the approval, so the wrapper can use vault approval to
-        // drain the whole vault;
+        // drain the whole vault.
         waDAI.setMaliciousWrapper(true);
 
         uint256 vaultBalance = dai.balanceOf(address(vault));
@@ -206,7 +206,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
     function testMintMaliciousRouter() public {
         // Deposit will not take the underlying tokens, keeping the approval, so the wrapper can use vault approval to
-        // drain the whole vault;
+        // drain the whole vault.
         waDAI.setMaliciousWrapper(true);
 
         vault.unlock(
@@ -551,8 +551,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     function erc4626MaliciousHook(BufferWrapOrUnwrapParams memory params) external {
         (, uint256 amountIn, uint256 amountOut) = vault.erc4626BufferWrapOrUnwrap(params);
         if (params.kind == SwapKind.EXACT_OUT) {
-            // Vault checks for minimum wrap amount, so an operation will occur and balances need to be settled at the
-            // end, so the transaction doesn't revert and approval is not zero.
+            // When the wrap is EXACT_OUT, a minimum amount of tokens must be wrapped. so, balances need to be settled
+            // at the end to don't revert the transaction and keep an approval to remove underlying tokens from the
+            // vault.
             dai.mint(address(this), amountIn);
             dai.transfer(address(vault), amountIn);
             vault.settle(dai, amountIn);
