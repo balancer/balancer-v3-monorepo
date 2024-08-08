@@ -9,9 +9,15 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
+import {
+    BufferWrapOrUnwrapParams,
+    SwapKind,
+    WrappingDirection
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
@@ -137,6 +143,31 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             lpWrappedBalanceBefore + waDAI.previewDeposit(_wrapAmount),
             "LP balance of wrapped token is wrong"
         );
+    }
+
+    function testDepositMaliciousRouter() public {
+        // Deposit will not take the underlying tokens, keeping the approval, so the wrapper can use vault approval to
+        // drain the whole vault;
+        waDAI.setMaliciousWrapper(true);
+
+        uint256 vaultBalance = dai.balanceOf(address(vault));
+
+        vault.unlock(
+            abi.encodeWithSelector(
+                BufferVaultPrimitiveTest.erc4626Hook.selector,
+                BufferWrapOrUnwrapParams({
+                    kind: SwapKind.EXACT_IN,
+                    direction: WrappingDirection.WRAP,
+                    wrappedToken: IERC4626(address(waDAI)),
+                    amountGivenRaw: vaultBalance,
+                    limitRaw: 0,
+                    userData: bytes("")
+                })
+            )
+        );
+
+        vm.prank(address(waDAI));
+        dai.transferFrom(address(vault), address(waDAI), vaultBalance);
     }
 
     /********************************************************************************
@@ -480,5 +511,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             maxAmountIn: maxAmountIn,
             exactAmountOut: exactAmountOut
         });
+    }
+
+    function erc4626Hook(BufferWrapOrUnwrapParams memory params) external {
+        vault.erc4626BufferWrapOrUnwrap(params);
     }
 }

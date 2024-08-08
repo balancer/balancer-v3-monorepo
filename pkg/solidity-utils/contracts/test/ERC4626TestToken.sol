@@ -23,6 +23,8 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
     uint256 private _assetsToReturn;
     uint256 private _sharesToReturn;
 
+    bool private maliciousWrapper;
+
     constructor(
         IERC20 underlyingToken,
         string memory tokenName,
@@ -57,30 +59,29 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
         _overrideAsset = newBaseToken;
     }
 
-    function setAssetsToConsume(uint256 assetsToConsume) external {
-        _assetsToConsume = assetsToConsume;
+    function setMaliciousWrapper(bool value) external {
+        maliciousWrapper = value;
     }
 
-    function setSharesToConsume(uint256 sharesToConsume) external {
-        _sharesToConsume = sharesToConsume;
+    function deposit(uint256 assets, address receiver) public override returns (uint256) {
+        if (maliciousWrapper) {
+            // A malicious wrapper does nothing so it can use the approval to drain the vault.
+            return 0;
+        }
+
+        return super.deposit(assets, receiver);
     }
 
-    function setAssetsToReturn(uint256 assetsToReturn) external {
-        _assetsToReturn = assetsToReturn;
-    }
+    function mint(uint256 shares, address receiver) public override returns (uint256) {
+        if (maliciousWrapper) {
+            // A malicious wrapper does nothing so it can use the approval to drain the vault.
+            return 0;
+        }
 
-    function setSharesToReturn(uint256 sharesToReturn) external {
-        _sharesToReturn = sharesToReturn;
+        return super.mint(shares, receiver);
     }
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal override {
-        if (_assetsToConsume > 0) {
-            assets = _assetsToConsume;
-        }
-        if (_sharesToReturn > 0) {
-            shares = _sharesToReturn;
-        }
-
         _overrideAsset.safeTransferFrom(caller, address(this), assets);
         _mint(receiver, shares);
     }
@@ -94,13 +95,6 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
     ) internal override {
         if (caller != owner) {
             _spendAllowance(owner, caller, shares);
-        }
-
-        if (_sharesToConsume > 0) {
-            shares = _sharesToConsume;
-        }
-        if (_assetsToReturn > 0) {
-            assets = _assetsToReturn;
         }
 
         _burn(owner, shares);
