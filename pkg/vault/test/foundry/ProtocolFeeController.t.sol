@@ -625,7 +625,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         uint256 creatorBalanceDAIBefore = dai.balanceOf(lp);
         uint256 creatorBalanceUSDCBefore = usdc.balanceOf(lp);
 
-        vault.collectAggregateFees(pool);
+        feeController.collectAggregateFees(pool);
         feeController.withdrawPoolCreatorFees(pool);
 
         assertEq(
@@ -712,7 +712,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             )
         );
         // Move them to the fee controller.
-        vault.collectAggregateFees(pool);
+        feeController.collectAggregateFees(pool);
 
         // Now the fee controller should have them - and the Vault should be zero.
         assertEq(vault.getAggregateSwapFeeAmount(pool, dai), 0, "Non-zero post-collection DAI protocol swap fees");

@@ -150,6 +150,15 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
+    function collectAggregateFees(address pool) external {
+        getVault().unlock(abi.encodeWithSelector(ProtocolFeeController.collectAggregateFeesHook.selector, pool));
+    }
+
+    function collectAggregateFeesHook(address pool) external onlyVault {
+        getVault().collectAggregateFees(pool);
+    }
+
+    /// @inheritdoc IProtocolFeeController
     function getGlobalProtocolSwapFeePercentage() external view returns (uint256) {
         return _globalProtocolSwapFeePercentage;
     }
@@ -202,7 +211,13 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
-    function updateProtocolSwapFeePercentage(address pool) external withLatestFees(pool) {
+    function updateProtocolSwapFeePercentage(address pool) external {
+        getVault().unlock(
+            abi.encodeWithSelector(ProtocolFeeController.updateProtocolSwapFeePercentageHook.selector, pool)
+        );
+    }
+
+    function updateProtocolSwapFeePercentageHook(address pool) external onlyVault withLatestFees(pool) {
         PoolFeeConfig memory feeConfig = _poolProtocolSwapFeePercentages[pool];
         uint256 globalProtocolSwapFee = _globalProtocolSwapFeePercentage;
 
@@ -212,7 +227,13 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
-    function updateProtocolYieldFeePercentage(address pool) external withLatestFees(pool) {
+    function updateProtocolYieldFeePercentage(address pool) external {
+        getVault().unlock(
+            abi.encodeWithSelector(ProtocolFeeController.updateProtocolYieldFeePercentageHook.selector, pool)
+        );
+    }
+
+    function updateProtocolYieldFeePercentageHook(address pool) external onlyVault withLatestFees(pool) {
         PoolFeeConfig memory feeConfig = _poolProtocolYieldFeePercentages[pool];
         uint256 globalProtocolYieldFee = _globalProtocolYieldFeePercentage;
 
@@ -339,7 +360,7 @@ contract ProtocolFeeController is
             if (feeAmounts[i] > 0) {
                 IERC20 token = poolTokens[i];
 
-                token.safeTransferFrom(address(getVault()), address(this), feeAmounts[i]);
+                getVault().sendTo(token, address(this), feeAmounts[i]);
 
                 // It should be easier for off-chain processes to handle two events, rather than parsing the type
                 // out of a single event.
@@ -386,18 +407,38 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
-    function setProtocolSwapFeePercentage(
+    function setProtocolSwapFeePercentage(address pool, uint256 newProtocolSwapFeePercentage) external authenticate {
+        getVault().unlock(
+            abi.encodeWithSelector(
+                ProtocolFeeController.setProtocolSwapFeePercentageHook.selector,
+                pool,
+                newProtocolSwapFeePercentage
+            )
+        );
+    }
+
+    function setProtocolSwapFeePercentageHook(
         address pool,
         uint256 newProtocolSwapFeePercentage
-    ) external withValidSwapFee(newProtocolSwapFeePercentage) withLatestFees(pool) authenticate {
+    ) external onlyVault withValidSwapFee(newProtocolSwapFeePercentage) withLatestFees(pool) {
         _updatePoolSwapFeePercentage(pool, newProtocolSwapFeePercentage, true);
     }
 
     /// @inheritdoc IProtocolFeeController
-    function setProtocolYieldFeePercentage(
+    function setProtocolYieldFeePercentage(address pool, uint256 newProtocolYieldFeePercentage) external authenticate {
+        getVault().unlock(
+            abi.encodeWithSelector(
+                ProtocolFeeController.setProtocolYieldFeePercentageHook.selector,
+                pool,
+                newProtocolYieldFeePercentage
+            )
+        );
+    }
+
+    function setProtocolYieldFeePercentageHook(
         address pool,
         uint256 newProtocolYieldFeePercentage
-    ) external withValidYieldFee(newProtocolYieldFeePercentage) withLatestFees(pool) authenticate {
+    ) external onlyVault withValidYieldFee(newProtocolYieldFeePercentage) withLatestFees(pool) {
         _updatePoolYieldFeePercentage(pool, newProtocolYieldFeePercentage, true);
     }
 
@@ -406,7 +447,14 @@ contract ProtocolFeeController is
         address pool,
         uint256 poolCreatorSwapFeePercentage
     ) external onlyPoolCreator(pool) {
-        _setPoolCreatorFeePercentage(pool, poolCreatorSwapFeePercentage, ProtocolFeeType.SWAP);
+        getVault().unlock(
+            abi.encodeWithSelector(
+                ProtocolFeeController.setPoolCreatorFeePercentageHook.selector,
+                pool,
+                poolCreatorSwapFeePercentage,
+                ProtocolFeeType.SWAP
+            )
+        );
     }
 
     /// @inheritdoc IProtocolFeeController
@@ -414,14 +462,21 @@ contract ProtocolFeeController is
         address pool,
         uint256 poolCreatorYieldFeePercentage
     ) external onlyPoolCreator(pool) {
-        _setPoolCreatorFeePercentage(pool, poolCreatorYieldFeePercentage, ProtocolFeeType.YIELD);
+        getVault().unlock(
+            abi.encodeWithSelector(
+                ProtocolFeeController.setPoolCreatorFeePercentageHook.selector,
+                pool,
+                poolCreatorYieldFeePercentage,
+                ProtocolFeeType.YIELD
+            )
+        );
     }
 
-    function _setPoolCreatorFeePercentage(
+    function setPoolCreatorFeePercentageHook(
         address pool,
         uint256 poolCreatorFeePercentage,
         ProtocolFeeType feeType
-    ) private {
+    ) external onlyVault {
         if (poolCreatorFeePercentage > FixedPoint.ONE) {
             revert PoolCreatorFeePercentageTooHigh();
         }

@@ -94,6 +94,9 @@ interface IProtocolFeeController {
     /// @dev Returns the main Vault address.
     function vault() external view returns (IVault);
 
+    /// @dev Collects aggregate fees from the Vault for a given pool.
+    function collectAggregateFees(address pool) external;
+
     /**
      * @notice Getter for the current global protocol swap fee.
      * @return protocolSwapFeePercentage The global protocol swap fee percentage

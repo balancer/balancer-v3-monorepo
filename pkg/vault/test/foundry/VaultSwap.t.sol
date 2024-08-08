@@ -424,7 +424,7 @@ contract VaultSwapTest is BaseVaultTest {
         );
 
         IProtocolFeeController feeController = vault.getProtocolFeeController();
-        vault.collectAggregateFees(pool);
+        feeController.collectAggregateFees(pool);
         uint256[] memory feeAmounts = feeController.getProtocolFeeAmounts(pool);
 
         authorizer.grantRole(
