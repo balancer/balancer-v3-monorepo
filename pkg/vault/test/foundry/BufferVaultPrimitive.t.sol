@@ -557,7 +557,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         (, uint256 amountIn, uint256 amountOut) = vault.erc4626BufferWrapOrUnwrap(params);
         if (params.kind == SwapKind.EXACT_OUT) {
             // When the wrap is EXACT_OUT, a minimum amount of tokens must be wrapped. so, balances need to be settled
-            // at the end to don't revert the transaction and keep an approval to remove underlying tokens from the
+            // at the end to not revert the transaction and keep an approval to remove underlying tokens from the
             // vault.
             dai.mint(address(this), amountIn);
             dai.transfer(address(vault), amountIn);
