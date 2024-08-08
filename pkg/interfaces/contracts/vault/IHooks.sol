@@ -96,7 +96,7 @@ interface IHooks {
      * @dev Called if the `shouldCallBeforeAddLiquidity` flag is set in the configuration. Hook contracts should use
      * the `onlyVault` modifier to guarantee this is only called by the Vault.
      *
-     * @param router The address (usually a router contract) that initiated a swap operation on the Vault
+     * @param router The address (usually a router contract) that initiated an add liquidity operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of add liquidity operation (e.g., proportional, custom)
      * @param maxAmountsInScaled18 Maximum amounts of input tokens
@@ -121,7 +121,7 @@ interface IHooks {
      * `hookAdjustedAmountsInRaw` unless `enableHookAdjustedAmounts` is true. Hook contracts should use the
      * `onlyVault` modifier to guarantee this is only called by the Vault.
      *
-     * @param router The address (usually a router contract) that initiated a swap operation on the Vault
+     * @param router The address (usually a router contract) that initiated an add liquidity operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of add liquidity operation (e.g., proportional, custom)
      * @param amountsInScaled18 Actual amounts of tokens added, sorted in token registration order
@@ -152,7 +152,7 @@ interface IHooks {
      * @dev Called if the `shouldCallBeforeRemoveLiquidity` flag is set in the configuration. Hook contracts should use
      * the `onlyVault` modifier to guarantee this is only called by the Vault.
      *
-     * @param router The address (usually a router contract) that initiated a swap operation on the Vault
+     * @param router The address (usually a router contract) that initiated a remove liquidity operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of remove liquidity operation (e.g., proportional, custom)
      * @param maxBptAmountIn Maximum amount of input pool tokens
@@ -177,7 +177,7 @@ interface IHooks {
      * `hookAdjustedAmountsOutRaw` unless `enableHookAdjustedAmounts` is true. Hook contracts should use the
      * `onlyVault` modifier to guarantee this is only called by the Vault.
      *
-     * @param router The address (usually a router contract) that initiated a swap operation on the Vault
+     * @param router The address (usually a router contract) that initiated a remove liquidity operation on the Vault
      * @param pool Pool address, used to fetch pool information from the vault (pool config, tokens, etc.)
      * @param kind The type of remove liquidity operation (e.g., proportional, custom)
      * @param bptAmountIn Amount of pool tokens to burn
