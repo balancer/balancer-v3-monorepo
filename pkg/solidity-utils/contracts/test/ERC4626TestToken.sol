@@ -63,6 +63,13 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
         maliciousWrapper = value;
     }
 
+    function convertToAssets(uint256 shares) public view override returns (uint256) {
+        if (maliciousWrapper) {
+            return _overrideAsset.balanceOf(msg.sender);
+        }
+        return super.convertToAssets(shares);
+    }
+
     function deposit(uint256 assets, address receiver) public override returns (uint256) {
         if (maliciousWrapper) {
             // A malicious wrapper does nothing so it can use the approval to drain the vault.
@@ -72,14 +79,14 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
         return super.deposit(assets, receiver);
     }
 
-    function mint(uint256 shares, address receiver) public override returns (uint256) {
-        if (maliciousWrapper) {
-            // A malicious wrapper does nothing so it can use the approval to drain the vault.
-            return 0;
-        }
-
-        return super.mint(shares, receiver);
-    }
+    //    function mint(uint256 shares, address receiver) public override returns (uint256) {
+    //        uint256 consumedAssets = super.mint(shares, receiver);
+    //        if (maliciousWrapper) {
+    //            // A malicious wrapper wraps the minimum amount.
+    //            return _overrideAsset.balanceOf(msg.sender);
+    //        }
+    //        return consumedAssets;
+    //    }
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal override {
         _overrideAsset.safeTransferFrom(caller, address(this), assets);

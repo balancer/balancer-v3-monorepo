@@ -33,6 +33,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     uint256 private constant _userAmount = 10e6 * 1e18;
     uint256 private constant _wrapAmount = _userAmount / 100;
 
+    uint256 private constant MIN_WRAP_AMOUNT = 1e3;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
@@ -154,7 +156,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         vault.unlock(
             abi.encodeWithSelector(
-                BufferVaultPrimitiveTest.erc4626Hook.selector,
+                BufferVaultPrimitiveTest.erc4626MaliciousHook.selector,
                 BufferWrapOrUnwrapParams({
                     kind: SwapKind.EXACT_IN,
                     direction: WrappingDirection.WRAP,
@@ -166,6 +168,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             )
         );
 
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(waDAI), 0, vaultBalance)
+        );
         vm.prank(address(waDAI));
         dai.transferFrom(address(vault), address(waDAI), vaultBalance);
     }
@@ -197,6 +202,35 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             "LP balance of underlying token is wrong"
         );
         assertEq(lpWrappedBalanceAfter, lpWrappedBalanceBefore + _wrapAmount, "LP balance of wrapped token is wrong");
+    }
+
+    function testMintMaliciousRouter() public {
+        // Deposit will not take the underlying tokens, keeping the approval, so the wrapper can use vault approval to
+        // drain the whole vault;
+        waDAI.setMaliciousWrapper(true);
+
+        vault.unlock(
+            abi.encodeWithSelector(
+                BufferVaultPrimitiveTest.erc4626MaliciousHook.selector,
+                BufferWrapOrUnwrapParams({
+                    kind: SwapKind.EXACT_OUT,
+                    direction: WrappingDirection.WRAP,
+                    wrappedToken: IERC4626(address(waDAI)),
+                    amountGivenRaw: MIN_WRAP_AMOUNT,
+                    limitRaw: MAX_UINT128,
+                    userData: bytes("")
+                })
+            )
+        );
+
+        uint256 vaultBalance = dai.balanceOf(address(vault));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(waDAI), 0, vaultBalance)
+        );
+        vm.prank(address(waDAI));
+        // Since MIN_WRAP_AMOUNT was spent, reduce it from the vault balance.
+        dai.transferFrom(address(vault), address(waDAI), vaultBalance - MIN_WRAP_AMOUNT);
     }
 
     /********************************************************************************
@@ -513,7 +547,16 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         });
     }
 
-    function erc4626Hook(BufferWrapOrUnwrapParams memory params) external {
-        vault.erc4626BufferWrapOrUnwrap(params);
+    /// @notice Hook used to create a vault approval using a malicious erc4626 and drain the vault.
+    function erc4626MaliciousHook(BufferWrapOrUnwrapParams memory params) external {
+        (, uint256 amountIn, uint256 amountOut) = vault.erc4626BufferWrapOrUnwrap(params);
+        if (params.kind == SwapKind.EXACT_OUT) {
+            // Vault checks for minimum wrap amount, so an operation will occur and balances need to be settled at the
+            // end, so the transaction doesn't revert and approval is not zero.
+            dai.mint(address(this), amountIn);
+            dai.transfer(address(vault), amountIn);
+            vault.settle(dai, amountIn);
+            vault.sendTo(IERC20(address(waDAI)), address(this), amountOut);
+        }
     }
 }

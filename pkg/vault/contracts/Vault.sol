@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/test.sol";
+
 import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -1183,10 +1185,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called.
                 wrappedToken.mint(amountOutWrapped + bufferWrappedSurplus, address(this));
-
-                // Remove approval, in case mint consumed less tokens than we approved, due to convert error.
-                underlyingToken.forceApprove(address(wrappedToken), 0);
             }
+
+            // Remove approval, in case deposit/mint consumed less tokens than we approved.
+            // E.g., A malicious wrapper could not consume all the underlying tokens and use the vault approval to
+            // drain the vault.
+            underlyingToken.forceApprove(address(wrappedToken), 0);
 
             // ERC4626 output should not be trusted, so it's a good practice to measure the amount of
             // deposited and returned tokens.
