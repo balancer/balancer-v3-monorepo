@@ -134,9 +134,16 @@ contract ProtocolFeeController is
         _;
     }
 
+    modifier withValidPoolCreatorFee(uint256 newPoolCreatorFeePercentage) {
+        if (newPoolCreatorFeePercentage > FixedPoint.ONE) {
+            revert PoolCreatorFeePercentageTooHigh();
+        }
+        _;
+    }
+
     // Force collection and disaggregation (e.g., before changing protocol fee percentages).
     modifier withLatestFees(address pool) {
-        getVault().collectAggregateFees(pool);
+        collectAggregateFees(pool);
         _;
     }
 
@@ -150,7 +157,7 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
-    function collectAggregateFees(address pool) external {
+    function collectAggregateFees(address pool) public {
         getVault().unlock(abi.encodeWithSelector(ProtocolFeeController.collectAggregateFeesHook.selector, pool));
     }
 
@@ -211,13 +218,7 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
-    function updateProtocolSwapFeePercentage(address pool) external {
-        getVault().unlock(
-            abi.encodeWithSelector(ProtocolFeeController.updateProtocolSwapFeePercentageHook.selector, pool)
-        );
-    }
-
-    function updateProtocolSwapFeePercentageHook(address pool) external onlyVault withLatestFees(pool) {
+    function updateProtocolSwapFeePercentage(address pool) external withLatestFees(pool) {
         PoolFeeConfig memory feeConfig = _poolProtocolSwapFeePercentages[pool];
         uint256 globalProtocolSwapFee = _globalProtocolSwapFeePercentage;
 
@@ -227,13 +228,7 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
-    function updateProtocolYieldFeePercentage(address pool) external {
-        getVault().unlock(
-            abi.encodeWithSelector(ProtocolFeeController.updateProtocolYieldFeePercentageHook.selector, pool)
-        );
-    }
-
-    function updateProtocolYieldFeePercentageHook(address pool) external onlyVault withLatestFees(pool) {
+    function updateProtocolYieldFeePercentage(address pool) external withLatestFees(pool) {
         PoolFeeConfig memory feeConfig = _poolProtocolYieldFeePercentages[pool];
         uint256 globalProtocolYieldFee = _globalProtocolYieldFeePercentage;
 
@@ -407,38 +402,12 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
-    function setProtocolSwapFeePercentage(address pool, uint256 newProtocolSwapFeePercentage) external authenticate {
-        getVault().unlock(
-            abi.encodeWithSelector(
-                ProtocolFeeController.setProtocolSwapFeePercentageHook.selector,
-                pool,
-                newProtocolSwapFeePercentage
-            )
-        );
-    }
-
-    function setProtocolSwapFeePercentageHook(
-        address pool,
-        uint256 newProtocolSwapFeePercentage
-    ) external onlyVault withValidSwapFee(newProtocolSwapFeePercentage) withLatestFees(pool) {
+    function setProtocolSwapFeePercentage(address pool, uint256 newProtocolSwapFeePercentage) external authenticate withValidSwapFee(newProtocolSwapFeePercentage) withLatestFees(pool) {
         _updatePoolSwapFeePercentage(pool, newProtocolSwapFeePercentage, true);
     }
 
     /// @inheritdoc IProtocolFeeController
-    function setProtocolYieldFeePercentage(address pool, uint256 newProtocolYieldFeePercentage) external authenticate {
-        getVault().unlock(
-            abi.encodeWithSelector(
-                ProtocolFeeController.setProtocolYieldFeePercentageHook.selector,
-                pool,
-                newProtocolYieldFeePercentage
-            )
-        );
-    }
-
-    function setProtocolYieldFeePercentageHook(
-        address pool,
-        uint256 newProtocolYieldFeePercentage
-    ) external onlyVault withValidYieldFee(newProtocolYieldFeePercentage) withLatestFees(pool) {
+    function setProtocolYieldFeePercentage(address pool, uint256 newProtocolYieldFeePercentage) external authenticate withValidYieldFee(newProtocolYieldFeePercentage) withLatestFees(pool) {
         _updatePoolYieldFeePercentage(pool, newProtocolYieldFeePercentage, true);
     }
 
@@ -446,44 +415,23 @@ contract ProtocolFeeController is
     function setPoolCreatorSwapFeePercentage(
         address pool,
         uint256 poolCreatorSwapFeePercentage
-    ) external onlyPoolCreator(pool) {
-        getVault().unlock(
-            abi.encodeWithSelector(
-                ProtocolFeeController.setPoolCreatorFeePercentageHook.selector,
-                pool,
-                poolCreatorSwapFeePercentage,
-                ProtocolFeeType.SWAP
-            )
-        );
+    ) external onlyPoolCreator(pool) withValidPoolCreatorFee(poolCreatorSwapFeePercentage) withLatestFees(pool) {
+        _setPoolCreatorFeePercentage(pool, poolCreatorSwapFeePercentage, ProtocolFeeType.SWAP);
     }
 
     /// @inheritdoc IProtocolFeeController
     function setPoolCreatorYieldFeePercentage(
         address pool,
         uint256 poolCreatorYieldFeePercentage
-    ) external onlyPoolCreator(pool) {
-        getVault().unlock(
-            abi.encodeWithSelector(
-                ProtocolFeeController.setPoolCreatorFeePercentageHook.selector,
-                pool,
-                poolCreatorYieldFeePercentage,
-                ProtocolFeeType.YIELD
-            )
-        );
+    ) external onlyPoolCreator(pool) withValidPoolCreatorFee(poolCreatorYieldFeePercentage) withLatestFees(pool) {
+        _setPoolCreatorFeePercentage(pool, poolCreatorYieldFeePercentage, ProtocolFeeType.YIELD);
     }
 
-    function setPoolCreatorFeePercentageHook(
+    function _setPoolCreatorFeePercentage(
         address pool,
         uint256 poolCreatorFeePercentage,
         ProtocolFeeType feeType
-    ) external onlyVault {
-        if (poolCreatorFeePercentage > FixedPoint.ONE) {
-            revert PoolCreatorFeePercentageTooHigh();
-        }
-
-        // Force collection of fees at the existing rate.
-        getVault().collectAggregateFees(pool);
-
+    ) internal {
         // Need to set locally, and update the aggregate percentage in the vault.
         if (feeType == ProtocolFeeType.SWAP) {
             _poolCreatorSwapFeePercentages[pool] = poolCreatorFeePercentage;
