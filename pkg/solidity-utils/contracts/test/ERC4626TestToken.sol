@@ -18,11 +18,6 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
     uint8 private immutable _wrappedTokenDecimals;
     IERC20 private _overrideAsset;
 
-    uint256 private _assetsToConsume;
-    uint256 private _sharesToConsume;
-    uint256 private _assetsToReturn;
-    uint256 private _sharesToReturn;
-
     bool private maliciousWrapper;
 
     constructor(
@@ -78,15 +73,6 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
 
         return super.deposit(assets, receiver);
     }
-
-    //    function mint(uint256 shares, address receiver) public override returns (uint256) {
-    //        uint256 consumedAssets = super.mint(shares, receiver);
-    //        if (maliciousWrapper) {
-    //            // A malicious wrapper wraps the minimum amount.
-    //            return _overrideAsset.balanceOf(msg.sender);
-    //        }
-    //        return consumedAssets;
-    //    }
 
     function _deposit(address caller, address receiver, uint256 assets, uint256 shares) internal override {
         _overrideAsset.safeTransferFrom(caller, address(this), assets);
