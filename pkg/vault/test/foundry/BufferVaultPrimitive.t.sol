@@ -168,11 +168,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             )
         );
 
-        vm.expectRevert(
-            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(waDAI), 0, vaultBalance)
-        );
-        vm.prank(address(waDAI));
-        dai.transferFrom(address(vault), address(waDAI), vaultBalance);
+        // After a wrap operation, even if the erc4626 token didn't take all the assets it was supposed to deposit,
+        // the allowance should be 0 to avoid a malicious wrapper from draining the underlying balance of the vault.
+        assertTrue(dai.allowance(address(vault), address(waDAI)) == 0, "Wrong allowance");
     }
 
     /********************************************************************************
@@ -223,19 +221,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             )
         );
 
-        uint256 vaultBalance = dai.balanceOf(address(vault));
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IERC20Errors.ERC20InsufficientAllowance.selector,
-                address(waDAI),
-                0,
-                vaultBalance - MIN_WRAP_AMOUNT
-            )
-        );
-        vm.prank(address(waDAI));
-        // Since MIN_WRAP_AMOUNT was spent, reduce it from the amount withdrawn.
-        dai.transferFrom(address(vault), address(waDAI), vaultBalance - MIN_WRAP_AMOUNT);
+        // After a wrap operation, even if the erc4626 token didn't take all the assets it was supposed to deposit,
+        // the allowance should be 0 to avoid a malicious wrapper from draining the underlying balance of the vault.
+        assertTrue(dai.allowance(address(vault), address(waDAI)) == 0, "Wrong allowance");
     }
 
     /********************************************************************************
