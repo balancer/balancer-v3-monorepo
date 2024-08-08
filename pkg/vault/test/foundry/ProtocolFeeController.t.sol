@@ -690,6 +690,10 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             "Wrong USDC protocol yield fees"
         );
 
+        // Get reserves
+        uint256 reservesOfDaiBeforeCollect = vault.getReservesOf(dai);
+        uint256 reservesOfUsdcBeforeCollect = vault.getReservesOf(usdc);
+
         // Collecting fees will emit events, and call `receiveAggregateFees`.
         vm.expectEmit();
         emit IProtocolFeeController.ProtocolSwapFeeCollected(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
@@ -725,6 +729,18 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
         uint256[] memory protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
         uint256[] memory poolCreatorFeeAmounts = feeController.getPoolCreatorFeeAmounts(pool);
+
+        // Check reserves
+        assertEq(
+            vault.getReservesOf(dai),
+            reservesOfDaiBeforeCollect - protocolFeeAmounts[daiIdx] - poolCreatorFeeAmounts[daiIdx],
+            "DAI: Incorrect Vault reserves"
+        );
+        assertEq(
+            vault.getReservesOf(usdc),
+            reservesOfUsdcBeforeCollect - protocolFeeAmounts[usdcIdx] - poolCreatorFeeAmounts[usdcIdx],
+            "USDC: Incorrect Vault reserves"
+        );
 
         uint256 aggregateSwapFeePercentage = feeController.computeAggregateFeePercentage(
             MAX_PROTOCOL_SWAP_FEE_PCT,

@@ -284,10 +284,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             (totalSwapFees[i], totalYieldFees[i]) = _aggregateFeeAmounts[pool][token].fromPackedBalance();
 
             if (totalSwapFees[i] > 0 || totalYieldFees[i] > 0) {
+                uint256 totalFees = totalSwapFees[i] + totalYieldFees[i];
                 // The ProtocolFeeController will pull tokens from the Vault.
-                token.forceApprove(feeController, totalSwapFees[i] + totalYieldFees[i]);
+                token.forceApprove(feeController, totalFees);
 
                 _aggregateFeeAmounts[pool][token] = 0;
+                _reservesOf[token] -= totalFees;
             }
         }
 
