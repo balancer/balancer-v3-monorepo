@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/test.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
@@ -74,8 +72,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @param credit The amount of `token` supplied to the Vault in favor of the caller
      */
     function _supplyCredit(IERC20 token, uint256 credit) internal {
-        console.log("credit", address(token), credit);
-
         _accountDelta(token, -credit.toInt256());
     }
 
@@ -85,8 +81,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * @param debt The amount of `token` taken from the Vault in favor of the caller
      */
     function _takeDebt(IERC20 token, uint256 debt) internal {
-        console.log("debt  ", address(token), debt);
-
         _accountDelta(token, debt.toInt256());
     }
 
