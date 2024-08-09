@@ -276,6 +276,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         public
         onlyVaultDelegateCall
         onlyWhenUnlocked
+        onlyProtocolFeeController
         withRegisteredPool(pool)
         returns (uint256[] memory totalSwapFees, uint256[] memory totalYieldFees)
     {

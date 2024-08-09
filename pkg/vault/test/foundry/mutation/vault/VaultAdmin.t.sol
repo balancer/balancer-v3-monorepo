@@ -145,8 +145,15 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.collectAggregateFees(address(0));
     }
 
+    function testCollectAggregateFeesWhenNotProtocolFeeController() public {
+        vault.manualSetIsUnlocked(true);
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        vault.collectAggregateFees(address(0));
+    }
+
     function testCollectAggregateFeesWithoutRegisteredPool() public {
         vault.manualSetIsUnlocked(true);
+        vm.prank(address(vault.getProtocolFeeController()));
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(0)));
         vault.collectAggregateFees(address(0));
     }

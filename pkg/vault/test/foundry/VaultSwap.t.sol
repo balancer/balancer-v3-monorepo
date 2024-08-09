@@ -423,9 +423,22 @@ contract VaultSwapTest is BaseVaultTest {
             bytes("")
         );
 
-        IProtocolFeeController feeController = vault.getProtocolFeeController();
+        uint256 reservesOfDaiBeforeCollect = vault.getReservesOf(dai);
+        uint256 reservesOfUsdcBeforeCollect = vault.getReservesOf(usdc);
+
         feeController.collectAggregateFees(pool);
         uint256[] memory feeAmounts = feeController.getProtocolFeeAmounts(pool);
+
+        assertEq(
+            vault.getReservesOf(dai),
+            reservesOfDaiBeforeCollect - feeAmounts[daiIdx],
+            "DAI: Incorrect Vault reserves"
+        );
+        assertEq(
+            vault.getReservesOf(usdc),
+            reservesOfUsdcBeforeCollect - feeAmounts[usdcIdx],
+            "USDC: Incorrect Vault reserves"
+        );
 
         authorizer.grantRole(
             IAuthentication(address(feeController)).getActionId(IProtocolFeeController.withdrawProtocolFees.selector),
