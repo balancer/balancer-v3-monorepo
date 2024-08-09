@@ -161,6 +161,11 @@ contract ProtocolFeeController is
         getVault().unlock(abi.encodeWithSelector(ProtocolFeeController.collectAggregateFeesHook.selector, pool));
     }
 
+    /**
+     * @dev Copy and zero out the `aggregateFeeAmounts` collected in the Vault accounting, supplying credit
+     * for each token. Then have the Vault transfer tokens to this contract, debiting each token for the amount
+     * transferred so that the transaction settles when the hook returns.
+     */
     function collectAggregateFeesHook(address pool) external onlyVault {
         (uint256[] memory totalSwapFees, uint256[] memory totalYieldFees) = getVault().collectAggregateFees(pool);
         _receiveAggregateFees(pool, totalSwapFees, totalYieldFees);
@@ -328,8 +333,8 @@ contract ProtocolFeeController is
      * happens in the ProtocolFeeController, the swap fees reported here may encompass multiple operations.
      *
      * @param pool The address of the pool on which the swap fees were charged
-     * @param swapFeeAmounts An array parallel to the pool tokens, with the swap fees collected in each token
-     * @param yieldFeeAmounts An array parallel to the pool tokens, with the yield fees collected in each token
+     * @param swapFeeAmounts An array with the total swap fees collected, sorted in token registration order
+     * @param yieldFeeAmounts An array with the total yield fees collected, sorted in token registration order
      */
     function _receiveAggregateFees(
         address pool,
