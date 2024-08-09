@@ -84,6 +84,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
     //#endregion
 
     // #region callBeforeSwapHook tests
+
     // #endregion
 
     //#region callAfterSwapHook tests
@@ -301,10 +302,9 @@ contract HooksConfigLibHooksHelpersTest is Test {
             abi.encode(true, hookAdjustedAmountCalculatedRaw)
         );
 
-        // Stack too deep
-        PoolConfigBits config_ = config;
         return
-            config_.callAfterSwapHook(
+            hooksConfigLibMock.callAfterSwapHook(
+                config,
                 amountCalculatedScaled18,
                 amountCalculatedRaw,
                 router,
@@ -323,7 +323,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
         SwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
-    ) internal returns (uint256 value) {
+    ) internal {
         (uint256 amountInScaled18, uint256 amountOutScaled18) = params.kind == SwapKind.EXACT_IN
             ? (state.amountGivenScaled18, amountCalculatedScaled18)
             : (amountCalculatedScaled18, state.amountGivenScaled18);
