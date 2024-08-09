@@ -292,7 +292,7 @@ contract VaultExplorer is IVaultExplorer {
 
     /// @inheritdoc IVaultExplorer
     function collectAggregateFees(address pool) external {
-        return _vault.collectAggregateFees(pool);
+        return _vault.getProtocolFeeController().collectAggregateFees(pool);
     }
 
     /*******************************************************************************

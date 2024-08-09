@@ -270,13 +270,21 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectAggregateFees(address pool) public onlyVaultDelegateCall nonReentrant withRegisteredPool(pool) {
+    function collectAggregateFees(
+        address pool
+    )
+        public
+        onlyVaultDelegateCall
+        onlyWhenUnlocked
+        onlyProtocolFeeController
+        withRegisteredPool(pool)
+        returns (uint256[] memory totalSwapFees, uint256[] memory totalYieldFees)
+    {
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
-        address feeController = address(_protocolFeeController);
         uint256 numTokens = poolTokens.length;
 
-        uint256[] memory totalSwapFees = new uint256[](numTokens);
-        uint256[] memory totalYieldFees = new uint256[](numTokens);
+        totalSwapFees = new uint256[](numTokens);
+        totalYieldFees = new uint256[](numTokens);
 
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             IERC20 token = poolTokens[i];
@@ -284,14 +292,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             (totalSwapFees[i], totalYieldFees[i]) = _aggregateFeeAmounts[pool][token].fromPackedBalance();
 
             if (totalSwapFees[i] > 0 || totalYieldFees[i] > 0) {
-                // The ProtocolFeeController will pull tokens from the Vault.
-                token.forceApprove(feeController, totalSwapFees[i] + totalYieldFees[i]);
-
+                // Supply credit for the total amount of fees.
                 _aggregateFeeAmounts[pool][token] = 0;
+                _supplyCredit(token, totalSwapFees[i] + totalYieldFees[i]);
             }
         }
-
-        _protocolFeeController.receiveAggregateFees(pool, totalSwapFees, totalYieldFees);
     }
 
     /// @inheritdoc IVaultAdmin
