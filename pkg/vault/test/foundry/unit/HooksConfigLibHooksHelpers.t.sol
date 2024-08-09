@@ -26,6 +26,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
     function setUp() public {
         hooksConfigLibMock = new HooksConfigLibMock();
     }
+
     //#region callComputeDynamicSwapFeeHook
     function testCallComputeDynamicSwapFeeHook() public {
         uint256 swapFeePercentage = 6e5;
@@ -104,6 +105,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
 
         hooksConfigLibMock.callBeforeSwapHook(swapParams, pool, IHooks(hooksContract));
     }
+
     // #endregion
 
     //#region callAfterSwapHook tests
@@ -388,6 +390,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
             IHooks(hooksContract)
         );
     }
+
     //#endregion
 
     //#region callBeforeAddLiquidityHook tests
@@ -461,6 +464,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
             IHooks(hooksContract)
         );
     }
+
     //#endregion
 
     //#region callAfterAddLiquidityHook tests
@@ -691,6 +695,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
                 IHooks(hooksContract)
             );
     }
+
     //#endregion
 
     //#region callBeforeRemoveLiquidityHook tests
@@ -764,6 +769,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
             IHooks(hooksContract)
         );
     }
+
     //#endregion
 
     //#region callAfterRemoveLiquidityHook tests
@@ -991,6 +997,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
                 IHooks(hooksContract)
             );
     }
+
     //#endregion
 
     //#region callBeforeInitializeHook tests
@@ -1020,6 +1027,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeInitializeHookFailed.selector));
         hooksConfigLibMock.callBeforeInitializeHook(exactAmountsInScaled18, userData, IHooks(hooksContract));
     }
+
     //#endregion
 
     //#region callAfterInitializeHook tests
