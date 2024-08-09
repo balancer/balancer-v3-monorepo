@@ -56,6 +56,11 @@ contract ProtocolFeeController is
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
+    enum ProtocolFeeType {
+        SWAP,
+        YIELD
+    }
+
     /**
      * @notice Fee configuration stored in the swap and yield fee mappings.
      * @dev Instead of storing only the fee in the mapping, also store a flag to indicate whether the fee has been
@@ -169,6 +174,78 @@ contract ProtocolFeeController is
     function collectAggregateFeesHook(address pool) external onlyVault {
         (uint256[] memory totalSwapFees, uint256[] memory totalYieldFees) = getVault().collectAggregateFees(pool);
         _receiveAggregateFees(pool, totalSwapFees, totalYieldFees);
+    }
+
+    /**
+     * @notice Settle fee credits from the vault.
+     * @dev This must be called after calling `collectAggregateFees` in the Vault. Note that since charging protocol
+     * fees (i.e., distributing tokens between pool and fee balances) occurs in the Vault, but fee collection
+     * happens in the ProtocolFeeController, the swap fees reported here may encompass multiple operations.
+     *
+     * @param pool The address of the pool on which the swap fees were charged
+     * @param swapFeeAmounts An array with the total swap fees collected, sorted in token registration order
+     * @param yieldFeeAmounts An array with the total yield fees collected, sorted in token registration order
+     */
+    function _receiveAggregateFees(
+        address pool,
+        uint256[] memory swapFeeAmounts,
+        uint256[] memory yieldFeeAmounts
+    ) internal {
+        _receiveAggregateFees(pool, ProtocolFeeType.SWAP, swapFeeAmounts);
+        _receiveAggregateFees(pool, ProtocolFeeType.YIELD, yieldFeeAmounts);
+    }
+
+    function _receiveAggregateFees(address pool, ProtocolFeeType feeType, uint256[] memory feeAmounts) private {
+        // There are two cases when we don't need to split fees (in which case we can save gas and avoid rounding
+        // errors by skipping calculations) if either the protocol or pool creator fee percentage is zero.
+
+        uint256 protocolFeePercentage = feeType == ProtocolFeeType.SWAP
+            ? _poolProtocolSwapFeePercentages[pool].feePercentage
+            : _poolProtocolYieldFeePercentages[pool].feePercentage;
+
+        uint256 poolCreatorFeePercentage = feeType == ProtocolFeeType.SWAP
+            ? _poolCreatorSwapFeePercentages[pool]
+            : _poolCreatorYieldFeePercentages[pool];
+
+        uint256 aggregateFeePercentage;
+
+        bool needToSplitFees = poolCreatorFeePercentage > 0 && protocolFeePercentage > 0;
+        if (needToSplitFees) {
+            // Calculate once, outside the loop.
+            aggregateFeePercentage = _computeAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage);
+        }
+
+        (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            if (feeAmounts[i] > 0) {
+                IERC20 token = poolTokens[i];
+
+                getVault().sendTo(token, address(this), feeAmounts[i]);
+
+                // It should be easier for off-chain processes to handle two events, rather than parsing the type
+                // out of a single event.
+                if (feeType == ProtocolFeeType.SWAP) {
+                    emit ProtocolSwapFeeCollected(pool, token, feeAmounts[i]);
+                } else {
+                    emit ProtocolYieldFeeCollected(pool, token, feeAmounts[i]);
+                }
+
+                if (needToSplitFees) {
+                    uint256 totalVolume = feeAmounts[i].divUp(aggregateFeePercentage);
+                    uint256 protocolPortion = totalVolume.mulUp(protocolFeePercentage);
+
+                    _protocolFeeAmounts[pool][token] += protocolPortion;
+                    _poolCreatorFeeAmounts[pool][token] += feeAmounts[i] - protocolPortion;
+                } else {
+                    // If we don't need to split, one of them must be zero.
+                    if (poolCreatorFeePercentage == 0) {
+                        _protocolFeeAmounts[pool][token] += feeAmounts[i];
+                    } else {
+                        _poolCreatorFeeAmounts[pool][token] += feeAmounts[i];
+                    }
+                }
+            }
+        }
     }
 
     /// @inheritdoc IProtocolFeeController
@@ -319,83 +396,6 @@ contract ProtocolFeeController is
             feePercentage: uint64(aggregateYieldFeePercentage),
             isOverride: protocolFeeExempt
         });
-    }
-
-    enum ProtocolFeeType {
-        SWAP,
-        YIELD
-    }
-
-    /**
-     * @notice Settle fee credits from the vault.
-     * @dev This must be called after calling `collectAggregateFees` in the Vault. Note that since charging protocol
-     * fees (i.e., distributing tokens between pool and fee balances) occurs in the Vault, but fee collection
-     * happens in the ProtocolFeeController, the swap fees reported here may encompass multiple operations.
-     *
-     * @param pool The address of the pool on which the swap fees were charged
-     * @param swapFeeAmounts An array with the total swap fees collected, sorted in token registration order
-     * @param yieldFeeAmounts An array with the total yield fees collected, sorted in token registration order
-     */
-    function _receiveAggregateFees(
-        address pool,
-        uint256[] memory swapFeeAmounts,
-        uint256[] memory yieldFeeAmounts
-    ) internal {
-        _receiveAggregateFees(pool, ProtocolFeeType.SWAP, swapFeeAmounts);
-        _receiveAggregateFees(pool, ProtocolFeeType.YIELD, yieldFeeAmounts);
-    }
-
-    function _receiveAggregateFees(address pool, ProtocolFeeType feeType, uint256[] memory feeAmounts) private {
-        // There are two cases when we don't need to split fees (in which case we can save gas and avoid rounding
-        // errors by skipping calculations) if either the protocol or pool creator fee percentage is zero.
-
-        uint256 protocolFeePercentage = feeType == ProtocolFeeType.SWAP
-            ? _poolProtocolSwapFeePercentages[pool].feePercentage
-            : _poolProtocolYieldFeePercentages[pool].feePercentage;
-
-        uint256 poolCreatorFeePercentage = feeType == ProtocolFeeType.SWAP
-            ? _poolCreatorSwapFeePercentages[pool]
-            : _poolCreatorYieldFeePercentages[pool];
-
-        uint256 aggregateFeePercentage;
-
-        bool needToSplitFees = poolCreatorFeePercentage > 0 && protocolFeePercentage > 0;
-        if (needToSplitFees) {
-            // Calculate once, outside the loop.
-            aggregateFeePercentage = _computeAggregateFeePercentage(protocolFeePercentage, poolCreatorFeePercentage);
-        }
-
-        (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
-        for (uint256 i = 0; i < numTokens; ++i) {
-            if (feeAmounts[i] > 0) {
-                IERC20 token = poolTokens[i];
-
-                getVault().sendTo(token, address(this), feeAmounts[i]);
-
-                // It should be easier for off-chain processes to handle two events, rather than parsing the type
-                // out of a single event.
-                if (feeType == ProtocolFeeType.SWAP) {
-                    emit ProtocolSwapFeeCollected(pool, token, feeAmounts[i]);
-                } else {
-                    emit ProtocolYieldFeeCollected(pool, token, feeAmounts[i]);
-                }
-
-                if (needToSplitFees) {
-                    uint256 totalVolume = feeAmounts[i].divUp(aggregateFeePercentage);
-                    uint256 protocolPortion = totalVolume.mulUp(protocolFeePercentage);
-
-                    _protocolFeeAmounts[pool][token] += protocolPortion;
-                    _poolCreatorFeeAmounts[pool][token] += feeAmounts[i] - protocolPortion;
-                } else {
-                    // If we don't need to split, one of them must be zero.
-                    if (poolCreatorFeePercentage == 0) {
-                        _protocolFeeAmounts[pool][token] += feeAmounts[i];
-                    } else {
-                        _poolCreatorFeeAmounts[pool][token] += feeAmounts[i];
-                    }
-                }
-            }
-        }
     }
 
     /// @inheritdoc IProtocolFeeController
