@@ -212,7 +212,7 @@ contract VaultExplorer is IVaultExplorer {
     function computeDynamicSwapFeePercentage(
         address pool,
         PoolSwapParams memory swapParams
-    ) external view returns (bool success, uint256 dynamicSwapFee) {
+    ) external view returns (uint256 dynamicSwapFee) {
         return _vault.computeDynamicSwapFeePercentage(pool, swapParams);
     }
 

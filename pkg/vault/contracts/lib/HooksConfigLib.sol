@@ -176,15 +176,14 @@ library HooksConfigLib {
      * @param pool Pool address
      * @param staticSwapFeePercentage Value of the static swap fee, for reference
      * @param hooksContract Storage slot with the address of the hooks contract
-     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
-     * @return swapFeePercentage the calculated swap fee percentage. 0 if hook is disabled
+     * @return swapFeePercentage the calculated swap fee percentage.
      */
     function callComputeDynamicSwapFeeHook(
         PoolSwapParams memory swapParams,
         address pool,
         uint256 staticSwapFeePercentage,
         IHooks hooksContract
-    ) internal view returns (bool, uint256) {
+    ) internal view returns (uint256) {
         (bool success, uint256 swapFeePercentage) = hooksContract.onComputeDynamicSwapFeePercentage(
             swapParams,
             pool,
@@ -195,7 +194,7 @@ library HooksConfigLib {
             revert IVaultErrors.DynamicSwapFeeHookFailed();
         }
 
-        return (true, swapFeePercentage);
+        return swapFeePercentage;
     }
 
     /**
