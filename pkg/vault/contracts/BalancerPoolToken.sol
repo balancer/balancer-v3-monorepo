@@ -42,17 +42,17 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvide
     }
 
     /// @inheritdoc IERC20Metadata
-    function name() public view returns (string memory) {
+    function name() external view returns (string memory) {
         return _bptName;
     }
 
     /// @inheritdoc IERC20Metadata
-    function symbol() public view returns (string memory) {
+    function symbol() external view returns (string memory) {
         return _bptSymbol;
     }
 
     /// @inheritdoc IERC20Metadata
-    function decimals() public pure returns (uint8) {
+    function decimals() external pure returns (uint8) {
         // Always 18 decimals for BPT.
         return 18;
     }
@@ -67,31 +67,31 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvide
     }
 
     /// @inheritdoc IERC20
-    function balanceOf(address account) public view returns (uint256) {
+    function balanceOf(address account) external view returns (uint256) {
         return _vault.balanceOf(address(this), account);
     }
 
     /// @inheritdoc IERC20
-    function transfer(address to, uint256 amount) public returns (bool) {
+    function transfer(address to, uint256 amount) external returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
         _vault.transfer(msg.sender, to, amount);
         return true;
     }
 
     /// @inheritdoc IERC20
-    function allowance(address owner, address spender) public view returns (uint256) {
+    function allowance(address owner, address spender) external view returns (uint256) {
         return _vault.allowance(address(this), owner, spender);
     }
 
     /// @inheritdoc IERC20
-    function approve(address spender, uint256 amount) public returns (bool) {
+    function approve(address spender, uint256 amount) external returns (bool) {
         // Vault will perform the approval and call emitApproval to emit the event from this contract.
         _vault.approve(msg.sender, spender, amount);
         return true;
     }
 
     /// @inheritdoc IERC20
-    function transferFrom(address from, address to, uint256 amount) public returns (bool) {
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
         _vault.transferFrom(msg.sender, from, to, amount);
         return true;
