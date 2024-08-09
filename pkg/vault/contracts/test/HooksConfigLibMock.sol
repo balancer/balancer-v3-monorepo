@@ -37,9 +37,9 @@ contract HooksConfigLibMock {
         PoolData memory poolData,
         IHooks hooksContract
     ) public returns (uint256) {
-        PoolConfigBits config_ = config;
         return
-            config_.callAfterSwapHook(
+            HooksConfigLib.callAfterSwapHook(
+                config,
                 amountCalculatedScaled18,
                 amountCalculatedRaw,
                 router,
@@ -48,5 +48,88 @@ contract HooksConfigLibMock {
                 poolData,
                 hooksContract
             );
+    }
+
+    function callBeforeAddLiquidityHook(
+        address router,
+        uint256[] memory maxAmountsInScaled18,
+        AddLiquidityParams memory params,
+        PoolData memory poolData,
+        IHooks hooksContract
+    ) public {
+        HooksConfigLib.callBeforeAddLiquidityHook(router, maxAmountsInScaled18, params, poolData, hooksContract);
+    }
+
+    function callAfterAddLiquidityHook(
+        PoolConfigBits config,
+        address router,
+        uint256[] memory amountsInScaled18,
+        uint256[] memory amountsInRaw,
+        uint256 bptAmountOut,
+        AddLiquidityParams memory params,
+        PoolData memory poolData,
+        IHooks hooksContract
+    ) public returns (uint256[] memory) {
+        return
+            HooksConfigLib.callAfterAddLiquidityHook(
+                config,
+                router,
+                amountsInScaled18,
+                amountsInRaw,
+                bptAmountOut,
+                params,
+                poolData,
+                hooksContract
+            );
+    }
+
+    function callBeforeRemoveLiquidityHook(
+        uint256[] memory minAmountsOutScaled18,
+        address router,
+        RemoveLiquidityParams memory params,
+        PoolData memory poolData,
+        IHooks hooksContract
+    ) public {
+        HooksConfigLib.callBeforeRemoveLiquidityHook(minAmountsOutScaled18, router, params, poolData, hooksContract);
+    }
+
+    function callAfterRemoveLiquidityHook(
+        PoolConfigBits config,
+        address router,
+        uint256[] memory amountsOutScaled18,
+        uint256[] memory amountsOutRaw,
+        uint256 bptAmountIn,
+        RemoveLiquidityParams memory params,
+        PoolData memory poolData,
+        IHooks hooksContract
+    ) public returns (uint256[] memory) {
+        return
+            HooksConfigLib.callAfterRemoveLiquidityHook(
+                config,
+                router,
+                amountsOutScaled18,
+                amountsOutRaw,
+                bptAmountIn,
+                params,
+                poolData,
+                hooksContract
+            );
+    }
+
+    function callBeforeInitializeHook(
+        uint256[] memory exactAmountsInScaled18,
+        bytes memory userData,
+        IHooks hooksContract
+    ) public {
+        return HooksConfigLib.callBeforeInitializeHook(exactAmountsInScaled18, userData, hooksContract);
+    }
+
+    function callAfterInitializeHook(
+        uint256[] memory amountsInScaled18,
+        uint256 bptAmountOut,
+        bytes memory userData,
+        IHooks hooksContract
+    ) public {
+        return HooksConfigLib.callAfterInitializeHook(amountsInScaled18, bptAmountOut, userData, hooksContract);
     }
 }
