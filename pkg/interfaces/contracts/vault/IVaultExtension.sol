@@ -386,7 +386,7 @@ interface IVaultExtension {
      * @param data Contains function signature and args to be passed to the msg.sender
      * @return result Resulting data from the call
      */
-    function quote(bytes calldata data) external payable returns (bytes memory result);
+    function quote(bytes calldata data) external returns (bytes memory result);
 
     /**
      * @notice Performs a callback on msg.sender with arguments provided in `data`.
@@ -403,7 +403,7 @@ interface IVaultExtension {
      *
      * @param data Contains function signature and args to be passed to the msg.sender
      */
-    function quoteAndRevert(bytes calldata data) external payable;
+    function quoteAndRevert(bytes calldata data) external;
 
     /**
      * @notice Checks if the queries enabled on the Vault.
