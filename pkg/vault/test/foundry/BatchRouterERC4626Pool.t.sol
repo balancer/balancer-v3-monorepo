@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { TokenConfig, TokenType, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
@@ -30,6 +31,7 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
 
     ERC4626TestToken internal waDAI;
     ERC4626TestToken internal waUSDC;
+    ERC4626TestToken internal waInvalid;
     address internal erc4626Pool;
 
     uint256 internal waDaiIdx;
@@ -44,6 +46,9 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
         // "USDC" is deliberately 18 decimals to test one thing at a time.
         waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
         vm.label(address(waUSDC), "waUSDC");
+
+        // Invalid wrapper, with a zero underlying asset.
+        waInvalid = new ERC4626TestToken(IERC20(address(0)), "Invalid Wrapped", "waInvalid", 18);
 
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
 
@@ -493,5 +498,11 @@ contract BatchRouterERC4626PoolTest is BaseVaultTest {
 
         vm.prank(bob, address(0));
         batchRouter.queryRemoveLiquidityProportionalFromERC4626Pool(erc4626Pool, exactBptAmountIn, new bytes(0));
+    }
+
+    function testInvalidUnderlyingToken() public {
+        vm.expectRevert(IVaultErrors.InvalidUnderlyingTokenAsset.selector);
+        vm.prank(lp);
+        router.addLiquidityToBuffer(waInvalid, bufferInitialAmount, bufferInitialAmount, lp);
     }
 }
