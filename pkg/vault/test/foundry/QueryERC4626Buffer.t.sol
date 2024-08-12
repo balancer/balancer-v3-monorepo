@@ -20,10 +20,11 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
 
     uint256 internal tooLargeSwapAmount = erc4626PoolInitialAmount / 2;
     // We will swap with 10% of the buffer.
-    uint256 internal swapAmount = bufferInitialAmount / 10;
+    uint256 internal swapAmount;
 
     function setUp() public virtual override {
         bufferInitialAmount = erc4626PoolInitialAmount / 100;
+        swapAmount = bufferInitialAmount / 10;
         BaseERC4626BufferTest.setUp();
         _initializeUser();
     }

@@ -25,12 +25,14 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
     // The yield-bearing pool will have 100x the liquidity of the buffer.
     uint256 internal tooLargeSwapAmount = erc4626PoolInitialAmount / 2;
     // We will swap with 10% of the buffer.
-    uint256 internal swapAmount = bufferInitialAmount / 10;
+    uint256 internal swapAmount;
     // LP can unbalance buffer with this amount.
-    uint256 internal unbalanceDelta = bufferInitialAmount / 2;
+    uint256 internal unbalanceDelta;
 
     function setUp() public virtual override {
         bufferInitialAmount = erc4626PoolInitialAmount / 100;
+        swapAmount = bufferInitialAmount / 10;
+        unbalanceDelta = bufferInitialAmount / 2;
         initialLPBufferAmount = bufferInitialAmount * 2;
         BaseERC4626BufferTest.setUp();
     }
