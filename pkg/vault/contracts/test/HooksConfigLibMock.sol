@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -13,7 +12,7 @@ contract HooksConfigLibMock {
     using HooksConfigLib for PoolConfigBits;
 
     function callComputeDynamicSwapFeeHook(
-        IBasePool.PoolSwapParams memory swapParams,
+        PoolSwapParams memory swapParams,
         address pool,
         uint256 staticSwapFeePercentage,
         IHooks hooksContract
@@ -21,7 +20,7 @@ contract HooksConfigLibMock {
         return HooksConfigLib.callComputeDynamicSwapFeeHook(swapParams, pool, staticSwapFeePercentage, hooksContract);
     }
 
-    function callBeforeSwapHook(IBasePool.PoolSwapParams memory swapParams, address pool, IHooks hooksContract) public {
+    function callBeforeSwapHook(PoolSwapParams memory swapParams, address pool, IHooks hooksContract) public {
         if (hooksContract.onBeforeSwap(swapParams, pool) == false) {
             // Hook contract implements onBeforeSwap, but it has failed, so reverts the transaction.
             revert IVaultErrors.BeforeSwapHookFailed();

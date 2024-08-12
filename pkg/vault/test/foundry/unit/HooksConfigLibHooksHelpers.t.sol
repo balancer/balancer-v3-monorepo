@@ -31,7 +31,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
     function testCallComputeDynamicSwapFeeHook() public {
         uint256 swapFeePercentage = 6e5;
 
-        IBasePool.PoolSwapParams memory swapParams;
+        PoolSwapParams memory swapParams;
         uint256 staticSwapFeePercentage = 3e5;
         vm.mockCall(
             hooksContract,
@@ -58,7 +58,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
     function testCallComputeDynamicSwapFeeHookRevertIfCallIsNotSuccess() public {
         uint256 swapFeePercentage = 6e5;
 
-        IBasePool.PoolSwapParams memory swapParams;
+        PoolSwapParams memory swapParams;
         uint256 staticSwapFeePercentage = 3e5;
         vm.mockCall(
             hooksContract,
@@ -84,7 +84,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
 
     //#region callBeforeSwapHook tests
     function testCallBeforeSwapHook() public {
-        IBasePool.PoolSwapParams memory swapParams;
+        PoolSwapParams memory swapParams;
         vm.mockCall(
             hooksContract,
             abi.encodeWithSelector(IHooks.onBeforeSwap.selector, swapParams, pool),
@@ -95,7 +95,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
     }
 
     function testCallBeforeSwapHookRevertIfCallIsNotSuccess() public {
-        IBasePool.PoolSwapParams memory swapParams;
+        PoolSwapParams memory swapParams;
         vm.mockCall(
             hooksContract,
             abi.encodeWithSelector(IHooks.onBeforeSwap.selector, swapParams, pool),
