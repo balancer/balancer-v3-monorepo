@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import "./LogExpMath.sol";
 
+/// @notice Support 18-decimal fixed point arithmetic. All Vault calculations use this for high and uniform precision.
 library FixedPoint {
     /// @dev Attempted division by zero.
     error ZeroDivision();
@@ -49,13 +50,18 @@ library FixedPoint {
     }
 
     function divUp(uint256 a, uint256 b) internal pure returns (uint256 result) {
+        return mulDivUp(a, ONE, b);
+    }
+
+    /// @dev Return (a * b) / c, rounding up.
+    function mulDivUp(uint256 a, uint256 b, uint256 c) internal pure returns (uint256 result) {
         // This check is required because Yul's `div` doesn't revert on b==0
-        if (b == 0) {
+        if (c == 0) {
             revert ZeroDivision();
         }
 
         // Multiple overflow protection is done by Solidity 0.8x
-        uint256 aInflated = a * ONE;
+        uint256 product = a * b;
 
         // The traditional divUp formula is:
         // divUp(x, y) := (x + y - 1) / y
@@ -64,9 +70,9 @@ library FixedPoint {
         // Note that this requires x != 0, if x == 0 then the result is zero
         //
         // Equivalent to:
-        // result = a == 0 ? 0 : (a * FixedPoint.ONE - 1) / b + 1;
+        // result = a == 0 ? 0 : (a * b - 1) / c + 1;
         assembly {
-            result := mul(iszero(iszero(aInflated)), add(div(sub(aInflated, 1), b), 1))
+            result := mul(iszero(iszero(product)), add(div(sub(product, 1), c), 1))
         }
     }
 

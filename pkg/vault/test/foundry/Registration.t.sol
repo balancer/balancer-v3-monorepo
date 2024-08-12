@@ -13,16 +13,19 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { HooksConfigLib } from "../../contracts/lib/HooksConfigLib.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract RegistrationTest is BaseVaultTest {
-    using ArrayHelpers for *;
     using HooksConfigLib for PoolConfigBits;
+    using CastingHelpers for address[];
+    using ArrayHelpers for *;
 
     IERC20[] standardPoolTokens;
     TokenConfig[] standardTokenConfig;
@@ -35,7 +38,7 @@ contract RegistrationTest is BaseVaultTest {
         pool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
     }
 
-    // Do not register the pool in the base test
+    // Do not register the pool in the base test.
     function createPool() internal pure override returns (address) {
         return address(0);
     }
@@ -118,7 +121,7 @@ contract RegistrationTest is BaseVaultTest {
     }
 
     function testRegisterSetSwapFeePercentage__Fuzz(uint256 swapFeePercentage) public {
-        swapFeePercentage = bound(swapFeePercentage, 0, 1e18);
+        swapFeePercentage = bound(swapFeePercentage, 0, FixedPoint.ONE);
         PoolRoleAccounts memory roleAccounts;
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(standardPoolTokens);
         LiquidityManagement memory liquidityManagement;
@@ -133,7 +136,7 @@ contract RegistrationTest is BaseVaultTest {
             address(0),
             liquidityManagement
         );
-        // Stored value is truncated
+        // Stored value is truncated.
         assertEq(
             vault.getStaticSwapFeePercentage(pool),
             (swapFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR,
@@ -142,7 +145,7 @@ contract RegistrationTest is BaseVaultTest {
     }
 
     function testRegisterSetSwapFeePercentageAboveMax() public {
-        swapFeePercentage = 1e18 + 1;
+        swapFeePercentage = FixedPoint.ONE + 1;
         PoolRoleAccounts memory roleAccounts;
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(standardPoolTokens);
         LiquidityManagement memory liquidityManagement;

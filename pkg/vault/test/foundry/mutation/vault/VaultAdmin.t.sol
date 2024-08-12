@@ -8,14 +8,10 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
@@ -23,8 +19,6 @@ import {
 import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
 
 contract VaultAdminMutationTest is BaseVaultTest {
-    using ArrayHelpers for *;
-
     function setUp() public virtual override {
         BaseVaultTest.setUp();
     }
@@ -146,7 +140,20 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vaultAdmin.collectAggregateFees(pool);
     }
 
+    function testCollectAggregateFeesWhenNotUnlocked() public {
+        vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
+        vault.collectAggregateFees(address(0));
+    }
+
+    function testCollectAggregateFeesWhenNotProtocolFeeController() public {
+        vault.manualSetIsUnlocked(true);
+        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
+        vault.collectAggregateFees(address(0));
+    }
+
     function testCollectAggregateFeesWithoutRegisteredPool() public {
+        vault.manualSetIsUnlocked(true);
+        vm.prank(address(vault.getProtocolFeeController()));
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(0)));
         vault.collectAggregateFees(address(0));
     }
@@ -302,17 +309,17 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     function testGetBufferOwnerSharesWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.getBufferOwnerShares(dai, alice);
+        vaultAdmin.getBufferOwnerShares(IERC4626(address(dai)), alice);
     }
 
     function testGetBufferTotalSharesWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.getBufferTotalShares(dai);
+        vaultAdmin.getBufferTotalShares(IERC4626(address(dai)));
     }
 
     function testGetBufferBalanceWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.getBufferBalance(dai);
+        vaultAdmin.getBufferBalance(IERC4626(address(dai)));
     }
 
     function testSetAuthorizerWhenNotAuthenticated() public {

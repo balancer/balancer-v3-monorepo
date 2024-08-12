@@ -4,14 +4,19 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import {
+    TokenConfig,
+    TokenType,
+    LiquidityManagement,
+    PoolRoleAccounts
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
@@ -20,8 +25,6 @@ import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultTokenTest is BaseVaultTest {
-    using ArrayHelpers for *;
-
     PoolFactoryMock poolFactory;
 
     ERC4626TestToken waDAI;
@@ -45,7 +48,7 @@ contract VaultTokenTest is BaseVaultTest {
 
         poolFactory = new PoolFactoryMock(vault, 365 days);
 
-        // Allow pools from factory poolFactory to use the hook poolHooksMock
+        // Allow pools from factory poolFactory to use the hook PoolHooksMock.
         PoolHooksMock(poolHooksContract).allowFactory(address(poolFactory));
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
@@ -59,7 +62,7 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function initPool() internal override {
-        // Do nothing for this test
+        // Do nothing for this test.
     }
 
     function testGetRegularPoolTokens() public {
@@ -75,7 +78,7 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function testInvalidStandardTokenWithRateProvider() public {
-        // Standard token with a rate provider is invalid
+        // Standard token with a rate provider is invalid.
         TokenConfig[] memory tokenConfig = new TokenConfig[](2);
         tokenConfig[daiIdx].token = IERC20(dai);
         tokenConfig[0].rateProvider = IRateProvider(waDAI);
@@ -86,7 +89,7 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function testInvalidRateTokenWithoutProvider() public {
-        // Rated token without a rate provider is invalid
+        // Rated token without a rate provider is invalid.
 
         (uint256 ethIdx, uint256 localUsdcIdx) = getSortedIndexes(address(wsteth), address(usdc));
 
@@ -100,7 +103,7 @@ contract VaultTokenTest is BaseVaultTest {
     }
 
     function registerBuffers() private {
-        // Establish assets and supply so that buffer creation doesn't fail
+        // Establish assets and supply so that buffer creation doesn't fail.
         vm.startPrank(alice);
 
         dai.mint(alice, 2 * defaultAmount);

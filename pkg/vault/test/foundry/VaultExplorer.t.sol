@@ -24,11 +24,13 @@ import {
     LiquidityManagement,
     PoolConfig,
     HooksConfig,
-    PoolData
+    PoolData,
+    PoolSwapParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
@@ -43,6 +45,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultExplorerTest is BaseVaultTest {
     using PoolConfigLib for PoolConfigBits;
+    using CastingHelpers for address[];
     using ScalingHelpers for uint256;
     using FixedPoint for uint256;
     using ArrayHelpers for *;
@@ -61,7 +64,6 @@ contract VaultExplorerTest is BaseVaultTest {
     uint256 internal constant PROTOCOL_YIELD_FEE_AMOUNT = 50e18;
 
     VaultExplorer internal explorer;
-    IProtocolFeeController feeController;
     IAuthentication feeControllerAuth;
     ERC4626TestToken internal waDAI;
 
@@ -96,7 +98,6 @@ contract VaultExplorerTest is BaseVaultTest {
 
         _setComplexPoolData();
 
-        feeController = vault.getProtocolFeeController();
         feeControllerAuth = IAuthentication(address(feeController));
 
         waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
@@ -368,13 +369,13 @@ contract VaultExplorerTest is BaseVaultTest {
     function testGetPoolConfig() public {
         PoolConfig memory poolConfig = explorer.getPoolConfig(pool);
 
-        // Check the flags
+        // Check the flags.
         assertTrue(poolConfig.isPoolRegistered, "Pool not registered");
         assertTrue(poolConfig.isPoolInitialized, "Pool not initialized");
         assertFalse(poolConfig.isPoolPaused, "Pool is paused");
         assertFalse(poolConfig.isPoolInRecoveryMode, "Pool is in recovery mode");
 
-        // Change something
+        // Change something.
         vault.manualSetPoolPauseWindowEndTime(pool, uint32(block.timestamp) + 365 days);
         vault.manualPausePool(pool);
 
@@ -388,7 +389,7 @@ contract VaultExplorerTest is BaseVaultTest {
         assertEq(hooksConfig.hooksContract, poolHooksContract, "Wrong hooks contract");
         assertFalse(hooksConfig.shouldCallComputeDynamicSwapFee, "Dynamic swap fee flag is true");
 
-        // Change something
+        // Change something.
         hooksConfig.shouldCallComputeDynamicSwapFee = true;
         vault.manualSetHooksConfig(pool, hooksConfig);
 
@@ -456,7 +457,7 @@ contract VaultExplorerTest is BaseVaultTest {
         assertEq(poolBufferPeriodEndTime, vault.getBufferPeriodDuration(), "Wrong initial buffer time");
         assertEq(pauseManager, address(0), "Pool has a pause manager");
 
-        // Change the state
+        // Change the state.
         uint32 newEndTime = uint32(block.timestamp) + 365 days;
 
         vault.manualSetPoolPauseWindowEndTime(pool, newEndTime);
@@ -518,9 +519,9 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(swapFeePercentage > 0, "Swap fee is zero");
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(swapFeePercentage);
 
-        (bool success, uint256 dynamicSwapFeePercentage) = explorer.computeDynamicSwapFeePercentage(
+        uint256 dynamicSwapFeePercentage = explorer.computeDynamicSwapFeePercentage(
             pool,
-            IBasePool.PoolSwapParams({
+            PoolSwapParams({
                 kind: SwapKind.EXACT_IN,
                 amountGivenScaled18: defaultAmount,
                 balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
@@ -531,8 +532,7 @@ contract VaultExplorerTest is BaseVaultTest {
             })
         );
 
-        assertTrue(success, "Vault dynamic fee call failed");
-        // Should default to the static fee
+        // Should default to the static fee.
         assertEq(dynamicSwapFeePercentage, swapFeePercentage, "Wrong dynamic fee percentage");
     }
 
@@ -627,24 +627,19 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(explorerIsPaused, "Explorer says Vault is not paused");
     }
 
+    function testGetAggregateFeePercentages() public {
+        _setProtocolFees();
+
+        (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) = explorer.getAggregateFeePercentages(
+            pool
+        );
+
+        assertEq(aggregateSwapFeePercentage, PROTOCOL_SWAP_FEE, "Wrong aggregate swap fee");
+        assertEq(aggregateYieldFeePercentage, PROTOCOL_YIELD_FEE, "Wrong aggregate yield fee");
+    }
+
     function testCollectAggregateFees() public {
-        authorizer.grantRole(
-            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
-            admin
-        );
-        authorizer.grantRole(
-            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolYieldFeePercentage.selector),
-            admin
-        );
-
-        vm.startPrank(admin);
-        feeController.setGlobalProtocolSwapFeePercentage(PROTOCOL_SWAP_FEE);
-        feeController.setGlobalProtocolYieldFeePercentage(PROTOCOL_YIELD_FEE);
-        vm.stopPrank();
-
-        // Permissionlessly update the pool's fee percentages.
-        feeController.updateProtocolSwapFeePercentage(pool);
-        feeController.updateProtocolYieldFeePercentage(pool);
+        _setProtocolFees();
 
         // Check that the fee percentages are set in the pool.
         PoolConfig memory poolConfig = vault.getPoolConfig(pool);
@@ -668,6 +663,26 @@ contract VaultExplorerTest is BaseVaultTest {
         feeAmounts = feeController.getProtocolFeeAmounts(pool);
         assertTrue(feeAmounts[daiIdx] > 0, "Zero DAI fees");
         assertTrue(feeAmounts[usdcIdx] > 0, "Zero USDC fees");
+    }
+
+    function _setProtocolFees() private {
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
+            admin
+        );
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolYieldFeePercentage.selector),
+            admin
+        );
+
+        vm.startPrank(admin);
+        feeController.setGlobalProtocolSwapFeePercentage(PROTOCOL_SWAP_FEE);
+        feeController.setGlobalProtocolYieldFeePercentage(PROTOCOL_YIELD_FEE);
+        vm.stopPrank();
+
+        // Permissionlessly update the pool's fee percentages.
+        feeController.updateProtocolSwapFeePercentage(pool);
+        feeController.updateProtocolYieldFeePercentage(pool);
     }
 
     function testGetBufferOwnerShares() public {
@@ -725,7 +740,7 @@ contract VaultExplorerTest is BaseVaultTest {
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(tokens, rateProviders, yieldFeeFlags);
         vault.manualSetPoolTokenInfo(pool, tokenConfig);
 
-        // decimalScalingFactors depends on balances array (it's used gto calculate number of tokens)
+        // `decimalScalingFactors` depends on balances array (it's used to calculate the number of tokens).
         uint256[] memory rawBalances = new uint256[](2);
         rawBalances[daiIdx] = DAI_RAW_BALANCE;
         rawBalances[usdcIdx] = USDC_RAW_BALANCE;

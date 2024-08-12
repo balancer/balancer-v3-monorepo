@@ -12,7 +12,7 @@ import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.so
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -31,7 +31,7 @@ contract Permit2Test is BaseVaultTest {
     }
 
     function testNoPermitCall() public {
-        // Revoke allowance
+        // Revoke allowance.
         vm.prank(alice);
         permit2.approve(address(usdc), address(router), 0, 0);
 
@@ -43,7 +43,7 @@ contract Permit2Test is BaseVaultTest {
     }
 
     function testPermitBatchAndCall() public {
-        // Revoke allowance
+        // Revoke allowance.
         vm.prank(alice);
         permit2.approve(address(usdc), address(router), 0, 0);
         vm.prank(alice);
@@ -115,15 +115,15 @@ contract Permit2Test is BaseVaultTest {
         vm.prank(alice);
         router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, permit2Signature, multicallData);
 
-        // Alice has no BPT
+        // Alice has no BPT.
         assertEq(IERC20(pool).balanceOf(alice), 0, "Alice has pool tokens");
 
         (amount, , ) = permit2.allowance(alice, address(dai), address(router));
-        // Allowance is spent
+        // Allowance is spent.
         assertEq(amount, 0, "DAI allowance is not spent");
 
         (amount, , ) = permit2.allowance(alice, address(usdc), address(router));
-        // Allowance is spent
+        // Allowance is spent.
         assertEq(amount, 0, "USDC allowance is not spent");
     }
 

@@ -4,29 +4,24 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../contracts/test/PoolHooksMock.sol";
 import { PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
-import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract DynamicFeePoolTest is BaseVaultTest {
+    using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
@@ -85,7 +80,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
     }
 
     function testSwapCallsComputeFee() public {
-        IBasePool.PoolSwapParams memory poolSwapParams = IBasePool.PoolSwapParams({
+        PoolSwapParams memory poolSwapParams = PoolSwapParams({
             kind: SwapKind.EXACT_IN,
             amountGivenScaled18: defaultAmount,
             balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
@@ -123,7 +118,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
     }
 
     function testSwapCallsComputeFeeWithSender() public {
-        IBasePool.PoolSwapParams memory poolSwapParams = IBasePool.PoolSwapParams({
+        PoolSwapParams memory poolSwapParams = PoolSwapParams({
             kind: SwapKind.EXACT_IN,
             amountGivenScaled18: defaultAmount,
             balancesScaled18: [poolInitAmount, poolInitAmount].toMemoryArray(),
@@ -155,10 +150,10 @@ contract DynamicFeePoolTest is BaseVaultTest {
         router.swapSingleTokenExactIn(pool, dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
 
         uint256 aliceBalanceAfter = usdc.balanceOf(alice);
-        // 100% fee; should get nothing
+        // 100% fee; should get nothing.
         assertEq(aliceBalanceAfter - aliceBalanceBefore, 0, "Wrong alice balance (high fee)");
 
-        // Now set Alice as the special 0-fee sender
+        // Now set Alice as the special 0-fee sender.
         PoolHooksMock(poolHooksContract).setSpecialSender(alice);
         aliceBalanceBefore = aliceBalanceAfter;
 
@@ -166,7 +161,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         router.swapSingleTokenExactIn(pool, dai, usdc, defaultAmount, 0, MAX_UINT256, false, bytes(""));
 
         aliceBalanceAfter = usdc.balanceOf(alice);
-        // No fee; should get full swap amount
+        // No fee; should get full swap amount.
         assertEq(aliceBalanceAfter - aliceBalanceBefore, defaultAmount, "Wrong alice balance (zero fee)");
     }
 
@@ -180,7 +175,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
             address(poolHooksContract),
             abi.encodeWithSelector(
                 IHooks.onComputeDynamicSwapFeePercentage.selector,
-                IBasePool.PoolSwapParams({
+                PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: 0,
                     balancesScaled18: balances,
@@ -195,14 +190,13 @@ contract DynamicFeePoolTest is BaseVaultTest {
             1 // callCount
         );
 
-        IBasePool.PoolSwapParams memory swapParams;
+        PoolSwapParams memory swapParams;
         uint256 dynamicSwapFeePercentage = 0.01e18;
 
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
 
-        (bool success, uint256 actualDynamicSwapFee) = vault.computeDynamicSwapFeePercentage(pool, swapParams);
+        uint256 actualDynamicSwapFee = vault.computeDynamicSwapFeePercentage(pool, swapParams);
 
-        assertTrue(success, "computeDynamicSwapFeePercentage returned false");
         assertEq(actualDynamicSwapFee, dynamicSwapFeePercentage, "Wrong dynamicSwapFeePercentage");
     }
 

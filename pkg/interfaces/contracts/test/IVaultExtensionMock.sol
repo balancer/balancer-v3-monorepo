@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import "../../contracts/vault/VaultTypes.sol";
+import { TokenConfig, PoolRoleAccounts, LiquidityManagement } from "../../contracts/vault/VaultTypes.sol";
 
 interface IVaultExtensionMock {
     // Used in tests to circumvent minimum swap fees.

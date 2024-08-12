@@ -8,14 +8,12 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import {
     TransientStorageHelpers
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import {
     ReentrancyGuardTransient
@@ -29,15 +27,14 @@ import { ERC20MultiToken } from "./token/ERC20MultiToken.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
 
 /**
- * @dev Storage layout for Vault. This contract has no code except for common utilities in the inheritance chain
- * that require storage to work and will be required in both the main Vault and its extension.
+ * @notice Functions and modifiers shared between the main Vault and its extension contracts.
+ * @dev This contract contains common utilities in the inheritance chain that require storage to work,
+ * and will be required in both the main Vault and its extensions.
  */
 abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, ReentrancyGuardTransient, ERC20MultiToken {
-    using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfigBits;
-    using ScalingHelpers for *;
+    using VaultStateLib for VaultStateBits;
     using SafeCast for *;
-    using FixedPoint for *;
     using TransientStorageHelpers for *;
     using StorageSlotExtension for *;
     using PoolDataLib for PoolData;
@@ -208,19 +205,18 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
                             Pool Registration and Initialization
     *******************************************************************************/
 
-    /// @dev Reverts unless `pool` corresponds to a registered Pool.
+    /// @dev Reverts unless `pool` is a registered Pool.
     modifier withRegisteredPool(address pool) {
         _ensureRegisteredPool(pool);
         _;
     }
 
-    /// @dev Reverts unless `pool` corresponds to an initialized Pool.
+    /// @dev Reverts unless `pool` is an initialized Pool.
     modifier withInitializedPool(address pool) {
         _ensureInitializedPool(pool);
         _;
     }
 
-    /// @dev Reverts unless `pool` corresponds to a registered Pool.
     function _ensureRegisteredPool(address pool) internal view {
         if (!_isPoolRegistered(pool)) {
             revert PoolNotRegistered(pool);
@@ -233,7 +229,6 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         return config.isPoolRegistered();
     }
 
-    /// @dev Reverts unless `pool` corresponds to an initialized Pool.
     function _ensureInitializedPool(address pool) internal view {
         if (!_isPoolInitialized(pool)) {
             revert PoolNotInitialized(pool);
@@ -341,7 +336,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         emit SwapFeePercentageChanged(pool, swapFeePercentage);
     }
 
-    /// @dev Find the index of a token in a token array. Returns -1 if not found.
+    /// @dev Find the index of a token in a token array. Reverts if not found.
     function _findTokenIndex(IERC20[] memory tokens, IERC20 token) internal pure returns (uint256) {
         for (uint256 i = 0; i < tokens.length; i++) {
             if (tokens[i] == token) {

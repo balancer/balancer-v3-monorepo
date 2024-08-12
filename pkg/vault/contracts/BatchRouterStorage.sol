@@ -11,6 +11,7 @@ import {
     AddressMappingSlot
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
+/// @notice Transient storage for Batch Router operations.
 contract BatchRouterStorage {
     using TransientStorageHelpers for *;
 

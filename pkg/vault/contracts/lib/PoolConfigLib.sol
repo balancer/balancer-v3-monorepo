@@ -2,9 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
@@ -12,11 +10,24 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { PoolConfigConst } from "./PoolConfigConst.sol";
 
+/**
+ * @notice Helper functions to read and write the packed hook configuration flags stored in `_poolConfigBits`.
+ * @dev  Note that the entire configuration of each pool is stored in the `_poolConfigBits` mapping (one slot
+ * per pool). This includes the data in the `PoolConfig` struct, plus the data in the `HookFlags` struct.
+ * The layout (i.e., offsets for each data field) is specified in `PoolConfigConst`.
+ *
+ * There are two libraries for interpreting these data. `HooksConfigLib` parses fields related to hooks, while
+ * this one contains helpers related to the non-hook-related flags, along with aggregate fee percentages and
+ * other data associated with pools.
+ *
+ * The `PoolData` struct contains the raw bitmap with the entire pool state (`PoolConfigBits`), plus the token
+ * configuration, scaling factors, and dynamic information such as current balances and rates.
+ */
 library PoolConfigLib {
     using WordCodec for bytes32;
     using PoolConfigLib for PoolConfigBits;
 
-    /// @dev Given percentage is above FP(1) (1e18 wei).
+    /// @dev Given percentage is above FixedPoint.ONE (1e18 wei).
     error InvalidPercentage(uint256 value);
 
     // #region Bit offsets for main pool config settings

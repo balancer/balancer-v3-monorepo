@@ -4,21 +4,27 @@ pragma solidity ^0.8.24;
 
 import "./FixedPoint.sol";
 
-// Some variables have non mixed case names (e.g. P_D) that relate to the mathematical derivations.
-// solhint-disable private-vars-leading-underscore, var-name-mixedcase
-
+/**
+ * @notice Stable Pool math library based on Curve's `StableSwap`.
+ * @dev See https://docs.curve.fi/references/whitepapers/stableswap/
+ *
+ * For security reasons, to help ensure that for all possible "round trip" paths the caller always receives the same
+ * or fewer tokens than supplied, we have chosen the rounding direction to favor the protocol in all cases.
+ */
 library StableMath {
     using FixedPoint for uint256;
 
-    // For security reasons, to help ensure that for all possible "round trip" paths
-    // the caller always receives the same or fewer tokens than supplied,
-    // we have chosen the rounding direction to favor the protocol in all cases.
+    // Some variables have non mixed case names (e.g. P_D) that relate to the mathematical derivations.
+    // solhint-disable private-vars-leading-underscore, var-name-mixedcase
 
     /// @dev The iterations to calculate the invariant didn't converge.
     error StableInvariantDidNotConverge();
 
     /// @dev The iterations to calculate the balance didn't converge.
     error StableGetBalanceDidNotConverge();
+
+    // The max token count is limited by the math, and is less than the Vault's maximum.
+    uint256 public constant MAX_STABLE_TOKENS = 5;
 
     uint256 internal constant MIN_AMP = 1;
     uint256 internal constant MAX_AMP = 5000;
@@ -194,7 +200,7 @@ library StableMath {
         // Use divUpRaw with inv2, as it is a "raw" 36 decimal value.
         uint256 inv2 = invariant * invariant;
         // We remove the balance from c by multiplying it.
-        uint256 c = (inv2.divUpRaw(ampTimesTotal * P_D) * AMP_PRECISION) * balances[tokenIndex];
+        uint256 c = (inv2 * AMP_PRECISION).divUpRaw(ampTimesTotal * P_D) * balances[tokenIndex];
         uint256 b = sum + ((invariant / ampTimesTotal) * AMP_PRECISION);
         // We iterate to find the balance.
         uint256 prevTokenBalance = 0;

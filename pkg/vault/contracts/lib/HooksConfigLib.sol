@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -11,6 +10,26 @@ import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Wo
 
 import { PoolConfigConst } from "./PoolConfigConst.sol";
 
+/**
+ * @notice Helper functions to read and write the packed hook configuration flags stored in `_poolConfigBits`.
+ * @dev This library has two additional functions. `toHooksConfig` constructs a `HooksConfig` structure from the
+ * PoolConfig and the hooks contract address. Also, there are `call<hook>` functions that forward the arguments
+ * to the corresponding functions in the hook contract, then validate and return the results.
+ *
+ * Note that the entire configuration of each pool is stored in the `_poolConfigBits` mapping (one slot per pool).
+ * This includes the data in the `PoolConfig` struct, plus the data in the `HookFlags` struct. The layout (i.e.,
+ * offsets for each data field) is specified in `PoolConfigConst`.
+ *
+ * There are two libraries for interpreting these data. This one parses fields related to hooks, and also
+ * contains helpers for the struct building and hooks contract forwarding functions described above. `PoolConfigLib`
+ * contains helpers related to the non-hook-related flags, along with aggregate fee percentages and other data
+ * associated with pools.
+ *
+ * The `PoolData` struct contains the raw bitmap with the entire pool state (`PoolConfigBits`), plus the token
+ * configuration, scaling factors, and dynamic information such as current balances and rates.
+ *
+ * The hooks contract addresses themselves are stored in a separate `_hooksContracts` mapping.
+ */
 library HooksConfigLib {
     using WordCodec for bytes32;
     using HooksConfigLib for PoolConfigBits;
@@ -152,22 +171,19 @@ library HooksConfigLib {
     // #region Hooks helper functions
 
     /**
-     * @dev Check if dynamic swap fee hook should be called and call it. Throws an error if the hook contract fails to
-     * execute the hook.
-     *
+     * @dev Call the `onComputeDynamicSwapFeePercentage` hook and return the result. Reverts on failure.
      * @param swapParams The swap parameters used to calculate the fee
      * @param pool Pool address
      * @param staticSwapFeePercentage Value of the static swap fee, for reference
      * @param hooksContract Storage slot with the address of the hooks contract
-     * @return success false if hook is disabled, true if hooks is enabled and succeeded to execute
-     * @return swapFeePercentage the calculated swap fee percentage. 0 if hook is disabled
+     * @return swapFeePercentage The calculated swap fee percentage
      */
     function callComputeDynamicSwapFeeHook(
-        IBasePool.PoolSwapParams memory swapParams,
+        PoolSwapParams memory swapParams,
         address pool,
         uint256 staticSwapFeePercentage,
         IHooks hooksContract
-    ) internal view returns (bool, uint256) {
+    ) internal view returns (uint256) {
         (bool success, uint256 swapFeePercentage) = hooksContract.onComputeDynamicSwapFeePercentage(
             swapParams,
             pool,
@@ -177,22 +193,17 @@ library HooksConfigLib {
         if (success == false) {
             revert IVaultErrors.DynamicSwapFeeHookFailed();
         }
-        return (success, swapFeePercentage);
+
+        return swapFeePercentage;
     }
 
     /**
-     * @dev Check if before swap hook should be called and call it. Throws an error if the hook contract fails to
-     * execute the hook.
-     *
+     * @dev Call the `onBeforeSwap` hook. Reverts on failure.
      * @param swapParams The swap parameters used in the hook
      * @param pool Pool address
      * @param hooksContract Storage slot with the address of the hooks contract
      */
-    function callBeforeSwapHook(
-        IBasePool.PoolSwapParams memory swapParams,
-        address pool,
-        IHooks hooksContract
-    ) internal {
+    function callBeforeSwapHook(PoolSwapParams memory swapParams, address pool, IHooks hooksContract) internal {
         if (hooksContract.onBeforeSwap(swapParams, pool) == false) {
             // Hook contract implements onBeforeSwap, but it has failed, so reverts the transaction.
             revert IVaultErrors.BeforeSwapHookFailed();
@@ -200,8 +211,9 @@ library HooksConfigLib {
     }
 
     /**
-     * @dev Check if after swap hook should be called and call it. Throws an error if the hook contract fails to
-     * execute the hook.
+     * @dev Call the `onAfterSwap` hook, then validate and return the result. Reverts on failure, or if the limits
+     * are violated. If the hook contract did not enable hook-adjusted amounts, it will ignore the hook results and
+     * return the original `amountCalculatedRaw`.
      *
      * @param config The encoded pool configuration
      * @param amountCalculatedScaled18 Token amount calculated by the swap
@@ -229,7 +241,7 @@ library HooksConfigLib {
             : (amountCalculatedScaled18, state.amountGivenScaled18);
 
         (bool success, uint256 hookAdjustedAmountCalculatedRaw) = hooksContract.onAfterSwap(
-            IHooks.AfterSwapParams({
+            AfterSwapParams({
                 kind: params.kind,
                 tokenIn: params.tokenIn,
                 tokenOut: params.tokenOut,
@@ -266,9 +278,7 @@ library HooksConfigLib {
     }
 
     /**
-     * @dev Check if before add liquidity hook should be called and call it. Throws an error if the hook contract fails
-     * to execute the hook.
-     *
+     * @dev Call the `onBeforeAddLiquidity` hook. Reverts on failure.
      * @param router Router address
      * @param maxAmountsInScaled18 An array with maximum amounts for each input token of the add liquidity operation
      * @param params The add liquidity parameters
@@ -298,8 +308,9 @@ library HooksConfigLib {
     }
 
     /**
-     * @dev Check if after add liquidity hook should be called and call it. Throws an error if the hook contract fails
-     * to execute the hook.
+     * @dev Call the `onAfterAddLiquidity` hook, then validate and return the result. Reverts on failure, or if
+     * the limits are violated. If the contract did not enable hook-adjusted amounts, it will ignore the hook
+     * results and return the original `amountsInRaw`.
      *
      * @param config The encoded pool configuration
      * @param router Router address
@@ -355,9 +366,7 @@ library HooksConfigLib {
     }
 
     /**
-     * @dev Check if before remove liquidity hook should be called and call it. Throws an error if the hook contract
-     * fails to execute the hook.
-     *
+     * @dev Call the `onBeforeRemoveLiquidity` hook. Reverts on failure.
      * @param minAmountsOutScaled18 Minimum amounts for each output token of the remove liquidity operation
      * @param router Router address
      * @param params The remove liquidity parameters
@@ -387,8 +396,9 @@ library HooksConfigLib {
     }
 
     /**
-     * @dev Check if after remove liquidity hook should be called and call it. Throws an error if the hook contract
-     * fails to execute the hook.
+     * @dev Call the `onAfterRemoveLiquidity` hook, then validate and return the result. Reverts on failure, or if
+     * the limits are violated. If the contract did not enable hook-adjusted amounts, it will ignore the hook
+     * results and return the original `amountsOutRaw`.
      *
      * @param config The encoded pool configuration
      * @param router Router address
@@ -444,9 +454,7 @@ library HooksConfigLib {
     }
 
     /**
-     * @dev Check if before initialization hook should be called and call it. Throws an error if the hook contract
-     * fails to execute the hook.
-     *
+     * @dev Call the `onBeforeInitialize` hook. Reverts on failure.
      * @param exactAmountsInScaled18 An array with the initial liquidity of the pool
      * @param userData Additional (optional) data required for adding initial liquidity
      * @param hooksContract Storage slot with the address of the hooks contract
@@ -462,9 +470,7 @@ library HooksConfigLib {
     }
 
     /**
-     * @dev Check if after initialization hook should be called and call it. Throws an error if the hook contract
-     * fails to execute the hook.
-     *
+     * @dev Call the `onAfterInitialize` hook. Reverts on failure.
      * @param exactAmountsInScaled18 An array with the initial liquidity of the pool
      * @param bptAmountOut The BPT amount a user will receive after initialization operation succeeds
      * @param userData Additional (optional) data required for adding initial liquidity
