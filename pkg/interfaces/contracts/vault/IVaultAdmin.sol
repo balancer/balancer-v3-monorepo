@@ -118,8 +118,12 @@ interface IVaultAdmin {
      * @notice Collects accumulated aggregate swap and yield fees for the specified pool.
      * @dev Fees are sent to the ProtocolFeeController address.
      * @param pool The pool on which all aggregate fees should be collected
+     * @return swapFeeAmounts An array with the total swap fees collected, sorted in token registration order
+     * @return yieldFeeAmounts An array with the total yield fees collected, sorted in token registration order
      */
-    function collectAggregateFees(address pool) external;
+    function collectAggregateFees(
+        address pool
+    ) external returns (uint256[] memory swapFeeAmounts, uint256[] memory yieldFeeAmounts);
 
     /**
      * @notice Update an aggregate swap fee percentage.
