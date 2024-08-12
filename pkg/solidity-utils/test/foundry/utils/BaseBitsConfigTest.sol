@@ -12,15 +12,13 @@ contract BaseBitsConfigTest is Test {
 
     mapping(uint256 => bool) usedBits;
 
+    // This function checks that the bits are used once and follow each other
     function _checkBitsUsedOnce(Bits[] memory bits) internal {
         uint256 nextStartBit = 0;
         for (uint256 i = 0; i < bits.length; i++) {
             uint256 startBit = bits[i].startBit;
-            if (i == 0) {
-                assertEq(startBit, 0, "First bit should start at 0");
-            } else {
-                assertEq(startBit, nextStartBit, "Bits do not follow each other");
-            }
+
+            assertEq(startBit, nextStartBit, "Bits do not follow each other");
 
             uint256 endBit = startBit + bits[i].size;
             for (uint256 j = startBit; j < endBit; j++) {
