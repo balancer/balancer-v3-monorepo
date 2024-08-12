@@ -367,4 +367,12 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         assertEq(poolToken.getRate(), bptRate, "BPT rate is wrong");
         assertEq(bptRate, FixedPoint.ONE, "BPT rate is not 1");
     }
+
+    function testOverrideRate() public {
+        uint256 mockRate = 51.567e16;
+
+        poolToken.setMockRate(mockRate);
+
+        assertEq(poolToken.getRate(), mockRate, "Wrong overridden mock rate");
+    }
 }
