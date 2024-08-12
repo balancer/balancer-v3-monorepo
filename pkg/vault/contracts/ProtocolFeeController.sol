@@ -273,7 +273,7 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
-    function getProtocolFeeAmounts(address pool) public view returns (uint256[] memory feeAmounts) {
+    function getProtocolFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts) {
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
 
         feeAmounts = new uint256[](numTokens);
@@ -283,7 +283,7 @@ contract ProtocolFeeController is
     }
 
     /// @inheritdoc IProtocolFeeController
-    function getPoolCreatorFeeAmounts(address pool) public view returns (uint256[] memory feeAmounts) {
+    function getPoolCreatorFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts) {
         (IERC20[] memory poolTokens, uint256 numTokens) = _getPoolTokensAndCount(pool);
 
         feeAmounts = new uint256[](numTokens);

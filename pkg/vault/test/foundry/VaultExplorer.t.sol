@@ -519,7 +519,7 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(swapFeePercentage > 0, "Swap fee is zero");
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(swapFeePercentage);
 
-        (bool success, uint256 dynamicSwapFeePercentage) = explorer.computeDynamicSwapFeePercentage(
+        uint256 dynamicSwapFeePercentage = explorer.computeDynamicSwapFeePercentage(
             pool,
             PoolSwapParams({
                 kind: SwapKind.EXACT_IN,
@@ -532,7 +532,6 @@ contract VaultExplorerTest is BaseVaultTest {
             })
         );
 
-        assertTrue(success, "Vault dynamic fee call failed");
         // Should default to the static fee.
         assertEq(dynamicSwapFeePercentage, swapFeePercentage, "Wrong dynamic fee percentage");
     }

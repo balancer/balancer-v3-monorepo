@@ -5,127 +5,26 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import { TokenConfig, TokenType, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-
-import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 
-import { RouterCommon } from "../../contracts/RouterCommon.sol";
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 
-contract BatchRouterERC4626PoolTest is BaseVaultTest {
+contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
     using ArrayHelpers for *;
 
     uint256 constant MIN_AMOUNT = 1e12;
 
-    uint256 internal bufferInitialAmount = 1e5 * 1e18;
-    uint256 internal erc4626PoolInitialAmount = 10e6 * 1e18;
-    uint256 internal erc4626PoolInitialBPTAmount = erc4626PoolInitialAmount * 2;
-
-    ERC4626TestToken internal waDAI;
-    ERC4626TestToken internal waUSDC;
     ERC4626TestToken internal waInvalid;
-    address internal erc4626Pool;
-
-    uint256 internal waDaiIdx;
-    uint256 internal waUsdcIdx;
 
     function setUp() public virtual override {
-        BaseVaultTest.setUp();
-
-        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
-        vm.label(address(waDAI), "waDAI");
-
-        // "USDC" is deliberately 18 decimals to test one thing at a time.
-        waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
-        vm.label(address(waUSDC), "waUSDC");
+        BaseERC4626BufferTest.setUp();
 
         // Invalid wrapper, with a zero underlying asset.
         waInvalid = new ERC4626TestToken(IERC20(address(0)), "Invalid Wrapped", "waInvalid", 18);
-
-        (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
-
-        initializeBuffers();
-        initializeERC4626Pool();
-    }
-
-    function initializeBuffers() private {
-        // Create and fund buffer pools
-        vm.startPrank(lp);
-        dai.mint(lp, 2 * bufferInitialAmount);
-        dai.approve(address(waDAI), 2 * bufferInitialAmount);
-        waDAI.deposit(2 * bufferInitialAmount, lp);
-
-        usdc.mint(lp, 2 * bufferInitialAmount);
-        usdc.approve(address(waUSDC), 2 * bufferInitialAmount);
-        waUSDC.deposit(2 * bufferInitialAmount, lp);
-        vm.stopPrank();
-
-        vm.startPrank(lp);
-        waDAI.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
-
-        waUSDC.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
-
-        router.addLiquidityToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount, lp);
-        router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount, lp);
-        vm.stopPrank();
-    }
-
-    function initializeERC4626Pool() private {
-        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
-        tokenConfig[waDaiIdx].token = IERC20(waDAI);
-        tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
-        tokenConfig[0].tokenType = TokenType.WITH_RATE;
-        tokenConfig[1].tokenType = TokenType.WITH_RATE;
-        tokenConfig[waDaiIdx].rateProvider = IRateProvider(address(waDAI));
-        tokenConfig[waUsdcIdx].rateProvider = IRateProvider(address(waUSDC));
-
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC4626 Pool", "ERC4626P");
-
-        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract);
-
-        vm.label(address(newPool), "erc4626 pool");
-        erc4626Pool = address(newPool);
-
-        vm.startPrank(bob);
-        waDAI.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
-        waUSDC.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
-
-        dai.mint(bob, erc4626PoolInitialAmount);
-        dai.approve(address(waDAI), erc4626PoolInitialAmount);
-        waDAI.deposit(erc4626PoolInitialAmount, bob);
-
-        usdc.mint(bob, erc4626PoolInitialAmount);
-        usdc.approve(address(waUSDC), erc4626PoolInitialAmount);
-        waUSDC.deposit(erc4626PoolInitialAmount, bob);
-
-        _initPool(
-            erc4626Pool,
-            [erc4626PoolInitialAmount, erc4626PoolInitialAmount].toMemoryArray(),
-            erc4626PoolInitialBPTAmount - MIN_BPT
-        );
-
-        IERC20(address(erc4626Pool)).approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(erc4626Pool), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(erc4626Pool), address(batchRouter), type(uint160).max, type(uint48).max);
-
-        IERC20(address(erc4626Pool)).approve(address(router), type(uint256).max);
-        IERC20(address(erc4626Pool)).approve(address(batchRouter), type(uint256).max);
-
-        vm.stopPrank();
     }
 
     modifier checkBuffersWhenStaticCall(address sender) {

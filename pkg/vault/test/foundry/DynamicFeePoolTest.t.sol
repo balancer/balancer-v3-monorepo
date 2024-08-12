@@ -195,9 +195,8 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
 
-        (bool success, uint256 actualDynamicSwapFee) = vault.computeDynamicSwapFeePercentage(pool, swapParams);
+        uint256 actualDynamicSwapFee = vault.computeDynamicSwapFeePercentage(pool, swapParams);
 
-        assertTrue(success, "computeDynamicSwapFeePercentage returned false");
         assertEq(actualDynamicSwapFee, dynamicSwapFeePercentage, "Wrong dynamicSwapFeePercentage");
     }
 

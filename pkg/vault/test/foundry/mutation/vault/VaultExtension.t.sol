@@ -118,6 +118,12 @@ contract VaultExtensionMutationTest is BaseVaultTest {
         vaultExtension.computeDynamicSwapFeePercentage(pool, swapParams);
     }
 
+    function testComputeDynamicSwapFeePercentageWhenNotInitialized() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotInitialized.selector, address(0xbeef)));
+        PoolSwapParams memory swapParams;
+        vault.computeDynamicSwapFeePercentage(address(0xbeef), swapParams);
+    }
+
     function testGetProtocolFeeControllerWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultExtension.getProtocolFeeController();

@@ -226,16 +226,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // unless the pool has a dynamic swap fee. It is also passed into the hook, to support common cases
         // where the dynamic fee computation logic uses it.
         if (poolData.poolConfigBits.shouldCallComputeDynamicSwapFee()) {
-            (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = HooksConfigLib.callComputeDynamicSwapFeeHook(
+            state.swapFeePercentage = HooksConfigLib.callComputeDynamicSwapFeeHook(
                 swapParams,
                 params.pool,
                 state.swapFeePercentage,
                 _hooksContracts[params.pool]
             );
-
-            if (dynamicSwapFeeCalculated) {
-                state.swapFeePercentage = dynamicSwapFee;
-            }
         }
 
         // Non-reentrant call that updates accounting.
