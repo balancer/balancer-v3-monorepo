@@ -478,7 +478,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         // minAmountsOut length is checked against tokens length at the vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
-        uint256 ethAmountOut;
+        uint256 ethAmountOut = 0;
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountOut = amountsOut[i];
             IERC20 token = tokens[i];
