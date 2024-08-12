@@ -16,7 +16,7 @@ contract HooksConfigLibMock {
         address pool,
         uint256 staticSwapFeePercentage,
         IHooks hooksContract
-    ) public view returns (bool, uint256) {
+    ) public view returns (uint256) {
         return HooksConfigLib.callComputeDynamicSwapFeeHook(swapParams, pool, staticSwapFeePercentage, hooksContract);
     }
 

@@ -44,14 +44,13 @@ contract HooksConfigLibHooksHelpersTest is Test {
             abi.encode(true, swapFeePercentage)
         );
 
-        (bool success, uint256 value) = hooksConfigLibMock.callComputeDynamicSwapFeeHook(
+        uint256 value = hooksConfigLibMock.callComputeDynamicSwapFeeHook(
             swapParams,
             pool,
             staticSwapFeePercentage,
             IHooks(hooksContract)
         );
 
-        assertEq(success, true, "callComputeDynamicSwapFeeHook is not successful");
         assertEq(value, swapFeePercentage, "swap fee percentage mismatch");
     }
 
@@ -305,7 +304,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
             hooksContract,
             abi.encodeWithSelector(
                 IHooks.onAfterSwap.selector,
-                IHooks.AfterSwapParams({
+                AfterSwapParams({
                     kind: params.kind,
                     tokenIn: params.tokenIn,
                     tokenOut: params.tokenOut,
@@ -353,7 +352,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
             hooksContract,
             abi.encodeWithSelector(
                 IHooks.onAfterSwap.selector,
-                IHooks.AfterSwapParams({
+                AfterSwapParams({
                     kind: params.kind,
                     tokenIn: params.tokenIn,
                     tokenOut: params.tokenOut,
