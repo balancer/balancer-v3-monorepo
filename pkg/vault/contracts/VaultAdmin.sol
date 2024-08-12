@@ -432,6 +432,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     {
         address underlyingToken = wrappedToken.asset();
 
+        if (underlyingToken == address(0)) {
+            // Should never happen, but a malicious wrapper could return the zero address and cause the buffer
+            // initialization code to run more than once.
+            revert InvalidUnderlyingTokenAsset();
+        }
+
         // Amount of shares to issue is the total underlying token that the user is depositing.
         issuedShares = wrappedToken.convertToAssets(amountWrapped) + amountUnderlying;
 

@@ -7,7 +7,9 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 
@@ -16,8 +18,13 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
     uint256 constant MIN_AMOUNT = 1e12;
 
+    ERC4626TestToken internal waInvalid;
+
     function setUp() public virtual override {
         BaseERC4626BufferTest.setUp();
+
+        // Invalid wrapper, with a zero underlying asset.
+        waInvalid = new ERC4626TestToken(IERC20(address(0)), "Invalid Wrapped", "waInvalid", 18);
     }
 
     modifier checkBuffersWhenStaticCall(address sender) {
@@ -390,5 +397,11 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         vm.prank(bob, address(0));
         batchRouter.queryRemoveLiquidityProportionalFromERC4626Pool(erc4626Pool, exactBptAmountIn, new bytes(0));
+    }
+
+    function testInvalidUnderlyingToken() public {
+        vm.expectRevert(IVaultErrors.InvalidUnderlyingTokenAsset.selector);
+        vm.prank(lp);
+        router.addLiquidityToBuffer(waInvalid, bufferInitialAmount, bufferInitialAmount, lp);
     }
 }
