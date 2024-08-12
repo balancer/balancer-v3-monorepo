@@ -176,7 +176,7 @@ library HooksConfigLib {
      * @param pool Pool address
      * @param staticSwapFeePercentage Value of the static swap fee, for reference
      * @param hooksContract Storage slot with the address of the hooks contract
-     * @return swapFeePercentage the calculated swap fee percentage.
+     * @return swapFeePercentage The calculated swap fee percentage
      */
     function callComputeDynamicSwapFeeHook(
         PoolSwapParams memory swapParams,
