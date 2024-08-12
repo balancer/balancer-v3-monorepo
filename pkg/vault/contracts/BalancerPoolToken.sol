@@ -159,7 +159,7 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvide
      *
      * @return rate Rate of the pool's BPT
      */
-    function getRate() public view returns (uint256) {
+    function getRate() public view virtual returns (uint256) {
         return getVault().getBptRate(address(this));
     }
 }
