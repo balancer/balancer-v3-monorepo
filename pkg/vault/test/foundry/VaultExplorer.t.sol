@@ -428,7 +428,7 @@ contract VaultExplorerTest is BaseVaultTest {
         uint256 daiVaultAllowance = vault.allowance(address(dai), lp, address(vault));
         uint256 daiBobAllowance = vault.allowance(address(dai), alice, bob);
 
-        assertEq(daiVaultAllowance, MAX_UINT256, "Wrong DAI Vault allowance");
+        assertEq(daiVaultAllowance, 0, "Wrong DAI Vault allowance");
         assertEq(daiBobAllowance, 0, "Wrong DAI Bob allowance");
 
         assertEq(
