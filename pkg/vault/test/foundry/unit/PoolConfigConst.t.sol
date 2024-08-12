@@ -38,7 +38,7 @@ contract PoolConfigConstTest is BaseBitsConfigTest {
         _checkBitsUsedOnce(bits);
     }
 
-    function testRestConstants() public {
+    function testRestConstants() public pure {
         assertEq(PoolConfigConst.TOKEN_DECIMAL_DIFFS_BITLENGTH, 40, "TOKEN_DECIMAL_DIFFS_BITLENGTH should be 40");
         assertEq(PoolConfigConst.DECIMAL_DIFF_BITLENGTH, 5, "DECIMAL_DIFF_BITLENGTH should be 5");
         assertEq(PoolConfigConst.TIMESTAMP_BITLENGTH, 32, "TIMESTAMP_BITLENGTH should be 32");
