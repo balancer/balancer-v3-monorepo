@@ -43,20 +43,16 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         vm.expectEmit();
         emit IVaultEvents.LiquidityAddedToBuffer(
             waDAI,
-            lp,
             bufferInitialAmount,
-            bufferInitialAmount,
-            bufferInitialAmount * 2
+            bufferInitialAmount
         );
         router.addLiquidityToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount);
 
         vm.expectEmit();
         emit IVaultEvents.LiquidityAddedToBuffer(
             waUSDC,
-            lp,
             bufferInitialAmount,
-            bufferInitialAmount,
-            bufferInitialAmount * 2
+            bufferInitialAmount
         );
         router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount);
         vm.stopPrank();
@@ -69,10 +65,8 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         vm.expectEmit();
         emit IVaultEvents.LiquidityRemovedFromBuffer(
             waDAI,
-            lp,
             bufferInitialAmount / 2,
-            bufferInitialAmount / 2,
-            bufferInitialAmount
+            bufferInitialAmount / 2
         );
         vm.prank(lp);
         router.removeLiquidityFromBuffer(waDAI, bufferInitialAmount);
@@ -80,10 +74,8 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         vm.expectEmit();
         emit IVaultEvents.LiquidityRemovedFromBuffer(
             waUSDC,
-            lp,
             bufferInitialAmount / 2,
-            bufferInitialAmount / 2,
-            bufferInitialAmount
+            bufferInitialAmount / 2
         );
         vm.prank(lp);
         router.removeLiquidityFromBuffer(waUSDC, bufferInitialAmount);

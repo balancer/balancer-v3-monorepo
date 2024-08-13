@@ -200,7 +200,25 @@ interface IVaultAdmin {
     function unpauseVaultBuffers() external;
 
     /**
+     * @notice Initializes buffer for the given wrapped token.
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
+     * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
+     * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to remove
+     * liquidity from the buffer
+     * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts.
+     * (it is the BPT of an internal ERC4626 buffer)
+     */
+    function initializeBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlyingRaw,
+        uint256 amountWrappedRaw,
+        address sharesOwner
+    ) external returns (uint256 issuedShares);
+
+    /**
      * @notice Adds liquidity to an yield-bearing buffer (one of the Vault's internal ERC4626 buffers).
+     * @dev The buffer needs to be initialized beforehand.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
@@ -221,6 +239,7 @@ interface IVaultAdmin {
      * @dev Only proportional exits are supported.
      *
      * Pre-conditions:
+     * - The buffer needs to be initialized.
      * - sharesOwner is the original msg.sender, it needs to be checked in the router. That's why
      *   this call is authenticated; only routers approved by the DAO can remove the liquidity of a buffer.
      * - The buffer needs to have some liquidity and have its asset registered in `_bufferAssets` storage.

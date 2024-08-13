@@ -1053,6 +1053,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         external
         onlyWhenUnlocked
         whenVaultBuffersAreNotPaused
+        withInitializedBuffer(params.wrappedToken)
         nonReentrant
         returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw)
     {
@@ -1060,7 +1061,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         address bufferAsset = _bufferAssets[params.wrappedToken];
 
-        if (bufferAsset != address(0) && bufferAsset != address(underlyingToken)) {
+        if (bufferAsset != address(underlyingToken)) {
             // Asset was changed since the first addLiquidityToBuffer call.
             revert WrongWrappedTokenAsset(address(params.wrappedToken));
         }

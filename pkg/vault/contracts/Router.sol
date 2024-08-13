@@ -645,6 +645,28 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     *******************************************************************************/
 
     /// @inheritdoc IRouter
+    function initializeBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlyingRaw,
+        uint256 amountWrappedRaw
+    ) external returns (uint256 issuedShares) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeWithSelector(
+                        Router.addLiquidityToBufferHook.selector,
+                        wrappedToken,
+                        amountUnderlyingRaw,
+                        amountWrappedRaw,
+                        msg.sender,
+                        true
+                    )
+                ),
+                (uint256)
+            );
+    }
+
+    /// @inheritdoc IRouter
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
@@ -658,7 +680,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         wrappedToken,
                         amountUnderlyingRaw,
                         amountWrappedRaw,
-                        msg.sender
+                        msg.sender,
+                        false
                     )
                 ),
                 (uint256)
@@ -673,6 +696,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
      * @param sharesOwner Address that will own the deposited liquidity. Only this address will be able to
      * remove liquidity from the buffer
+     * @param isFirstTime true if the buffer needs to be initialized; false if it is already initialized.
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, expressed in underlying token amounts.
      * (This is the BPT of an internal ERC4626 buffer)
      */
@@ -680,9 +704,12 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
         uint256 amountWrappedRaw,
-        address sharesOwner
+        address sharesOwner,
+        bool isFirstTime
     ) external nonReentrant onlyVault returns (uint256 issuedShares) {
-        issuedShares = _vault.addLiquidityToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, sharesOwner);
+        issuedShares = isFirstTime
+            ? _vault.initializeBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, sharesOwner)
+            : _vault.addLiquidityToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw, sharesOwner);
         _takeTokenIn(sharesOwner, IERC20(wrappedToken.asset()), amountUnderlyingRaw, false);
         _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrappedRaw, false);
     }
