@@ -103,7 +103,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         // Add Liquidity with the right asset.
         vm.prank(lp);
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, lp);
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
 
         // Change Asset to the wrong asset.
         waDAI.setAsset(usdc);
@@ -314,7 +314,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
     function testDisableVaultBuffer() public {
         vm.prank(lp);
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, lp);
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
 
         vm.prank(admin);
         IVaultAdmin(address(vault)).pauseVaultBuffers();
@@ -334,7 +334,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         vm.expectRevert(IVaultErrors.VaultBuffersArePaused.selector);
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, lp);
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
 
         // Remove liquidity is supposed to pass even with buffers paused, so revert is not expected.
         router.removeLiquidityFromBuffer(IERC4626(address(waDAI)), _wrapAmount);
@@ -360,7 +360,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 wrappedAmountIn = _wrapAmount.mulDown(2e18);
 
         vm.prank(lp);
-        uint256 lpShares = router.addLiquidityToBuffer(waDAI, underlyingAmountIn, wrappedAmountIn, lp);
+        uint256 lpShares = router.addLiquidityToBuffer(waDAI, underlyingAmountIn, wrappedAmountIn);
 
         BufferAndLPBalances memory afterBalances = _measureBuffer();
 
@@ -409,7 +409,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 wrappedAmountIn = _wrapAmount.mulDown(2e18);
 
         vm.prank(lp);
-        uint256 lpShares = router.addLiquidityToBuffer(waDAI, underlyingAmountIn, wrappedAmountIn, lp);
+        uint256 lpShares = router.addLiquidityToBuffer(waDAI, underlyingAmountIn, wrappedAmountIn);
 
         BufferAndLPBalances memory beforeBalances = _measureBuffer();
 

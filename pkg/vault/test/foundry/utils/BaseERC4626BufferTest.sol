@@ -66,8 +66,8 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
 
-        router.addLiquidityToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount, lp);
-        router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount, lp);
+        router.addLiquidityToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount);
+        router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount);
         vm.stopPrank();
     }
 

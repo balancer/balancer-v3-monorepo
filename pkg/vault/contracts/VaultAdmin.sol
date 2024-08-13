@@ -419,8 +419,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @inheritdoc IVaultAdmin
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlying,
-        uint256 amountWrapped,
+        uint256 amountUnderlyingRaw,
+        uint256 amountWrappedRaw,
         address sharesOwner
     )
         public
@@ -439,7 +439,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         }
 
         // Amount of shares to issue is the total underlying token that the user is depositing.
-        issuedShares = wrappedToken.convertToAssets(amountWrapped) + amountUnderlying;
+        issuedShares = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
 
         if (_bufferAssets[wrappedToken] == address(0)) {
             // Buffer is not initialized yet, so we initialize it.
@@ -463,16 +463,16 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _bufferTotalShares[wrappedToken] += issuedShares;
 
         bufferBalances = PackedTokenBalance.toPackedBalance(
-            bufferBalances.getBalanceRaw() + amountUnderlying,
-            bufferBalances.getBalanceDerived() + amountWrapped
+            bufferBalances.getBalanceRaw() + amountUnderlyingRaw,
+            bufferBalances.getBalanceDerived() + amountWrappedRaw
         );
 
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
-        _takeDebt(IERC20(underlyingToken), amountUnderlying);
-        _takeDebt(wrappedToken, amountWrapped);
+        _takeDebt(IERC20(underlyingToken), amountUnderlyingRaw);
+        _takeDebt(wrappedToken, amountWrappedRaw);
 
-        emit LiquidityAddedToBuffer(wrappedToken, sharesOwner, amountWrapped, amountUnderlying, issuedShares);
+        emit LiquidityAddedToBuffer(wrappedToken, sharesOwner, amountWrappedRaw, amountUnderlyingRaw, issuedShares);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -486,7 +486,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         onlyWhenUnlocked
         authenticate
         nonReentrant
-        returns (uint256 removedUnderlyingBalance, uint256 removedWrappedBalance)
+        returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw)
     {
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
@@ -495,27 +495,27 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         }
         uint256 totalShares = _bufferTotalShares[wrappedToken];
 
-        removedUnderlyingBalance = (bufferBalances.getBalanceRaw() * sharesToRemove) / totalShares;
-        removedWrappedBalance = (bufferBalances.getBalanceDerived() * sharesToRemove) / totalShares;
+        removedUnderlyingBalanceRaw = (bufferBalances.getBalanceRaw() * sharesToRemove) / totalShares;
+        removedWrappedBalanceRaw = (bufferBalances.getBalanceDerived() * sharesToRemove) / totalShares;
 
         _bufferLpShares[wrappedToken][sharesOwner] -= sharesToRemove;
         _bufferTotalShares[wrappedToken] -= sharesToRemove;
 
         bufferBalances = PackedTokenBalance.toPackedBalance(
-            bufferBalances.getBalanceRaw() - removedUnderlyingBalance,
-            bufferBalances.getBalanceDerived() - removedWrappedBalance
+            bufferBalances.getBalanceRaw() - removedUnderlyingBalanceRaw,
+            bufferBalances.getBalanceDerived() - removedWrappedBalanceRaw
         );
 
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
-        _supplyCredit(IERC20(_bufferAssets[wrappedToken]), removedUnderlyingBalance);
-        _supplyCredit(wrappedToken, removedWrappedBalance);
+        _supplyCredit(IERC20(_bufferAssets[wrappedToken]), removedUnderlyingBalanceRaw);
+        _supplyCredit(wrappedToken, removedWrappedBalanceRaw);
 
         emit LiquidityRemovedFromBuffer(
             wrappedToken,
             sharesOwner,
-            removedWrappedBalance,
-            removedUnderlyingBalance,
+            removedWrappedBalanceRaw,
+            removedUnderlyingBalanceRaw,
             sharesToRemove
         );
     }
