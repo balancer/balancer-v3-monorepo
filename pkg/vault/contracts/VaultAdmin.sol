@@ -10,7 +10,7 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { PoolFunctionPermission, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -60,38 +60,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             revert ProtocolFeesExceedTotalCollected();
         }
         _;
-    }
-
-    /// @dev Use with permissioned functions that use `PoolRoleAccounts`.
-    modifier authenticateByRole(address pool) {
-        _ensureAuthenticatedByRole(pool);
-        _;
-    }
-
-    function _ensureAuthenticatedByRole(address pool) private view {
-        bytes32 actionId = getActionId(msg.sig);
-
-        PoolFunctionPermission memory roleAssignment = _poolFunctionPermissions[pool][actionId];
-
-        // If there is no role assignment, fall through and delegate to governance.
-        if (roleAssignment.account != address(0)) {
-            // If the sender matches the permissioned account, all good; just return.
-            if (msg.sender == roleAssignment.account) {
-                return;
-            }
-
-            // If it doesn't, check whether it's onlyOwner. onlyOwner means *only* the permissioned account
-            // may call the function, so revert if this is the case. Otherwise, fall through and check
-            // governance.
-            if (roleAssignment.onlyOwner) {
-                revert SenderNotAllowed();
-            }
-        }
-
-        // Delegate to governance.
-        if (_canPerform(actionId, msg.sender, pool) == false) {
-            revert SenderNotAllowed();
-        }
     }
 
     constructor(
@@ -213,18 +181,18 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
-    function pausePool(address pool) external onlyVaultDelegateCall withRegisteredPool(pool) authenticateByRole(pool) {
+    function pausePool(address pool) external onlyVaultDelegateCall withRegisteredPool(pool) {
         _setPoolPaused(pool, true);
     }
 
     /// @inheritdoc IVaultAdmin
-    function unpausePool(
-        address pool
-    ) external onlyVaultDelegateCall withRegisteredPool(pool) authenticateByRole(pool) {
+    function unpausePool(address pool) external onlyVaultDelegateCall withRegisteredPool(pool) {
         _setPoolPaused(pool, false);
     }
 
     function _setPoolPaused(address pool, bool pausing) internal {
+        _ensureAuthenticatedByRole(pool, _poolRoleAccounts[pool].pauseManager, false);
+
         PoolConfigBits config = _poolConfigBits[pool];
 
         if (_isPoolPaused(pool)) {
@@ -263,7 +231,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function setStaticSwapFeePercentage(
         address pool,
         uint256 swapFeePercentage
-    ) external onlyVaultDelegateCall withRegisteredPool(pool) authenticateByRole(pool) {
+    ) external onlyVaultDelegateCall withRegisteredPool(pool) {
+        _ensureAuthenticatedByRole(pool, _poolRoleAccounts[pool].swapFeeManager, true);
+
         // Saving bits by not implementing a new modifier.
         _ensureUnpaused(pool);
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
@@ -548,6 +518,29 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _authorizer = newAuthorizer;
 
         emit AuthorizerChanged(newAuthorizer);
+    }
+
+    function _ensureAuthenticatedByRole(address pool, address roleAddress, bool onlyOwner) private view {
+        if (roleAddress != address(0)) {
+            // If the sender matches the permissioned account, all good; just return.
+            if (msg.sender == roleAddress) {
+                return;
+            }
+
+            // If it doesn't, check whether it's onlyOwner. onlyOwner means *only* the permissioned account
+            // may call the function, so revert if this is the case. Otherwise, fall through and check
+            // governance.
+            if (onlyOwner) {
+                revert SenderNotAllowed();
+            }
+        }
+
+        bytes32 actionId = getActionId(msg.sig);
+
+        // Delegate to governance.
+        if (_canPerform(actionId, msg.sender, pool) == false) {
+            revert SenderNotAllowed();
+        }
     }
 
     /// @dev Access control is delegated to the Authorizer.

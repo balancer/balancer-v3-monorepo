@@ -23,10 +23,12 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
     }
 
     function manualPausePool(address pool) external {
+        _poolRoleAccounts[pool].pauseManager = msg.sender;
         _setPoolPaused(pool, true);
     }
 
     function manualUnpausePool(address pool) external {
+        _poolRoleAccounts[pool].pauseManager = msg.sender;
         _setPoolPaused(pool, false);
     }
 
