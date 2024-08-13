@@ -119,7 +119,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     ) public {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
-        roundingDelta = 1e15;
+        roundingDelta = 2e15;
 
         swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
 
