@@ -71,7 +71,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
     ) public {
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
-        uint256 amountOut = executeAddUnbalancedRemoveProportionalVsSwap(daiAmountIn, swapFeePercentage);
+        uint256 amountOut = addUnbalancedOnlyDai(daiAmountIn, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
 
@@ -82,7 +82,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
     ) public {
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
-        uint256 amountOut = executeAddSingleTokenExactOutRemoveProportionalVsSwap(exactBptAmountOut, swapFeePercentage);
+        uint256 amountOut = addExactOutArbitraryBptOut(exactBptAmountOut, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
 
@@ -93,7 +93,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
     ) public {
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
-        uint256 amountOut = executeAddProportionalRemoveExactInVsSwap(exactBptAmountOut, swapFeePercentage);
+        uint256 amountOut = removeExactInAllBptIn(exactBptAmountOut, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
@@ -104,7 +104,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
     ) public {
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
-        uint256 amountOut = executeAddProportionalRemoveExactOutVsSwap(exactBptAmountOut, swapFeePercentage);
+        uint256 amountOut = removeExactOutAllUsdcAmountOut(exactBptAmountOut, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
@@ -115,7 +115,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
     ) public {
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
-        uint256 amountOut = executeAddProportionalRemoveExactOutRemoveAllVsSwap(exactAmountOut, swapFeePercentage);
+        uint256 amountOut = removeExactOutArbitraryAmountOut(exactAmountOut, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
@@ -126,7 +126,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
     ) public {
         swapFeePercentage = _setAmplificationParameterAndSwapFee(swapFeePercentage, newAmplificationParameter);
 
-        uint256 amountOut = executeAddProportionalRemoveExactInRemoveAllVsSwap(exactBptAmountIn, swapFeePercentage);
+        uint256 amountOut = removeExactInArbitraryBptIn(exactBptAmountIn, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 

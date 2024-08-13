@@ -106,24 +106,24 @@ contract LiquidityApproximationTest is BaseVaultTest {
     function testAddLiquidityUnbalanced__Fuzz(uint256 daiAmountIn, uint256 swapFeePercentage) public {
         // Vary swap fee from 0% - 10%.
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
-        uint256 amountOut = executeAddUnbalancedRemoveProportionalVsSwap(daiAmountIn, swapFeePercentage);
+        uint256 amountOut = addUnbalancedOnlyDai(daiAmountIn, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
 
     function testAddLiquidityUnbalancedNoSwapFee__Fuzz(uint256 daiAmountIn) public {
-        executeAddUnbalancedRemoveProportionalVsSwap(daiAmountIn, 0);
+        addUnbalancedOnlyDai(daiAmountIn, 0);
         assertLiquidityOperationNoSwapFee();
     }
 
     function testAddLiquiditySingleTokenExactOut__Fuzz(uint256 exactBptAmountOut, uint256 swapFeePercentage) public {
         // Vary swap fee from 0% - 10%.
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
-        uint256 amountOut = executeAddSingleTokenExactOutRemoveProportionalVsSwap(exactBptAmountOut, swapFeePercentage);
+        uint256 amountOut = addExactOutArbitraryBptOut(exactBptAmountOut, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
 
     function testAddLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactBptAmountOut) public {
-        executeAddSingleTokenExactOutRemoveProportionalVsSwap(exactBptAmountOut, 0);
+        addExactOutArbitraryBptOut(exactBptAmountOut, 0);
         assertLiquidityOperationNoSwapFee();
     }
 
@@ -133,12 +133,12 @@ contract LiquidityApproximationTest is BaseVaultTest {
     ) public {
         // Vary swap fee from 0% - 10%.
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
-        uint256 amountOut = executeAddProportionalRemoveExactInVsSwap(exactBptAmountOut, swapFeePercentage);
+        uint256 amountOut = removeExactInAllBptIn(exactBptAmountOut, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
     function testAddLiquidityProportionalAndRemoveExactInNoSwapFee__Fuzz(uint256 exactBptAmountOut) public {
-        executeAddProportionalRemoveExactInVsSwap(exactBptAmountOut, 0);
+        removeExactInAllBptIn(exactBptAmountOut, 0);
         assertLiquidityOperationNoSwapFee();
     }
 
@@ -148,12 +148,12 @@ contract LiquidityApproximationTest is BaseVaultTest {
     ) public {
         // Vary swap fee from 0% - 10%.
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
-        uint256 amountOut = executeAddProportionalRemoveExactOutVsSwap(exactBptAmountOut, swapFeePercentage);
+        uint256 amountOut = removeExactOutAllUsdcAmountOut(exactBptAmountOut, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
     function testAddLiquidityProportionalAndRemoveExactOutNoSwapFee__Fuzz(uint256 exactBptAmountOut) public {
-        executeAddProportionalRemoveExactOutVsSwap(exactBptAmountOut, 0);
+        removeExactOutAllUsdcAmountOut(exactBptAmountOut, 0);
         assertLiquidityOperationNoSwapFee();
     }
 
@@ -162,24 +162,24 @@ contract LiquidityApproximationTest is BaseVaultTest {
     function testRemoveLiquiditySingleTokenExactOut__Fuzz(uint256 exactAmountOut, uint256 swapFeePercentage) public {
         // Vary swap fee from 0% - 10%.
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
-        uint256 amountOut = executeAddProportionalRemoveExactOutRemoveAllVsSwap(exactAmountOut, swapFeePercentage);
+        uint256 amountOut = removeExactOutArbitraryAmountOut(exactAmountOut, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
     function testRemoveLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactAmountOut) public {
-        executeAddProportionalRemoveExactOutRemoveAllVsSwap(exactAmountOut, 0);
+        removeExactOutArbitraryAmountOut(exactAmountOut, 0);
         assertLiquidityOperationNoSwapFee();
     }
 
     function testRemoveLiquiditySingleTokenExactIn__Fuzz(uint256 exactBptAmountIn, uint256 swapFeePercentage) public {
         // Vary swap fee from 0% - 10%.
         swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
-        uint256 amountOut = executeAddProportionalRemoveExactInRemoveAllVsSwap(exactBptAmountIn, swapFeePercentage);
+        uint256 amountOut = removeExactInArbitraryBptIn(exactBptAmountIn, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
 
     function testRemoveLiquiditySingleTokenExactInNoSwapFee__Fuzz(uint256 exactBptAmountIn) public {
-        executeAddProportionalRemoveExactInRemoveAllVsSwap(exactBptAmountIn, 0);
+        removeExactInArbitraryBptIn(exactBptAmountIn, 0);
         assertLiquidityOperationNoSwapFee();
     }
 
@@ -237,10 +237,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         );
     }
 
-    function executeAddUnbalancedRemoveProportionalVsSwap(
-        uint256 daiAmountIn,
-        uint256 swapFeePercentage
-    ) internal returns (uint256 amountOut) {
+    function addUnbalancedOnlyDai(uint256 daiAmountIn, uint256 swapFeePercentage) internal returns (uint256 amountOut) {
         _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
         _setSwapFeePercentage(address(swapPool), swapFeePercentage);
 
@@ -274,7 +271,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         );
     }
 
-    function executeAddSingleTokenExactOutRemoveProportionalVsSwap(
+    function addExactOutArbitraryBptOut(
         uint256 exactBptAmountOut,
         uint256 swapFeePercentage
     ) internal returns (uint256 amountOut) {
@@ -315,7 +312,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         );
     }
 
-    function executeAddProportionalRemoveExactInVsSwap(
+    function removeExactInAllBptIn(
         uint256 exactBptAmountOut,
         uint256 swapFeePercentage
     ) internal returns (uint256 amountOut) {
@@ -359,7 +356,55 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function executeAddProportionalRemoveExactOutVsSwap(
+    function removeExactInArbitraryBptIn(
+        uint256 exactBptAmountIn,
+        uint256 swapFeePercentage
+    ) internal returns (uint256 amountOut) {
+        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
+        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
+
+        exactBptAmountIn = bound(exactBptAmountIn, 1e18, maxAmount);
+
+        // Add liquidity so we have something to remove.
+        vm.prank(alice);
+        router.addLiquidityProportional(
+            address(liquidityPool),
+            [MAX_UINT128, MAX_UINT128].toMemoryArray(),
+            2 * maxAmount,
+            false,
+            bytes("")
+        );
+
+        vm.startPrank(alice);
+        router.removeLiquiditySingleTokenExactIn(address(liquidityPool), exactBptAmountIn, usdc, 1, false, bytes(""));
+
+        // Remove remaining liquidity.
+        router.removeLiquidityProportional(
+            address(liquidityPool),
+            IERC20(liquidityPool).balanceOf(alice),
+            [uint256(0), uint256(0)].toMemoryArray(),
+            false,
+            bytes("")
+        );
+
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        // Simulate the same outcome with a pure swap.
+        amountOut = router.swapSingleTokenExactIn(
+            address(swapPool),
+            dai,
+            usdc,
+            defaultBalance - dai.balanceOf(alice),
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+    }
+
+    function removeExactOutAllUsdcAmountOut(
         uint256 exactBptAmountOut,
         uint256 swapFeePercentage
     ) internal returns (uint256 amountOut) {
@@ -413,7 +458,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function executeAddProportionalRemoveExactOutRemoveAllVsSwap(
+    function removeExactOutArbitraryAmountOut(
         uint256 exactAmountOut,
         uint256 swapFeePercentage
     ) internal returns (uint256 amountOut) {
@@ -441,54 +486,6 @@ contract LiquidityApproximationTest is BaseVaultTest {
             false,
             bytes("")
         );
-
-        // Remove remaining liquidity.
-        router.removeLiquidityProportional(
-            address(liquidityPool),
-            IERC20(liquidityPool).balanceOf(alice),
-            [uint256(0), uint256(0)].toMemoryArray(),
-            false,
-            bytes("")
-        );
-
-        vm.stopPrank();
-
-        vm.startPrank(bob);
-        // Simulate the same outcome with a pure swap.
-        amountOut = router.swapSingleTokenExactIn(
-            address(swapPool),
-            dai,
-            usdc,
-            defaultBalance - dai.balanceOf(alice),
-            0,
-            MAX_UINT256,
-            false,
-            bytes("")
-        );
-        vm.stopPrank();
-    }
-
-    function executeAddProportionalRemoveExactInRemoveAllVsSwap(
-        uint256 exactBptAmountIn,
-        uint256 swapFeePercentage
-    ) internal returns (uint256 amountOut) {
-        _setSwapFeePercentage(address(liquidityPool), swapFeePercentage);
-        _setSwapFeePercentage(address(swapPool), swapFeePercentage);
-
-        exactBptAmountIn = bound(exactBptAmountIn, 1e18, maxAmount);
-
-        // Add liquidity so we have something to remove.
-        vm.prank(alice);
-        router.addLiquidityProportional(
-            address(liquidityPool),
-            [MAX_UINT128, MAX_UINT128].toMemoryArray(),
-            2 * maxAmount,
-            false,
-            bytes("")
-        );
-
-        vm.startPrank(alice);
-        router.removeLiquiditySingleTokenExactIn(address(liquidityPool), exactBptAmountIn, usdc, 1, false, bytes(""));
 
         // Remove remaining liquidity.
         router.removeLiquidityProportional(
