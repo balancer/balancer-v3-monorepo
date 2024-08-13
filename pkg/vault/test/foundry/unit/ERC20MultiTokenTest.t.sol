@@ -40,7 +40,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
 
     // #region Approve & Allowance & SpendAllowance
     function testAllowanceForTokenContract() public view {
-        assertEq(token.allowance(POOL, OWNER, address(token)), type(uint256).max, "Unexpected allowance");
+        assertEq(token.allowance(POOL, OWNER, address(token)), 0, "Unexpected allowance");
     }
 
     function testAllowanceForNotTokenContractWithZeroValue() public view {

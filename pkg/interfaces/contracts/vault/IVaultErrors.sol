@@ -321,6 +321,9 @@ interface IVaultErrors {
     /// @dev The wrapped token asset does not match the underlying token of the swap path.
     error WrongWrappedTokenAsset(address token);
 
+    /// @dev The underlying token asset reported by a wrapped token is the zero address.
+    error InvalidUnderlyingTokenAsset();
+
     /// @dev The wrappedToken wrap/unwrap function did not deposit/return the expected amount of underlying tokens.
     error WrongUnderlyingAmount(address wrappedToken);
 
