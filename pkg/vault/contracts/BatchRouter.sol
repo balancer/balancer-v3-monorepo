@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
@@ -841,7 +843,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         AddLiquidityHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256 bptAmountOut) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
-        uint256[] memory wrappedAmounts = _wrapTokens(
+        (, uint256[] memory wrappedAmountsIn) = _wrapTokens(
             params,
             erc4626PoolTokens,
             params.maxAmountsIn,
@@ -854,7 +856,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                maxAmountsIn: wrappedAmounts,
+                maxAmountsIn: wrappedAmountsIn,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
@@ -864,7 +866,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
     function addLiquidityERC4626PoolProportionalHook(
         AddLiquidityHookParams calldata params
-    ) external nonReentrant onlyVault returns (uint256[] memory amountsIn) {
+    ) external nonReentrant onlyVault returns (uint256[] memory underlyingAmountsIn) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
 
         uint256[] memory maxUint128TypeAmounts = new uint256[](erc4626PoolTokens.length);
@@ -873,7 +875,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         }
 
         // Add wrapped amounts to the ERC4626 pool.
-        (amountsIn, , ) = _vault.addLiquidity(
+        (uint256[] memory wrappedAmountsIn, , ) = _vault.addLiquidity(
             AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
@@ -884,7 +886,13 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             })
         );
 
-        _wrapTokens(params, erc4626PoolTokens, amountsIn, SwapKind.EXACT_OUT, params.maxAmountsIn);
+        (underlyingAmountsIn, ) = _wrapTokens(
+            params,
+            erc4626PoolTokens,
+            wrappedAmountsIn,
+            SwapKind.EXACT_OUT,
+            params.maxAmountsIn
+        );
     }
 
     function removeLiquidityERC4626PoolProportionalHook(
@@ -934,23 +942,44 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         uint256[] memory amountsIn,
         SwapKind kind,
         uint256[] memory limits
-    ) private returns (uint256[] memory wrappedAmounts) {
+    ) private returns (uint256[] memory underlyingAmounts, uint256[] memory wrappedAmounts) {
+        underlyingAmounts = new uint256[](erc4626PoolTokens.length);
         wrappedAmounts = new uint256[](erc4626PoolTokens.length);
 
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
-        // Wrap given underlying tokens for wrapped tokens
+        // Wrap given underlying tokens for wrapped tokens.
         for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
-            // ERC4626 pool tokens are all wrapped tokens.
+            // Treat all ERC4626 pool tokens as wrapped. The next step will verify if we can use the wrappedToken as
+            // a valid ERC4626.
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
+
+            // If the wrapped token was not initialized in the vault, the router treats it as a standard token.
+            if (!_vault.isERC4626Initialized(wrappedToken)) {
+                if (isStaticCall == false) {
+                    underlyingAmounts[i] = amountsIn[i];
+                    wrappedAmounts[i] = amountsIn[i];
+                    _takeTokenIn(params.sender, erc4626PoolTokens[i], amountsIn[i], params.wethIsEth);
+                }
+                continue;
+            }
+
             IERC20 underlyingToken = IERC20(wrappedToken.asset());
 
             if (isStaticCall == false) {
-                _takeTokenIn(params.sender, underlyingToken, amountsIn[i], params.wethIsEth);
+                if (kind == SwapKind.EXACT_IN) {
+                    // If SwapKind of wrap is EXACT_IN, take the exact amount in from the sender.
+                    _takeTokenIn(params.sender, underlyingToken, amountsIn[i], params.wethIsEth);
+                } else {
+                    // If SwapKind of wrap is EXACT_OUT, the exact amount in is not known, because amountsIn is the
+                    // amount of wrapped tokens. Therefore, take the limit. After the wrap operation, the difference
+                    // between the limit and the actual underlying amount is returned to the sender.
+                    _takeTokenIn(params.sender, underlyingToken, limits[i], params.wethIsEth);
+                }
             }
 
             // erc4626BufferWrapOrUnwrap will fail if the wrapper wasn't ERC4626
-            (, , wrappedAmounts[i]) = _vault.erc4626BufferWrapOrUnwrap(
+            (, underlyingAmounts[i], wrappedAmounts[i]) = _vault.erc4626BufferWrapOrUnwrap(
                 BufferWrapOrUnwrapParams({
                     kind: kind,
                     direction: WrappingDirection.WRAP,
@@ -960,6 +989,12 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                     userData: params.userData
                 })
             );
+
+            if (isStaticCall == false && kind == SwapKind.EXACT_OUT) {
+                // If SwapKind of wrap is EXACT_OUT, the limit of underlying tokens was taken from the user, so the
+                // difference between limit and exact underlying amount needs to be returned to the sender.
+                _vault.sendTo(underlyingToken, params.sender, limits[i] - underlyingAmounts[i]);
+            }
         }
     }
 

@@ -268,6 +268,9 @@ interface IVaultAdmin {
         IERC4626 wrappedToken
     ) external view returns (uint256 underlyingBalanceRaw, uint256 wrappedBalanceRaw);
 
+    // TODO comment
+    function isERC4626Initialized(IERC4626 token) external view returns (bool);
+
     /*******************************************************************************
                                 Authentication
     *******************************************************************************/

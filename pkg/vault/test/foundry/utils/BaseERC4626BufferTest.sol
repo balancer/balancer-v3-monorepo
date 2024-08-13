@@ -33,14 +33,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
-        vm.label(address(waDAI), "waDAI");
-
-        // "USDC" is deliberately 18 decimals to test one thing at a time.
-        waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
-        vm.label(address(waUSDC), "waUSDC");
-
-        (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
+        _setupWrappedTokens();
 
         _initializeBuffers();
         _initializeERC4626Pool();
@@ -51,11 +44,13 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         vm.startPrank(lp);
         dai.mint(lp, initialLPBufferAmount);
         dai.approve(address(waDAI), initialLPBufferAmount);
-        waDAI.deposit(initialLPBufferAmount, lp);
+        uint256 waDAILPShares = waDAI.deposit(initialLPBufferAmount, lp);
+        console.log("waDAILPShares", waDAILPShares);
 
         usdc.mint(lp, initialLPBufferAmount);
         usdc.approve(address(waUSDC), initialLPBufferAmount);
-        waUSDC.deposit(initialLPBufferAmount, lp);
+        uint256 waUSDCLPShares = waUSDC.deposit(initialLPBufferAmount, lp);
+        console.log("waUSDCLPShares", waUSDCLPShares);
         vm.stopPrank();
 
         vm.startPrank(lp);
@@ -66,8 +61,8 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
 
-        router.addLiquidityToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount, lp);
-        router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount, lp);
+        router.addLiquidityToBuffer(waDAI, bufferInitialAmount, waDAILPShares, lp);
+        router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, waUSDCLPShares, lp);
         vm.stopPrank();
     }
 
@@ -98,17 +93,17 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
 
         dai.mint(bob, erc4626PoolInitialAmount);
         dai.approve(address(waDAI), erc4626PoolInitialAmount);
-        waDAI.deposit(erc4626PoolInitialAmount, bob);
+        uint256 waDaiBobShares = waDAI.deposit(erc4626PoolInitialAmount, bob);
 
         usdc.mint(bob, erc4626PoolInitialAmount);
         usdc.approve(address(waUSDC), erc4626PoolInitialAmount);
-        waUSDC.deposit(erc4626PoolInitialAmount, bob);
+        uint256 waUsdcBobShares = waUSDC.deposit(erc4626PoolInitialAmount, bob);
 
-        _initPool(
-            erc4626Pool,
-            [erc4626PoolInitialAmount, erc4626PoolInitialAmount].toMemoryArray(),
-            erc4626PoolInitialBPTAmount - MIN_BPT
-        );
+        uint256[] memory amountsIn = new uint256[](2);
+        amountsIn[waDaiIdx] = waDaiBobShares;
+        amountsIn[waUsdcIdx] = waUsdcBobShares;
+
+        _initPool(erc4626Pool, amountsIn, erc4626PoolInitialBPTAmount - MIN_BPT);
 
         IERC20(address(erc4626Pool)).approve(address(permit2), MAX_UINT256);
         permit2.approve(address(erc4626Pool), address(router), type(uint160).max, type(uint48).max);
@@ -117,5 +112,31 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         IERC20(address(erc4626Pool)).approve(address(router), type(uint256).max);
         IERC20(address(erc4626Pool)).approve(address(batchRouter), type(uint256).max);
         vm.stopPrank();
+    }
+
+    function _setupWrappedTokens() private {
+        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
+        vm.label(address(waDAI), "waDAI");
+
+        // "USDC" is deliberately 18 decimals to test one thing at a time.
+        waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
+        vm.label(address(waUSDC), "waUSDC");
+
+        (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
+
+        // Manipulate rates before creating the ERC4626 pools. It's important to don't have a 1:1 rate when testing
+        // ERC4626 tokens, so we can differ what's wrapped and what's underlying amounts.
+        dai.mint(lp, 10 * erc4626PoolInitialAmount);
+        usdc.mint(lp, 10 * erc4626PoolInitialAmount);
+        // Deposit sets the rate to 1.
+        vm.startPrank(lp);
+        dai.approve(address(waDAI), 10 * erc4626PoolInitialAmount);
+        waDAI.deposit(10 * erc4626PoolInitialAmount, lp);
+        usdc.approve(address(waUSDC), 10 * erc4626PoolInitialAmount);
+        waUSDC.deposit(10 * erc4626PoolInitialAmount, lp);
+        vm.stopPrank();
+        // Changing asset balances without minting shares makes the balance be different than 1.
+        dai.mint(address(waDAI), 2 * erc4626PoolInitialAmount);
+        usdc.mint(address(waUSDC), 23 * erc4626PoolInitialAmount);
     }
 }

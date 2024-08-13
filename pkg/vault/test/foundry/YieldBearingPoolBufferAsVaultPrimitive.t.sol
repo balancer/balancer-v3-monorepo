@@ -18,7 +18,6 @@ import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/Ar
 
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 
-// TODO: rename file. Do later so that we can see the diff.
 contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
     using ArrayHelpers for *;
 
@@ -45,7 +44,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             lp,
             bufferInitialAmount,
             bufferInitialAmount,
-            bufferInitialAmount * 2
+            bufferInitialAmount + waDAI.convertToAssets(bufferInitialAmount)
         );
         router.addLiquidityToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount, lp);
 
@@ -55,7 +54,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             lp,
             bufferInitialAmount,
             bufferInitialAmount,
-            bufferInitialAmount * 2
+            bufferInitialAmount + waUSDC.convertToAssets(bufferInitialAmount)
         );
         router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount, lp);
     }
