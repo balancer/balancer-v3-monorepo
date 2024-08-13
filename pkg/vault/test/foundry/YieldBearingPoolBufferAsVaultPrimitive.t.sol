@@ -38,6 +38,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
     }
 
     function testAddLiquidityEvents() public {
+        vm.startPrank(lp);
         // Can add the same amount again, since twice as much was minted.
         vm.expectEmit();
         emit IVaultEvents.LiquidityAddedToBuffer(
@@ -47,7 +48,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             bufferInitialAmount,
             bufferInitialAmount * 2
         );
-        router.addLiquidityToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount, lp);
+        router.addLiquidityToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount);
 
         vm.expectEmit();
         emit IVaultEvents.LiquidityAddedToBuffer(
@@ -57,7 +58,8 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             bufferInitialAmount,
             bufferInitialAmount * 2
         );
-        router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount, lp);
+        router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount);
+        vm.stopPrank();
     }
 
     function testRemoveLiquidityEvents() public {
@@ -226,9 +228,9 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
     function testYieldBearingPoolSwapUnbalancedBufferExactIn() public {
         vm.startPrank(lp);
         // Surplus of underlying.
-        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, lp);
+        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0);
         // Surplus of wrapped.
-        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, lp);
+        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta);
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
@@ -257,9 +259,9 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
     function testYieldBearingPoolSwapUnbalancedBufferExactOut() public {
         vm.startPrank(lp);
         // Surplus of underlying.
-        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, lp);
+        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0);
         // Surplus of wrapped.
-        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, lp);
+        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta);
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
