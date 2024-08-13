@@ -648,8 +648,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
-        uint256 amountWrappedRaw,
-        address sharesOwner
+        uint256 amountWrappedRaw
     ) external returns (uint256 issuedShares) {
         return
             abi.decode(
@@ -659,7 +658,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         wrappedToken,
                         amountUnderlyingRaw,
                         amountWrappedRaw,
-                        sharesOwner
+                        msg.sender
                     )
                 ),
                 (uint256)
