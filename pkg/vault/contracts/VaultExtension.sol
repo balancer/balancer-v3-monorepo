@@ -842,6 +842,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /// @inheritdoc IVaultExtension
     function quoteAndRevert(bytes calldata data) external query onlyVaultDelegateCall {
         // Forward the incoming call to the original sender of this transaction.
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = (msg.sender).call(data);
         if (success) {
             // This will only revert if result is empty and sender account has no code.
