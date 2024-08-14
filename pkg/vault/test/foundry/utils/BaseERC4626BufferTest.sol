@@ -46,7 +46,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         _initializeERC4626Pool();
     }
 
-    function testSwapPreconditions() public view {
+    function testERC4626BufferPreconditions() public view {
         // bob should have the full erc4626Pool BPT. Since BPT amount is based on ERC4626 rates (using rate providers
         // to convert wrapped amounts to underlying amounts), some rounding imprecision can occur. The test below
         // allows an error of 0.00000001%.
