@@ -753,7 +753,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             sharesToRemove,
             sharesOwner
         );
-        _sendTokenOut(sharesOwner, IERC20(wrappedToken.asset()), removedUnderlyingBalanceRaw, false);
+        _sendTokenOut(sharesOwner, IERC20(_vault.getBufferAsset(wrappedToken)), removedUnderlyingBalanceRaw, false);
         _sendTokenOut(sharesOwner, IERC20(address(wrappedToken)), removedWrappedBalanceRaw, false);
     }
 

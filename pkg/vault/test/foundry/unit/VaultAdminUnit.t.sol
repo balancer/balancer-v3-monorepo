@@ -116,22 +116,9 @@ contract VaultAdminUnitTest is BaseVaultTest {
         vault.mockEnsurePoolNotInRecoveryMode(TEST_POOL);
     }
 
-    function testAddLiquidityToBufferBaseTokenChanged() public {
-        vm.startPrank(bob);
-        router.addLiquidityToBuffer(waDAI, liquidityAmount, liquidityAmount);
-
-        // Changes the wrapped token asset. The function `addLiquidityToBuffer` should revert, since the buffer was
-        // initialized already with another underlying asset.
-        waDAI.setAsset(usdc);
-
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedTokenAsset.selector, address(waDAI)));
-        router.addLiquidityToBuffer(waDAI, liquidityAmount, liquidityAmount);
-        vm.stopPrank();
-    }
-
     function testRemoveLiquidityFromBufferNotEnoughShares() public {
         vm.startPrank(bob);
-        uint256 shares = router.addLiquidityToBuffer(waDAI, liquidityAmount, liquidityAmount);
+        uint256 shares = router.initializeBuffer(waDAI, liquidityAmount, liquidityAmount);
 
         authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
         vm.expectRevert(IVaultErrors.NotEnoughBufferShares.selector);

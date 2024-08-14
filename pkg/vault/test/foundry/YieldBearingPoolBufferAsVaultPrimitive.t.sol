@@ -41,19 +41,11 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         vm.startPrank(lp);
         // Can add the same amount again, since twice as much was minted.
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(
-            waDAI,
-            bufferInitialAmount,
-            bufferInitialAmount
-        );
+        emit IVaultEvents.LiquidityAddedToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount);
         router.addLiquidityToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount);
 
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(
-            waUSDC,
-            bufferInitialAmount,
-            bufferInitialAmount
-        );
+        emit IVaultEvents.LiquidityAddedToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount);
         router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount);
         vm.stopPrank();
     }
@@ -63,20 +55,12 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
 
         vm.expectEmit();
-        emit IVaultEvents.LiquidityRemovedFromBuffer(
-            waDAI,
-            bufferInitialAmount / 2,
-            bufferInitialAmount / 2
-        );
+        emit IVaultEvents.LiquidityRemovedFromBuffer(waDAI, bufferInitialAmount / 2, bufferInitialAmount / 2);
         vm.prank(lp);
         router.removeLiquidityFromBuffer(waDAI, bufferInitialAmount);
 
         vm.expectEmit();
-        emit IVaultEvents.LiquidityRemovedFromBuffer(
-            waUSDC,
-            bufferInitialAmount / 2,
-            bufferInitialAmount / 2
-        );
+        emit IVaultEvents.LiquidityRemovedFromBuffer(waUSDC, bufferInitialAmount / 2, bufferInitialAmount / 2);
         vm.prank(lp);
         router.removeLiquidityFromBuffer(waUSDC, bufferInitialAmount);
     }

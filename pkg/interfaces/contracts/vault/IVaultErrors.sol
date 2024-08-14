@@ -299,7 +299,7 @@ interface IVaultErrors {
     error NotEnoughBufferShares();
 
     /// @dev The wrapped token asset does not match the underlying token of the swap path.
-    error WrongWrappedTokenAsset(address token);
+    error WrongWrappedTokenAsset(IERC4626 wrappedToken, address underlyingToken);
 
     /// @dev The underlying token asset reported by a wrapped token is the zero address.
     error InvalidUnderlyingTokenAsset();

@@ -243,7 +243,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /*******************************************************************************
-                                Buffer Initialization
+                        Buffer Initialization & validation
     *******************************************************************************/
 
     modifier withInitializedBuffer(IERC4626 wrappedToken) {
@@ -254,6 +254,13 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     function _ensureBufferInitialized(IERC4626 wrappedToken) internal view {
         if (_bufferAssets[wrappedToken] == address(0)) {
             revert BufferNotInitialized(wrappedToken);
+        }
+    }
+
+    function _ensureCorrectBufferAsset(IERC4626 wrappedToken, address underlyingToken) internal view {
+        if (_bufferAssets[wrappedToken] != underlyingToken) {
+            // Asset was changed since the buffer was initialized.
+            revert WrongWrappedTokenAsset(wrappedToken, underlyingToken);
         }
     }
 

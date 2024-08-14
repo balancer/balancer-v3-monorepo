@@ -487,10 +487,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     {
         // Check wrapped token asset correctness.
         address underlyingToken = wrappedToken.asset();
-        if (_bufferAssets[wrappedToken] != underlyingToken) {
-            // Asset was changed since the buffer was initialized.
-            revert WrongWrappedTokenAsset(address(wrappedToken));
-        }
+        _ensureCorrectBufferAsset(wrappedToken, underlyingToken);
 
         // Take debt for assets going into the buffer (wrapped and underlying).
         _takeDebt(IERC20(underlyingToken), amountUnderlyingRaw);
@@ -569,11 +566,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
         _burnBufferShares(wrappedToken, sharesOwner, sharesToRemove);
 
-        emit LiquidityRemovedFromBuffer(
-            wrappedToken,
-            removedWrappedBalanceRaw,
-            removedUnderlyingBalanceRaw
-        );
+        emit LiquidityRemovedFromBuffer(wrappedToken, removedWrappedBalanceRaw, removedUnderlyingBalanceRaw);
     }
 
     function _burnBufferShares(IERC4626 wrappedToken, address from, uint256 amount) internal {
@@ -589,6 +582,13 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _bufferLpShares[wrappedToken][from] -= amount;
 
         emit BufferSharesBurnt(wrappedToken, from, amount);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getBufferAsset(
+        IERC4626 wrappedToken
+    ) external view onlyVaultDelegateCall returns (address underlyingToken) {
+        return _bufferAssets[wrappedToken];
     }
 
     /// @inheritdoc IVaultAdmin

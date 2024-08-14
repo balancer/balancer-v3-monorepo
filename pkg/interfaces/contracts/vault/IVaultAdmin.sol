@@ -258,6 +258,15 @@ interface IVaultAdmin {
     ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw);
 
     /**
+     * @notice Returns the asset registered for a given wrapped token.
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @return underlyingToken Address of the underlying token registered for the wrapper; `address(0)` if the buffer
+     * has not been initialized.
+     */
+    function getBufferAsset(IERC4626 wrappedToken) external view returns (address underlyingToken);
+
+    /**
      * @notice Returns the shares (internal buffer BPT) of a liquidity owner: a user that deposited assets
      * in the buffer.
      *
