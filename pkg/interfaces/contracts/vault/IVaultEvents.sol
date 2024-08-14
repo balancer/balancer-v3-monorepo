@@ -141,10 +141,10 @@ interface IVaultEvents {
      * @dev The underlying token can be derived from the wrapped token, so it's not included here.
      *
      * @param wrappedToken The wrapped token that identifies the buffer
-     * @param amountWrapped The amount of the wrapped token that was deposited
      * @param amountUnderlying The amount of the underlying token that was deposited
+     * @param amountWrapped The amount of the wrapped token that was deposited
      */
-    event LiquidityAddedToBuffer(IERC4626 indexed wrappedToken, uint256 amountWrapped, uint256 amountUnderlying);
+    event LiquidityAddedToBuffer(IERC4626 indexed wrappedToken, uint256 amountUnderlying, uint256 amountWrapped);
 
     /**
      * @notice Buffer shares were minted for an ERC4626 buffer corresponding to a given wrapped token.
@@ -175,8 +175,8 @@ interface IVaultEvents {
      * @dev The underlying token can be derived from the wrapped token, so it's not included here.
      *
      * @param wrappedToken The wrapped token that identifies the buffer
-     * @param amountWrapped The amount of the wrapped token that was withdrawn
      * @param amountUnderlying The amount of the underlying token that was withdrawn
+     * @param amountWrapped The amount of the wrapped token that was withdrawn
      */
-    event LiquidityRemovedFromBuffer(IERC4626 indexed wrappedToken, uint256 amountWrapped, uint256 amountUnderlying);
+    event LiquidityRemovedFromBuffer(IERC4626 indexed wrappedToken, uint256 amountUnderlying, uint256 amountWrapped);
 }

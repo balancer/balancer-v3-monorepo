@@ -17,6 +17,13 @@ interface IVaultAdminMock {
 
     function manualDisableRecoveryMode(address pool) external;
 
+    function manualReentrancyInitializeBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped,
+        address sharesOwner
+    ) external;
+
     function manualReentrancyAddLiquidityToBuffer(
         IERC4626 wrappedToken,
         uint256 amountUnderlying,

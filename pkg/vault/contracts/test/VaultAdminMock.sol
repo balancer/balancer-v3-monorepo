@@ -40,6 +40,15 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
         _setPoolRecoveryMode(pool, false);
     }
 
+    function manualReentrancyInitializeBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped,
+        address sharesOwner
+    ) external nonReentrant {
+        IVault(address(this)).initializeBuffer(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
+    }
+
     function manualReentrancyAddLiquidityToBuffer(
         IERC4626 wrappedToken,
         uint256 amountUnderlying,

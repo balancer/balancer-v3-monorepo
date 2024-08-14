@@ -467,7 +467,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
         _mintMinimumBufferSupplyReserve(wrappedToken);
 
-        emit LiquidityAddedToBuffer(wrappedToken, amountWrappedRaw, amountUnderlyingRaw);
+        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -505,7 +505,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         issuedShares = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
         _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
 
-        emit LiquidityAddedToBuffer(wrappedToken, amountWrappedRaw, amountUnderlyingRaw);
+        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
     }
 
     function _mintBufferShares(IERC4626 wrappedToken, address to, uint256 amount) internal {
@@ -566,7 +566,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
 
         _burnBufferShares(wrappedToken, sharesOwner, sharesToRemove);
 
-        emit LiquidityRemovedFromBuffer(wrappedToken, removedWrappedBalanceRaw, removedUnderlyingBalanceRaw);
+        emit LiquidityRemovedFromBuffer(wrappedToken, removedUnderlyingBalanceRaw, removedWrappedBalanceRaw);
     }
 
     function _burnBufferShares(IERC4626 wrappedToken, address from, uint256 amount) internal {

@@ -4,8 +4,12 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { IERC20MultiTokenErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiTokenErrors.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
@@ -19,6 +23,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
     address internal constant TEST_POOL = address(0x123);
     uint256 internal constant underlyingTokensToDeposit = 2e18;
     uint256 internal constant liquidityAmount = 1e18;
+    uint256 internal constant _MINIMUM_TOTAL_SUPPLY = 1e6;
 
     ERC4626TestToken internal waDAI;
 
@@ -125,6 +130,78 @@ contract VaultAdminUnitTest is BaseVaultTest {
         // The call should revert since bob is trying to withdraw more shares than he has.
         router.removeLiquidityFromBuffer(waDAI, shares + 1);
         vm.stopPrank();
+    }
+
+    /********************************************************************************
+                                    Initialize Buffers
+    ********************************************************************************/
+
+    function testInitializeBufferTwice() public {
+        vault.manualSetIsUnlocked(true);
+        vault.initializeBuffer(waDAI, liquidityAmount, liquidityAmount, bob);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferAlreadyInitialized.selector, waDAI));
+        vault.initializeBuffer(waDAI, 1, 1, bob);
+    }
+
+    function testInitializeBufferAddressZero() public {
+        vault.manualSetIsUnlocked(true);
+        waDAI.setAsset(IERC20(address(0)));
+
+        vm.expectRevert(IVaultErrors.InvalidUnderlyingTokenAsset.selector);
+        vault.initializeBuffer(waDAI, liquidityAmount, liquidityAmount, bob);
+    }
+
+    function testInitializeBufferBelowMinimumShares() public {
+        vault.manualSetIsUnlocked(true);
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20MultiTokenErrors.TotalSupplyTooLow.selector, 3, _MINIMUM_TOTAL_SUPPLY)
+        );
+        vault.initializeBuffer(waDAI, 1, 2, bob);
+    }
+
+    function testInitializeBuffer() public {
+        dai.mint(address(waDAI), underlyingTokensToDeposit); // This will make the rate = 2
+
+        vault.manualSetIsUnlocked(true);
+        uint256 underlyingAmount = liquidityAmount * 2;
+        uint256 wrappedAmount = liquidityAmount;
+
+        // Get issued shares to match the event. The actual shares amount will be validated below.
+        uint256 preInitSnap = vm.snapshot();
+        uint256 issuedShares = vault.initializeBuffer(waDAI, underlyingAmount, wrappedAmount, bob);
+        vm.revertTo(preInitSnap);
+
+        vm.expectEmit();
+        emit IVaultEvents.BufferSharesMinted(waDAI, bob, issuedShares);
+        vm.expectEmit();
+        emit IVaultEvents.BufferSharesMinted(waDAI, address(0), _MINIMUM_TOTAL_SUPPLY);
+        vm.expectEmit();
+        emit IVaultEvents.LiquidityAddedToBuffer(waDAI, underlyingAmount, wrappedAmount);
+        issuedShares = vault.initializeBuffer(waDAI, underlyingAmount, wrappedAmount, bob);
+
+        assertEq(vault.getBufferAsset(waDAI), address(dai), "Wrong underlying asset");
+
+        // Initialize takes debt, which is a positive delta.
+        assertEq(uint256(vault.getTokenDelta(dai)), underlyingAmount, "Wrong underlying delta");
+        assertEq(uint256(vault.getTokenDelta(waDAI)), wrappedAmount, "Wrong wrapped delta");
+
+        // Balances
+        (uint256 underlyingBufferBalance, uint256 wrappedBufferBalance) = vault.getBufferBalance(waDAI);
+        assertEq(underlyingBufferBalance, underlyingAmount, "Wrong buffer underlying balance");
+        assertEq(wrappedBufferBalance, wrappedAmount, "Wrong buffer wrapped balance");
+
+        // Shares (wrapped rate is ~2; allow rounding error)
+        assertApproxEqAbs(
+            issuedShares,
+            underlyingAmount + wrappedAmount * 2 - _MINIMUM_TOTAL_SUPPLY,
+            1,
+            "Wrong issued shares"
+        );
+
+        assertEq(vault.getBufferOwnerShares(waDAI, bob), issuedShares, "Wrong bob shares");
+        assertEq(vault.getBufferOwnerShares(waDAI, address(0)), _MINIMUM_TOTAL_SUPPLY, "Wrong burnt shares");
+        assertEq(vault.getBufferTotalShares(waDAI), issuedShares + _MINIMUM_TOTAL_SUPPLY, "Wrong total shares");
     }
 
     function _initializeBob() private {
