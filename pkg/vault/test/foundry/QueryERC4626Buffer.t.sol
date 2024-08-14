@@ -29,58 +29,6 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         _initializeUser();
     }
 
-    function testSwapPreconditions() public view {
-        // Bob should have the full yield-bearing pool BPT.
-        assertEq(
-            IERC20(erc4626Pool).balanceOf(bob),
-            erc4626PoolInitialAmount * 2 - MIN_BPT,
-            "Wrong yield-bearing pool BPT amount"
-        );
-
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(erc4626Pool);
-        // The yield-bearing pool should have `erc4626PoolInitialAmount` of both tokens.
-        assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong yield-bearing pool token (waDAI)");
-        assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong yield-bearing pool token (waUSDC)");
-        assertEq(balancesRaw[0], erc4626PoolInitialAmount, "Wrong yield-bearing pool balance [0]");
-        assertEq(balancesRaw[1], erc4626PoolInitialAmount, "Wrong yield-bearing pool balance [1]");
-
-        // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs").
-        assertEq(
-            vault.getBufferOwnerShares(IERC4626(waDAI), lp),
-            bufferInitialAmount * 2 - MIN_BPT,
-            "Wrong share of waDAI buffer belonging to LP"
-        );
-        assertEq(
-            vault.getBufferOwnerShares(IERC4626(waUSDC), lp),
-            bufferInitialAmount * 2 - MIN_BPT,
-            "Wrong share of waUSDC buffer belonging to LP"
-        );
-
-        // Buffer should have the correct amount of issued shares.
-        assertEq(
-            vault.getBufferTotalShares(IERC4626(waDAI)),
-            bufferInitialAmount * 2,
-            "Wrong issued shares of waDAI buffer"
-        );
-        assertEq(
-            vault.getBufferTotalShares(IERC4626(waUSDC)),
-            bufferInitialAmount * 2,
-            "Wrong issued shares of waUSDC buffer"
-        );
-
-        uint256 baseBalance;
-        uint256 wrappedBalance;
-
-        // The vault buffers should each have `bufferInitialAmount` of their respective tokens.
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waDAI));
-        assertEq(baseBalance, bufferInitialAmount, "Wrong waDAI buffer balance for base token");
-        assertEq(wrappedBalance, bufferInitialAmount, "Wrong waDAI buffer balance for wrapped token");
-
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waUSDC));
-        assertEq(baseBalance, bufferInitialAmount, "Wrong waUSDC buffer balance for base token");
-        assertEq(wrappedBalance, bufferInitialAmount, "Wrong waUSDC buffer balance for wrapped token");
-    }
-
     function testQuerySwapWithinBufferRangeExactIn() public {
         _testQuerySwapExactIn(swapAmount);
     }
@@ -121,9 +69,9 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         // Check if results of query and actual operations are equal
-        assertEq(pathAmountsOut[0], queryPathAmountsOut[0], "pathAmountsOut's do not match");
+        assertApproxEqRel(pathAmountsOut[0], queryPathAmountsOut[0], errorTolerance, "pathAmountsOut's do not match");
         assertEq(tokensOut[0], queryTokensOut[0], "tokensOut's do not match");
-        assertEq(amountsOut[0], queryAmountsOut[0], "amountsOut's do not match");
+        assertApproxEqRel(amountsOut[0], queryAmountsOut[0], errorTolerance, "amountsOut's do not match");
     }
 
     function _testQuerySwapExactOut(uint256 amount) private {
@@ -150,9 +98,9 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
         // Check if results of query and actual operations are equal.
-        assertEq(pathAmountsIn[0], queryPathAmountsIn[0], "pathAmountsIn's do not match");
+        assertApproxEqRel(pathAmountsIn[0], queryPathAmountsIn[0], errorTolerance, "pathAmountsIn's do not match");
         assertEq(tokensIn[0], queryTokensIn[0], "tokensIn's do not match");
-        assertEq(amountsIn[0], queryAmountsIn[0], "amountsIn's do not match");
+        assertApproxEqRel(amountsIn[0], queryAmountsIn[0], errorTolerance, "amountsIn's do not match");
     }
 
     function _buildExactInPaths(

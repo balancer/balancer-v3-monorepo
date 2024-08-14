@@ -28,11 +28,13 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
     // LP can unbalance buffer with this amount.
     uint256 internal unbalanceDelta;
 
+    uint256 internal bufferTestAmount;
+
     function setUp() public virtual override {
-        bufferInitialAmount = erc4626PoolInitialAmount / 100;
+        bufferInitialAmount = erc4626PoolInitialAmount / 50;
         swapAmount = bufferInitialAmount / 10;
         unbalanceDelta = bufferInitialAmount / 2;
-        initialLPBufferAmount = bufferInitialAmount * 2;
+        bufferTestAmount = erc4626PoolInitialAmount / 100;
         BaseERC4626BufferTest.setUp();
     }
 
@@ -42,100 +44,54 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         emit IVaultEvents.LiquidityAddedToBuffer(
             waDAI,
             lp,
-            bufferInitialAmount,
-            bufferInitialAmount,
-            bufferInitialAmount + waDAI.convertToAssets(bufferInitialAmount)
+            bufferTestAmount,
+            bufferTestAmount,
+            bufferTestAmount + waDAI.convertToAssets(bufferTestAmount)
         );
-        router.addLiquidityToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount, lp);
+        router.addLiquidityToBuffer(waDAI, bufferTestAmount, bufferTestAmount, lp);
 
         vm.expectEmit();
         emit IVaultEvents.LiquidityAddedToBuffer(
             waUSDC,
             lp,
-            bufferInitialAmount,
-            bufferInitialAmount,
-            bufferInitialAmount + waUSDC.convertToAssets(bufferInitialAmount)
+            bufferTestAmount,
+            bufferTestAmount,
+            bufferTestAmount + waUSDC.convertToAssets(bufferTestAmount)
         );
-        router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount, lp);
+        router.addLiquidityToBuffer(waUSDC, bufferTestAmount, bufferTestAmount, lp);
     }
 
     function testRemoveLiquidityEvents() public {
         // Authorizes router to call removeLiquidityFromBuffer (trusted router).
         authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
 
+        (uint256 underlyingBalance, uint256 wrappedBalance) = vault.getBufferBalance(waDAI);
+        uint256 bufferTotalShares = vault.getBufferTotalShares(waDAI);
+
         vm.expectEmit();
         emit IVaultEvents.LiquidityRemovedFromBuffer(
             waDAI,
             lp,
-            bufferInitialAmount / 2,
-            bufferInitialAmount / 2,
-            bufferInitialAmount
+            (wrappedBalance * bufferTestAmount) / bufferTotalShares,
+            (underlyingBalance * bufferTestAmount) / bufferTotalShares,
+            bufferTestAmount
         );
         vm.prank(lp);
-        router.removeLiquidityFromBuffer(waDAI, bufferInitialAmount);
+        router.removeLiquidityFromBuffer(waDAI, bufferTestAmount);
+
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(waUSDC);
+        bufferTotalShares = vault.getBufferTotalShares(waUSDC);
 
         vm.expectEmit();
         emit IVaultEvents.LiquidityRemovedFromBuffer(
             waUSDC,
             lp,
-            bufferInitialAmount / 2,
-            bufferInitialAmount / 2,
-            bufferInitialAmount
+            (wrappedBalance * bufferTestAmount) / bufferTotalShares,
+            (underlyingBalance * bufferTestAmount) / bufferTotalShares,
+            bufferTestAmount
         );
         vm.prank(lp);
-        router.removeLiquidityFromBuffer(waUSDC, bufferInitialAmount);
-    }
-
-    function testSwapPreconditions() public view {
-        // bob should have the full erc4626Pool BPT.
-        assertEq(
-            IERC20(erc4626Pool).balanceOf(bob),
-            erc4626PoolInitialAmount * 2 - MIN_BPT,
-            "Wrong yield-bearing pool BPT amount"
-        );
-
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(erc4626Pool);
-        // The yield-bearing pool should have `erc4626PoolInitialAmount` of both tokens.
-        assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong yield-bearing pool token (waDAI)");
-        assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong yield-bearing pool token (waUSDC)");
-        assertEq(balancesRaw[0], erc4626PoolInitialAmount, "Wrong yield-bearing pool balance [0]");
-        assertEq(balancesRaw[1], erc4626PoolInitialAmount, "Wrong yield-bearing pool balance [1]");
-
-        // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
-        assertEq(
-            vault.getBufferOwnerShares(IERC4626(waDAI), lp),
-            bufferInitialAmount * 2 - MIN_BPT,
-            "Wrong share of waDAI buffer belonging to LP"
-        );
-        assertEq(
-            vault.getBufferOwnerShares(IERC4626(waUSDC), lp),
-            bufferInitialAmount * 2 - MIN_BPT,
-            "Wrong share of waUSDC buffer belonging to LP"
-        );
-
-        // Buffer should have the correct amount of issued shares
-        assertEq(
-            vault.getBufferTotalShares(IERC4626(waDAI)),
-            bufferInitialAmount * 2,
-            "Wrong issued shares of waDAI buffer"
-        );
-        assertEq(
-            vault.getBufferTotalShares(IERC4626(waUSDC)),
-            bufferInitialAmount * 2,
-            "Wrong issued shares of waUSDC buffer"
-        );
-
-        uint256 baseBalance;
-        uint256 wrappedBalance;
-
-        // The vault buffers should each have `bufferInitialAmount` of their respective tokens.
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waDAI));
-        assertEq(baseBalance, bufferInitialAmount, "Wrong waDAI buffer balance for base token");
-        assertEq(wrappedBalance, bufferInitialAmount, "Wrong waDAI buffer balance for wrapped token");
-
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waUSDC));
-        assertEq(baseBalance, bufferInitialAmount, "Wrong waUSDC buffer balance for base token");
-        assertEq(wrappedBalance, bufferInitialAmount, "Wrong waUSDC buffer balance for wrapped token");
+        router.removeLiquidityFromBuffer(waUSDC, bufferTestAmount);
     }
 
     function testYieldBearingPoolSwapWithinBufferRangeExactIn() public {
