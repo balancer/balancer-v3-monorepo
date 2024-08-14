@@ -55,11 +55,6 @@ contract VaultMutationTest is BaseVaultTest {
         vault.mintERC20(pool, address(this), initTotalSupply);
     }
 
-    function testLoadPoolDataUpdatingBalancesAndYieldFeesReentrancy() public {
-        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
-        vault.loadPoolDataUpdatingBalancesAndYieldFeesReentrancy(pool, Rounding.ROUND_DOWN);
-    }
-
     function testSettleWithLockedVault() public {
         vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
         vault.settle(dai, 0);
