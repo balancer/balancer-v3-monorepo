@@ -261,6 +261,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
     }
 
+
+    /// @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
     function _loadPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
         poolData.load(
             _poolTokenBalances[pool],
@@ -273,23 +275,15 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /**
      * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
-     * This function modifies protocol fees and balance storage. Since it modifies storage and makes external
-     * calls, it must be nonReentrant.
      * Side effects: updates `_aggregateFeeAmounts` and `_poolTokenBalances` in storage.
      */
     function _loadPoolDataUpdatingBalancesAndYieldFees(
         address pool,
         Rounding roundingDirection
-    ) internal nonReentrant returns (PoolData memory poolData) {
+    ) internal returns (PoolData memory poolData) {
         // Initialize poolData with base information for subsequent calculations.
-        poolData.load(
-            _poolTokenBalances[pool],
-            _poolConfigBits[pool],
-            _poolTokenInfo[pool],
-            _poolTokens[pool],
-            roundingDirection
-        );
-
+        poolData = _loadPoolData(pool, roundingDirection);
+        
         PoolDataLib.syncPoolBalancesAndFees(poolData, _poolTokenBalances[pool], _aggregateFeeAmounts[pool]);
     }
 
