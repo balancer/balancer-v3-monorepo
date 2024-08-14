@@ -261,8 +261,15 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
     }
 
-
-    /// @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
+    /**
+     * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
+     * In normal operation, we update both balances and fees together. However, while Recovery Mode is enabled,
+     * we cannot track yield fees, as that would involve making external calls that could fail and block withdrawals.
+     *
+     * Therefore, disabling Recovery Mode requires writing *only* the balances to storage, so we still need this
+     * as a separate function. It is normally called by `_loadPoolDataUpdatingBalancesAndYieldFees`, but in the
+     * Recovery Mode special case, it is called separately, with the result passed into `_writePoolBalancesToStorage`.
+     */
     function _loadPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
         poolData.load(
             _poolTokenBalances[pool],
@@ -283,7 +290,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     ) internal returns (PoolData memory poolData) {
         // Initialize poolData with base information for subsequent calculations.
         poolData = _loadPoolData(pool, roundingDirection);
-        
+
         PoolDataLib.syncPoolBalancesAndFees(poolData, _poolTokenBalances[pool], _aggregateFeeAmounts[pool]);
     }
 
