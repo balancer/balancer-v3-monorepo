@@ -226,16 +226,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // unless the pool has a dynamic swap fee. It is also passed into the hook, to support common cases
         // where the dynamic fee computation logic uses it.
         if (poolData.poolConfigBits.shouldCallComputeDynamicSwapFee()) {
-            (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = HooksConfigLib.callComputeDynamicSwapFeeHook(
+            state.swapFeePercentage = HooksConfigLib.callComputeDynamicSwapFeeHook(
                 swapParams,
                 params.pool,
                 state.swapFeePercentage,
                 _hooksContracts[params.pool]
             );
-
-            if (dynamicSwapFeeCalculated) {
-                state.swapFeePercentage = dynamicSwapFee;
-            }
         }
 
         // Non-reentrant call that updates accounting.
@@ -366,16 +362,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Intervening code cannot read balances from storage, as they are temporarily out-of-sync here. This function
         // is nonReentrant, to guard against read-only reentrancy issues.
 
-        // Set locals.swapFeeAmountScaled18 based on the amountCalculated.
-        if (state.swapFeePercentage > 0) {
-            // Swap fee is always a percentage of the amountCalculated. On ExactIn, subtract it from the calculated
-            // amountOut. On ExactOut, add it to the calculated amountIn.
-            // Round up to avoid losses during precision loss.
-            locals.swapFeeAmountScaled18 = amountCalculatedScaled18.mulUp(state.swapFeePercentage);
-        }
-
         // (1) and (2): get raw amounts and check limits.
         if (params.kind == SwapKind.EXACT_IN) {
+            // Swap fee is always a percentage of the amountCalculated. On ExactIn, subtract it from the calculated
+            // amountOut. Round up to avoid losses during precision loss.
+            locals.swapFeeAmountScaled18 = amountCalculatedScaled18.mulUp(state.swapFeePercentage);
+
             // Need to update `amountCalculatedScaled18` for the onAfterSwap hook.
             amountCalculatedScaled18 -= locals.swapFeeAmountScaled18;
 
@@ -391,6 +383,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert SwapLimit(amountOutRaw, params.limitRaw);
             }
         } else {
+            // To ensure symmetry with EXACT_IN, the swap fee used by ExactOut is
+            // `amountCalculated * fee% / (100% - fee%)`. Add it to the calculated amountIn. Round up to avoid losses
+            // during precision loss.
+            locals.swapFeeAmountScaled18 = amountCalculatedScaled18.mulDivUp(
+                state.swapFeePercentage,
+                state.swapFeePercentage.complement()
+            );
+
             amountCalculatedScaled18 += locals.swapFeeAmountScaled18;
 
             // For `ExactOut` the amount calculated is entering the Vault, so we round up.
@@ -1179,10 +1179,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called.
                 wrappedToken.mint(amountOutWrapped + bufferWrappedSurplus, address(this));
-
-                // Remove approval, in case mint consumed less tokens than we approved, due to convert error.
-                underlyingToken.forceApprove(address(wrappedToken), 0);
             }
+
+            // Remove approval, in case deposit/mint consumed less tokens than we approved.
+            // E.g., A malicious wrapper could not consume all of the underlying tokens and use the vault approval to
+            // drain the vault.
+            underlyingToken.forceApprove(address(wrappedToken), 0);
 
             // ERC4626 output should not be trusted, so it's a good practice to measure the amount of
             // deposited and returned tokens.

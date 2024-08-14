@@ -94,6 +94,9 @@ interface IProtocolFeeController {
     /// @dev Returns the main Vault address.
     function vault() external view returns (IVault);
 
+    /// @dev Collects aggregate fees from the Vault for a given pool.
+    function collectAggregateFees(address pool) external;
+
     /**
      * @notice Getter for the current global protocol swap fee.
      * @return protocolSwapFeePercentage The global protocol swap fee percentage
@@ -202,22 +205,6 @@ interface IProtocolFeeController {
         address poolCreator,
         bool protocolFeeExempt
     ) external returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage);
-
-    /**
-     * @notice Called by the Vault when aggregate swap or yield fees are collected.
-     * @dev This must be called from the Vault, during permissionless collection. Note that since charging protocol
-     * fees (i.e., distributing tokens between pool and fee balances) occurs in the Vault, but fee collection
-     * happens in the ProtocolFeeController, the swap fees reported here may encompass multiple operations.
-     *
-     * @param pool The address of the pool on which the swap fees were charged
-     * @param swapFeeAmounts An array parallel to the pool tokens, with the swap fees collected in each token
-     * @param yieldFeeAmounts An array parallel to the pool tokens, with the yield fees collected in each token
-     */
-    function receiveAggregateFees(
-        address pool,
-        uint256[] memory swapFeeAmounts,
-        uint256[] memory yieldFeeAmounts
-    ) external;
 
     /**
      * @notice Set the global protocol swap fee percentage, used by standard pools.

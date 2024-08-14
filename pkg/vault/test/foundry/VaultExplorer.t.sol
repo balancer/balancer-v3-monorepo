@@ -428,7 +428,7 @@ contract VaultExplorerTest is BaseVaultTest {
         uint256 daiVaultAllowance = vault.allowance(address(dai), lp, address(vault));
         uint256 daiBobAllowance = vault.allowance(address(dai), alice, bob);
 
-        assertEq(daiVaultAllowance, MAX_UINT256, "Wrong DAI Vault allowance");
+        assertEq(daiVaultAllowance, 0, "Wrong DAI Vault allowance");
         assertEq(daiBobAllowance, 0, "Wrong DAI Bob allowance");
 
         assertEq(
@@ -519,7 +519,7 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(swapFeePercentage > 0, "Swap fee is zero");
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(swapFeePercentage);
 
-        (bool success, uint256 dynamicSwapFeePercentage) = explorer.computeDynamicSwapFeePercentage(
+        uint256 dynamicSwapFeePercentage = explorer.computeDynamicSwapFeePercentage(
             pool,
             PoolSwapParams({
                 kind: SwapKind.EXACT_IN,
@@ -532,7 +532,6 @@ contract VaultExplorerTest is BaseVaultTest {
             })
         );
 
-        assertTrue(success, "Vault dynamic fee call failed");
         // Should default to the static fee.
         assertEq(dynamicSwapFeePercentage, swapFeePercentage, "Wrong dynamic fee percentage");
     }
@@ -768,7 +767,7 @@ contract VaultExplorerTest is BaseVaultTest {
 
         uint256 depositAmount = 100e18;
 
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), depositAmount, depositAmount, lp);
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), depositAmount, depositAmount);
         vm.stopPrank();
     }
 }

@@ -325,15 +325,15 @@ interface IVaultExtension {
 
     /**
      * @notice Query the current dynamic swap fee percentage of a pool, given a set of swap parameters.
+     * @dev Reverts if the hook doesn't return the success flag set to `true`.
      * @param pool The pool
      * @param swapParams The swap parameters used to compute the fee
-     * @return success True if the pool has a dynamic swap fee and it can be successfully computed
      * @return dynamicSwapFeePercentage The dynamic swap fee percentage
      */
     function computeDynamicSwapFeePercentage(
         address pool,
         PoolSwapParams memory swapParams
-    ) external view returns (bool, uint256);
+    ) external view returns (uint256);
 
     /**
      * @notice Returns the Protocol Fee Controller address.
@@ -386,7 +386,7 @@ interface IVaultExtension {
      * @param data Contains function signature and args to be passed to the msg.sender
      * @return result Resulting data from the call
      */
-    function quote(bytes calldata data) external payable returns (bytes memory result);
+    function quote(bytes calldata data) external returns (bytes memory result);
 
     /**
      * @notice Performs a callback on msg.sender with arguments provided in `data`.
@@ -403,7 +403,7 @@ interface IVaultExtension {
      *
      * @param data Contains function signature and args to be passed to the msg.sender
      */
-    function quoteAndRevert(bytes calldata data) external payable;
+    function quoteAndRevert(bytes calldata data) external;
 
     /**
      * @notice Checks if the queries enabled on the Vault.

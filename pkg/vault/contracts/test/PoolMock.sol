@@ -20,6 +20,9 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
     // Amounts in are multiplied by the multiplier, amounts out are divided by it.
     uint256 private _multiplier = FixedPoint.ONE;
 
+    // If non-zero, use this return value for `getRate` (otherwise, defer to BalancerPoolToken's base implementation).
+    uint256 private _mockRate;
+
     constructor(IVault vault, string memory name, string memory symbol) BalancerPoolToken(vault, name, symbol) {
         // solhint-previous-line no-empty-blocks
     }
@@ -94,5 +97,13 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
 
     function getMaximumInvariantRatio() external view virtual override returns (uint256) {
         return 1e40; // Something just really big; should always work.
+    }
+
+    function setMockRate(uint256 mockRate) external {
+        _mockRate = mockRate;
+    }
+
+    function getRate() public view override returns (uint256) {
+        return _mockRate == 0 ? super.getRate() : _mockRate;
     }
 }

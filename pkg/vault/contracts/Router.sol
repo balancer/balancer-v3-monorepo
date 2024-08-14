@@ -478,7 +478,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         // minAmountsOut length is checked against tokens length at the vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
-        uint256 ethAmountOut;
+        uint256 ethAmountOut = 0;
         for (uint256 i = 0; i < tokens.length; ++i) {
             uint256 amountOut = amountsOut[i];
             IERC20 token = tokens[i];
@@ -648,8 +648,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
         uint256 amountUnderlyingRaw,
-        uint256 amountWrappedRaw,
-        address sharesOwner
+        uint256 amountWrappedRaw
     ) external returns (uint256 issuedShares) {
         return
             abi.decode(
@@ -659,7 +658,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                         wrappedToken,
                         amountUnderlyingRaw,
                         amountWrappedRaw,
-                        sharesOwner
+                        msg.sender
                     )
                 ),
                 (uint256)

@@ -270,13 +270,21 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectAggregateFees(address pool) public onlyVaultDelegateCall nonReentrant withRegisteredPool(pool) {
+    function collectAggregateFees(
+        address pool
+    )
+        public
+        onlyVaultDelegateCall
+        onlyWhenUnlocked
+        onlyProtocolFeeController
+        withRegisteredPool(pool)
+        returns (uint256[] memory totalSwapFees, uint256[] memory totalYieldFees)
+    {
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
-        address feeController = address(_protocolFeeController);
         uint256 numTokens = poolTokens.length;
 
-        uint256[] memory totalSwapFees = new uint256[](numTokens);
-        uint256[] memory totalYieldFees = new uint256[](numTokens);
+        totalSwapFees = new uint256[](numTokens);
+        totalYieldFees = new uint256[](numTokens);
 
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             IERC20 token = poolTokens[i];
@@ -284,14 +292,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             (totalSwapFees[i], totalYieldFees[i]) = _aggregateFeeAmounts[pool][token].fromPackedBalance();
 
             if (totalSwapFees[i] > 0 || totalYieldFees[i] > 0) {
-                // The ProtocolFeeController will pull tokens from the Vault.
-                token.forceApprove(feeController, totalSwapFees[i] + totalYieldFees[i]);
-
+                // Supply credit for the total amount of fees.
                 _aggregateFeeAmounts[pool][token] = 0;
+                _supplyCredit(token, totalSwapFees[i] + totalYieldFees[i]);
             }
         }
-
-        _protocolFeeController.receiveAggregateFees(pool, totalSwapFees, totalYieldFees);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -414,8 +419,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @inheritdoc IVaultAdmin
     function addLiquidityToBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlying,
-        uint256 amountWrapped,
+        uint256 amountUnderlyingRaw,
+        uint256 amountWrappedRaw,
         address sharesOwner
     )
         public
@@ -427,8 +432,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     {
         address underlyingToken = wrappedToken.asset();
 
+        if (underlyingToken == address(0)) {
+            // Should never happen, but a malicious wrapper could return the zero address and cause the buffer
+            // initialization code to run more than once.
+            revert InvalidUnderlyingTokenAsset();
+        }
+
         // Amount of shares to issue is the total underlying token that the user is depositing.
-        issuedShares = wrappedToken.convertToAssets(amountWrapped) + amountUnderlying;
+        issuedShares = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
 
         if (_bufferAssets[wrappedToken] == address(0)) {
             // Buffer is not initialized yet, so we initialize it.
@@ -452,16 +463,16 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _bufferTotalShares[wrappedToken] += issuedShares;
 
         bufferBalances = PackedTokenBalance.toPackedBalance(
-            bufferBalances.getBalanceRaw() + amountUnderlying,
-            bufferBalances.getBalanceDerived() + amountWrapped
+            bufferBalances.getBalanceRaw() + amountUnderlyingRaw,
+            bufferBalances.getBalanceDerived() + amountWrappedRaw
         );
 
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
-        _takeDebt(IERC20(underlyingToken), amountUnderlying);
-        _takeDebt(wrappedToken, amountWrapped);
+        _takeDebt(IERC20(underlyingToken), amountUnderlyingRaw);
+        _takeDebt(wrappedToken, amountWrappedRaw);
 
-        emit LiquidityAddedToBuffer(wrappedToken, sharesOwner, amountWrapped, amountUnderlying, issuedShares);
+        emit LiquidityAddedToBuffer(wrappedToken, sharesOwner, amountWrappedRaw, amountUnderlyingRaw, issuedShares);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -475,7 +486,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         onlyWhenUnlocked
         authenticate
         nonReentrant
-        returns (uint256 removedUnderlyingBalance, uint256 removedWrappedBalance)
+        returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw)
     {
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
@@ -484,27 +495,27 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         }
         uint256 totalShares = _bufferTotalShares[wrappedToken];
 
-        removedUnderlyingBalance = (bufferBalances.getBalanceRaw() * sharesToRemove) / totalShares;
-        removedWrappedBalance = (bufferBalances.getBalanceDerived() * sharesToRemove) / totalShares;
+        removedUnderlyingBalanceRaw = (bufferBalances.getBalanceRaw() * sharesToRemove) / totalShares;
+        removedWrappedBalanceRaw = (bufferBalances.getBalanceDerived() * sharesToRemove) / totalShares;
 
         _bufferLpShares[wrappedToken][sharesOwner] -= sharesToRemove;
         _bufferTotalShares[wrappedToken] -= sharesToRemove;
 
         bufferBalances = PackedTokenBalance.toPackedBalance(
-            bufferBalances.getBalanceRaw() - removedUnderlyingBalance,
-            bufferBalances.getBalanceDerived() - removedWrappedBalance
+            bufferBalances.getBalanceRaw() - removedUnderlyingBalanceRaw,
+            bufferBalances.getBalanceDerived() - removedWrappedBalanceRaw
         );
 
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
-        _supplyCredit(IERC20(_bufferAssets[wrappedToken]), removedUnderlyingBalance);
-        _supplyCredit(wrappedToken, removedWrappedBalance);
+        _supplyCredit(IERC20(_bufferAssets[wrappedToken]), removedUnderlyingBalanceRaw);
+        _supplyCredit(wrappedToken, removedWrappedBalanceRaw);
 
         emit LiquidityRemovedFromBuffer(
             wrappedToken,
             sharesOwner,
-            removedWrappedBalance,
-            removedUnderlyingBalance,
+            removedWrappedBalanceRaw,
+            removedUnderlyingBalanceRaw,
             sharesToRemove
         );
     }
