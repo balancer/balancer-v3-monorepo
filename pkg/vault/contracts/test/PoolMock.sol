@@ -9,10 +9,11 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 
 import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 
-contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
+contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
     using FixedPoint for uint256;
 
     uint256 public constant MIN_INIT_BPT = 1e6;
@@ -23,7 +24,11 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
     // If non-zero, use this return value for `getRate` (otherwise, defer to BalancerPoolToken's base implementation).
     uint256 private _mockRate;
 
-    constructor(IVault vault, string memory name, string memory symbol) BalancerPoolToken(vault, name, symbol) {
+    constructor(
+        IVault vault,
+        string memory name,
+        string memory symbol
+    ) BalancerPoolToken(vault, name, symbol) PoolInfo(vault) {
         // solhint-previous-line no-empty-blocks
     }
 
