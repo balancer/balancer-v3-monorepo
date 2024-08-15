@@ -920,6 +920,9 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             // If the wrapped token was not initialized in the vault, the router treats it as a standard token.
             if (!_vault.isERC4626Initialized(wrappedToken)) {
                 underlyingAmountsOut[i] = wrappedAmountsOut[i];
+                if (isStaticCall == false) {
+                    _sendTokenOut(params.sender, erc4626PoolTokens[i], underlyingAmountsOut[i], params.wethIsEth);
+                }
                 continue;
             }
 
