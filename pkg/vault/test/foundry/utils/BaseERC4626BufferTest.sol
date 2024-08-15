@@ -41,7 +41,6 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         _setupWrappedTokens();
-
         _initializeBuffers();
         _initializeERC4626Pool();
     }
@@ -183,7 +182,8 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         amountsIn[waDaiIdx] = waDaiBobShares;
         amountsIn[waUsdcIdx] = waUsdcBobShares;
 
-        _initPool(erc4626Pool, amountsIn, erc4626PoolInitialBPTAmount - MIN_BPT);
+        // Since token rates are rounding down, the BPT calculation may be a little less than the predicted amount.
+        _initPool(erc4626Pool, amountsIn, erc4626PoolInitialBPTAmount - errorTolerance - MIN_BPT);
 
         IERC20(address(erc4626Pool)).approve(address(permit2), MAX_UINT256);
         permit2.approve(address(erc4626Pool), address(router), type(uint160).max, type(uint48).max);
@@ -217,6 +217,6 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         vm.stopPrank();
         // Changing asset balances without minting shares makes the balance be different than 1.
         dai.mint(address(waDAI), 2 * erc4626PoolInitialAmount);
-        usdc.mint(address(waUSDC), 23 * erc4626PoolInitialAmount);
+        usdc.mint(address(waUSDC), 4 * erc4626PoolInitialAmount);
     }
 }

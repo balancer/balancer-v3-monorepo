@@ -21,6 +21,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
     uint256 internal tooLargeSwapAmount = erc4626PoolInitialAmount / 2;
     // We will swap with 10% of the buffer.
     uint256 internal swapAmount;
+    uint256 internal constant MAX_ERROR = 10;
 
     function setUp() public virtual override {
         bufferInitialAmount = erc4626PoolInitialAmount / 100;
@@ -121,7 +122,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
             tokenIn: dai,
             steps: steps,
             exactAmountIn: amount,
-            minAmountOut: amount - 1 // rebalance tests are a wei off
+            minAmountOut: amount - MAX_ERROR // Remove a max of 10 wei to compensate for rounding issues and rebalance
         });
     }
 
@@ -142,7 +143,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
             tokenIn: dai,
             steps: steps,
-            maxAmountIn: amount,
+            maxAmountIn: amount + MAX_ERROR, // Add a max of 10 wei to compensate for rounding issues and rebalance
             exactAmountOut: amount
         });
     }
