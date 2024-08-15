@@ -81,10 +81,13 @@ contract BatchRouterNestedPools is BaseVaultTest {
         // Also, we only need to account deadTokens once, since we calculate the bpts in for the parent pool using
         // totalSupply (so the burned MIN_BPT amount does not affect the bpt in calculation and the amounts out are
         // perfectly proportional to the parent pool balance)
-        expectedAmountsOut[vars.daiIdx] = (poolInitAmount.mulDown(proportionToRemove) * 2) - deadTokens;
-        expectedAmountsOut[vars.wethIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens;
-        expectedAmountsOut[vars.wstethIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens;
-        expectedAmountsOut[vars.usdcIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens;
+        expectedAmountsOut[vars.daiIdx] =
+            (poolInitAmount.mulDown(proportionToRemove) * 2) -
+            deadTokens -
+            MAX_ROUND_ERROR;
+        expectedAmountsOut[vars.wethIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
+        expectedAmountsOut[vars.wstethIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
+        expectedAmountsOut[vars.usdcIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
 
         vm.prank(lp);
         (address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
@@ -93,7 +96,6 @@ contract BatchRouterNestedPools is BaseVaultTest {
         _fillNestedPoolTestLocalsAfter(vars);
         uint256 burnedChildPoolABpts = vars.childPoolABefore.totalSupply - vars.childPoolAAfter.totalSupply;
         uint256 burnedChildPoolBBpts = vars.childPoolBBefore.totalSupply - vars.childPoolBAfter.totalSupply;
-        uint256 burnedParentPoolBpts = vars.parentPoolBefore.totalSupply - vars.parentPoolAfter.totalSupply;
 
         // Check returned token array.
         assertEq(tokensOut.length, 4, "tokensOut length is wrong");

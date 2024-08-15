@@ -8,6 +8,7 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -1093,6 +1094,10 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         amountsOut = new uint256[](tokensOut.length);
         for (uint256 i = 0; i < tokensOut.length; ++i) {
             amountsOut[i] = _currentSwapTokenOutAmounts().tGet(tokensOut[i]);
+
+            if (amountsOut[i] < params.minAmountsOut[i]) {
+                revert IVaultErrors.AmountOutBelowMin(IERC20(tokensOut[i]), amountsOut[i], params.minAmountsOut[i]);
+            }
         }
 
         _settlePaths(params.sender, false);
