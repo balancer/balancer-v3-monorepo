@@ -53,6 +53,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         uint256[] poolTokens;
         uint256 poolSupply;
         uint256 poolInvariant;
+        uint256[] swapFeeAmounts;
+        uint256[] yieldFeeAmounts;
     }
 
     uint256 constant MIN_BPT = 1e6;
@@ -239,15 +241,19 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         (IERC20[] memory tokens, , uint256[] memory poolBalances, uint256[] memory lastBalancesLiveScaled18) = vault
             .getPoolTokenInfo(pool);
         balances.poolTokens = poolBalances;
+        uint256 numTokens = tokens.length;
+
         balances.poolInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18);
-        balances.userTokens = new uint256[](poolBalances.length);
-        balances.aliceTokens = new uint256[](poolBalances.length);
-        balances.bobTokens = new uint256[](poolBalances.length);
-        balances.hookTokens = new uint256[](poolBalances.length);
-        balances.lpTokens = new uint256[](poolBalances.length);
-        balances.vaultTokens = new uint256[](poolBalances.length);
-        balances.vaultReserves = new uint256[](poolBalances.length);
-        for (uint256 i = 0; i < poolBalances.length; ++i) {
+        balances.userTokens = new uint256[](numTokens);
+        balances.aliceTokens = new uint256[](numTokens);
+        balances.bobTokens = new uint256[](numTokens);
+        balances.hookTokens = new uint256[](numTokens);
+        balances.lpTokens = new uint256[](numTokens);
+        balances.vaultTokens = new uint256[](numTokens);
+        balances.vaultReserves = new uint256[](numTokens);
+        balances.swapFeeAmounts = new uint256[](numTokens);
+        balances.yieldFeeAmounts = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
             // Don't assume token ordering.
             balances.userTokens[i] = tokens[i].balanceOf(user);
             balances.aliceTokens[i] = tokens[i].balanceOf(alice);
@@ -256,6 +262,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
             balances.lpTokens[i] = tokens[i].balanceOf(lp);
             balances.vaultTokens[i] = tokens[i].balanceOf(address(vault));
             balances.vaultReserves[i] = vault.getReservesOf(tokens[i]);
+            balances.swapFeeAmounts[i] = vault.manualGetAggregateSwapFeeAmount(pool, tokens[i]);
+            balances.yieldFeeAmounts[i] = vault.manualGetAggregateYieldFeeAmount(pool, tokens[i]);
         }
     }
 
