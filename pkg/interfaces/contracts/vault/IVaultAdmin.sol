@@ -259,7 +259,7 @@ interface IVaultAdmin {
 
     /**
      * @notice Returns the asset registered for a given wrapped token.
-     *
+     * @dev The asset can never change after buffer initialization.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @return underlyingToken Address of the underlying token registered for the wrapper; `address(0)` if the buffer
      * has not been initialized.

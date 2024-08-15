@@ -286,22 +286,22 @@ interface IVaultErrors {
     error PoolPauseWindowExpired(address pool);
 
     /*******************************************************************************
-                                        Buffers
+                            Yield-bearing token buffers
     *******************************************************************************/
 
-    /// @dev Buffer was already initialized for the given wrapped token.
+    /// @dev Buffer for the given wrapped token was already initialized.
     error BufferAlreadyInitialized(IERC4626 wrappedToken);
 
-    /// @dev Buffer is not initialized for the given wrapped token.
+    /// @dev Buffer for the given wrapped token was not initialized.
     error BufferNotInitialized(IERC4626 wrappedToken);
 
     /// @dev The user is trying to remove more than their allocated shares from the buffer.
     error NotEnoughBufferShares();
 
-    /// @dev The wrapped token asset does not match the underlying token of the swap path.
+    /// @dev The wrapped token asset does not match the underlying token.
     error WrongWrappedTokenAsset(IERC4626 wrappedToken, address underlyingToken);
 
-    /// @dev The underlying token asset reported by a wrapped token is the zero address.
+    /// @dev A wrapped token reported the zero address as its underlying token asset.
     error InvalidUnderlyingTokenAsset();
 
     /// @dev The wrappedToken wrap/unwrap function did not deposit/return the expected amount of underlying tokens.

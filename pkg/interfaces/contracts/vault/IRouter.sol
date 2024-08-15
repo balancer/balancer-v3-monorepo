@@ -314,14 +314,14 @@ interface IRouter {
 
     /**
      * @notice Adds liquidity for the first time to a yield-bearing token buffer (internal ERC4626 buffer in the Vault).
-     * @dev Calling this method binds the wrapped token to its underlying assets internally; the asset in the wrapper
-     * cannot change afterwards, otherwise every other operation (add / remove / wrap / unwrap) will fail for the
-     * wrapper.
+     * @dev Calling this method binds the wrapped token to its underlying asset internally; the asset in the wrapper
+     * cannot change afterwards, or every other operation on that wrapper (add / remove / wrap / unwrap) will fail.
+
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
      * @param amountWrappedRaw Amount of wrapped tokens that will be deposited into the buffer
      * @return issuedShares the amount of tokens sharesOwner has in the buffer, denominated in underlying tokens
-     * (This is the BPT of the vault's internal ERC4626 buffers)
+     * (This is the BPT of the vault's internal ERC4626 buffer.)
      */
     function initializeBuffer(
         IERC4626 wrappedToken,
@@ -348,6 +348,7 @@ interface IRouter {
      * @notice Removes liquidity from a yield-bearing token buffer (internal ERC4626 buffer in the Vault).
      * @dev Only proportional withdrawals are supported, and removing liquidity is permissioned.
      * Requires the buffer to be initialized beforehand.
+
      * @param wrappedToken Address of a wrapped token that implements IERC4626
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
      * total shares
