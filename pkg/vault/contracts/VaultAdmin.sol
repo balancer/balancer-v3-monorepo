@@ -538,10 +538,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         }
     }
 
+    /// @dev Delegate authentication to governance.
     function _ensureAuthenticated(address pool) private view {
         bytes32 actionId = getActionId(msg.sig);
 
-        // Delegate to governance.
         if (_canPerform(actionId, msg.sender, pool) == false) {
             revert SenderNotAllowed();
         }
