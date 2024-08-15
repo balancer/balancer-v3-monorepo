@@ -98,4 +98,30 @@ library InputHelpers {
             previous = current;
         }
     }
+
+    /**
+     * @dev Sort an array of addresses, mutating in place (and also returning them).
+     * This assumes the tokens have been (or will be) validated elsewhere for length
+     * and non-duplication. All this does is the sorting.
+     *
+     * A bubble sort should be gas- and bytecode-efficient enough for such small arrays.
+     * Could have also done "manual" comparisons for each of the cases, but this is
+     * about the same number of operations, and more concise.
+     *
+     * This is less efficient for larger token count (i.e., above 4), but such pools should
+     * be rare. For now, sorting is only used to remove liquidity from nested pools in the
+     * batch router.
+     */
+    function sortAddresses(address[] memory addresses) internal pure returns (address[] memory) {
+        for (uint256 i = 0; i < addresses.length - 1; ++i) {
+            for (uint256 j = 0; j < addresses.length - i - 1; ++j) {
+                if (addresses[j] > addresses[j + 1]) {
+                    // Swap if they're out of order.
+                    (addresses[j], addresses[j + 1]) = (addresses[j + 1], addresses[j]);
+                }
+            }
+        }
+
+        return addresses;
+    }
 }

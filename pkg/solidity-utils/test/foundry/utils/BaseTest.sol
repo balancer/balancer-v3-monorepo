@@ -108,6 +108,40 @@ abstract contract BaseTest is Test, GasSnapshot {
         idxTokenB = idxTokenA == 0 ? 1 : 0;
     }
 
+    struct AddressWithIndex {
+        address addr;
+        uint256 index;
+    }
+
+    function getSortedIndexes(address[] memory addresses) public pure returns (uint256[] memory) {
+        uint256 length = addresses.length;
+        AddressWithIndex[] memory addressWithIndexes = new AddressWithIndex[](length);
+
+        // Populate the array with addresses and their original indexes.
+        for (uint256 i = 0; i < length; i++) {
+            addressWithIndexes[i] = AddressWithIndex(addresses[i], i);
+        }
+
+        // Sort the array based on the address values.
+        for (uint256 i = 0; i < length - 1; i++) {
+            for (uint256 j = i + 1; j < length; j++) {
+                if (addressWithIndexes[i].addr > addressWithIndexes[j].addr) {
+                    AddressWithIndex memory temp = addressWithIndexes[i];
+                    addressWithIndexes[i] = addressWithIndexes[j];
+                    addressWithIndexes[j] = temp;
+                }
+            }
+        }
+
+        // Extract the original indexes in sorted order
+        uint256[] memory sortedIndexes = new uint256[](length);
+        for (uint256 i = 0; i < length; i++) {
+            sortedIndexes[i] = addressWithIndexes[i].index;
+        }
+
+        return sortedIndexes;
+    }
+
     /// @dev Creates an ERC20 test token, labels its address.
     function createERC20(string memory name, uint8 decimals) internal returns (ERC20TestToken token) {
         token = new ERC20TestToken(name, name, decimals);

@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/Test.sol";
+
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
@@ -12,6 +14,7 @@ import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/mis
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import {
     TransientEnumerableSet
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
@@ -996,5 +999,108 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
         // Return the rest of ETH to sender.
         _returnEth(sender);
+    }
+
+    /***************************************************************************
+                                   Nested pools
+    ***************************************************************************/
+
+    function removeLiquidityProportionalFromNestedPools(
+        address parentPool,
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut,
+        bytes memory userData
+    ) external returns (address[] memory tokensOut, uint256[] memory amountsOut) {
+        (tokensOut, amountsOut) = abi.decode(
+            _vault.unlock(
+                abi.encodeWithSelector(
+                    BatchRouter.removeLiquidityProportionalFromNestedPoolsHook.selector,
+                    RemoveLiquidityHookParams({
+                        sender: msg.sender,
+                        pool: parentPool,
+                        minAmountsOut: minAmountsOut,
+                        maxBptAmountIn: exactBptAmountIn,
+                        kind: RemoveLiquidityKind.PROPORTIONAL,
+                        wethIsEth: false,
+                        userData: userData
+                    })
+                )
+            ),
+            (address[], uint256[])
+        );
+    }
+
+    function removeLiquidityProportionalFromNestedPoolsHook(
+        RemoveLiquidityHookParams calldata params
+    ) external nonReentrant onlyVault returns (address[] memory tokensOut, uint256[] memory amountsOut) {
+        //        // The sender must have the BPT tokens. Therefore, we can transfer them to the router, which acts as an
+        //        // intermediary. If the sender is the router, we just skip this step (useful for queries).
+        //        // This saves one permit(1) approval for the BPT to the router; if we burned tokens directly
+        //        // from the sender we would need their approval.
+        //        if (params.sender != address(this)) {
+        //            _permit2.transferFrom(params.sender, address(this), uint160(params.maxBptAmountIn), address(params.pool));
+        //        }
+
+        IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
+
+        (, uint256[] memory parentPoolAmountsOut, ) = _vault.removeLiquidity(
+            RemoveLiquidityParams({
+                pool: params.pool,
+                from: params.sender,
+                maxBptAmountIn: params.maxBptAmountIn,
+                minAmountsOut: new uint256[](parentPoolTokens.length),
+                kind: params.kind,
+                userData: params.userData
+            })
+        );
+
+        for (uint256 i = 0; i < parentPoolTokens.length; i++) {
+            address childPool = address(parentPoolTokens[i]);
+
+            if (_vault.isPoolRegistered(childPool)) {
+                // Token is a BPT, so remove liquidity from the pool.
+
+                // We don't expect the sender to have BPT to burn. So, we flashloan tokens here (which should in
+                // practice just use existing credit).
+                _vault.sendTo(IERC20(childPool), address(this), parentPoolAmountsOut[i]);
+
+                IERC20[] memory childPoolTokens = _vault.getPoolTokens(childPool);
+                // Router is an intermediary in this case. The Vault will burn tokens from the router, so Router is
+                // both owner and spender (which doesn't need approval).
+                (, uint256[] memory childPoolAmountsOut, ) = _vault.removeLiquidity(
+                    RemoveLiquidityParams({
+                        pool: childPool,
+                        from: address(this),
+                        maxBptAmountIn: parentPoolAmountsOut[i],
+                        minAmountsOut: new uint256[](childPoolTokens.length),
+                        kind: params.kind,
+                        userData: params.userData
+                    })
+                );
+                // Return amounts to user.
+                for (uint256 j = 0; j < childPoolTokens.length; j++) {
+                    console.log(address(childPoolTokens[j]), childPoolAmountsOut[j]);
+
+                    _currentSwapTokensOut().add(address(childPoolTokens[j]));
+                    _currentSwapTokenOutAmounts().tAdd(address(childPoolTokens[j]), childPoolAmountsOut[j]);
+                }
+            } else {
+                console.log(childPool, parentPoolAmountsOut[i]);
+
+                // Token is not a BPT, so return the amount to the user.
+                _currentSwapTokensOut().add(childPool);
+                _currentSwapTokenOutAmounts().tAdd(childPool, parentPoolAmountsOut[i]);
+            }
+        }
+
+        // The hook writes current swap token and token amounts out.
+        // We copy that information to memory to return it before it is deleted during settlement.
+        tokensOut = InputHelpers.sortAddresses(_currentSwapTokensOut().values()); // Copy transient storage to memory
+        amountsOut = new uint256[](tokensOut.length);
+        for (uint256 i = 0; i < tokensOut.length; ++i) {
+            amountsOut[i] = _currentSwapTokenOutAmounts().tGet(tokensOut[i]);
+        }
+
+        _settlePaths(params.sender, false);
     }
 }

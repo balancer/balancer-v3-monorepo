@@ -234,4 +234,24 @@ interface IBatchRouter {
         uint256 exactBptAmountIn,
         bytes memory userData
     ) external returns (uint256[] memory underlyingAmountsOut);
+
+    /***************************************************************************
+                                   Nested pools
+    ***************************************************************************/
+
+    /**
+     * @dev A nested pool is one in which part or all tokens of the pool are BPTs from another pool.
+     * @param parentPool Address of the highest level pool (which contains BPTs to other pools)
+     * @param exactBptAmountIn Exact amount of pool tokens provided for the query
+     * @param minAmountsOut Minimum amounts of each base token to be received, sorted by token address
+     * @param userData Additional (optional) data required for the query
+     * @return tokensOut Output token addresses, sorted alphabetically
+     * @return amountsOut Actual amounts of tokens received, sorted according to tokensOut array
+     */
+    function removeLiquidityProportionalFromNestedPools(
+        address parentPool,
+        uint256 exactBptAmountIn,
+        uint256[] memory minAmountsOut,
+        bytes memory userData
+    ) external returns (address[] memory tokensOut, uint256[] memory amountsOut);
 }
