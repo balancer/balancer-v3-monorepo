@@ -346,12 +346,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
      * @param recoveryMode The desired recovery mode state
      */
     function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
-        // Update poolConfigBits
-        _poolConfigBits[pool] = _poolConfigBits[pool].setPoolInRecoveryMode(recoveryMode);
-
         if (recoveryMode == false) {
             _writePoolBalancesToStorage(pool, _loadPoolData(pool, Rounding.ROUND_DOWN));
         }
+
+        // Update poolConfigBits. `_writePoolBalancesToStorage` updates *only* balances, not yield fees, which are
+        // forfeited during Recovery Mode. To prevent yield fees from being charged, `_loadPoolData` must be called
+        // while still in Recovery Mode, so updating the Recovery Mode bit must be done last, after the accounting.
+        _poolConfigBits[pool] = _poolConfigBits[pool].setPoolInRecoveryMode(recoveryMode);
 
         emit PoolRecoveryModeStateChanged(pool, recoveryMode);
     }
