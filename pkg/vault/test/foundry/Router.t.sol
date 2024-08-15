@@ -490,6 +490,26 @@ contract RouterTest is BaseVaultTest {
             beforeBalances.vaultReserves[usdcIdx] - amountsOut[usdcIdx],
             "Vault Reserve USDC is wrong"
         );
+        assertEq(
+            afterBalances.swapFeeAmounts[daiIdx],
+            beforeBalances.swapFeeAmounts[daiIdx],
+            "Vault DAI Swap Fee amount changed"
+        );
+        assertEq(
+            afterBalances.swapFeeAmounts[usdcIdx],
+            beforeBalances.swapFeeAmounts[usdcIdx],
+            "Vault USDC Swap Fee amount changed"
+        );
+        assertEq(
+            afterBalances.yieldFeeAmounts[daiIdx],
+            beforeBalances.yieldFeeAmounts[daiIdx],
+            "Vault DAI Yield Fee amount changed"
+        );
+        assertEq(
+            afterBalances.yieldFeeAmounts[usdcIdx],
+            beforeBalances.yieldFeeAmounts[usdcIdx],
+            "Vault USDC Yield Fee amount changed"
+        );
     }
 
     function testSwapExactInWETH() public {
