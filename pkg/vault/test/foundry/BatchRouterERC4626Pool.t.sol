@@ -683,7 +683,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
     function testInvalidUnderlyingToken() public {
         vm.expectRevert(IVaultErrors.InvalidUnderlyingTokenAsset.selector);
         vm.prank(lp);
-        router.addLiquidityToBuffer(waInvalid, bufferInitialAmount, bufferInitialAmount, lp);
+        router.addLiquidityToBuffer(waInvalid, bufferInitialAmount, bufferInitialAmount);
     }
 
     function _initializePartialERC4626Pool() private returns (address newPool) {

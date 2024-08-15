@@ -42,6 +42,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
     }
 
     function testAddLiquidityEvents() public {
+        vm.startPrank(lp);
         // Can add the same amount again, since twice as much was minted.
         vm.expectEmit();
         emit IVaultEvents.LiquidityAddedToBuffer(
@@ -51,7 +52,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             bufferTestAmount,
             bufferTestAmount + waDAI.convertToAssets(bufferTestAmount)
         );
-        router.addLiquidityToBuffer(waDAI, bufferTestAmount, bufferTestAmount, lp);
+        router.addLiquidityToBuffer(waDAI, bufferTestAmount, bufferTestAmount);
 
         vm.expectEmit();
         emit IVaultEvents.LiquidityAddedToBuffer(
@@ -61,7 +62,8 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             bufferTestAmount,
             bufferTestAmount + waUSDC.convertToAssets(bufferTestAmount)
         );
-        router.addLiquidityToBuffer(waUSDC, bufferTestAmount, bufferTestAmount, lp);
+        router.addLiquidityToBuffer(waUSDC, bufferTestAmount, bufferTestAmount);
+        vm.stopPrank();
     }
 
     function testRemoveLiquidityEvents() public {
@@ -193,9 +195,9 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
     function testYieldBearingPoolSwapUnbalancedBufferExactIn() public {
         vm.startPrank(lp);
         // Surplus of underlying.
-        router.addLiquidityToBuffer(waDAI, unbalancedUnderlyingDelta, 0, lp);
+        router.addLiquidityToBuffer(waDAI, unbalancedUnderlyingDelta, 0);
         // Surplus of wrapped.
-        router.addLiquidityToBuffer(waUSDC, 0, waUSDC.convertToShares(unbalancedUnderlyingDelta), lp);
+        router.addLiquidityToBuffer(waUSDC, 0, waUSDC.convertToShares(unbalancedUnderlyingDelta));
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
@@ -228,9 +230,9 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
     function testYieldBearingPoolSwapUnbalancedBufferExactOut() public {
         vm.startPrank(lp);
         // Surplus of underlying.
-        router.addLiquidityToBuffer(waDAI, unbalancedUnderlyingDelta, 0, lp);
+        router.addLiquidityToBuffer(waDAI, unbalancedUnderlyingDelta, 0);
         // Surplus of wrapped.
-        router.addLiquidityToBuffer(waUSDC, 0, waUSDC.convertToShares(unbalancedUnderlyingDelta), lp);
+        router.addLiquidityToBuffer(waUSDC, 0, waUSDC.convertToShares(unbalancedUnderlyingDelta));
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);

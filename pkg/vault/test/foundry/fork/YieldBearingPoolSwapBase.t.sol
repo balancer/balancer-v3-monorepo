@@ -994,14 +994,12 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         router.addLiquidityToBuffer(
             ybToken2,
             _token2BufferInitAmount,
-            ybToken2.convertToShares(_token2BufferInitAmount),
-            lp
+            ybToken2.convertToShares(_token2BufferInitAmount)
         );
         router.addLiquidityToBuffer(
             ybToken1,
             _token1BufferInitAmount,
-            ybToken1.convertToShares(_token1BufferInitAmount),
-            lp
+            ybToken1.convertToShares(_token1BufferInitAmount)
         );
         vm.stopPrank();
     }
