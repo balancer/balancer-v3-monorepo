@@ -54,18 +54,6 @@ contract BatchRouterNestedPools is BaseVaultTest {
         vm.startPrank(lp);
         _initPool(parentPool, amountsInParentPool, 0);
         vm.stopPrank();
-        _printTokensAndBalances(childPoolA);
-        _printTokensAndBalances(childPoolB);
-        _printTokensAndBalances(parentPool);
-    }
-
-    function _printTokensAndBalances(address pool) private {
-        console.log("---Pool: ", pool, " ---");
-        (IERC20[] memory poolTokens, , uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(pool);
-        for (uint256 i = 0; i < poolTokens.length; i++) {
-            console.log(address(poolTokens[i]), poolBalances[i]);
-        }
-        console.log("------");
     }
 
     function testRemoveLiquidityNestedPool__Fuzz() public {
@@ -86,13 +74,21 @@ contract BatchRouterNestedPools is BaseVaultTest {
         uint256 wstethIdx = tokenIndexes[2];
         uint256 usdcIdx = tokenIndexes[3];
 
+        // During pool initialization, MIN_BPT amount of BPT is burned to address(0), so that the pool cannot be
+        // completely drained. We need to discount this amount of tokens from the total liquidity that we can extract
+        // from the child pools.
+        uint256 deadTokens = (MIN_BPT / 2).mulDown(proportionToRemove);
+
         uint256[] memory expectedAmountsOut = new uint256[](4);
         // DAI exists in childPoolB and parentPool, so we expect 2x more DAI than the other tokens.
         // Since pools are in their initial state, we can use poolInitAmount as the balance of each token in the pool.
-        expectedAmountsOut[daiIdx] = poolInitAmount.mulDown(proportionToRemove) * 2;
-        expectedAmountsOut[wethIdx] = poolInitAmount.mulDown(proportionToRemove);
-        expectedAmountsOut[wstethIdx] = poolInitAmount.mulDown(proportionToRemove);
-        expectedAmountsOut[usdcIdx] = poolInitAmount.mulDown(proportionToRemove);
+        // Also, we only need to account deadTokens once, since we calculate the bpts in for the parent pool using
+        // totalSupply (so the burned MIN_BPT amount does not affect the bpt in calculation and the amounts out are
+        // perfectly proportional to the parent pool balance)
+        expectedAmountsOut[daiIdx] = (poolInitAmount.mulDown(proportionToRemove) * 2) - deadTokens;
+        expectedAmountsOut[wethIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens;
+        expectedAmountsOut[wstethIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens;
+        expectedAmountsOut[usdcIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens;
 
         vm.prank(lp);
         (address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter

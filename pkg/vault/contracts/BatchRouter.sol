@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/Test.sol";
-
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
@@ -1079,14 +1077,10 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                 );
                 // Return amounts to user.
                 for (uint256 j = 0; j < childPoolTokens.length; j++) {
-                    console.log(address(childPoolTokens[j]), childPoolAmountsOut[j]);
-
                     _currentSwapTokensOut().add(address(childPoolTokens[j]));
                     _currentSwapTokenOutAmounts().tAdd(address(childPoolTokens[j]), childPoolAmountsOut[j]);
                 }
             } else {
-                console.log(childPool, parentPoolAmountsOut[i]);
-
                 // Token is not a BPT, so return the amount to the user.
                 _currentSwapTokensOut().add(childPool);
                 _currentSwapTokenOutAmounts().tAdd(childPool, parentPoolAmountsOut[i]);
