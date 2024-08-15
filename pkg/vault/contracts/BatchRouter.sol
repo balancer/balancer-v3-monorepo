@@ -1032,14 +1032,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     function removeLiquidityProportionalFromNestedPoolsHook(
         RemoveLiquidityHookParams calldata params
     ) external nonReentrant onlyVault returns (address[] memory tokensOut, uint256[] memory amountsOut) {
-        //        // The sender must have the BPT tokens. Therefore, we can transfer them to the router, which acts as an
-        //        // intermediary. If the sender is the router, we just skip this step (useful for queries).
-        //        // This saves one permit(1) approval for the BPT to the router; if we burned tokens directly
-        //        // from the sender we would need their approval.
-        //        if (params.sender != address(this)) {
-        //            _permit2.transferFrom(params.sender, address(this), uint160(params.maxBptAmountIn), address(params.pool));
-        //        }
-
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
 
         (, uint256[] memory parentPoolAmountsOut, ) = _vault.removeLiquidity(
