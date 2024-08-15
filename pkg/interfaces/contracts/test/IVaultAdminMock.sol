@@ -40,4 +40,8 @@ interface IVaultAdminMock {
     function mockWithValidPercentage(uint256 percentage) external view;
 
     function mockEnsurePoolNotInRecoveryMode(address pool) external view;
+
+    function manualMintBufferShares(IERC4626 wrappedToken, address to, uint256 amount) external;
+
+    function manualMintMinimumBufferSupplyReserve(IERC4626 wrappedToken) external;
 }

@@ -204,6 +204,70 @@ contract VaultAdminUnitTest is BaseVaultTest {
         assertEq(vault.getBufferTotalShares(waDAI), issuedShares + _MINIMUM_TOTAL_SUPPLY, "Wrong total shares");
     }
 
+    function testMintMinimumBufferSupplyReserve() public {
+        vm.expectEmit();
+        emit IVaultEvents.BufferSharesMinted(waDAI, address(0), _MINIMUM_TOTAL_SUPPLY);
+        vault.manualMintMinimumBufferSupplyReserve(waDAI);
+
+        assertEq(vault.getBufferOwnerShares(waDAI, address(0)), _MINIMUM_TOTAL_SUPPLY, "address(0): wrong shares");
+        assertEq(vault.getBufferTotalShares(waDAI), _MINIMUM_TOTAL_SUPPLY, "Wrong total buffer shares");
+    }
+
+    function testMintBufferShares() public {
+        // 1st  mint
+        uint256 amountToMint = _MINIMUM_TOTAL_SUPPLY;
+        uint256 totalMinted = amountToMint;
+
+        vm.expectEmit();
+        emit IVaultEvents.BufferSharesMinted(waDAI, bob, amountToMint);
+        vault.manualMintBufferShares(waDAI, bob, amountToMint);
+
+        assertEq(vault.getBufferOwnerShares(waDAI, bob), amountToMint, "Bob: Incorrect buffer shares (1)");
+        assertEq(vault.getBufferTotalShares(waDAI), amountToMint, "Wrong total buffer shares (1)");
+
+        // 2nd mint
+        amountToMint = _MINIMUM_TOTAL_SUPPLY + 12345;
+        totalMinted += amountToMint;
+
+        vm.expectEmit();
+        emit IVaultEvents.BufferSharesMinted(waDAI, alice, amountToMint);
+        vault.manualMintBufferShares(waDAI, alice, amountToMint);
+
+        assertEq(vault.getBufferOwnerShares(waDAI, alice), amountToMint, "Alice: Incorrect buffer shares");
+        assertEq(vault.getBufferTotalShares(waDAI), totalMinted, "Wrong total buffer shares (2)");
+
+        // 3rd mint
+        amountToMint = 4321;
+        totalMinted += amountToMint;
+
+        vm.expectEmit();
+        emit IVaultEvents.BufferSharesMinted(waDAI, bob, amountToMint);
+        vault.manualMintBufferShares(waDAI, bob, amountToMint);
+        assertEq(
+            vault.getBufferOwnerShares(waDAI, bob),
+            _MINIMUM_TOTAL_SUPPLY + amountToMint,
+            "Bob: Incorrect buffer shares (2)"
+        );
+        assertEq(vault.getBufferTotalShares(waDAI), totalMinted, "Wrong total buffer shares (3)");
+    }
+
+    function testMintBufferSharesBelowMinimumTotalSupply() public {
+        uint256 supplyBelowMin = _MINIMUM_TOTAL_SUPPLY - 1;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IERC20MultiTokenErrors.TotalSupplyTooLow.selector,
+                supplyBelowMin,
+                _MINIMUM_TOTAL_SUPPLY
+            )
+        );
+        vault.manualMintBufferShares(waDAI, bob, supplyBelowMin);
+    }
+
+    function testMintBufferSharesIInvalidReceiver() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferSharesInvalidReceiver.selector, address(0)));
+        vault.manualMintBufferShares(waDAI, address(0), _MINIMUM_TOTAL_SUPPLY);
+    }
+
     function _initializeBob() private {
         vm.startPrank(bob);
         dai.approve(address(waDAI), underlyingTokensToDeposit);

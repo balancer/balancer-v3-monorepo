@@ -73,4 +73,12 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
     function mockEnsurePoolNotInRecoveryMode(address pool) external view {
         _ensurePoolNotInRecoveryMode(pool);
     }
+
+    function manualMintBufferShares(IERC4626 wrappedToken, address to, uint256 amount) external {
+        _mintBufferShares(wrappedToken, to, amount);
+    }
+
+    function manualMintMinimumBufferSupplyReserve(IERC4626 wrappedToken) external {
+        _mintMinimumBufferSupplyReserve(wrappedToken);
+    }
 }
