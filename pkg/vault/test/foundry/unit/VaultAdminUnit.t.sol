@@ -148,7 +148,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
         vault.manualSetIsUnlocked(true);
         waDAI.setAsset(IERC20(address(0)));
 
-        vm.expectRevert(IVaultErrors.InvalidUnderlyingTokenAsset.selector);
+        vm.expectRevert(IVaultErrors.InvalidUnderlyingToken.selector);
         vault.initializeBuffer(waDAI, liquidityAmount, liquidityAmount, bob);
     }
 

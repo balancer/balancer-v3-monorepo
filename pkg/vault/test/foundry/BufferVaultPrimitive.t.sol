@@ -94,7 +94,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         vm.prank(lp);
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultErrors.WrongWrappedTokenAsset.selector, address(waDAI), address(usdc))
+            abi.encodeWithSelector(IVaultErrors.WrongUnderlyingToken.selector, address(waDAI), address(usdc))
         );
         router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
     }
@@ -137,7 +137,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Wrap token should fail, since buffer has liquidity.
         vm.prank(lp);
         vm.expectRevert(
-            abi.encodeWithSelector(IVaultErrors.WrongWrappedTokenAsset.selector, address(waDAI), address(usdc))
+            abi.encodeWithSelector(IVaultErrors.WrongUnderlyingToken.selector, address(waDAI), address(usdc))
         );
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }

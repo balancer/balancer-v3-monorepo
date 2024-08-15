@@ -299,16 +299,13 @@ interface IVaultErrors {
     error NotEnoughBufferShares();
 
     /// @dev The wrapped token asset does not match the underlying token.
-    error WrongWrappedTokenAsset(IERC4626 wrappedToken, address underlyingToken);
+    error WrongUnderlyingToken(IERC4626 wrappedToken, address underlyingToken);
 
     /// @dev A wrapped token reported the zero address as its underlying token asset.
-    error InvalidUnderlyingTokenAsset();
+    error InvalidUnderlyingToken();
 
     /// @dev The wrappedToken wrap/unwrap function did not deposit/return the expected amount of underlying tokens.
     error WrongUnderlyingAmount(address wrappedToken);
-
-    /// @dev The wrappedToken wrap/unwrap function did not burn/mint the expected amount of wrapped tokens.
-    error WrongWrappedAmount(address wrappedToken);
 
     /// @dev The amount given to wrap/unwrap was too small, which can introduce rounding issues.
     error WrapAmountTooSmall(address wrappedToken);

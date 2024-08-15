@@ -439,7 +439,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         if (underlyingToken == address(0)) {
             // Should never happen, but a malicious wrapper could return the zero address and cause the buffer
             // initialization code to run more than once.
-            revert InvalidUnderlyingTokenAsset();
+            revert InvalidUnderlyingToken();
         }
 
         // Register asset of wrapper, so it cannot change.

@@ -257,10 +257,14 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
     }
 
+    /**
+     * @dev This assumes `underlyingToken` is non-zero; should be called by functions that have already ensured the
+     * buffer has been initialized (e.g., those protected by `withInitializedBuffer`).
+     */
     function _ensureCorrectBufferAsset(IERC4626 wrappedToken, address underlyingToken) internal view {
         if (_bufferAssets[wrappedToken] != underlyingToken) {
             // Asset was changed since the buffer was initialized.
-            revert WrongWrappedTokenAsset(wrappedToken, underlyingToken);
+            revert WrongUnderlyingToken(wrappedToken, underlyingToken);
         }
     }
 
