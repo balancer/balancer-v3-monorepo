@@ -56,9 +56,9 @@ contract BatchRouterNestedPools is BaseVaultTest {
         vm.stopPrank();
     }
 
-    function testRemoveLiquidityNestedPool__Fuzz() public {
-        // Remove between 0.0001% and 10% of each pool liquidity.
-        uint256 proportionToRemove = 50e16; // bound(proportionToRemove, 1e12, 10e16);
+    function testRemoveLiquidityNestedPool__Fuzz(uint256 proportionToRemove) public {
+        // Remove between 0.0001% and 90% of each pool liquidity.
+        proportionToRemove = bound(proportionToRemove, 1e12, 90e16);
 
         uint256 totalPoolBPTs = BalancerPoolToken(parentPool).totalSupply();
         // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
