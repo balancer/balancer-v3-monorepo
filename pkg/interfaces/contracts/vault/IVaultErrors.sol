@@ -286,7 +286,7 @@ interface IVaultErrors {
     error PoolPauseWindowExpired(address pool);
 
     /*******************************************************************************
-                            Yield-bearing token buffers
+                                ERC4626 token buffers
     *******************************************************************************/
 
     /// @dev Buffer for the given wrapped token was already initialized.
