@@ -191,7 +191,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     function _setPoolPaused(address pool, bool pausing) internal {
-        _ensureAuthenticatedByRole(pool, _poolRoleAccounts[pool].pauseManager, false);
+        _ensureAuthenticatedByRole(pool, _poolRoleAccounts[pool].pauseManager);
 
         PoolConfigBits config = _poolConfigBits[pool];
 
@@ -232,10 +232,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         address pool,
         uint256 swapFeePercentage
     ) external onlyVaultDelegateCall withRegisteredPool(pool) {
-        _ensureAuthenticatedByRole(pool, _poolRoleAccounts[pool].swapFeeManager, true);
-
-        // Saving bits by not implementing a new modifier.
+        _ensureAuthenticatedByExclusiveRole(pool, _poolRoleAccounts[pool].swapFeeManager);
         _ensureUnpaused(pool);
+
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
@@ -520,21 +519,26 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         emit AuthorizerChanged(newAuthorizer);
     }
 
-    function _ensureAuthenticatedByRole(address pool, address roleAddress, bool onlyOwner) private view {
-        if (roleAddress != address(0)) {
-            // If the sender matches the permissioned account, all good; just return.
-            if (msg.sender == roleAddress) {
-                return;
-            }
-
-            // If it doesn't, check whether it's onlyOwner. onlyOwner means *only* the permissioned account
-            // may call the function, so revert if this is the case. Otherwise, fall through and check
-            // governance.
-            if (onlyOwner) {
-                revert SenderNotAllowed();
-            }
+    /// @dev Authenticate by role; otherwise fall through and check governance.
+    function _ensureAuthenticatedByRole(address pool, address roleAddress) private view {
+        if (msg.sender == roleAddress) {
+            return;
         }
 
+        _ensureAuthenticated(pool);
+    }
+
+    /// @dev Authenticate exclusively by role; caller must match the `roleAddress`, if assigned.
+    function _ensureAuthenticatedByExclusiveRole(address pool, address roleAddress) private view {
+        if (roleAddress == address(0)) {
+            // Defer to governance if no role assigned.
+            _ensureAuthenticated(pool);
+        } else if (msg.sender != roleAddress) {
+            revert SenderNotAllowed();
+        }
+    }
+
+    function _ensureAuthenticated(address pool) private view {
         bytes32 actionId = getActionId(msg.sig);
 
         // Delegate to governance.
