@@ -10,6 +10,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { PoolConfig, FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -591,6 +592,35 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, alice));
         vm.prank(alice);
         feeController.withdrawPoolCreatorFees(pool, alice);
+    }
+
+    function test100PercentPoolCreatorFee() public {
+        // Protocol fees will be zero.
+        pool = createPool();
+
+        // Set 100% pool creator fees
+        vm.startPrank(lp);
+        feeController.setPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
+
+        // Check initial conditions: aggregate swap fee percentage should be 100%.
+        (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) = IPoolInfo(pool)
+            .getAggregateFeePercentages();
+        assertEq(aggregateSwapFeePercentage, FixedPoint.ONE, "Aggregage swap fee != 100%");
+        assertEq(aggregateYieldFeePercentage, 0, "Aggregage swap fee is not zero");
+
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
+
+        uint256 creatorBalanceDAIBefore = dai.balanceOf(lp);
+
+        // Collect fees - 100% should go to the pool creator.
+        feeController.collectAggregateFees(pool);
+        feeController.withdrawPoolCreatorFees(pool);
+
+        assertEq(
+            dai.balanceOf(lp) - creatorBalanceDAIBefore,
+            PROTOCOL_SWAP_FEE_AMOUNT,
+            "Wrong ending balance of DAI (creator)"
+        );
     }
 
     function testPermissionlessWithdrawalByNonPoolCreator() public {
