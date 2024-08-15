@@ -897,11 +897,11 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
     function removeLiquidityERC4626PoolProportionalHook(
         RemoveLiquidityHookParams calldata params
-    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
+    ) external nonReentrant onlyVault returns (uint256[] memory underlyingAmountsOut) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
-        uint256[] memory underlyingAmountsOut = new uint256[](erc4626PoolTokens.length);
+        underlyingAmountsOut = new uint256[](erc4626PoolTokens.length);
 
-        (, amountsOut, ) = _vault.removeLiquidity(
+        (, uint256[] memory wrappedAmountsOut, ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
                 pool: params.pool,
                 from: params.sender,
@@ -912,12 +912,17 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             })
         );
 
-        if (EVMCallModeHelpers.isStaticCall()) {
-            return amountsOut;
-        }
+        bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
         for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
+
+            // If the wrapped token was not initialized in the vault, the router treats it as a standard token.
+            if (!_vault.isERC4626Initialized(wrappedToken)) {
+                underlyingAmountsOut[i] = wrappedAmountsOut[i];
+                continue;
+            }
+
             IERC20 underlyingToken = IERC20(wrappedToken.asset());
 
             // erc4626BufferWrapOrUnwrap will fail if the wrapper wasn't ERC4626
@@ -926,13 +931,15 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                     kind: SwapKind.EXACT_IN,
                     direction: WrappingDirection.UNWRAP,
                     wrappedToken: wrappedToken,
-                    amountGivenRaw: amountsOut[i],
+                    amountGivenRaw: wrappedAmountsOut[i],
                     limitRaw: params.minAmountsOut[i],
                     userData: params.userData
                 })
             );
 
-            _sendTokenOut(params.sender, underlyingToken, underlyingAmountsOut[i], params.wethIsEth);
+            if (isStaticCall == false) {
+                _sendTokenOut(params.sender, underlyingToken, underlyingAmountsOut[i], params.wethIsEth);
+            }
         }
     }
 
