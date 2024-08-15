@@ -108,7 +108,7 @@ abstract contract BaseTest is Test, GasSnapshot {
         idxTokenB = idxTokenA == 0 ? 1 : 0;
     }
 
-    function getSortedIndexes(address[] memory addresses) public view returns (uint256[] memory sortedIndexes) {
+    function getSortedIndexes(address[] memory addresses) public pure returns (uint256[] memory sortedIndexes) {
         uint256 length = addresses.length;
         address[] memory sortedAddresses = new address[](length);
 
