@@ -398,7 +398,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     }
 
     /*******************************************************************************
-                                Yield-bearing token buffers
+                                  ERC4626 Buffers
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
@@ -615,7 +615,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _bufferTotalShares[wrappedToken] = newTotalSupply;
         _bufferLpShares[wrappedToken][from] -= amount;
 
-        emit BufferSharesBurnt(wrappedToken, from, amount);
+        emit BufferSharesBurned(wrappedToken, from, amount);
     }
 
     /// @inheritdoc IVaultAdmin

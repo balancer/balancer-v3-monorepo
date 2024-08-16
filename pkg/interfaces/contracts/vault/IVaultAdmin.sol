@@ -180,7 +180,7 @@ interface IVaultAdmin {
     function disableQuery() external;
 
     /*******************************************************************************
-                              Yield-bearing token buffers
+                                  ERC4626 Buffers
     *******************************************************************************/
 
     /**

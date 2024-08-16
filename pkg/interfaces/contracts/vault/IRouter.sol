@@ -309,11 +309,11 @@ interface IRouter {
     ) external payable returns (uint256 amountIn);
 
     /*******************************************************************************
-                            Yield-bearing token buffers
+                                  ERC4626 Buffers
     *******************************************************************************/
 
     /**
-     * @notice Adds liquidity for the first time to a yield-bearing token buffer (internal ERC4626 buffer in the Vault).
+     * @notice Adds liquidity for the first time to an internal ERC4626 buffer in the Vault.
      * @dev Calling this method binds the wrapped token to its underlying asset internally; the asset in the wrapper
      * cannot change afterwards, or every other operation on that wrapper (add / remove / wrap / unwrap) will fail.
      *
@@ -330,7 +330,7 @@ interface IRouter {
     ) external returns (uint256 issuedShares);
 
     /**
-     * @notice Adds liquidity to a yield-bearing token buffer (internal ERC4626 buffer in the Vault).
+     * @notice Adds liquidity to an internal ERC4626 buffer in the Vault.
      * @dev Requires the buffer to be initialized beforehand.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
