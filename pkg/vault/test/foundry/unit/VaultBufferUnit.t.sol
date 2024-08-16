@@ -255,7 +255,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
 
     function _initializeBuffer() private {
         vm.prank(lp);
-        router.addLiquidityToBuffer(IERC4626(address(wDaiInitialized)), _wrapAmount, _wrapAmount);
+        router.initializeBuffer(IERC4626(address(wDaiInitialized)), _wrapAmount, _wrapAmount);
     }
 
     function _exactInWrapUnwrapPath(
