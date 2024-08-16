@@ -44,6 +44,12 @@ contract E2eSwapTest is BaseVaultTest {
     uint256 internal minSwapAmountTokenB;
     uint256 internal maxSwapAmountTokenB;
 
+    // We theoretically support the full range of token decimals, but tokens with extreme values don't tend to perform
+    // well in AMMs, due to precision issues with their math. The lowest decimal value in common use would be 6,
+    // used by many centralized stable coins (e.g., USDC). Some popular wrapped tokens have 8 (e.g., WBTC). We are
+    // adopting 5 decimals to be conservative and make sure the swaps would still work in this extreme scenario.
+    uint256 private constant _LOW_DECIMAL_LIMIT = 5;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
@@ -301,8 +307,8 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 newDecimalsTokenA,
         uint256 newDecimalsTokenB
     ) public {
-        decimalsTokenA = bound(newDecimalsTokenA, 6, 18);
-        decimalsTokenB = bound(newDecimalsTokenB, 6, 18);
+        decimalsTokenA = bound(newDecimalsTokenA, _LOW_DECIMAL_LIMIT, 18);
+        decimalsTokenB = bound(newDecimalsTokenB, _LOW_DECIMAL_LIMIT, 18);
 
         _setTokenDecimalsInPool();
 
@@ -386,8 +392,8 @@ contract E2eSwapTest is BaseVaultTest {
 
     function testDoUndoExactInBase(uint256 exactAmountIn, DoUndoLocals memory testLocals) internal {
         if (testLocals.shouldTestDecimals) {
-            decimalsTokenA = bound(testLocals.newDecimalsTokenA, 6, 18);
-            decimalsTokenB = bound(testLocals.newDecimalsTokenB, 6, 18);
+            decimalsTokenA = bound(testLocals.newDecimalsTokenA, _LOW_DECIMAL_LIMIT, 18);
+            decimalsTokenB = bound(testLocals.newDecimalsTokenB, _LOW_DECIMAL_LIMIT, 18);
 
             _setTokenDecimalsInPool();
         }
@@ -475,8 +481,8 @@ contract E2eSwapTest is BaseVaultTest {
 
     function testDoUndoExactOutBase(uint256 exactAmountOut, DoUndoLocals memory testLocals) internal {
         if (testLocals.shouldTestDecimals) {
-            decimalsTokenA = bound(testLocals.newDecimalsTokenA, 6, 18);
-            decimalsTokenB = bound(testLocals.newDecimalsTokenB, 6, 18);
+            decimalsTokenA = bound(testLocals.newDecimalsTokenA, _LOW_DECIMAL_LIMIT, 18);
+            decimalsTokenB = bound(testLocals.newDecimalsTokenB, _LOW_DECIMAL_LIMIT, 18);
 
             _setTokenDecimalsInPool();
         }
