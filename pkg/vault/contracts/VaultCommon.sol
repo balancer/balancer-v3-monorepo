@@ -243,7 +243,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /*******************************************************************************
-                        Buffer Initialization & validation
+                          Buffer Initialization & Validation
     *******************************************************************************/
 
     modifier withInitializedBuffer(IERC4626 wrappedToken) {

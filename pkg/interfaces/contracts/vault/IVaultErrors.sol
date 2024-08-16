@@ -304,9 +304,6 @@ interface IVaultErrors {
     /// @dev A wrapped token reported the zero address as its underlying token asset.
     error InvalidUnderlyingToken();
 
-    /// @dev The wrappedToken wrap/unwrap function did not deposit/return the expected amount of underlying tokens.
-    error WrongUnderlyingAmount(address wrappedToken);
-
     /// @dev The amount given to wrap/unwrap was too small, which can introduce rounding issues.
     error WrapAmountTooSmall(address wrappedToken);
 
