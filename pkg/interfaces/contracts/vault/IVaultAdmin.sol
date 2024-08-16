@@ -237,7 +237,7 @@ interface IVaultAdmin {
     /**
      * @notice Removes liquidity from a yield-bearing buffer (one of the Vault's internal ERC4626 buffers).
      * @dev Only proportional exits are supported, and the sender has to be the owner of the shares.
-     * This function unlocks the Vault just for this operation; it does not need a Router as an entrypoint.
+     * This function unlocks the Vault just for this operation; it does not work with a Router as an entrypoint.
      *
      * Pre-conditions:
      * - The buffer needs to be initialized.
