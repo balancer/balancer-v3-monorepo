@@ -14,7 +14,7 @@ import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { SwapKind, PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { SwapKind, PoolSwapParams, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
@@ -333,6 +333,11 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
         data.totalSupply = totalSupply();
         data.bptRate = getRate();
         (data.amplificationParameter, data.isAmpUpdating) = _getAmplificationParameter();
+
+        PoolConfig memory poolConfig = _vault.getPoolConfig(address(this));
+        data.isPoolInitialized = poolConfig.isPoolInitialized;
+        data.isPoolPaused = poolConfig.isPoolPaused;
+        data.isPoolInRecoveryMode = poolConfig.isPoolInRecoveryMode;
     }
 
     /// @inheritdoc IStablePool

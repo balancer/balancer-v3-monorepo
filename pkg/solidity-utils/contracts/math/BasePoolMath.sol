@@ -358,7 +358,7 @@ library BasePoolMath {
         // Compute the amount to be withdrawn from the pool.
         uint256 amountOut = currentBalances[tokenOutIndex] - newBalance;
 
-        // Calculate the new balance proportionate to the BPT burnt.
+        // Calculate the new balance proportionate to the amount of BPT burned.
         // We round up: higher `newBalanceBeforeTax` makes `taxableAmount` go up, which rounds in the Vault's favor.
         uint256 newBalanceBeforeTax = newSupply.mulDivUp(currentBalances[tokenOutIndex], totalSupply);
 
