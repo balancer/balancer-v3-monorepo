@@ -350,8 +350,8 @@ contract E2eSwapTest is BaseVaultTest {
                 tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 1);
             }
 
-            // Tolerance should always be higher than 1e6. Smaller tolerances can catch rounding errors, which is not
-            // the purpose of the test.
+            // The tolerance should always be higher than the minimum trade amount. Smaller tolerances can catch
+            // rounding errors, which is not the purpose of this test.
             tolerance = tolerance > MIN_TRADE_AMOUNT ? tolerance : MIN_TRADE_AMOUNT;
 
             assertApproxEqAbs(
