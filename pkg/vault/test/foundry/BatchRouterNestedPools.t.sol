@@ -6,6 +6,8 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -217,6 +219,49 @@ contract BatchRouterNestedPools is BaseVaultTest {
             vars.parentPoolBefore.childPoolBBpt - burnedChildPoolBBpts,
             "ParentPool ChildPoolB BPT Balance is wrong"
         );
+    }
+
+    function testRemoveLiquidityNestedPoolLimits() public {
+        // Remove 10% of pool liquidities.
+        uint256 proportionToRemove = 10e16;
+
+        uint256 totalPoolBPTs = BalancerPoolToken(parentPool).totalSupply();
+        // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
+        // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
+        uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
+
+        NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
+
+        // During pool initialization, MIN_BPT amount of BPT is burned to address(0), so that the pool cannot be
+        // completely drained. We need to discount this amount of tokens from the total liquidity that we can extract
+        // from the child pools.
+        uint256 deadTokens = (MIN_BPT / 2).mulDown(proportionToRemove);
+
+        uint256[] memory minAmountsOut = new uint256[](4);
+        // Expect minAmountsOut to be the liquidity of the pool, which is more than what should return.
+        minAmountsOut[vars.daiIdx] = poolInitAmount;
+        minAmountsOut[vars.wethIdx] = poolInitAmount;
+        minAmountsOut[vars.wstethIdx] = poolInitAmount;
+        minAmountsOut[vars.usdcIdx] = poolInitAmount;
+
+        // DAI exists in childPoolB and parentPool, so we expect 2x more DAI than the other tokens.
+        // Since pools are in their initial state, we can use poolInitAmount as the balance of each token in the pool.
+        // Also, we only need to account deadTokens once, since we calculate the bpts in for the parent pool using
+        // totalSupply (so the burned MIN_BPT amount does not affect the bpt in calculation and the amounts out are
+        // perfectly proportional to the parent pool balance)
+        uint256 daiExpectedAmountOut = (poolInitAmount.mulDown(proportionToRemove) * 2) - deadTokens;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.AmountOutBelowMin.selector,
+                address(dai),
+                daiExpectedAmountOut,
+                poolInitAmount
+            )
+        );
+        vm.prank(lp);
+        (address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+            .removeLiquidityProportionalFromNestedPools(parentPool, exactBptIn, minAmountsOut, bytes(""));
     }
 
     struct NestedPoolTestLocals {

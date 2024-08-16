@@ -1049,7 +1049,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             address childPool = address(parentPoolTokens[i]);
 
             if (_vault.isPoolRegistered(childPool)) {
-                // Token is a BPT, so remove liquidity from the pool.
+                // Token is a BPT, so remove liquidity from the child pool.
 
                 // We don't expect the sender to have BPT to burn. So, we flashloan tokens here (which should in
                 // practice just use existing credit).
