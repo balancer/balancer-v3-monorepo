@@ -200,7 +200,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
         );
 
         assertEq(vault.getBufferOwnerShares(waDAI, bob), issuedShares, "Wrong bob shares");
-        assertEq(vault.getBufferOwnerShares(waDAI, address(0)), _MINIMUM_TOTAL_SUPPLY, "Wrong burnt shares");
+        assertEq(vault.getBufferOwnerShares(waDAI, address(0)), _MINIMUM_TOTAL_SUPPLY, "Wrong burned shares");
         assertEq(vault.getBufferTotalShares(waDAI), issuedShares + _MINIMUM_TOTAL_SUPPLY, "Wrong total shares");
     }
 
