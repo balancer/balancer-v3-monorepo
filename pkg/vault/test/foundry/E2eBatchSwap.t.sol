@@ -192,9 +192,9 @@ contract E2eBatchSwapTest is BaseVaultTest {
         poolFeePercentage = bound(poolFeePercentage, 1e12, 10e16);
 
         // For this test, we need equal fees to ensure symetry between exact_in and out.
-        vault.manualSetStaticSwapFeePercentage(poolA, poolAFeePercentage);
-        vault.manualSetStaticSwapFeePercentage(poolB, poolBFeePercentage);
-        vault.manualSetStaticSwapFeePercentage(poolC, poolCFeePercentage);
+        vault.manualSetStaticSwapFeePercentage(poolA, poolFeePercentage);
+        vault.manualSetStaticSwapFeePercentage(poolB, poolFeePercentage);
+        vault.manualSetStaticSwapFeePercentage(poolC, poolFeePercentage);
 
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
