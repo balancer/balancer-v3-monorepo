@@ -926,7 +926,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
             IERC20 underlyingToken = IERC20(wrappedToken.asset());
 
-            // erc4626BufferWrapOrUnwrap will fail if the wrapper wasn't ERC4626
+            // `erc4626BufferWrapOrUnwrap` will fail if the wrapper is not ERC4626.
             (, , underlyingAmountsOut[i]) = _vault.erc4626BufferWrapOrUnwrap(
                 BufferWrapOrUnwrapParams({
                     kind: SwapKind.EXACT_IN,
