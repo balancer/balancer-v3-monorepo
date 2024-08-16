@@ -107,7 +107,6 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Applies to Weighted Pools.
     uint256 constant MIN_SWAP_FEE = 1e12; // 0.00001%
     uint256 constant MAX_SWAP_FEE = 10e16; // 10%
-    uint256 constant FIFTY_PERCENT = 50e16; // 50%
     uint256 constant MIN_TRADE_AMOUNT = 1e6;
 
     function setUp() public virtual override {
@@ -264,6 +263,35 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
             balances.vaultReserves[i] = vault.getReservesOf(tokens[i]);
             balances.swapFeeAmounts[i] = vault.manualGetAggregateSwapFeeAmount(pool, tokens[i]);
             balances.yieldFeeAmounts[i] = vault.manualGetAggregateYieldFeeAmount(pool, tokens[i]);
+        }
+    }
+
+    /// @dev A different function is needed to measure token balances when tracking tokens across multiple pools.
+    function getBalances(address user, IERC20[] memory tokensToTrack) internal view returns (Balances memory balances) {
+        balances.userBpt = IERC20(pool).balanceOf(user);
+        balances.aliceBpt = IERC20(pool).balanceOf(alice);
+        balances.bobBpt = IERC20(pool).balanceOf(bob);
+        balances.hookBpt = IERC20(pool).balanceOf(poolHooksContract);
+        balances.lpBpt = IERC20(pool).balanceOf(lp);
+
+        uint256 numTokens = tokensToTrack.length;
+
+        balances.userTokens = new uint256[](numTokens);
+        balances.aliceTokens = new uint256[](numTokens);
+        balances.bobTokens = new uint256[](numTokens);
+        balances.hookTokens = new uint256[](numTokens);
+        balances.lpTokens = new uint256[](numTokens);
+        balances.vaultTokens = new uint256[](numTokens);
+        balances.vaultReserves = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            // Don't assume token ordering.
+            balances.userTokens[i] = tokensToTrack[i].balanceOf(user);
+            balances.aliceTokens[i] = tokensToTrack[i].balanceOf(alice);
+            balances.bobTokens[i] = tokensToTrack[i].balanceOf(bob);
+            balances.hookTokens[i] = tokensToTrack[i].balanceOf(poolHooksContract);
+            balances.lpTokens[i] = tokensToTrack[i].balanceOf(lp);
+            balances.vaultTokens[i] = tokensToTrack[i].balanceOf(address(vault));
+            balances.vaultReserves[i] = vault.getReservesOf(tokensToTrack[i]);
         }
     }
 
