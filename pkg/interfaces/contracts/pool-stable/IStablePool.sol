@@ -22,6 +22,10 @@ struct StablePoolImmutableData {
 
 /**
  * @notice Snapshot of current Stable Pool data that can change.
+ * @dev Note that live balances will not necessarily be accurate if the pool is in Recovery Mode. Withdrawals
+ * in Recovery Mode do not make external calls (including those necessary for updating live balances), so if
+ * there are withdrawals, raw and live balances will be out of sync until Recovery Mode is disabled.
+ *
  * @param balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
  * @param tokenRates 18-decimal FP values for rate tokens (e.g., yield-bearing), or FP(1) for standard tokens
  * @param staticSwapFeePercentage 18-decimal FP value of the static swap fee percentage
@@ -31,6 +35,9 @@ struct StablePoolImmutableData {
  * and assumes prices are near parity. lower values = closer to the constant product curve (e.g., more like a
  * weighted pool). This has higher slippage, and accommodates greater price volatility.
  * @param isAmpUpdating True if an amplification parameter update is in progress
+ * @param isPoolInitialized If false, the pool has not been seeded with initial liquidity, so operations will revert
+ * @param isPoolPaused If true, the pool is paused, and all non-recovery-mode state-changing operations will revert
+ * @param isPoolInRecoveryMode If true, Recovery Mode withdrawals are enabled, and live balances may be inaccurate
  */
 struct StablePoolDynamicData {
     uint256[] balancesLiveScaled18;
@@ -40,6 +47,9 @@ struct StablePoolDynamicData {
     uint256 bptRate;
     uint256 amplificationParameter;
     bool isAmpUpdating;
+    bool isPoolInitialized;
+    bool isPoolPaused;
+    bool isPoolInRecoveryMode;
 }
 
 /// @notice Full Stable Pool interface.
