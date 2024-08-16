@@ -383,7 +383,7 @@ interface IVaultExplorer {
     function collectAggregateFees(address pool) external;
 
     /*******************************************************************************
-                              Yield-bearing Token Buffers
+                                  ERC4626 Buffers
     *******************************************************************************/
 
     /**
