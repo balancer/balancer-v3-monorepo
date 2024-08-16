@@ -46,9 +46,8 @@ contract E2eSwapTest is BaseVaultTest {
 
     // We theoretically support the full range of token decimals, but tokens with extreme values don't tend to perform
     // well in AMMs, due to precision issues with their math. The lowest decimal value in common use would be 6,
-    // used by many centralized stable coins (e.g., USDC). Some popular wrapped tokens have 8 (e.g., WBTC). We are
-    // adopting 5 decimals to be conservative and make sure the swaps would still work in this extreme scenario.
-    uint256 private constant _LOW_DECIMAL_LIMIT = 5;
+    // used by many centralized stable coins (e.g., USDC). Some popular wrapped tokens have 8 (e.g., WBTC).
+    uint256 private constant _LOW_DECIMAL_LIMIT = 6;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
