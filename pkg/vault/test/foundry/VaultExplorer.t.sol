@@ -767,7 +767,7 @@ contract VaultExplorerTest is BaseVaultTest {
 
         uint256 depositAmount = 100e18;
 
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), depositAmount, depositAmount, lp);
+        router.initializeBuffer(IERC4626(address(waDAI)), depositAmount, depositAmount);
         vm.stopPrank();
     }
 }

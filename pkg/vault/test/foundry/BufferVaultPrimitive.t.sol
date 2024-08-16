@@ -9,6 +9,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IVaultMain } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -82,9 +83,42 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     /********************************************************************************
                                         Asset
     ********************************************************************************/
-    function testChangeAssetOfWrappedToken() public {
-        // Change Asset to wrong underlying
+    function testChangeAssetOfWrappedTokenAddLiquidityToBuffer() public {
+        // Change Asset to correct asset.
+        waDAI.setAsset(dai);
+
+        vm.prank(lp);
+        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+
+        // Change Asset to the wrong asset.
         waDAI.setAsset(usdc);
+
+        vm.prank(lp);
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.WrongUnderlyingToken.selector, address(waDAI), address(usdc))
+        );
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+    }
+
+    function testChangeAssetOfWrappedTokenRemoveLiquidityFromBuffer() public {
+        // Change Asset to correct asset.
+        waDAI.setAsset(dai);
+
+        vm.prank(lp);
+        uint256 lpShares = router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+
+        // Change Asset to the wrong asset.
+        waDAI.setAsset(usdc);
+
+        // Does not revert: remove liquidity doesn't check whether the asset matches the registered one in order to
+        // avoid external calls. You can always exit the buffer, even if the wrapper is corrupt and updated its asset.
+        vm.prank(lp);
+        router.removeLiquidityFromBuffer(IERC4626(address(waDAI)), lpShares);
+    }
+
+    function testChangeAssetOfWrappedTokenWrapUnwrap() public {
+        // Change Asset to correct asset.
+        waDAI.setAsset(dai);
 
         // Wrap token should pass, since there's no liquidity in the buffer.
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
@@ -96,21 +130,16 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         );
 
         vm.prank(lp);
-        batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
-
-        // Change Asset to correct asset.
-        waDAI.setAsset(dai);
-
-        // Add Liquidity with the right asset.
-        vm.prank(lp);
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, lp);
+        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
 
         // Change Asset to the wrong asset.
         waDAI.setAsset(usdc);
 
         // Wrap token should fail, since buffer has liquidity.
         vm.prank(lp);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.WrongWrappedTokenAsset.selector, address(waDAI)));
+        vm.expectRevert(
+            abi.encodeWithSelector(IVaultErrors.WrongUnderlyingToken.selector, address(waDAI), address(usdc))
+        );
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
@@ -118,6 +147,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
                                         Deposit
     ********************************************************************************/
     function testDeposit() public {
+        vm.prank(lp);
+        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount,
             0,
@@ -148,6 +180,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testDepositMaliciousRouter() public {
+        vm.prank(lp);
+        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+
         // Deposit will not take the underlying tokens, keeping the approval, so the wrapper can use vault approval to
         // drain the whole vault.
         waDAI.setMaliciousWrapper(true);
@@ -177,6 +212,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
                                         Mint
     ********************************************************************************/
     function testMint() public {
+        vm.prank(lp);
+        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
             2 * _wrapAmount,
             _wrapAmount,
@@ -203,6 +241,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testMintMaliciousRouter() public {
+        vm.prank(lp);
+        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+
         // Deposit will not take the underlying tokens, keeping the approval, so the wrapper can use vault approval to
         // drain the whole vault.
         waDAI.setMaliciousWrapper(true);
@@ -230,6 +271,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
                                         Redeem
     ********************************************************************************/
     function testRedeem() public {
+        vm.prank(lp);
+        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount,
             0,
@@ -263,6 +307,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
                                         Withdraw
     ********************************************************************************/
     function testWithdraw() public {
+        vm.prank(lp);
+        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
+
         IBatchRouter.SwapPathExactAmountOut[] memory paths = _exactOutWrapUnwrapPath(
             2 * _wrapAmount,
             _wrapAmount,
@@ -314,7 +361,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
     function testDisableVaultBuffer() public {
         vm.prank(lp);
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, lp);
+        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
 
         vm.prank(admin);
         IVaultAdmin(address(vault)).pauseVaultBuffers();
@@ -334,7 +381,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         vm.expectRevert(IVaultErrors.VaultBuffersArePaused.selector);
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount, lp);
+        router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
 
         // Remove liquidity is supposed to pass even with buffers paused, so revert is not expected.
         router.removeLiquidityFromBuffer(IERC4626(address(waDAI)), _wrapAmount);
@@ -354,13 +401,17 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     ********************************************************************************/
 
     function testAddLiquidityToBuffer() public {
+        vm.prank(lp);
+        router.initializeBuffer(waDAI, 1e18, 1e18);
+
         BufferAndLPBalances memory beforeBalances = _measureBuffer();
 
         uint256 underlyingAmountIn = _wrapAmount;
         uint256 wrappedAmountIn = _wrapAmount.mulDown(2e18);
 
+        uint256 lpSharesBeforeAdd = vault.getBufferOwnerShares(waDAI, lp);
         vm.prank(lp);
-        uint256 lpShares = router.addLiquidityToBuffer(waDAI, underlyingAmountIn, wrappedAmountIn, lp);
+        uint256 lpSharesAdded = router.addLiquidityToBuffer(waDAI, underlyingAmountIn, wrappedAmountIn);
 
         BufferAndLPBalances memory afterBalances = _measureBuffer();
 
@@ -396,12 +447,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         assertEq(afterBalances.lp.dai, beforeBalances.lp.dai - underlyingAmountIn, "LP DAI balance is wrong");
         assertEq(afterBalances.lp.waDai, beforeBalances.lp.waDai - wrappedAmountIn, "LP waDAI balance is wrong");
 
-        assertEq(lpShares, vault.getBufferOwnerShares(IERC4626(address(waDAI)), lp), "LP Buffer shares is wrong");
         assertEq(
-            lpShares,
-            underlyingAmountIn + waDAI.convertToAssets(wrappedAmountIn) - MIN_BPT,
-            "Issued shares is wrong"
+            lpSharesBeforeAdd + lpSharesAdded,
+            vault.getBufferOwnerShares(IERC4626(address(waDAI)), lp),
+            "LP Buffer shares is wrong"
         );
+        assertEq(lpSharesAdded, underlyingAmountIn + waDAI.convertToAssets(wrappedAmountIn), "Issued shares is wrong");
     }
 
     function testRemoveLiquidityFromBuffer() public {
@@ -409,9 +460,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 wrappedAmountIn = _wrapAmount.mulDown(2e18);
 
         vm.prank(lp);
-        uint256 lpShares = router.addLiquidityToBuffer(waDAI, underlyingAmountIn, wrappedAmountIn, lp);
+        uint256 lpShares = router.initializeBuffer(waDAI, underlyingAmountIn, wrappedAmountIn);
 
         BufferAndLPBalances memory beforeBalances = _measureBuffer();
+
+        vm.expectEmit();
+        emit IVaultEvents.BufferSharesBurned(IERC4626(waDAI), lp, lpShares);
 
         vm.prank(lp);
         (uint256 underlyingRemoved, uint256 wrappedRemoved) = router.removeLiquidityFromBuffer(waDAI, lpShares);

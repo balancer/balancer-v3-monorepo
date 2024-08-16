@@ -1043,7 +1043,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
-                             Yield-bearing token buffers
+                                  ERC4626 Buffers
     *******************************************************************************/
 
     /// @inheritdoc IVaultMain
@@ -1053,17 +1053,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         external
         onlyWhenUnlocked
         whenVaultBuffersAreNotPaused
+        withInitializedBuffer(params.wrappedToken)
         nonReentrant
         returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw)
     {
         IERC20 underlyingToken = IERC20(params.wrappedToken.asset());
-
-        address bufferAsset = _bufferAssets[params.wrappedToken];
-
-        if (bufferAsset != address(0) && bufferAsset != address(underlyingToken)) {
-            // Asset was changed since the first addLiquidityToBuffer call.
-            revert WrongWrappedTokenAsset(address(params.wrappedToken));
-        }
+        _ensureCorrectBufferAsset(params.wrappedToken, address(underlyingToken));
 
         if (params.amountGivenRaw < _MINIMUM_WRAP_AMOUNT) {
             // If amount given is too small, rounding issues can be introduced that favors the user and can drain

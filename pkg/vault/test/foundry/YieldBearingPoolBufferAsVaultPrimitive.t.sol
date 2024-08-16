@@ -38,26 +38,16 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
     }
 
     function testAddLiquidityEvents() public {
+        vm.startPrank(lp);
         // Can add the same amount again, since twice as much was minted.
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(
-            waDAI,
-            lp,
-            bufferInitialAmount,
-            bufferInitialAmount,
-            bufferInitialAmount * 2
-        );
-        router.addLiquidityToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount, lp);
+        emit IVaultEvents.LiquidityAddedToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount);
+        router.addLiquidityToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount);
 
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(
-            waUSDC,
-            lp,
-            bufferInitialAmount,
-            bufferInitialAmount,
-            bufferInitialAmount * 2
-        );
-        router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount, lp);
+        emit IVaultEvents.LiquidityAddedToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount);
+        router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount);
+        vm.stopPrank();
     }
 
     function testRemoveLiquidityEvents() public {
@@ -65,24 +55,12 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
 
         vm.expectEmit();
-        emit IVaultEvents.LiquidityRemovedFromBuffer(
-            waDAI,
-            lp,
-            bufferInitialAmount / 2,
-            bufferInitialAmount / 2,
-            bufferInitialAmount
-        );
+        emit IVaultEvents.LiquidityRemovedFromBuffer(waDAI, bufferInitialAmount / 2, bufferInitialAmount / 2);
         vm.prank(lp);
         router.removeLiquidityFromBuffer(waDAI, bufferInitialAmount);
 
         vm.expectEmit();
-        emit IVaultEvents.LiquidityRemovedFromBuffer(
-            waUSDC,
-            lp,
-            bufferInitialAmount / 2,
-            bufferInitialAmount / 2,
-            bufferInitialAmount
-        );
+        emit IVaultEvents.LiquidityRemovedFromBuffer(waUSDC, bufferInitialAmount / 2, bufferInitialAmount / 2);
         vm.prank(lp);
         router.removeLiquidityFromBuffer(waUSDC, bufferInitialAmount);
     }
@@ -226,9 +204,9 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
     function testYieldBearingPoolSwapUnbalancedBufferExactIn() public {
         vm.startPrank(lp);
         // Surplus of underlying.
-        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, lp);
+        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0);
         // Surplus of wrapped.
-        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, lp);
+        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta);
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
@@ -257,9 +235,9 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
     function testYieldBearingPoolSwapUnbalancedBufferExactOut() public {
         vm.startPrank(lp);
         // Surplus of underlying.
-        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, lp);
+        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0);
         // Surplus of wrapped.
-        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, lp);
+        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta);
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);

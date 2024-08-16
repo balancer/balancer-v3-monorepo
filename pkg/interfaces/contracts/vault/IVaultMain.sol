@@ -100,7 +100,7 @@ interface IVaultMain {
      * _queryModeBalanceIncrease (and only in a query context).
      *
      * @param params Parameters for the remove liquidity (see above for struct definition)
-     * @return bptAmountIn Actual amount of BPT burnt
+     * @return bptAmountIn Actual amount of BPT burned
      * @return amountsOut Actual amounts of output tokens
      * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
@@ -123,13 +123,13 @@ interface IVaultMain {
     function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
 
     /*******************************************************************************
-                            Yield-bearing token buffers
+                                  ERC4626 Buffers
     *******************************************************************************/
 
     /**
      * @notice Wraps/unwraps tokens based on provided parameters, using the buffer of the wrapped token when it has
      * enough liquidity to avoid external calls.
-     * @dev All parameters are given in raw token decimal encoding.
+     * @dev All parameters are given in raw token decimal encoding. Requires the buffer to be initialized beforehand.
      * @param params Parameters for the wrap/unwrap operation (see struct definition)
      * @return amountCalculatedRaw Calculated swap amount
      * @return amountInRaw Amount of input tokens for the swap
