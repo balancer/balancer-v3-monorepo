@@ -54,7 +54,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         (tokenAIdx, tokenBIdx) = getSortedIndexes(address(tokenA), address(tokenB));
 
-        // Pool Init Amounts values are needed to setUp variables that rely on pool initial state.
+        // Pool Init Amount values are needed to set up variables that rely on the initial pool state.
         setPoolInitAmounts();
 
         setUpVariables();
