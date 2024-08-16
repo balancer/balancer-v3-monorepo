@@ -146,7 +146,7 @@ contract E2eSwapTest is BaseVaultTest {
             }
         }
 
-        // If rates have a different magnitude, a small trade can result in 0 amountsOut, which would cause tests to
+        // If rates have a different magnitude, a small trade can result in an amountOut of zero, which would make tests
         // fail. Prevent that by considering the token rates in the calculation of minSwapAmounts.
         uint256 rateTokenA = getRate(tokenA);
         uint256 rateTokenB = getRate(tokenB);
