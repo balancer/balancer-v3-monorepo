@@ -151,6 +151,16 @@ contract VaultMutationTest is BaseVaultTest {
         vault.erc4626BufferWrapOrUnwrap(params);
     }
 
+    function testErc4626BufferWrapOrUnwrapWhenNotInitialized() public {
+        IERC4626 wrappedToken = IERC4626(address(123));
+        vault.manualSetIsUnlocked(true);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferNotInitialized.selector, wrappedToken));
+        BufferWrapOrUnwrapParams memory params;
+        params.wrappedToken = wrappedToken;
+        vault.erc4626BufferWrapOrUnwrap(params);
+    }
+
     function testErc4626BufferWrapOrUnwrapWhenBuffersArePaused() public {
         vault.manualSetIsUnlocked(true);
         authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
@@ -163,10 +173,14 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testErc4626BufferWrapOrUnwrapReentrancy() public {
+        IERC4626 wrappedToken = IERC4626(address(123));
+        address underlyingToken = address(345); // Anything non-zero
         vault.manualSetIsUnlocked(true);
+        vault.manualSetBufferAsset(wrappedToken, underlyingToken);
 
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         BufferWrapOrUnwrapParams memory params;
+        params.wrappedToken = wrappedToken;
         vault.manualErc4626BufferWrapOrUnwrapReentrancy(params);
     }
 }

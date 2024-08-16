@@ -132,7 +132,7 @@ contract RouterMutationTest is BaseVaultTest {
 
     function testAddLiquidityToBufferHookWhenNotVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        router.addLiquidityToBufferHook(IERC4626(address(0)), 0, 0, address(0));
+        router.addLiquidityToBufferHook(IERC4626(address(0)), 0, 0, address(0), false);
     }
 
     function testAddLiquidityToBufferHookReentrancy() public {
