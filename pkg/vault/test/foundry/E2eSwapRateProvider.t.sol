@@ -60,7 +60,7 @@ contract E2eSwapRateProvider is E2eSwapTest {
         DoUndoLocals memory testLocals;
         uint256 exactAmountIn = maxSwapAmountTokenA;
 
-        _testDoUndoExactInBase(exactAmountIn, testLocals);
+        testDoUndoExactInBase(exactAmountIn, testLocals);
     }
 
     function testDoUndoExactInSwapRateComplete__Fuzz(
@@ -86,7 +86,7 @@ contract E2eSwapRateProvider is E2eSwapTest {
         testLocals.newDecimalsTokenB = newDecimalsTokenB;
         testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
 
-        _testDoUndoExactInBase(exactAmountIn, testLocals);
+        testDoUndoExactInBase(exactAmountIn, testLocals);
     }
 
     function testDoUndoExactOutSwapRate__Fuzz(uint256 newRateTokenA, uint256 newRateTokenB) public {
@@ -95,7 +95,7 @@ contract E2eSwapRateProvider is E2eSwapTest {
         DoUndoLocals memory testLocals;
         uint256 exactAmountOut = maxSwapAmountTokenB;
 
-        _testDoUndoExactOutBase(exactAmountOut, testLocals);
+        testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
     function testDoUndoExactOutSwapRateComplete__Fuzz(
@@ -121,7 +121,7 @@ contract E2eSwapRateProvider is E2eSwapTest {
         testLocals.newDecimalsTokenB = newDecimalsTokenB;
         testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
 
-        _testDoUndoExactOutBase(exactAmountOut, testLocals);
+        testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
     function _setPoolRates(uint256 newRateTokenA, uint256 newRateTokenB) private {

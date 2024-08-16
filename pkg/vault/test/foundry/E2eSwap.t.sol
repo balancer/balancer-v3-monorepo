@@ -178,7 +178,7 @@ contract E2eSwapTest is BaseVaultTest {
     function testDoUndoExactInSwapAmount__Fuzz(uint256 exactAmountIn) public {
         DoUndoLocals memory testLocals;
 
-        _testDoUndoExactInBase(exactAmountIn, testLocals);
+        testDoUndoExactInBase(exactAmountIn, testLocals);
     }
 
     function testDoUndoExactInLiquidity__Fuzz(uint256 liquidityTokenA, uint256 liquidityTokenB) public {
@@ -189,7 +189,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         uint256 exactAmountIn = maxSwapAmountTokenA;
 
-        _testDoUndoExactInBase(exactAmountIn, testLocals);
+        testDoUndoExactInBase(exactAmountIn, testLocals);
     }
 
     function testDoUndoExactInFees__Fuzz(uint256 poolSwapFeePercentage) public {
@@ -199,7 +199,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         uint256 exactAmountIn = maxSwapAmountTokenA;
 
-        _testDoUndoExactInBase(exactAmountIn, testLocals);
+        testDoUndoExactInBase(exactAmountIn, testLocals);
     }
 
     function testDoUndoExactInDecimals__Fuzz(uint256 newDecimalsTokenA, uint256 newDecimalsTokenB) public {
@@ -210,7 +210,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         uint256 exactAmountIn = maxSwapAmountTokenA;
 
-        _testDoUndoExactInBase(exactAmountIn, testLocals);
+        testDoUndoExactInBase(exactAmountIn, testLocals);
     }
 
     function testDoUndoExactInComplete__Fuzz(
@@ -232,13 +232,13 @@ contract E2eSwapTest is BaseVaultTest {
         testLocals.newDecimalsTokenB = newDecimalsTokenB;
         testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
 
-        _testDoUndoExactInBase(exactAmountIn, testLocals);
+        testDoUndoExactInBase(exactAmountIn, testLocals);
     }
 
     function testDoUndoExactOutSwapAmount__Fuzz(uint256 exactAmountOut) public {
         DoUndoLocals memory testLocals;
 
-        _testDoUndoExactOutBase(exactAmountOut, testLocals);
+        testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
     function testDoUndoExactOutLiquidity__Fuzz(uint256 liquidityTokenA, uint256 liquidityTokenB) public {
@@ -249,7 +249,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         uint256 exactAmountOut = maxSwapAmountTokenB;
 
-        _testDoUndoExactOutBase(exactAmountOut, testLocals);
+        testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
     function testDoUndoExactOutFees__Fuzz(uint256 poolSwapFeePercentage) public {
@@ -259,7 +259,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         uint256 exactAmountOut = maxSwapAmountTokenB;
 
-        _testDoUndoExactOutBase(exactAmountOut, testLocals);
+        testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
     function testDoUndoExactOutDecimals__Fuzz(uint256 newDecimalsTokenA, uint256 newDecimalsTokenB) public {
@@ -270,7 +270,7 @@ contract E2eSwapTest is BaseVaultTest {
 
         uint256 exactAmountOut = maxSwapAmountTokenB;
 
-        _testDoUndoExactOutBase(exactAmountOut, testLocals);
+        testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
     function testDoUndoExactOutComplete__Fuzz(
@@ -292,7 +292,7 @@ contract E2eSwapTest is BaseVaultTest {
         testLocals.newDecimalsTokenB = newDecimalsTokenB;
         testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
 
-        _testDoUndoExactOutBase(exactAmountOut, testLocals);
+        testDoUndoExactOutBase(exactAmountOut, testLocals);
     }
 
     function testExactInRepeatExactOutVariableFees__Fuzz(
@@ -384,7 +384,7 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 poolSwapFeePercentage;
     }
 
-    function _testDoUndoExactInBase(uint256 exactAmountIn, DoUndoLocals memory testLocals) internal {
+    function testDoUndoExactInBase(uint256 exactAmountIn, DoUndoLocals memory testLocals) internal {
         if (testLocals.shouldTestDecimals) {
             decimalsTokenA = bound(testLocals.newDecimalsTokenA, 6, 18);
             decimalsTokenB = bound(testLocals.newDecimalsTokenB, 6, 18);
@@ -412,7 +412,7 @@ contract E2eSwapTest is BaseVaultTest {
             // If the liquidity is very small for one of the tokens and decimals are small too, the maxAmountIn may be
             // smaller than minSwapAmount (usually 10^7), so just overwrite it.
             if (minSwapAmountTokenA > maxAmountIn) {
-                exactAmountIn = bound(exactAmountIn, maxAmountIn, maxAmountIn);
+                exactAmountIn = maxAmountIn;
             } else {
                 exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxAmountIn);
             }
@@ -473,7 +473,7 @@ contract E2eSwapTest is BaseVaultTest {
         _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesTokenA, feesTokenB);
     }
 
-    function _testDoUndoExactOutBase(uint256 exactAmountOut, DoUndoLocals memory testLocals) internal {
+    function testDoUndoExactOutBase(uint256 exactAmountOut, DoUndoLocals memory testLocals) internal {
         if (testLocals.shouldTestDecimals) {
             decimalsTokenA = bound(testLocals.newDecimalsTokenA, 6, 18);
             decimalsTokenB = bound(testLocals.newDecimalsTokenB, 6, 18);
@@ -501,7 +501,7 @@ contract E2eSwapTest is BaseVaultTest {
             // If the liquidity is very small for one of the tokens and decimals are small too, the maxAmountOut may be
             // smaller than minSwapAmount (usually 10^7), so just overwrite it.
             if (minSwapAmountTokenB > maxAmountOut) {
-                exactAmountOut = bound(exactAmountOut, maxAmountOut, maxAmountOut);
+                exactAmountOut = maxAmountOut;
             } else {
                 exactAmountOut = bound(exactAmountOut, minSwapAmountTokenB, maxAmountOut);
             }
