@@ -15,16 +15,15 @@ interface IBatchRouter {
     struct SwapPathStep {
         address pool;
         IERC20 tokenOut;
-        // if true, pool is a yield-bearing token buffer. Used to wrap/unwrap tokens if pool doesn't have
-        // enough liquidity
+        // If true, the "pool" is an ERC4626 Buffer. Used to wrap/unwrap tokens if pool doesn't have enough liquidity.
         bool isBuffer;
     }
 
     struct SwapPathExactAmountIn {
         IERC20 tokenIn;
-        // for each step:
-        // if tokenIn == pool, use removeLiquidity SINGLE_TOKEN_EXACT_IN
-        // if tokenOut == pool, use addLiquidity UNBALANCED
+        // For each step:
+        // If tokenIn == pool, use removeLiquidity SINGLE_TOKEN_EXACT_IN.
+        // If tokenOut == pool, use addLiquidity UNBALANCED.
         SwapPathStep[] steps;
         uint256 exactAmountIn;
         uint256 minAmountOut;
@@ -33,8 +32,8 @@ interface IBatchRouter {
     struct SwapPathExactAmountOut {
         IERC20 tokenIn;
         // for each step:
-        // if tokenIn == pool, use removeLiquidity SINGLE_TOKEN_EXACT_OUT
-        // if tokenOut == pool, use addLiquidity SINGLE_TOKEN_EXACT_OUT
+        // If tokenIn == pool, use removeLiquidity SINGLE_TOKEN_EXACT_OUT.
+        // If tokenOut == pool, use addLiquidity SINGLE_TOKEN_EXACT_OUT.
         SwapPathStep[] steps;
         uint256 maxAmountIn;
         uint256 exactAmountOut;
