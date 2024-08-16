@@ -100,7 +100,7 @@ interface IVaultMain {
      * _queryModeBalanceIncrease (and only in a query context).
      *
      * @param params Parameters for the remove liquidity (see above for struct definition)
-     * @return bptAmountIn Actual amount of BPT burnt
+     * @return bptAmountIn Actual amount of BPT burned
      * @return amountsOut Actual amounts of output tokens
      * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
@@ -123,7 +123,7 @@ interface IVaultMain {
     function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
 
     /*******************************************************************************
-                            Yield-bearing token buffers
+                                  ERC4626 Buffers
     *******************************************************************************/
 
     /**

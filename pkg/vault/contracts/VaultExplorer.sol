@@ -296,7 +296,7 @@ contract VaultExplorer is IVaultExplorer {
     }
 
     /*******************************************************************************
-                              Yield-bearing Token Buffers
+                                  ERC4626 Buffers
     *******************************************************************************/
 
     /// @inheritdoc IVaultExplorer
