@@ -914,17 +914,17 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
         for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
+            IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
 
-            // If the wrapped token was not initialized in the vault, the router treats it as a standard token.
-            if (_vault.getBufferAsset(wrappedToken) == address(0)) {
+            // If the vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
+            // initialized. Thus, the router treats it as a standard token.
+            if (address(underlyingToken) == address(0)) {
                 underlyingAmountsOut[i] = wrappedAmountsOut[i];
                 if (isStaticCall == false) {
                     _sendTokenOut(params.sender, erc4626PoolTokens[i], underlyingAmountsOut[i], params.wethIsEth);
                 }
                 continue;
             }
-
-            IERC20 underlyingToken = IERC20(wrappedToken.asset());
 
             // `erc4626BufferWrapOrUnwrap` will fail if the wrapper is not ERC4626.
             (, , underlyingAmountsOut[i]) = _vault.erc4626BufferWrapOrUnwrap(
@@ -961,9 +961,11 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             // Treat all ERC4626 pool tokens as wrapped. The next step will verify if we can use the wrappedToken as
             // a valid ERC4626.
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
+            IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
 
-            // If the wrapped token was not initialized in the vault, the router treats it as a standard token.
-            if (_vault.getBufferAsset(wrappedToken) == address(0)) {
+            // If the vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
+            // initialized. Thus, the router treats it as a standard token.
+            if (address(underlyingToken) == address(0)) {
                 if (isStaticCall == false) {
                     underlyingAmounts[i] = amountsIn[i];
                     wrappedAmounts[i] = amountsIn[i];
@@ -971,8 +973,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                 }
                 continue;
             }
-
-            IERC20 underlyingToken = IERC20(wrappedToken.asset());
 
             if (isStaticCall == false) {
                 if (kind == SwapKind.EXACT_IN) {
