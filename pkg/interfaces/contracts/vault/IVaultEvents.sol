@@ -137,42 +137,46 @@ interface IVaultEvents {
     event ProtocolFeeControllerChanged(IProtocolFeeController indexed newProtocolFeeController);
 
     /**
-     * @notice Liquidity was added to an ERC4626 buffer.
-     * @dev The underlying token can be derived from the wrapped token, so it's not included here. The shares are not
-     * tokenized like pool BPT, but accounted for in the Vault. `getBufferOwnerShares` retrieves the current total
-     * shares for a given buffer and address, and `getBufferTotalShares` returns the "totalSupply" of a buffer.
+     * @notice Liquidity was added to an ERC4626 buffer corresponding to the given wrapped token.
+     * @dev The underlying token can be derived from the wrapped token, so it's not included here.
      *
      * @param wrappedToken The wrapped token that identifies the buffer
-     * @param sharesOwner The address depositing the funds
-     * @param amountWrapped The amount of the wrapped token that was deposited
      * @param amountUnderlying The amount of the underlying token that was deposited
-     * @param issuedShares The "internal BPT" shares credited to the depositor
+     * @param amountWrapped The amount of the wrapped token that was deposited
      */
-    event LiquidityAddedToBuffer(
-        IERC4626 indexed wrappedToken,
-        address indexed sharesOwner,
-        uint256 amountWrapped,
-        uint256 amountUnderlying,
-        uint256 issuedShares
-    );
+    event LiquidityAddedToBuffer(IERC4626 indexed wrappedToken, uint256 amountUnderlying, uint256 amountWrapped);
+
+    /**
+     * @notice Buffer shares were minted for an ERC4626 buffer corresponding to a given wrapped token.
+     * @dev The shares are not tokenized like pool BPT, but accounted for in the Vault. `getBufferOwnerShares`
+     * retrieves the current total shares for a given buffer and address, and `getBufferTotalShares` returns the
+     * "totalSupply" of a buffer.
+     *
+     * @param wrappedToken The wrapped token that identifies the buffer
+     * @param to The owner of the minted shares
+     * @param issuedShares The amount of "internal BPT" shares created
+     */
+    event BufferSharesMinted(IERC4626 indexed wrappedToken, address indexed to, uint256 issuedShares);
+
+    /**
+     * @notice Buffer shares were burnt for an ERC4626 buffer corresponding to a given wrapped token.
+     * @dev The shares are not tokenized like pool BPT, but accounted for in the Vault. `getBufferOwnerShares`
+     * retrieves the current total shares for a given buffer and address, and `getBufferTotalShares` returns the
+     * "totalSupply" of a buffer.
+     *
+     * @param wrappedToken The wrapped token that identifies the buffer
+     * @param from The owner of the burnt shares
+     * @param burntShares The amount of "internal BPT" shares burnt
+     */
+    event BufferSharesBurnt(IERC4626 indexed wrappedToken, address indexed from, uint256 burntShares);
 
     /**
      * @notice Liquidity was removed from an ERC4626 buffer.
-     * @dev The underlying token can be derived from the wrapped token, so it's not included here. The shares are not
-     * tokenized like pool BPT, but accounted for in the Vault. `getBufferOwnerShares` retrieves the current total
-     * shares for a given buffer and address, and `getBufferTotalShares` returns the "totalSupply" of a buffer.
+     * @dev The underlying token can be derived from the wrapped token, so it's not included here.
      *
      * @param wrappedToken The wrapped token that identifies the buffer
-     * @param sharesOwner The address withdrawing the funds
-     * @param amountWrapped The amount of the wrapped token that was withdrawn
      * @param amountUnderlying The amount of the underlying token that was withdrawn
-     * @param removedShares The "internal BPT" shares debited from the share owner
+     * @param amountWrapped The amount of the wrapped token that was withdrawn
      */
-    event LiquidityRemovedFromBuffer(
-        IERC4626 indexed wrappedToken,
-        address indexed sharesOwner,
-        uint256 amountWrapped,
-        uint256 amountUnderlying,
-        uint256 removedShares
-    );
+    event LiquidityRemovedFromBuffer(IERC4626 indexed wrappedToken, uint256 amountUnderlying, uint256 amountWrapped);
 }
