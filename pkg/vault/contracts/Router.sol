@@ -714,49 +714,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrappedRaw, false);
     }
 
-    /// @inheritdoc IRouter
-    function removeLiquidityFromBuffer(
-        IERC4626 wrappedToken,
-        uint256 sharesToRemove
-    ) external returns (uint256, uint256) {
-        return
-            abi.decode(
-                _vault.unlock(
-                    abi.encodeWithSelector(
-                        Router.removeLiquidityFromBufferHook.selector,
-                        wrappedToken,
-                        sharesToRemove,
-                        msg.sender
-                    )
-                ),
-                (uint256, uint256)
-            );
-    }
-
-    /**
-     * @notice Hook for removing liquidity from vault buffers.
-     * @dev Can only be called by the Vault.
-     * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
-     * total shares
-     * @param sharesOwner Address of contract that owns the deposited liquidity.
-     * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
-     * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
-     */
-    function removeLiquidityFromBufferHook(
-        IERC4626 wrappedToken,
-        uint256 sharesToRemove,
-        address sharesOwner
-    ) external nonReentrant onlyVault returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw) {
-        (removedUnderlyingBalanceRaw, removedWrappedBalanceRaw) = _vault.removeLiquidityFromBuffer(
-            wrappedToken,
-            sharesToRemove,
-            sharesOwner
-        );
-        _sendTokenOut(sharesOwner, IERC20(_vault.getBufferAsset(wrappedToken)), removedUnderlyingBalanceRaw, false);
-        _sendTokenOut(sharesOwner, IERC20(address(wrappedToken)), removedWrappedBalanceRaw, false);
-    }
-
     /*******************************************************************************
                                       Queries
     *******************************************************************************/

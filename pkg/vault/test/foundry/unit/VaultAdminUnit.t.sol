@@ -128,7 +128,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
         authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
         vm.expectRevert(IVaultErrors.NotEnoughBufferShares.selector);
         // The call should revert since bob is trying to withdraw more shares than he has.
-        router.removeLiquidityFromBuffer(waDAI, shares + 1);
+        vault.removeLiquidityFromBuffer(waDAI, shares + 1);
         vm.stopPrank();
     }
 

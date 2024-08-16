@@ -112,7 +112,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Does not revert: remove liquidity doesn't check whether the asset matches the registered one in order to
         // avoid external calls. You can always exit the buffer, even if the wrapper is corrupt and updated its asset.
         vm.prank(lp);
-        router.removeLiquidityFromBuffer(IERC4626(address(waDAI)), lpShares);
+        vault.removeLiquidityFromBuffer(IERC4626(address(waDAI)), lpShares);
     }
 
     function testChangeAssetOfWrappedTokenWrapUnwrap() public {
@@ -383,7 +383,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         router.addLiquidityToBuffer(IERC4626(address(waDAI)), _wrapAmount, _wrapAmount);
 
         // Remove liquidity is supposed to pass even with buffers paused, so revert is not expected.
-        router.removeLiquidityFromBuffer(IERC4626(address(waDAI)), _wrapAmount);
+        vault.removeLiquidityFromBuffer(IERC4626(address(waDAI)), _wrapAmount);
 
         vm.stopPrank();
 
@@ -464,7 +464,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         BufferAndLPBalances memory beforeBalances = _measureBuffer();
 
         vm.prank(lp);
-        (uint256 underlyingRemoved, uint256 wrappedRemoved) = router.removeLiquidityFromBuffer(waDAI, lpShares);
+        (uint256 underlyingRemoved, uint256 wrappedRemoved) = vault.removeLiquidityFromBuffer(waDAI, lpShares);
 
         // The underlying and wrapped removed are not exactly the same as amountsIn, because part of the first deposit
         // is kept to don't deplete the buffer and these shares (MIN_BPT) are "burned". The remove liquidity operation

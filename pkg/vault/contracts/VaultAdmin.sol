@@ -20,6 +20,7 @@ import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib, PoolConfigBits } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
+import { VaultGuard } from "./VaultGuard.sol";
 
 /**
  * @dev Bytecode extension for the Vault containing permissioned functions. Complementary to `VaultExtension`,
@@ -31,14 +32,12 @@ import { VaultCommon } from "./VaultCommon.sol";
  *
  * The storage of this contract is in practice unused.
  */
-contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
+contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfigBits;
     using VaultStateLib for VaultStateBits;
     using VaultExtensionsLib for IVault;
     using SafeERC20 for IERC20;
-
-    IVault private immutable _vault;
 
     /// @dev Functions with this modifier can only be delegate-called by the vault.
     modifier onlyVaultDelegateCall() {
@@ -98,7 +97,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         IVault mainVault,
         uint32 pauseWindowDuration,
         uint32 bufferPeriodDuration
-    ) Authentication(bytes32(uint256(uint160(address(mainVault))))) {
+    ) Authentication(bytes32(uint256(uint160(address(mainVault))))) VaultGuard(mainVault) {
         if (pauseWindowDuration > _MAX_PAUSE_WINDOW_DURATION) {
             revert VaultPauseWindowDurationTooLarge();
         }
@@ -112,8 +111,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _vaultPauseWindowEndTime = pauseWindowEndTime;
         _vaultBufferPeriodDuration = bufferPeriodDuration;
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
-
-        _vault = mainVault;
     }
 
     /*******************************************************************************
@@ -535,15 +532,44 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @inheritdoc IVaultAdmin
     function removeLiquidityFromBuffer(
         IERC4626 wrappedToken,
+        uint256 sharesToRemove
+    ) external onlyVaultDelegateCall returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeWithSelector(
+                        VaultAdmin.removeLiquidityFromBufferHook.selector,
+                        wrappedToken,
+                        sharesToRemove,
+                        msg.sender
+                    )
+                ),
+                (uint256, uint256)
+            );
+    }
+
+    /**
+     * @dev Internal hook for `removeLiquidityFromBuffer`. Can only be called by the Vault itself via
+     * `removeLiquidityFromBuffer`, which correctly forwards the real sender as the `sharesOwner`.
+     * This function is not non-reentrant as a whole, but the only part that triggers external calls is non-reentrant
+     * so `removeLiquidityFromBufferHook` cannot reenter the Vault.
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner's
+     * total shares
+     * @param sharesOwner Owner of the shares (`msg.sender` for `removeLiquidityFromBuffer` entrypoint)
+     * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
+     * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
+     */
+    function removeLiquidityFromBufferHook(
+        IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner
     )
-        public
+        external
         onlyVaultDelegateCall
+        onlyVault
         onlyWhenUnlocked
         withInitializedBuffer(wrappedToken)
-        authenticate
-        nonReentrant
         returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw)
     {
         if (sharesToRemove > _bufferLpShares[wrappedToken][sharesOwner]) {
@@ -556,7 +582,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         removedUnderlyingBalanceRaw = (bufferBalances.getBalanceRaw() * sharesToRemove) / totalShares;
         removedWrappedBalanceRaw = (bufferBalances.getBalanceDerived() * sharesToRemove) / totalShares;
 
-        _supplyCredit(IERC20(_bufferAssets[wrappedToken]), removedUnderlyingBalanceRaw);
+        IERC20 underlyingToken = IERC20(_bufferAssets[wrappedToken]);
+        _supplyCredit(underlyingToken, removedUnderlyingBalanceRaw);
         _supplyCredit(wrappedToken, removedWrappedBalanceRaw);
 
         bufferBalances = PackedTokenBalance.toPackedBalance(
@@ -567,6 +594,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
         _burnBufferShares(wrappedToken, sharesOwner, sharesToRemove);
+
+        // This triggers an external call to itself; the vault is acting as a Router in this case.
+        // `sendTo` makes external calls but is non-reentrant.
+        _vault.sendTo(underlyingToken, sharesOwner, removedUnderlyingBalanceRaw);
+        _vault.sendTo(wrappedToken, sharesOwner, removedWrappedBalanceRaw);
 
         emit LiquidityRemovedFromBuffer(wrappedToken, removedUnderlyingBalanceRaw, removedWrappedBalanceRaw);
     }
