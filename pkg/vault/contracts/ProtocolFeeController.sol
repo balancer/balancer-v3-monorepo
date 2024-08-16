@@ -158,12 +158,12 @@ contract ProtocolFeeController is
 
     /// @inheritdoc IProtocolFeeController
     function vault() external view returns (IVault) {
-        return getVault();
+        return _vault;
     }
 
     /// @inheritdoc IProtocolFeeController
     function collectAggregateFees(address pool) public {
-        getVault().unlock(abi.encodeWithSelector(ProtocolFeeController.collectAggregateFeesHook.selector, pool));
+        _vault.unlock(abi.encodeWithSelector(ProtocolFeeController.collectAggregateFeesHook.selector, pool));
     }
 
     /**
@@ -172,7 +172,7 @@ contract ProtocolFeeController is
      * transferred so that the transaction settles when the hook returns.
      */
     function collectAggregateFeesHook(address pool) external onlyVault {
-        (uint256[] memory totalSwapFees, uint256[] memory totalYieldFees) = getVault().collectAggregateFees(pool);
+        (uint256[] memory totalSwapFees, uint256[] memory totalYieldFees) = _vault.collectAggregateFees(pool);
         _receiveAggregateFees(pool, totalSwapFees, totalYieldFees);
     }
 
@@ -220,7 +220,7 @@ contract ProtocolFeeController is
             if (feeAmounts[i] > 0) {
                 IERC20 token = poolTokens[i];
 
-                getVault().sendTo(token, address(this), feeAmounts[i]);
+                _vault.sendTo(token, address(this), feeAmounts[i]);
 
                 // It should be easier for off-chain processes to handle two events, rather than parsing the type
                 // out of a single event.
@@ -366,7 +366,7 @@ contract ProtocolFeeController is
     }
 
     function _getPoolTokensAndCount(address pool) internal view returns (IERC20[] memory tokens, uint256 numTokens) {
-        tokens = getVault().getPoolTokens(pool);
+        tokens = _vault.getPoolTokens(pool);
         numTokens = tokens.length;
     }
 
@@ -457,13 +457,13 @@ contract ProtocolFeeController is
         if (feeType == ProtocolFeeType.SWAP) {
             _poolCreatorSwapFeePercentages[pool] = poolCreatorFeePercentage;
 
-            getVault().updateAggregateSwapFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.SWAP));
+            _vault.updateAggregateSwapFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.SWAP));
 
             emit PoolCreatorSwapFeePercentageChanged(pool, poolCreatorFeePercentage);
         } else {
             _poolCreatorYieldFeePercentages[pool] = poolCreatorFeePercentage;
 
-            getVault().updateAggregateYieldFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.YIELD));
+            _vault.updateAggregateYieldFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.YIELD));
 
             emit PoolCreatorYieldFeePercentageChanged(pool, poolCreatorFeePercentage);
         }
@@ -517,7 +517,7 @@ contract ProtocolFeeController is
         });
 
         // Update the resulting aggregate swap fee value in the Vault (PoolConfig).
-        getVault().updateAggregateSwapFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.SWAP));
+        _vault.updateAggregateSwapFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.SWAP));
 
         emit ProtocolSwapFeePercentageChanged(pool, newProtocolSwapFeePercentage);
     }
@@ -535,7 +535,7 @@ contract ProtocolFeeController is
         });
 
         // Update the resulting aggregate yield fee value in the Vault (PoolConfig).
-        getVault().updateAggregateYieldFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.YIELD));
+        _vault.updateAggregateYieldFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.YIELD));
 
         emit ProtocolYieldFeePercentageChanged(pool, newProtocolYieldFeePercentage);
     }
