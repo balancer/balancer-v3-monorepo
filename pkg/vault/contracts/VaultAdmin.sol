@@ -551,8 +551,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     /**
      * @dev Internal hook for `removeLiquidityFromBuffer`. Can only be called by the Vault itself via
      * `removeLiquidityFromBuffer`, which correctly forwards the real sender as the `sharesOwner`.
-     * This function is not non-reentrant as a whole, but the only part that triggers external calls is non-reentrant
-     * so `removeLiquidityFromBufferHook` cannot reenter the Vault.
+     * This function must be reentrant because it calls the nonReentrant function `sendTo`. However,
+     * since `sendTo` is the only function that makes external calls, `removeLiquidityFromBufferHook`
+     * cannot reenter the Vault.
+     *
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner's
      * total shares
