@@ -61,10 +61,6 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
         _setUpVariables();
 
-        // Set protocol and creator fees to 50%, so we can measure the charged fees.
-        vm.prank(admin);
-        feeController.setGlobalProtocolSwapFeePercentage(FIFTY_PERCENT);
-
         // Initialize pools that will be used by batch router.
         // Create poolA
         vm.startPrank(lp);
@@ -193,8 +189,12 @@ contract E2eBatchSwapTest is BaseVaultTest {
     }
 
     function testExactInRepeatExactOut__Fuzz(uint256 exactAmountIn, uint256 poolFeePercentage) public {
+        poolFeePercentage = bound(poolFeePercentage, 1e12, 10e16);
+
         // For this test, we need equal fees to ensure symetry between exact_in and out.
-        _setPoolSwapFees(poolFeePercentage, poolFeePercentage, poolFeePercentage);
+        vault.manualSetStaticSwapFeePercentage(poolA, poolAFeePercentage);
+        vault.manualSetStaticSwapFeePercentage(poolB, poolBFeePercentage);
+        vault.manualSetStaticSwapFeePercentage(poolC, poolCFeePercentage);
 
         exactAmountIn = bound(exactAmountIn, minSwapAmountTokenA, maxSwapAmountTokenA);
 
@@ -211,8 +211,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
         vm.stopPrank();
 
         // Error tolerance is proportional to swap fee percentage.
-        uint256 tolerance = bound(poolFeePercentage, 1e12, 10e16);
-        assertApproxEqRel(amountIn, exactAmountIn, tolerance, "ExactIn and ExactOut amountsIn should match");
+        assertApproxEqRel(amountIn, exactAmountIn, poolFeePercentage, "ExactIn and ExactOut amountsIn should match");
     }
 
     function testExactInRepeatEachOperation__Fuzz(
