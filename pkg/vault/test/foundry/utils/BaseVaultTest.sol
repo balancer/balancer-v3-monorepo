@@ -266,6 +266,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         }
     }
 
+    /// @dev A different function is needed to measure token balances when tracking tokens across multiple pools.
     function getBalances(address user, IERC20[] memory tokensToTrack) internal view returns (Balances memory balances) {
         balances.userBpt = IERC20(pool).balanceOf(user);
         balances.aliceBpt = IERC20(pool).balanceOf(alice);
@@ -273,14 +274,16 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         balances.hookBpt = IERC20(pool).balanceOf(poolHooksContract);
         balances.lpBpt = IERC20(pool).balanceOf(lp);
 
-        balances.userTokens = new uint256[](tokensToTrack.length);
-        balances.aliceTokens = new uint256[](tokensToTrack.length);
-        balances.bobTokens = new uint256[](tokensToTrack.length);
-        balances.hookTokens = new uint256[](tokensToTrack.length);
-        balances.lpTokens = new uint256[](tokensToTrack.length);
-        balances.vaultTokens = new uint256[](tokensToTrack.length);
-        balances.vaultReserves = new uint256[](tokensToTrack.length);
-        for (uint256 i = 0; i < tokensToTrack.length; ++i) {
+        uint256 numTokens = tokensToTrack.length;
+
+        balances.userTokens = new uint256[](numTokens);
+        balances.aliceTokens = new uint256[](numTokens);
+        balances.bobTokens = new uint256[](numTokens);
+        balances.hookTokens = new uint256[](numTokens);
+        balances.lpTokens = new uint256[](numTokens);
+        balances.vaultTokens = new uint256[](numTokens);
+        balances.vaultReserves = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
             // Don't assume token ordering.
             balances.userTokens[i] = tokensToTrack[i].balanceOf(user);
             balances.aliceTokens[i] = tokensToTrack[i].balanceOf(alice);
