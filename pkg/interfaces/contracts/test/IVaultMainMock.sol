@@ -252,6 +252,8 @@ interface IVaultMainMock {
         BufferWrapOrUnwrapParams memory params
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
+    function manualSetBufferAsset(IERC4626 wrappedToken, address underlyingToken) external;
+
     function manualSettleReentrancy(IERC20 token) external returns (uint256 paid);
 
     function manualSendToReentrancy(IERC20 token, address to, uint256 amount) external;
