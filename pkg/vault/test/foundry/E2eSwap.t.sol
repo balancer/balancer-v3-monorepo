@@ -618,8 +618,10 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 normalizedLiquidityTokenB = (liquidityTokenB * (rateTokenB * 10 ** decimalsTokenA)) /
             (rateTokenA * 10 ** decimalsTokenB);
 
-        // 25% of tokenA or tokenB liquidity, the lowest value, to make sure the swap is executed.
-        amountIn = (liquidityTokenA > normalizedLiquidityTokenB ? normalizedLiquidityTokenB : liquidityTokenA) / 4;
+        // 20% of tokenA or tokenB liquidity, the lowest value, to make sure the swap is executed.
+        amountIn = (liquidityTokenA > normalizedLiquidityTokenB ? normalizedLiquidityTokenB : liquidityTokenA).mulDown(
+            20e16
+        );
     }
 
     function _setPoolBalancesAndGetAmountOut(
@@ -636,8 +638,10 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 normalizedLiquidityTokenA = (liquidityTokenA * (rateTokenA * 10 ** decimalsTokenB)) /
             (rateTokenB * 10 ** decimalsTokenA);
 
-        // 25% of tokenA or tokenB liquidity, the lowest value, to make sure the swap is executed.
-        amountOut = (normalizedLiquidityTokenA > liquidityTokenB ? liquidityTokenB : normalizedLiquidityTokenA) / 4;
+        // 20% of tokenA or tokenB liquidity, the lowest value, to make sure the swap is executed.
+        amountOut = (normalizedLiquidityTokenA > liquidityTokenB ? liquidityTokenB : normalizedLiquidityTokenA).mulDown(
+            20e16
+        );
     }
 
     function setPoolBalances(uint256 liquidityTokenA, uint256 liquidityTokenB) internal {
