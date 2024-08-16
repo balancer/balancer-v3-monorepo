@@ -13,7 +13,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { SwapKind, PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { SwapKind, PoolSwapParams, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
@@ -218,6 +218,11 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
         data.staticSwapFeePercentage = _vault.getStaticSwapFeePercentage((address(this)));
         data.totalSupply = totalSupply();
         data.bptRate = getRate();
+
+        PoolConfig memory poolConfig = _vault.getPoolConfig(address(this));
+        data.isPoolInitialized = poolConfig.isPoolInitialized;
+        data.isPoolPaused = poolConfig.isPoolPaused;
+        data.isPoolInRecoveryMode = poolConfig.isPoolInRecoveryMode;
     }
 
     /// @inheritdoc IWeightedPool

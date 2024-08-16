@@ -212,7 +212,7 @@ contract VaultExplorer is IVaultExplorer {
     function computeDynamicSwapFeePercentage(
         address pool,
         PoolSwapParams memory swapParams
-    ) external view returns (bool success, uint256 dynamicSwapFee) {
+    ) external view returns (uint256 dynamicSwapFee) {
         return _vault.computeDynamicSwapFeePercentage(pool, swapParams);
     }
 
@@ -292,11 +292,11 @@ contract VaultExplorer is IVaultExplorer {
 
     /// @inheritdoc IVaultExplorer
     function collectAggregateFees(address pool) external {
-        return _vault.collectAggregateFees(pool);
+        return _vault.getProtocolFeeController().collectAggregateFees(pool);
     }
 
     /*******************************************************************************
-                              Yield-bearing Token Buffers
+                                  ERC4626 Buffers
     *******************************************************************************/
 
     /// @inheritdoc IVaultExplorer

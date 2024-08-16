@@ -270,13 +270,21 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function collectAggregateFees(address pool) public onlyVaultDelegateCall nonReentrant withRegisteredPool(pool) {
+    function collectAggregateFees(
+        address pool
+    )
+        public
+        onlyVaultDelegateCall
+        onlyWhenUnlocked
+        onlyProtocolFeeController
+        withRegisteredPool(pool)
+        returns (uint256[] memory totalSwapFees, uint256[] memory totalYieldFees)
+    {
         IERC20[] memory poolTokens = _vault.getPoolTokens(pool);
-        address feeController = address(_protocolFeeController);
         uint256 numTokens = poolTokens.length;
 
-        uint256[] memory totalSwapFees = new uint256[](numTokens);
-        uint256[] memory totalYieldFees = new uint256[](numTokens);
+        totalSwapFees = new uint256[](numTokens);
+        totalYieldFees = new uint256[](numTokens);
 
         for (uint256 i = 0; i < poolTokens.length; ++i) {
             IERC20 token = poolTokens[i];
@@ -284,14 +292,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
             (totalSwapFees[i], totalYieldFees[i]) = _aggregateFeeAmounts[pool][token].fromPackedBalance();
 
             if (totalSwapFees[i] > 0 || totalYieldFees[i] > 0) {
-                // The ProtocolFeeController will pull tokens from the Vault.
-                token.forceApprove(feeController, totalSwapFees[i] + totalYieldFees[i]);
-
+                // Supply credit for the total amount of fees.
                 _aggregateFeeAmounts[pool][token] = 0;
+                _supplyCredit(token, totalSwapFees[i] + totalYieldFees[i]);
             }
         }
-
-        _protocolFeeController.receiveAggregateFees(pool, totalSwapFees, totalYieldFees);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -372,12 +377,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
      * @param recoveryMode The desired recovery mode state
      */
     function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
-        // Update poolConfigBits
-        _poolConfigBits[pool] = _poolConfigBits[pool].setPoolInRecoveryMode(recoveryMode);
-
         if (recoveryMode == false) {
             _writePoolBalancesToStorage(pool, _loadPoolData(pool, Rounding.ROUND_DOWN));
         }
+
+        // Update poolConfigBits. `_writePoolBalancesToStorage` updates *only* balances, not yield fees, which are
+        // forfeited during Recovery Mode. To prevent yield fees from being charged, `_loadPoolData` must be called
+        // while still in Recovery Mode, so updating the Recovery Mode bit must be done last, after the accounting.
+        _poolConfigBits[pool] = _poolConfigBits[pool].setPoolInRecoveryMode(recoveryMode);
 
         emit PoolRecoveryModeStateChanged(pool, recoveryMode);
     }
@@ -394,7 +401,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /*******************************************************************************
-                                Yield-bearing token buffers
+                                  ERC4626 Buffers
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
@@ -412,10 +419,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     }
 
     /// @inheritdoc IVaultAdmin
-    function addLiquidityToBuffer(
+    function initializeBuffer(
         IERC4626 wrappedToken,
-        uint256 amountUnderlying,
-        uint256 amountWrapped,
+        uint256 amountUnderlyingRaw,
+        uint256 amountWrappedRaw,
         address sharesOwner
     )
         public
@@ -425,43 +432,104 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         nonReentrant
         returns (uint256 issuedShares)
     {
-        address underlyingToken = wrappedToken.asset();
-
-        // Amount of shares to issue is the total underlying token that the user is depositing.
-        issuedShares = wrappedToken.convertToAssets(amountWrapped) + amountUnderlying;
-
-        if (_bufferAssets[wrappedToken] == address(0)) {
-            // Buffer is not initialized yet, so we initialize it.
-
-            // Register asset of wrapper, so it cannot change.
-            _bufferAssets[wrappedToken] = underlyingToken;
-
-            // Burn MINIMUM_TOTAL_SUPPLY shares, so the buffer can never go back to zero liquidity
-            // (avoids rounding issues with low liquidity).
-            _bufferTotalShares[wrappedToken] = _MINIMUM_TOTAL_SUPPLY;
-            issuedShares -= _MINIMUM_TOTAL_SUPPLY;
-        } else if (_bufferAssets[wrappedToken] != underlyingToken) {
-            // Asset was changed since the first bufferAddLiquidity call.
-            revert WrongWrappedTokenAsset(address(wrappedToken));
+        if (_bufferAssets[wrappedToken] != address(0)) {
+            revert BufferAlreadyInitialized(wrappedToken);
         }
 
+        address underlyingToken = wrappedToken.asset();
+
+        if (underlyingToken == address(0)) {
+            // Should never happen, but a malicious wrapper could return the zero address and cause the buffer
+            // initialization code to run more than once.
+            revert InvalidUnderlyingToken();
+        }
+
+        // Register asset of wrapper, so it cannot change.
+        _bufferAssets[wrappedToken] = underlyingToken;
+
+        // Take debt for initialization assets.
+        _takeDebt(IERC20(underlyingToken), amountUnderlyingRaw);
+        _takeDebt(wrappedToken, amountWrappedRaw);
+
+        // Update buffer balances.
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
-
-        // Adds the issued shares to the total shares of the liquidity pool.
-        _bufferLpShares[wrappedToken][sharesOwner] += issuedShares;
-        _bufferTotalShares[wrappedToken] += issuedShares;
-
         bufferBalances = PackedTokenBalance.toPackedBalance(
-            bufferBalances.getBalanceRaw() + amountUnderlying,
-            bufferBalances.getBalanceDerived() + amountWrapped
+            bufferBalances.getBalanceRaw() + amountUnderlyingRaw,
+            bufferBalances.getBalanceDerived() + amountWrappedRaw
         );
 
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
-        _takeDebt(IERC20(underlyingToken), amountUnderlying);
-        _takeDebt(wrappedToken, amountWrapped);
+        // Amount of shares to issue is the total underlying token that the user is depositing.
+        issuedShares = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
 
-        emit LiquidityAddedToBuffer(wrappedToken, sharesOwner, amountWrapped, amountUnderlying, issuedShares);
+        _ensureMinimumTotalSupply(issuedShares);
+
+        issuedShares -= _MINIMUM_TOTAL_SUPPLY;
+        _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
+        _mintMinimumBufferSupplyReserve(wrappedToken);
+
+        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function addLiquidityToBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlyingRaw,
+        uint256 amountWrappedRaw,
+        address sharesOwner
+    )
+        public
+        onlyVaultDelegateCall
+        onlyWhenUnlocked
+        whenVaultBuffersAreNotPaused
+        withInitializedBuffer(wrappedToken)
+        nonReentrant
+        returns (uint256 issuedShares)
+    {
+        // Check wrapped token asset correctness.
+        address underlyingToken = wrappedToken.asset();
+        _ensureCorrectBufferAsset(wrappedToken, underlyingToken);
+
+        // Take debt for assets going into the buffer (wrapped and underlying).
+        _takeDebt(IERC20(underlyingToken), amountUnderlyingRaw);
+        _takeDebt(wrappedToken, amountWrappedRaw);
+
+        // Update buffer balances
+        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
+        bufferBalances = PackedTokenBalance.toPackedBalance(
+            bufferBalances.getBalanceRaw() + amountUnderlyingRaw,
+            bufferBalances.getBalanceDerived() + amountWrappedRaw
+        );
+        _bufferTokenBalances[wrappedToken] = bufferBalances;
+
+        // Amount of shares to issue is the total underlying token that the user is depositing.
+        issuedShares = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
+        _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
+
+        emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
+    }
+
+    function _mintBufferShares(IERC4626 wrappedToken, address to, uint256 amount) internal {
+        if (to == address(0)) {
+            revert BufferSharesInvalidReceiver(to);
+        }
+
+        uint256 newTotalSupply = _bufferTotalShares[wrappedToken] + amount;
+
+        _ensureMinimumTotalSupply(newTotalSupply);
+
+        _bufferTotalShares[wrappedToken] = newTotalSupply;
+        _bufferLpShares[wrappedToken][to] += amount;
+
+        emit BufferSharesMinted(wrappedToken, to, amount);
+    }
+
+    function _mintMinimumBufferSupplyReserve(IERC4626 wrappedToken) internal {
+        _bufferTotalShares[wrappedToken] += _MINIMUM_TOTAL_SUPPLY;
+        _bufferLpShares[wrappedToken][address(0)] += _MINIMUM_TOTAL_SUPPLY;
+
+        emit BufferSharesMinted(wrappedToken, address(0), _MINIMUM_TOTAL_SUPPLY);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -473,40 +541,56 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         public
         onlyVaultDelegateCall
         onlyWhenUnlocked
+        withInitializedBuffer(wrappedToken)
         authenticate
         nonReentrant
-        returns (uint256 removedUnderlyingBalance, uint256 removedWrappedBalance)
+        returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw)
     {
-        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
-
         if (sharesToRemove > _bufferLpShares[wrappedToken][sharesOwner]) {
             revert NotEnoughBufferShares();
         }
+
+        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
         uint256 totalShares = _bufferTotalShares[wrappedToken];
 
-        removedUnderlyingBalance = (bufferBalances.getBalanceRaw() * sharesToRemove) / totalShares;
-        removedWrappedBalance = (bufferBalances.getBalanceDerived() * sharesToRemove) / totalShares;
+        removedUnderlyingBalanceRaw = (bufferBalances.getBalanceRaw() * sharesToRemove) / totalShares;
+        removedWrappedBalanceRaw = (bufferBalances.getBalanceDerived() * sharesToRemove) / totalShares;
 
-        _bufferLpShares[wrappedToken][sharesOwner] -= sharesToRemove;
-        _bufferTotalShares[wrappedToken] -= sharesToRemove;
+        _supplyCredit(IERC20(_bufferAssets[wrappedToken]), removedUnderlyingBalanceRaw);
+        _supplyCredit(wrappedToken, removedWrappedBalanceRaw);
 
         bufferBalances = PackedTokenBalance.toPackedBalance(
-            bufferBalances.getBalanceRaw() - removedUnderlyingBalance,
-            bufferBalances.getBalanceDerived() - removedWrappedBalance
+            bufferBalances.getBalanceRaw() - removedUnderlyingBalanceRaw,
+            bufferBalances.getBalanceDerived() - removedWrappedBalanceRaw
         );
 
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
-        _supplyCredit(IERC20(_bufferAssets[wrappedToken]), removedUnderlyingBalance);
-        _supplyCredit(wrappedToken, removedWrappedBalance);
+        _burnBufferShares(wrappedToken, sharesOwner, sharesToRemove);
 
-        emit LiquidityRemovedFromBuffer(
-            wrappedToken,
-            sharesOwner,
-            removedWrappedBalance,
-            removedUnderlyingBalance,
-            sharesToRemove
-        );
+        emit LiquidityRemovedFromBuffer(wrappedToken, removedUnderlyingBalanceRaw, removedWrappedBalanceRaw);
+    }
+
+    function _burnBufferShares(IERC4626 wrappedToken, address from, uint256 amount) internal {
+        if (from == address(0)) {
+            revert BufferSharesInvalidOwner(from);
+        }
+
+        uint256 newTotalSupply = _bufferTotalShares[wrappedToken] - amount;
+
+        _ensureMinimumTotalSupply(newTotalSupply);
+
+        _bufferTotalShares[wrappedToken] = newTotalSupply;
+        _bufferLpShares[wrappedToken][from] -= amount;
+
+        emit BufferSharesBurned(wrappedToken, from, amount);
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getBufferAsset(
+        IERC4626 wrappedToken
+    ) external view onlyVaultDelegateCall returns (address underlyingToken) {
+        return _bufferAssets[wrappedToken];
     }
 
     /// @inheritdoc IVaultAdmin

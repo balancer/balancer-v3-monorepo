@@ -60,7 +60,7 @@ contract BatchRouterStorage {
     }
 
     // token -> amount that is part of the current input / output amounts, but is settled preemptively.
-    // This situation happens whenever there is BPT involved in the operation, which is minted and burnt instantly.
+    // This situation happens whenever there is BPT involved in the operation, which is minted and burned instantly.
     // Since those amounts are not tracked in the inputs / outputs to settle, we need to track them elsewhere
     // to return the correct total amounts in and out for each token involved in the operation.
     function _settledTokenAmounts() internal view returns (AddressMappingSlot slot) {

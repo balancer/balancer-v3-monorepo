@@ -10,9 +10,11 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { PoolConfig, FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { ProtocolFeeController } from "../../contracts/ProtocolFeeController.sol";
 import { ProtocolFeeControllerMock } from "../../contracts/test/ProtocolFeeControllerMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
@@ -592,6 +594,35 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.withdrawPoolCreatorFees(pool, alice);
     }
 
+    function test100PercentPoolCreatorFee() public {
+        // Protocol fees will be zero.
+        pool = createPool();
+
+        // Set 100% pool creator fees
+        vm.startPrank(lp);
+        feeController.setPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
+
+        // Check initial conditions: aggregate swap fee percentage should be 100%.
+        (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) = IPoolInfo(pool)
+            .getAggregateFeePercentages();
+        assertEq(aggregateSwapFeePercentage, FixedPoint.ONE, "Aggregage swap fee != 100%");
+        assertEq(aggregateYieldFeePercentage, 0, "Aggregage swap fee is not zero");
+
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
+
+        uint256 creatorBalanceDAIBefore = dai.balanceOf(lp);
+
+        // Collect fees - 100% should go to the pool creator.
+        feeController.collectAggregateFees(pool);
+        feeController.withdrawPoolCreatorFees(pool);
+
+        assertEq(
+            dai.balanceOf(lp) - creatorBalanceDAIBefore,
+            PROTOCOL_SWAP_FEE_AMOUNT,
+            "Wrong ending balance of DAI (creator)"
+        );
+    }
+
     function testPermissionlessWithdrawalByNonPoolCreator() public {
         _registerPoolWithMaxProtocolFees();
 
@@ -625,7 +656,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         uint256 creatorBalanceDAIBefore = dai.balanceOf(lp);
         uint256 creatorBalanceUSDCBefore = usdc.balanceOf(lp);
 
-        vault.collectAggregateFees(pool);
+        feeController.collectAggregateFees(pool);
         feeController.withdrawPoolCreatorFees(pool);
 
         assertEq(
@@ -690,6 +721,9 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             "Wrong USDC protocol yield fees"
         );
 
+        uint256 reservesOfDaiBeforeCollect = vault.getReservesOf(dai);
+        uint256 reservesOfUsdcBeforeCollect = vault.getReservesOf(usdc);
+
         // Collecting fees will emit events, and call `receiveAggregateFees`.
         vm.expectEmit();
         emit IProtocolFeeController.ProtocolSwapFeeCollected(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
@@ -704,15 +738,10 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
         vm.expectCall(
             address(feeController),
-            abi.encodeWithSelector(
-                IProtocolFeeController.receiveAggregateFees.selector,
-                pool,
-                swapAmounts,
-                yieldAmounts
-            )
+            abi.encodeWithSelector(ProtocolFeeController.collectAggregateFeesHook.selector, pool)
         );
         // Move them to the fee controller.
-        vault.collectAggregateFees(pool);
+        feeController.collectAggregateFees(pool);
 
         // Now the fee controller should have them - and the Vault should be zero.
         assertEq(vault.getAggregateSwapFeeAmount(pool, dai), 0, "Non-zero post-collection DAI protocol swap fees");
@@ -725,6 +754,18 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
 
         uint256[] memory protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
         uint256[] memory poolCreatorFeeAmounts = feeController.getPoolCreatorFeeAmounts(pool);
+
+        // Check reserves
+        assertEq(
+            vault.getReservesOf(dai),
+            reservesOfDaiBeforeCollect - protocolFeeAmounts[daiIdx] - poolCreatorFeeAmounts[daiIdx],
+            "DAI: Incorrect Vault reserves"
+        );
+        assertEq(
+            vault.getReservesOf(usdc),
+            reservesOfUsdcBeforeCollect - protocolFeeAmounts[usdcIdx] - poolCreatorFeeAmounts[usdcIdx],
+            "USDC: Incorrect Vault reserves"
+        );
 
         uint256 aggregateSwapFeePercentage = feeController.computeAggregateFeePercentage(
             MAX_PROTOCOL_SWAP_FEE_PCT,

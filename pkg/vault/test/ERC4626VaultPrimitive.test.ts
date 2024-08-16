@@ -124,17 +124,21 @@ describe('ERC4626VaultPrimitive', function () {
     pool = await createYieldBearingPool();
 
     await pool.connect(lp).approve(router, MAX_UINT256);
-    for (const token of [wDAI, wUSDC]) {
-      await token.connect(lp).approve(permit2, MAX_UINT256);
-      await permit2.connect(lp).approve(token, router, MAX_UINT160, MAX_UINT48);
-      await permit2.connect(lp).approve(token, batchRouter, MAX_UINT160, MAX_UINT48);
-    }
+    await setupTokenApprovals(lp);
 
     await router
       .connect(lp)
       .initialize(pool, yieldBearingPoolTokens, [TOKEN_AMOUNT, TOKEN_AMOUNT], FP_ZERO, false, '0x');
 
     return pool;
+  }
+
+  async function setupTokenApprovals(signer: SignerWithAddress) {
+    for (const token of [wDAI, wUSDC, DAI, USDC]) {
+      await token.connect(signer).approve(permit2, MAX_UINT256);
+      await permit2.connect(signer).approve(token, router, MAX_UINT160, MAX_UINT48);
+      await permit2.connect(signer).approve(token, batchRouter, MAX_UINT160, MAX_UINT48);
+    }
   }
 
   describe('registration', () => {
@@ -243,6 +247,8 @@ describe('ERC4626VaultPrimitive', function () {
   });
 
   describe('queries', () => {
+    const bufferInitAmount = fp(1);
+
     sharedBeforeEach('create and initialize pool', async () => {
       pool = await createAndInitializeYieldBearingPool();
 
@@ -251,12 +257,17 @@ describe('ERC4626VaultPrimitive', function () {
       await DAI.connect(lp).transfer(await wDAI.getAddress(), daiToDonate);
       await USDC.mint(lp, usdcToDonate);
       await USDC.connect(lp).transfer(await wUSDC.getAddress(), usdcToDonate);
+
+      await DAI.mint(lp, bufferInitAmount);
+      await USDC.mint(lp, bufferInitAmount);
+      await router.connect(lp).initializeBuffer(wDAI, bufferInitAmount, 0);
+      await router.connect(lp).initializeBuffer(wUSDC, bufferInitAmount, 0);
     });
 
     it('should not require tokens in advance to querySwapExactIn using buffer', async () => {
       // Check that vault does not have tokenIn balance (DAI)
       const reservesBefore = await vault.getReservesOf(await DAI.getAddress());
-      expect(reservesBefore).to.be.eq(0, 'DAI balance is wrong');
+      expect(reservesBefore).to.be.eq(bufferInitAmount, 'DAI balance is wrong');
 
       const paths = [
         {
@@ -312,7 +323,7 @@ describe('ERC4626VaultPrimitive', function () {
     it('should not require tokens in advance to querySwapExactOut using buffer', async () => {
       // Check that vault does not have tokenIn balance (DAI)
       const reservesBefore = await vault.getReservesOf(await DAI.getAddress());
-      expect(reservesBefore).to.be.eq(0, 'DAI balance is wrong');
+      expect(reservesBefore).to.be.eq(bufferInitAmount, 'DAI balance is wrong');
 
       const paths = [
         {
