@@ -916,7 +916,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
 
             // If the wrapped token was not initialized in the vault, the router treats it as a standard token.
-            if (!_vault.isERC4626Initialized(wrappedToken)) {
+            if (_vault.getBufferAsset(wrappedToken) == address(0)) {
                 underlyingAmountsOut[i] = wrappedAmountsOut[i];
                 if (isStaticCall == false) {
                     _sendTokenOut(params.sender, erc4626PoolTokens[i], underlyingAmountsOut[i], params.wethIsEth);
@@ -963,7 +963,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
 
             // If the wrapped token was not initialized in the vault, the router treats it as a standard token.
-            if (!_vault.isERC4626Initialized(wrappedToken)) {
+            if (_vault.getBufferAsset(wrappedToken) == address(0)) {
                 if (isStaticCall == false) {
                     underlyingAmounts[i] = amountsIn[i];
                     wrappedAmounts[i] = amountsIn[i];
