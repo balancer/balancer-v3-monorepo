@@ -403,7 +403,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         for (uint256 i = 0; i < underlyingAmountsIn.length; i++) {
-            // The query and actual operation may differ by 1 wei
+            // The query and actual operation may differ by 1 wei.
             assertApproxEqAbs(
                 underlyingAmountsIn[i],
                 expectedUnderlyingAmountsIn[i],
