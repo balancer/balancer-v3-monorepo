@@ -75,13 +75,13 @@ interface IStablePool is IBasePool {
     function getAmplificationParameter() external view returns (uint256 value, bool isUpdating, uint256 precision);
 
     /**
-     * @notice Get relevant dynamic pool data required for swap/add/remove calculations.
+     * @notice Get dynamic pool data relevant to swap/add/remove calculations.
      * @return data A struct containing all dynamic stable pool parameters
      */
     function getStablePoolDynamicData() external view returns (StablePoolDynamicData memory data);
 
     /**
-     * @notice Get relevant immutable pool data required for swap/add/remove calculations.
+     * @notice Get immutable pool data relevant to swap/add/remove calculations.
      * @return data A struct containing all immutable stable pool parameters
      */
     function getStablePoolImmutableData() external view returns (StablePoolImmutableData memory data);
