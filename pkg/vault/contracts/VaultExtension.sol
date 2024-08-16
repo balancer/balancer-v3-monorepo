@@ -711,13 +711,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     function computeDynamicSwapFeePercentage(
         address pool,
         PoolSwapParams memory swapParams
-    )
-        external
-        view
-        onlyVaultDelegateCall
-        withInitializedPool(pool)
-        returns (bool success, uint256 dynamicSwapFeePercentage)
-    {
+    ) external view onlyVaultDelegateCall withInitializedPool(pool) returns (uint256 dynamicSwapFeePercentage) {
         return
             HooksConfigLib.callComputeDynamicSwapFeeHook(
                 swapParams,
@@ -840,15 +834,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function quote(bytes calldata data) external payable query onlyVaultDelegateCall returns (bytes memory result) {
+    function quote(bytes calldata data) external query onlyVaultDelegateCall returns (bytes memory result) {
         // Forward the incoming call to the original sender of this transaction.
-        return (msg.sender).functionCallWithValue(data, msg.value);
+        return (msg.sender).functionCall(data);
     }
 
     /// @inheritdoc IVaultExtension
-    function quoteAndRevert(bytes calldata data) external payable query onlyVaultDelegateCall {
+    function quoteAndRevert(bytes calldata data) external query onlyVaultDelegateCall {
         // Forward the incoming call to the original sender of this transaction.
-        (bool success, bytes memory result) = (msg.sender).call{ value: msg.value }(data);
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory result) = (msg.sender).call(data);
         if (success) {
             // This will only revert if result is empty and sender account has no code.
             Address.verifyCallResultFromTarget(msg.sender, success, result);

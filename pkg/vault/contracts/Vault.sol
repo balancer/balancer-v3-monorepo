@@ -226,16 +226,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // unless the pool has a dynamic swap fee. It is also passed into the hook, to support common cases
         // where the dynamic fee computation logic uses it.
         if (poolData.poolConfigBits.shouldCallComputeDynamicSwapFee()) {
-            (bool dynamicSwapFeeCalculated, uint256 dynamicSwapFee) = HooksConfigLib.callComputeDynamicSwapFeeHook(
+            state.swapFeePercentage = HooksConfigLib.callComputeDynamicSwapFeeHook(
                 swapParams,
                 params.pool,
                 state.swapFeePercentage,
                 _hooksContracts[params.pool]
             );
-
-            if (dynamicSwapFeeCalculated) {
-                state.swapFeePercentage = dynamicSwapFee;
-            }
         }
 
         // Non-reentrant call that updates accounting.
@@ -1047,7 +1043,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     }
 
     /*******************************************************************************
-                             Yield-bearing token buffers
+                                  ERC4626 Buffers
     *******************************************************************************/
 
     /// @inheritdoc IVaultMain
@@ -1057,17 +1053,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         external
         onlyWhenUnlocked
         whenVaultBuffersAreNotPaused
+        withInitializedBuffer(params.wrappedToken)
         nonReentrant
         returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw)
     {
         IERC20 underlyingToken = IERC20(params.wrappedToken.asset());
-
-        address bufferAsset = _bufferAssets[params.wrappedToken];
-
-        if (bufferAsset != address(0) && bufferAsset != address(underlyingToken)) {
-            // Asset was changed since the first addLiquidityToBuffer call.
-            revert WrongWrappedTokenAsset(address(params.wrappedToken));
-        }
+        _ensureCorrectBufferAsset(params.wrappedToken, address(underlyingToken));
 
         if (params.amountGivenRaw < _MINIMUM_WRAP_AMOUNT) {
             // If amount given is too small, rounding issues can be introduced that favors the user and can drain

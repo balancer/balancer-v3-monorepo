@@ -640,6 +640,10 @@ contract VaultMock is IVaultMainMock, Vault {
         return _tokenDeltas();
     }
 
+    function manualSetBufferAsset(IERC4626 wrappedToken, address underlyingToken) external {
+        _bufferAssets[wrappedToken] = underlyingToken;
+    }
+
     function manualErc4626BufferWrapOrUnwrapReentrancy(
         BufferWrapOrUnwrapParams memory params
     ) external nonReentrant returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw) {

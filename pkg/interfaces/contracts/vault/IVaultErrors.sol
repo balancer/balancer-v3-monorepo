@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 /// @dev Errors are declared inside an interface (namespace) to improve DX with Typechain.
 interface IVaultErrors {
@@ -285,6 +286,37 @@ interface IVaultErrors {
     error PoolPauseWindowExpired(address pool);
 
     /*******************************************************************************
+                                ERC4626 token buffers
+    *******************************************************************************/
+
+    /// @dev Buffer for the given wrapped token was already initialized.
+    error BufferAlreadyInitialized(IERC4626 wrappedToken);
+
+    /// @dev Buffer for the given wrapped token was not initialized.
+    error BufferNotInitialized(IERC4626 wrappedToken);
+
+    /// @dev The user is trying to remove more than their allocated shares from the buffer.
+    error NotEnoughBufferShares();
+
+    /// @dev The wrapped token asset does not match the underlying token.
+    error WrongUnderlyingToken(IERC4626 wrappedToken, address underlyingToken);
+
+    /// @dev A wrapped token reported the zero address as its underlying token asset.
+    error InvalidUnderlyingToken();
+
+    /// @dev The amount given to wrap/unwrap was too small, which can introduce rounding issues.
+    error WrapAmountTooSmall(address wrappedToken);
+
+    /// @dev Vault buffers are paused.
+    error VaultBuffersArePaused();
+
+    /// @dev Buffer shares were minted to an invalid address.
+    error BufferSharesInvalidReceiver(address to);
+
+    /// @dev Buffer shares were burnt from an invalid address.
+    error BufferSharesInvalidOwner(address from);
+
+    /*******************************************************************************
                                     Miscellaneous
     *******************************************************************************/
 
@@ -314,22 +346,4 @@ interface IVaultErrors {
 
     /// @dev Quote reverted with a reserved error code.
     error QuoteResultSpoofed();
-
-    /// @dev The user is trying to remove more than their allocated shares from the buffer.
-    error NotEnoughBufferShares();
-
-    /// @dev The wrapped token asset does not match the underlying token of the swap path.
-    error WrongWrappedTokenAsset(address token);
-
-    /// @dev The wrappedToken wrap/unwrap function did not deposit/return the expected amount of underlying tokens.
-    error WrongUnderlyingAmount(address wrappedToken);
-
-    /// @dev The wrappedToken wrap/unwrap function did not burn/mint the expected amount of wrapped tokens.
-    error WrongWrappedAmount(address wrappedToken);
-
-    /// @dev The amount given to wrap/unwrap was too small, which can introduce rounding issues.
-    error WrapAmountTooSmall(address wrappedToken);
-
-    /// @dev Vault buffers are paused.
-    error VaultBuffersArePaused();
 }
