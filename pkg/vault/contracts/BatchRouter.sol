@@ -235,7 +235,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         _vault.sendTo(IERC20(step.pool), address(this), stepExactAmountIn);
                     }
 
-                    // BPT is burnt instantly, so we don't need to send it back later.
+                    // BPT is burned instantly, so we don't need to send it back later.
                     if (_currentSwapTokenInAmounts().tGet(address(stepTokenIn)) > 0) {
                         _currentSwapTokenInAmounts().tSub(address(stepTokenIn), stepExactAmountIn);
                     }
@@ -509,7 +509,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                     );
 
                     if (stepLocals.isLastStep) {
-                        // BPT is burnt instantly, so we don't need to send it to the Vault during settlement.
+                        // BPT is burned instantly, so we don't need to send it to the Vault during settlement.
                         pathAmountsIn[i] = bptAmountIn;
                         _settledTokenAmounts().tAdd(address(stepTokenIn), bptAmountIn);
 
