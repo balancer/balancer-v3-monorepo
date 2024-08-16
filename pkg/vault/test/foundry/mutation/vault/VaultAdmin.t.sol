@@ -347,11 +347,6 @@ contract VaultAdminMutationTest is BaseVaultTest {
         VaultAdmin(address(vault)).removeLiquidityFromBufferHook(wrappedToken, 0, address(0));
     }
 
-    function testRemoveLiquidityFromBufferHookWhenNotVault() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        VaultAdmin(address(vault)).removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
-    }
-
     function testRemoveLiquidityFromBufferNonReentrant() public {
         IERC4626 wrappedToken = IERC4626(address(123));
         address underlyingToken = address(345); // Anything non-zero
