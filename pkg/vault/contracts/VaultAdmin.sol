@@ -584,6 +584,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         removedUnderlyingBalanceRaw = (bufferBalances.getBalanceRaw() * sharesToRemove) / totalShares;
         removedWrappedBalanceRaw = (bufferBalances.getBalanceDerived() * sharesToRemove) / totalShares;
 
+        // We get the underlying token stored internally as opposed to calling `asset()` in the wrapped token.
+        // This is to avoid any kind of unnecessary external call; the underlying token is set during initialization
+        // and can't change afterwards, so it is already validated at this point. There is no way to add liquidity
+        // with an asset that differs from the one set during initialization.
         IERC20 underlyingToken = IERC20(_bufferAssets[wrappedToken]);
         _supplyCredit(underlyingToken, removedUnderlyingBalanceRaw);
         _supplyCredit(wrappedToken, removedWrappedBalanceRaw);
@@ -598,7 +602,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _burnBufferShares(wrappedToken, sharesOwner, sharesToRemove);
 
         // This triggers an external call to itself; the vault is acting as a Router in this case.
-        // `sendTo` makes external calls but is non-reentrant.
+        // `sendTo` makes external calls (`transfer`) but is non-reentrant.
         _vault.sendTo(underlyingToken, sharesOwner, removedUnderlyingBalanceRaw);
         _vault.sendTo(wrappedToken, sharesOwner, removedWrappedBalanceRaw);
 
