@@ -159,16 +159,16 @@ interface IVaultEvents {
     event BufferSharesMinted(IERC4626 indexed wrappedToken, address indexed to, uint256 issuedShares);
 
     /**
-     * @notice Buffer shares were burnt for an ERC4626 buffer corresponding to a given wrapped token.
+     * @notice Buffer shares were burned for an ERC4626 buffer corresponding to a given wrapped token.
      * @dev The shares are not tokenized like pool BPT, but accounted for in the Vault. `getBufferOwnerShares`
      * retrieves the current total shares for a given buffer and address, and `getBufferTotalShares` returns the
      * "totalSupply" of a buffer.
      *
      * @param wrappedToken The wrapped token that identifies the buffer
-     * @param from The owner of the burnt shares
-     * @param burntShares The amount of "internal BPT" shares burnt
+     * @param from The owner of the burned shares
+     * @param burnedShares The amount of "internal BPT" shares burned
      */
-    event BufferSharesBurnt(IERC4626 indexed wrappedToken, address indexed from, uint256 burntShares);
+    event BufferSharesBurned(IERC4626 indexed wrappedToken, address indexed from, uint256 burnedShares);
 
     /**
      * @notice Liquidity was removed from an ERC4626 buffer.
