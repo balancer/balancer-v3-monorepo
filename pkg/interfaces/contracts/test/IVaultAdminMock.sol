@@ -31,7 +31,7 @@ interface IVaultAdminMock {
         address sharesOwner
     ) external;
 
-    function manualReentrancyRemoveLiquidityFromBuffer(
+    function manualReentrancyRemoveLiquidityFromBufferHook(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner

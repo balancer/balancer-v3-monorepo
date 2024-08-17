@@ -60,12 +60,12 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
         IVault(address(this)).addLiquidityToBuffer(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
     }
 
-    function manualReentrancyRemoveLiquidityFromBuffer(
+    function manualReentrancyRemoveLiquidityFromBufferHook(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner
     ) external nonReentrant {
-        IVault(address(this)).removeLiquidityFromBuffer(wrappedToken, sharesToRemove, sharesOwner);
+        this.removeLiquidityFromBufferHook(wrappedToken, sharesToRemove, sharesOwner);
     }
 
     function mockWithValidPercentage(uint256 percentage) external pure withValidPercentage(percentage) {
