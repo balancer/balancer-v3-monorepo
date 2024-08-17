@@ -82,6 +82,8 @@ contract ProtocolFeeController is
         bool isOverride;
     }
 
+    // Note that the `ProtocolFeePercentagesProvider` assumes the maximum fee bounds are constant.
+
     // Maximum protocol swap fee percentage. FixedPoint.ONE corresponds to a 100% fee.
     uint256 internal constant _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE = 50e16; // 50%
 
@@ -159,6 +161,11 @@ contract ProtocolFeeController is
     /// @inheritdoc IProtocolFeeController
     function vault() external view returns (IVault) {
         return _vault;
+    }
+
+    /// @inheritdoc IProtocolFeeController
+    function getMaximumProtocolFeePercentages() external pure returns (uint256, uint256) {
+        return (_MAX_PROTOCOL_SWAP_FEE_PERCENTAGE, _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE);
     }
 
     /// @inheritdoc IProtocolFeeController

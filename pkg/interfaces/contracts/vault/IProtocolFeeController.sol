@@ -94,6 +94,13 @@ interface IProtocolFeeController {
     /// @dev Returns the main Vault address.
     function vault() external view returns (IVault);
 
+    /**
+     * @dev Return the maximum swap and yield protocol fee percentages.
+     * @return maxProtocolSwapFeePercentage The maximum protocol swap fee percentage
+     * @return maxProtocolYieldFeePercentage The maximum protocol yield fee percentage
+     */
+    function getMaximumProtocolFeePercentages() external pure returns (uint256, uint256);
+
     /// @dev Collects aggregate fees from the Vault for a given pool.
     function collectAggregateFees(address pool) external;
 
