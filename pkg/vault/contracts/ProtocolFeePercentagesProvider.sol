@@ -83,14 +83,28 @@ contract ProtocolFeePercentagesProvider is SingletonAuthentication {
     function getFactorySpecificProtocolFees(
         address factory
     ) external view returns (uint256 protocolSwapFeePercentage, uint256 protocolYieldFeePercentage) {
-        FactoryProtocolFees memory factoryFees = _factoryDefaultFeePercentages[IBasePoolFactory(factory)];
-
-        if (factoryFees.isFactoryRegistered == false) {
-            revert FactoryNotRegistered(factory);
-        }
+        FactoryProtocolFees memory factoryFees = _getValidatedProtocolFees(factory);
 
         protocolSwapFeePercentage = factoryFees.protocolSwapFeePercentage;
         protocolYieldFeePercentage = factoryFees.protocolYieldFeePercentage;
+    }
+
+    function setProtocolFeesForPools(address factory, address[] memory pools) external {
+        FactoryProtocolFees memory factoryFees = _getValidatedProtocolFees(factory);
+
+        for (uint256 i = 0; i < pools.length; ++i) {
+            address currentPool = pools[i];
+
+            if (IBasePoolFactory(factory).isPoolFromFactory(currentPool) == false) {
+                revert PoolNotFromRegisteredFactory(currentPool);
+            }
+
+            _setPoolProtocolFees(
+                currentPool,
+                factoryFees.protocolSwapFeePercentage,
+                factoryFees.protocolYieldFeePercentage
+            );
+        }
     }
 
     function setProtocolFeesForPools(address[] memory pools) external {
@@ -99,11 +113,13 @@ contract ProtocolFeePercentagesProvider is SingletonAuthentication {
         if (numPools > 0) {
             address currentPool = pools[0];
 
-            (IBasePoolFactory currentFactory, uint256 protocolSwapFee, uint256 protocolYieldFee) = _findFactoryForPool(
-                currentPool
-            );
+            (
+                IBasePoolFactory currentFactory,
+                uint256 protocolSwapFeePercentage,
+                uint256 protocolYieldFeePercentage
+            ) = _findFactoryForPool(currentPool);
 
-            _setPoolProtocolFees(currentPool, protocolSwapFee, protocolYieldFee);
+            _setPoolProtocolFees(currentPool, protocolSwapFeePercentage, protocolYieldFeePercentage);
 
             // Common usage will be to call this for pools from the same factory. Or at a minimum, the pools will be
             // grouped by factory. Check to see whether subsequent pools are from the `currentFactory`, to make as few
@@ -113,10 +129,12 @@ contract ProtocolFeePercentagesProvider is SingletonAuthentication {
                 currentPool = pools[i];
 
                 if (currentFactory.isPoolFromFactory(currentPool) == false) {
-                    (currentFactory, protocolSwapFee, protocolYieldFee) = _findFactoryForPool(currentPool);
+                    (currentFactory, protocolSwapFeePercentage, protocolYieldFeePercentage) = _findFactoryForPool(
+                        currentPool
+                    );
                 }
 
-                _setPoolProtocolFees(currentPool, protocolSwapFee, protocolYieldFee);
+                _setPoolProtocolFees(currentPool, protocolSwapFeePercentage, protocolYieldFeePercentage);
             }
         }
     }
@@ -168,6 +186,14 @@ contract ProtocolFeePercentagesProvider is SingletonAuthentication {
         }
 
         revert PoolNotFromRegisteredFactory(pool);
+    }
+
+    function _getValidatedProtocolFees(address factory) private view returns (FactoryProtocolFees memory factoryFees) {
+        factoryFees = _factoryDefaultFeePercentages[IBasePoolFactory(factory)];
+
+        if (factoryFees.isFactoryRegistered == false) {
+            revert FactoryNotRegistered(factory);
+        }
     }
 
     // These are permissioned functions on `ProtocolFeeController`, so governance will need to allow this contract
