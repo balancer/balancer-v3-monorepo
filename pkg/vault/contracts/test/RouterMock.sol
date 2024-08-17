@@ -42,10 +42,6 @@ contract RouterMock is Router {
         Router(payable(this)).addLiquidityToBufferHook(IERC4626(address(0)), 0, 0, address(0), false);
     }
 
-    function manualReentrancyRemoveLiquidityFromBufferHook() external nonReentrant {
-        Router(payable(this)).removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
-    }
-
     function manualReentrancyQuerySwapHook() external nonReentrant {
         IRouter.SwapSingleTokenHookParams memory params;
         Router(payable(this)).querySwapHook(params);

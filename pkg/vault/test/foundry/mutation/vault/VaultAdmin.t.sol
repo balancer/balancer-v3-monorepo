@@ -16,6 +16,7 @@ import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
+import { VaultAdmin } from "../../../../contracts/VaultAdmin.sol";
 import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
 
 contract VaultAdminMutationTest is BaseVaultTest {
@@ -322,30 +323,28 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.manualReentrancyAddLiquidityToBuffer(wrappedToken, 0, 0, address(0));
     }
 
-    function testRemoveLiquidityFromBufferWhenNotVault() public {
+    function testRemoveLiquidityFromBufferHookWhenNotVaultDelegateCall() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultAdmin.removeLiquidityFromBuffer(IERC4626(address(0)), 0, address(0));
+        VaultAdmin(address(vaultAdmin)).removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
     }
 
-    function testRemoveLiquidityFromBufferWhenNotUnlocked() public {
+    function testRemoveLiquidityFromBufferHookWhenVaultIsNotSender() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+        VaultAdmin(address(vault)).removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
+    }
+
+    function testRemoveLiquidityFromBufferHookWhenNotUnlocked() public {
+        vm.prank(address(vault));
         vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
-        vault.removeLiquidityFromBuffer(IERC4626(address(0)), 0, address(0));
+        VaultAdmin(address(vault)).removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
     }
 
-    function testRemoveLiquidityFromBufferWhenNotInitialized() public {
+    function testRemoveLiquidityFromBufferHookWhenNotInitialized() public {
         IERC4626 wrappedToken = IERC4626(address(123));
         vault.manualSetIsUnlocked(true);
+        vm.prank(address(vault));
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferNotInitialized.selector, wrappedToken));
-        vault.removeLiquidityFromBuffer(wrappedToken, 0, address(0));
-    }
-
-    function testRemoveLiquidityFromBufferWhenNonAuthenticated() public {
-        IERC4626 wrappedToken = IERC4626(address(123));
-        address underlyingToken = address(345); // Anything non-zero
-        vault.manualSetIsUnlocked(true);
-        vault.manualSetBufferAsset(wrappedToken, underlyingToken);
-        vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
-        vault.removeLiquidityFromBuffer(wrappedToken, 0, address(0));
+        VaultAdmin(address(vault)).removeLiquidityFromBufferHook(wrappedToken, 0, address(0));
     }
 
     function testRemoveLiquidityFromBufferNonReentrant() public {
@@ -353,10 +352,13 @@ contract VaultAdminMutationTest is BaseVaultTest {
         address underlyingToken = address(345); // Anything non-zero
         vault.manualSetIsUnlocked(true);
         vault.manualSetBufferAsset(wrappedToken, underlyingToken);
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(vault));
+
+        // Manually set owner and total shares so that the call doesn't revert before hitting the reentrancy guard.
+        vault.manualSetBufferOwnerShares(wrappedToken, bob, 1e18);
+        vault.manualSetBufferTotalShares(wrappedToken, 2e18);
 
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
-        vault.manualReentrancyRemoveLiquidityFromBuffer(wrappedToken, 0, address(0));
+        vault.manualReentrancyRemoveLiquidityFromBufferHook(wrappedToken, 1e18, bob);
     }
 
     function testGetBufferOwnerSharesWhenNotVault() public {

@@ -43,7 +43,7 @@ contract UnInitializedBufferTest is BaseVaultTest {
         uint256 sharesIn = 1e18;
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferNotInitialized.selector, waDAI));
-        router.removeLiquidityFromBuffer(waDAI, sharesIn);
+        vault.removeLiquidityFromBuffer(waDAI, sharesIn);
     }
 
     function testWrapUnwrapBufferUninitialized() public {
