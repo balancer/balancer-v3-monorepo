@@ -79,9 +79,6 @@ contract VaultStorage {
     // Pool -> PoolRoleAccounts (accounts assigned to specific roles; e.g., pauseManager).
     mapping(address => PoolRoleAccounts) internal _poolRoleAccounts;
 
-    // Pool -> roleId (corresponding to a particular function) -> PoolFunctionPermission.
-    mapping(address => mapping(bytes32 => PoolFunctionPermission)) internal _poolFunctionPermissions;
-
     // Pool -> hooks contracts.
     mapping(address => IHooks) internal _hooksContracts;
 

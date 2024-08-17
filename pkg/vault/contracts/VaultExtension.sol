@@ -238,9 +238,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Store the role account addresses (for getters).
         _poolRoleAccounts[pool] = params.roleAccounts;
 
-        // Make pool role assignments. A zero address means default to the authorizer.
-        _assignPoolRoles(pool, params.roleAccounts);
-
         PoolConfigBits poolConfigBits;
 
         // Store the configuration, and mark the pool as registered.
@@ -328,31 +325,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
             poolConfigBits.toHooksConfig(IHooks(params.poolHooksContract)),
             params.liquidityManagement
         );
-    }
-
-    function _assignPoolRoles(address pool, PoolRoleAccounts memory roleAccounts) private {
-        mapping(bytes32 => PoolFunctionPermission) storage roleAssignments = _poolFunctionPermissions[pool];
-        IAuthentication vaultAdmin = IAuthentication(address(_vaultAdmin));
-
-        if (roleAccounts.pauseManager != address(0)) {
-            roleAssignments[vaultAdmin.getActionId(IVaultAdmin.pausePool.selector)] = PoolFunctionPermission({
-                account: roleAccounts.pauseManager,
-                onlyOwner: false
-            });
-            roleAssignments[vaultAdmin.getActionId(IVaultAdmin.unpausePool.selector)] = PoolFunctionPermission({
-                account: roleAccounts.pauseManager,
-                onlyOwner: false
-            });
-        }
-
-        if (roleAccounts.swapFeeManager != address(0)) {
-            bytes32 swapFeeAction = vaultAdmin.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector);
-
-            roleAssignments[swapFeeAction] = PoolFunctionPermission({
-                account: roleAccounts.swapFeeManager,
-                onlyOwner: true
-            });
-        }
     }
 
     /// @inheritdoc IVaultExtension
