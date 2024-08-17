@@ -217,7 +217,7 @@ interface IVaultAdmin {
     ) external returns (uint256 issuedShares);
 
     /**
-     * @notice Adds liquidity to an yield-bearing buffer (one of the Vault's internal ERC4626 buffers).
+     * @notice Adds liquidity to an internal ERC4626 buffer in the Vault.
      * @dev The buffer needs to be initialized beforehand.
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param amountUnderlyingRaw Amount of underlying tokens that will be deposited into the buffer
@@ -235,8 +235,9 @@ interface IVaultAdmin {
     ) external returns (uint256 issuedShares);
 
     /**
-     * @notice Removes liquidity from a yield-bearing buffer (one of the Vault's internal ERC4626 buffers).
-     * @dev Only proportional exits are supported.
+     * @notice Removes liquidity from an internal ERC4626 buffer in the Vault.
+     * @dev Only proportional exits are supported, and the sender has to be the owner of the shares.
+     * This function unlocks the Vault just for this operation; it does not work with a Router as an entrypoint.
      *
      * Pre-conditions:
      * - The buffer needs to be initialized.
@@ -247,14 +248,12 @@ interface IVaultAdmin {
      * @param wrappedToken Address of the wrapped token that implements IERC4626
      * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner's
      * total shares
-     * @param sharesOwner Address that owns the deposited liquidity.
      * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
      * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
      */
     function removeLiquidityFromBuffer(
         IERC4626 wrappedToken,
-        uint256 sharesToRemove,
-        address sharesOwner
+        uint256 sharesToRemove
     ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw);
 
     /**

@@ -344,22 +344,6 @@ interface IRouter {
         uint256 amountWrappedRaw
     ) external returns (uint256 issuedShares);
 
-    /**
-     * @notice Removes liquidity from an(internal ERC4626 buffer in the Vault.
-     * @dev Only proportional withdrawals are supported, and removing liquidity is permissioned.
-     * Requires the buffer to be initialized beforehand.
-     *
-     * @param wrappedToken Address of a wrapped token that implements IERC4626
-     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
-     * total shares
-     * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
-     * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
-     */
-    function removeLiquidityFromBuffer(
-        IERC4626 wrappedToken,
-        uint256 sharesToRemove
-    ) external returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw);
-
     /***************************************************************************
                                       Queries
     ***************************************************************************/
