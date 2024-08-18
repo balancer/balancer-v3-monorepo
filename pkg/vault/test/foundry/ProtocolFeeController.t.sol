@@ -78,8 +78,8 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         (uint256 maxSwapFeePercentage, uint256 maxYieldFeePercentage) = feeController
             .getMaximumProtocolFeePercentages();
 
-        assertEq(maxSwapFeePercentage, 50e16, "Wrong maximum swap fee percentage");
-        assertEq(maxYieldFeePercentage, 50e16, "Wrong maximum yield fee percentage");
+        assertEq(maxSwapFeePercentage, MAX_PROTOCOL_SWAP_FEE_PCT, "Wrong maximum swap fee percentage");
+        assertEq(maxYieldFeePercentage, MAX_PROTOCOL_YIELD_FEE_PCT, "Wrong maximum yield fee percentage");
     }
 
     function testSetGlobalProtocolSwapFeePercentageRange() public {
