@@ -148,8 +148,6 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
     }
 
     function testSetProtocolFeePercentagesForPoolsUnregisteredFactory() public {
-        _grantPermissions();
-
         vm.expectRevert(
             abi.encodeWithSelector(IProtocolFeePercentagesProvider.FactoryNotRegistered.selector, INVALID_ADDRESS)
         );
