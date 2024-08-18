@@ -6,21 +6,28 @@ import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 
 interface IProtocolFeePercentagesProvider {
     /**
-     * @notice `setDefaultProtocolFees` has not been called for this factory address.
+     * @notice `setFactorySpecificProtocolFeePercentages` has not been called for this factory address.
+     * @dev This error can by thrown by `getFactorySpecificProtocolFeePercentages` or
+     * `setProtocolFeePercentagesForPools`, as both require that valid fee percentages have been set.
+     *
      * @param factory The unregistered factory address
      */
     error FactoryNotRegistered(address factory);
 
     /**
-     * @notice The factory address provided is not a valid IBasePoolFactory.
-     * @dev This means it does not implement or responds incorrectly to `isPoolFromFactory`.
+     * @notice The factory address provided is not a valid `IBasePoolFactory`.
+     * @dev This means it responds incorrectly to `isPoolFromFactory` (e.g., always responds true). If it doesn't
+     * implement `isPoolFromFactory` or isn't a contract at all, calls on `setFactorySpecificProtocolFeePercentages`
+     * will revert with no data.
+     *
      * @param factory The address of the invalid factory
      */
     error InvalidFactory(address factory);
 
     /**
      * @notice The given pool is not from the expected factory.
-     * @param pool The address of the pool
+     * @dev Occurs when one of the pools supplied to `setProtocolFeePercentagesForPools` is not from the given factory.
+     * @param pool The address of the unrecognized pool
      * @param factory The address of the factory
      */
     error PoolNotFromFactory(address pool, address factory);
@@ -43,8 +50,9 @@ interface IProtocolFeePercentagesProvider {
 
     /**
      * @notice Assign intended protocol fee percentages for a given factory.
-     * @dev This is a permissioned call. After the fee percentages have been set, anyone can call
-     * `setProtocolFeePercentagesForPools` to update the fees on a set of pools from that factory.
+     * @dev This is a permissioned call. After the fee percentages have been set, and governance has granted
+     * this contract permission to set fee percentages on pools, anyone can call `setProtocolFeePercentagesForPools`
+     * to update the fee percentages on a set of pools from that factory.
      *
      * @param factory The address of the factory
      * @param protocolSwapFeePercentage The new protocol swap fee percentage
@@ -58,7 +66,9 @@ interface IProtocolFeePercentagesProvider {
 
     /**
      * @notice Update the protocol fees for a set of pools from a given factory.
-     * @dev This call is permissionless. Anyone can update the fees, once they're set by governance.
+     * @dev This call is permissionless. Anyone can update the fee percentages, once they're set by governance.
+     * Note that goverance must also grant this contract permmission to set protocol fee percentages on pools.
+     *
      * @param factory The address of the factory
      * @param pools The pools whose fees will be set according to `setFactorySpecificProtocolFeePercentages`
      */
