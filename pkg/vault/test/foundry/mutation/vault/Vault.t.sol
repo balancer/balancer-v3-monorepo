@@ -83,7 +83,7 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testSwapWithLockedVault() public {
-        SwapParams memory params = SwapParams(SwapKind.EXACT_IN, address(pool), dai, usdc, 1, 0, bytes(""));
+        VaultSwapParams memory params = VaultSwapParams(SwapKind.EXACT_IN, address(pool), dai, usdc, 1, 0, bytes(""));
 
         vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
         vault.swap(params);
@@ -118,7 +118,7 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testSwapReentrancy() public {
-        SwapParams memory params;
+        VaultSwapParams memory params;
         SwapState memory state;
         PoolData memory poolData;
 

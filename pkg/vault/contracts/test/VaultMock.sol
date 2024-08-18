@@ -33,7 +33,7 @@ import { VaultExtension } from "../VaultExtension.sol";
 import { PoolDataLib } from "../lib/PoolDataLib.sol";
 
 struct SwapInternalStateLocals {
-    SwapParams params;
+    VaultSwapParams vaultSwapParams;
     SwapState swapState;
     PoolData poolData;
     VaultState vaultState;
@@ -441,7 +441,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualInternalSwap(
-        SwapParams memory params,
+        VaultSwapParams memory vaultSwapParams,
         SwapState memory state,
         PoolData memory poolData
     )
@@ -451,30 +451,30 @@ contract VaultMock is IVaultMainMock, Vault {
             uint256 amountCalculatedScaled18,
             uint256 amountIn,
             uint256 amountOut,
-            SwapParams memory,
+            VaultSwapParams memory,
             SwapState memory,
             PoolData memory
         )
     {
-        PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
+        PoolSwapParams memory poolSwapParams = _buildPoolSwapParams(vaultSwapParams, state, poolData);
 
         (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut) = _swap(
-            params,
+            vaultSwapParams,
             state,
             poolData,
-            swapParams
+            poolSwapParams
         );
 
-        return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut, params, state, poolData);
+        return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut, vaultSwapParams, state, poolData);
     }
 
     function manualReentrancySwap(
-        SwapParams memory params,
+        VaultSwapParams memory vaultSwapParams,
         SwapState memory state,
         PoolData memory poolData
     ) external nonReentrant {
-        PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
-        _swap(params, state, poolData, swapParams);
+        PoolSwapParams memory poolSwapParams = _buildPoolSwapParams(vaultSwapParams, state, poolData);
+        _swap(vaultSwapParams, state, poolData, poolSwapParams);
     }
 
     function manualGetAggregateSwapFeeAmount(address pool, IERC20 token) external view returns (uint256) {
@@ -502,11 +502,11 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualBuildPoolSwapParams(
-        SwapParams memory params,
+        VaultSwapParams memory vaultSwapParams,
         SwapState memory state,
         PoolData memory poolData
     ) external view returns (PoolSwapParams memory) {
-        return _buildPoolSwapParams(params, state, poolData);
+        return _buildPoolSwapParams(vaultSwapParams, state, poolData);
     }
 
     function manualComputeAndChargeAggregateSwapFees(
