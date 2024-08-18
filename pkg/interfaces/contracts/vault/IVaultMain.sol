@@ -62,13 +62,13 @@ interface IVaultMain {
     /**
      * @notice Swaps tokens based on provided parameters.
      * @dev All parameters are given in raw token decimal encoding.
-     * @param params Parameters for the swap (see above for struct definition)
+     * @param vaultSwapParams Parameters for the swap (see above for struct definition)
      * @return amountCalculatedRaw Calculated swap amount
      * @return amountInRaw Amount of input tokens for the swap
      * @return amountOutRaw Amount of output tokens from the swap
      */
     function swap(
-        SwapParams memory params
+        VaultSwapParams memory vaultSwapParams
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     /***************************************************************************

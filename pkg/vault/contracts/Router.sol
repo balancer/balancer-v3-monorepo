@@ -628,7 +628,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         }
 
         (amountCalculated, amountIn, amountOut) = _vault.swap(
-            SwapParams({
+            VaultSwapParams({
                 kind: params.kind,
                 pool: params.pool,
                 tokenIn: params.tokenIn,

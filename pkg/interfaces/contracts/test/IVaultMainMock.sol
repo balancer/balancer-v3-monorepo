@@ -146,7 +146,7 @@ interface IVaultMainMock {
     function manualSetReservesOf(IERC20 token, uint256 reserves) external;
 
     function manualInternalSwap(
-        SwapParams memory params,
+        VaultSwapParams memory vaultSwapParams,
         SwapState memory state,
         PoolData memory poolData
     )
@@ -156,12 +156,12 @@ interface IVaultMainMock {
             uint256 amountCalculatedScaled18,
             uint256 amountIn,
             uint256 amountOut,
-            SwapParams memory,
+            VaultSwapParams memory,
             SwapState memory,
             PoolData memory
         );
 
-    function manualReentrancySwap(SwapParams memory params, SwapState memory state, PoolData memory poolData) external;
+    function manualReentrancySwap(VaultSwapParams memory vaultSwapParams, SwapState memory state, PoolData memory poolData) external;
 
     function manualGetAggregateSwapFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
@@ -176,7 +176,7 @@ interface IVaultMainMock {
     function manualSetAggregateYieldFeePercentage(address pool, uint256 value) external;
 
     function manualBuildPoolSwapParams(
-        SwapParams memory params,
+        VaultSwapParams memory vaultSwapParams,
         SwapState memory state,
         PoolData memory poolData
     ) external view returns (PoolSwapParams memory);
