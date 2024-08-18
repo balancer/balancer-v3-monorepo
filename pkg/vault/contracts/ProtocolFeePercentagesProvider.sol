@@ -4,7 +4,9 @@ pragma solidity ^0.8.24;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { IProtocolFeePercentagesProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeePercentagesProvider.sol";
+import {
+    IProtocolFeePercentagesProvider
+} from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeePercentagesProvider.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -126,7 +128,11 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
 
     // These are permissioned functions on `ProtocolFeeController`, so governance will need to allow this contract
     // to call `setProtocolSwapFeePercentage` and `setProtocolYieldFeePercentage`.
-    function _setPoolProtocolFees(address pool, uint256 protocolSwapFeePercentage, uint256 protocolYieldFeePercentage) private {
+    function _setPoolProtocolFees(
+        address pool,
+        uint256 protocolSwapFeePercentage,
+        uint256 protocolYieldFeePercentage
+    ) private {
         _protocolFeeController.setProtocolSwapFeePercentage(pool, protocolSwapFeePercentage);
         _protocolFeeController.setProtocolYieldFeePercentage(pool, protocolYieldFeePercentage);
     }
