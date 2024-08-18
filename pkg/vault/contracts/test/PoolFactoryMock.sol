@@ -169,6 +169,10 @@ contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWi
         );
     }
 
+    function manualSetPoolFromFactory(address pool) external {
+        _isPoolFromFactory[pool] = true;
+    }
+
     function _getDefaultLiquidityManagement() private pure returns (LiquidityManagement memory) {
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.enableAddLiquidityCustom = true;

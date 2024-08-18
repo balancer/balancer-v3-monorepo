@@ -74,6 +74,14 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         assertEq(feeAmounts[1], 0, "Collected creator fee amount [1] is non-zero");
     }
 
+    function testGetMaximumProtocolFeePercentages() public view {
+        (uint256 maxSwapFeePercentage, uint256 maxYieldFeePercentage) = feeController
+            .getMaximumProtocolFeePercentages();
+
+        assertEq(maxSwapFeePercentage, 50e16, "Wrong maximum swap fee percentage");
+        assertEq(maxYieldFeePercentage, 50e16, "Wrong maximum yield fee percentage");
+    }
+
     function testSetGlobalProtocolSwapFeePercentageRange() public {
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
