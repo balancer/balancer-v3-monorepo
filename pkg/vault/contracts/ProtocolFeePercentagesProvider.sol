@@ -97,6 +97,8 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
             protocolYieldFeePercentage: protocolYieldFeePercentage.toUint64(),
             isFactoryRegistered: true
         });
+
+        emit FactorySpecificProtocolFeePercentagesSet(factory, protocolSwapFeePercentage, protocolYieldFeePercentage);
     }
 
     /// @inheritdoc IProtocolFeePercentagesProvider

@@ -6,6 +6,18 @@ import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 
 interface IProtocolFeePercentagesProvider {
     /**
+     * @notice Protocol fee percentages have been set for the given factory.
+     * @param factory The pool factory
+     * @param protocolSwapFeePercentage The protocol swap fee percentage intended for pools from this factory
+     * @param protocolYieldFeePercentage The protocol yield fee percentage intended for pools from this factory
+     */
+    event FactorySpecificProtocolFeePercentagesSet(
+        address indexed factory,
+        uint256 protocolSwapFeePercentage,
+        uint256 protocolYieldFeePercentage
+    );
+
+    /**
      * @notice `setFactorySpecificProtocolFeePercentages` has not been called for this factory address.
      * @dev This error can by thrown by `getFactorySpecificProtocolFeePercentages` or
      * `setProtocolFeePercentagesForPools`, as both require that valid fee percentages have been set.

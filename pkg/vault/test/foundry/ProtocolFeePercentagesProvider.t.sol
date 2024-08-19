@@ -128,11 +128,18 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         );
     }
 
-    function testSetFactorySpecificProtocolFeePercentage() public {
+    function testSetFactorySpecificProtocolFeePercentages() public {
         _grantPermissions();
 
         // Ensure that they are different, so the test doesn't pass accidentally.
         uint256 yieldFeePercentage = maxSwapFeePercentage / 2;
+
+        vm.expectEmit();
+        emit IProtocolFeePercentagesProvider.FactorySpecificProtocolFeePercentagesSet(
+            address(factoryMock),
+            maxSwapFeePercentage,
+            yieldFeePercentage
+        );
 
         vm.prank(admin);
         percentagesProvider.setFactorySpecificProtocolFeePercentages(
