@@ -28,7 +28,7 @@
     "test:hardhat": "hardhat test",
     "test:forge": "forge test --no-match-test \"FFI\" -vvv",
     "test:stress": "FOUNDRY_PROFILE=intense forge test --ffi -vvv",
-    "coverage": "./coverage.sh",
+    "coverage": "./coverage.sh forge",
     "coverage:hardhat": "hardhat coverage",
     "coverage:forge": "forge coverage",
     "gas": "REPORT_GAS=true hardhat test",
