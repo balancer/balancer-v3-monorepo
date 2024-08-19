@@ -340,7 +340,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external onlyVaultDelegateCall onlyWhenUnlocked withRegisteredPool(pool) nonReentrant returns (uint256 bptAmountOut) {
+    )
+        external
+        onlyVaultDelegateCall
+        onlyWhenUnlocked
+        withRegisteredPool(pool)
+        nonReentrant
+        returns (uint256 bptAmountOut)
+    {
         _ensureUnpaused(pool);
 
         // Balances are zero until after initialize is called, so there is no need to charge pending yield fee here.
