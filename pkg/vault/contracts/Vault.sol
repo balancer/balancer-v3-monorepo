@@ -1153,14 +1153,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 bufferUnderlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wrappedToken);
             uint256 bufferWrappedSurplus;
 
+            uint256 vaultUnderlyingDeltaHint;
+            uint256 vaultWrappedDeltaHint;
+
             if (kind == SwapKind.EXACT_IN) {
                 // The amount of underlying tokens to deposit is the necessary amount to fulfill the trade
                 // (amountInUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingSurplus).
-                uint256 amountToDeposit = amountInUnderlying + bufferUnderlyingSurplus;
-                underlyingToken.forceApprove(address(wrappedToken), amountToDeposit);
+                vaultUnderlyingDeltaHint = amountInUnderlying + bufferUnderlyingSurplus;
+                underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDeltaHint);
                 // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called.
-                wrappedToken.deposit(amountToDeposit, address(this));
+                vaultWrappedDeltaHint = wrappedToken.deposit(vaultUnderlyingDeltaHint, address(this));
             } else {
                 if (bufferUnderlyingSurplus > 0) {
                     bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
@@ -1173,7 +1176,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 underlyingToken.forceApprove(address(wrappedToken), amountInUnderlying + bufferUnderlyingSurplus + 2);
 
                 // EXACT_OUT requires the exact amount of wrapped tokens to be returned, so mint is called.
-                wrappedToken.mint(amountOutWrapped + bufferWrappedSurplus, address(this));
+                vaultWrappedDeltaHint = amountOutWrapped + bufferWrappedSurplus;
+                vaultUnderlyingDeltaHint = wrappedToken.mint(vaultWrappedDeltaHint, address(this));
             }
 
             // Remove approval, in case deposit/mint consumed less tokens than we approved.
@@ -1183,29 +1187,26 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
             // ERC4626 output should not be trusted, so it's a good practice to measure the amount of
             // deposited and returned tokens.
-            (uint256 vaultUnderlyingDelta, uint256 vaultWrappedDelta) = _updateReservesAfterWrapping(
-                underlyingToken,
-                IERC20(wrappedToken)
-            );
+            _settleWrap(underlyingToken, IERC20(wrappedToken), vaultUnderlyingDeltaHint, vaultWrappedDeltaHint);
 
             // Only updates buffer balances if buffer has a surplus of underlying tokens.
             if (bufferUnderlyingSurplus > 0) {
                 if (kind == SwapKind.EXACT_IN) {
                     // amountInUnderlying is the amountGiven and should not be changed. Any rounding issue that occurs
                     // in the vaultUnderlyingDelta should be absorbed by the buffer.
-                    bufferUnderlyingSurplus = vaultUnderlyingDelta - amountInUnderlying;
+                    bufferUnderlyingSurplus = vaultUnderlyingDeltaHint - amountInUnderlying;
                     // Since bufferUnderlyingSurplus was wrapped, the final amountOut needs to discount the wrapped
                     // amount that will stay in the buffer. Refresh `bufferWrappedSurplus` after external calls on the
                     // wrapped token.
                     bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
-                    amountOutWrapped = vaultWrappedDelta - bufferWrappedSurplus;
+                    amountOutWrapped = vaultWrappedDeltaHint - bufferWrappedSurplus;
                 } else {
                     // If buffer has an underlying surplus, it wraps the surplus + amountIn, so the final amountIn needs
                     // to be discounted for that.
-                    amountInUnderlying = vaultUnderlyingDelta - bufferUnderlyingSurplus;
+                    amountInUnderlying = vaultUnderlyingDeltaHint - bufferUnderlyingSurplus;
                     // amountOutWrapped is the amountGiven and should not be changed. Any rounding issue that occurs
                     // in the vaultWrappedDelta should be absorbed by the buffer.
-                    bufferWrappedSurplus = vaultWrappedDelta - amountOutWrapped;
+                    bufferWrappedSurplus = vaultWrappedDeltaHint - amountOutWrapped;
                 }
 
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
@@ -1221,8 +1222,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 );
                 _bufferTokenBalances[wrappedToken] = bufferBalances;
             } else {
-                amountInUnderlying = vaultUnderlyingDelta;
-                amountOutWrapped = vaultWrappedDelta;
+                amountInUnderlying = vaultUnderlyingDeltaHint;
+                amountOutWrapped = vaultWrappedDeltaHint;
             }
         }
 
@@ -1350,6 +1351,33 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     function _isQueryContext() internal view returns (bool) {
         return EVMCallModeHelpers.isStaticCall() && _vaultStateBits.isQueryDisabled() == false;
+    }
+
+    function _settleWrap(
+        IERC20 underlyingToken,
+        IERC20 wrappedToken,
+        uint256 underlyingHint,
+        uint256 wrappedHint
+    ) internal {
+        uint256 vaultUnderlyingBefore = _reservesOf[underlyingToken];
+        uint256 vaultUnderlyingAfter = underlyingToken.balanceOf(address(this));
+
+        if (vaultUnderlyingAfter < vaultUnderlyingBefore - underlyingHint) {
+            // TODO explain this
+            revert();
+        }
+
+        // TODO explain settle
+        _reservesOf[underlyingToken] = vaultUnderlyingBefore - underlyingHint;
+
+        uint256 vaultWrappedBefore = _reservesOf[wrappedToken];
+        uint256 vaultWrappedAfter = wrappedToken.balanceOf(address(this));
+        if (vaultWrappedAfter < vaultWrappedBefore + wrappedHint) {
+            // TODO explain this
+            revert();
+        }
+        // TODO explain settle
+        _reservesOf[wrappedToken] = vaultWrappedAfter;
     }
 
     /**
