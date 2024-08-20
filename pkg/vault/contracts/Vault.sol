@@ -1371,43 +1371,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 underlyingDeltaHint,
         uint256 wrappedDeltaHint
     ) internal {
-        // Update vault's underlying reserves.
-        uint256 underlyingReservesBefore = _reservesOf[underlyingToken];
-        uint256 underlyingBalancesAfter = underlyingToken.balanceOf(address(this));
         // A wrap operation removes underlying tokens from the vault, so the expected vault's underlying balance after
         // the operation is `underlyingReservesBefore - underlyingDeltaHint`.
-        uint256 expectedUnderlyingReservesAfter = underlyingReservesBefore - underlyingDeltaHint;
-        if (underlyingBalancesAfter < expectedUnderlyingReservesAfter) {
-            // If vault's underlying balance is smaller than expected, means that the deposit/mint function removed
-            // more underlying tokens than it said it would remove.
-            revert NotEnoughUnderlying(
-                IERC4626(address(wrappedToken)),
-                expectedUnderlyingReservesAfter,
-                underlyingBalancesAfter
-            );
-        }
-        // Update vault's underlying reserves, discarding any unexpected surplus of tokens (difference between actual
-        // and expected vault balance).
-        _reservesOf[underlyingToken] = underlyingBalancesAfter;
+        uint256 expectedUnderlyingReservesAfter = _reservesOf[underlyingToken] - underlyingDeltaHint;
 
-        // Update vault's wrapped reserves.
-        uint256 wrappedReservesBefore = _reservesOf[wrappedToken];
-        uint256 wrappedBalancesAfter = wrappedToken.balanceOf(address(this));
         // A wrap operation adds wrapped tokens to the vault, so the expected vault's wrapped balance after the
         // operation is `wrappedReservesBefore + wrappedDeltaHint`.
-        uint256 expectedWrappedReservesAfter = wrappedReservesBefore + wrappedDeltaHint;
-        if (wrappedBalancesAfter < expectedWrappedReservesAfter) {
-            // If vault's wrapped balance is smaller than expected, means that the deposit/mint function returned less
-            // wrapped tokens than it said it would return.
-            revert NotEnoughWrapped(
-                IERC4626(address(wrappedToken)),
-                expectedWrappedReservesAfter,
-                wrappedBalancesAfter
-            );
-        }
-        // Update vault's wrapped reserves, discarding any unexpected surplus of tokens (difference between actual and
-        // expected vault balance).
-        _reservesOf[wrappedToken] = wrappedBalancesAfter;
+        uint256 expectedWrappedReservesAfter = _reservesOf[wrappedToken] + wrappedDeltaHint;
+
+        _settleWrapUnwrap(underlyingToken, wrappedToken, expectedUnderlyingReservesAfter, expectedWrappedReservesAfter);
     }
 
     /**
@@ -1426,12 +1398,25 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 underlyingDeltaHint,
         uint256 wrappedDeltaHint
     ) internal {
-        // Update vault's underlying reserves.
-        uint256 underlyingReservesBefore = _reservesOf[underlyingToken];
-        uint256 underlyingBalancesAfter = underlyingToken.balanceOf(address(this));
         // An unwrap operation adds underlying tokens to the vault, so the expected vault's underlying balance after
         // the operation is `underlyingReservesBefore + underlyingDeltaHint`.
-        uint256 expectedUnderlyingReservesAfter = underlyingReservesBefore + underlyingDeltaHint;
+        uint256 expectedUnderlyingReservesAfter = _reservesOf[underlyingToken] + underlyingDeltaHint;
+
+        // An unwrap operation removes wrapped tokens from the vault, so the expected vault's wrapped balance after the
+        // operation is `wrappedReservesBefore - wrappedDeltaHint`.
+        uint256 expectedWrappedReservesAfter = _reservesOf[wrappedToken] - wrappedDeltaHint;
+
+        _settleWrapUnwrap(underlyingToken, wrappedToken, expectedUnderlyingReservesAfter, expectedWrappedReservesAfter);
+    }
+
+    function _settleWrapUnwrap(
+        IERC20 underlyingToken,
+        IERC20 wrappedToken,
+        uint256 expectedUnderlyingReservesAfter,
+        uint256 expectedWrappedReservesAfter
+    ) private {
+        // Update vault's underlying reserves.
+        uint256 underlyingBalancesAfter = underlyingToken.balanceOf(address(this));
         if (underlyingBalancesAfter < expectedUnderlyingReservesAfter) {
             // If vault's underlying balance is smaller than expected, means that the withdraw/redeem function returned
             // less underlying tokens than it said it would return.
@@ -1446,11 +1431,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _reservesOf[underlyingToken] = underlyingBalancesAfter;
 
         // Update vault's wrapped reserves.
-        uint256 wrappedReservesBefore = _reservesOf[wrappedToken];
         uint256 wrappedBalancesAfter = wrappedToken.balanceOf(address(this));
-        // An unwrap operation removes wrapped tokens from the vault, so the expected vault's wrapped balance after the
-        // operation is `wrappedReservesBefore - wrappedDeltaHint`.
-        uint256 expectedWrappedReservesAfter = wrappedReservesBefore - wrappedDeltaHint;
         if (wrappedBalancesAfter < expectedWrappedReservesAfter) {
             // If vault's wrapped balance is smaller than expected, means that the withdraw/redeem function removed
             // more wrapped tokens than it said it would remove.
