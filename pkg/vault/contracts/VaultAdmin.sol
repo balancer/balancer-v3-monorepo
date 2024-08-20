@@ -506,12 +506,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         return
             abi.decode(
                 _vault.unlock(
-                    abi.encodeWithSelector(
-                        VaultAdmin.removeLiquidityFromBufferHook.selector,
-                        wrappedToken,
-                        sharesToRemove,
-                        msg.sender
-                    )
+                    abi.encodeCall(VaultAdmin.removeLiquidityFromBufferHook, (wrappedToken, sharesToRemove, msg.sender))
                 ),
                 (uint256, uint256)
             );
