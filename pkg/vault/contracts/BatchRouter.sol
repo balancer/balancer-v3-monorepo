@@ -964,7 +964,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
 
             // If the vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
-            // initialized. Thus, the router treats it as a standard token.
+            // initialized. Thus, the router treats it as a non-ERC4626 token.
             if (address(underlyingToken) == address(0)) {
                 if (isStaticCall == false) {
                     underlyingAmounts[i] = amountsIn[i];
