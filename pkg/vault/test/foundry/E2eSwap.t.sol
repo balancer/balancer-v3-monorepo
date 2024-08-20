@@ -140,10 +140,12 @@ contract E2eSwapTest is BaseVaultTest {
         if (decimalsTokenA != decimalsTokenB) {
             if (decimalsTokenA < decimalsTokenB) {
                 uint256 decimalsFactor = 10 ** (decimalsTokenB - decimalsTokenA);
-                minSwapAmountTokenB = 10 * (MIN_TRADE_AMOUNT > decimalsFactor ? MIN_TRADE_AMOUNT : decimalsFactor);
+                // Multiply by 20 to avoid amount calculated lower than MIN_TRADE_AMOUNT.
+                minSwapAmountTokenB = 20 * (MIN_TRADE_AMOUNT > decimalsFactor ? MIN_TRADE_AMOUNT : decimalsFactor);
             } else {
                 uint256 decimalsFactor = 10 ** (decimalsTokenA - decimalsTokenB);
-                minSwapAmountTokenA = 10 * (MIN_TRADE_AMOUNT > decimalsFactor ? MIN_TRADE_AMOUNT : decimalsFactor);
+                // Multiply by 20 to avoid amount calculated lower than MIN_TRADE_AMOUNT.
+                minSwapAmountTokenA = 20 * (MIN_TRADE_AMOUNT > decimalsFactor ? MIN_TRADE_AMOUNT : decimalsFactor);
             }
         }
 
