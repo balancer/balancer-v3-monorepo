@@ -222,7 +222,7 @@ contract BatchRouterNestedPools is BaseVaultTest {
     }
 
     function testRemoveLiquidityNestedPoolLimits() public {
-        // Remove 10% of pool liquidities.
+        // Remove 10% of pool liquidity.
         uint256 proportionToRemove = 10e16;
 
         uint256 totalPoolBPTs = BalancerPoolToken(parentPool).totalSupply();
