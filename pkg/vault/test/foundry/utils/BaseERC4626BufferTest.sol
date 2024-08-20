@@ -205,7 +205,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
 
         // Manipulate rates before creating the ERC4626 pools. It's important to not have a 1:1 rate when testing
-        // ERC4626 tokens, so we can differ what's wrapped and what's underlying amounts.
+        // ERC4626 tokens, so we can differentiate between wrapped and underlying amounts.
         dai.mint(lp, 10 * erc4626PoolInitialAmount);
         usdc.mint(lp, 10 * erc4626PoolInitialAmount);
         // Deposit sets the rate to 1.
