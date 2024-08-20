@@ -215,7 +215,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         usdc.approve(address(waUSDC), 10 * erc4626PoolInitialAmount);
         waUSDC.deposit(10 * erc4626PoolInitialAmount, lp);
         vm.stopPrank();
-        // Changing asset balances without minting shares makes the balance be different than 1.
+        // Changing asset balances without minting shares changes the rate so that it is no longer 1.
         dai.mint(address(waDAI), 2 * erc4626PoolInitialAmount);
         usdc.mint(address(waUSDC), 4 * erc4626PoolInitialAmount);
     }
