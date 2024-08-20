@@ -238,7 +238,8 @@ contract BatchRouterNestedPools is BaseVaultTest {
         uint256 deadTokens = (MIN_BPT / 2).mulDown(proportionToRemove);
 
         uint256[] memory minAmountsOut = new uint256[](4);
-        // Expect minAmountsOut to be the liquidity of the pool, which is more than what should return.
+        // Expect minAmountsOut to be the liquidity of the pool, which is more than what we should return,
+        // causing it to revert.
         minAmountsOut[vars.daiIdx] = poolInitAmount;
         minAmountsOut[vars.wethIdx] = poolInitAmount;
         minAmountsOut[vars.wstethIdx] = poolInitAmount;
