@@ -180,14 +180,14 @@ interface IVaultErrors {
     *******************************************************************************/
 
     /**
-     * @dev Error raised when the sum of the parts (aggregate swap or yield fee)
+     * @dev Error raised when the sum of the parts (aggregate swap or yield fee).
      * is greater than the whole (total swap or yield fee). Also validated when the protocol fee
      * controller updates aggregate fee percentages in the Vault.
      */
     error ProtocolFeesExceedTotalCollected();
 
     /**
-     * @dev  Error raised when the swap fee percentage is less than the minimum allowed value.
+     * @dev Error raised when the swap fee percentage is less than the minimum allowed value.
      * The Vault itself does not impose a universal minimum. Rather, it validates against the
      * range specified by the `ISwapFeePercentageBounds` interface. and reverts with this error
      * if it is below the minimum value returned by the pool.
@@ -197,7 +197,7 @@ interface IVaultErrors {
     error SwapFeePercentageTooLow();
 
     /**
-     * @dev  Error raised when the swap fee percentage is greater than the maximum allowed value.
+     * @dev Error raised when the swap fee percentage is greater than the maximum allowed value.
      * The Vault itself does not impose a universal minimum. Rather, it validates against the
      * range specified by the `ISwapFeePercentageBounds` interface. and reverts with this error
      * if it is above the maximum value returned by the pool.
@@ -207,6 +207,7 @@ interface IVaultErrors {
     error SwapFeePercentageTooHigh();
 
     /**
+     * @notice Primary fee percentages result in an aggregate fee that cannot be stored with the required precision.
      * @dev Primary fee percentages are 18-decimal values, stored here in 64 bits, and calculated with full 256-bit
      * precision. However, the resulting aggregate fees are stored in the Vault with 24-bit precision, which
      * corresponds to 0.00001% resolution (i.e., a fee can be 1%, 1.00001%, 1.00002%, but not 1.000005%).
@@ -302,18 +303,18 @@ interface IVaultErrors {
     error WrongUnderlyingToken(IERC4626 wrappedToken, address underlyingToken);
 
     /// @dev A wrapped token reported the zero address as its underlying token asset.
-    error InvalidUnderlyingToken();
+    error InvalidUnderlyingToken(IERC4626 wrappedToken);
 
     /// @dev The amount given to wrap/unwrap was too small, which can introduce rounding issues.
-    error WrapAmountTooSmall(address wrappedToken);
+    error WrapAmountTooSmall(IERC4626 wrappedToken);
 
-    /// @dev Vault buffers are paused.
+    /// @dev Buffer operation attempted while vault buffers are paused.
     error VaultBuffersArePaused();
 
     /// @dev Buffer shares were minted to an invalid address.
     error BufferSharesInvalidReceiver(address to);
 
-    /// @dev Buffer shares were burnt from an invalid address.
+    /// @dev Buffer shares were burned from an invalid address.
     error BufferSharesInvalidOwner(address from);
 
     /*******************************************************************************
