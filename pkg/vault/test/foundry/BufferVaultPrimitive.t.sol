@@ -236,18 +236,23 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
      * settle() functions to remove their donated tokens from the vault.
      */
     function testDepositDoS() public {
+        // Frontrunner will add more tokens to the vault than the amount consumed by "deposit", which could make the
+        // vault "think" that an unwrap operation took place, instead of a wrap.
+        uint256 frontrunnerAmount = _wrapAmount + 10;
+
         // Initializes the buffer with an amount that's not possible to fulfill the deposit operation.
         vm.prank(lp);
         router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, _wrapAmount / 10);
 
-        uint256 lpUnderlyingBalanceBefore = dai.balanceOf(lp);
-        uint256 lpWrappedBalanceBefore = IERC20(address(waDAI)).balanceOf(lp);
+        (uint256 daiIdx, uint256 waDaiIdx, IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
 
         // Approves this test to act as a router and move DAI from lp to vault.
         vm.prank(lp);
         dai.approve(address(this), _wrapAmount);
 
-        (uint256 amountsIn, uint256 amountsOut) = abi.decode(
+        (uint256 amountIn, uint256 amountOut) = abi.decode(
             vault.unlock(
                 abi.encodeWithSelector(
                     BufferVaultPrimitiveTest.erc4626DoSHook.selector,
@@ -259,29 +264,67 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
                         limitRaw: 0,
                         userData: bytes("")
                     }),
-                    lp
+                    lp,
+                    frontrunnerAmount
                 )
             ),
             (uint256, uint256)
         );
 
-        uint256 lpUnderlyingBalanceAfter = dai.balanceOf(lp);
-        uint256 lpWrappedBalanceAfter = IERC20(address(waDAI)).balanceOf(lp);
+        BaseVaultTest.Balances memory balancesAfter = getBalances(lp, tokens);
 
-        // Check user balances
+        // Check wrap/unwrap results.
+        assertEq(amountIn, _wrapAmount, "AmountIn (underlying deposited) is wrong");
+        assertEq(amountOut, waDAI.previewDeposit(_wrapAmount), "AmountOut (wrapped minted) is wrong");
+
+        // Check user balances.
         assertEq(
-            lpUnderlyingBalanceAfter,
-            lpUnderlyingBalanceBefore - _wrapAmount,
+            balancesAfter.lpTokens[daiIdx],
+            balancesBefore.lpTokens[daiIdx] - _wrapAmount,
             "LP balance of underlying token is wrong"
         );
         assertEq(
-            lpWrappedBalanceAfter,
-            lpWrappedBalanceBefore + waDAI.previewDeposit(_wrapAmount),
+            balancesAfter.lpTokens[waDaiIdx],
+            balancesBefore.lpTokens[waDaiIdx] + waDAI.previewDeposit(_wrapAmount),
             "LP balance of wrapped token is wrong"
         );
 
-        // Check Vault balances
-        //  Extra tokens should be adjusted and funds should be absorbed (lost)
+        // Check alice (frontrunner) balances. The frontrunner should lose the funds.
+        assertEq(
+            balancesAfter.aliceTokens[daiIdx],
+            balancesBefore.aliceTokens[daiIdx] - frontrunnerAmount,
+            "Frontrunner balance of underlying token is wrong"
+        );
+        assertEq(
+            balancesAfter.aliceTokens[waDaiIdx],
+            balancesBefore.aliceTokens[waDaiIdx],
+            "Frontrunner balance of wrapped token is wrong"
+        );
+
+        // Check Vault reserves. Vault should have the reserves from before and the frontrunner amount (the user paid
+        // for the amount deposited into the wrapper protocol, so the vault reserves should not be affected by that).
+        assertEq(
+            balancesAfter.vaultReserves[daiIdx],
+            balancesBefore.vaultReserves[daiIdx] + frontrunnerAmount,
+            "Vault reserves of underlying token is wrong"
+        );
+        assertEq(
+            balancesAfter.vaultReserves[waDaiIdx],
+            balancesBefore.vaultReserves[waDaiIdx],
+            "Vault reserves of wrapped token is wrong"
+        );
+
+        // Check Vault balances. Vault balances should match vault reserves.
+        assertEq(
+            balancesAfter.vaultReserves[daiIdx],
+            balancesAfter.vaultTokens[daiIdx],
+            "Vault balance of underlying token is wrong"
+        );
+        assertEq(
+            balancesAfter.vaultReserves[waDaiIdx],
+            balancesBefore.vaultTokens[waDaiIdx],
+            "Vault balance of wrapped token is wrong"
+        );
     }
 
     function testDepositMaliciousRouter() public {
@@ -698,6 +741,17 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         });
     }
 
+    function _getTokenArrayAndIndexesOfWaDaiBuffer()
+        private
+        view
+        returns (uint256 daiIdx, uint256 waDaiIdx, IERC20[] memory tokens)
+    {
+        (daiIdx, waDaiIdx) = getSortedIndexes(address(dai), address(waDAI));
+        tokens = new IERC20[](2);
+        tokens[daiIdx] = dai;
+        tokens[waDaiIdx] = IERC20(address(waDAI));
+    }
+
     /// @notice Hook used to create a vault approval using a malicious erc4626 and drain the vault.
     function erc4626MaliciousHook(BufferWrapOrUnwrapParams memory params) external {
         (, uint256 amountIn, uint256 amountOut) = vault.erc4626BufferWrapOrUnwrap(params);
@@ -715,7 +769,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     /// @notice Hook used to interact with ERC4626 wrap/unwrap primitive of the vault.
     function erc4626DoSHook(
         BufferWrapOrUnwrapParams memory params,
-        address sender
+        address sender,
+        uint256 frontrunnerAmount
     ) external returns (uint256 amountIn, uint256 amountOut) {
         IERC20 underlyingToken = IERC20(params.wrappedToken.asset());
         IERC20 wrappedToken = IERC20(address(params.wrappedToken));
@@ -736,7 +791,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             // an unwrap because the reserves of underlying tokens increased after the wrap operation. Don't settle, or
             // else the vault will measure the difference of underlying reserves correctly.
             vm.prank(alice);
-            dai.transfer(address(vault), _wrapAmount + 10);
+            dai.transfer(address(vault), frontrunnerAmount);
         } else {
             if (params.kind == SwapKind.EXACT_IN) {
                 wrappedToken.transferFrom(sender, address(vault), params.amountGivenRaw);

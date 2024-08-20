@@ -182,7 +182,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         _checkVaultReservesAfterWrap(
             underlyingReservesBefore,
             wrappedReservesBefore,
-            expectedUnderlyingDeposited,
+            actualUnderlyingDeposited,
             actualWrappedMinted
         );
     }
@@ -203,7 +203,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
             underlyingReservesBefore,
             wrappedReservesBefore,
             actualUnderlyingDeposited,
-            expectedWrappedMinted
+            actualWrappedMinted
         );
     }
 
@@ -267,7 +267,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         _checkVaultReservesAfterUnwrap(
             underlyingReservesBefore,
             wrappedReservesBefore,
-            expectedUnderlyingWithdrawn,
+            actualUnderlyingWithdrawn,
             actualWrappedBurned
         );
     }
@@ -345,7 +345,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
             underlyingReservesBefore,
             wrappedReservesBefore,
             actualUnderlyingWithdrawn,
-            expectedWrappedBurned
+            actualWrappedBurned
         );
     }
 

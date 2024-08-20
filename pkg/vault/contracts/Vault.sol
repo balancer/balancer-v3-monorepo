@@ -1386,8 +1386,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 underlyingBalancesAfter
             );
         }
-        // Update vault's underlying reserves, discarding any unexpected surplus of tokens.
-        _reservesOf[underlyingToken] = expectedUnderlyingReservesAfter;
+        // Update vault's underlying reserves, discarding any unexpected surplus of tokens (difference between actual
+        // and expected vault balance).
+        _reservesOf[underlyingToken] = underlyingBalancesAfter;
 
         // Update vault's wrapped reserves.
         uint256 wrappedReservesBefore = _reservesOf[wrappedToken];
@@ -1404,8 +1405,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedBalancesAfter
             );
         }
-        // Update vault's wrapped reserves, discarding any unexpected surplus of tokens.
-        _reservesOf[wrappedToken] = expectedWrappedReservesAfter;
+        // Update vault's wrapped reserves, discarding any unexpected surplus of tokens (difference between actual and
+        // expected vault balance).
+        _reservesOf[wrappedToken] = wrappedBalancesAfter;
     }
 
     /**
@@ -1439,8 +1441,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 underlyingBalancesAfter
             );
         }
-        // Update vault's underlying reserves, discarding any unexpected surplus of tokens.
-        _reservesOf[underlyingToken] = expectedUnderlyingReservesAfter;
+        // Update vault's underlying reserves, discarding any unexpected surplus of tokens (difference between actual
+        // and expected vault balance).
+        _reservesOf[underlyingToken] = underlyingBalancesAfter;
 
         // Update vault's wrapped reserves.
         uint256 wrappedReservesBefore = _reservesOf[wrappedToken];
@@ -1457,8 +1460,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedBalancesAfter
             );
         }
-        // Update vault's wrapped reserves, discarding any unexpected surplus of tokens.
-        _reservesOf[wrappedToken] = expectedWrappedReservesAfter;
+        // Update vault's wrapped reserves, discarding any unexpected surplus of tokens (difference between actual and
+        // expected vault balance).
+        _reservesOf[wrappedToken] = wrappedBalancesAfter;
     }
 
     // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
