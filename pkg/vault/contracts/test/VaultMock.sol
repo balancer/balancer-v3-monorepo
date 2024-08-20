@@ -644,6 +644,14 @@ contract VaultMock is IVaultMainMock, Vault {
         _bufferAssets[wrappedToken] = underlyingToken;
     }
 
+    function manualSetBufferOwnerShares(IERC4626 wrappedToken, address owner, uint256 shares) external {
+        _bufferLpShares[wrappedToken][owner] = shares;
+    }
+
+    function manualSetBufferTotalShares(IERC4626 wrappedToken, uint256 shares) external {
+        _bufferTotalShares[wrappedToken] = shares;
+    }
+
     function manualErc4626BufferWrapOrUnwrapReentrancy(
         BufferWrapOrUnwrapParams memory params
     ) external nonReentrant returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw) {

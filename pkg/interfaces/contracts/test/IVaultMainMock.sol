@@ -254,6 +254,10 @@ interface IVaultMainMock {
 
     function manualSetBufferAsset(IERC4626 wrappedToken, address underlyingToken) external;
 
+    function manualSetBufferOwnerShares(IERC4626 wrappedToken, address owner, uint256 shares) external;
+
+    function manualSetBufferTotalShares(IERC4626 wrappedToken, uint256 shares) external;
+
     function manualSettleReentrancy(IERC20 token) external returns (uint256 paid);
 
     function manualSendToReentrancy(IERC20 token, address to, uint256 amount) external;

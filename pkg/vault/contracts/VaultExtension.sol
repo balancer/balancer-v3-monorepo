@@ -238,9 +238,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Store the role account addresses (for getters).
         _poolRoleAccounts[pool] = params.roleAccounts;
 
-        // Make pool role assignments. A zero address means default to the authorizer.
-        _assignPoolRoles(pool, params.roleAccounts);
-
         PoolConfigBits poolConfigBits;
 
         // Store the configuration, and mark the pool as registered.
@@ -330,31 +327,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         );
     }
 
-    function _assignPoolRoles(address pool, PoolRoleAccounts memory roleAccounts) private {
-        mapping(bytes32 => PoolFunctionPermission) storage roleAssignments = _poolFunctionPermissions[pool];
-        IAuthentication vaultAdmin = IAuthentication(address(_vaultAdmin));
-
-        if (roleAccounts.pauseManager != address(0)) {
-            roleAssignments[vaultAdmin.getActionId(IVaultAdmin.pausePool.selector)] = PoolFunctionPermission({
-                account: roleAccounts.pauseManager,
-                onlyOwner: false
-            });
-            roleAssignments[vaultAdmin.getActionId(IVaultAdmin.unpausePool.selector)] = PoolFunctionPermission({
-                account: roleAccounts.pauseManager,
-                onlyOwner: false
-            });
-        }
-
-        if (roleAccounts.swapFeeManager != address(0)) {
-            bytes32 swapFeeAction = vaultAdmin.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector);
-
-            roleAssignments[swapFeeAction] = PoolFunctionPermission({
-                account: roleAccounts.swapFeeManager,
-                onlyOwner: true
-            });
-        }
-    }
-
     /// @inheritdoc IVaultExtension
     function isPoolRegistered(address pool) external view onlyVaultDelegateCall returns (bool) {
         return _isPoolRegistered(pool);
@@ -368,7 +340,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external onlyVaultDelegateCall onlyWhenUnlocked withRegisteredPool(pool) returns (uint256 bptAmountOut) {
+    )
+        external
+        onlyVaultDelegateCall
+        onlyWhenUnlocked
+        withRegisteredPool(pool)
+        nonReentrant
+        returns (uint256 bptAmountOut)
+    {
         _ensureUnpaused(pool);
 
         // Balances are zero until after initialize is called, so there is no need to charge pending yield fee here.
@@ -420,7 +399,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256[] memory exactAmountsIn,
         uint256[] memory exactAmountsInScaled18,
         uint256 minBptAmountOut
-    ) internal nonReentrant returns (uint256 bptAmountOut) {
+    ) internal returns (uint256 bptAmountOut) {
         mapping(uint256 => bytes32) storage poolBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < poolData.tokens.length; ++i) {
