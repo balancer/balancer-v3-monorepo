@@ -200,6 +200,16 @@ contract DynamicFeePoolTest is BaseVaultTest {
         assertEq(actualDynamicSwapFee, dynamicSwapFeePercentage, "Wrong dynamicSwapFeePercentage");
     }
 
+    function testExternalComputeFeeInvalid() public {
+        PoolSwapParams memory swapParams;
+        uint256 invalidPercentage = 101e16; // 101%
+
+        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(invalidPercentage);
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidPercentage.selector, invalidPercentage));
+        vault.computeDynamicSwapFeePercentage(pool, swapParams);
+    }
+
     function testSwapChargesFees__Fuzz(uint256 dynamicSwapFeePercentage) public {
         dynamicSwapFeePercentage = bound(
             dynamicSwapFeePercentage,
