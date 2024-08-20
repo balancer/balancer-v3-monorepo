@@ -22,7 +22,7 @@ contract E2eSwapRateProvider is E2eSwapTest {
     RateProviderMock internal rateProviderTokenA;
     RateProviderMock internal rateProviderTokenB;
 
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+    function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
         address newPool = factoryMock.createPool("ERC20 Pool", "ERC20POOL");
         vm.label(newPool, label);
 

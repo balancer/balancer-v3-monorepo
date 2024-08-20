@@ -158,8 +158,9 @@ contract E2eSwapTest is BaseVaultTest {
             ? (minSwapAmountTokenB * rateTokenA) / rateTokenB
             : minSwapAmountTokenB;
 
-        maxSwapAmountTokenA = poolInitAmountTokenA;
-        maxSwapAmountTokenB = poolInitAmountTokenB;
+        // 99% of pool init amount, to avoid rounding issues near the full liquidity of the pool.
+        maxSwapAmountTokenA = poolInitAmountTokenA.mulDown(99e16);
+        maxSwapAmountTokenB = poolInitAmountTokenB.mulDown(99e16);
     }
 
     /// @notice Donate tokens to vault, so liquidity tests are possible.
