@@ -196,7 +196,7 @@ library HooksConfigLib {
         }
 
         if (swapFeePercentage > FixedPoint.ONE) {
-            revert IVaultErrors.InvalidPercentage(swapFeePercentage);
+            revert IVaultErrors.InvalidPercentage();
         }
 
         return swapFeePercentage;

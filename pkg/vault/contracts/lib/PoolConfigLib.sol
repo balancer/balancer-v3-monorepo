@@ -171,7 +171,7 @@ library PoolConfigLib {
 
     function setStaticSwapFeePercentage(PoolConfigBits config, uint256 value) internal pure returns (PoolConfigBits) {
         if (value > MAX_FEE_PERCENTAGE) {
-            revert IVaultErrors.InvalidPercentage(value);
+            revert IVaultErrors.InvalidPercentage();
         }
         value /= FEE_SCALING_FACTOR;
 
@@ -192,7 +192,7 @@ library PoolConfigLib {
         uint256 value
     ) internal pure returns (PoolConfigBits) {
         if (value > MAX_FEE_PERCENTAGE) {
-            revert IVaultErrors.InvalidPercentage(value);
+            revert IVaultErrors.InvalidPercentage();
         }
         value /= FEE_SCALING_FACTOR;
 
@@ -217,7 +217,7 @@ library PoolConfigLib {
         uint256 value
     ) internal pure returns (PoolConfigBits) {
         if (value > MAX_FEE_PERCENTAGE) {
-            revert IVaultErrors.InvalidPercentage(value);
+            revert IVaultErrors.InvalidPercentage();
         }
         value /= FEE_SCALING_FACTOR;
 
