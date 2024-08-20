@@ -19,7 +19,6 @@ contract WeightedBaseExtremeAmountsTest is BaseExtremeAmountsTest {
     using CastingHelpers for *;
 
     function setUp() public virtual override {
-        maxRemovePercentage = 10;
         BaseExtremeAmountsTest.setUp();
     }
 

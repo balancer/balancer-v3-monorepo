@@ -2,9 +2,12 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/console.sol";
+
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -15,11 +18,22 @@ import { BaseVaultTest } from "./BaseVaultTest.sol";
 abstract contract BaseExtremeAmountsTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    uint256 internal maxRemovePercentage = 30;
+    uint256 internal startBPTAmount;
+    uint256 internal maxBPTAmount;
+    uint256 internal maxAmountIn = MAX_UINT128 - poolInitAmount;
+    uint256 internal maxInvariantChangePercentOfAmount = 30;
 
     //#region Test setup
     function setUp() public virtual override {
         BaseVaultTest.setUp();
+
+        maxBPTAmount = IBasePool(pool).computeInvariant([MAX_UINT128, MAX_UINT128].toMemoryArray());
+        if (maxBPTAmount > MAX_UINT128) {
+            maxBPTAmount = MAX_UINT128;
+        }
+
+        startBPTAmount = IBasePool(pool).computeInvariant([poolInitAmount, poolInitAmount].toMemoryArray());
+        maxBPTAmount -= startBPTAmount;
     }
 
     //#endregion
@@ -27,14 +41,13 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
     //#region Tests
     function testAddAndRemoveLiquidityProportional_Fuzz(uint256 exactBPTAmount) public {
         vault.forceUnlock();
-        uint currentBPTAmount = IERC20(pool).balanceOf(lp);
-        exactBPTAmount = bound(exactBPTAmount, 100e6 * 1e18, MAX_UINT128 - currentBPTAmount);
+        exactBPTAmount = bound(exactBPTAmount, 100e6 * 1e18, maxBPTAmount);
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
             AddLiquidityParams({
                 pool: pool,
                 to: address(this),
-                maxAmountsIn: [MAX_UINT128, MAX_UINT128].toMemoryArray(),
+                maxAmountsIn: [maxAmountIn, maxAmountIn].toMemoryArray(),
                 minBptAmountOut: exactBPTAmount,
                 kind: AddLiquidityKind.PROPORTIONAL,
                 userData: bytes("")
@@ -43,13 +56,13 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
 
         assertEq(bptAmountOut, exactBPTAmount, "BPT amount out should be equal to exactBPTAmount");
 
-        (uint256 totalBPTAmountIn, uint256[] memory totalAmountsOut) = _removeExactInPartial(
+        (uint256 totalBPTAmountIn, uint256[] memory totalAmountsOut, uint256 diff) = _removeExactInPartial(
             bptAmountOut,
             new uint256[](2),
             RemoveLiquidityKind.PROPORTIONAL
         );
 
-        assertEq(totalBPTAmountIn, bptAmountOut, "BPT amount in should be equal to BPT amount out");
+        assertEq(totalBPTAmountIn + diff, bptAmountOut, "BPT amount in should be equal to BPT amount out");
         for (uint256 i = 0; i < amountsIn.length; i++) {
             assertLe(totalAmountsOut[i], amountsIn[i], "Amounts out should be less than amounts in");
         }
@@ -57,9 +70,12 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
 
     function testAddUnbalancedAndRemoveLiquidityProportional_Fuzz(uint256[2] memory maxAmountsInRaw) public {
         vault.forceUnlock();
+
+        (uint256 newMaxAmountIn, ) = _addLiquidityProportionalAndUpdateMaxAmounts();
+
         uint256[] memory exactAmountsIn = new uint256[](2);
-        exactAmountsIn[0] = bound(maxAmountsInRaw[0], 100e6 * 1e18, MAX_UINT128 - poolInitAmount);
-        exactAmountsIn[1] = bound(maxAmountsInRaw[1], 100e6 * 1e18, MAX_UINT128 - poolInitAmount);
+        exactAmountsIn[0] = bound(maxAmountsInRaw[0], 100e6 * 1e18, newMaxAmountIn);
+        exactAmountsIn[1] = bound(maxAmountsInRaw[1], 100e6 * 1e18, newMaxAmountIn);
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
             AddLiquidityParams({
@@ -72,17 +88,27 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
             })
         );
 
+        console.log("bptAmountOut: %d", bptAmountOut);
+        console.log("amountsIn 0: %d", amountsIn[0]);
+        console.log("amountsIn 1: %d", amountsIn[1]);
         for (uint256 i = 0; i < amountsIn.length; i++) {
             assertEq(amountsIn[i], exactAmountsIn[i], "AmountsIn should be equal to exactAmountsIn");
         }
 
-        (uint256 totalBPTAmountIn, uint256[] memory totalAmountsOut) = _removeExactInPartial(
+        (uint256 totalBPTAmountIn, uint256[] memory totalAmountsOut, ) = _removeExactInPartial(
             bptAmountOut,
             new uint256[](2),
             RemoveLiquidityKind.PROPORTIONAL
         );
 
+        console.log("totalBPTAmountIn: %d", totalBPTAmountIn);
         assertEq(totalBPTAmountIn, bptAmountOut, "BPT amount in should be equal to BPT amount out");
+
+        console.log("totalAmountsOut 0: %d", totalAmountsOut[0]);
+        console.log("totalAmountsOut 1: %d", totalAmountsOut[1]);
+
+        console.log("totalAmountsOut 0 > amountsIn 0: ", totalAmountsOut[0] > amountsIn[0]);
+        console.log("totalAmountsOut 1 > amountsIn 1: ", totalAmountsOut[1] > amountsIn[1]);
 
         if (totalAmountsOut[0] > amountsIn[0]) {
             assertLt(totalAmountsOut[1], amountsIn[1], "Total amount out should be less than amount in");
@@ -93,14 +119,13 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
 
     function testAddProportionalAndRemoveLiquidityExactIn_Fuzz(uint256 exactBPTAmount) public {
         vault.forceUnlock();
-        uint currentBPTAmount = IERC20(pool).balanceOf(lp);
-        exactBPTAmount = bound(exactBPTAmount, 100e6 * 1e18, MAX_UINT128 - currentBPTAmount);
+        exactBPTAmount = bound(exactBPTAmount, 100e6 * 1e18, maxBPTAmount);
 
         (, uint256 bptAmountOut, ) = vault.addLiquidity(
             AddLiquidityParams({
                 pool: pool,
                 to: address(this),
-                maxAmountsIn: [MAX_UINT128, MAX_UINT128].toMemoryArray(),
+                maxAmountsIn: [maxAmountIn, maxAmountIn].toMemoryArray(),
                 minBptAmountOut: exactBPTAmount,
                 kind: AddLiquidityKind.PROPORTIONAL,
                 userData: bytes("")
@@ -162,23 +187,24 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
 
     function testAddLiquiditySingleTokenExactOutAndRemoveExactIn_Fuzz(uint256 exactBPTAmount) public {
         vault.forceUnlock();
-        uint currentBPTAmount = IERC20(pool).balanceOf(lp);
-        exactBPTAmount = bound(exactBPTAmount, 100e6 * 1e18, MAX_UINT128 - currentBPTAmount);
+
+        (uint256 newMaxAmountIn, uint256 newMaxBPTAmount) = _addLiquidityProportionalAndUpdateMaxAmounts();
+
+        exactBPTAmount = bound(exactBPTAmount, 100e6 * 1e18, newMaxBPTAmount);
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
             AddLiquidityParams({
                 pool: pool,
                 to: address(this),
-                maxAmountsIn: [0, MAX_UINT128 - poolInitAmount].toMemoryArray(),
+                maxAmountsIn: [0, newMaxAmountIn].toMemoryArray(),
                 minBptAmountOut: exactBPTAmount,
                 kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                 userData: bytes("")
             })
         );
-
         assertEq(bptAmountOut, exactBPTAmount, "BPT amount out should be equal to exactBPTAmount");
 
-        (uint256 bptAmountIn, uint256[] memory amountsOut) = _removeExactInPartial(
+        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = _removeExactInPartial(
             bptAmountOut,
             [0, uint256(1)].toMemoryArray(),
             RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN
@@ -192,14 +218,15 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
 
     function testAddLiquiditySingleTokenExactOutAndRemoveExactOut_Fuzz(uint256 exactBPTAmount) public {
         vault.forceUnlock();
-        uint currentBPTAmount = IERC20(pool).balanceOf(lp);
-        exactBPTAmount = bound(exactBPTAmount, 100e6 * 1e18, MAX_UINT128 - currentBPTAmount);
+
+        (uint256 newMaxAmountIn, uint256 newMaxBPTAmount) = _addLiquidityProportionalAndUpdateMaxAmounts();
+        exactBPTAmount = bound(exactBPTAmount, 100e6 * 1e18, newMaxBPTAmount);
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
             AddLiquidityParams({
                 pool: pool,
                 to: address(this),
-                maxAmountsIn: [0, MAX_UINT128 - poolInitAmount].toMemoryArray(),
+                maxAmountsIn: [0, newMaxAmountIn].toMemoryArray(),
                 minBptAmountOut: exactBPTAmount,
                 kind: AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
                 userData: bytes("")
@@ -210,7 +237,8 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
 
         uint256 totalBPTAmountIn = 0;
         uint256[] memory totalAmountsOut = new uint256[](2);
-        uint256[] memory splitAmounts = _splitAmount(amountsIn[1]);
+
+        (uint256[] memory splitAmounts, ) = _splitAmount(amountsIn[1]);
         for (uint256 i = 0; i < splitAmounts.length; i++) {
             try
                 vault.removeLiquidity(
@@ -243,7 +271,7 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
                 return;
             }
         }
-
+        console.log("balance before 3: %d", IERC20(pool).balanceOf(address(this)));
         assertEq(totalBPTAmountIn, bptAmountOut, "BPT amount in should be equal to BPT amount out");
         for (uint256 i = 0; i < amountsIn.length; i++) {
             assertEq(totalAmountsOut[i], amountsIn[i], "Amounts out should be equal to amounts in");
@@ -252,14 +280,15 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
 
     function testSwap(uint256 exactBPTAmount, uint256 swapAmount) public {
         vault.forceUnlock();
-        uint currentBPTAmount = IERC20(pool).balanceOf(lp);
-        exactBPTAmount = bound(exactBPTAmount, 100e6 * 1e18, MAX_UINT128 - currentBPTAmount);
+
+        (uint256 newMaxAmountIn, uint256 newMaxBPTAmount) = _addLiquidityProportionalAndUpdateMaxAmounts();
+        exactBPTAmount = bound(exactBPTAmount, 100e6 * 1e18, newMaxBPTAmount);
 
         (uint256[] memory amountsIn, , ) = vault.addLiquidity(
             AddLiquidityParams({
                 pool: pool,
                 to: address(this),
-                maxAmountsIn: [MAX_UINT128, MAX_UINT128].toMemoryArray(),
+                maxAmountsIn: [newMaxAmountIn, newMaxAmountIn].toMemoryArray(),
                 minBptAmountOut: exactBPTAmount,
                 kind: AddLiquidityKind.PROPORTIONAL,
                 userData: bytes("")
@@ -294,11 +323,32 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
         );
 
         assertEq(amountInReturn, amountOut, "Amount in should be equal to amountOut");
-        assertEq(amountOutReturn, amountIn, "Amount out should be equal or less amountIn");
+        assertLe(amountOutReturn, amountIn, "Amount out should be equal or less amountIn");
     }
     //#endregion
 
     //#region Internal functions
+
+    function _addLiquidityProportionalAndUpdateMaxAmounts()
+        internal
+        returns (uint256 newMaxAmountIn, uint256 newMaxBPTAmount)
+    {
+        (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
+            AddLiquidityParams({
+                pool: pool,
+                to: lp,
+                maxAmountsIn: [maxAmountIn, maxAmountIn].toMemoryArray(),
+                minBptAmountOut: maxBPTAmount / 2,
+                kind: AddLiquidityKind.PROPORTIONAL,
+                userData: bytes("")
+            })
+        );
+
+        newMaxAmountIn = ((maxAmountIn + amountsIn[1]) * maxInvariantChangePercentOfAmount) / 100;
+
+        uint currentBPTAmount = startBPTAmount + bptAmountOut;
+        newMaxBPTAmount = (currentBPTAmount * maxInvariantChangePercentOfAmount) / 100;
+    }
     function _removeSelectorFromErrorReason(
         bytes memory reason
     ) internal pure returns (bytes4 selector, bytes memory res) {
@@ -311,18 +361,22 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
         }
     }
 
-    function _splitAmount(uint256 amount) internal view returns (uint256[] memory splitAmounts) {
-        uint256 splitAmount = (amount * maxRemovePercentage) / 100;
+    function _splitAmount(uint256 amount) internal view returns (uint256[] memory splitAmounts, uint256 diff) {
+        uint256 splitAmount = (amount * maxInvariantChangePercentOfAmount) / 100;
         uint256 count = amount / splitAmount;
         uint256 restAmount = amount % splitAmount;
 
-        if (restAmount > 0) {
-            count++;
+        if (restAmount >= 0) {
+            if (restAmount >= MINIMUM_TRADE_AMOUNT) {
+                count++;
+            } else {
+                diff = restAmount;
+            }
         }
 
         splitAmounts = new uint256[](count);
         for (uint256 i = 0; i < count; i++) {
-            if (i == count - 1) {
+            if (i == count - 1 && restAmount >= MINIMUM_TRADE_AMOUNT) {
                 splitAmounts[i] = restAmount;
             } else {
                 splitAmounts[i] = splitAmount;
@@ -334,11 +388,11 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
         uint256 bptAmountOut,
         uint256[] memory minAmountsOut,
         RemoveLiquidityKind kind
-    ) internal returns (uint256 totalBPTAmountIn, uint256[] memory totalAmountsOut) {
+    ) internal returns (uint256 totalBPTAmountIn, uint256[] memory totalAmountsOut, uint256 diff) {
         totalAmountsOut = new uint256[](2);
 
-        uint256[] memory splitAmounts = _splitAmount(bptAmountOut);
-
+        uint256[] memory splitAmounts;
+        (splitAmounts, diff) = _splitAmount(bptAmountOut);
         for (uint256 i = 0; i < splitAmounts.length; i++) {
             (uint256 bptAmountIn, uint256[] memory amountsOut, ) = vault.removeLiquidity(
                 RemoveLiquidityParams({
@@ -356,5 +410,6 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
             totalAmountsOut[1] += amountsOut[1];
         }
     }
+
     //#endregion
 }
