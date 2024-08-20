@@ -1153,7 +1153,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 bufferUnderlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wrappedToken);
             uint256 bufferWrappedSurplus;
 
+            // Expected amount of underlying deposited into the wrapper protocol.
             uint256 vaultUnderlyingDeltaHint;
+            // Expected amount of wrapped minted by the wrapper protocol.
             uint256 vaultWrappedDeltaHint;
 
             if (kind == SwapKind.EXACT_IN) {
@@ -1283,7 +1285,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 bufferWrappedSurplus = bufferBalances.getBufferWrappedSurplus(wrappedToken);
             uint256 bufferUnderlyingSurplus;
 
+            // Expected amount of underlying withdrawn from the wrapper protocol.
             uint256 vaultUnderlyingDeltaHint;
+            // Expected amount of wrapped burned by the wrapper protocol.
             uint256 vaultWrappedDeltaHint;
 
             if (kind == SwapKind.EXACT_IN) {

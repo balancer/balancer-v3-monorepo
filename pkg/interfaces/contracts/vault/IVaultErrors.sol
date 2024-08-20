@@ -316,10 +316,10 @@ interface IVaultErrors {
     /// @dev Buffer shares were burnt from an invalid address.
     error BufferSharesInvalidOwner(address from);
 
-    /// @dev A wrap/unwrap operation consumed/returned less underlying tokens than it should.
+    /// @dev A wrap/unwrap operation consumed more or returned less underlying tokens than it should.
     error NotEnoughUnderlying(IERC4626 wrappedToken, uint256 expectedUnderlyingAmount, uint256 actualUnderlyingAmount);
 
-    /// @dev A wrap/unwrap operation consumed/returned less wrapped tokens than it should.
+    /// @dev A wrap/unwrap operation consumed more or returned less wrapped tokens than it should.
     error NotEnoughWrapped(IERC4626 wrappedToken, uint256 expectedWrappedAmount, uint256 actualWrappedAmount);
 
     /*******************************************************************************
