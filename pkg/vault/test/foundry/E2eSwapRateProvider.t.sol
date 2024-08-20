@@ -125,9 +125,9 @@ contract E2eSwapRateProvider is E2eSwapTest {
     }
 
     function _setPoolRates(uint256 newRateTokenA, uint256 newRateTokenB) private {
-        // Since the rate is an 18 decimals number, it ranges from 0.01 to 100.
-        newRateTokenA = bound(newRateTokenA, 1e16, 1e20);
-        newRateTokenB = bound(newRateTokenB, 1e16, 1e20);
+        // Since the rate is an 18 decimals number, it ranges from 0.01 to 1 million.
+        newRateTokenA = bound(newRateTokenA, 1e16, 1e24);
+        newRateTokenB = bound(newRateTokenB, 1e16, 1e24);
 
         rateProviderTokenA.mockRate(newRateTokenA);
         rateProviderTokenB.mockRate(newRateTokenB);
