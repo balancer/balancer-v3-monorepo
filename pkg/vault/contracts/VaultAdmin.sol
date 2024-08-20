@@ -364,6 +364,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         VaultStateBits vaultState = _vaultStateBits;
         vaultState = vaultState.setQueryDisabled(true);
         _vaultStateBits = vaultState;
+
+        emit VaultQueriesDisabled();
     }
 
     /*******************************************************************************
@@ -371,17 +373,26 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
+    function areBuffersPaused() external view onlyVaultDelegateCall returns (bool) {
+        return _vaultStateBits.areBuffersPaused();
+    }
+
+    /// @inheritdoc IVaultAdmin
     function pauseVaultBuffers() external onlyVaultDelegateCall authenticate {
-        VaultStateBits vaultState = _vaultStateBits;
-        vaultState = vaultState.setBuffersPaused(true);
-        _vaultStateBits = vaultState;
+        _setVaultBufferPauseState(true);
     }
 
     /// @inheritdoc IVaultAdmin
     function unpauseVaultBuffers() external onlyVaultDelegateCall authenticate {
+        _setVaultBufferPauseState(false);
+    }
+
+    function _setVaultBufferPauseState(bool paused) private {
         VaultStateBits vaultState = _vaultStateBits;
-        vaultState = vaultState.setBuffersPaused(false);
+        vaultState = vaultState.setBuffersPaused(paused);
         _vaultStateBits = vaultState;
+
+        emit VaultBuffersPausedStateChanged(paused);
     }
 
     /// @inheritdoc IVaultAdmin
