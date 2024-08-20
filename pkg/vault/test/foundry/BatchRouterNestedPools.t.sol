@@ -80,9 +80,9 @@ contract BatchRouterNestedPools is BaseVaultTest {
         uint256[] memory expectedAmountsOut = new uint256[](4);
         // DAI exists in childPoolB and parentPool, so we expect 2x more DAI than the other tokens.
         // Since pools are in their initial state, we can use poolInitAmount as the balance of each token in the pool.
-        // Also, we only need to account deadTokens once, since we calculate the bpts in for the parent pool using
-        // totalSupply (so the burned MIN_BPT amount does not affect the bpt in calculation and the amounts out are
-        // perfectly proportional to the parent pool balance)
+        // Also, we only need to account for deadTokens once, since we calculate the BPT in for the parent pool using
+        // totalSupply (so the burned MIN_BPT amount does not affect the BPT in circulation, and the amounts out are
+        // perfectly proportional to the parent pool balance).
         expectedAmountsOut[vars.daiIdx] =
             (poolInitAmount.mulDown(proportionToRemove) * 2) -
             deadTokens -
