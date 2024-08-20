@@ -95,27 +95,25 @@ contract ProtocolFeeController is
     uint256 private _globalProtocolYieldFeePercentage;
 
     // Store the pool-specific swap fee percentages (the Vault's poolConfigBits stores the aggregate percentage).
-    mapping(address => PoolFeeConfig) internal _poolProtocolSwapFeePercentages;
+    mapping(address pool => PoolFeeConfig swapFeeConfig) internal _poolProtocolSwapFeePercentages;
 
     // Store the pool-specific yield fee percentages (the Vault's poolConfigBits stores the aggregate percentage).
-    mapping(address => PoolFeeConfig) internal _poolProtocolYieldFeePercentages;
+    mapping(address pool => PoolFeeConfig yieldFeeConfig) internal _poolProtocolYieldFeePercentages;
 
-    // Pool -> address of pool creator (empowered to set pool creator fee percentages, and withdraw creator fees).
-    mapping(address => address) internal _poolCreators;
+    // Pool creators for each pool (empowered to set pool creator fee percentages, and withdraw creator fees).
+    mapping(address pool => address poolCreator) internal _poolCreators;
 
-    // Pool -> creator swap fee percentage.
-    mapping(address => uint256) internal _poolCreatorSwapFeePercentages;
+    // Pool creator swap fee percentages for each pool.
+    mapping(address pool => uint256 poolCreatorSwapFee) internal _poolCreatorSwapFeePercentages;
 
-    // Pool -> creator yield fee percentage.
-    mapping(address => uint256) internal _poolCreatorYieldFeePercentages;
+    // Pool creator yield fee percentages for each pool.
+    mapping(address pool => uint256 poolCreatorYieldFee) internal _poolCreatorYieldFeePercentages;
 
-    // Pool -> (Token -> fee): Disaggregated protocol fees (from swap and yield), available for withdrawal
-    // by governance.
-    mapping(address => mapping(IERC20 => uint256)) internal _protocolFeeAmounts;
+    // Disaggregated protocol fees (from swap and yield), available for withdrawal by governance.
+    mapping(address pool => mapping(IERC20 poolToken => uint256 feeAmount)) internal _protocolFeeAmounts;
 
-    // Pool -> (Token -> fee): Disaggregated pool creator fees (from swap and yield), available for withdrawal by
-    // the pool creator.
-    mapping(address => mapping(IERC20 => uint256)) internal _poolCreatorFeeAmounts;
+    // Disaggregated pool creator fees (from swap and yield), available for withdrawal by the pool creator.
+    mapping(address pool => mapping(IERC20 poolToken => uint256 feeAmount)) internal _poolCreatorFeeAmounts;
 
     // Ensure that the caller is the pool creator.
     modifier onlyPoolCreator(address pool) {
