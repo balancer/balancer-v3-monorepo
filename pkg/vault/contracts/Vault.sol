@@ -1355,54 +1355,110 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         return EVMCallModeHelpers.isStaticCall() && _vaultStateBits.isQueryDisabled() == false;
     }
 
+    /**
+     * @notice Updates the reserves of the vault after an ERC4626 wrap (deposit/mint) operation.
+     * @dev If there are extra tokens in the vault balances, these will be added to the reserves (which, in practice,
+     * is equal to discarding such tokens). This approach avoids DoS attacks, when a frontrunner leaves vault balances
+     * and state of reserves out of sync before a transaction starts.
+     * @param underlyingToken Underlying of ERC4626 wrapped token
+     * @param wrappedToken ERC4626 wrapped token
+     * @param underlyingDeltaHint Amount of underlying tokens supposedly removed from the vault
+     * @param wrappedDeltaHint Amount of wrapped tokens supposedly added to the vault
+     */
     function _settleWrap(
         IERC20 underlyingToken,
         IERC20 wrappedToken,
-        uint256 underlyingHint,
-        uint256 wrappedHint
+        uint256 underlyingDeltaHint,
+        uint256 wrappedDeltaHint
     ) internal {
-        uint256 vaultUnderlyingBefore = _reservesOf[underlyingToken];
-        uint256 vaultUnderlyingAfter = underlyingToken.balanceOf(address(this));
-        if (vaultUnderlyingAfter < vaultUnderlyingBefore - underlyingHint) {
-            // TODO explain this
-            revert();
+        // Update vault's underlying reserves.
+        uint256 underlyingReservesBefore = _reservesOf[underlyingToken];
+        uint256 underlyingBalancesAfter = underlyingToken.balanceOf(address(this));
+        // A wrap operation removes underlying tokens from the vault, so the expected vault's underlying balance after
+        // the operation is `underlyingReservesBefore - underlyingDeltaHint`.
+        uint256 expectedUnderlyingReservesAfter = underlyingReservesBefore - underlyingDeltaHint;
+        if (underlyingBalancesAfter < expectedUnderlyingReservesAfter) {
+            // If vault's underlying balance is smaller than expected, means that the deposit/mint function removed
+            // more underlying tokens than it said it would remove.
+            revert NotEnoughUnderlying(
+                IERC4626(address(wrappedToken)),
+                expectedUnderlyingReservesAfter,
+                underlyingBalancesAfter
+            );
         }
-        // TODO explain settle
-        _reservesOf[underlyingToken] = vaultUnderlyingBefore - underlyingHint;
+        // Update vault's underlying reserves, discarding any unexpected surplus of tokens.
+        _reservesOf[underlyingToken] = expectedUnderlyingReservesAfter;
 
-        uint256 vaultWrappedBefore = _reservesOf[wrappedToken];
-        uint256 vaultWrappedAfter = wrappedToken.balanceOf(address(this));
-        if (vaultWrappedAfter < vaultWrappedBefore + wrappedHint) {
-            // TODO explain this
-            revert();
+        // Update vault's wrapped reserves.
+        uint256 wrappedReservesBefore = _reservesOf[wrappedToken];
+        uint256 wrappedBalancesAfter = wrappedToken.balanceOf(address(this));
+        // A wrap operation adds wrapped tokens to the vault, so the expected vault's wrapped balance after the
+        // operation is `wrappedReservesBefore + wrappedDeltaHint`.
+        uint256 expectedWrappedReservesAfter = wrappedReservesBefore + wrappedDeltaHint;
+        if (wrappedBalancesAfter < expectedWrappedReservesAfter) {
+            // If vault's wrapped balance is smaller than expected, means that the deposit/mint function returned less
+            // wrapped tokens than it said it would return.
+            revert NotEnoughWrapped(
+                IERC4626(address(wrappedToken)),
+                expectedWrappedReservesAfter,
+                wrappedBalancesAfter
+            );
         }
-        // TODO explain settle
-        _reservesOf[wrappedToken] = vaultWrappedBefore + wrappedHint;
+        // Update vault's wrapped reserves, discarding any unexpected surplus of tokens.
+        _reservesOf[wrappedToken] = expectedWrappedReservesAfter;
     }
 
+    /**
+     * @notice Updates the reserves of the vault after an ERC4626 unwrap (withdraw/redeem) operation.
+     * @dev If there are extra tokens in the vault balances, these will be added to the reserves (which, in practice,
+     * is equal to discarding such tokens). This approach avoids DoS attacks, when a frontrunner leaves vault balances
+     * and state of reserves out of sync before a transaction starts.
+     * @param underlyingToken Underlying of ERC4626 wrapped token
+     * @param wrappedToken ERC4626 wrapped token
+     * @param underlyingDeltaHint Amount of underlying tokens supposedly added to the vault
+     * @param wrappedDeltaHint Amount of wrapped tokens supposedly removed from the vault
+     */
     function _settleUnwrap(
         IERC20 underlyingToken,
         IERC20 wrappedToken,
-        uint256 underlyingHint,
-        uint256 wrappedHint
+        uint256 underlyingDeltaHint,
+        uint256 wrappedDeltaHint
     ) internal {
-        uint256 vaultUnderlyingBefore = _reservesOf[underlyingToken];
-        uint256 vaultUnderlyingAfter = underlyingToken.balanceOf(address(this));
-        if (vaultUnderlyingAfter < vaultUnderlyingBefore + underlyingHint) {
-            // TODO explain this
-            revert();
+        // Update vault's underlying reserves.
+        uint256 underlyingReservesBefore = _reservesOf[underlyingToken];
+        uint256 underlyingBalancesAfter = underlyingToken.balanceOf(address(this));
+        // An unwrap operation adds underlying tokens to the vault, so the expected vault's underlying balance after
+        // the operation is `underlyingReservesBefore + underlyingDeltaHint`.
+        uint256 expectedUnderlyingReservesAfter = underlyingReservesBefore + underlyingDeltaHint;
+        if (underlyingBalancesAfter < expectedUnderlyingReservesAfter) {
+            // If vault's underlying balance is smaller than expected, means that the withdraw/redeem function returned
+            // less underlying tokens than it said it would return.
+            revert NotEnoughUnderlying(
+                IERC4626(address(wrappedToken)),
+                expectedUnderlyingReservesAfter,
+                underlyingBalancesAfter
+            );
         }
-        // TODO explain settle
-        _reservesOf[underlyingToken] = vaultUnderlyingBefore + underlyingHint;
+        // Update vault's underlying reserves, discarding any unexpected surplus of tokens.
+        _reservesOf[underlyingToken] = expectedUnderlyingReservesAfter;
 
-        uint256 vaultWrappedBefore = _reservesOf[wrappedToken];
-        uint256 vaultWrappedAfter = wrappedToken.balanceOf(address(this));
-        if (vaultWrappedAfter < vaultWrappedBefore - wrappedHint) {
-            // TODO explain this
-            revert();
+        // Update vault's wrapped reserves.
+        uint256 wrappedReservesBefore = _reservesOf[wrappedToken];
+        uint256 wrappedBalancesAfter = wrappedToken.balanceOf(address(this));
+        // An unwrap operation removes wrapped tokens from the vault, so the expected vault's wrapped balance after the
+        // operation is `wrappedReservesBefore - wrappedDeltaHint`.
+        uint256 expectedWrappedReservesAfter = wrappedReservesBefore - wrappedDeltaHint;
+        if (wrappedBalancesAfter < expectedWrappedReservesAfter) {
+            // If vault's wrapped balance is smaller than expected, means that the withdraw/redeem function removed
+            // more wrapped tokens than it said it would remove.
+            revert NotEnoughWrapped(
+                IERC4626(address(wrappedToken)),
+                expectedWrappedReservesAfter,
+                wrappedBalancesAfter
+            );
         }
-        // TODO explain settle
-        _reservesOf[wrappedToken] = vaultWrappedBefore - wrappedHint;
+        // Update vault's wrapped reserves, discarding any unexpected surplus of tokens.
+        _reservesOf[wrappedToken] = expectedWrappedReservesAfter;
     }
 
     // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
