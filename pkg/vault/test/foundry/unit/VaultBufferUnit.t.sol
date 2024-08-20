@@ -126,32 +126,25 @@ contract VaultBufferUnitTest is BaseVaultTest {
         assertApproxEqAbs(surplus, (5 * _wrapAmount) / 8, 1, "Wrong wrapped surplus");
     }
 
-    function testReservesAfterWrappingWithVaultBalances() public {
-        uint256 underlyingDeposited = 4e6;
-        uint256 wrappedMinted = 2e5;
+    function testSettleWrap() public {
+        uint256 actualUnderlyingDeposited = 4e6;
+        uint256 actualWrappedMinted = 2e5;
 
         // Simulate a wrapping operation.
 
         // 1) Vault deposits underlying tokens into yield bearing protocol (a.k.a. Bob).
-        vault.manualTransfer(dai, bob, underlyingDeposited);
+        vault.manualTransfer(dai, bob, actualUnderlyingDeposited);
 
         vm.prank(bob);
         // 2) Yield bearing protocol transfers wrapped tokens to vault (simulating a yield-bearing protocol).
-        IERC20(address(wDaiInitialized)).transfer(address(vault), wrappedMinted);
+        IERC20(address(wDaiInitialized)).transfer(address(vault), actualWrappedMinted);
 
         // Measure reserves.
         uint256 wrappedReservesBefore = vault.getReservesOf(IERC20(address(wDaiInitialized)));
         uint256 underlyingReservesBefore = vault.getReservesOf(dai);
 
         // Call _updateReservesAfterWrapping.
-        (uint256 actualUnderlying, uint256 actualWrapped) = vault.manualUpdateReservesAfterWrapping(
-            dai,
-            IERC20(address(wDaiInitialized))
-        );
-
-        // Measure output of _updateReservesAfterWrapping.
-        assertEq(actualUnderlying, underlyingDeposited, "Wrong underlying deposited");
-        assertEq(actualWrapped, wrappedMinted, "Wrong wrapped minted");
+        vault.manualSettleWrap(dai, IERC20(address(wDaiInitialized)), actualUnderlyingDeposited, actualWrappedMinted);
 
         // Measure reserves
         uint256 wrappedReservesAfter = vault.getReservesOf(IERC20(address(wDaiInitialized)));
@@ -159,38 +152,31 @@ contract VaultBufferUnitTest is BaseVaultTest {
 
         assertEq(
             underlyingReservesBefore - underlyingReservesAfter,
-            underlyingDeposited,
+            actualUnderlyingDeposited,
             "Wrong reserves of underlying"
         );
-        assertEq(wrappedReservesAfter - wrappedReservesBefore, wrappedMinted, "Wrong reserves of wrapped");
+        assertEq(wrappedReservesAfter - wrappedReservesBefore, actualWrappedMinted, "Wrong reserves of wrapped");
     }
 
-    function testReservesAfterUnwrapping() public {
-        uint256 underlyingWithdrawn = 4e6;
-        uint256 wrappedBurned = 2e5;
+    function testSettleUnwrap() public {
+        uint256 actualUnderlyingWithdrawn = 4e6;
+        uint256 actualWrappedBurned = 2e5;
 
         // Simulate a wrapping operation.
 
         // 1) Vault burns wrapped tokens (simulated by depositing to Bob, the YB Protocol).
-        vault.manualTransfer(IERC20(address(wDaiInitialized)), bob, wrappedBurned);
+        vault.manualTransfer(IERC20(address(wDaiInitialized)), bob, actualWrappedBurned);
 
         vm.prank(bob);
         // 2) Yield bearing protocol transfers underlying tokens to vault (simulating a yield-bearing protocol).
-        dai.transfer(address(vault), underlyingWithdrawn);
+        dai.transfer(address(vault), actualUnderlyingWithdrawn);
 
         // Measure reserves
         uint256 wrappedReservesBefore = vault.getReservesOf(IERC20(address(wDaiInitialized)));
         uint256 underlyingReservesBefore = vault.getReservesOf(dai);
 
         // Call _updateReservesAfterWrapping
-        (uint256 actualUnderlying, uint256 actualWrapped) = vault.manualUpdateReservesAfterWrapping(
-            dai,
-            IERC20(address(wDaiInitialized))
-        );
-
-        // Measure output of _updateReservesAfterWrapping
-        assertEq(actualUnderlying, underlyingWithdrawn, "Wrong underlying deposited");
-        assertEq(actualWrapped, wrappedBurned, "Wrong wrapped minted");
+        vault.manualSettleUnwrap(dai, IERC20(address(wDaiInitialized)), actualUnderlyingWithdrawn, actualWrappedBurned);
 
         // Measure reserves
         uint256 wrappedReservesAfter = vault.getReservesOf(IERC20(address(wDaiInitialized)));
@@ -198,10 +184,10 @@ contract VaultBufferUnitTest is BaseVaultTest {
 
         assertEq(
             underlyingReservesAfter - underlyingReservesBefore,
-            underlyingWithdrawn,
+            actualUnderlyingWithdrawn,
             "Wrong reserves of underlying"
         );
-        assertEq(wrappedReservesBefore - wrappedReservesAfter, wrappedBurned, "Wrong reserves of wrapped");
+        assertEq(wrappedReservesBefore - wrappedReservesAfter, actualWrappedBurned, "Wrong reserves of wrapped");
     }
 
     function _createWrappedToken() private {
