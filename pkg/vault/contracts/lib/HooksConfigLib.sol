@@ -7,6 +7,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolConfigConst } from "./PoolConfigConst.sol";
 
@@ -192,6 +193,10 @@ library HooksConfigLib {
 
         if (success == false) {
             revert IVaultErrors.DynamicSwapFeeHookFailed();
+        }
+
+        if (swapFeePercentage > FixedPoint.ONE) {
+            revert IVaultErrors.InvalidPercentage(swapFeePercentage);
         }
 
         return swapFeePercentage;
