@@ -206,7 +206,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(invalidPercentage);
 
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidPercentage.selector, invalidPercentage));
+        vm.expectRevert(IVaultErrors.InvalidPercentage.selector);
         vault.computeDynamicSwapFeePercentage(pool, swapParams);
     }
 
