@@ -32,7 +32,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
 
     // Rounding issues are introduced when dealing with tokens with rates different than 1:1. For example, to scale the
     // tokens of an yield-bearing pool, the amount of tokens is multiplied by the rate of the token, which is
-    // calculated using `convertToAssets(FixedPoint.ONE)`. It generates an 18 decimals rate, but quantities bigger than
+    // calculated using `convertToAssets(FixedPoint.ONE)`. It generates an 18 decimal rate, but quantities bigger than
     // 1e18 will have rounding issues. Another example is the different between convert (used to calculate query
     // results of buffer operations) and the actual operation.
     uint256 internal errorTolerance = 1e8;
