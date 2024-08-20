@@ -6,7 +6,7 @@ import "./LogExpMath.sol";
 
 /// @notice Support 18-decimal fixed point arithmetic. All Vault calculations use this for high and uniform precision.
 library FixedPoint {
-    /// @dev Attempted division by zero.
+    /// @notice Attempted division by zero.
     error ZeroDivision();
 
     // solhint-disable no-inline-assembly

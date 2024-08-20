@@ -17,10 +17,10 @@ contract VaultFactory is Authentication {
     /// @dev Emitted when the Vault is deployed.
     event VaultCreated(address);
 
-    /// @dev Vault has already been deployed, so this factory is disabled.
+    /// @notice Vault has already been deployed, so this factory is disabled.
     error VaultAlreadyCreated();
 
-    /// @dev The given salt does not match the generated address when attempting to create the Vault.
+    /// @notice The given salt does not match the generated address when attempting to create the Vault.
     error VaultAddressMismatch();
 
     bool public isDisabled;

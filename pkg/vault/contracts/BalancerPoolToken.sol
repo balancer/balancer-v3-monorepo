@@ -26,10 +26,17 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvide
     bytes32 public constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
-    // @dev Permit deadline has expired.
+    /**
+     * @notice Operationn failed due to an expired permit signature.
+     * @param deadline The permit deadline that expired
+     */
     error ERC2612ExpiredSignature(uint256 deadline);
 
-    // @dev Mismatched signature.
+    /**
+     * @notice Operationn failed due to a non-matching signature
+     * @param signer The address corresponding to the signature provider
+     * @param owner The address of the owner (expected value of the signature provider)
+     */
     error ERC2612InvalidSigner(address signer, address owner);
 
     // EIP712 also defines _name.

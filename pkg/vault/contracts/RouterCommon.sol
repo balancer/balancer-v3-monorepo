@@ -35,13 +35,13 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private immutable _SENDER_SLOT = TransientStorageHelpers.calculateSlot(type(RouterCommon).name, "sender");
 
-    /// @dev Incoming ETH transfer from an address that is not WETH.
+    /// @notice Incoming ETH transfer from an address that is not WETH.
     error EthTransfer();
 
-    /// @dev The amount of ETH paid is insufficient to complete this operation.
+    /// @notice The amount of ETH paid is insufficient to complete this operation.
     error InsufficientEth();
 
-    /// @dev The swap transaction was not validated before the specified deadline timestamp.
+    /// @notice The swap transaction was not validated before the specified deadline timestamp.
     error SwapDeadline();
 
     // Raw token balances are stored in half a slot, so the max is uint128. Moreover, given that amounts are usually

@@ -46,15 +46,15 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
     uint64 public constant MAX_EXIT_FEE_PERCENTAGE = 10e16;
 
     /**
-     * @dev The exit fee cannot exceed the maximum allowed percentage.
+     * @notice The exit fee cannot exceed the maximum allowed percentage.
      * @param feePercentage The fee percentage exceeding the limit
      * @param limit The maximum exit fee percentage
      */
     error ExitFeeAboveLimit(uint256 feePercentage, uint256 limit);
 
     /**
-     * @dev The pool does not support adding liquidity through donation.
-     * There is an existing similar error (IVaultErrors.DoesNotSupportDonation), but hooks should not throw
+     * @notice The pool does not support adding liquidity through donation.
+     * @dev There is an existing similar error (IVaultErrors.DoesNotSupportDonation), but hooks should not throw
      * "Vault" errors.
      */
     error PoolDoesNotSupportDonation();

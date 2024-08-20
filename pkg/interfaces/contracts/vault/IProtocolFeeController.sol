@@ -71,30 +71,43 @@ interface IProtocolFeeController {
     event ProtocolYieldFeeCollected(address indexed pool, IERC20 indexed token, uint256 amount);
 
     /**
-     * @dev Error raised when the protocol swap fee percentage exceeds the maximum allowed value. Note that this is
-     * checked for both the global and pool-specific protocol swap fee percentages.
+     * @notice Error raised when the protocol swap fee percentage exceeds the maximum allowed value.
+     * @dev Note that this is checked for both the global and pool-specific protocol swap fee percentages.
      */
     error ProtocolSwapFeePercentageTooHigh();
 
     /**
-     * @dev Error raised when the protocol yield fee percentage exceeds the maximum allowed value. Note that this is
-     * checked for both the global and pool-specific protocol swap fee percentages.
+     * @notice Error raised when the protocol yield fee percentage exceeds the maximum allowed value.
+     * @dev Note that this is checked for both the global and pool-specific protocol swap fee percentages.
      */
     error ProtocolYieldFeePercentageTooHigh();
 
-    /// @dev Error raised if there is no pool creator on a withdrawal attempt from the given pool.
+    /**
+     * @notice Error raised if there is no pool creator on a withdrawal attempt from the given pool.
+     * @param pool The pool with no creator
+     */
     error PoolCreatorNotRegistered(address pool);
 
-    /// @dev Error raised if the wrong account attempts to withdraw pool creator fees.
-    error CallerIsNotPoolCreator(address caller);
+    /**
+     * @notice Error raised if the wrong account attempts to withdraw pool creator fees.
+     * @param caller The account attempting to withdraw pool creator fees
+     * @param pool The pool the caller tried to withdraw from
+     */
+    error CallerIsNotPoolCreator(address caller, address pool);
 
-    /// @dev Error raised when the pool creator swap or yield fee percentage exceeds the maximum allowed value.
+    /// @notice Error raised when the pool creator swap or yield fee percentage exceeds the maximum allowed value.
     error PoolCreatorFeePercentageTooHigh();
 
-    /// @dev Returns the main Vault address.
+    /**
+     * @notice Get the address of the main Vault contract.
+     * @return vault The Vault address
+     */
     function vault() external view returns (IVault);
 
-    /// @dev Collects aggregate fees from the Vault for a given pool.
+    /**
+     * @notice Collects aggregate fees from the Vault for a given pool.
+     * @param pool The pool with aggregate fees
+     */
     function collectAggregateFees(address pool) external;
 
     /**
@@ -129,7 +142,7 @@ interface IProtocolFeeController {
      * @notice Returns the amount of each pool token allocated to the protocol for withdrawal.
      * @dev Includes both swap and yield fees.
      * @param pool The address of the pool on which fees were collected
-     * @param feeAmounts The total amounts of each token available for withdrawal, sorted in token registration order
+     * @return feeAmounts The total amounts of each token available for withdrawal, sorted in token registration order
      */
     function getProtocolFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
 
@@ -137,7 +150,7 @@ interface IProtocolFeeController {
      * @notice Returns the amount of each pool token allocated to the pool creator for withdrawal.
      * @dev Includes both swap and yield fees.
      * @param pool The address of the pool on which fees were collected
-     * @param feeAmounts The total amounts of each token available for withdrawal, sorted in token registration order
+     * @return feeAmounts The total amounts of each token available for withdrawal, sorted in token registration order
      */
     function getPoolCreatorFeeAmounts(address pool) external view returns (uint256[] memory feeAmounts);
 
@@ -159,7 +172,7 @@ interface IProtocolFeeController {
      *
      * @param protocolFeePercentage The protocol portion of the aggregate fee percentage
      * @param poolCreatorFeePercentage The pool creator portion of the aggregate fee percentage
-     * @param aggregateFeePercentage The computed aggregate percentage
+     * @return aggregateFeePercentage The computed aggregate percentage
      */
     function computeAggregateFeePercentage(
         uint256 protocolFeePercentage,

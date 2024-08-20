@@ -41,10 +41,10 @@ library EnumerableSet {
         mapping(address => uint256) _indexes;
     }
 
-    /// @dev An index is beyond the current bounds of the set.
+    /// @notice An index is beyond the current bounds of the set.
     error IndexOutOfBounds();
 
-    /// @dev An element that is not present in the set.
+    /// @notice An element that is not present in the set.
     error ElementNotFound();
 
     /**

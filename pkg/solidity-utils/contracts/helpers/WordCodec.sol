@@ -26,10 +26,10 @@ library WordCodec {
 
     // solhint-disable no-inline-assembly
 
-    /// @dev Function called with an invalid value.
+    /// @notice Function called with an invalid value.
     error CodecOverflow();
 
-    /// @dev Function called with an invalid bitLength or offset.
+    /// @notice Function called with an invalid bitLength or offset.
     error OutOfBounds();
 
     /***************************************************************************
