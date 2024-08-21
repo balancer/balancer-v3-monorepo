@@ -14,8 +14,11 @@ import { ProtocolFeeController } from "./ProtocolFeeController.sol";
 
 /// @notice One-off factory to deploy the Vault at a specific address.
 contract VaultFactory is Authentication {
-    /// @dev Emitted when the Vault is deployed.
-    event VaultCreated(address);
+    /**
+     * @notice Emitted when the Vault is deployed.
+     * @param vault The vault address
+     */
+    event VaultCreated(address vault);
 
     /// @dev Vault has already been deployed, so this factory is disabled.
     error VaultAlreadyCreated();
