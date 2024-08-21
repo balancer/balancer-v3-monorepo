@@ -1392,6 +1392,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * @dev If there are extra tokens in the vault balances, these will be added to the reserves (which, in practice,
      * is equal to discarding such tokens). This approach avoids DoS attacks, when a frontrunner leaves vault balances
      * and state of reserves out of sync before a transaction starts.
+     *
      * @param underlyingToken Underlying of ERC4626 wrapped token
      * @param wrappedToken ERC4626 wrapped token
      * @param underlyingDeltaHint Amount of underlying tokens supposedly added to the vault
