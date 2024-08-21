@@ -354,7 +354,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         tokens[waDaiIdx] = IERC20(address(waDAI));
     }
 
-    /// @notice Hook used to interact with ERC4626 wrap/unwrap primitive of the vault.
+    /// @notice Hook used to interact with the ERC4626 wrap/unwrap primitive of the Vault.
     function erc4626DoSHook(
         BufferWrapOrUnwrapParams memory params,
         address sender,
