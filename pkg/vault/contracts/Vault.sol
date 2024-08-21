@@ -1325,8 +1325,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
                     amountOutUnderlying = vaultUnderlyingDeltaHint - bufferUnderlyingSurplus;
                 } else {
-                    // If buffer has a wrapped surplus, it unwraps surplus + amountIn, so the final amountIn needs to
-                    // be discounted for that.
+                    // If the buffer has a surplus of wrapped tokens, it unwraps the surplus + amountIn, so the final
+                    // amountIn needs to be discounted for that.
                     amountInWrapped = vaultWrappedDeltaHint - bufferWrappedSurplus;
                     // amountOutUnderlying is the amountGiven and should not be changed. Any rounding issue that occurs
                     // in the vaultUnderlyingDelta should be absorbed by the buffer.
