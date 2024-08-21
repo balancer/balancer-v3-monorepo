@@ -163,7 +163,7 @@ contract ProtocolFeeController is
 
     /// @inheritdoc IProtocolFeeController
     function collectAggregateFees(address pool) public {
-        _vault.unlock(abi.encodeWithSelector(ProtocolFeeController.collectAggregateFeesHook.selector, pool));
+        _vault.unlock(abi.encodeCall(ProtocolFeeController.collectAggregateFeesHook, pool));
     }
 
     /**
