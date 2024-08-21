@@ -914,7 +914,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
         for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
-            IERC20 underlyingToken = IERC20(wrappedToken.asset());
 
             // erc4626BufferWrapOrUnwrap will fail if the wrapper is not ERC4626.
             (, , underlyingAmountsOut[i]) = _vault.erc4626BufferWrapOrUnwrap(
@@ -929,6 +928,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             );
 
             if (isStaticCall == false) {
+                IERC20 underlyingToken = IERC20(wrappedToken.asset());
                 _sendTokenOut(params.sender, underlyingToken, underlyingAmountsOut[i], params.wethIsEth);
             }
         }
