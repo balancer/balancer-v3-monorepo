@@ -42,23 +42,20 @@ function merge() {
       --rc lcov_branch_coverage=1 \
       --rc derive_function_end_line=0 \
       --add-tracefile lcov-forge.info \
-      --output-file lcov-merged.info \
-      --ignore-errors missing
+      --output-file lcov-merged.info
   elif [[ "$1" == 'hardhat' ]]; then
     lcov \
       --rc lcov_branch_coverage=1 \
       --rc derive_function_end_line=0 \
       --add-tracefile lcov-forge.info \
-      --output-file lcov-merged.info \
-      --ignore-errors missing
+      --output-file lcov-merged.info
   elif [[ "$1" == 'all' ]]; then
     lcov \
       --rc lcov_branch_coverage=1 \
       --rc derive_function_end_line=0 \
       --add-tracefile lcov-forge.info \
       --add-tracefile lcov-hardhat.info \
-      --output-file lcov-merged.info \
-      --ignore-errors missing
+      --output-file lcov-merged.info
   fi
 }
 
