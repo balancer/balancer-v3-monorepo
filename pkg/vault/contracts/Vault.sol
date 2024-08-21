@@ -1206,7 +1206,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     // If buffer has an underlying surplus, it wraps the surplus + amountIn, so the final amountIn needs
                     // to be discounted for that.
                     amountInUnderlying = vaultUnderlyingDeltaHint - bufferUnderlyingSurplus;
-                    // amountOutWrapped is the amountGiven and should not be changed. Any rounding issue that occurs
+                    // `amountOutWrapped` is the amountGiven and should not be changed. Any rounding issue that occurs
                     // in the vaultWrappedDelta should be absorbed by the buffer.
                     bufferWrappedSurplus = vaultWrappedDeltaHint - amountOutWrapped;
                 }
