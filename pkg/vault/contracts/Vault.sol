@@ -1187,8 +1187,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // drain the vault.
             underlyingToken.forceApprove(address(wrappedToken), 0);
 
-            // ERC4626 output should not be trusted, so it's a good practice to measure the amount of
-            // deposited and returned tokens.
             _settleWrap(underlyingToken, IERC20(wrappedToken), vaultUnderlyingDeltaHint, vaultWrappedDeltaHint);
 
             // Only updates buffer balances if buffer has a surplus of underlying tokens.
@@ -1309,8 +1307,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 vaultWrappedDeltaHint = wrappedToken.withdraw(vaultUnderlyingDeltaHint, address(this), address(this));
             }
 
-            // ERC4626 output should not be trusted, so it's a good practice to measure the amount of
-            // deposited and returned tokens.
             _settleUnwrap(underlyingToken, IERC20(wrappedToken), vaultUnderlyingDeltaHint, vaultWrappedDeltaHint);
 
             // Only updates buffer balances if buffer has a surplus of wrapped tokens.
