@@ -866,9 +866,10 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         AddLiquidityHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256[] memory underlyingAmountsIn) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
+        uint256 poolTokensLength = erc4626PoolTokens.length;
 
-        uint256[] memory maxAmounts = new uint256[](erc4626PoolTokens.length);
-        for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
+        uint256[] memory maxAmounts = new uint256[](poolTokensLength);
+        for (uint256 i = 0; i < poolTokensLength; ++i) {
             maxAmounts[i] = _MAX_AMOUNT;
         }
 
@@ -897,14 +898,15 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         RemoveLiquidityHookParams calldata params
     ) external nonReentrant onlyVault returns (uint256[] memory underlyingAmountsOut) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
-        underlyingAmountsOut = new uint256[](erc4626PoolTokens.length);
+        uint256 poolTokensLength = erc4626PoolTokens.length;
+        underlyingAmountsOut = new uint256[](poolTokensLength);
 
         (, uint256[] memory wrappedAmountsOut, ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
                 pool: params.pool,
                 from: params.sender,
                 maxBptAmountIn: params.maxBptAmountIn,
-                minAmountsOut: new uint256[](erc4626PoolTokens.length),
+                minAmountsOut: new uint256[](poolTokensLength),
                 kind: params.kind,
                 userData: params.userData
             })
@@ -912,7 +914,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
-        for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
+        for (uint256 i = 0; i < poolTokensLength; ++i) {
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
 
             // erc4626BufferWrapOrUnwrap will fail if the wrapper is not ERC4626.
@@ -941,13 +943,14 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         SwapKind kind,
         uint256[] memory limits
     ) private returns (uint256[] memory underlyingAmounts, uint256[] memory wrappedAmounts) {
-        underlyingAmounts = new uint256[](erc4626PoolTokens.length);
-        wrappedAmounts = new uint256[](erc4626PoolTokens.length);
+        uint256 poolTokensLength = erc4626PoolTokens.length;
+        underlyingAmounts = new uint256[](poolTokensLength);
+        wrappedAmounts = new uint256[](poolTokensLength);
 
         bool isStaticCall = EVMCallModeHelpers.isStaticCall();
 
         // Wrap given underlying tokens for wrapped tokens.
-        for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
+        for (uint256 i = 0; i < poolTokensLength; ++i) {
             // Treat all ERC4626 pool tokens as wrapped. The next step will verify if we can use the wrappedToken as
             // a valid ERC4626.
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
