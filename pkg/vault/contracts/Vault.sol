@@ -1194,7 +1194,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Only updates buffer balances if buffer has a surplus of underlying tokens.
             if (bufferUnderlyingSurplus > 0) {
                 if (kind == SwapKind.EXACT_IN) {
-                    // amountInUnderlying is the amountGiven and should not be changed. Any rounding issue that occurs
+                    // `amountInUnderlying` is the amountGiven and should not be changed. Any rounding issue that occurs
                     // in the vaultUnderlyingDelta should be absorbed by the buffer.
                     bufferUnderlyingSurplus = vaultUnderlyingDeltaHint - amountInUnderlying;
                     // Since bufferUnderlyingSurplus was wrapped, the final amountOut needs to discount the wrapped
