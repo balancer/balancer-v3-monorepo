@@ -1411,6 +1411,18 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _settleWrapUnwrap(underlyingToken, wrappedToken, expectedUnderlyingReservesAfter, expectedWrappedReservesAfter);
     }
 
+    /**
+     * @notice Updates the reserves of the vault after an ERC4626 wrap/unwrap operation.
+     * @dev If reserves of underlying or wrapped tokens are bigger than expected, the extra tokens will be discarded,
+     * which avoids a possible DoS. However, if reserves are smaller than expected, it means that the wrapper didn't
+     * respect the amount given and/or the amount calculated (informed by the wrapper operation and stored as a hint
+     * variable), so the token is not ERC4626 compliant and the function should be reverted.
+     *
+     * @param underlyingToken Underlying of ERC4626 wrapped token
+     * @param wrappedToken ERC4626 wrapped token
+     * @param expectedUnderlyingReservesAfter Vault's expected reserves of underlying after the wrap/unwrap operation
+     * @param expectedWrappedReservesAfter Vault's expected reserves of wrapped after the wrap/unwrap operation
+     */
     function _settleWrapUnwrap(
         IERC20 underlyingToken,
         IERC20 wrappedToken,
