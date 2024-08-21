@@ -68,40 +68,26 @@ contract BufferDoSProtectionTest is BaseVaultTest {
     }
 
     function testDepositDoS() public {
-        // Frontrunner will add more underlying tokens to the vault than the amount consumed by "deposit", which could
-        // make the vault "think" that an unwrap operation took place, instead of a wrap.
-        uint256 frontrunnerUnderlyingAmount = _wrapAmount + 10;
-
-        // Initializes the buffer with an amount that's not enough to fulfill the deposit operation.
-        vm.prank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, _wrapAmount / 10);
-
-        (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
-        BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
-
-        (uint256 amountIn, uint256 amountOut) = abi.decode(
-            vault.unlock(
-                abi.encodeWithSelector(
-                    BufferDoSProtectionTest.erc4626DoSHook.selector,
-                    BufferWrapOrUnwrapParams({
-                        kind: SwapKind.EXACT_IN,
-                        direction: WrappingDirection.WRAP,
-                        wrappedToken: IERC4626(address(waDAI)),
-                        amountGivenRaw: _wrapAmount,
-                        limitRaw: 0,
-                        userData: bytes("")
-                    }),
-                    lp,
-                    frontrunnerUnderlyingAmount
-                )
-            ),
-            (uint256, uint256)
-        );
-
-        _checkWrapResults(balancesBefore, amountIn, amountOut, frontrunnerUnderlyingAmount);
+        // Deposit is an EXACT_IN operation, since it's a wrap where we specify the underlying amount in.
+        _testWrapDoS(waDAI.previewDeposit(_wrapAmount), _wrapAmount, SwapKind.EXACT_IN);
     }
 
     function testMintDoS() public {
+        // Mint is an EXACT_OUT operation, since it's a wrap where we specify the wrapped amount out.
+        _testWrapDoS(waDAI.previewDeposit(_wrapAmount), _wrapAmount, SwapKind.EXACT_OUT);
+    }
+
+    function testWithdrawDoS() public {
+        // Withdraw is an EXACT_OUT operation, since it's an unwrap where we specify the underlying amount out.
+        _testUnwrapDoS(_wrapAmount, waDAI.previewWithdraw(_wrapAmount), SwapKind.EXACT_OUT);
+    }
+
+    function testRedeemDoS() public {
+        // Redeem is an EXACT_IN operation, since it's an unwrap where we specify the wrapped amount in.
+        _testUnwrapDoS(waDAI.previewWithdraw(_wrapAmount), _wrapAmount, SwapKind.EXACT_IN);
+    }
+
+    function _testWrapDoS(uint256 amountGivenRaw, uint256 limitRaw, SwapKind kind) private {
         // Frontrunner will add more underlying tokens to the vault than the amount consumed by "mint", which could
         // make the vault "think" that an unwrap operation took place, instead of a wrap.
         uint256 frontrunnerUnderlyingAmount = _wrapAmount + 10;
@@ -118,11 +104,11 @@ contract BufferDoSProtectionTest is BaseVaultTest {
                 abi.encodeWithSelector(
                     BufferDoSProtectionTest.erc4626DoSHook.selector,
                     BufferWrapOrUnwrapParams({
-                        kind: SwapKind.EXACT_OUT,
+                        kind: kind,
                         direction: WrappingDirection.WRAP,
                         wrappedToken: IERC4626(address(waDAI)),
-                        amountGivenRaw: waDAI.previewDeposit(_wrapAmount),
-                        limitRaw: _wrapAmount,
+                        amountGivenRaw: amountGivenRaw,
+                        limitRaw: limitRaw,
                         userData: bytes("")
                     }),
                     lp,
@@ -135,48 +121,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         _checkWrapResults(balancesBefore, amountIn, amountOut, frontrunnerUnderlyingAmount);
     }
 
-    function testWithdrawDoS() public {
-        // Frontrunner will add more wrapped tokens to the vault than the amount burned by "withdraw", which could
-        // trigger an arithmetic error in the vault.
-        uint256 frontrunnerWrappedAmount = waDAI.previewWithdraw(2 * _wrapAmount);
-
-        // Give alice enough liquidity to frontrun withdraw call.
-        dai.mint(alice, 2 * _wrapAmount);
-        vm.startPrank(alice);
-        dai.approve(address(waDAI), 2 * _wrapAmount);
-        waDAI.deposit(2 * _wrapAmount, alice);
-        vm.stopPrank();
-
-        // Initializes the buffer with an amount that's not enough to fulfill the withdraw operation.
-        vm.prank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, _wrapAmount / 10);
-
-        (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
-        BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
-
-        (uint256 amountIn, uint256 amountOut) = abi.decode(
-            vault.unlock(
-                abi.encodeWithSelector(
-                    BufferDoSProtectionTest.erc4626DoSHook.selector,
-                    BufferWrapOrUnwrapParams({
-                        kind: SwapKind.EXACT_OUT,
-                        direction: WrappingDirection.UNWRAP,
-                        wrappedToken: IERC4626(address(waDAI)),
-                        amountGivenRaw: _wrapAmount,
-                        limitRaw: waDAI.previewWithdraw(_wrapAmount),
-                        userData: bytes("")
-                    }),
-                    lp,
-                    frontrunnerWrappedAmount
-                )
-            ),
-            (uint256, uint256)
-        );
-
-        _checkUnwrapResults(balancesBefore, amountIn, amountOut, frontrunnerWrappedAmount);
-    }
-
-    function testRedeemDoS() public {
+    function _testUnwrapDoS(uint256 amountGivenRaw, uint256 limitRaw, SwapKind kind) private {
         // Frontrunner will add more wrapped tokens to the vault than the amount burned by "redeem", which could
         // trigger an arithmetic error in the vault.
         uint256 frontrunnerWrappedAmount = waDAI.previewWithdraw(2 * _wrapAmount);
