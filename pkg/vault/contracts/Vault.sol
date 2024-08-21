@@ -1361,10 +1361,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * is equal to discarding such tokens). This approach avoids DoS attacks, when a frontrunner leaves vault balances
      * and reserves out of sync before a transaction starts.
      *
-     * @param underlyingToken Underlying of ERC4626 wrapped token
+     * @param underlyingToken Underlying token of the ERC4626 wrapped token
      * @param wrappedToken ERC4626 wrapped token
-     * @param underlyingDeltaHint Amount of underlying tokens supposedly removed from the Vault
-     * @param wrappedDeltaHint Amount of wrapped tokens supposedly added to the vault
+     * @param underlyingDeltaHint Amount of underlying tokens the wrapper should have removed from the Vault
+     * @param wrappedDeltaHint Amount of wrapped tokens the wrapper should have added to the Vault
      */
     function _settleWrap(
         IERC20 underlyingToken,
