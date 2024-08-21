@@ -1164,7 +1164,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (bufferUnderlyingSurplus).
                 vaultUnderlyingDeltaHint = amountInUnderlying + bufferUnderlyingSurplus;
                 underlyingToken.forceApprove(address(wrappedToken), vaultUnderlyingDeltaHint);
-                // EXACT_IN requires the exact amount of underlying tokens to be deposited, so deposit is called.
+                // EXACT_IN requires the exact amount of underlying tokens to be deposited, so we call deposit.
                 vaultWrappedDeltaHint = wrappedToken.deposit(vaultUnderlyingDeltaHint, address(this));
             } else {
                 if (bufferUnderlyingSurplus > 0) {
