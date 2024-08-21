@@ -363,7 +363,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         IERC20 underlyingToken = IERC20(params.wrappedToken.asset());
         IERC20 wrappedToken = IERC20(address(params.wrappedToken));
 
-        // Transfer tokens to the vault and settle, since vault needs to have enough tokens in the reserves to
+        // Transfer tokens to the vault and settle, since the Vault needs to have enough tokens in the reserves to
         // wrap/unwrap.
         if (params.direction == WrappingDirection.WRAP) {
             // Since we're wrapping, we need to transfer underlying tokens to the vault, so it can be wrapped.
