@@ -86,7 +86,12 @@ interface IProtocolFeeController {
      * @param recipient The recipient of the funds (the pool creator if permissionless, or another account)
      * @param amount The amount of the fee token that was withdrawn
      */
-    event PoolCreatorFeesWithdrawn(address indexed pool, IERC20 indexed token, address indexed recipient, uint256 amount);
+    event PoolCreatorFeesWithdrawn(
+        address indexed pool,
+        IERC20 indexed token,
+        address indexed recipient,
+        uint256 amount
+    );
 
     /**
      * @dev Error raised when the protocol swap fee percentage exceeds the maximum allowed value. Note that this is
