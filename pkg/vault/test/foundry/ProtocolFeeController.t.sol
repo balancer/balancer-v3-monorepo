@@ -887,9 +887,6 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         uint256[] memory protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
         uint256[] memory poolCreatorFeeAmounts = feeController.getPoolCreatorFeeAmounts(pool);
 
-        // `withdrawPoolCreatorFees` is overloaded.
-        bytes4 permissionedSelector = bytes4(keccak256("withdrawPoolCreatorFees(address,address)"));
-
         // Governance can withdraw.
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.withdrawProtocolFees.selector),
@@ -906,13 +903,28 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.withdrawProtocolFees(pool, admin);
 
         vm.expectEmit();
+        emit IProtocolFeeController.PoolCreatorFeesWithdrawn(pool, IERC20(dai), bob, poolCreatorFeeAmounts[daiIdx]);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.PoolCreatorFeesWithdrawn(pool, IERC20(usdc), bob, poolCreatorFeeAmounts[usdcIdx]);
+
+        // Test permissioned collection of pool creator fees.
+        vm.prank(lp);
+        feeController.withdrawPoolCreatorFees(pool, bob);
+
+        // Reset fees for permissionless test.
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
+        vault.manualSetAggregateYieldFeeAmount(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);
+        feeController.collectAggregateFees(pool);
+
+        vm.expectEmit();
         emit IProtocolFeeController.PoolCreatorFeesWithdrawn(pool, IERC20(dai), lp, poolCreatorFeeAmounts[daiIdx]);
 
         vm.expectEmit();
         emit IProtocolFeeController.PoolCreatorFeesWithdrawn(pool, IERC20(usdc), lp, poolCreatorFeeAmounts[usdcIdx]);
 
-        vm.prank(lp);
-        feeController.withdrawPoolCreatorFees(pool, lp);
+        // Test permissionless collection of pool creator fees.
+        feeController.withdrawPoolCreatorFees(pool);
     }
 
     function _registerPoolWithMaxProtocolFees() internal {
