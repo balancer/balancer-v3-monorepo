@@ -1277,7 +1277,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         } else {
             // The buffer does not have enough liquidity to facilitate the unwrap without making an external call.
             // We unwrap the user's tokens via an external call and additionally rebalance the buffer if it has a
-            // surplus of underlying tokens.
+            // surplus of wrapped tokens.
 
             // Gets the amount of wrapped tokens to unwrap in order to rebalance the buffer.
             uint256 bufferWrappedSurplus = bufferBalances.getBufferWrappedSurplus(wrappedToken);
