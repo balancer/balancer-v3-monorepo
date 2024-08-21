@@ -1289,8 +1289,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             uint256 vaultWrappedDeltaHint;
 
             if (kind == SwapKind.EXACT_IN) {
-                // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so redeem is called
-                // The amount of wrapped tokens to redeem is the necessary amount to fulfill the trade
+                // EXACT_IN requires the exact amount of wrapped tokens to be unwrapped, so we call redeem.
+                // The amount of wrapped tokens to redeem is the amount necessary to fulfill the trade
                 // (amountInWrapped), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferWrappedSurplus).
                 vaultWrappedDeltaHint = amountInWrapped + bufferWrappedSurplus;
