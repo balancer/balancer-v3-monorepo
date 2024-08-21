@@ -578,13 +578,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /**
      * @dev Calls the appropriate pool hook and calculates the required inputs and outputs for the operation
-     * considering the given kind, and updates the vault's internal accounting. This includes:
+     * considering the given kind, and updates the Vault's internal accounting. This includes:
      * - Setting pool balances
      * - Taking debt from the liquidity provider
      * - Minting pool tokens
      * - Emitting events
      *
-     * It is non-reentrant, as it performs external calls and updates the vault's state accordingly.
+     * It is non-reentrant, as it performs external calls and updates the Vault's state accordingly.
      */
     function _addLiquidity(
         PoolData memory poolData,
@@ -823,13 +823,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /**
      * @dev Calls the appropriate pool hook and calculates the required inputs and outputs for the operation
-     * considering the given kind, and updates the vault's internal accounting. This includes:
+     * considering the given kind, and updates the Vault's internal accounting. This includes:
      * - Setting pool balances
      * - Supplying credit to the liquidity provider
      * - Burning pool tokens
      * - Emitting events
      *
-     * It is non-reentrant, as it performs external calls and updates the vault's state accordingly.
+     * It is non-reentrant, as it performs external calls and updates the Vault's state accordingly.
      */
     function _removeLiquidity(
         PoolData memory poolData,
@@ -1172,7 +1172,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 }
 
                 // The mint operation returns exactly `vaultWrappedDelta` shares. To do so, it withdraws underlying
-                // from the vault and returns the shares. So, the vault needs to approve the transfer of underlying
+                // from the Vault and returns the shares. So, the vault needs to approve the transfer of underlying
                 // tokens to the wrapper.
                 // Add 2 because mint can consume up to 2 wei more tokens than we anticipated.
                 underlyingToken.forceApprove(address(wrappedToken), amountInUnderlying + bufferUnderlyingSurplus + 2);
@@ -1366,7 +1366,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * and state of reserves out of sync before a transaction starts.
      * @param underlyingToken Underlying of ERC4626 wrapped token
      * @param wrappedToken ERC4626 wrapped token
-     * @param underlyingDeltaHint Amount of underlying tokens supposedly removed from the vault
+     * @param underlyingDeltaHint Amount of underlying tokens supposedly removed from the Vault
      * @param wrappedDeltaHint Amount of wrapped tokens supposedly added to the vault
      */
     function _settleWrap(
@@ -1375,11 +1375,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 underlyingDeltaHint,
         uint256 wrappedDeltaHint
     ) internal {
-        // A wrap operation removes underlying tokens from the vault, so the expected vault's underlying balance after
+        // A wrap operation removes underlying tokens from the Vault, so the Vault's expected underlying balance after
         // the operation is `underlyingReservesBefore - underlyingDeltaHint`.
         uint256 expectedUnderlyingReservesAfter = _reservesOf[underlyingToken] - underlyingDeltaHint;
 
-        // A wrap operation adds wrapped tokens to the vault, so the expected vault's wrapped balance after the
+        // A wrap operation adds wrapped tokens to the vault, so the Vault's expected wrapped balance after the
         // operation is `wrappedReservesBefore + wrappedDeltaHint`.
         uint256 expectedWrappedReservesAfter = _reservesOf[wrappedToken] + wrappedDeltaHint;
 
@@ -1394,7 +1394,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * @param underlyingToken Underlying of ERC4626 wrapped token
      * @param wrappedToken ERC4626 wrapped token
      * @param underlyingDeltaHint Amount of underlying tokens supposedly added to the vault
-     * @param wrappedDeltaHint Amount of wrapped tokens supposedly removed from the vault
+     * @param wrappedDeltaHint Amount of wrapped tokens supposedly removed from the Vault
      */
     function _settleUnwrap(
         IERC20 underlyingToken,
@@ -1402,11 +1402,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 underlyingDeltaHint,
         uint256 wrappedDeltaHint
     ) internal {
-        // An unwrap operation adds underlying tokens to the vault, so the expected vault's underlying balance after
+        // An unwrap operation adds underlying tokens to the vault, so the Vault's expected underlying balance after
         // the operation is `underlyingReservesBefore + underlyingDeltaHint`.
         uint256 expectedUnderlyingReservesAfter = _reservesOf[underlyingToken] + underlyingDeltaHint;
 
-        // An unwrap operation removes wrapped tokens from the vault, so the expected vault's wrapped balance after the
+        // An unwrap operation removes wrapped tokens from the Vault, so the Vault's expected wrapped balance after the
         // operation is `wrappedReservesBefore - wrappedDeltaHint`.
         uint256 expectedWrappedReservesAfter = _reservesOf[wrappedToken] - wrappedDeltaHint;
 
@@ -1419,10 +1419,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 expectedUnderlyingReservesAfter,
         uint256 expectedWrappedReservesAfter
     ) private {
-        // Update vault's underlying reserves.
+        // Update Vault's underlying reserves.
         uint256 underlyingBalancesAfter = underlyingToken.balanceOf(address(this));
         if (underlyingBalancesAfter < expectedUnderlyingReservesAfter) {
-            // If vault's underlying balance is smaller than expected, means that the withdraw/redeem function returned
+            // If Vault's underlying balance is smaller than expected, means that the withdraw/redeem function returned
             // less underlying tokens than it said it would return.
             revert NotEnoughUnderlying(
                 IERC4626(address(wrappedToken)),
@@ -1430,14 +1430,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 underlyingBalancesAfter
             );
         }
-        // Update vault's underlying reserves, discarding any unexpected surplus of tokens (difference between actual
+        // Update Vault's underlying reserves, discarding any unexpected surplus of tokens (difference between actual
         // and expected vault balance).
         _reservesOf[underlyingToken] = underlyingBalancesAfter;
 
-        // Update vault's wrapped reserves.
+        // Update Vault's wrapped reserves.
         uint256 wrappedBalancesAfter = wrappedToken.balanceOf(address(this));
         if (wrappedBalancesAfter < expectedWrappedReservesAfter) {
-            // If vault's wrapped balance is smaller than expected, means that the withdraw/redeem function removed
+            // If Vault's wrapped balance is smaller than expected, means that the withdraw/redeem function removed
             // more wrapped tokens than it said it would remove.
             revert NotEnoughWrapped(
                 IERC4626(address(wrappedToken)),
@@ -1445,7 +1445,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedBalancesAfter
             );
         }
-        // Update vault's wrapped reserves, discarding any unexpected surplus of tokens (difference between actual and
+        // Update Vault's wrapped reserves, discarding any unexpected surplus of tokens (difference between actual and
         // expected vault balance).
         _reservesOf[wrappedToken] = wrappedBalancesAfter;
     }
