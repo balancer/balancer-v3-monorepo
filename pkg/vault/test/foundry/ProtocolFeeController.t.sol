@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -826,6 +828,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             feeControllerAuth.getActionId(IProtocolFeeController.withdrawProtocolFees.selector),
             admin
         );
+
         vm.prank(admin);
         feeController.withdrawProtocolFees(pool, admin);
 
@@ -863,6 +866,53 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             expectedCreatorFeeUSDC,
             "Wrong ending balance of USDC (creator)"
         );
+    }
+
+    function testProtocolFeeCollectionEvents() public {
+        _registerPoolWithMaxProtocolFees();
+        _verifyPoolProtocolFeePercentages(pool);
+
+        // Set a creator fee percentage (before there are any fees), so they will be disaggregated upon collection.
+        vm.startPrank(lp);
+        feeController.setPoolCreatorSwapFeePercentage(pool, POOL_CREATOR_SWAP_FEE_PCT);
+        feeController.setPoolCreatorYieldFeePercentage(pool, POOL_CREATOR_YIELD_FEE_PCT);
+        vm.stopPrank();
+
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
+        vault.manualSetAggregateYieldFeeAmount(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);
+
+        // Move them to the fee controller.
+        feeController.collectAggregateFees(pool);
+
+        uint256[] memory protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
+        uint256[] memory poolCreatorFeeAmounts = feeController.getPoolCreatorFeeAmounts(pool);
+
+        // `withdrawPoolCreatorFees` is overloaded.
+        bytes4 permissionedSelector = bytes4(keccak256("withdrawPoolCreatorFees(address,address)"));
+
+        // Governance can withdraw.
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.withdrawProtocolFees.selector),
+            admin
+        );
+
+        vm.expectEmit();
+        emit IProtocolFeeController.ProtocolFeesWithdrawn(pool, IERC20(dai), admin, protocolFeeAmounts[daiIdx]);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.ProtocolFeesWithdrawn(pool, IERC20(usdc), admin, protocolFeeAmounts[usdcIdx]);
+
+        vm.prank(admin);
+        feeController.withdrawProtocolFees(pool, admin);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.PoolCreatorFeesWithdrawn(pool, IERC20(dai), lp, poolCreatorFeeAmounts[daiIdx]);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.PoolCreatorFeesWithdrawn(pool, IERC20(usdc), lp, poolCreatorFeeAmounts[usdcIdx]);
+
+        vm.prank(lp);
+        feeController.withdrawPoolCreatorFees(pool, lp);
     }
 
     function _registerPoolWithMaxProtocolFees() internal {
