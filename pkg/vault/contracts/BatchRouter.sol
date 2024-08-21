@@ -867,9 +867,9 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     ) external nonReentrant onlyVault returns (uint256[] memory underlyingAmountsIn) {
         IERC20[] memory erc4626PoolTokens = _vault.getPoolTokens(params.pool);
 
-        uint256[] memory maxUint128TypeAmounts = new uint256[](erc4626PoolTokens.length);
+        uint256[] memory maxAmounts = new uint256[](erc4626PoolTokens.length);
         for (uint256 i = 0; i < erc4626PoolTokens.length; ++i) {
-            maxUint128TypeAmounts[i] = _MAX_AMOUNT;
+            maxAmounts[i] = _MAX_AMOUNT;
         }
 
         // Add wrapped amounts to the ERC4626 pool.
@@ -877,7 +877,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             AddLiquidityParams({
                 pool: params.pool,
                 to: params.sender,
-                maxAmountsIn: maxUint128TypeAmounts,
+                maxAmountsIn: maxAmounts,
                 minBptAmountOut: params.minBptAmountOut,
                 kind: params.kind,
                 userData: params.userData
