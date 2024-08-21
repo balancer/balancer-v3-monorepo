@@ -1429,7 +1429,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 expectedUnderlyingReservesAfter,
         uint256 expectedWrappedReservesAfter
     ) private {
-        // Update Vault's underlying reserves.
+        // Update the Vault's underlying reserves.
         uint256 underlyingBalancesAfter = underlyingToken.balanceOf(address(this));
         if (underlyingBalancesAfter < expectedUnderlyingReservesAfter) {
             // If Vault's underlying balance is smaller than expected, means that the withdraw/redeem function returned
@@ -1440,14 +1440,14 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 underlyingBalancesAfter
             );
         }
-        // Update Vault's underlying reserves, discarding any unexpected surplus of tokens (difference between actual
-        // and expected vault balance).
+        // Update the Vault's underlying reserves, discarding any unexpected surplus of tokens (difference between
+        // actual and expected vault balance).
         _reservesOf[underlyingToken] = underlyingBalancesAfter;
 
-        // Update Vault's wrapped reserves.
+        // Update the Vault's wrapped reserves.
         uint256 wrappedBalancesAfter = wrappedToken.balanceOf(address(this));
         if (wrappedBalancesAfter < expectedWrappedReservesAfter) {
-            // If Vault's wrapped balance is smaller than expected, means that the withdraw/redeem function removed
+            // If the Vault's wrapped balance is smaller than expected, means that the withdraw/redeem function removed
             // more wrapped tokens than it said it would remove.
             revert NotEnoughWrapped(
                 IERC4626(address(wrappedToken)),
@@ -1455,8 +1455,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedBalancesAfter
             );
         }
-        // Update Vault's wrapped reserves, discarding any unexpected surplus of tokens (difference between actual and
-        // expected vault balance).
+        // Update the Vault's wrapped reserves, discarding any unexpected surplus of tokens (difference between Vault's
+        // actual and expected balances).
         _reservesOf[wrappedToken] = wrappedBalancesAfter;
     }
 
