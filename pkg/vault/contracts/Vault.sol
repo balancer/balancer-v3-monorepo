@@ -1210,12 +1210,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 }
 
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
-                // increase. To decrease underlying balance, we get the delta amount that was deposited
-                // (vaultUnderlyingDelta) and discounts the amount needed in the wrapping operation
-                // (amountInUnderlying). Same logic applies to wrapped balances.
+                // increase. To decrease the underlying balance, we get the delta amount that was deposited
+                // (vaultUnderlyingDeltaHint) and discount the amount needed for the wrapping operation
+                // (amountInUnderlying). The same logic applies to wrapped balances.
                 //
-                // Note: bufferUnderlyingSurplus = vaultUnderlyingDelta - amountInUnderlying
-                //       bufferWrappedSurplus = vaultWrappedDelta - amountOutWrapped
+                // Note: bufferUnderlyingSurplus = vaultUnderlyingDeltaHint - amountInUnderlying
+                //       bufferWrappedSurplus = vaultWrappedDeltaHint - amountOutWrapped
                 bufferBalances = PackedTokenBalance.toPackedBalance(
                     bufferBalances.getBalanceRaw() - bufferUnderlyingSurplus,
                     bufferBalances.getBalanceDerived() + bufferWrappedSurplus
@@ -1331,11 +1331,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
                 // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance
                 // will decrease. To increase the underlying balance, we get the delta amount that was withdrawn
-                // (vaultUnderlyingDelta) and discount the amount expected in the unwrapping operation
+                // (vaultUnderlyingDeltaHint) and discount the amount needed for the unwrapping operation
                 // (amountOutUnderlying). The same logic applies to wrapped balances.
                 //
-                // Note: bufferUnderlyingSurplus = vaultUnderlyingDelta - amountOutUnderlying
-                //       bufferWrappedSurplus = vaultWrappedDelta - amountInWrapped
+                // Note: bufferUnderlyingSurplus = vaultUnderlyingDeltaHint - amountOutUnderlying
+                //       bufferWrappedSurplus = vaultWrappedDeltaHint - amountInWrapped
                 bufferBalances = PackedTokenBalance.toPackedBalance(
                     bufferBalances.getBalanceRaw() + bufferUnderlyingSurplus,
                     bufferBalances.getBalanceDerived() - bufferWrappedSurplus
