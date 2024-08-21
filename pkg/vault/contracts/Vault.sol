@@ -1192,7 +1192,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Only updates buffer balances if buffer has a surplus of underlying tokens.
             if (bufferUnderlyingSurplus > 0) {
                 if (kind == SwapKind.EXACT_IN) {
-                    // amountInUnderlying is the amountGiven and should not be changed. Any rounding issue that occurs
+                    // `amountInUnderlying` is the amountGiven and should not be changed. Any rounding issue that occurs
                     // in the vaultUnderlyingDelta should be absorbed by the buffer.
                     bufferUnderlyingSurplus = vaultUnderlyingDeltaHint - amountInUnderlying;
                     // Since bufferUnderlyingSurplus was wrapped, the final amountOut needs to discount the wrapped
@@ -1201,10 +1201,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
                     amountOutWrapped = vaultWrappedDeltaHint - bufferWrappedSurplus;
                 } else {
-                    // If buffer has an underlying surplus, it wraps the surplus + amountIn, so the final amountIn needs
-                    // to be discounted for that.
+                    // If the buffer has a surplus of underlying tokens, it wraps the surplus + amountIn, so the final
+                    // amountIn needs to be discounted for that.
                     amountInUnderlying = vaultUnderlyingDeltaHint - bufferUnderlyingSurplus;
-                    // amountOutWrapped is the amountGiven and should not be changed. Any rounding issue that occurs
+                    // `amountOutWrapped` is the amountGiven and should not be changed. Any rounding issue that occurs
                     // in the vaultWrappedDelta should be absorbed by the buffer.
                     bufferWrappedSurplus = vaultWrappedDeltaHint - amountOutWrapped;
                 }
@@ -1321,8 +1321,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
                     amountOutUnderlying = vaultUnderlyingDeltaHint - bufferUnderlyingSurplus;
                 } else {
-                    // If buffer has a wrapped surplus, it unwraps surplus + amountIn, so the final amountIn needs to
-                    // be discounted for that.
+                    // If the buffer has a surplus of wrapped tokens, it unwraps the surplus + amountIn, so the final
+                    // amountIn needs to be discounted for that.
                     amountInWrapped = vaultWrappedDeltaHint - bufferWrappedSurplus;
                     // amountOutUnderlying is the amountGiven and should not be changed. Any rounding issue that occurs
                     // in the vaultUnderlyingDelta should be absorbed by the buffer.
@@ -1388,6 +1388,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
      * @dev If there are extra tokens in the vault balances, these will be added to the reserves (which, in practice,
      * is equal to discarding such tokens). This approach avoids DoS attacks, when a frontrunner leaves vault balances
      * and state of reserves out of sync before a transaction starts.
+     *
      * @param underlyingToken Underlying of ERC4626 wrapped token
      * @param wrappedToken ERC4626 wrapped token
      * @param underlyingDeltaHint Amount of underlying tokens supposedly added to the vault
