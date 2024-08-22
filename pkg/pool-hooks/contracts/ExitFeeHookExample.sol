@@ -46,6 +46,14 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
     uint64 public constant MAX_EXIT_FEE_PERCENTAGE = 10e16;
 
     /**
+     * @notice A new `ExitFeeHookExample` contract has been registered successfully for a given factory and pool.
+     * @dev If the registration fails the call will revert, so there will be no event.
+     * @param hooksContract This contract
+     * @param pool The pool on which the hook was registered
+     */
+    event ExitFeeHookExampleRegistered(address indexed hooksContract, address indexed pool);
+
+    /**
      * @notice An exit fee has been charged on a pool.
      * @param pool The pool that was charged
      * @param token The address of the fee token
@@ -82,10 +90,10 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
     /// @inheritdoc IHooks
     function onRegister(
         address,
-        address,
+        address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata liquidityManagement
-    ) public view override onlyVault returns (bool) {
+    ) public override onlyVault returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
         // that the given pool is from the factory). Returning true unconditionally allows any pool, with any
         // configuration, to use this hook.
@@ -94,6 +102,8 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
         if (liquidityManagement.enableDonation == false) {
             revert PoolDoesNotSupportDonation();
         }
+
+        emit ExitFeeHookExampleRegistered(address(this), pool);
 
         return true;
     }

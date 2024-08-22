@@ -52,6 +52,14 @@ contract LotteryHookExample is BaseHooks, Ownable {
     uint256 private _counter = 0;
 
     /**
+     * @notice A new `LotteryHookExample` contract has been registered successfully for a given factory and pool.
+     * @dev If the registration fails the call will revert, so there will be no event.
+     * @param hooksContract This contract
+     * @param pool The pool on which the hook was registered
+     */
+    event LotteryHookExampleRegistered(address indexed hooksContract, address indexed pool);
+
+    /**
      * @notice The swap hook fee percentage has been changed.
      * @dev Note that the initial fee will be zero, and no event is emitted on deployment.
      * @param hooksContract The hooks contract charging the fee
@@ -89,13 +97,16 @@ contract LotteryHookExample is BaseHooks, Ownable {
     /// @inheritdoc IHooks
     function onRegister(
         address,
-        address,
+        address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) public view override onlyVault returns (bool) {
+    ) public override onlyVault returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
         // that the given pool is from the factory). Returning true unconditionally allows any pool, with any
         // configuration, to use this hook.
+
+        emit LotteryHookExampleRegistered(address(this), pool);
+
         return true;
     }
 

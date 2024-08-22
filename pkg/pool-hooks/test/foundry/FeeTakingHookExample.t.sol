@@ -64,6 +64,9 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.disableUnbalancedLiquidity = true;
 
+        vm.expectEmit();
+        emit FeeTakingHookExample.FeeTakingHookExampleRegistered(poolHooksContract, address(newPool));
+
         factoryMock.registerPool(
             address(newPool),
             vault.buildTokenConfig(tokens.asIERC20()),

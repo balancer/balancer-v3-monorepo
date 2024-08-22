@@ -61,6 +61,9 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         liquidityManagement.disableUnbalancedLiquidity = true;
         liquidityManagement.enableDonation = true;
 
+        vm.expectEmit();
+        emit ExitFeeHookExample.ExitFeeHookExampleRegistered(poolHooksContract, address(newPool));
+
         factoryMock.registerPool(
             address(newPool),
             vault.buildTokenConfig(tokens.asIERC20()),

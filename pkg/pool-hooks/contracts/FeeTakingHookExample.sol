@@ -44,6 +44,14 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
     uint64 public removeLiquidityHookFeePercentage;
 
     /**
+     * @notice A new `FeeTakingHookExample` contract has been registered successfully for a given factory and pool.
+     * @dev If the registration fails the call will revert, so there will be no event.
+     * @param hooksContract This contract
+     * @param pool The pool on which the hook was registered
+     */
+    event FeeTakingHookExampleRegistered(address indexed hooksContract, address indexed pool);
+
+    /**
      * @notice The hooks contract has charged a fee.
      * @param hooksContract The contract that collected the fee
      * @param token The token in which the fee was charged
@@ -96,13 +104,15 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
     /// @inheritdoc IHooks
     function onRegister(
         address,
-        address,
+        address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) public view override onlyVault returns (bool) {
+    ) public override onlyVault returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
         // that the given pool is from the factory). Returning true unconditionally allows any pool, with any
         // configuration, to use this hook.
+
+        emit FeeTakingHookExampleRegistered(address(this), pool);
 
         return true;
     }
