@@ -73,11 +73,13 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         vm.startPrank(alice);
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(
-                IBasePool.computeBalance.selector,
-                expectedBalances, // liveBalancesScaled18
-                wstethIdx,
-                150e16 // 150% growth
+            abi.encodeCall(
+                IBasePool.computeBalance,
+                (
+                    expectedBalances, // liveBalancesScaled18
+                    wstethIdx,
+                    150e16 // 150% growth
+                )
             )
         );
 
@@ -99,13 +101,15 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         vm.startPrank(alice);
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(
-                IPoolLiquidity.onAddLiquidityCustom.selector,
-                router,
-                expectedAmountsInRaw, // maxAmountsIn
-                defaultAmount, // minBptOut
-                expectedBalancesRaw,
-                bytes("")
+            abi.encodeCall(
+                IPoolLiquidity.onAddLiquidityCustom,
+                (
+                    address(router),
+                    expectedAmountsInRaw, // maxAmountsIn
+                    defaultAmount, // minBptOut
+                    expectedBalancesRaw,
+                    bytes("")
+                )
             )
         );
 
@@ -157,11 +161,13 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
 
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(
-                IBasePool.computeBalance.selector,
-                [balances.balancesLiveScaled18[daiIdx], balances.balancesLiveScaled18[wstethIdx]].toMemoryArray(),
-                wstethIdx, // tokenOutIndex
-                50e16 // invariantRatio
+            abi.encodeCall(
+                IBasePool.computeBalance,
+                (
+                    [balances.balancesLiveScaled18[daiIdx], balances.balancesLiveScaled18[wstethIdx]].toMemoryArray(),
+                    wstethIdx, // tokenOutIndex
+                    50e16 // invariantRatio
+                )
             )
         );
 
@@ -187,13 +193,15 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
 
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(
-                IPoolLiquidity.onRemoveLiquidityCustom.selector,
-                router,
-                defaultAmount, // maxBptAmountIn
-                expectedAmountsOutRaw, // minAmountsOut
-                [balances.balancesLiveScaled18[daiIdx], balances.balancesLiveScaled18[wstethIdx]].toMemoryArray(),
-                bytes("")
+            abi.encodeCall(
+                IPoolLiquidity.onRemoveLiquidityCustom,
+                (
+                    address(router),
+                    defaultAmount, // maxBptAmountIn
+                    expectedAmountsOutRaw, // minAmountsOut
+                    [balances.balancesLiveScaled18[daiIdx], balances.balancesLiveScaled18[wstethIdx]].toMemoryArray(),
+                    bytes("")
+                )
             )
         );
 

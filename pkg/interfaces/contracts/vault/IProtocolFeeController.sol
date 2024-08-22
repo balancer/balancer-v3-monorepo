@@ -71,6 +71,29 @@ interface IProtocolFeeController {
     event ProtocolYieldFeeCollected(address indexed pool, IERC20 indexed token, uint256 amount);
 
     /**
+     * @notice Logs the withdrawal of protocol fees in a specific token and amount.
+     * @param pool The pool from which protocol fees are being withdrawn
+     * @param token The token being withdrawn
+     * @param recipient The recipient of the funds
+     * @param amount The amount of the fee token that was withdrawn
+     */
+    event ProtocolFeesWithdrawn(address indexed pool, IERC20 indexed token, address indexed recipient, uint256 amount);
+
+    /**
+     * @notice Logs the withdrawal of pool creator fees in a specific token and amount.
+     * @param pool The pool from which pool creator fees are being withdrawn
+     * @param token The token being withdrawn
+     * @param recipient The recipient of the funds (the pool creator if permissionless, or another account)
+     * @param amount The amount of the fee token that was withdrawn
+     */
+    event PoolCreatorFeesWithdrawn(
+        address indexed pool,
+        IERC20 indexed token,
+        address indexed recipient,
+        uint256 amount
+    );
+
+    /**
      * @dev Error raised when the protocol swap fee percentage exceeds the maximum allowed value. Note that this is
      * checked for both the global and pool-specific protocol swap fee percentages.
      */

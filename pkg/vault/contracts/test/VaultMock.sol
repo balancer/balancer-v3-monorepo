@@ -144,10 +144,6 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolConfigBits[pool] = _poolConfigBits[pool].setPoolRegistered(status);
     }
 
-    function manualSetIsUnlocked(bool status) public {
-        _isUnlocked().tstore(status);
-    }
-
     function manualSetInitializedPool(address pool, bool isPoolInitialized) public {
         _poolConfigBits[pool] = _poolConfigBits[pool].setPoolInitialized(isPoolInitialized);
     }
