@@ -97,8 +97,8 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: dai,
@@ -165,8 +165,8 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     tokenIn: dai,
@@ -262,16 +262,18 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterAddLiquidity.selector,
-                address(router),
-                pool,
-                AddLiquidityKind.PROPORTIONAL,
-                actualAmountsIn,
-                actualAmountsIn,
-                expectedBptOut,
-                expectedBalances,
-                bytes("")
+            abi.encodeCall(
+                IHooks.onAfterAddLiquidity,
+                (
+                    address(router),
+                    pool,
+                    AddLiquidityKind.PROPORTIONAL,
+                    actualAmountsIn,
+                    actualAmountsIn,
+                    expectedBptOut,
+                    expectedBalances,
+                    bytes("")
+                )
             )
         );
 
@@ -330,16 +332,18 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterRemoveLiquidity.selector,
-                address(router),
-                pool,
-                RemoveLiquidityKind.PROPORTIONAL,
-                expectedBptIn,
-                actualAmountsOut,
-                actualAmountsOut,
-                expectedBalances,
-                bytes("")
+            abi.encodeCall(
+                IHooks.onAfterRemoveLiquidity,
+                (
+                    address(router),
+                    pool,
+                    RemoveLiquidityKind.PROPORTIONAL,
+                    expectedBptIn,
+                    actualAmountsOut,
+                    actualAmountsOut,
+                    expectedBalances,
+                    bytes("")
+                )
             )
         );
 
