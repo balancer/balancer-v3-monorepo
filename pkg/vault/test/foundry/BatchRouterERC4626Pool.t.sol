@@ -261,6 +261,56 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         batchRouter.queryAddLiquidityUnbalancedToERC4626Pool(erc4626Pool, exactUnderlyingAmountsIn, bytes(""));
     }
 
+    function testQueryAddLiquidityUnbalancedToERC4626Pool() public {
+        uint256 operationAmount = bufferInitialAmount / 2;
+        uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(alice, address(0));
+        uint256 queryBptAmountOut = batchRouter.queryAddLiquidityUnbalancedToERC4626Pool(
+            erc4626Pool,
+            exactUnderlyingAmountsIn,
+            bytes("")
+        );
+        vm.revertTo(snapshotId);
+
+        vm.prank(alice);
+        uint256 actualBptAmountOut = batchRouter.addLiquidityUnbalancedToERC4626Pool(
+            erc4626Pool,
+            exactUnderlyingAmountsIn,
+            1,
+            false,
+            bytes("")
+        );
+
+        assertEq(queryBptAmountOut, actualBptAmountOut, "Query and actual bpt amount out do not match");
+    }
+
+    function testQueryAddLiquidityUnbalancedToPartialERC4626Pool() public {
+        uint256 operationAmount = bufferInitialAmount / 2;
+        uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(alice, address(0));
+        uint256 queryBptAmountOut = batchRouter.queryAddLiquidityUnbalancedToERC4626Pool(
+            partialErc4626Pool,
+            exactUnderlyingAmountsIn,
+            bytes("")
+        );
+        vm.revertTo(snapshotId);
+
+        vm.prank(alice);
+        uint256 actualBptAmountOut = batchRouter.addLiquidityUnbalancedToERC4626Pool(
+            partialErc4626Pool,
+            exactUnderlyingAmountsIn,
+            1,
+            false,
+            bytes("")
+        );
+
+        assertEq(queryBptAmountOut, actualBptAmountOut, "Query and actual bpt amount out do not match");
+    }
+
     function testAddLiquidityProportionalToERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
         uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
 
