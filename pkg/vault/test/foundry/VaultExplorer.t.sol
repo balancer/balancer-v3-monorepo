@@ -128,7 +128,7 @@ contract VaultExplorerTest is BaseVaultTest {
     function testUnlocked() public {
         assertFalse(explorer.isUnlocked(), "Should be locked");
 
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         assertTrue(explorer.isUnlocked(), "Should be unlocked");
     }
 
@@ -145,7 +145,7 @@ contract VaultExplorerTest is BaseVaultTest {
 
         dai.mint(address(vault), defaultAmount);
 
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         uint256 settlementAmount = vault.settle(dai, defaultAmount);
         int256 vaultDelta = vault.getTokenDelta(dai);
 
@@ -157,7 +157,7 @@ contract VaultExplorerTest is BaseVaultTest {
     function testGetReservesOf() public {
         dai.mint(address(vault), defaultAmount);
 
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         uint256 settlementAmount = vault.settle(dai, defaultAmount);
 
         assertEq(settlementAmount, defaultAmount, "Wrong settlement amount");

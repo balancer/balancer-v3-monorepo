@@ -137,7 +137,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
     ********************************************************************************/
 
     function testInitializeBufferTwice() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vault.initializeBuffer(waDAI, liquidityAmount, liquidityAmount, bob);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferAlreadyInitialized.selector, waDAI));
@@ -145,7 +145,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
     }
 
     function testInitializeBufferAddressZero() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         waDAI.setAsset(IERC20(address(0)));
 
         vm.expectRevert(IVaultErrors.InvalidUnderlyingToken.selector);
@@ -153,7 +153,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
     }
 
     function testInitializeBufferBelowMinimumShares() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vm.expectRevert(
             abi.encodeWithSelector(IERC20MultiTokenErrors.TotalSupplyTooLow.selector, 3, _MINIMUM_TOTAL_SUPPLY)
         );
@@ -163,7 +163,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
     function testInitializeBuffer() public {
         dai.mint(address(waDAI), underlyingTokensToDeposit); // This will make the rate = 2
 
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         uint256 underlyingAmount = liquidityAmount * 2;
         uint256 wrappedAmount = liquidityAmount;
 
