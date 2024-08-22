@@ -43,6 +43,52 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
     uint64 public addLiquidityHookFeePercentage;
     uint64 public removeLiquidityHookFeePercentage;
 
+    /**
+     * @notice The hooks contract has charged a fee.
+     * @param hooksContract The contract that collected the fee
+     * @param token The token in which the fee was charged
+     * @param feeAmount The amount of the fee
+     */
+    event HookFeeCharged(address indexed hooksContract, IERC20 indexed token, uint256 feeAmount);
+
+    /**
+     * @notice The swap hook fee percentage has been changed.
+     * @dev Note that the initial fee will be zero, and no event is emitted on deployment.
+     * @param hooksContract The hooks contract charging the fee
+     * @param hookFeePercentage The new hook swap fee percentage
+     */
+    event HookSwapFeePercentageChanged(address indexed hooksContract, uint256 hookFeePercentage);
+
+    /**
+     * @notice The add liquidity hook fee percentage has been changed.
+     * @dev Note that the initial fee will be zero, and no event is emitted on deployment.
+     * @param hooksContract The hooks contract charging the fee
+     * @param hookFeePercentage The new hook swap fee percentage
+     */
+    event HookAddLiquidityFeePercentageChanged(address indexed hooksContract, uint256 hookFeePercentage);
+
+    /**
+     * @notice The remove liquidity hook fee percentage has been changed.
+     * @dev Note that the initial fee will be zero, and no event is emitted on deployment.
+     * @param hooksContract The hooks contract charging the fee
+     * @param hookFeePercentage The new hook swap fee percentage
+     */
+    event HookRemoveLiquidityFeePercentageChanged(address indexed hooksContract, uint256 hookFeePercentage);
+
+    /**
+     * @notice The hooks contract owner has withdrawn tokens.
+     * @param hooksContract The hooks contract charging the fee
+     * @param token The token being withdrawn
+     * @param recipient The recipient of the withdrawal (hooks contract owner)
+     * @param feeAmount The new hook swap fee percentage
+     */
+    event HookFeeWithdrawn(
+        address indexed hooksContract,
+        IERC20 indexed token,
+        address indexed recipient,
+        uint256 feeAmount
+    );
+
     constructor(IVault vault) BaseHooks(vault) Ownable(msg.sender) {
         // solhint-disable-previous-line no-empty-blocks
     }
@@ -81,28 +127,37 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
         hookAdjustedAmountCalculatedRaw = params.amountCalculatedRaw;
         if (hookSwapFeePercentage > 0) {
             uint256 hookFee = params.amountCalculatedRaw.mulDown(hookSwapFeePercentage);
-            if (params.kind == SwapKind.EXACT_IN) {
-                // For EXACT_IN swaps, the `amountCalculated` is the amount of `tokenOut`. The fee must be taken
-                // from `amountCalculated`, so we decrease the amount of tokens the Vault will send to the caller.
-                //
-                // The preceding swap operation has already credited the original `amountCalculated`. Since we're
-                // returning `amountCalculated - hookFee` here, it will only register debt for that reduced amount
-                // on settlement. This call to `sendTo` pulls `hookFee` tokens of `tokenOut` from the Vault to this
-                // contract, and registers the additional debt, so that the total debts match the credits and
-                // settlement succeeds.
-                hookAdjustedAmountCalculatedRaw -= hookFee;
-                _vault.sendTo(params.tokenOut, address(this), hookFee);
-            } else {
-                // For EXACT_OUT swaps, the `amountCalculated` is the amount of `tokenIn`. The fee must be taken
-                // from `amountCalculated`, so we increase the amount of tokens the Vault will ask from the user.
-                //
-                // The preceding swap operation has already registered debt for the original `amountCalculated`.
-                // Since we're returning `amountCalculated + hookFee` here, it will supply credit for that increased
-                // amount on settlement. This call to `sendTo` pulls `hookFee` tokens of `tokenIn` from the Vault to
-                // this contract, and registers the additional debt, so that the total debts match the credits and
-                // settlement succeeds.
-                hookAdjustedAmountCalculatedRaw += hookFee;
-                _vault.sendTo(params.tokenIn, address(this), hookFee);
+
+            if (hookFee > 0) {
+                IERC20 feeToken;
+
+                if (params.kind == SwapKind.EXACT_IN) {
+                    // For EXACT_IN swaps, the `amountCalculated` is the amount of `tokenOut`. The fee must be taken
+                    // from `amountCalculated`, so we decrease the amount of tokens the Vault will send to the caller.
+                    //
+                    // The preceding swap operation has already credited the original `amountCalculated`. Since we're
+                    // returning `amountCalculated - hookFee` here, it will only register debt for that reduced amount
+                    // on settlement. This call to `sendTo` pulls `hookFee` tokens of `tokenOut` from the Vault to this
+                    // contract, and registers the additional debt, so that the total debts match the credits and
+                    // settlement succeeds.
+                    feeToken = params.tokenOut;
+                    hookAdjustedAmountCalculatedRaw -= hookFee;
+                } else {
+                    // For EXACT_OUT swaps, the `amountCalculated` is the amount of `tokenIn`. The fee must be taken
+                    // from `amountCalculated`, so we increase the amount of tokens the Vault will ask from the user.
+                    //
+                    // The preceding swap operation has already registered debt for the original `amountCalculated`.
+                    // Since we're returning `amountCalculated + hookFee` here, it will supply credit for that increased
+                    // amount on settlement. This call to `sendTo` pulls `hookFee` tokens of `tokenIn` from the Vault to
+                    // this contract, and registers the additional debt, so that the total debts match the credits and
+                    // settlement succeeds.
+                    feeToken = params.tokenIn;
+                    hookAdjustedAmountCalculatedRaw += hookFee;
+                }
+
+                _vault.sendTo(feeToken, address(this), hookFee);
+
+                emit HookFeeCharged(address(this), feeToken, hookFee);
             }
         }
         return (true, hookAdjustedAmountCalculatedRaw);
@@ -134,9 +189,14 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
             // Charge fees proportional to amounts in of each token
             for (uint256 i = 0; i < amountsInRaw.length; i++) {
                 uint256 hookFee = amountsInRaw[i].mulDown(addLiquidityHookFeePercentage);
-                hookAdjustedAmountsInRaw[i] += hookFee;
-                // Sends the hook fee to the hook and registers the debt in the vault
-                _vault.sendTo(tokens[i], address(this), hookFee);
+
+                if (hookFee > 0) {
+                    hookAdjustedAmountsInRaw[i] += hookFee;
+                    // Sends the hook fee to the hook and registers the debt in the vault
+                    _vault.sendTo(tokens[i], address(this), hookFee);
+
+                    emit HookFeeCharged(address(this), tokens[i], hookFee);
+                }
             }
         }
 
@@ -169,9 +229,14 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
             // Charge fees proportional to amounts out of each token
             for (uint256 i = 0; i < amountsOutRaw.length; i++) {
                 uint256 hookFee = amountsOutRaw[i].mulDown(removeLiquidityHookFeePercentage);
-                hookAdjustedAmountsOutRaw[i] -= hookFee;
-                // Sends the hook fee to the hook and registers the debt in the vault
-                _vault.sendTo(tokens[i], address(this), hookFee);
+
+                if (hookFee > 0) {
+                    hookAdjustedAmountsOutRaw[i] -= hookFee;
+                    // Sends the hook fee to the hook and registers the debt in the vault
+                    _vault.sendTo(tokens[i], address(this), hookFee);
+
+                    emit HookFeeCharged(address(this), tokens[i], hookFee);
+                }
             }
         }
 
@@ -184,8 +249,10 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
      * @notice Sets the hook swap fee percentage, charged on every swap operation.
      * @dev This function must be permissioned.
      */
-    function setHookSwapFeePercentage(uint64 feePercentage) external onlyOwner {
-        hookSwapFeePercentage = feePercentage;
+    function setHookSwapFeePercentage(uint64 hookFeePercentage) external onlyOwner {
+        hookSwapFeePercentage = hookFeePercentage;
+
+        emit HookSwapFeePercentageChanged(address(this), hookFeePercentage);
     }
 
     /**
@@ -194,6 +261,8 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
      */
     function setAddLiquidityHookFeePercentage(uint64 hookFeePercentage) external onlyOwner {
         addLiquidityHookFeePercentage = hookFeePercentage;
+
+        emit HookAddLiquidityFeePercentageChanged(address(this), hookFeePercentage);
     }
 
     /**
@@ -202,10 +271,16 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
      */
     function setRemoveLiquidityHookFeePercentage(uint64 hookFeePercentage) external onlyOwner {
         removeLiquidityHookFeePercentage = hookFeePercentage;
+
+        emit HookRemoveLiquidityFeePercentageChanged(address(this), hookFeePercentage);
     }
 
     /// @notice Withdraws the accumulated fees and sends them to the owner.
     function withdrawFees(IERC20 feeToken) external {
-        feeToken.safeTransfer(owner(), feeToken.balanceOf(address(this)));
+        uint256 feeAmount = feeToken.balanceOf(address(this));
+
+        feeToken.safeTransfer(owner(), feeAmount);
+
+        emit HookFeeWithdrawn(address(this), feeToken, owner(), feeAmount);
     }
 }
