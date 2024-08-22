@@ -644,13 +644,6 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         assertEq(afterBPTBalance, beforeBPTBalance - exactBptAmountIn, "Bob: wrong BPT balance");
     }
 
-    function testRemoveLiquidityProportionalFromERC4626PoolWhenStaticCall() public checkBuffersWhenStaticCall(bob) {
-        uint256 exactBptAmountIn = bufferInitialAmount / 2;
-
-        vm.prank(bob, address(0));
-        batchRouter.queryRemoveLiquidityProportionalFromERC4626Pool(erc4626Pool, exactBptAmountIn, bytes(""));
-    }
-
     function testRemoveLiquidityProportionalFromPartialERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
         uint256 exactBptAmountIn = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
 
@@ -746,6 +739,103 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 afterBPTBalance = IERC20(address(partialErc4626Pool)).balanceOf(bob);
         assertEq(afterBPTBalance, beforeBPTBalance - exactBptAmountIn, "Bob: wrong BPT balance");
+    }
+
+    function testRemoveLiquidityProportionalFromERC4626PoolWhenStaticCall() public checkBuffersWhenStaticCall(bob) {
+        uint256 exactBptAmountIn = bufferInitialAmount / 2;
+
+        vm.prank(bob, address(0));
+        batchRouter.queryRemoveLiquidityProportionalFromERC4626Pool(erc4626Pool, exactBptAmountIn, bytes(""));
+    }
+
+    function testQueryRemoveLiquidityProportionalFromERC4626Pool() public {
+        uint256 exactBptAmountIn = bufferInitialAmount / 2;
+
+        uint256 snapshot = vm.snapshot();
+        _prankStaticCall();
+        uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityProportional(
+            erc4626Pool,
+            exactBptAmountIn,
+            bytes("")
+        );
+        vm.revertTo(snapshot);
+
+        uint256[] memory minAmountsOut = new uint256[](2);
+        minAmountsOut[waUsdcIdx] = waUSDC.convertToAssets(expectedAmountsOut[waUsdcIdx]);
+        minAmountsOut[waDaiIdx] = waDAI.convertToAssets(expectedAmountsOut[waDaiIdx]);
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(bob, address(0));
+        uint256[] memory queryUnderlyingAmountsOut = batchRouter.queryRemoveLiquidityProportionalFromERC4626Pool(
+            erc4626Pool,
+            exactBptAmountIn,
+            bytes("")
+        );
+        vm.revertTo(snapshotId);
+
+        vm.prank(bob);
+        uint256[] memory actualUnderlyingAmountsOut = batchRouter.removeLiquidityProportionalFromERC4626Pool(
+            erc4626Pool,
+            exactBptAmountIn,
+            minAmountsOut,
+            false,
+            bytes("")
+        );
+
+        for (uint256 i = 0; i < queryUnderlyingAmountsOut.length; i++) {
+            // Real operation and preview may have a difference.
+            assertApproxEqAbs(
+                queryUnderlyingAmountsOut[i],
+                actualUnderlyingAmountsOut[i],
+                5,
+                "Query and actual underlying amounts out do not match"
+            );
+        }
+    }
+
+    function testQueryRemoveLiquidityProportionalFromPartialERC4626Pool() public {
+        uint256 exactBptAmountIn = bufferInitialAmount / 2;
+
+        uint256 snapshot = vm.snapshot();
+        _prankStaticCall();
+        uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityProportional(
+            partialErc4626Pool,
+            exactBptAmountIn,
+            bytes("")
+        );
+        vm.revertTo(snapshot);
+
+        uint256[] memory minAmountsOut = new uint256[](2);
+        minAmountsOut[partialUsdcIdx] = expectedAmountsOut[partialUsdcIdx];
+        minAmountsOut[partialWaDaiIdx] = waDAI.convertToAssets(expectedAmountsOut[partialWaDaiIdx]);
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(bob, address(0));
+        uint256[] memory queryUnderlyingAmountsOut = batchRouter.queryRemoveLiquidityProportionalFromERC4626Pool(
+            partialErc4626Pool,
+            exactBptAmountIn,
+            bytes("")
+        );
+        vm.revertTo(snapshotId);
+
+        vm.prank(bob);
+        uint256[] memory actualUnderlyingAmountsOut = batchRouter.removeLiquidityProportionalFromERC4626Pool(
+            partialErc4626Pool,
+            exactBptAmountIn,
+            minAmountsOut,
+            false,
+            bytes("")
+        );
+
+        for (uint256 i = 0; i < queryUnderlyingAmountsOut.length; i++) {
+            // Real operation and preview may have a difference.
+            assertApproxEqAbs(
+                queryUnderlyingAmountsOut[i],
+                actualUnderlyingAmountsOut[i],
+                5,
+                "Query and actual underlying amounts out do not match"
+            );
+        }
     }
 
     function testInvalidUnderlyingToken() public {
