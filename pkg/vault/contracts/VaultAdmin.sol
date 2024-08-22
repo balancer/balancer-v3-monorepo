@@ -10,7 +10,7 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { PoolFunctionPermission, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -20,6 +20,7 @@ import { VaultStateBits, VaultStateLib } from "./lib/VaultStateLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { PoolConfigLib, PoolConfigBits } from "./lib/PoolConfigLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
+import { VaultGuard } from "./VaultGuard.sol";
 
 /**
  * @dev Bytecode extension for the Vault containing permissioned functions. Complementary to `VaultExtension`,
@@ -31,14 +32,12 @@ import { VaultCommon } from "./VaultCommon.sol";
  *
  * The storage of this contract is in practice unused.
  */
-contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
+contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     using PackedTokenBalance for bytes32;
     using PoolConfigLib for PoolConfigBits;
     using VaultStateLib for VaultStateBits;
     using VaultExtensionsLib for IVault;
     using SafeERC20 for IERC20;
-
-    IVault private immutable _vault;
 
     /// @dev Functions with this modifier can only be delegate-called by the vault.
     modifier onlyVaultDelegateCall() {
@@ -62,43 +61,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _;
     }
 
-    /// @dev Use with permissioned functions that use `PoolRoleAccounts`.
-    modifier authenticateByRole(address pool) {
-        _ensureAuthenticatedByRole(pool);
-        _;
-    }
-
-    function _ensureAuthenticatedByRole(address pool) private view {
-        bytes32 actionId = getActionId(msg.sig);
-
-        PoolFunctionPermission memory roleAssignment = _poolFunctionPermissions[pool][actionId];
-
-        // If there is no role assignment, fall through and delegate to governance.
-        if (roleAssignment.account != address(0)) {
-            // If the sender matches the permissioned account, all good; just return.
-            if (msg.sender == roleAssignment.account) {
-                return;
-            }
-
-            // If it doesn't, check whether it's onlyOwner. onlyOwner means *only* the permissioned account
-            // may call the function, so revert if this is the case. Otherwise, fall through and check
-            // governance.
-            if (roleAssignment.onlyOwner) {
-                revert SenderNotAllowed();
-            }
-        }
-
-        // Delegate to governance.
-        if (_canPerform(actionId, msg.sender, pool) == false) {
-            revert SenderNotAllowed();
-        }
-    }
-
     constructor(
         IVault mainVault,
         uint32 pauseWindowDuration,
         uint32 bufferPeriodDuration
-    ) Authentication(bytes32(uint256(uint160(address(mainVault))))) {
+    ) Authentication(bytes32(uint256(uint160(address(mainVault))))) VaultGuard(mainVault) {
         if (pauseWindowDuration > _MAX_PAUSE_WINDOW_DURATION) {
             revert VaultPauseWindowDurationTooLarge();
         }
@@ -112,8 +79,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _vaultPauseWindowEndTime = pauseWindowEndTime;
         _vaultBufferPeriodDuration = bufferPeriodDuration;
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
-
-        _vault = mainVault;
     }
 
     /*******************************************************************************
@@ -213,18 +178,18 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
-    function pausePool(address pool) external onlyVaultDelegateCall withRegisteredPool(pool) authenticateByRole(pool) {
+    function pausePool(address pool) external onlyVaultDelegateCall withRegisteredPool(pool) {
         _setPoolPaused(pool, true);
     }
 
     /// @inheritdoc IVaultAdmin
-    function unpausePool(
-        address pool
-    ) external onlyVaultDelegateCall withRegisteredPool(pool) authenticateByRole(pool) {
+    function unpausePool(address pool) external onlyVaultDelegateCall withRegisteredPool(pool) {
         _setPoolPaused(pool, false);
     }
 
     function _setPoolPaused(address pool, bool pausing) internal {
+        _ensureAuthenticatedByRole(pool, _poolRoleAccounts[pool].pauseManager);
+
         PoolConfigBits config = _poolConfigBits[pool];
 
         if (_isPoolPaused(pool)) {
@@ -263,9 +228,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     function setStaticSwapFeePercentage(
         address pool,
         uint256 swapFeePercentage
-    ) external onlyVaultDelegateCall withRegisteredPool(pool) authenticateByRole(pool) {
-        // Saving bits by not implementing a new modifier.
+    ) external onlyVaultDelegateCall withRegisteredPool(pool) {
+        _ensureAuthenticatedByExclusiveRole(pool, _poolRoleAccounts[pool].swapFeeManager);
         _ensureUnpaused(pool);
+
         _setStaticSwapFeePercentage(pool, swapFeePercentage);
     }
 
@@ -535,15 +501,41 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
     /// @inheritdoc IVaultAdmin
     function removeLiquidityFromBuffer(
         IERC4626 wrappedToken,
+        uint256 sharesToRemove
+    ) external onlyVaultDelegateCall returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw) {
+        return
+            abi.decode(
+                _vault.unlock(
+                    abi.encodeCall(VaultAdmin.removeLiquidityFromBufferHook, (wrappedToken, sharesToRemove, msg.sender))
+                ),
+                (uint256, uint256)
+            );
+    }
+
+    /**
+     * @dev Internal hook for `removeLiquidityFromBuffer`. Can only be called by the Vault itself via
+     * `removeLiquidityFromBuffer`, which correctly forwards the real sender as the `sharesOwner`.
+     * This function must be reentrant because it calls the nonReentrant function `sendTo`. However,
+     * since `sendTo` is the only function that makes external calls, `removeLiquidityFromBufferHook`
+     * cannot reenter the Vault.
+     *
+     * @param wrappedToken Address of the wrapped token that implements IERC4626
+     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner's
+     * total shares
+     * @param sharesOwner Owner of the shares (`msg.sender` for `removeLiquidityFromBuffer` entrypoint)
+     * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
+     * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
+     */
+    function removeLiquidityFromBufferHook(
+        IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner
     )
-        public
+        external
         onlyVaultDelegateCall
+        onlyVault
         onlyWhenUnlocked
         withInitializedBuffer(wrappedToken)
-        authenticate
-        nonReentrant
         returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw)
     {
         if (sharesToRemove > _bufferLpShares[wrappedToken][sharesOwner]) {
@@ -556,7 +548,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         removedUnderlyingBalanceRaw = (bufferBalances.getBalanceRaw() * sharesToRemove) / totalShares;
         removedWrappedBalanceRaw = (bufferBalances.getBalanceDerived() * sharesToRemove) / totalShares;
 
-        _supplyCredit(IERC20(_bufferAssets[wrappedToken]), removedUnderlyingBalanceRaw);
+        // We get the underlying token stored internally as opposed to calling `asset()` in the wrapped token.
+        // This is to avoid any kind of unnecessary external call; the underlying token is set during initialization
+        // and can't change afterwards, so it is already validated at this point. There is no way to add liquidity
+        // with an asset that differs from the one set during initialization.
+        IERC20 underlyingToken = IERC20(_bufferAssets[wrappedToken]);
+        _supplyCredit(underlyingToken, removedUnderlyingBalanceRaw);
         _supplyCredit(wrappedToken, removedWrappedBalanceRaw);
 
         bufferBalances = PackedTokenBalance.toPackedBalance(
@@ -567,6 +564,11 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
         _burnBufferShares(wrappedToken, sharesOwner, sharesToRemove);
+
+        // This triggers an external call to itself; the vault is acting as a Router in this case.
+        // `sendTo` makes external calls (`transfer`) but is non-reentrant.
+        _vault.sendTo(underlyingToken, sharesOwner, removedUnderlyingBalanceRaw);
+        _vault.sendTo(wrappedToken, sharesOwner, removedWrappedBalanceRaw);
 
         emit LiquidityRemovedFromBuffer(wrappedToken, removedUnderlyingBalanceRaw, removedWrappedBalanceRaw);
     }
@@ -621,6 +623,34 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication {
         _authorizer = newAuthorizer;
 
         emit AuthorizerChanged(newAuthorizer);
+    }
+
+    /// @dev Authenticate by role; otherwise fall through and check governance.
+    function _ensureAuthenticatedByRole(address pool, address roleAddress) private view {
+        if (msg.sender == roleAddress) {
+            return;
+        }
+
+        _ensureAuthenticated(pool);
+    }
+
+    /// @dev Authenticate exclusively by role; caller must match the `roleAddress`, if assigned.
+    function _ensureAuthenticatedByExclusiveRole(address pool, address roleAddress) private view {
+        if (roleAddress == address(0)) {
+            // Defer to governance if no role assigned.
+            _ensureAuthenticated(pool);
+        } else if (msg.sender != roleAddress) {
+            revert SenderNotAllowed();
+        }
+    }
+
+    /// @dev Delegate authentication to governance.
+    function _ensureAuthenticated(address pool) private view {
+        bytes32 actionId = getActionId(msg.sig);
+
+        if (_canPerform(actionId, msg.sender, pool) == false) {
+            revert SenderNotAllowed();
+        }
     }
 
     /// @dev Access control is delegated to the Authorizer.
