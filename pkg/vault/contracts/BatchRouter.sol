@@ -12,6 +12,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import {
@@ -39,6 +40,7 @@ struct SwapStepLocals {
  * settle with the Vault, and handle wrapping and unwrapping ETH.
  */
 contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, ReentrancyGuardTransient {
+    using CastingHelpers for *;
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
     using SafeERC20 for IERC20;
@@ -1082,7 +1084,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
         // The hook writes current swap token and token amounts out.
         // We copy that information to memory to return it before it is deleted during settlement.
-        tokensOut = InputHelpers.sortAddresses(_currentSwapTokensOut().values()); // Copy transient storage to memory
+        tokensOut = InputHelpers.sortTokens(_currentSwapTokensOut().values().asIERC20()).asAddress();
         amountsOut = new uint256[](tokensOut.length);
         for (uint256 i = 0; i < tokensOut.length; ++i) {
             amountsOut[i] = _currentSwapTokenOutAmounts().tGet(tokensOut[i]);
