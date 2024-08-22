@@ -75,7 +75,8 @@ contract E2eSwapRateProviderStableTest is E2eSwapRateProviderTest {
         // The vault does not allow trade amounts (amountGivenScaled18 or amountCalculatedScaled18) to be less than
         // MIN_TRADE_AMOUNT. For linear pools (the case of PoolMock), amountGivenScaled18 and amountCalculatedScaled18
         // are the same. So, minAmountGivenScaled18 > MIN_TRADE_AMOUNT. To reach the formula below, notice that
-        // `amountGivenRaw = amountGivenScaled18/(rateToken * scalingFactor)`.
+        // `amountGivenRaw = amountGivenScaled18/(rateToken * scalingFactor)`. There's an adjustment in the next steps
+        // to consider a stable math.
         uint256 tokenAMinTradeAmount = MIN_TRADE_AMOUNT.divUp(rateTokenA).mulUp(10 ** decimalsTokenA);
         uint256 tokenBMinTradeAmount = MIN_TRADE_AMOUNT.divUp(rateTokenB).mulUp(10 ** decimalsTokenB);
 
@@ -83,7 +84,7 @@ contract E2eSwapRateProviderStableTest is E2eSwapRateProviderTest {
         // cannot be 0. Considering that amountCalculated is tokenB, and amountGiven is tokenA:
         // 1) amountCalculatedRaw > 0
         // 2) amountCalculatedRaw = amountCalculatedScaled18 * 10^(decimalsB) / (rateB * 10^18)
-        // 3) amountCalculatedScaled18 = amountGivenScaled18 // Linear math
+        // 3) amountCalculatedScaled18 = amountGivenScaled18 // Linear math, there's a factor to stable math
         // 4) amountGivenScaled18 = amountGivenRaw * rateA * 10^18 / 10^(decumalsA)
         // With the 4 formulas above, we reach that:
         // amountCalculatedRaw > rateB * 10^(decimalsA) / (rateA * 10^(decimalsB))
@@ -91,17 +92,17 @@ contract E2eSwapRateProviderStableTest is E2eSwapRateProviderTest {
         uint256 tokenBCalculatedNotZero = (rateTokenA * (10 ** decimalsTokenB)) / (rateTokenB * (10 ** decimalsTokenA));
 
         // Use the biggest value from the 2 above to calculate the minSwapAmount. Also, multiplies by 10 to consider
-        // swap fees and compensate rate rounding issues.
-        uint256 feeFactor = 10;
+        // swap fees and compensate rate and math rounding issues.
+        uint256 mathFactor = 10;
         minSwapAmountTokenA = (
             tokenAMinTradeAmount > tokenACalculatedNotZero
-                ? feeFactor * tokenAMinTradeAmount
-                : feeFactor * tokenACalculatedNotZero
+                ? mathFactor * tokenAMinTradeAmount
+                : mathFactor * tokenACalculatedNotZero
         );
         minSwapAmountTokenB = (
             tokenBMinTradeAmount > tokenBCalculatedNotZero
-                ? feeFactor * tokenBMinTradeAmount
-                : feeFactor * tokenBCalculatedNotZero
+                ? mathFactor * tokenBMinTradeAmount
+                : mathFactor * tokenBCalculatedNotZero
         );
 
         // 50% of pool init amount to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
