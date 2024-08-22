@@ -614,10 +614,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         return (_bufferTokenBalances[token].getBalanceRaw(), _bufferTokenBalances[token].getBalanceDerived());
     }
 
-    function isERC4626Initialized(IERC4626 token) external view returns (bool) {
-        return _bufferAssets[token] != address(0);
-    }
-
     /*******************************************************************************
                                 Authentication
     *******************************************************************************/
