@@ -106,21 +106,6 @@ struct PoolRoleAccounts {
 }
 
 /**
- * @notice Record pool function permissions (as a sort of local authorizer).
- * @dev For each permissioned function controlled by a role (e.g., pause/unpause), store the account empowered to call
- * that function, and flag indicating whether, if the caller is not the designated account (which might be zero),
- * it should then delegate to governance. If the `onlyOwner` flag is true, it can only be called by the designated
- * account.
- *
- * @param account The account with permission to perform the role
- * @param onlyOwner Flag indicating whether it is reserved to the account alone, or also governance
- */
-struct PoolFunctionPermission {
-    address account;
-    bool onlyOwner;
-}
-
-/**
  * @notice Token types supported by the Vault.
  * @dev In general, pools may contain any combination of these tokens.
  *

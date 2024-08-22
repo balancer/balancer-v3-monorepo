@@ -46,8 +46,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         return
             abi.decode(
                 _vault.unlock(
-                    abi.encodeWithSelector(
-                        Router.initializeHook.selector,
+                    abi.encodeCall(
+                        Router.initializeHook,
                         InitializeHookParams({
                             sender: msg.sender,
                             pool: pool,
@@ -122,8 +122,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable saveSender returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    Router.addLiquidityHook.selector,
+                abi.encodeCall(
+                    Router.addLiquidityHook,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -149,8 +149,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable saveSender returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    Router.addLiquidityHook.selector,
+                abi.encodeCall(
+                    Router.addLiquidityHook,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -183,8 +183,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         (uint256[] memory amountsIn, , ) = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    Router.addLiquidityHook.selector,
+                abi.encodeCall(
+                    Router.addLiquidityHook,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -210,8 +210,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         bytes memory userData
     ) external payable saveSender {
         _vault.unlock(
-            abi.encodeWithSelector(
-                Router.addLiquidityHook.selector,
+            abi.encodeCall(
+                Router.addLiquidityHook,
                 AddLiquidityHookParams({
                     sender: msg.sender,
                     pool: pool,
@@ -236,8 +236,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         return
             abi.decode(
                 _vault.unlock(
-                    abi.encodeWithSelector(
-                        Router.addLiquidityHook.selector,
+                    abi.encodeCall(
+                        Router.addLiquidityHook,
                         AddLiquidityHookParams({
                             sender: msg.sender,
                             pool: pool,
@@ -322,8 +322,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external payable saveSender returns (uint256[] memory amountsOut) {
         (, amountsOut, ) = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    Router.removeLiquidityHook.selector,
+                abi.encodeCall(
+                    Router.removeLiquidityHook,
                     RemoveLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -356,8 +356,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         (, uint256[] memory amountsOut, ) = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    Router.removeLiquidityHook.selector,
+                abi.encodeCall(
+                    Router.removeLiquidityHook,
                     RemoveLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -388,8 +388,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         (bptAmountIn, , ) = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    Router.removeLiquidityHook.selector,
+                abi.encodeCall(
+                    Router.removeLiquidityHook,
                     RemoveLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -418,8 +418,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         return
             abi.decode(
                 _vault.unlock(
-                    abi.encodeWithSelector(
-                        Router.removeLiquidityHook.selector,
+                    abi.encodeCall(
+                        Router.removeLiquidityHook,
                         RemoveLiquidityHookParams({
                             sender: msg.sender,
                             pool: pool,
@@ -441,9 +441,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256 exactBptAmountIn
     ) external returns (uint256[] memory amountsOut) {
         amountsOut = abi.decode(
-            _vault.unlock(
-                abi.encodeWithSelector(Router.removeLiquidityRecoveryHook.selector, pool, msg.sender, exactBptAmountIn)
-            ),
+            _vault.unlock(abi.encodeCall(Router.removeLiquidityRecoveryHook, (pool, msg.sender, exactBptAmountIn))),
             (uint256[])
         );
     }
@@ -540,8 +538,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         return
             abi.decode(
                 _vault.unlock(
-                    abi.encodeWithSelector(
-                        Router.swapSingleTokenHook.selector,
+                    abi.encodeCall(
+                        Router.swapSingleTokenHook,
                         SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
@@ -574,8 +572,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         return
             abi.decode(
                 _vault.unlock(
-                    abi.encodeWithSelector(
-                        Router.swapSingleTokenHook.selector,
+                    abi.encodeCall(
+                        Router.swapSingleTokenHook,
                         SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_OUT,
@@ -653,13 +651,15 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         return
             abi.decode(
                 _vault.unlock(
-                    abi.encodeWithSelector(
-                        Router.addLiquidityToBufferHook.selector,
-                        wrappedToken,
-                        amountUnderlyingRaw,
-                        amountWrappedRaw,
-                        msg.sender, // sharesOwner
-                        false // isBufferInitialized
+                    abi.encodeCall(
+                        Router.addLiquidityToBufferHook,
+                        (
+                            wrappedToken,
+                            amountUnderlyingRaw,
+                            amountWrappedRaw,
+                            msg.sender, // sharesOwner
+                            false // isBufferInitialized
+                        )
                     )
                 ),
                 (uint256)
@@ -675,13 +675,15 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         return
             abi.decode(
                 _vault.unlock(
-                    abi.encodeWithSelector(
-                        Router.addLiquidityToBufferHook.selector,
-                        wrappedToken,
-                        amountUnderlyingRaw,
-                        amountWrappedRaw,
-                        msg.sender, // sharesOwner
-                        true // isBufferInitialized
+                    abi.encodeCall(
+                        Router.addLiquidityToBufferHook,
+                        (
+                            wrappedToken,
+                            amountUnderlyingRaw,
+                            amountWrappedRaw,
+                            msg.sender, // sharesOwner
+                            true // isBufferInitialized
+                        )
                     )
                 ),
                 (uint256)
@@ -714,49 +716,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         _takeTokenIn(sharesOwner, IERC20(address(wrappedToken)), amountWrappedRaw, false);
     }
 
-    /// @inheritdoc IRouter
-    function removeLiquidityFromBuffer(
-        IERC4626 wrappedToken,
-        uint256 sharesToRemove
-    ) external returns (uint256, uint256) {
-        return
-            abi.decode(
-                _vault.unlock(
-                    abi.encodeWithSelector(
-                        Router.removeLiquidityFromBufferHook.selector,
-                        wrappedToken,
-                        sharesToRemove,
-                        msg.sender
-                    )
-                ),
-                (uint256, uint256)
-            );
-    }
-
-    /**
-     * @notice Hook for removing liquidity from vault buffers.
-     * @dev Can only be called by the Vault.
-     * @param wrappedToken Address of the wrapped token that implements IERC4626
-     * @param sharesToRemove Amount of shares to remove from the buffer. Cannot be greater than sharesOwner
-     * total shares
-     * @param sharesOwner Address of contract that owns the deposited liquidity.
-     * @return removedUnderlyingBalanceRaw Amount of underlying tokens returned to the user
-     * @return removedWrappedBalanceRaw Amount of wrapped tokens returned to the user
-     */
-    function removeLiquidityFromBufferHook(
-        IERC4626 wrappedToken,
-        uint256 sharesToRemove,
-        address sharesOwner
-    ) external nonReentrant onlyVault returns (uint256 removedUnderlyingBalanceRaw, uint256 removedWrappedBalanceRaw) {
-        (removedUnderlyingBalanceRaw, removedWrappedBalanceRaw) = _vault.removeLiquidityFromBuffer(
-            wrappedToken,
-            sharesToRemove,
-            sharesOwner
-        );
-        _sendTokenOut(sharesOwner, IERC20(_vault.getBufferAsset(wrappedToken)), removedUnderlyingBalanceRaw, false);
-        _sendTokenOut(sharesOwner, IERC20(address(wrappedToken)), removedWrappedBalanceRaw, false);
-    }
-
     /*******************************************************************************
                                       Queries
     *******************************************************************************/
@@ -769,8 +728,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external saveSender returns (uint256[] memory amountsIn) {
         (amountsIn, , ) = abi.decode(
             _vault.quote(
-                abi.encodeWithSelector(
-                    Router.queryAddLiquidityHook.selector,
+                abi.encodeCall(
+                    Router.queryAddLiquidityHook,
                     AddLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to add liquidity to any recipient.
@@ -796,8 +755,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     ) external saveSender returns (uint256 bptAmountOut) {
         (, bptAmountOut, ) = abi.decode(
             _vault.quote(
-                abi.encodeWithSelector(
-                    Router.queryAddLiquidityHook.selector,
+                abi.encodeCall(
+                    Router.queryAddLiquidityHook,
                     AddLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to add liquidity to any recipient.
@@ -830,8 +789,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         (uint256[] memory amountsIn, , ) = abi.decode(
             _vault.quote(
-                abi.encodeWithSelector(
-                    Router.queryAddLiquidityHook.selector,
+                abi.encodeCall(
+                    Router.queryAddLiquidityHook,
                     AddLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to add liquidity to any recipient.
@@ -861,8 +820,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         return
             abi.decode(
                 _vault.quote(
-                    abi.encodeWithSelector(
-                        Router.queryAddLiquidityHook.selector,
+                    abi.encodeCall(
+                        Router.queryAddLiquidityHook,
                         AddLiquidityHookParams({
                             // We use the Router as a sender to simplify basic query functions,
                             // but it is possible to add liquidity to any recipient.
@@ -912,8 +871,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         uint256[] memory minAmountsOut = new uint256[](_vault.getPoolTokens(pool).length);
         (, amountsOut, ) = abi.decode(
             _vault.quote(
-                abi.encodeWithSelector(
-                    Router.queryRemoveLiquidityHook.selector,
+                abi.encodeCall(
+                    Router.queryRemoveLiquidityHook,
                     RemoveLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to remove liquidity from any sender.
@@ -943,8 +902,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         (, uint256[] memory amountsOut, ) = abi.decode(
             _vault.quote(
-                abi.encodeWithSelector(
-                    Router.queryRemoveLiquidityHook.selector,
+                abi.encodeCall(
+                    Router.queryRemoveLiquidityHook,
                     RemoveLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to remove liquidity from any sender.
@@ -975,8 +934,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
 
         (bptAmountIn, , ) = abi.decode(
             _vault.quote(
-                abi.encodeWithSelector(
-                    Router.queryRemoveLiquidityHook.selector,
+                abi.encodeCall(
+                    Router.queryRemoveLiquidityHook,
                     RemoveLiquidityHookParams({
                         // We use the Router as a sender to simplify basic query functions,
                         // but it is possible to remove liquidity from any sender.
@@ -1006,8 +965,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         return
             abi.decode(
                 _vault.quote(
-                    abi.encodeWithSelector(
-                        Router.queryRemoveLiquidityHook.selector,
+                    abi.encodeCall(
+                        Router.queryRemoveLiquidityHook,
                         RemoveLiquidityHookParams({
                             // We use the Router as a sender to simplify basic query functions,
                             // but it is possible to remove liquidity from any sender.
@@ -1033,12 +992,7 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         return
             abi.decode(
                 _vault.quote(
-                    abi.encodeWithSelector(
-                        Router.queryRemoveLiquidityRecoveryHook.selector,
-                        pool,
-                        address(this),
-                        exactBptAmountIn
-                    )
+                    abi.encodeCall(Router.queryRemoveLiquidityRecoveryHook, (pool, address(this), exactBptAmountIn))
                 ),
                 (uint256[])
             );
@@ -1097,8 +1051,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         return
             abi.decode(
                 _vault.quote(
-                    abi.encodeWithSelector(
-                        Router.querySwapHook.selector,
+                    abi.encodeCall(
+                        Router.querySwapHook,
                         SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_IN,
@@ -1128,8 +1082,8 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         return
             abi.decode(
                 _vault.quote(
-                    abi.encodeWithSelector(
-                        Router.querySwapHook.selector,
+                    abi.encodeCall(
+                        Router.querySwapHook,
                         SwapSingleTokenHookParams({
                             sender: msg.sender,
                             kind: SwapKind.EXACT_OUT,
