@@ -28,7 +28,7 @@ contract HooksConfigLibHelpersTest is Test {
     }
 
     //#region callComputeDynamicSwapFeeHook
-    function testCallComputeDynamicSwapFeeHook() public {
+    function testCallComputeDynamicSwapFee() public {
         uint256 swapFeePercentage = MAX_FEE_PERCENTAGE;
 
         PoolSwapParams memory swapParams;
@@ -54,7 +54,7 @@ contract HooksConfigLibHelpersTest is Test {
         assertEq(value, swapFeePercentage, "swap fee percentage mismatch");
     }
 
-    function testCallComputeDynamicSwapFeeHookRevertIfCallIsNotSuccess() public {
+    function testCallComputeDynamicSwapFeeRevertIfCallIsNotSuccess() public {
         uint256 swapFeePercentage = MAX_FEE_PERCENTAGE;
 
         PoolSwapParams memory swapParams;
@@ -82,7 +82,7 @@ contract HooksConfigLibHelpersTest is Test {
     //#endregion
 
     //#region callBeforeSwapHook tests
-    function testCallBeforeSwapHook() public {
+    function testCallBeforeSwap() public {
         PoolSwapParams memory swapParams;
         vm.mockCall(
             hooksContract,
@@ -93,7 +93,7 @@ contract HooksConfigLibHelpersTest is Test {
         hooksConfigLibMock.callBeforeSwapHook(swapParams, pool, IHooks(hooksContract));
     }
 
-    function testCallBeforeSwapHookRevertIfCallIsNotSuccess() public {
+    function testCallBeforeSwapRevertIfCallIsNotSuccess() public {
         PoolSwapParams memory swapParams;
         vm.mockCall(
             hooksContract,
@@ -108,7 +108,7 @@ contract HooksConfigLibHelpersTest is Test {
     // #endregion
 
     //#region callAfterSwapHook tests
-    function testCallAfterSwapHookExactIn() public {
+    function testCallAfterSwapExactIn() public {
         (
             uint256 amountCalculatedScaled18,
             uint256 amountCalculatedRaw,
@@ -116,10 +116,10 @@ contract HooksConfigLibHelpersTest is Test {
             SwapParams memory params,
             SwapState memory state,
             PoolData memory poolData
-        ) = _getParamsForCallAfterSwapHook(SwapKind.EXACT_IN, 0);
+        ) = _getParamsForCallAfterSwap(SwapKind.EXACT_IN, 0);
 
         PoolConfigBits config;
-        uint256 value = _callAfterSwapHook(
+        uint256 value = _callAfterSwap(
             config,
             amountCalculatedScaled18,
             amountCalculatedRaw,
@@ -132,7 +132,7 @@ contract HooksConfigLibHelpersTest is Test {
         assertEq(value, amountCalculatedRaw, "Wrong amountCalculatedRaw");
     }
 
-    function testCallAfterSwapHookExactOut() public {
+    function testCallAfterSwapExactOut() public {
         (
             uint256 amountCalculatedScaled18,
             uint256 amountCalculatedRaw,
@@ -140,10 +140,10 @@ contract HooksConfigLibHelpersTest is Test {
             SwapParams memory params,
             SwapState memory state,
             PoolData memory poolData
-        ) = _getParamsForCallAfterSwapHook(SwapKind.EXACT_OUT, type(uint256).max);
+        ) = _getParamsForCallAfterSwap(SwapKind.EXACT_OUT, type(uint256).max);
 
         PoolConfigBits config;
-        uint256 value = _callAfterSwapHook(
+        uint256 value = _callAfterSwap(
             config,
             amountCalculatedScaled18,
             amountCalculatedRaw,
@@ -156,7 +156,7 @@ contract HooksConfigLibHelpersTest is Test {
         assertEq(value, amountCalculatedRaw, "Wrong amountCalculatedRaw");
     }
 
-    function testCallAfterSwapHookExactInWithAdjustedAmounts() public {
+    function testCallAfterSwapExactInWithAdjustedAmounts() public {
         (
             uint256 amountCalculatedScaled18,
             uint256 amountCalculatedRaw,
@@ -164,12 +164,12 @@ contract HooksConfigLibHelpersTest is Test {
             SwapParams memory params,
             SwapState memory state,
             PoolData memory poolData
-        ) = _getParamsForCallAfterSwapHook(SwapKind.EXACT_IN, 0);
+        ) = _getParamsForCallAfterSwap(SwapKind.EXACT_IN, 0);
 
         PoolConfigBits config;
         config = config.setHookAdjustedAmounts(true);
 
-        uint256 value = _callAfterSwapHook(
+        uint256 value = _callAfterSwap(
             config,
             amountCalculatedScaled18,
             amountCalculatedRaw,
@@ -182,7 +182,7 @@ contract HooksConfigLibHelpersTest is Test {
         assertEq(value, hookAdjustedAmountCalculatedRaw, "return value mismatch");
     }
 
-    function testCallAfterSwapHookExactOutWithAdjustedAmounts() public {
+    function testCallAfterSwapExactOutWithAdjustedAmounts() public {
         (
             uint256 amountCalculatedScaled18,
             uint256 amountCalculatedRaw,
@@ -190,12 +190,12 @@ contract HooksConfigLibHelpersTest is Test {
             SwapParams memory params,
             SwapState memory state,
             PoolData memory poolData
-        ) = _getParamsForCallAfterSwapHook(SwapKind.EXACT_OUT, type(uint256).max);
+        ) = _getParamsForCallAfterSwap(SwapKind.EXACT_OUT, type(uint256).max);
 
         PoolConfigBits config;
         config = config.setHookAdjustedAmounts(true);
 
-        uint256 value = _callAfterSwapHook(
+        uint256 value = _callAfterSwap(
             config,
             amountCalculatedScaled18,
             amountCalculatedRaw,
@@ -208,7 +208,7 @@ contract HooksConfigLibHelpersTest is Test {
         assertEq(value, hookAdjustedAmountCalculatedRaw, "return value mismatch");
     }
 
-    function testCallAfterSwapHookExactInRevertHookAdjustedSwapLimit() public {
+    function testCallAfterSwapExactInRevertAdjustedSwapLimit() public {
         (
             uint256 amountCalculatedScaled18,
             uint256 amountCalculatedRaw,
@@ -216,12 +216,12 @@ contract HooksConfigLibHelpersTest is Test {
             SwapParams memory params,
             SwapState memory state,
             PoolData memory poolData
-        ) = _getParamsForCallAfterSwapHook(SwapKind.EXACT_IN, type(uint256).max);
+        ) = _getParamsForCallAfterSwap(SwapKind.EXACT_IN, type(uint256).max);
 
         PoolConfigBits config;
         config = config.setHookAdjustedAmounts(true);
 
-        _callAfterSwapHookAndExpectRevert(
+        _callAfterSwapAndExpectRevert(
             config,
             amountCalculatedScaled18,
             amountCalculatedRaw,
@@ -232,7 +232,7 @@ contract HooksConfigLibHelpersTest is Test {
         );
     }
 
-    function testCallAfterSwapHookExactOutRevertHookAdjustedSwapLimit() public {
+    function testCallAfterSwapExactOutRevertAdjustedSwapLimit() public {
         (
             uint256 amountCalculatedScaled18,
             uint256 amountCalculatedRaw,
@@ -240,12 +240,12 @@ contract HooksConfigLibHelpersTest is Test {
             SwapParams memory params,
             SwapState memory state,
             PoolData memory poolData
-        ) = _getParamsForCallAfterSwapHook(SwapKind.EXACT_OUT, 0);
+        ) = _getParamsForCallAfterSwap(SwapKind.EXACT_OUT, 0);
 
         PoolConfigBits config;
         config = config.setHookAdjustedAmounts(true);
 
-        _callAfterSwapHookAndExpectRevert(
+        _callAfterSwapAndExpectRevert(
             config,
             amountCalculatedScaled18,
             amountCalculatedRaw,
@@ -256,7 +256,53 @@ contract HooksConfigLibHelpersTest is Test {
         );
     }
 
-    function _getParamsForCallAfterSwapHook(
+    function testCallAfterSwapRevertIfCallIsNotSuccess() public {
+        (
+            uint256 amountCalculatedScaled18,
+            uint256 amountCalculatedRaw,
+            uint256 hookAdjustedAmountCalculatedRaw,
+            SwapParams memory params,
+            SwapState memory state,
+            PoolData memory poolData
+        ) = _getParamsForCallAfterSwap(SwapKind.EXACT_OUT, 0);
+
+        vm.mockCall(
+            hooksContract,
+            abi.encodeWithSelector(
+                IHooks.onAfterSwap.selector,
+                AfterSwapParams({
+                    kind: params.kind,
+                    tokenIn: params.tokenIn,
+                    tokenOut: params.tokenOut,
+                    amountInScaled18: amountCalculatedScaled18,
+                    amountOutScaled18: state.amountGivenScaled18,
+                    tokenInBalanceScaled18: poolData.balancesLiveScaled18[state.indexIn],
+                    tokenOutBalanceScaled18: poolData.balancesLiveScaled18[state.indexOut],
+                    amountCalculatedScaled18: amountCalculatedScaled18,
+                    amountCalculatedRaw: amountCalculatedRaw,
+                    router: router,
+                    pool: params.pool,
+                    userData: params.userData
+                })
+            ),
+            abi.encode(false, hookAdjustedAmountCalculatedRaw)
+        );
+
+        PoolConfigBits config;
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.AfterSwapHookFailed.selector));
+        hooksConfigLibMock.callAfterSwapHook(
+            config,
+            amountCalculatedScaled18,
+            amountCalculatedRaw,
+            router,
+            params,
+            state,
+            poolData,
+            IHooks(hooksContract)
+        );
+    }
+
+    function _getParamsForCallAfterSwap(
         SwapKind kind,
         uint256 limitRaw
     )
@@ -287,7 +333,7 @@ contract HooksConfigLibHelpersTest is Test {
         poolData.balancesLiveScaled18 = new uint256[](2);
     }
 
-    function _callAfterSwapHook(
+    function _callAfterSwap(
         PoolConfigBits config,
         uint256 amountCalculatedScaled18,
         uint256 amountCalculatedRaw,
@@ -335,7 +381,7 @@ contract HooksConfigLibHelpersTest is Test {
             );
     }
 
-    function _callAfterSwapHookAndExpectRevert(
+    function _callAfterSwapAndExpectRevert(
         PoolConfigBits config,
         uint256 amountCalculatedScaled18,
         uint256 amountCalculatedRaw,
@@ -393,7 +439,7 @@ contract HooksConfigLibHelpersTest is Test {
     //#endregion
 
     //#region callBeforeAddLiquidityHook tests
-    function testCallBeforeAddLiquidityHook() public {
+    function testCallBeforeAddLiquidity() public {
         uint256[] memory maxAmountsInScaled18 = new uint256[](2);
 
         AddLiquidityParams memory params;
@@ -428,7 +474,7 @@ contract HooksConfigLibHelpersTest is Test {
         );
     }
 
-    function testCallBeforeAddLiquidityHookRevertIfCallIsNotSuccess() public {
+    function testCallBeforeAddLiquidityRevertIfCallIsNotSuccess() public {
         uint256[] memory maxAmountsInScaled18 = new uint256[](2);
 
         AddLiquidityParams memory params;
@@ -467,7 +513,7 @@ contract HooksConfigLibHelpersTest is Test {
     //#endregion
 
     //#region callAfterAddLiquidityHook tests
-    function testCallAfterAddLiquidityHook() public {
+    function testCallAfterAddLiquidity() public {
         (
             uint256[] memory amountsInScaled18,
             uint256[] memory amountsInRaw,
@@ -475,10 +521,10 @@ contract HooksConfigLibHelpersTest is Test {
             uint256[] memory hookAdjustedAmountsInRaw,
             AddLiquidityParams memory params,
             PoolData memory poolData
-        ) = _getParamsForCallAfterAddLiquidityHook();
+        ) = _getParamsForCallAfterAddLiquidity();
 
         PoolConfigBits config;
-        uint256[] memory values = _callAfterAddLiquidityHook(
+        uint256[] memory values = _callAfterAddLiquidity(
             config,
             amountsInScaled18,
             amountsInRaw,
@@ -493,7 +539,7 @@ contract HooksConfigLibHelpersTest is Test {
         assertEq(values[1], amountsInRaw[1], "amountsInRaw[1] mismatch");
     }
 
-    function testCallAfterAddLiquidityHookWithHookAdjustedAmounts() public {
+    function testCallAfterAddLiquidityWithAdjustedAmounts() public {
         (
             uint256[] memory amountsInScaled18,
             uint256[] memory amountsInRaw,
@@ -501,11 +547,11 @@ contract HooksConfigLibHelpersTest is Test {
             uint256[] memory hookAdjustedAmountsInRaw,
             AddLiquidityParams memory params,
             PoolData memory poolData
-        ) = _getParamsForCallAfterAddLiquidityHook();
+        ) = _getParamsForCallAfterAddLiquidity();
 
         PoolConfigBits config;
         config = config.setHookAdjustedAmounts(true);
-        uint256[] memory values = _callAfterAddLiquidityHook(
+        uint256[] memory values = _callAfterAddLiquidity(
             config,
             amountsInScaled18,
             amountsInRaw,
@@ -520,7 +566,7 @@ contract HooksConfigLibHelpersTest is Test {
         assertEq(values[1], hookAdjustedAmountsInRaw[1], "hookAdjustedAmountsInRaw[1] mismatch");
     }
 
-    function testCallAfterAddLiquidityHookRevertIfHookAdjustedAmountsInRawHaveDifferentLength() public {
+    function testCallAfterAddLiquidityRevertIfAdjustedAmountsInRawHaveDifferentLength() public {
         (
             uint256[] memory amountsInScaled18,
             uint256[] memory amountsInRaw,
@@ -528,7 +574,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256[] memory hookAdjustedAmountsInRaw,
             AddLiquidityParams memory params,
             PoolData memory poolData
-        ) = _getParamsForCallAfterAddLiquidityHook();
+        ) = _getParamsForCallAfterAddLiquidity();
 
         hookAdjustedAmountsInRaw = new uint256[](3);
 
@@ -536,7 +582,7 @@ contract HooksConfigLibHelpersTest is Test {
         config = config.setHookAdjustedAmounts(true);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.AfterAddLiquidityHookFailed.selector));
-        _callAfterAddLiquidityHook(
+        _callAfterAddLiquidity(
             config,
             amountsInScaled18,
             amountsInRaw,
@@ -547,7 +593,7 @@ contract HooksConfigLibHelpersTest is Test {
         );
     }
 
-    function testCallAfterAddLiquidityHookRevertIfCallIsNotSuccess() public {
+    function testCallAfterAddLiquidityRevertIfCallIsNotSuccess() public {
         (
             uint256[] memory amountsInScaled18,
             uint256[] memory amountsInRaw,
@@ -555,7 +601,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256[] memory hookAdjustedAmountsInRaw,
             AddLiquidityParams memory params,
             PoolData memory poolData
-        ) = _getParamsForCallAfterAddLiquidityHook();
+        ) = _getParamsForCallAfterAddLiquidity();
 
         vm.mockCall(
             hooksContract,
@@ -588,7 +634,7 @@ contract HooksConfigLibHelpersTest is Test {
         );
     }
 
-    function testCallAfterAddLiquidityHookRevertIfHookAdjustedAmountsInRawAboveMaxAmountsIn() public {
+    function testCallAfterAddLiquidityRevertIfAdjustedAmountsInRawAboveMaxAmountsIn() public {
         (
             uint256[] memory amountsInScaled18,
             uint256[] memory amountsInRaw,
@@ -596,7 +642,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256[] memory hookAdjustedAmountsInRaw,
             AddLiquidityParams memory params,
             PoolData memory poolData
-        ) = _getParamsForCallAfterAddLiquidityHook();
+        ) = _getParamsForCallAfterAddLiquidity();
 
         params.maxAmountsIn = new uint256[](2);
         params.maxAmountsIn[0] = hookAdjustedAmountsInRaw[0] - 1;
@@ -613,7 +659,7 @@ contract HooksConfigLibHelpersTest is Test {
                 params.maxAmountsIn[0]
             )
         );
-        _callAfterAddLiquidityHook(
+        _callAfterAddLiquidity(
             config,
             amountsInScaled18,
             amountsInRaw,
@@ -624,7 +670,7 @@ contract HooksConfigLibHelpersTest is Test {
         );
     }
 
-    function _getParamsForCallAfterAddLiquidityHook()
+    function _getParamsForCallAfterAddLiquidity()
         internal
         view
         returns (
@@ -657,7 +703,7 @@ contract HooksConfigLibHelpersTest is Test {
         poolData.tokens = new IERC20[](2);
     }
 
-    function _callAfterAddLiquidityHook(
+    function _callAfterAddLiquidity(
         PoolConfigBits config,
         uint256[] memory amountsInScaled18,
         uint256[] memory amountsInRaw,
@@ -698,7 +744,7 @@ contract HooksConfigLibHelpersTest is Test {
     //#endregion
 
     //#region callBeforeRemoveLiquidityHook tests
-    function callBeforeRemoveLiquidityHook() public {
+    function callBeforeRemoveLiquidity() public {
         uint256[] memory minAmountsOutScaled18 = new uint256[](2);
 
         RemoveLiquidityParams memory params;
@@ -733,7 +779,7 @@ contract HooksConfigLibHelpersTest is Test {
         );
     }
 
-    function callBeforeRemoveLiquidityHookRevertIfCallIsNotSuccess() public {
+    function callBeforeRemoveLiquidityRevertIfCallIsNotSuccess() public {
         uint256[] memory minAmountsOutScaled18 = new uint256[](2);
 
         RemoveLiquidityParams memory params;
@@ -772,7 +818,7 @@ contract HooksConfigLibHelpersTest is Test {
     //#endregion
 
     //#region callAfterRemoveLiquidityHook tests
-    function testCallAfterRemoveLiquidityHook() public {
+    function testCallAfterRemoveLiquidity() public {
         (
             uint256[] memory amountsOutScaled18,
             uint256[] memory amountsOutRaw,
@@ -780,7 +826,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256[] memory hookAdjustedAmountsOutRaw,
             RemoveLiquidityParams memory params,
             PoolData memory poolData
-        ) = _getParamsForCallAfterRemoveLiquidityHook();
+        ) = _getParamsForCallAfterRemoveLiquidity();
 
         PoolConfigBits config;
         uint256[] memory values = _callAfterRemoveLiquidityHook(
@@ -798,7 +844,7 @@ contract HooksConfigLibHelpersTest is Test {
         assertEq(values[1], amountsOutRaw[1], "amountsOutRaw[1] mismatch");
     }
 
-    function testCallAfterRemoveLiquidityHookWithHookAdjustedAmounts() public {
+    function testCallAfterRemoveLiquidityWithAdjustedAmounts() public {
         (
             uint256[] memory amountsOutScaled18,
             uint256[] memory amountsOutRaw,
@@ -806,7 +852,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256[] memory hookAdjustedAmountsOutRaw,
             RemoveLiquidityParams memory params,
             PoolData memory poolData
-        ) = _getParamsForCallAfterRemoveLiquidityHook();
+        ) = _getParamsForCallAfterRemoveLiquidity();
 
         PoolConfigBits config;
         config = config.setHookAdjustedAmounts(true);
@@ -825,7 +871,7 @@ contract HooksConfigLibHelpersTest is Test {
         assertEq(values[1], hookAdjustedAmountsOutRaw[1], "hookAdjustedAmountsOutRaw[1] mismatch");
     }
 
-    function testCallAfterRemoveLiquidityHookRevertIfHookAdjustedAmountsOutRawHaveDifferentLength() public {
+    function testCallAfterRemoveLiquidityRevertIfAdjustedAmountsOutRawHaveDifferentLength() public {
         (
             uint256[] memory amountsOutScaled18,
             uint256[] memory amountsOutRaw,
@@ -833,7 +879,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256[] memory hookAdjustedAmountsOutRaw,
             RemoveLiquidityParams memory params,
             PoolData memory poolData
-        ) = _getParamsForCallAfterRemoveLiquidityHook();
+        ) = _getParamsForCallAfterRemoveLiquidity();
 
         hookAdjustedAmountsOutRaw = new uint256[](3);
 
@@ -852,7 +898,7 @@ contract HooksConfigLibHelpersTest is Test {
         );
     }
 
-    function testCallAfterRemoveLiquidityHookRevertIfCallIsNotSuccess() public {
+    function testCallAfterRemoveLiquidityRevertIfCallIsNotSuccess() public {
         (
             uint256[] memory amountsOutScaled18,
             uint256[] memory amountsOutRaw,
@@ -860,7 +906,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256[] memory hookAdjustedAmountsOutRaw,
             RemoveLiquidityParams memory params,
             PoolData memory poolData
-        ) = _getParamsForCallAfterRemoveLiquidityHook();
+        ) = _getParamsForCallAfterRemoveLiquidity();
 
         vm.mockCall(
             hooksContract,
@@ -893,7 +939,7 @@ contract HooksConfigLibHelpersTest is Test {
         );
     }
 
-    function testCallAfterRemoveLiquidityHookRevertIfHookAdjustedAmountsOutRawAboveMinAmountsOut() public {
+    function testCallAfterRemoveLiquidityRevertIfAdjustedAmountsOutRawAboveMinAmountsOut() public {
         (
             uint256[] memory amountsOutScaled18,
             uint256[] memory amountsOutRaw,
@@ -901,7 +947,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256[] memory hookAdjustedAmountsOutRaw,
             RemoveLiquidityParams memory params,
             PoolData memory poolData
-        ) = _getParamsForCallAfterRemoveLiquidityHook();
+        ) = _getParamsForCallAfterRemoveLiquidity();
 
         params.minAmountsOut = new uint256[](2);
         params.minAmountsOut[0] = hookAdjustedAmountsOutRaw[0] + 1;
@@ -929,7 +975,7 @@ contract HooksConfigLibHelpersTest is Test {
         );
     }
 
-    function _getParamsForCallAfterRemoveLiquidityHook()
+    function _getParamsForCallAfterRemoveLiquidity()
         internal
         view
         returns (
@@ -1000,7 +1046,7 @@ contract HooksConfigLibHelpersTest is Test {
     //#endregion
 
     //#region callBeforeInitializeHook tests
-    function testCallBeforeInitializeHook() public {
+    function testCallBeforeInitialize() public {
         uint256[] memory exactAmountsInScaled18 = new uint256[](2);
         bytes memory userData = new bytes(0);
 
@@ -1013,7 +1059,7 @@ contract HooksConfigLibHelpersTest is Test {
         hooksConfigLibMock.callBeforeInitializeHook(exactAmountsInScaled18, userData, IHooks(hooksContract));
     }
 
-    function testCallBeforeInitializeHookRevertIfCallIsNotSuccess() public {
+    function testCallBeforeInitializeRevertIfCallIsNotSuccess() public {
         uint256[] memory exactAmountsInScaled18 = new uint256[](2);
         bytes memory userData = new bytes(0);
 
@@ -1030,7 +1076,7 @@ contract HooksConfigLibHelpersTest is Test {
     //#endregion
 
     //#region callAfterInitializeHook tests
-    function testCallAfterInitializeHook() public {
+    function testCallAfterInitialize() public {
         uint256[] memory exactAmountsInScaled18 = new uint256[](2);
         uint256 bptAmountOut = 1e18;
         bytes memory userData = new bytes(0);
@@ -1049,7 +1095,7 @@ contract HooksConfigLibHelpersTest is Test {
         );
     }
 
-    function testCallAfterInitializeHookRevertIfCallIsNotSuccess() public {
+    function testCallAfterInitializeRevertIfCallIsNotSuccess() public {
         uint256[] memory exactAmountsInScaled18 = new uint256[](2);
         uint256 bptAmountOut = 1e18;
         bytes memory userData = new bytes(0);
