@@ -87,8 +87,11 @@ contract WeightedPoolTest is BasePoolTest {
     }
 
     function testGetBptRate() public {
-        uint256 invariantBefore = WeightedMath.computeInvariant(weights, [TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray());
-        uint256 invariantAfter = WeightedMath.computeInvariant(
+        uint256 invariantBefore = WeightedMath.computeInvariantDown(
+            weights,
+            [TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray()
+        );
+        uint256 invariantAfter = WeightedMath.computeInvariantDown(
             weights,
             [2 * TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray()
         );

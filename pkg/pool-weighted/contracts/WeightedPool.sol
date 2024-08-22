@@ -13,7 +13,12 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { SwapKind, PoolSwapParams, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    SwapKind,
+    PoolSwapParams,
+    PoolConfig,
+    Rounding
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
@@ -38,7 +43,7 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     // This means they have 0.00001% resolution (i.e., any non-zero bits < 1e11 will cause precision loss).
     // Minimum values help make the math well-behaved (i.e., the swap fee should overwhelm any rounding error).
     // Maximum values protect users by preventing permissioned actors from setting excessively high swap fees.
-    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
+    uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e13; // 0.001%
     uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
     // A minimum normalized weight imposes a maximum weight ratio. We need this due to limitations in the
@@ -105,8 +110,12 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
     }
 
     /// @inheritdoc IBasePool
-    function computeInvariant(uint256[] memory balancesLiveScaled18) public view returns (uint256) {
-        return WeightedMath.computeInvariant(_getNormalizedWeights(), balancesLiveScaled18);
+    function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding rounding) public view returns (uint256) {
+        if (rounding == Rounding.ROUND_DOWN) {
+            return WeightedMath.computeInvariantDown(_getNormalizedWeights(), balancesLiveScaled18);
+        } else {
+            return WeightedMath.computeInvariantUp(_getNormalizedWeights(), balancesLiveScaled18);
+        }
     }
 
     /// @inheritdoc IBasePool

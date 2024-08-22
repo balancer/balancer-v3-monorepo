@@ -308,6 +308,6 @@ contract E2eSwapWeightedTest is E2eSwapTest {
 
     function _calculatePoolInvariant(address poolToCalculate) private view returns (uint256 invariant) {
         (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(poolToCalculate);
-        return IBasePool(poolToCalculate).computeInvariant(lastBalancesLiveScaled18);
+        return IBasePool(poolToCalculate).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
     }
 }

@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import { ISwapFeePercentageBounds } from "./ISwapFeePercentageBounds.sol";
 import { IUnbalancedLiquidityInvariantRatioBounds } from "./IUnbalancedLiquidityInvariantRatioBounds.sol";
-import { SwapKind, PoolSwapParams } from "./VaultTypes.sol";
+import { PoolSwapParams, Rounding, SwapKind } from "./VaultTypes.sol";
 
 /**
  * @notice Base interface for a Balancer Pool.
@@ -21,14 +21,23 @@ interface IBasePool is ISwapFeePercentageBounds, IUnbalancedLiquidityInvariantRa
     /**
      * @notice Computes the pool's invariant.
      * @dev This function computes the invariant based on current balances (and potentially other pool state).
+     * The given rounding direction must be respected for the Vault to round in its favor when calling this function.
+     * If the invariant computation involves no precision loss (e.g. simple sum of balances), the same result can be
+     * returned for both rounding directions.
+     *
      * @param balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
+     * @param rounding Rounding direction to consider when computing the invariant
      * @return invariant The calculated invariant of the pool, represented as a uint256
      */
-    function computeInvariant(uint256[] memory balancesLiveScaled18) external view returns (uint256 invariant);
+    function computeInvariant(
+        uint256[] memory balancesLiveScaled18,
+        Rounding rounding
+    ) external view returns (uint256 invariant);
 
     /**
      * @dev Computes the new balance of a token after an operation, given the invariant growth ratio and all other
      * balances. Similar to V2's `_getTokenBalanceGivenInvariantAndAllOtherBalances` in StableMath.
+     * The pool must round for the Vault to round in the protocol's favor when calling this function.
      *
      * @param balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
      * @param tokenInIndex The index of the token we're computing the balance for, sorted in token registration order

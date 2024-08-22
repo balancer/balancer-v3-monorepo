@@ -10,6 +10,7 @@ import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -456,7 +457,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
         for (uint256 i = 0; i < pools.length; i++) {
             (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(pools[i]);
-            poolInvariants[i] = IBasePool(pools[i]).computeInvariant(lastBalancesLiveScaled18);
+            poolInvariants[i] = IBasePool(pools[i]).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
         }
     }
 

@@ -264,8 +264,8 @@ abstract contract BasePoolTest is BaseVaultTest {
         vm.prank(alice);
         vault.setStaticSwapFeePercentage(pool, 10e16);
 
-        uint256[] memory amountsIn = new uint256[](poolTokens.length);
-        amountsIn[0] *= 100;
+        uint256[] memory amountsIn = tokenAmounts;
+        amountsIn[0] = amountsIn[0].mulDown(IBasePool(pool).getMaximumInvariantRatio());
         vm.prank(bob);
 
         router.addLiquidityUnbalanced(pool, amountsIn, 0, false, bytes(""));

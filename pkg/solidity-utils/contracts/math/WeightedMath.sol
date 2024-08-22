@@ -66,7 +66,7 @@ library WeightedMath {
     // The invariant is used to collect protocol swap fees by comparing its value between two times.
     // So we can round always to the same direction. It is also used to initiate the BPT amount and,
     // because there is a minimum BPT, we round down the invariant.
-    function computeInvariant(
+    function computeInvariantDown(
         uint256[] memory normalizedWeights,
         uint256[] memory balances
     ) internal pure returns (uint256 invariant) {
@@ -80,6 +80,27 @@ library WeightedMath {
         invariant = FixedPoint.ONE;
         for (uint256 i = 0; i < normalizedWeights.length; ++i) {
             invariant = invariant.mulDown(balances[i].powDown(normalizedWeights[i]));
+        }
+
+        if (invariant == 0) {
+            revert ZeroInvariant();
+        }
+    }
+
+    function computeInvariantUp(
+        uint256[] memory normalizedWeights,
+        uint256[] memory balances
+    ) internal pure returns (uint256 invariant) {
+        /**********************************************************************************************
+        // invariant               _____                                                             //
+        // wi = weight index i      | |      wi                                                      //
+        // bi = balance index i     | |  bi ^   = i                                                  //
+        // i = invariant                                                                             //
+        **********************************************************************************************/
+
+        invariant = FixedPoint.ONE;
+        for (uint256 i = 0; i < normalizedWeights.length; ++i) {
+            invariant = invariant.mulUp(balances[i].powUp(normalizedWeights[i]));
         }
 
         if (invariant == 0) {

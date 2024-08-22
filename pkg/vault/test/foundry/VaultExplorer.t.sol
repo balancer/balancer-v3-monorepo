@@ -11,7 +11,7 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { SwapKind, SwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { Rounding, SwapKind, SwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -400,7 +400,7 @@ contract VaultExplorerTest is BaseVaultTest {
     function testGetBptRate() public view {
         PoolData memory poolData = vault.getPoolData(pool);
 
-        uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18);
+        uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18, Rounding.ROUND_DOWN);
         uint256 expectedRate = invariant.divDown(vault.totalSupply(pool));
 
         uint256 bptRate = explorer.getBptRate(pool);

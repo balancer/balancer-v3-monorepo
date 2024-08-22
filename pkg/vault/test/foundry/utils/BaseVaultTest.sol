@@ -12,7 +12,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
-import { HookFlags, FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { HookFlags, FEE_SCALING_FACTOR, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -242,7 +242,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         balances.poolTokens = poolBalances;
         uint256 numTokens = tokens.length;
 
-        balances.poolInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18);
+        balances.poolInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
         balances.userTokens = new uint256[](numTokens);
         balances.aliceTokens = new uint256[](numTokens);
         balances.bobTokens = new uint256[](numTokens);

@@ -7,7 +7,11 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { PoolRoleAccounts, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    PoolRoleAccounts,
+    LiquidityManagement,
+    Rounding
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
@@ -113,7 +117,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         amountsIn[daiIdx] = TOKEN_AMOUNT.mulDown(weights[daiIdx]);
         amountsIn[usdcIdx] = TOKEN_AMOUNT.mulDown(weights[usdcIdx]);
 
-        uint256 expectedBptAmountOut = math.computeInvariant(weights, amountsIn) - MIN_BPT;
+        uint256 expectedBptAmountOut = math.computeInvariant(weights, amountsIn, Rounding.ROUND_DOWN) - MIN_BPT;
 
         // Cannot use vm.prank, because `_initPool` does multiple calls.
         vm.startPrank(lp);
@@ -196,7 +200,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         initialBalances[daiIdx] = dai.balanceOf(bob);
         initialBalances[usdcIdx] = usdc.balanceOf(bob);
 
-        uint256 expectedBptAmountOut = math.computeInvariant(weights, newAmountsIn);
+        uint256 expectedBptAmountOut = math.computeInvariant(weights, newAmountsIn, Rounding.ROUND_DOWN);
 
         vm.prank(bob);
         uint256[] memory actualAmountsIn = router.addLiquidityProportional(
@@ -324,7 +328,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         uint256 totalSupply = bptAmountOut + MIN_BPT;
         uint256[] memory weights = weightedPool.getNormalizedWeights();
 
-        uint256 weightedInvariant = WeightedMath.computeInvariant(weights, amountsIn);
+        uint256 weightedInvariant = WeightedMath.computeInvariantDown(weights, amountsIn);
         uint256 expectedRate = weightedInvariant.divDown(totalSupply);
         uint256 actualRate = IRateProvider(address(pool)).getRate();
         assertEq(actualRate, expectedRate, "Wrong rate");
@@ -343,7 +347,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         expectedBalances[0] = amountsIn[0] + TOKEN_AMOUNT;
         expectedBalances[1] = amountsIn[1];
 
-        weightedInvariant = WeightedMath.computeInvariant(weights, expectedBalances);
+        weightedInvariant = WeightedMath.computeInvariantDown(weights, expectedBalances);
 
         expectedRate = weightedInvariant.divDown(totalSupply);
         actualRate = IRateProvider(address(pool)).getRate();
