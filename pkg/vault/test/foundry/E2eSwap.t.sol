@@ -132,33 +132,35 @@ contract E2eSwapTest is BaseVaultTest {
     }
 
     function calculateMinAndMaxSwapAmounts() internal virtual {
-        // If there are swap fees, the amountCalculated may be lower than MIN_TRADE_AMOUNT. So, multiplying
-        // MIN_TRADE_AMOUNT by 10 creates a margin.
-        minSwapAmountTokenA = 10 * MIN_TRADE_AMOUNT;
-        minSwapAmountTokenB = 10 * MIN_TRADE_AMOUNT;
-
-        if (decimalsTokenA != decimalsTokenB) {
-            if (decimalsTokenA < decimalsTokenB) {
-                uint256 decimalsFactor = 10 ** (decimalsTokenB - decimalsTokenA);
-                // Multiply by 20 to avoid amount calculated lower than MIN_TRADE_AMOUNT.
-                minSwapAmountTokenB = 20 * (MIN_TRADE_AMOUNT > decimalsFactor ? MIN_TRADE_AMOUNT : decimalsFactor);
-            } else {
-                uint256 decimalsFactor = 10 ** (decimalsTokenA - decimalsTokenB);
-                // Multiply by 20 to avoid amount calculated lower than MIN_TRADE_AMOUNT.
-                minSwapAmountTokenA = 20 * (MIN_TRADE_AMOUNT > decimalsFactor ? MIN_TRADE_AMOUNT : decimalsFactor);
-            }
-        }
-
-        // If rates have a different magnitude, a small trade can result in an amountOut of zero, which would make tests
-        // fail. Prevent that by considering the token rates in the calculation of minSwapAmounts.
         uint256 rateTokenA = getRate(tokenA);
         uint256 rateTokenB = getRate(tokenB);
-        minSwapAmountTokenA = rateTokenB / rateTokenA >= 1
-            ? (minSwapAmountTokenA * rateTokenB) / rateTokenA
-            : minSwapAmountTokenA;
-        minSwapAmountTokenB = rateTokenA / rateTokenB >= 1
-            ? (minSwapAmountTokenB * rateTokenA) / rateTokenB
-            : minSwapAmountTokenB;
+
+        // The vault does not allow trade amounts (amountGivenScaled18 or amountCalculatedScaled18) to be less than
+        // MIN_TRADE_AMOUNT. For linear pools (the case of PoolMock), amountGivenScaled18 and amountCalculatedScaled18
+        // are the same. So, minAmountGivenScaled18 > MIN_TRADE_AMOUNT. To reach the formula below, notice that
+        // `amountGivenRaw = amountGivenScaled18/(rateToken * scalingFactor)`.
+        uint256 tokenAMinTradeAmount = MIN_TRADE_AMOUNT.divUp(rateTokenA).mulUp(10 ** decimalsTokenA);
+        uint256 tokenBMinTradeAmount = MIN_TRADE_AMOUNT.divUp(rateTokenB).mulUp(10 ** decimalsTokenB);
+
+        // Also, since we undo the operation (reverse swap with the output of the first swap), amountCalculatedRaw
+        // cannot be 0. Considering that amountCalculated is tokenB, and amountGiven is tokenA:
+        // 1) amountCalculatedRaw > 0
+        // 2) amountCalculatedRaw = amountCalculatedScaled18 * 10^(decimalsB) / (rateB * 10^18)
+        // 3) amountCalculatedScaled18 = amountGivenScaled18 // Linear math
+        // 4) amountGivenScaled18 = amountGivenRaw * rateA * 10^18 / 10^(decumalsA)
+        // With the 4 formulas above, we reach that:
+        // amountCalculatedRaw > rateB * 10^(decimalsA) / (rateA * 10^(decimalsB))
+        uint256 tokenACalculatedNotZero = (rateTokenB * (10 ** decimalsTokenA)) / (rateTokenA * (10 ** decimalsTokenB));
+        uint256 tokenBCalculatedNotZero = (rateTokenA * (10 ** decimalsTokenB)) / (rateTokenB * (10 ** decimalsTokenA));
+
+        // Use the biggest value from the 2 above to calculate the minSwapAmount. Also, multiplies by 2 to consider
+        // swap fees for both swaps.
+        minSwapAmountTokenA =
+            2 *
+            (tokenAMinTradeAmount > tokenACalculatedNotZero ? tokenAMinTradeAmount : tokenACalculatedNotZero);
+        minSwapAmountTokenB =
+            2 *
+            (tokenBMinTradeAmount > tokenBCalculatedNotZero ? tokenBMinTradeAmount : tokenBCalculatedNotZero);
 
         // 99% of pool init amount, to avoid rounding issues near the full liquidity of the pool.
         maxSwapAmountTokenA = poolInitAmountTokenA.mulDown(99e16);
@@ -344,7 +346,7 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
         vm.stopPrank();
 
-        if (decimalsTokenA != decimalsTokenB) {
+        if (decimalsTokenA != decimalsTokenB || exactAmountIn < MIN_TRADE_AMOUNT) {
             // If tokens have different decimals, an error is introduced in the computeBalance in the order of the
             // difference of the decimals.
             uint256 tolerance;
@@ -353,10 +355,6 @@ contract E2eSwapTest is BaseVaultTest {
             } else {
                 tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 1);
             }
-
-            // The tolerance should always be higher than the minimum trade amount. Smaller tolerances can catch
-            // rounding errors, which is not the purpose of this test.
-            tolerance = tolerance > MIN_TRADE_AMOUNT ? tolerance : MIN_TRADE_AMOUNT;
 
             assertApproxEqAbs(
                 exactAmountInSwap - feesTokenA,
