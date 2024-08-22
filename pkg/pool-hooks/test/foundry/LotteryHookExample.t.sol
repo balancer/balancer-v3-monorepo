@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
@@ -229,6 +231,9 @@ contract LotteryHookExampleTest is BaseVaultTest {
     {
         swapAmount = poolInitAmount / 100;
 
+        vm.expectEmit();
+        emit LotteryHookExample.HookSwapFeePercentageChanged(poolHooksContract, MAX_SWAP_FEE_PERCENTAGE);
+
         vm.prank(lp);
         LotteryHookExample(poolHooksContract).setHookSwapFeePercentage(MAX_SWAP_FEE_PERCENTAGE);
         uint256 hookFee = swapAmount.mulDown(MAX_SWAP_FEE_PERCENTAGE);
@@ -253,6 +258,29 @@ contract LotteryHookExampleTest is BaseVaultTest {
             uint256 amountCalculated = routerMethod == IRouter.swapSingleTokenExactIn.selector
                 ? swapAmount - hookFee // If EXACT_IN, amount calculated is amount out; user receives less
                 : swapAmount + hookFee; // If EXACT_IN, amount calculated is amount in; user pays more
+
+            if (randomNumber == LotteryHookExample(poolHooksContract).LUCKY_NUMBER()) {
+                uint256 daiWinnings = dai.balanceOf(poolHooksContract);
+                uint256 usdcWinnings = usdc.balanceOf(poolHooksContract);
+
+                if (daiWinnings > 0) {
+                    vm.expectEmit();
+                    emit LotteryHookExample.LotteryWinningsPaid(poolHooksContract, alice, IERC20(dai), daiWinnings);
+                }
+
+                if (usdcWinnings > 0) {
+                    vm.expectEmit();
+                    emit LotteryHookExample.LotteryWinningsPaid(poolHooksContract, alice, IERC20(usdc), usdcWinnings);
+                }
+            } else {
+                if (routerMethod == IRouter.swapSingleTokenExactIn.selector) {
+                    vm.expectEmit();
+                    emit LotteryHookExample.LotteryFeeCollected(poolHooksContract, IERC20(usdc), hookFee);
+                } else {
+                    vm.expectEmit();
+                    emit LotteryHookExample.LotteryFeeCollected(poolHooksContract, IERC20(dai), hookFee);
+                }
+            }
 
             // Bob is the paying user, Alice is the user who will win the lottery (so we can measure the
             // amount of fee tokens sent).
