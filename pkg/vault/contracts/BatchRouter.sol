@@ -969,11 +969,13 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             // If the vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
             // initialized. Thus, the router treats it as a non-ERC4626 token.
             if (address(underlyingToken) == address(0)) {
+                underlyingAmounts[i] = amountsIn[i];
+                wrappedAmounts[i] = amountsIn[i];
+
                 if (isStaticCall == false) {
-                    underlyingAmounts[i] = amountsIn[i];
-                    wrappedAmounts[i] = amountsIn[i];
                     _takeTokenIn(params.sender, erc4626PoolTokens[i], amountsIn[i], params.wethIsEth);
                 }
+
                 continue;
             }
 
