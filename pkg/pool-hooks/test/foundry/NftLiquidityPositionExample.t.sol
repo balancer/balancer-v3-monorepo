@@ -1,0 +1,247 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+pragma solidity ^0.8.24;
+
+import "forge-std/Test.sol";
+import "forge-std/console.sol";
+
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { LiquidityManagement, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
+
+import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
+import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
+
+import { RouterMock } from "@balancer-labs/v3-vault/contracts/test/RouterMock.sol";
+import { BatchRouterMock } from "@balancer-labs/v3-vault/contracts/test/BatchRouterMock.sol";
+import { PoolFactoryMock } from "@balancer-labs/v3-vault/contracts/test/PoolFactoryMock.sol";
+import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
+import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
+
+import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
+
+import { NftRouter } from "../../contracts/NftLiquidityPositionExample.sol";
+import { ExitFeeHookExample } from "../../contracts/ExitFeeHookExample.sol";
+
+contract NftLiquidityPositionExampleTest is BaseVaultTest {
+    using CastingHelpers for address[];
+    using ArrayHelpers for *;
+
+    uint256 internal daiIdx;
+    uint256 internal usdcIdx;
+
+    // Maximum exit fee of 10%
+    uint64 public constant MAX_EXIT_FEE_PERCENTAGE = 10e16;
+
+    uint256 internal constant DEFAULT_AMP_FACTOR = 200;
+
+    NftRouter internal nftRouter;
+
+    // Overrides to include a deployment for NftRouter
+    function setUp() public virtual override {
+        // BaseVaultTest.setUp();
+        BaseTest.setUp();
+
+        vault = IVaultMock(address(VaultMockDeployer.deploy()));
+        vm.label(address(vault), "vault");
+        vaultExtension = IVaultExtension(vault.getVaultExtension());
+        vm.label(address(vaultExtension), "vaultExtension");
+        vaultAdmin = IVaultAdmin(vault.getVaultAdmin());
+        vm.label(address(vaultAdmin), "vaultAdmin");
+        authorizer = BasicAuthorizerMock(address(vault.getAuthorizer()));
+        vm.label(address(authorizer), "authorizer");
+        factoryMock = PoolFactoryMock(address(vault.getPoolFactoryMock()));
+        vm.label(address(factoryMock), "factory");
+        router = new RouterMock(IVault(address(vault)), weth, permit2);
+        vm.label(address(router), "router");
+        batchRouter = new BatchRouterMock(IVault(address(vault)), weth, permit2);
+        vm.label(address(batchRouter), "batch router");
+        feeController = vault.getProtocolFeeController();
+        vm.label(address(feeController), "fee controller");
+        nftRouter = new NftRouter(IVault(address(vault)), weth, permit2);
+        vm.label(address(nftRouter), "nftRouter");
+
+        poolHooksContract = createHook();
+        pool = createPool();
+
+        // Approve vault allowances
+        for (uint256 i = 0; i < users.length; ++i) {
+            address user = users[i];
+            vm.startPrank(user);
+            approveForSender();
+            vm.stopPrank();
+        }
+        if (pool != address(0)) {
+            approveForPool(IERC20(pool));
+        }
+        // Add initial liquidity
+        initPool();
+
+        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+    }
+
+    function createHook() internal override returns (address) {
+        // LP will be the owner of the hook. Only LP is able to set hook fee percentages.
+        vm.prank(lp);
+        address exitFeeHook = address(new ExitFeeHookExample(IVault(address(vault))));
+        vm.label(exitFeeHook, "Exit Fee Hook");
+        return exitFeeHook;
+    }
+
+    // Overrides approval to include NFTRouter
+    function approveForSender() internal override {
+        for (uint256 i = 0; i < tokens.length; ++i) {
+            tokens[i].approve(address(permit2), type(uint256).max);
+            permit2.approve(address(tokens[i]), address(router), type(uint160).max, type(uint48).max);
+            permit2.approve(address(tokens[i]), address(batchRouter), type(uint160).max, type(uint48).max);
+            permit2.approve(address(tokens[i]), address(nftRouter), type(uint160).max, type(uint48).max);
+        }
+    }
+
+    // Overrides approval to include NFTRouter
+    function approveForPool(IERC20 bpt) internal override {
+        for (uint256 i = 0; i < users.length; ++i) {
+            vm.startPrank(users[i]);
+
+            bpt.approve(address(router), type(uint256).max);
+            bpt.approve(address(batchRouter), type(uint256).max);
+            bpt.approve(address(nftRouter), type(uint256).max);
+
+            IERC20(bpt).approve(address(permit2), type(uint256).max);
+            permit2.approve(address(bpt), address(router), type(uint160).max, type(uint48).max);
+            permit2.approve(address(bpt), address(batchRouter), type(uint160).max, type(uint48).max);
+            permit2.approve(address(bpt), address(nftRouter), type(uint160).max, type(uint48).max);
+
+            vm.stopPrank();
+        }
+    }
+
+    // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity).
+    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "NFT Pool", "NFT-POOL");
+        vm.label(address(newPool), label);
+
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.poolCreator = lp;
+
+        LiquidityManagement memory liquidityManagement;
+        liquidityManagement.disableUnbalancedLiquidity = true;
+        liquidityManagement.enableDonation = true;
+
+        factoryMock.registerPool(
+            address(newPool),
+            vault.buildTokenConfig(tokens.asIERC20()),
+            roleAccounts,
+            poolHooksContract,
+            liquidityManagement
+        );
+
+        return address(newPool);
+    }
+
+    function testAddLiquidity() public {
+        BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
+        uint256[] memory maxAmountsIn = [dai.balanceOf(bob), usdc.balanceOf(bob)].toMemoryArray();
+        vm.prank(bob);
+        uint256[] memory amountsIn = nftRouter.addLiquidityProportional(
+            pool,
+            maxAmountsIn,
+            bptAmount,
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
+
+        // bob sends correct lp tokens
+        assertEq(
+            balancesBefore.bobTokens[daiIdx] - balancesAfter.bobTokens[daiIdx],
+            amountsIn[daiIdx],
+            "bob's DAI amount is wrong"
+        );
+        assertEq(
+            balancesBefore.bobTokens[usdcIdx] - balancesAfter.bobTokens[usdcIdx],
+            amountsIn[usdcIdx],
+            "bob's USDC amount is wrong"
+        );
+        // Router should set correct lp data
+        uint256 expectedTokenId = 0;
+        assertEq(nftRouter.bptAmount(expectedTokenId), bptAmount, "bptAmount mapping is wrong");
+        assertEq(nftRouter.startTime(expectedTokenId), block.timestamp, "startTime mapping is wrong");
+        assertEq(nftRouter.bpt(expectedTokenId), pool, "pool mapping is wrong");
+
+        // Router should receive BPT instead of bob, he gets the NFT
+        assertEq(BalancerPoolToken(pool).balanceOf(address(nftRouter)), bptAmount, "NftRouter should hold BPT");
+        assertEq(nftRouter.ownerOf(expectedTokenId), bob, "bob should have an NFT");
+        assertEq(balancesAfter.bobBpt, 0, "bob should not hold any BPT");
+    }
+
+    function testRemoveLiquidity() public {
+        // Add liquidity so bob has BPT to remove liquidity
+        uint256[] memory maxAmountsIn = [dai.balanceOf(bob), usdc.balanceOf(bob)].toMemoryArray();
+        vm.prank(bob);
+        nftRouter.addLiquidityProportional(pool, maxAmountsIn, bptAmount, false, bytes(""));
+        vm.stopPrank();
+
+        uint256 nftTokenId = 0;
+
+        vm.prank(lp);
+        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(MAX_EXIT_FEE_PERCENTAGE);
+        uint256[] memory minAmountsOut = [uint256(0), uint256(0)].toMemoryArray();
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
+
+        vm.prank(bob);
+        uint256[] memory amountsOut = nftRouter.removeLiquidityProportional(
+            nftTokenId,
+            minAmountsOut,
+            false,
+            bytes("")
+        );
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
+
+        assertEq(
+            balancesAfter.bobTokens[daiIdx] - balancesBefore.bobTokens[daiIdx],
+            amountsOut[daiIdx],
+            "bob's DAI amount is wrong"
+        );
+        assertEq(
+            balancesAfter.bobTokens[usdcIdx] - balancesBefore.bobTokens[usdcIdx],
+            amountsOut[usdcIdx],
+            "bob's USDC amount is wrong"
+        );
+
+        // Router should set all lp data to 0
+        assertEq(nftRouter.bptAmount(nftTokenId), 0, "bptAmount mapping should be 0");
+        assertEq(nftRouter.startTime(nftTokenId), 0, "startTime mapping should be 0");
+        assertEq(nftRouter.bpt(nftTokenId), address(0), "pool mapping should be 0");
+
+        assertEq(BalancerPoolToken(pool).balanceOf(address(nftRouter)), 0, "NftRouter should hold no BPT");
+        assertEq(balancesAfter.bobBpt, 0, "bob should not hold any BPT");
+    }
+
+    function testRemoveWithNonOwner() public {
+        // Add liquidity so bob has BPT to remove liquidity
+        uint256[] memory maxAmountsIn = [dai.balanceOf(bob), usdc.balanceOf(bob)].toMemoryArray();
+        vm.prank(bob);
+        nftRouter.addLiquidityProportional(pool, maxAmountsIn, bptAmount, false, bytes(""));
+        vm.stopPrank();
+
+        uint256 nftTokenId = 0;
+        uint256[] memory minAmountsOut = [uint256(0), uint256(0)].toMemoryArray();
+
+        // Registration fails because this factory is not allowed to register the hook.
+        vm.expectRevert("You don't own this NFT");
+        vm.prank(lp);
+        nftRouter.removeLiquidityProportional(nftTokenId, minAmountsOut, false, bytes(""));
+    }
+}
