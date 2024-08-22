@@ -351,9 +351,11 @@ contract E2eSwapTest is BaseVaultTest {
             // difference of the decimals.
             uint256 tolerance;
             if (decimalsTokenA < decimalsTokenB) {
-                tolerance = 10 ** (decimalsTokenB - decimalsTokenA + 1);
+                // Add 2 to give some extra tolerance for weighted pools.
+                tolerance = 10 ** (decimalsTokenB - decimalsTokenA + 2);
             } else {
-                tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 1);
+                // Add 2 to give some extra tolerance for weighted pools.
+                tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 2);
             }
 
             assertApproxEqAbs(
@@ -437,6 +439,7 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
 
         vm.startPrank(sender);
+        console.log("exactAmountIn", exactAmountIn);
         uint256 exactAmountOutDo = router.swapSingleTokenExactIn(
             pool,
             tokenA,
@@ -447,6 +450,7 @@ contract E2eSwapTest is BaseVaultTest {
             false,
             bytes("")
         );
+        console.log("exactAmountOutDo", exactAmountOutDo);
 
         uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
 

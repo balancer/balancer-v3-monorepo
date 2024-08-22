@@ -15,13 +15,13 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
-import { E2eSwapRateProvider } from "@balancer-labs/v3-vault/test/foundry/E2eSwapRateProvider.t.sol";
+import { E2eSwapRateProviderTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwapRateProvider.t.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 import { WeightedPoolMock } from "../../contracts/test/WeightedPoolMock.sol";
 
-contract E2eSwapRateProviderWeightedTest is E2eSwapRateProvider {
+contract E2eSwapRateProviderWeightedTest is E2eSwapRateProviderTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
     using FixedPoint for uint256;
@@ -79,8 +79,42 @@ contract E2eSwapRateProviderWeightedTest is E2eSwapRateProvider {
     }
 
     function calculateMinAndMaxSwapAmounts() internal override {
-        minSwapAmountTokenA = poolInitAmountTokenA / 1e3;
-        minSwapAmountTokenB = poolInitAmountTokenB / 1e3;
+        uint256 rateTokenA = getRate(tokenA);
+        uint256 rateTokenB = getRate(tokenB);
+
+        // The vault does not allow trade amounts (amountGivenScaled18 or amountCalculatedScaled18) to be less than
+        // MIN_TRADE_AMOUNT. For linear pools (the case of PoolMock), amountGivenScaled18 and amountCalculatedScaled18
+        // are the same. So, minAmountGivenScaled18 > MIN_TRADE_AMOUNT. To reach the formula below, notice that
+        // `amountGivenRaw = amountGivenScaled18/(rateToken * scalingFactor)`. There's an adjustment in the next steps
+        // to consider a weighted math.
+        uint256 tokenAMinTradeAmount = MIN_TRADE_AMOUNT.divUp(rateTokenA).mulUp(10 ** decimalsTokenA);
+        uint256 tokenBMinTradeAmount = MIN_TRADE_AMOUNT.divUp(rateTokenB).mulUp(10 ** decimalsTokenB);
+
+        // Also, since we undo the operation (reverse swap with the output of the first swap), amountCalculatedRaw
+        // cannot be 0. Considering that amountCalculated is tokenB, and amountGiven is tokenA:
+        // 1) amountCalculatedRaw > 0
+        // 2) amountCalculatedRaw = amountCalculatedScaled18 * 10^(decimalsB) / (rateB * 10^18)
+        // 3) amountCalculatedScaled18 = amountGivenScaled18 // Linear math, there's a factor to weighted math
+        // introduced in the next step
+        // 4) amountGivenScaled18 = amountGivenRaw * rateA * 10^18 / 10^(decumalsA)
+        // With the 4 formulas above, we reach that:
+        // amountCalculatedRaw > rateB * 10^(decimalsA) / (rateA * 10^(decimalsB))
+        uint256 tokenACalculatedNotZero = (rateTokenB * (10 ** decimalsTokenA)) / (rateTokenA * (10 ** decimalsTokenB));
+        uint256 tokenBCalculatedNotZero = (rateTokenA * (10 ** decimalsTokenB)) / (rateTokenB * (10 ** decimalsTokenA));
+
+        // Use the biggest value from the 2 above to calculate the minSwapAmount. Also, multiplies by 1000 to consider
+        // swap fees for both swaps and approximation errors between weighted and linear maths.
+        uint256 weightedMathFactor = 1000;
+        minSwapAmountTokenA = (
+            tokenAMinTradeAmount > tokenACalculatedNotZero
+                ? weightedMathFactor * tokenAMinTradeAmount
+                : weightedMathFactor * tokenACalculatedNotZero
+        );
+        minSwapAmountTokenB = (
+            tokenBMinTradeAmount > tokenBCalculatedNotZero
+                ? weightedMathFactor * tokenBMinTradeAmount
+                : weightedMathFactor * tokenBCalculatedNotZero
+        );
 
         // 20% of initial liquidity to make sure weighted math ratios are respected (Cannot trade more than 30% of pool
         // liquidity).

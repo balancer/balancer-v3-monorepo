@@ -13,12 +13,12 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
 import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
-import { E2eSwapRateProvider } from "@balancer-labs/v3-vault/test/foundry/E2eSwapRateProvider.t.sol";
+import { E2eSwapRateProviderTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwapRateProvider.t.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
 
-contract E2eSwapRateProviderStableTest is E2eSwapRateProvider {
+contract E2eSwapRateProviderStableTest is E2eSwapRateProviderTest {
     using CastingHelpers for address[];
 
     uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
