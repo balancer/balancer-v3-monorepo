@@ -150,7 +150,7 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
                 hookAdjustedAmountsOutRaw[i] -= exitFee;
 
                 emit ExitFeeCharged(pool, tokens[i], exitFee);
-                // Fees don't need to be transferred to the hook, because donation will redeposit them in the vault.
+                // Fees don't need to be transferred to the hook, because donation will redeposit them in the Vault.
                 // In effect, we will transfer a reduced amount of tokensOut to the caller, and leave the remainder
                 // in the pool balance.
             }

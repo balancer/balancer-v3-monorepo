@@ -216,11 +216,11 @@ contract LotteryHookExample is BaseHooks, Ownable {
                     // There are multiple reasons to use a direct transfer of hook fees to the user instead of hook
                     // adjusted amounts:
                     //
-                    // * We can transfer all fees from all tokens
+                    // * We can transfer all fees from all tokens.
                     // * For EXACT_OUT transactions, the maximum prize we might give is amountsIn, because the maximum
-                    //   discount is 100%
-                    // * We don't need to send tokens to the vault and then settle, which would be more expensive than
-                    //   transferring tokens to the user directly
+                    //   discount is 100%.
+                    // * We don't need to send tokens to the Vault and then settle, which would be more expensive than
+                    //   transferring tokens to the user directly.
                     feeToken.safeTransfer(user, amountWon);
 
                     emit LotteryWinningsPaid(address(this), user, feeToken, amountWon);
@@ -233,7 +233,7 @@ contract LotteryHookExample is BaseHooks, Ownable {
             _tokensWithAccruedFees.set(token, 1);
 
             if (hookFee > 0) {
-                // Collect fees from the vault; user will pay them when the router settles the swap.
+                // Collect fees from the Vault; the user will pay them when the router settles the swap.
                 _vault.sendTo(token, address(this), hookFee);
 
                 emit LotteryFeeCollected(address(this), token, hookFee);

@@ -196,13 +196,13 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
         uint256[] memory hookAdjustedAmountsInRaw = amountsInRaw;
 
         if (addLiquidityHookFeePercentage > 0) {
-            // Charge fees proportional to amounts in of each token
+            // Charge fees proportional to amounts in of each token.
             for (uint256 i = 0; i < amountsInRaw.length; i++) {
                 uint256 hookFee = amountsInRaw[i].mulDown(addLiquidityHookFeePercentage);
 
                 if (hookFee > 0) {
                     hookAdjustedAmountsInRaw[i] += hookFee;
-                    // Sends the hook fee to the hook and registers the debt in the vault
+                    // Sends the hook fee to the hook and registers the debt in the Vault.
                     _vault.sendTo(tokens[i], address(this), hookFee);
 
                     emit HookFeeCharged(address(this), tokens[i], hookFee);
