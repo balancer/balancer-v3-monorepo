@@ -96,12 +96,9 @@ contract HooksTest is BaseVaultTest {
 
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onRegister.selector,
-                address(anotherFactory),
-                address(anotherPool),
-                tokenConfig,
-                liquidityManagement
+            abi.encodeCall(
+                IHooks.onRegister,
+                (address(anotherFactory), address(anotherPool), tokenConfig, liquidityManagement)
             )
         );
 
@@ -160,19 +157,21 @@ contract HooksTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onComputeDynamicSwapFeePercentage.selector,
-                PoolSwapParams({
-                    kind: SwapKind.EXACT_IN,
-                    amountGivenScaled18: defaultAmount,
-                    balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
-                    indexIn: usdcIdx,
-                    indexOut: daiIdx,
-                    router: address(router),
-                    userData: bytes("")
-                }),
-                pool,
-                0
+            abi.encodeCall(
+                IHooks.onComputeDynamicSwapFeePercentage,
+                (
+                    PoolSwapParams({
+                        kind: SwapKind.EXACT_IN,
+                        amountGivenScaled18: defaultAmount,
+                        balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
+                        indexIn: usdcIdx,
+                        indexOut: daiIdx,
+                        router: address(router),
+                        userData: bytes("")
+                    }),
+                    pool,
+                    0
+                )
             )
         );
         router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
@@ -192,19 +191,21 @@ contract HooksTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onComputeDynamicSwapFeePercentage.selector,
-                PoolSwapParams({
-                    kind: SwapKind.EXACT_IN,
-                    amountGivenScaled18: defaultAmount,
-                    balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
-                    indexIn: usdcIdx,
-                    indexOut: daiIdx,
-                    router: address(router),
-                    userData: bytes("")
-                }),
-                pool,
-                staticSwapFeePercentage
+            abi.encodeCall(
+                IHooks.onComputeDynamicSwapFeePercentage,
+                (
+                    PoolSwapParams({
+                        kind: SwapKind.EXACT_IN,
+                        amountGivenScaled18: defaultAmount,
+                        balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
+                        indexIn: usdcIdx,
+                        indexOut: daiIdx,
+                        router: address(router),
+                        userData: bytes("")
+                    }),
+                    pool,
+                    staticSwapFeePercentage
+                )
             )
         );
         router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
@@ -232,18 +233,20 @@ contract HooksTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onBeforeSwap.selector,
-                PoolSwapParams({
-                    kind: SwapKind.EXACT_IN,
-                    amountGivenScaled18: defaultAmount,
-                    balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
-                    indexIn: usdcIdx,
-                    indexOut: daiIdx,
-                    router: address(router),
-                    userData: bytes("")
-                }),
-                pool
+            abi.encodeCall(
+                IHooks.onBeforeSwap,
+                (
+                    PoolSwapParams({
+                        kind: SwapKind.EXACT_IN,
+                        amountGivenScaled18: defaultAmount,
+                        balancesScaled18: [defaultAmount, defaultAmount].toMemoryArray(),
+                        indexIn: usdcIdx,
+                        indexOut: daiIdx,
+                        router: address(router),
+                        userData: bytes("")
+                    }),
+                    pool
+                )
             )
         );
         router.swapSingleTokenExactIn(pool, usdc, dai, defaultAmount, 0, MAX_UINT256, false, bytes(""));
@@ -279,8 +282,8 @@ contract HooksTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: usdc,
@@ -337,15 +340,17 @@ contract HooksTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onBeforeAddLiquidity.selector,
-                router,
-                pool,
-                AddLiquidityKind.UNBALANCED,
-                [defaultAmount, defaultAmount].toMemoryArray(),
-                bptAmountRoundDown,
-                [defaultAmount, defaultAmount].toMemoryArray(),
-                bytes("")
+            abi.encodeCall(
+                IHooks.onBeforeAddLiquidity,
+                (
+                    address(router),
+                    pool,
+                    AddLiquidityKind.UNBALANCED,
+                    [defaultAmount, defaultAmount].toMemoryArray(),
+                    bptAmountRoundDown,
+                    [defaultAmount, defaultAmount].toMemoryArray(),
+                    bytes("")
+                )
             )
         );
         router.addLiquidityUnbalanced(
@@ -416,15 +421,17 @@ contract HooksTest is BaseVaultTest {
 
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onBeforeRemoveLiquidity.selector,
-                router,
-                pool,
-                RemoveLiquidityKind.PROPORTIONAL,
-                bptAmount,
-                [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
-                [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),
-                bytes("")
+            abi.encodeCall(
+                IHooks.onBeforeRemoveLiquidity,
+                (
+                    address(router),
+                    pool,
+                    RemoveLiquidityKind.PROPORTIONAL,
+                    bptAmount,
+                    [defaultAmountRoundDown, defaultAmountRoundDown].toMemoryArray(),
+                    [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),
+                    bytes("")
+                )
             )
         );
         vm.prank(alice);
@@ -490,16 +497,18 @@ contract HooksTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterAddLiquidity.selector,
-                router,
-                pool,
-                AddLiquidityKind.UNBALANCED,
-                [defaultAmount, defaultAmount].toMemoryArray(),
-                [defaultAmount, defaultAmount].toMemoryArray(),
-                bptAmount,
-                [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),
-                bytes("")
+            abi.encodeCall(
+                IHooks.onAfterAddLiquidity,
+                (
+                    address(router),
+                    pool,
+                    AddLiquidityKind.UNBALANCED,
+                    [defaultAmount, defaultAmount].toMemoryArray(),
+                    [defaultAmount, defaultAmount].toMemoryArray(),
+                    bptAmount,
+                    [2 * defaultAmount, 2 * defaultAmount].toMemoryArray(),
+                    bytes("")
+                )
             )
         );
         router.addLiquidityUnbalanced(
@@ -589,16 +598,18 @@ contract HooksTest is BaseVaultTest {
 
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterRemoveLiquidity.selector,
-                router,
-                pool,
-                RemoveLiquidityKind.PROPORTIONAL,
-                bptAmount,
-                [defaultAmount, defaultAmount].toMemoryArray(),
-                [defaultAmount, defaultAmount].toMemoryArray(),
-                [defaultAmount, defaultAmount].toMemoryArray(),
-                bytes("")
+            abi.encodeCall(
+                IHooks.onAfterRemoveLiquidity,
+                (
+                    address(router),
+                    pool,
+                    RemoveLiquidityKind.PROPORTIONAL,
+                    bptAmount,
+                    [defaultAmount, defaultAmount].toMemoryArray(),
+                    [defaultAmount, defaultAmount].toMemoryArray(),
+                    [defaultAmount, defaultAmount].toMemoryArray(),
+                    bytes("")
+                )
             )
         );
 

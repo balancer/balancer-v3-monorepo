@@ -738,10 +738,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         swapAmounts[daiIdx] = PROTOCOL_SWAP_FEE_AMOUNT;
         yieldAmounts[usdcIdx] = PROTOCOL_YIELD_FEE_AMOUNT;
 
-        vm.expectCall(
-            address(feeController),
-            abi.encodeWithSelector(ProtocolFeeController.collectAggregateFeesHook.selector, pool)
-        );
+        vm.expectCall(address(feeController), abi.encodeCall(ProtocolFeeController.collectAggregateFeesHook, pool));
         // Move them to the fee controller.
         feeController.collectAggregateFees(pool);
 

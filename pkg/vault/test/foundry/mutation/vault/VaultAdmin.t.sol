@@ -178,13 +178,13 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     function testCollectAggregateFeesWhenNotProtocolFeeController() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vm.expectRevert(IAuthentication.SenderNotAllowed.selector);
         vault.collectAggregateFees(address(0));
     }
 
     function testCollectAggregateFeesWithoutRegisteredPool() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vm.prank(address(vault.getProtocolFeeController()));
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, address(0)));
         vault.collectAggregateFees(address(0));
@@ -305,7 +305,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     function testInitializeBufferWhenPaused() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
         vm.prank(admin);
         vault.pauseVaultBuffers();
@@ -317,7 +317,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     function testInitializeBufferNonReentrant() public {
         IERC4626 wrappedToken = IERC4626(address(123));
         address underlyingToken = address(345); // Anything non-zero
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vault.manualSetBufferAsset(wrappedToken, underlyingToken);
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         vault.manualReentrancyAddLiquidityToBuffer(wrappedToken, 0, 0, address(0));
@@ -334,7 +334,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     }
 
     function testAddLiquidityToBufferWhenPaused() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
         vm.prank(admin);
         vault.pauseVaultBuffers();
@@ -345,7 +345,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     function testAddLiquidityFromBufferWhenNotInitialized() public {
         IERC4626 wrappedToken = IERC4626(address(123));
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferNotInitialized.selector, wrappedToken));
         vault.addLiquidityToBuffer(wrappedToken, 0, 0, address(0));
     }
@@ -353,7 +353,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     function testAddLiquidityToBufferNonReentrant() public {
         IERC4626 wrappedToken = IERC4626(address(123));
         address underlyingToken = address(345); // Anything non-zero
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vault.manualSetBufferAsset(wrappedToken, underlyingToken);
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         vault.manualReentrancyAddLiquidityToBuffer(wrappedToken, 0, 0, address(0));
@@ -377,7 +377,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
 
     function testRemoveLiquidityFromBufferHookWhenNotInitialized() public {
         IERC4626 wrappedToken = IERC4626(address(123));
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vm.prank(address(vault));
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferNotInitialized.selector, wrappedToken));
         VaultAdmin(address(vault)).removeLiquidityFromBufferHook(wrappedToken, 0, address(0));
@@ -386,7 +386,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     function testRemoveLiquidityFromBufferNonReentrant() public {
         IERC4626 wrappedToken = IERC4626(address(123));
         address underlyingToken = address(345); // Anything non-zero
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vault.manualSetBufferAsset(wrappedToken, underlyingToken);
 
         // Manually set owner and total shares so that the call doesn't revert before hitting the reentrancy guard.
