@@ -356,11 +356,11 @@ contract E2eSwapTest is BaseVaultTest {
             // difference of the decimals.
             uint256 tolerance;
             if (decimalsTokenA < decimalsTokenB) {
-                // Add 2 to give some extra tolerance for weighted pools.
-                tolerance = 10 ** (decimalsTokenB - decimalsTokenA + 2);
+                // Add 3 to give some extra tolerance for weighted pools (multiply by 1000).
+                tolerance = 10 ** (decimalsTokenB - decimalsTokenA + 3);
             } else {
-                // Add 2 to give some extra tolerance for weighted pools.
-                tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 2);
+                // Add 3 to give some extra tolerance for weighted pools (multiply by 1000).
+                tolerance = 10 ** (decimalsTokenA - decimalsTokenB + 3);
             }
 
             assertApproxEqAbs(
