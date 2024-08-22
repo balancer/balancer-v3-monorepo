@@ -8,6 +8,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
@@ -18,6 +19,7 @@ import { StablePool } from "../../contracts/StablePool.sol";
 
 contract E2eSwapStableTest is E2eSwapTest {
     using CastingHelpers for address[];
+    using FixedPoint for uint256;
 
     uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
@@ -36,13 +38,45 @@ contract E2eSwapStableTest is E2eSwapTest {
         maxPoolSwapFeePercentage = 10e16;
     }
 
-    function calculateMinAndMaxSwapAmounts() internal override {
-        minSwapAmountTokenA = poolInitAmountTokenA / 1e3;
-        minSwapAmountTokenB = poolInitAmountTokenB / 1e3;
+    function calculateMinAndMaxSwapAmounts() internal virtual override {
+        uint256 rateTokenA = getRate(tokenA);
+        uint256 rateTokenB = getRate(tokenB);
 
-        // Divide init amount by 2 to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
-        maxSwapAmountTokenA = poolInitAmountTokenA / 2;
-        maxSwapAmountTokenB = poolInitAmountTokenB / 2;
+        // The vault does not allow trade amounts (amountGivenScaled18 or amountCalculatedScaled18) to be less than
+        // MIN_TRADE_AMOUNT. For linear pools (the case of PoolMock), amountGivenScaled18 and amountCalculatedScaled18
+        // are the same. So, minAmountGivenScaled18 > MIN_TRADE_AMOUNT. To reach the formula below, notice that
+        // `amountGivenRaw = amountGivenScaled18/(rateToken * scalingFactor)`.
+        uint256 tokenAMinTradeAmount = MIN_TRADE_AMOUNT.divUp(rateTokenA).mulUp(10 ** decimalsTokenA);
+        uint256 tokenBMinTradeAmount = MIN_TRADE_AMOUNT.divUp(rateTokenB).mulUp(10 ** decimalsTokenB);
+
+        // Also, since we undo the operation (reverse swap with the output of the first swap), amountCalculatedRaw
+        // cannot be 0. Considering that amountCalculated is tokenB, and amountGiven is tokenA:
+        // 1) amountCalculatedRaw > 0
+        // 2) amountCalculatedRaw = amountCalculatedScaled18 * 10^(decimalsB) / (rateB * 10^18)
+        // 3) amountCalculatedScaled18 = amountGivenScaled18 // Linear math
+        // 4) amountGivenScaled18 = amountGivenRaw * rateA * 10^18 / 10^(decumalsA)
+        // With the 4 formulas above, we reach that:
+        // amountCalculatedRaw > rateB * 10^(decimalsA) / (rateA * 10^(decimalsB))
+        uint256 tokenACalculatedNotZero = (rateTokenB * (10 ** decimalsTokenA)) / (rateTokenA * (10 ** decimalsTokenB));
+        uint256 tokenBCalculatedNotZero = (rateTokenA * (10 ** decimalsTokenB)) / (rateTokenB * (10 ** decimalsTokenA));
+
+        // Use the biggest value from the 2 above to calculate the minSwapAmount. Also, multiplies by 10 to consider
+        // swap fees and compensate rate rounding issues.
+        uint256 feeFactor = 10;
+        minSwapAmountTokenA = (
+            tokenAMinTradeAmount > tokenACalculatedNotZero
+                ? feeFactor * tokenAMinTradeAmount
+                : feeFactor * tokenACalculatedNotZero
+        );
+        minSwapAmountTokenB = (
+            tokenBMinTradeAmount > tokenBCalculatedNotZero
+                ? feeFactor * tokenBMinTradeAmount
+                : feeFactor * tokenBCalculatedNotZero
+        );
+
+        // 50% of pool init amount to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
+        maxSwapAmountTokenA = poolInitAmountTokenA.mulDown(50e16);
+        maxSwapAmountTokenB = poolInitAmountTokenB.mulDown(50e16);
     }
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.

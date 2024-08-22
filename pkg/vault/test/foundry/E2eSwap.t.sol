@@ -153,13 +153,18 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 tokenACalculatedNotZero = (rateTokenB * (10 ** decimalsTokenA)) / (rateTokenA * (10 ** decimalsTokenB));
         uint256 tokenBCalculatedNotZero = (rateTokenA * (10 ** decimalsTokenB)) / (rateTokenB * (10 ** decimalsTokenA));
 
-        // Use the biggest value from the 2 above to calculate the minSwapAmount. Also, multiplies by 2 to consider
-        // swap fees for both swaps.
+        // Use the biggest value from the 2 above to calculate the minSwapAmount. Also, multiplies by 10 to consider
+        // swap fees and compensate rate rounding issues.
+        uint256 feeFactor = 10;
         minSwapAmountTokenA = (
-            tokenAMinTradeAmount > tokenACalculatedNotZero ? 2 * tokenAMinTradeAmount : 2 * tokenACalculatedNotZero
+            tokenAMinTradeAmount > tokenACalculatedNotZero
+                ? feeFactor * tokenAMinTradeAmount
+                : feeFactor * tokenACalculatedNotZero
         );
         minSwapAmountTokenB = (
-            tokenBMinTradeAmount > tokenBCalculatedNotZero ? 2 * tokenBMinTradeAmount : 2 * tokenBCalculatedNotZero
+            tokenBMinTradeAmount > tokenBCalculatedNotZero
+                ? feeFactor * tokenBMinTradeAmount
+                : feeFactor * tokenBCalculatedNotZero
         );
 
         // 99% of pool init amount, to avoid rounding issues near the full liquidity of the pool.
@@ -439,7 +444,6 @@ contract E2eSwapTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore = getBalances(sender);
 
         vm.startPrank(sender);
-        console.log("exactAmountIn", exactAmountIn);
         uint256 exactAmountOutDo = router.swapSingleTokenExactIn(
             pool,
             tokenA,
@@ -450,7 +454,6 @@ contract E2eSwapTest is BaseVaultTest {
             false,
             bytes("")
         );
-        console.log("exactAmountOutDo", exactAmountOutDo);
 
         uint256 feesTokenB = vault.getAggregateSwapFeeAmount(pool, tokenB);
 
