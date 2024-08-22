@@ -289,8 +289,10 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
     function withdrawFees(IERC20 feeToken) external {
         uint256 feeAmount = feeToken.balanceOf(address(this));
 
-        feeToken.safeTransfer(owner(), feeAmount);
+        if (feeAmount > 0) {
+            feeToken.safeTransfer(owner(), feeAmount);
 
-        emit HookFeeWithdrawn(address(this), feeToken, owner(), feeAmount);
+            emit HookFeeWithdrawn(address(this), feeToken, owner(), feeAmount);
+        }
     }
 }
