@@ -470,6 +470,74 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         batchRouter.queryAddLiquidityProportionalToERC4626Pool(erc4626Pool, operationAmount, bytes(""));
     }
 
+    function testQueryAddLiquidityProportionalToERC4626Pool() public {
+        uint256 operationAmount = bufferInitialAmount / 2;
+        uint256[] memory maxAmountsIn = [operationAmount, operationAmount].toMemoryArray();
+        uint256 exactBptAmountOut = operationAmount;
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(alice, address(0));
+        uint256[] memory queryUnderlyingAmountsIn = batchRouter.queryAddLiquidityProportionalToERC4626Pool(
+            erc4626Pool,
+            exactBptAmountOut,
+            bytes("")
+        );
+        vm.revertTo(snapshotId);
+
+        vm.prank(alice);
+        uint256[] memory actualUnderlyingAmountsIn = batchRouter.addLiquidityProportionalToERC4626Pool(
+            erc4626Pool,
+            maxAmountsIn,
+            exactBptAmountOut,
+            false,
+            bytes("")
+        );
+
+        for (uint256 i = 0; i < queryUnderlyingAmountsIn.length; i++) {
+            // Real operation and preview may have a difference.
+            assertApproxEqAbs(
+                queryUnderlyingAmountsIn[i],
+                actualUnderlyingAmountsIn[i],
+                5,
+                "Query and actual underlying amounts in do not match"
+            );
+        }
+    }
+
+    function testQueryAddLiquidityProportionalToPartialERC4626Pool() public {
+        uint256 operationAmount = bufferInitialAmount / 2;
+        uint256[] memory maxAmountsIn = [operationAmount, operationAmount].toMemoryArray();
+        uint256 exactBptAmountOut = operationAmount;
+
+        uint256 snapshotId = vm.snapshot();
+        vm.prank(alice, address(0));
+        uint256[] memory queryUnderlyingAmountsIn = batchRouter.queryAddLiquidityProportionalToERC4626Pool(
+            partialErc4626Pool,
+            exactBptAmountOut,
+            bytes("")
+        );
+        vm.revertTo(snapshotId);
+
+        vm.prank(alice);
+        uint256[] memory actualUnderlyingAmountsIn = batchRouter.addLiquidityProportionalToERC4626Pool(
+            partialErc4626Pool,
+            maxAmountsIn,
+            exactBptAmountOut,
+            false,
+            bytes("")
+        );
+
+        for (uint256 i = 0; i < queryUnderlyingAmountsIn.length; i++) {
+            // Real operation and preview may have a difference.
+            assertApproxEqAbs(
+                queryUnderlyingAmountsIn[i],
+                actualUnderlyingAmountsIn[i],
+                5,
+                "Query and actual underlying amounts in do not match"
+            );
+        }
+    }
+
     function testRemoveLiquidityProportionalFromERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
         uint256 exactBptAmountIn = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
 
