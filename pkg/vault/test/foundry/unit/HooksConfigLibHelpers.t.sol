@@ -14,7 +14,7 @@ import { HooksConfigLib } from "@balancer-labs/v3-vault/contracts/lib/HooksConfi
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 import { HooksConfigLibMock } from "@balancer-labs/v3-vault/contracts/test/HooksConfigLibMock.sol";
 
-contract HooksConfigLibHooksHelpersTest is Test {
+contract HooksConfigLibHelpersTest is Test {
     using WordCodec for bytes32;
     using HooksConfigLib for PoolConfigBits;
 
@@ -29,10 +29,10 @@ contract HooksConfigLibHooksHelpersTest is Test {
 
     //#region callComputeDynamicSwapFeeHook
     function testCallComputeDynamicSwapFeeHook() public {
-        uint256 swapFeePercentage = 6e5;
+        uint256 swapFeePercentage = MAX_FEE_PERCENTAGE;
 
         PoolSwapParams memory swapParams;
-        uint256 staticSwapFeePercentage = 3e5;
+        uint256 staticSwapFeePercentage = swapFeePercentage - 1;
         vm.mockCall(
             hooksContract,
             abi.encodeWithSelector(
@@ -55,10 +55,10 @@ contract HooksConfigLibHooksHelpersTest is Test {
     }
 
     function testCallComputeDynamicSwapFeeHookRevertIfCallIsNotSuccess() public {
-        uint256 swapFeePercentage = 6e5;
+        uint256 swapFeePercentage = MAX_FEE_PERCENTAGE;
 
         PoolSwapParams memory swapParams;
-        uint256 staticSwapFeePercentage = 3e5;
+        uint256 staticSwapFeePercentage = swapFeePercentage - 1;
         vm.mockCall(
             hooksContract,
             abi.encodeWithSelector(
@@ -129,7 +129,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
             poolData
         );
 
-        assertEq(value, amountCalculatedRaw, "return value mismatch");
+        assertEq(value, amountCalculatedRaw, "Wrong amountCalculatedRaw");
     }
 
     function testCallAfterSwapHookExactOut() public {
@@ -153,7 +153,7 @@ contract HooksConfigLibHooksHelpersTest is Test {
             poolData
         );
 
-        assertEq(value, amountCalculatedRaw, "return value mismatch");
+        assertEq(value, amountCalculatedRaw, "Wrong amountCalculatedRaw");
     }
 
     function testCallAfterSwapHookExactInWithAdjustedAmounts() public {

@@ -204,7 +204,7 @@ contract HooksConfigLibTest is Test {
         );
     }
 
-    function testToHooksConfig() public view {
+    function testToHooksConfig() public pure {
         address hooksContract = address(0x1234567890123456789012345678901234567890);
 
         PoolConfigBits config;

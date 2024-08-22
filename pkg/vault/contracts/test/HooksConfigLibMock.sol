@@ -21,10 +21,7 @@ contract HooksConfigLibMock {
     }
 
     function callBeforeSwapHook(PoolSwapParams memory swapParams, address pool, IHooks hooksContract) public {
-        if (hooksContract.onBeforeSwap(swapParams, pool) == false) {
-            // Hook contract implements onBeforeSwap, but it has failed, so reverts the transaction.
-            revert IVaultErrors.BeforeSwapHookFailed();
-        }
+        HooksConfigLib.callBeforeSwapHook(swapParams, pool, hooksContract);
     }
 
     function callAfterSwapHook(
@@ -121,7 +118,7 @@ contract HooksConfigLibMock {
         bytes memory userData,
         IHooks hooksContract
     ) public {
-        return HooksConfigLib.callBeforeInitializeHook(exactAmountsInScaled18, userData, hooksContract);
+        HooksConfigLib.callBeforeInitializeHook(exactAmountsInScaled18, userData, hooksContract);
     }
 
     function callAfterInitializeHook(
@@ -130,6 +127,6 @@ contract HooksConfigLibMock {
         bytes memory userData,
         IHooks hooksContract
     ) public {
-        return HooksConfigLib.callAfterInitializeHook(amountsInScaled18, bptAmountOut, userData, hooksContract);
+        HooksConfigLib.callAfterInitializeHook(amountsInScaled18, bptAmountOut, userData, hooksContract);
     }
 }
