@@ -32,15 +32,15 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         initBPTAmount = IBasePool(pool).computeInvariant([poolInitAmount, poolInitAmount].toMemoryArray());
-        maxBPTAmount = IBasePool(pool).computeInvariant([MAX_UINT128, MAX_UINT128].toMemoryArray());
-        if (maxBPTAmount > MAX_UINT128) {
-            maxBPTAmount = MAX_UINT128;
-        }
-
+        maxBPTAmount = _initMaxBPTAmount();
         maxAdditionalBPTAmount = maxBPTAmount - initBPTAmount;
         maxAdditionalAmountIn = MAX_UINT128 - poolInitAmount;
         minInvariantRatio = IBasePool(pool).getMinimumInvariantRatio();
         maxInvariantRatio = IBasePool(pool).getMaximumInvariantRatio();
+    }
+
+    function _initMaxBPTAmount() internal virtual returns (uint256) {
+        return IBasePool(pool).computeInvariant([MAX_UINT128 - 1, MAX_UINT128 - 1].toMemoryArray());
     }
 
     //#endregion

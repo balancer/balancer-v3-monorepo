@@ -2,9 +2,10 @@
 
 pragma solidity ^0.8.24;
 
-import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPoolFactory.sol";
-import { WeightedPool } from "@balancer-labs/v3-pool-weighted/contracts/WeightedPool.sol";
+import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
+import { StablePool } from "@balancer-labs/v3-pool-stable/contracts/StablePool.sol";
 
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -14,35 +15,37 @@ import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/tes
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { BaseExtremeAmountsTest } from "./utils/BaseExtremeAmountsTest.sol";
 
-contract WeightedBaseExtremeAmountsTest is BaseExtremeAmountsTest {
+contract StablePoolExtremeAmountsWithMinSwapFeeTest is BaseExtremeAmountsTest {
     using ArrayHelpers for *;
     using CastingHelpers for *;
+
+    uint256 internal constant DEFAULT_AMP_FACTOR = 200;
 
     function setUp() public virtual override {
         BaseExtremeAmountsTest.setUp();
     }
 
+    function _initMaxBPTAmount() internal pure override returns (uint256) {
+        return 1e12 * 1e18;
+    }
+
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        WeightedPoolFactory factory = new WeightedPoolFactory(
-            IVault(address(vault)),
-            365 days,
-            "Factory v1",
-            "Pool v1"
-        );
+        StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+
         PoolRoleAccounts memory roleAccounts;
 
-        WeightedPool newPool = WeightedPool(
+        StablePool newPool = StablePool(
             factory.create(
-                "50/50 Weighted Pool",
-                "50_50WP",
+                "Stable Pool",
+                "STABLE",
                 vault.buildTokenConfig(tokens.asIERC20()),
-                [uint256(50e16), uint256(50e16)].toMemoryArray(),
+                DEFAULT_AMP_FACTOR,
                 roleAccounts,
-                swapFeePercentage,
+                MIN_SWAP_FEE, // Set min swap fee
                 address(0),
-                false,
-                false,
-                bytes32(0)
+                false, // Do not enable donations
+                false, // Do not disable unbalanced add/remove liquidity
+                ZERO_BYTES32
             )
         );
         vm.label(address(newPool), label);
