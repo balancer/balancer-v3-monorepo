@@ -10,6 +10,7 @@ import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAutho
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 
 import {
@@ -51,6 +52,19 @@ contract VaultAdminMutationTest is BaseVaultTest {
         assertTrue(vault.isVaultPaused(), "Vault is not paused");
     }
 
+    function testPauseVaultBuffersSuccessfully() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
+
+        assertFalse(vault.areBuffersPaused(), "Vault buffers are already paused");
+
+        vm.expectEmit();
+        emit IVaultEvents.VaultBuffersPausedStateChanged(true);
+
+        vm.prank(admin);
+        vault.pauseVaultBuffers();
+        assertTrue(vault.areBuffersPaused(), "Vault buffers are not paused");
+    }
+
     function testUnpauseVaultWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultAdmin.unpauseVault();
@@ -64,6 +78,7 @@ contract VaultAdminMutationTest is BaseVaultTest {
     function testUnpauseVaultSuccessfully() public {
         authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVault.selector), admin);
         authorizer.grantRole(vault.getActionId(IVaultAdmin.unpauseVault.selector), admin);
+
         vm.startPrank(admin);
         vault.pauseVault();
         assertTrue(vault.isVaultPaused(), "Vault is not paused");
@@ -71,6 +86,22 @@ contract VaultAdminMutationTest is BaseVaultTest {
         vault.unpauseVault();
         assertFalse(vault.isVaultPaused(), "Vault is not unpaused");
         vm.stopPrank();
+    }
+
+    function testUnpauseVaultBuffersSuccessfully() public {
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.unpauseVaultBuffers.selector), admin);
+
+        vm.prank(admin);
+        vault.pauseVaultBuffers();
+        assertTrue(vault.areBuffersPaused(), "Vault buffers are not paused");
+
+        vm.expectEmit();
+        emit IVaultEvents.VaultBuffersPausedStateChanged(false);
+
+        vm.prank(admin);
+        vault.unpauseVaultBuffers();
+        assertFalse(vault.areBuffersPaused(), "Vault buffers are still paused");
     }
 
     function testPausePoolWithoutRegisteredPool() public {
@@ -236,6 +267,11 @@ contract VaultAdminMutationTest is BaseVaultTest {
     function testDisableQueryWhenNotVault() public {
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
         vaultAdmin.disableQuery();
+    }
+
+    function testAreBuffersPausedWhenNotVault() public {
+        vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
+        vaultAdmin.areBuffersPaused();
     }
 
     function testUnpauseVaultBuffersWhenNotAuthenticated() public {

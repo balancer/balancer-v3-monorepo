@@ -560,6 +560,18 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(explorer.isQueryDisabled(), "Queries are not disabled");
     }
 
+    function testAreBuffersPaused() public {
+        assertFalse(explorer.areBuffersPaused(), "Buffers are initially paused");
+
+        bytes32 pauseBufferRole = vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector);
+        authorizer.grantRole(pauseBufferRole, alice);
+
+        vm.prank(alice);
+        vault.pauseVaultBuffers();
+
+        assertTrue(explorer.areBuffersPaused(), "Buffers are not paused");
+    }
+
     function testGetPauseWindowEndTime() public view {
         uint256 vaultEndTime = vault.getPauseWindowEndTime();
 

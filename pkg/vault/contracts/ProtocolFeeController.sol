@@ -480,6 +480,8 @@ contract ProtocolFeeController is
             if (amountToWithdraw > 0) {
                 _protocolFeeAmounts[pool][token] = 0;
                 token.safeTransfer(recipient, amountToWithdraw);
+
+                emit ProtocolFeesWithdrawn(pool, token, recipient, amountToWithdraw);
             }
         }
     }
@@ -504,6 +506,8 @@ contract ProtocolFeeController is
             if (amountToWithdraw > 0) {
                 _poolCreatorFeeAmounts[pool][token] = 0;
                 token.safeTransfer(recipient, amountToWithdraw);
+
+                emit PoolCreatorFeesWithdrawn(pool, token, recipient, amountToWithdraw);
             }
         }
     }
