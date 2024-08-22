@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
     HooksConfig,
@@ -98,6 +100,9 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
 
     // Exit fee returns to LPs
     function testExitFeeReturnToLPs() public {
+        vm.expectEmit();
+        emit ExitFeeHookExample.ExitFeePercentageChanged(poolHooksContract, exitFeePercentage);
+
         vm.prank(lp);
         ExitFeeHookExample(poolHooksContract).setExitFeePercentage(exitFeePercentage);
         uint256 amountOut = poolInitAmount / 2;
@@ -105,6 +110,12 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         uint256[] memory minAmountsOut = [amountOut - hookFee, amountOut - hookFee].toMemoryArray();
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp);
+
+        vm.expectEmit();
+        emit ExitFeeHookExample.ExitFeeCharged(pool, IERC20(dai), hookFee);
+
+        vm.expectEmit();
+        emit ExitFeeHookExample.ExitFeeCharged(pool, IERC20(usdc), hookFee);
 
         vm.prank(lp);
         router.removeLiquidityProportional(pool, 2 * amountOut, minAmountsOut, false, bytes(""));
