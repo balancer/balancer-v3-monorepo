@@ -35,12 +35,7 @@ contract HooksConfigLibHelpersTest is Test {
         uint256 staticSwapFeePercentage = swapFeePercentage - 1;
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(
-                IHooks.onComputeDynamicSwapFeePercentage.selector,
-                swapParams,
-                pool,
-                staticSwapFeePercentage
-            ),
+            abi.encodeCall(IHooks.onComputeDynamicSwapFeePercentage, (swapParams, pool, staticSwapFeePercentage)),
             abi.encode(true, swapFeePercentage)
         );
 
@@ -61,12 +56,7 @@ contract HooksConfigLibHelpersTest is Test {
         uint256 staticSwapFeePercentage = swapFeePercentage - 1;
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(
-                IHooks.onComputeDynamicSwapFeePercentage.selector,
-                swapParams,
-                pool,
-                staticSwapFeePercentage
-            ),
+            abi.encodeCall(IHooks.onComputeDynamicSwapFeePercentage, (swapParams, pool, staticSwapFeePercentage)),
             abi.encode(false, swapFeePercentage)
         );
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.DynamicSwapFeeHookFailed.selector));
@@ -84,22 +74,14 @@ contract HooksConfigLibHelpersTest is Test {
     //#region callBeforeSwapHook tests
     function testCallBeforeSwap() public {
         PoolSwapParams memory swapParams;
-        vm.mockCall(
-            hooksContract,
-            abi.encodeWithSelector(IHooks.onBeforeSwap.selector, swapParams, pool),
-            abi.encode(true)
-        );
+        vm.mockCall(hooksContract, abi.encodeCall(IHooks.onBeforeSwap, (swapParams, pool)), abi.encode(true));
 
         hooksConfigLibMock.callBeforeSwapHook(swapParams, pool, IHooks(hooksContract));
     }
 
     function testCallBeforeSwapRevertIfCallIsNotSuccess() public {
         PoolSwapParams memory swapParams;
-        vm.mockCall(
-            hooksContract,
-            abi.encodeWithSelector(IHooks.onBeforeSwap.selector, swapParams, pool),
-            abi.encode(false)
-        );
+        vm.mockCall(hooksContract, abi.encodeCall(IHooks.onBeforeSwap, (swapParams, pool)), abi.encode(false));
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BeforeSwapHookFailed.selector));
 
         hooksConfigLibMock.callBeforeSwapHook(swapParams, pool, IHooks(hooksContract));
@@ -268,8 +250,8 @@ contract HooksConfigLibHelpersTest is Test {
 
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: params.kind,
                     tokenIn: params.tokenIn,
@@ -348,8 +330,8 @@ contract HooksConfigLibHelpersTest is Test {
 
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: params.kind,
                     tokenIn: params.tokenIn,
@@ -396,8 +378,8 @@ contract HooksConfigLibHelpersTest is Test {
 
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: params.kind,
                     tokenIn: params.tokenIn,
@@ -452,15 +434,17 @@ contract HooksConfigLibHelpersTest is Test {
 
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(
-                IHooks.onBeforeAddLiquidity.selector,
-                router,
-                params.pool,
-                params.kind,
-                maxAmountsInScaled18,
-                params.minBptAmountOut,
-                poolData.balancesLiveScaled18,
-                params.userData
+            abi.encodeCall(
+                IHooks.onBeforeAddLiquidity,
+                (
+                    router,
+                    params.pool,
+                    params.kind,
+                    maxAmountsInScaled18,
+                    params.minBptAmountOut,
+                    poolData.balancesLiveScaled18,
+                    params.userData
+                )
             ),
             abi.encode(true)
         );
@@ -487,15 +471,17 @@ contract HooksConfigLibHelpersTest is Test {
 
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(
-                IHooks.onBeforeAddLiquidity.selector,
-                router,
-                params.pool,
-                params.kind,
-                maxAmountsInScaled18,
-                params.minBptAmountOut,
-                poolData.balancesLiveScaled18,
-                params.userData
+            abi.encodeCall(
+                IHooks.onBeforeAddLiquidity,
+                (
+                    router,
+                    params.pool,
+                    params.kind,
+                    maxAmountsInScaled18,
+                    params.minBptAmountOut,
+                    poolData.balancesLiveScaled18,
+                    params.userData
+                )
             ),
             abi.encode(false)
         );
@@ -605,16 +591,18 @@ contract HooksConfigLibHelpersTest is Test {
 
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(
-                IHooks.onAfterAddLiquidity.selector,
-                router,
-                params.pool,
-                params.kind,
-                amountsInScaled18,
-                amountsInRaw,
-                bptAmountOut,
-                poolData.balancesLiveScaled18,
-                params.userData
+            abi.encodeCall(
+                IHooks.onAfterAddLiquidity,
+                (
+                    router,
+                    params.pool,
+                    params.kind,
+                    amountsInScaled18,
+                    amountsInRaw,
+                    bptAmountOut,
+                    poolData.balancesLiveScaled18,
+                    params.userData
+                )
             ),
             abi.encode(false, hookAdjustedAmountsInRaw)
         );
@@ -714,16 +702,18 @@ contract HooksConfigLibHelpersTest is Test {
     ) internal returns (uint256[] memory values) {
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(
-                IHooks.onAfterAddLiquidity.selector,
-                router,
-                params.pool,
-                params.kind,
-                amountsInScaled18,
-                amountsInRaw,
-                bptAmountOut,
-                poolData.balancesLiveScaled18,
-                params.userData
+            abi.encodeCall(
+                IHooks.onAfterAddLiquidity,
+                (
+                    router,
+                    params.pool,
+                    params.kind,
+                    amountsInScaled18,
+                    amountsInRaw,
+                    bptAmountOut,
+                    poolData.balancesLiveScaled18,
+                    params.userData
+                )
             ),
             abi.encode(true, hookAdjustedAmountsInRaw)
         );
@@ -757,15 +747,17 @@ contract HooksConfigLibHelpersTest is Test {
 
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(
-                IHooks.onBeforeRemoveLiquidity.selector,
-                router,
-                params.pool,
-                params.kind,
-                params.maxBptAmountIn,
-                minAmountsOutScaled18,
-                poolData.balancesLiveScaled18,
-                params.userData
+            abi.encodeCall(
+                IHooks.onBeforeRemoveLiquidity,
+                (
+                    router,
+                    params.pool,
+                    params.kind,
+                    params.maxBptAmountIn,
+                    minAmountsOutScaled18,
+                    poolData.balancesLiveScaled18,
+                    params.userData
+                )
             ),
             abi.encode(true)
         );
@@ -792,15 +784,17 @@ contract HooksConfigLibHelpersTest is Test {
 
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(
-                IHooks.onBeforeRemoveLiquidity.selector,
-                router,
-                params.pool,
-                params.kind,
-                params.maxBptAmountIn,
-                minAmountsOutScaled18,
-                poolData.balancesLiveScaled18,
-                params.userData
+            abi.encodeCall(
+                IHooks.onBeforeRemoveLiquidity,
+                (
+                    router,
+                    params.pool,
+                    params.kind,
+                    params.maxBptAmountIn,
+                    minAmountsOutScaled18,
+                    poolData.balancesLiveScaled18,
+                    params.userData
+                )
             ),
             abi.encode(false)
         );
@@ -910,16 +904,18 @@ contract HooksConfigLibHelpersTest is Test {
 
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(
-                IHooks.onAfterRemoveLiquidity.selector,
-                router,
-                params.pool,
-                params.kind,
-                bptAmountIn,
-                amountsOutScaled18,
-                amountsOutRaw,
-                poolData.balancesLiveScaled18,
-                params.userData
+            abi.encodeCall(
+                IHooks.onAfterRemoveLiquidity,
+                (
+                    router,
+                    params.pool,
+                    params.kind,
+                    bptAmountIn,
+                    amountsOutScaled18,
+                    amountsOutRaw,
+                    poolData.balancesLiveScaled18,
+                    params.userData
+                )
             ),
             abi.encode(false, hookAdjustedAmountsOutRaw)
         );
@@ -1016,16 +1012,18 @@ contract HooksConfigLibHelpersTest is Test {
     ) internal returns (uint256[] memory values) {
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(
-                IHooks.onAfterRemoveLiquidity.selector,
-                router,
-                params.pool,
-                params.kind,
-                bptAmountIn,
-                amountsOutScaled18,
-                amountsOutRaw,
-                poolData.balancesLiveScaled18,
-                params.userData
+            abi.encodeCall(
+                IHooks.onAfterRemoveLiquidity,
+                (
+                    router,
+                    params.pool,
+                    params.kind,
+                    bptAmountIn,
+                    amountsOutScaled18,
+                    amountsOutRaw,
+                    poolData.balancesLiveScaled18,
+                    params.userData
+                )
             ),
             abi.encode(true, hookAdjustedAmountsOutRaw)
         );
@@ -1052,7 +1050,7 @@ contract HooksConfigLibHelpersTest is Test {
 
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(IHooks.onBeforeInitialize.selector, exactAmountsInScaled18, userData),
+            abi.encodeCall(IHooks.onBeforeInitialize, (exactAmountsInScaled18, userData)),
             abi.encode(true)
         );
 
@@ -1065,7 +1063,7 @@ contract HooksConfigLibHelpersTest is Test {
 
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(IHooks.onBeforeInitialize.selector, exactAmountsInScaled18, userData),
+            abi.encodeCall(IHooks.onBeforeInitialize, (exactAmountsInScaled18, userData)),
             abi.encode(false)
         );
 
@@ -1083,7 +1081,7 @@ contract HooksConfigLibHelpersTest is Test {
 
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(IHooks.onAfterInitialize.selector, exactAmountsInScaled18, bptAmountOut, userData),
+            abi.encodeCall(IHooks.onAfterInitialize, (exactAmountsInScaled18, bptAmountOut, userData)),
             abi.encode(true)
         );
 
@@ -1102,7 +1100,7 @@ contract HooksConfigLibHelpersTest is Test {
 
         vm.mockCall(
             hooksContract,
-            abi.encodeWithSelector(IHooks.onAfterInitialize.selector, exactAmountsInScaled18, bptAmountOut, userData),
+            abi.encodeCall(IHooks.onAfterInitialize, (exactAmountsInScaled18, bptAmountOut, userData)),
             abi.encode(false)
         );
 
