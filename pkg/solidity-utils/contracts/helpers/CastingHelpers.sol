@@ -20,7 +20,7 @@ library CastingHelpers {
         }
     }
 
-    /// @dev Returns a native array of addresses as an IERC20[] array. (Used in tests.)
+    /// @dev Returns a native array of addresses as an IERC20[] array.
     function asIERC20(address[] memory addresses) internal pure returns (IERC20[] memory tokens) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
