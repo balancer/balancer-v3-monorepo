@@ -16,7 +16,7 @@ import { ProtocolFeeController } from "./ProtocolFeeController.sol";
 contract VaultFactory is Authentication {
     /**
      * @notice Emitted when the Vault is deployed.
-     * @param vault The vault address
+     * @param vault The Vault's address
      */
     event VaultCreated(address vault);
 
@@ -54,7 +54,7 @@ contract VaultFactory is Authentication {
      * @dev The Vault can only be deployed once. Therefore, this function is permissioned to ensure that it is
      * deployed to the right address.
      *
-     * @param salt Salt used to create the vault. See `getDeploymentAddress`.
+     * @param salt Salt used to create the Vault. See `getDeploymentAddress`.
      * @param targetAddress Expected Vault address. The function will revert if the given salt does not deploy the
      * Vault to the target address.
      */
@@ -75,7 +75,7 @@ contract VaultFactory is Authentication {
 
         address deployedAddress = _create(abi.encode(vaultExtension, _authorizer, feeController), salt);
 
-        // This should always be the case, but we enforce the end state to match the expected outcome anyways.
+        // This should always be the case, but we enforce the end state to match the expected outcome anyway.
         if (deployedAddress != targetAddress) {
             revert VaultAddressMismatch();
         }
