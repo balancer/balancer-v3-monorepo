@@ -68,7 +68,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             (wrappedBalance * bufferTestAmount) / bufferTotalShares
         );
         vm.prank(lp);
-        router.removeLiquidityFromBuffer(waDAI, bufferTestAmount);
+        vault.removeLiquidityFromBuffer(waDAI, bufferTestAmount);
 
         (underlyingBalance, wrappedBalance) = vault.getBufferBalance(waUSDC);
         bufferTotalShares = vault.getBufferTotalShares(waUSDC);
@@ -80,7 +80,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             (wrappedBalance * bufferTestAmount) / bufferTotalShares
         );
         vm.prank(lp);
-        router.removeLiquidityFromBuffer(waUSDC, bufferTestAmount);
+        vault.removeLiquidityFromBuffer(waUSDC, bufferTestAmount);
     }
 
     function testYieldBearingPoolSwapWithinBufferRangeExactIn() public {
