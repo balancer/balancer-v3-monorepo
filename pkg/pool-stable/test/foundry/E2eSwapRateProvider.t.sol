@@ -18,7 +18,7 @@ import { E2eSwapRateProvider } from "@balancer-labs/v3-vault/test/foundry/E2eSwa
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
 
-contract E2eSwapRateProviderStable is E2eSwapRateProvider {
+contract E2eSwapRateProviderStableTest is E2eSwapRateProvider {
     using CastingHelpers for address[];
 
     uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%

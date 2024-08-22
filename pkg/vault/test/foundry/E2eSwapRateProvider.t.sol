@@ -15,7 +15,7 @@ import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
 import { E2eSwapTest } from "./E2eSwap.t.sol";
 
-contract E2eSwapRateProvider is E2eSwapTest {
+contract E2eSwapRateProviderTest is E2eSwapTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
 

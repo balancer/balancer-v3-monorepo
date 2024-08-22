@@ -21,7 +21,7 @@ import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 import { WeightedPoolMock } from "../../contracts/test/WeightedPoolMock.sol";
 
-contract E2eSwapRateProviderWeighted is E2eSwapRateProvider {
+contract E2eSwapRateProviderWeightedTest is E2eSwapRateProvider {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
     using FixedPoint for uint256;
