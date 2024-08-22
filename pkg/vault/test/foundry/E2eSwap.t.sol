@@ -155,12 +155,12 @@ contract E2eSwapTest is BaseVaultTest {
 
         // Use the biggest value from the 2 above to calculate the minSwapAmount. Also, multiplies by 2 to consider
         // swap fees for both swaps.
-        minSwapAmountTokenA =
-            2 *
-            (tokenAMinTradeAmount > tokenACalculatedNotZero ? tokenAMinTradeAmount : tokenACalculatedNotZero);
-        minSwapAmountTokenB =
-            2 *
-            (tokenBMinTradeAmount > tokenBCalculatedNotZero ? tokenBMinTradeAmount : tokenBCalculatedNotZero);
+        minSwapAmountTokenA = (
+            tokenAMinTradeAmount > tokenACalculatedNotZero ? 2 * tokenAMinTradeAmount : 2 * tokenACalculatedNotZero
+        );
+        minSwapAmountTokenB = (
+            tokenBMinTradeAmount > tokenBCalculatedNotZero ? 2 * tokenBMinTradeAmount : 2 * tokenBCalculatedNotZero
+        );
 
         // 99% of pool init amount, to avoid rounding issues near the full liquidity of the pool.
         maxSwapAmountTokenA = poolInitAmountTokenA.mulDown(99e16);
