@@ -17,6 +17,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 /**
@@ -35,7 +36,7 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
  * Finally, since the only way to deposit fee tokens back into the pool balance (without minting new BPT) is through
  * the special "donation" add liquidity type, this hook also requires that the pool support donation.
  */
-contract ExitFeeHookExample is BaseHooks, Ownable {
+contract ExitFeeHookExample is BaseHooks, VaultGuard, Ownable {
     using FixedPoint for uint256;
 
     // Percentages are represented as 18-decimal FP numbers, which have a maximum value of FixedPoint.ONE (100%),
@@ -83,7 +84,7 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
      */
     error PoolDoesNotSupportDonation();
 
-    constructor(IVault vault) BaseHooks(vault) Ownable(msg.sender) {
+    constructor(IVault vault) VaultGuard(vault) Ownable(msg.sender) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
