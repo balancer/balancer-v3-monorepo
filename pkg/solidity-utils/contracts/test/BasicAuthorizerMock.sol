@@ -6,10 +6,11 @@ import "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
 
 contract BasicAuthorizerMock is IAuthorizer {
     // Simple, to avoid bringing in EnumerableSet, etc.
-    mapping(bytes32 => mapping(address => bool)) private _roles;
+    mapping(bytes32 actionId => mapping(address account => bool hasRole)) private _roles;
 
     // Could generalize better, but wanted to make minimal changes.
-    mapping(bytes32 => mapping(address => mapping(address => bool))) private _specificRoles;
+    mapping(bytes32 actionId => mapping(address account => mapping(address whereAddress => bool hasRole)))
+        private _specificRoles;
 
     /// @inheritdoc IAuthorizer
     function canPerform(bytes32 role, address account, address where) external view returns (bool) {

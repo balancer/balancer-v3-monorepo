@@ -449,7 +449,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         );
 
         // 6) Store pool balances, raw and live (only index in and out).
-        mapping(uint256 => bytes32) storage poolBalances = _poolTokenBalances[params.pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolBalances = _poolTokenBalances[
+            params.pool
+        ];
         poolBalances[state.indexIn] = PackedTokenBalance.toPackedBalance(
             poolData.balancesRaw[state.indexIn],
             poolData.balancesLiveScaled18[state.indexIn]

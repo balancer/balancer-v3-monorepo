@@ -167,9 +167,8 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         bytes32 s;
         uint8 v;
 
-        /// @solidity memory-safe-assembly
         // solhint-disable-next-line no-inline-assembly
-        assembly {
+        assembly ("memory-safe") {
             r := mload(add(signature, 0x20))
             s := mload(add(signature, 0x40))
             v := byte(0, mload(add(signature, 0x60)))

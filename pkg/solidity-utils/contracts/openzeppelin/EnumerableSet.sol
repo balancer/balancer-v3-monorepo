@@ -38,7 +38,7 @@ library EnumerableSet {
         address[] _values;
         // Position of the value in the `values` array, plus 1 because index 0
         // means a value is not in the set.
-        mapping(address => uint256) _indexes;
+        mapping(address addressKey => uint256 indexValue) _indexes;
     }
 
     /// @notice An index is beyond the current bounds of the set.

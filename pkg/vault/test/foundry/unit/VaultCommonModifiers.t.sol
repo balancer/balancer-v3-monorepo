@@ -18,14 +18,14 @@ contract VaultCommonModifiersTest is BaseVaultTest {
     *******************************************************************************/
 
     function testLock() public {
-        vault.manualSetIsUnlocked(false);
+        vault.forceLock();
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.VaultIsNotUnlocked.selector));
         vault.mockIsUnlocked();
     }
 
     function testUnlock() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
 
         // If function does not revert, test passes
         vault.mockIsUnlocked();
