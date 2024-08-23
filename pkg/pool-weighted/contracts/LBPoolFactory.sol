@@ -65,10 +65,6 @@ contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
             revert StandardPoolWithCreator();
         }
 
-        LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
-        liquidityManagement.enableDonation = false;
-        liquidityManagement.disableUnbalancedLiquidity = false;
-
         pool = _create(
             abi.encode(
                 WeightedPool.NewPoolParams({
@@ -85,6 +81,6 @@ contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
             salt
         );
 
-        _registerPoolWithVault(pool, tokens, swapFeePercentage, true, roleAccounts, pool, liquidityManagement);
+        _registerPoolWithVault(pool, tokens, swapFeePercentage, true, roleAccounts, pool, getDefaultLiquidityManagement());
     }
 }
