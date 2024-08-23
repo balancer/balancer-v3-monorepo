@@ -69,10 +69,10 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
         string version;
     }
 
-    /// @dev Indicates that one of the pool tokens' weight is below the minimum allowed.
+    /// @notice Indicates that one of the pool tokens' weight is below the minimum allowed.
     error MinWeight();
 
-    /// @dev Indicates that the sum of the pool tokens' weights is not FP 1.
+    /// @notice Indicates that the sum of the pool tokens' weights is not FixedPoint.ONE.
     error NormalizedWeightInvariant();
 
     constructor(

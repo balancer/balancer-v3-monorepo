@@ -80,31 +80,40 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
     uint256 private constant _MAX_INVARIANT_RATIO = 500e16; // 500%
 
-    /// @dev Store amplification state.
+    /// @notice Store amplification state.
     AmplificationState private _amplificationState;
 
-    /// @dev An amplification update has started.
+    /**
+     * @notice An amplification update has started.
+     * @param startValue Starting value of the amplification parameter
+     * @param endValue Ending value of the amplification parameter
+     * @param startTime Timestamp when the update starts
+     * @param endTime Timestamp when the update is complete
+     */
     event AmpUpdateStarted(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime);
 
-    /// @dev An amplification update has been stopped.
+    /**
+     * @notice An amplification update has been stopped.
+     * @param currentValue The value at which it stopped
+     */
     event AmpUpdateStopped(uint256 currentValue);
 
-    /// @dev The amplification factor is below the minimum of the range (1 - 5000).
+    /// @notice The amplification factor is below the minimum of the range (1 - 5000).
     error AmplificationFactorTooLow();
 
-    /// @dev The amplification factor is above the maximum of the range (1 - 5000).
+    /// @notice The amplification factor is above the maximum of the range (1 - 5000).
     error AmplificationFactorTooHigh();
 
-    /// @dev The amplification change duration is too short.
+    /// @notice The amplification change duration is too short.
     error AmpUpdateDurationTooShort();
 
-    /// @dev The amplification change rate is too fast.
+    /// @notice The amplification change rate is too fast.
     error AmpUpdateRateTooFast();
 
-    /// @dev Amplification update operations must be done one at a time.
+    /// @notice Amplification update operations must be done one at a time.
     error AmpUpdateAlreadyStarted();
 
-    /// @dev Cannot stop an amplification update before it starts.
+    /// @notice Cannot stop an amplification update before it starts.
     error AmpUpdateNotStarted();
 
     /**

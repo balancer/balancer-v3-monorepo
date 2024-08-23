@@ -19,7 +19,7 @@ interface IVaultExtension {
     /// @notice Returns the main Vault address.
     function vault() external view returns (IVault);
 
-    /// @notice Returns the Vault Admin contract address.
+    /// @notice Returns the VaultAdmin contract address.
     function getVaultAdmin() external view returns (address);
 
     /*******************************************************************************

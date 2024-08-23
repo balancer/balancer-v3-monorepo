@@ -243,7 +243,7 @@ contract VaultMock is IVaultMainMock, Vault {
         require(tokens.length == tokenBalanceRaw.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
         require(tokens.length == tokenBalanceLiveScaled18.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
 
-        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances = _poolTokenBalances[pool];
         for (uint256 i = 0; i < tokens.length; ++i) {
             poolTokenBalances[i] = PackedTokenBalance.toPackedBalance(tokenBalanceRaw[i], tokenBalanceLiveScaled18[i]);
         }
@@ -261,7 +261,7 @@ contract VaultMock is IVaultMainMock, Vault {
         require(tokens.length == tokenBalanceRaw.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
         require(tokens.length == tokenBalanceLiveScaled18.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
 
-        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances = _poolTokenBalances[pool];
         for (uint256 i = 0; i < tokens.length; ++i) {
             poolTokenBalances[i] = PackedTokenBalance.toPackedBalance(tokenBalanceRaw[i], tokenBalanceLiveScaled18[i]);
         }
@@ -383,7 +383,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
-        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances = _poolTokenBalances[pool];
 
         uint256 numTokens = _poolTokens[pool].length;
         balancesRaw = new uint256[](numTokens);
@@ -394,7 +394,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastBalancesLiveScaled18) {
-        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances = _poolTokenBalances[pool];
 
         uint256 numTokens = _poolTokens[pool].length;
         lastBalancesLiveScaled18 = new uint256[](numTokens);

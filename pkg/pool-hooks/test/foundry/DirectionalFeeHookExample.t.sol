@@ -40,6 +40,8 @@ contract DirectionalHookExampleTest is BaseVaultTest {
 
     StablePoolFactory internal stablePoolFactory;
 
+    address internal directionalFeeHook;
+
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
 
     uint256 internal constant SWAP_FEE_PERCENTAGE = 10e16; // 10%
@@ -55,15 +57,20 @@ contract DirectionalHookExampleTest is BaseVaultTest {
         stablePoolFactory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
         // lp will be the owner of the hook. Only LP is able to set hook fee percentages.
         vm.prank(lp);
-        address directionalFeeHook = address(
-            new DirectionalFeeHookExample(IVault(address(vault)), address(stablePoolFactory))
-        );
+        directionalFeeHook = address(new DirectionalFeeHookExample(IVault(address(vault)), address(stablePoolFactory)));
         vm.label(directionalFeeHook, "Directional Fee Hook");
         return directionalFeeHook;
     }
 
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
         PoolRoleAccounts memory roleAccounts;
+
+        vm.expectEmit(true, true, false, false);
+        emit DirectionalFeeHookExample.DirectionalFeeHookExampleRegistered(
+            directionalFeeHook,
+            address(stablePoolFactory),
+            address(0)
+        );
 
         address newPool = address(
             stablePoolFactory.create(

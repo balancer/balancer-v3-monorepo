@@ -11,8 +11,9 @@ library BasePoolMath {
     using FixedPoint for uint256;
 
     /**
-     * @dev An add liquidity operation increased the invariant above the limit. This value is determined by each pool
-     * type, and depends on the specific math used to compute the price curve.
+     * @notice An add liquidity operation increased the invariant above the limit.
+     * @dev This value is determined by each pool type, and depends on the specific math used to compute
+     * the price curve.
      *
      * @param invariantRatio The ratio of the new invariant (after an operation) to the old
      * @param maxInvariantRatio The maximum allowed invariant ratio
@@ -20,8 +21,9 @@ library BasePoolMath {
     error InvariantRatioAboveMax(uint256 invariantRatio, uint256 maxInvariantRatio);
 
     /**
-     * @dev A remove liquidity operation decreased the invariant below the limit. This value is determined by each pool
-     * type, and depends on the specific math used to compute the price curve.
+     * @notice A remove liquidity operation decreased the invariant below the limit.
+     * @dev This value is determined by each pool type, and depends on the specific math used to compute
+     * the price curve.
      *
      * @param invariantRatio The ratio of the new invariant (after an operation) to the old
      * @param minInvariantRatio The minimum allowed invariant ratio

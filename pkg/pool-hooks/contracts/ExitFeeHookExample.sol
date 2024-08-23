@@ -46,15 +46,39 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
     uint64 public constant MAX_EXIT_FEE_PERCENTAGE = 10e16;
 
     /**
-     * @dev The exit fee cannot exceed the maximum allowed percentage.
+     * @notice A new `ExitFeeHookExample` contract has been registered successfully for a given factory and pool.
+     * @dev If the registration fails the call will revert, so there will be no event.
+     * @param hooksContract This contract
+     * @param pool The pool on which the hook was registered
+     */
+    event ExitFeeHookExampleRegistered(address indexed hooksContract, address indexed pool);
+
+    /**
+     * @notice An exit fee has been charged on a pool.
+     * @param pool The pool that was charged
+     * @param token The address of the fee token
+     * @param feeAmount The amount of the fee (in native decimals)
+     */
+    event ExitFeeCharged(address indexed pool, IERC20 indexed token, uint256 feeAmount);
+
+    /**
+     * @notice The exit fee has been changed in an `ExitFeeHookExample` contract.
+     * @dev Note that the initial fee will be zero, and no event is emitted on deployment.
+     * @param hookContract The contract whose fee changed
+     * @param exitFeePercentage The new exit fee percentage
+     */
+    event ExitFeePercentageChanged(address indexed hookContract, uint256 exitFeePercentage);
+
+    /**
+     * @notice The exit fee cannot exceed the maximum allowed percentage.
      * @param feePercentage The fee percentage exceeding the limit
      * @param limit The maximum exit fee percentage
      */
     error ExitFeeAboveLimit(uint256 feePercentage, uint256 limit);
 
     /**
-     * @dev The pool does not support adding liquidity through donation.
-     * There is an existing similar error (IVaultErrors.DoesNotSupportDonation), but hooks should not throw
+     * @notice The pool does not support adding liquidity through donation.
+     * @dev There is an existing similar error (IVaultErrors.DoesNotSupportDonation), but hooks should not throw
      * "Vault" errors.
      */
     error PoolDoesNotSupportDonation();
@@ -66,10 +90,10 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
     /// @inheritdoc IHooks
     function onRegister(
         address,
-        address,
+        address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata liquidityManagement
-    ) public view override onlyVault returns (bool) {
+    ) public override onlyVault returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
         // that the given pool is from the factory). Returning true unconditionally allows any pool, with any
         // configuration, to use this hook.
@@ -78,6 +102,8 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
         if (liquidityManagement.enableDonation == false) {
             revert PoolDoesNotSupportDonation();
         }
+
+        emit ExitFeeHookExampleRegistered(address(this), pool);
 
         return true;
     }
@@ -122,7 +148,9 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
                 uint256 exitFee = amountsOutRaw[i].mulDown(exitFeePercentage);
                 accruedFees[i] = exitFee;
                 hookAdjustedAmountsOutRaw[i] -= exitFee;
-                // Fees don't need to be transferred to the hook, because donation will redeposit them in the vault.
+
+                emit ExitFeeCharged(pool, tokens[i], exitFee);
+                // Fees don't need to be transferred to the hook, because donation will redeposit them in the Vault.
                 // In effect, we will transfer a reduced amount of tokensOut to the caller, and leave the remainder
                 // in the pool balance.
             }
@@ -154,5 +182,7 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
             revert ExitFeeAboveLimit(newExitFeePercentage, MAX_EXIT_FEE_PERCENTAGE);
         }
         exitFeePercentage = newExitFeePercentage;
+
+        emit ExitFeePercentageChanged(address(this), newExitFeePercentage);
     }
 }

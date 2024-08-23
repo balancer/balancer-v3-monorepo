@@ -107,8 +107,8 @@ contract VaultExplorerTest is BaseVaultTest {
 
     function testGetVaultContracts() public view {
         assertEq(explorer.getVault(), address(vault), "Vault address mismatch");
-        assertEq(explorer.getVaultExtension(), vault.getVaultExtension(), "Vault Extension address mismatch");
-        assertEq(explorer.getVaultAdmin(), vault.getVaultAdmin(), "Vault Admin address mismatch");
+        assertEq(explorer.getVaultExtension(), vault.getVaultExtension(), "VaultExtension address mismatch");
+        assertEq(explorer.getVaultAdmin(), vault.getVaultAdmin(), "VaultAdmin address mismatch");
         assertEq(explorer.getAuthorizer(), address(vault.getAuthorizer()), "Authorizer address mismatch");
         assertEq(
             explorer.getProtocolFeeController(),
@@ -558,6 +558,18 @@ contract VaultExplorerTest is BaseVaultTest {
         vault.disableQuery();
 
         assertTrue(explorer.isQueryDisabled(), "Queries are not disabled");
+    }
+
+    function testAreBuffersPaused() public {
+        assertFalse(explorer.areBuffersPaused(), "Buffers are initially paused");
+
+        bytes32 pauseBufferRole = vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector);
+        authorizer.grantRole(pauseBufferRole, alice);
+
+        vm.prank(alice);
+        vault.pauseVaultBuffers();
+
+        assertTrue(explorer.areBuffersPaused(), "Buffers are not paused");
     }
 
     function testGetPauseWindowEndTime() public view {
