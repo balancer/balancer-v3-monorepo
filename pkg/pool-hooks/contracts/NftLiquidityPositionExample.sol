@@ -167,12 +167,12 @@ contract NftRouter is MinimalRouter, ERC721, IHooks {
         if (daysPassed < 10) {
             // decreasing fee by 1% per day
             uint256 currentFee = initialFee - 1e16 * daysPassed;
-            hookAdjustedAmountsOutRaw = takeFee(pool, amountsOutRaw, currentFee);
+            hookAdjustedAmountsOutRaw = _takeFee(pool, amountsOutRaw, currentFee);
         }
         return (true, hookAdjustedAmountsOutRaw);
     }
 
-    function takeFee(
+    function _takeFee(
         address pool,
         uint256[] memory amountsOutRaw,
         uint256 currentFee
