@@ -13,7 +13,7 @@ contract TransientStorageHelpersTest is Test {
     using TransientStorageHelpers for *;
     using StorageSlotExtension for StorageSlotExtension.Uint256SlotType;
 
-    mapping(IERC20 => int256) private tokenDeltaMapping;
+    mapping(IERC20 token => int256 delta) private tokenDeltaMapping;
     address[] private addressArray;
     uint256 private storageUint;
 
