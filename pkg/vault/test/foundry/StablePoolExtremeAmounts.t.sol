@@ -15,7 +15,7 @@ import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/tes
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { BaseExtremeAmountsTest } from "./utils/BaseExtremeAmountsTest.sol";
 
-contract StablePoolExtremeAmountsWithMinSwapFeeTest is BaseExtremeAmountsTest {
+contract StablePoolExtremeAmountsTest is BaseExtremeAmountsTest {
     using ArrayHelpers for *;
     using CastingHelpers for *;
 

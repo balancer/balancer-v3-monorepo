@@ -46,9 +46,69 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
     //#endregion
 
     //#region Tests
-    function testAddAndRemoveLiquidityProportional_Fuzz(uint256 exactBPTAmount) public {
+    function testAddAndRemoveLiquidityProportional_Fuzz(uint256 exactBPTAmount, uint256 swapFee) public {
+        exactBPTAmount = bound(exactBPTAmount, minAmount, maxAdditionalBPTAmount);
+
+        _updateSwapFee(swapFee);
+        _testAddAndRemoveLiquidityProportional(exactBPTAmount);
+    }
+
+    function testAddUnbalancedAndRemoveLiquidityProportional_Fuzz(
+        uint256[2] memory maxAmountsInRaw,
+        uint256 addLiquidityProportionalAmount,
+        uint256 swapFee
+    ) public {
+        addLiquidityProportionalAmount = bound(addLiquidityProportionalAmount, minAmount, maxAdditionalBPTAmount / 2);
+
+        _updateSwapFee(swapFee);
+        _testAddUnbalancedAndRemoveLiquidityProportional(maxAmountsInRaw, addLiquidityProportionalAmount);
+    }
+
+    function testAddProportionalAndRemoveLiquidityExactIn_Fuzz(uint256 exactBPTAmount, uint256 swapFee) public {
         vault.forceUnlock();
         exactBPTAmount = bound(exactBPTAmount, minAmount, maxAdditionalBPTAmount);
+
+        _updateSwapFee(swapFee);
+        _testAddProportionalAndRemoveLiquidityExactIn(exactBPTAmount);
+    }
+
+    function testAddLiquiditySingleTokenExactOutAndRemoveExactIn_Fuzz(
+        uint256 addLiquidityProportionalAmount,
+        uint256 swapFee
+    ) public {
+        addLiquidityProportionalAmount = bound(addLiquidityProportionalAmount, minAmount, maxAdditionalBPTAmount / 2);
+
+        _updateSwapFee(swapFee);
+        _testAddLiquiditySingleTokenExactOutAndRemoveExactIn(addLiquidityProportionalAmount);
+    }
+
+    function testAddLiquiditySingleTokenExactOutAndRemoveExactOut_Fuzz(
+        uint256 addLiquidityProportionalAmount,
+        uint256 swapFee
+    ) public {
+        addLiquidityProportionalAmount = bound(addLiquidityProportionalAmount, minAmount, maxAdditionalBPTAmount / 2);
+
+        _updateSwapFee(swapFee);
+        _testAddLiquiditySingleTokenExactOutAndRemoveExactOut(addLiquidityProportionalAmount);
+    }
+
+    function testSwap_Fuzz(uint256 swapAmount, uint256 addLiquidityProportionalAmount, uint256 swapFee) public {
+        addLiquidityProportionalAmount = bound(addLiquidityProportionalAmount, minAmount, maxAdditionalBPTAmount / 2);
+
+        _updateSwapFee(swapFee);
+        _testSwap(addLiquidityProportionalAmount, swapAmount);
+    }
+
+    //#endregion
+
+    //#region Internal functions
+    function _updateSwapFee(uint256 swapFee) internal {
+        swapFee = bound(swapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
+        vault.manualSetAggregateSwapFeePercentage(pool, swapFee);
+    }
+
+    function _testAddAndRemoveLiquidityProportional(uint256 exactBPTAmount) private {
+        vault.forceUnlock();
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
             AddLiquidityParams({
@@ -79,13 +139,12 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
         assertLe(amountsOut[1], amountsIn[1], "amountsOut[1] should be less or equal to amountsIn[1]");
     }
 
-    function testAddUnbalancedAndRemoveLiquidityProportional_Fuzz(
+    function _testAddUnbalancedAndRemoveLiquidityProportional(
         uint256[2] memory maxAmountsInRaw,
         uint256 addLiquidityProportionalAmount
-    ) public {
+    ) private {
         vault.forceUnlock();
 
-        addLiquidityProportionalAmount = bound(addLiquidityProportionalAmount, minAmount, maxAdditionalBPTAmount / 2);
         (uint256[] memory amountsIn, , ) = vault.addLiquidity(
             AddLiquidityParams({
                 pool: pool,
@@ -152,9 +211,8 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
         }
     }
 
-    function testAddProportionalAndRemoveLiquidityExactIn_Fuzz(uint256 exactBPTAmount) public {
+    function _testAddProportionalAndRemoveLiquidityExactIn(uint256 exactBPTAmount) private {
         vault.forceUnlock();
-        exactBPTAmount = bound(exactBPTAmount, minAmount, maxAdditionalBPTAmount);
 
         (, uint256 bptAmountOut, ) = vault.addLiquidity(
             AddLiquidityParams({
@@ -221,10 +279,8 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
         );
     }
 
-    function testAddLiquiditySingleTokenExactOutAndRemoveExactIn_Fuzz(uint256 addLiquidityProportionalAmount) public {
+    function _testAddLiquiditySingleTokenExactOutAndRemoveExactIn(uint256 addLiquidityProportionalAmount) private {
         vault.forceUnlock();
-
-        addLiquidityProportionalAmount = bound(addLiquidityProportionalAmount, minAmount, maxAdditionalBPTAmount / 2);
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
             AddLiquidityParams({
@@ -266,10 +322,9 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
         assertLe(amountsOut[1], amountsIn[1], "amountsOut[1] should be less or equal to amountsIn[1]");
     }
 
-    function testAddLiquiditySingleTokenExactOutAndRemoveExactOut_Fuzz(uint256 addLiquidityProportionalAmount) public {
+    function _testAddLiquiditySingleTokenExactOutAndRemoveExactOut(uint256 addLiquidityProportionalAmount) private {
         vault.forceUnlock();
 
-        addLiquidityProportionalAmount = bound(addLiquidityProportionalAmount, minAmount, maxAdditionalBPTAmount / 2);
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
             AddLiquidityParams({
                 pool: pool,
@@ -326,10 +381,9 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
         }
     }
 
-    function testSwap(uint256 swapAmount, uint256 addLiquidityProportionalAmount) public {
+    function _testSwap(uint256 addLiquidityProportionalAmount, uint256 swapAmount) private {
         vault.forceUnlock();
 
-        addLiquidityProportionalAmount = bound(addLiquidityProportionalAmount, minAmount, maxAdditionalBPTAmount / 2);
         (uint256[] memory amountsIn, , ) = vault.addLiquidity(
             AddLiquidityParams({
                 pool: pool,
@@ -371,9 +425,7 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
         assertEq(amountInReturn, amountOut, "amountInReturn should be equal to amountOut");
         assertLe(amountOutReturn, amountIn, "amountOutReturn should be less or equal to amountIn");
     }
-    //#endregion
 
-    //#region Internal functions
     function _removeSelectorFromErrorReason(
         bytes memory reason
     ) internal pure returns (bytes4 selector, bytes memory res) {
