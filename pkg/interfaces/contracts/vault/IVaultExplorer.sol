@@ -387,6 +387,15 @@ interface IVaultExplorer {
     *******************************************************************************/
 
     /**
+     * @notice Indicates whether the Vault buffers are paused.
+     * @dev When buffers are paused, all buffer operations (i.e., calls on the Router with `isBuffer` true)
+     * will revert.
+     *
+     * @return True if the Vault buffers are paused
+     */
+    function areBuffersPaused() external view returns (bool);
+
+    /**
      * @notice Returns the shares (internal buffer BPT) of a liquidity owner: a user that deposited assets
      * in the buffer.
      *

@@ -56,10 +56,10 @@ library EnumerableMap {
         // Number of entries in the map
         uint256 _length;
         // Storage of map keys and values
-        mapping(uint256 => IERC20ToBytes32MapEntry) entries;
+        mapping(uint256 indexValue => IERC20ToBytes32MapEntry mapEntry) entries;
         // Position of the entry defined by a key in the `entries` array, plus 1
         // because index 0 means a key is not in the map.
-        mapping(IERC20 => uint256) indexes;
+        mapping(IERC20 tokenKey => uint256 indexValue) indexes;
     }
 
     /**
@@ -258,10 +258,10 @@ library EnumerableMap {
         // Number of entries in the map
         uint256 size;
         // Storage of map keys and values
-        mapping(uint256 => IERC20ToUint256MapEntry) entries;
+        mapping(uint256 indexValue => IERC20ToUint256MapEntry mapEntry) entries;
         // Position of the entry defined by a key in the `entries` array, plus 1
         // because index 0 means a key is not in the map.
-        mapping(IERC20 => uint256) indexes;
+        mapping(IERC20 tokenKey => uint256 indexValue) indexes;
     }
 
     /// @dev An index is beyond the current bounds of the set.

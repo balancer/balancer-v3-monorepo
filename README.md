@@ -132,9 +132,9 @@ $ yarn slither:triage
 $ yarn coverage
 ```
 
-The `coverage` command generates a coverage report for each package found in the `./package/coverage/index.html` directory. The `coverage.sh` script is used to merge HardHat and Forge coverage reports into a unified report, leveraging the lcov command-line utility.
+The `coverage` command generates a coverage report for each package found in the `./package/coverage/index.html` directory. The `coverage.sh` script can generate Forge and Hardhat reports and/or merge them. The Yarn command uses Forge by default as most of the tests are written with it, and it's the most reliable option.
 
-**Note: We suggest adopting lcov 1.16 since `forge coverage --report lcov` command works better in this version.**
+**Note: We suggest adopting [lcov 1.16](https://github.com/linux-test-project/lcov/releases/tag/v1.16) since `forge coverage --report lcov` command works better in this version.**
 
 ## Security
 

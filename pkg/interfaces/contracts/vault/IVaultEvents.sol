@@ -99,13 +99,16 @@ interface IVaultEvents {
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, int256[] deltas);
 
     /**
-     * @dev The Vault's pause status has changed.
+     * @notice The Vault's pause status has changed.
      * @param paused True if the Vault was paused
      */
     event VaultPausedStateChanged(bool paused);
 
+    /// @notice `disableQuery` has been called on the Vault, permanently disabling query functionality.
+    event VaultQueriesDisabled();
+
     /**
-     * @dev A Pool's pause status has changed.
+     * @notice A Pool's pause status has changed.
      * @param pool The pool that was just paused or unpaused
      * @param paused True if the pool was paused
      */
@@ -118,7 +121,7 @@ interface IVaultEvents {
     event SwapFeePercentageChanged(address indexed pool, uint256 swapFeePercentage);
 
     /**
-     * @dev Recovery mode has been enabled or disabled for a pool.
+     * @notice Recovery mode has been enabled or disabled for a pool.
      * @param pool The pool
      * @param recoveryMode True if recovery mode was enabled
      */
@@ -179,4 +182,13 @@ interface IVaultEvents {
      * @param amountWrapped The amount of the wrapped token that was withdrawn
      */
     event LiquidityRemovedFromBuffer(IERC4626 indexed wrappedToken, uint256 amountUnderlying, uint256 amountWrapped);
+
+    /**
+     * @notice The Vault buffers pause status has changed.
+     * @dev If buffers all paused, all buffer operations (i.e., all calls through the Router with `isBuffer`
+     * set to true) will revert.
+     *
+     * @param paused True if the Vault buffers were paused
+     */
+    event VaultBuffersPausedStateChanged(bool paused);
 }

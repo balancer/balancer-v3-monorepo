@@ -76,7 +76,7 @@ contract VaultExtensionMutationTest is BaseVaultTest {
         IERC20[] memory tokens;
         uint256[] memory exactAmountsIn;
 
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
 
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         vault.manualInitializePoolReentrancy(pool, address(0), tokens, exactAmountsIn, 0, "");
