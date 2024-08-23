@@ -25,6 +25,12 @@ import {
 import { MinimalRouter } from "./MinimalRouter.sol";
 
 contract NftRouter is MinimalRouter, ERC721, IHooks {
+    // Initial fee of 10%
+    uint256 public constant INITIAL_FEE = 10e16;
+    uint256 public constant ONE_PERCENT = 1e16;
+    // After this amount of days the fee will be 0%
+    uint256 public constant FULL_DECAY_DAYS = 10;
+
     using FixedPoint for uint256;
     uint256 private _nextTokenId;
     mapping(uint256 => uint256) public bptAmount;
@@ -105,6 +111,7 @@ contract NftRouter is MinimalRouter, ERC721, IHooks {
      * "Vault" errors.
      */
     error PoolDoesNotSupportDonation();
+    error PoolSupportsUnbalancedLiquidity();
 
     function onRegister(
         address,
@@ -115,6 +122,9 @@ contract NftRouter is MinimalRouter, ERC721, IHooks {
         // This hook requires donation support to work (see above).
         if (liquidityManagement.enableDonation == false) {
             revert PoolDoesNotSupportDonation();
+        }
+        if (liquidityManagement.disableUnbalancedLiquidity == false) {
+            revert PoolSupportsUnbalancedLiquidity();
         }
 
         return true;
@@ -160,16 +170,20 @@ contract NftRouter is MinimalRouter, ERC721, IHooks {
 
         uint256 tokenId = abi.decode(userData, (uint256));
         hookAdjustedAmountsOutRaw = amountsOutRaw;
-        // Calculate the number of days that have passed since startTime
-        uint256 daysPassed = (block.timestamp - startTime[tokenId]) / 1 days;
-        // Initial fee of 10%
-        uint256 initialFee = 10e16;
-        if (daysPassed < 10) {
-            // decreasing fee by 1% per day
-            uint256 currentFee = initialFee - 1e16 * daysPassed;
+        uint256 currentFee = getCurrentFee(tokenId);
+        if (currentFee > 0) {
             hookAdjustedAmountsOutRaw = _takeFee(pool, amountsOutRaw, currentFee);
         }
         return (true, hookAdjustedAmountsOutRaw);
+    }
+
+    function getCurrentFee(uint256 tokenId) public view returns (uint256 fee) {
+        // Calculate the number of days that have passed since startTime
+        uint256 daysPassed = (block.timestamp - startTime[tokenId]) / 1 days;
+        if (daysPassed < FULL_DECAY_DAYS) {
+            // decreasing fee by 1% per day
+            fee = INITIAL_FEE - ONE_PERCENT * daysPassed;
+        }
     }
 
     function _takeFee(
