@@ -45,9 +45,8 @@ contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
      * @param symbol The symbol of the pool
      * @param tokens An array of descriptors for the tokens the pool will manage
      * @param normalizedWeights The pool weights (must add to FixedPoint.ONE)
-     * @param roleAccounts Addresses the Vault will allow to change certain pool settings
      * @param swapFeePercentage Initial swap fee percentage
-     * @param owner The owner address for pool; the sole LP with swapEnable/swapFee change permissions
+     * @param owner The owner address for pool; sole LP with swapEnable/swapFee change permissions
      * @param salt The salt value that will be passed to create3 deployment
      */
     function create(
@@ -55,15 +54,13 @@ contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
         string memory symbol,
         TokenConfig[] memory tokens,
         uint256[] memory normalizedWeights,
-        PoolRoleAccounts memory roleAccounts,
         uint256 swapFeePercentage,
         address owner,
         bool swapEnabledOnStart,
         bytes32 salt
     ) external returns (address pool) {
-        if (roleAccounts.poolCreator != address(0)) {
-            revert StandardPoolWithCreator();
-        }
+        PoolRoleAccounts memory roleAccounts;
+        roleAccounts.swapFeeManager = owner;
 
         pool = _create(
             abi.encode(
@@ -81,6 +78,14 @@ contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
             salt
         );
 
-        _registerPoolWithVault(pool, tokens, swapFeePercentage, true, roleAccounts, pool, getDefaultLiquidityManagement());
+        _registerPoolWithVault(
+            pool,
+            tokens,
+            swapFeePercentage,
+            true,
+            roleAccounts,
+            pool,
+            getDefaultLiquidityManagement()
+        );
     }
 }

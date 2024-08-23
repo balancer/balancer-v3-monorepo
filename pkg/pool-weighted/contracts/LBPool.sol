@@ -27,14 +27,12 @@ contract LBPool is WeightedPool, Ownable {
         bool swapEnabled;
     }
     PoolState private _poolState;
-    uint256 private _swapFeePercentage;
 
     uint256 private constant _NUM_TOKENS = 2;
 
     // `{start,end}Time` are `uint56`s. Ensure that no input time (passed as `uint256`) will overflow.
     uint256 private constant _MAX_TIME = type(uint56).max;
 
-    event SwapFeePercentageChanged(uint256 swapFeePercentage);
     event SwapEnabledSet(bool swapEnabled);
     event GradualWeightUpdateScheduled(
         uint256 startTime,
@@ -42,12 +40,6 @@ contract LBPool is WeightedPool, Ownable {
         uint256[] startWeights,
         uint256[] endWeights
     );
-
-    /// @dev Indicates that the swap fee is below the minimum allowable swap fee.
-    error MinSwapFee();
-
-    /// @dev Indicates that the swap fee is above the maximum allowable swap fee.
-    error MaxSwapFee();
 
     constructor(
         NewPoolParams memory params,
@@ -107,22 +99,6 @@ contract LBPool is WeightedPool, Ownable {
     }
 
     /**
-     * @notice Set the swap fee percentage.
-     * @dev This is a permissioned function. The swap fee must be within the bounds set by
-     * MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
-     */
-    function setSwapFeePercentage(uint256 swapFeePercentage) public virtual onlyOwner {
-        _setSwapFeePercentage(swapFeePercentage);
-    }
-
-    /**
-     * @notice Return the current value of the swap fee percentage.
-     */
-    function getSwapFeePercentage() public view virtual returns (uint256) {
-        return _swapFeePercentage;
-    }
-
-    /**
      * @notice Enable/disable trading.
      */
     function setSwapEnabled(bool swapEnabled) external onlyOwner {
@@ -166,19 +142,6 @@ contract LBPool is WeightedPool, Ownable {
      */
     function onBeforeSwap(PoolSwapParams calldata, address) public virtual onlyVault returns (bool) {
         return _getPoolSwapEnabledState();
-    }
-
-    /**
-     * @notice Called after `onBeforeSwap` and before the main swap operation, if the pool has dynamic fees.
-     * @return success True if the pool wishes to proceed with settlement
-     * @return dynamicSwapFeePercentage Value of the swap fee percentage, as an 18-decimal FP value
-     */
-    function onComputeDynamicSwapFeePercentage(
-        PoolSwapParams calldata,
-        address,
-        uint256
-    ) external view onlyVault returns (bool, uint256) {
-        return (true, getSwapFeePercentage());
     }
 
     /* =========================================
@@ -242,20 +205,6 @@ contract LBPool is WeightedPool, Ownable {
 
         _poolState = poolState;
         emit GradualWeightUpdateScheduled(startTime, endTime, startWeights, endWeights);
-    }
-
-    function _setSwapFeePercentage(uint256 swapFeePercentage) internal virtual {
-        // TODO: can we get min/max swap fee as internal fns in the WP base class? External call is wasteful.
-        if (swapFeePercentage < this.getMinimumSwapFeePercentage()) {
-            revert MinSwapFee();
-        }
-        // TODO: can we get min/max swap fee as internal fns in the WP base class? External call is wasteful.
-        if (swapFeePercentage > this.getMaximumSwapFeePercentage()) {
-            revert MaxSwapFee();
-        }
-
-        _swapFeePercentage = swapFeePercentage;
-        emit SwapFeePercentageChanged(swapFeePercentage);
     }
 
     function _getPoolSwapEnabledState() internal view returns (bool) {
