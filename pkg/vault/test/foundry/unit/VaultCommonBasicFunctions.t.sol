@@ -399,7 +399,7 @@ contract VaultCommonBasicFunctionsTest is BaseVaultTest {
         );
 
         // Also revert if it's above the maximum limit.
-        vm.expectRevert(IVaultErrors.InvalidPercentage.selector);
+        vm.expectRevert(IVaultErrors.PercentageAboveMax.selector);
         vault.manualSetStaticSwapFeePercentage(pool, MAX_FEE_PERCENTAGE + 1);
     }
 

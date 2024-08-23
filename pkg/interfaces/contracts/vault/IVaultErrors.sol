@@ -215,8 +215,8 @@ interface IVaultErrors {
      */
     error FeePrecisionTooHigh();
 
-    /// @dev Given percentage is above FixedPoint.ONE (1e18 wei).
-    error InvalidPercentage();
+    /// @dev A given percentage is above the maximum (usually FixedPoint.ONE, or 1e18 wei).
+    error PercentageAboveMax();
 
     /*******************************************************************************
                                     Queries
