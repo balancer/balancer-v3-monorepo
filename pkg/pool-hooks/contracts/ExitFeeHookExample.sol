@@ -70,15 +70,15 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
     event ExitFeePercentageChanged(address indexed hookContract, uint256 exitFeePercentage);
 
     /**
-     * @dev The exit fee cannot exceed the maximum allowed percentage.
+     * @notice The exit fee cannot exceed the maximum allowed percentage.
      * @param feePercentage The fee percentage exceeding the limit
      * @param limit The maximum exit fee percentage
      */
     error ExitFeeAboveLimit(uint256 feePercentage, uint256 limit);
 
     /**
-     * @dev The pool does not support adding liquidity through donation.
-     * There is an existing similar error (IVaultErrors.DoesNotSupportDonation), but hooks should not throw
+     * @notice The pool does not support adding liquidity through donation.
+     * @dev There is an existing similar error (IVaultErrors.DoesNotSupportDonation), but hooks should not throw
      * "Vault" errors.
      */
     error PoolDoesNotSupportDonation();

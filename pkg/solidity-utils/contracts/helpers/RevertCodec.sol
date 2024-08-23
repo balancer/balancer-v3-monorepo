@@ -7,12 +7,12 @@ pragma solidity ^0.8.24;
 /// @notice Support `quoteAndRevert`: a v2-style query which always reverts, and returns the result in the return data.
 library RevertCodec {
     /**
-     * @dev On success of the primary operation in a `quoteAndRevert`, this error is thrown with the return data.
+     * @notice On success of the primary operation in a `quoteAndRevert`, this error is thrown with the return data.
      * @param result The result of the query operation
      */
     error Result(bytes result);
 
-    /// @dev Handle the "reverted without a reason" case (i.e., no return data).
+    /// @notice Handle the "reverted without a reason" case (i.e., no return data).
     error ErrorSelectorNotFound();
 
     function catchEncodedResult(bytes memory resultRaw) internal pure returns (bytes memory) {

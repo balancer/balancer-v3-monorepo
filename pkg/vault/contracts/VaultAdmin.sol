@@ -418,7 +418,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         if (underlyingToken == address(0)) {
             // Should never happen, but a malicious wrapper could return the zero address and cause the buffer
             // initialization code to run more than once.
-            revert InvalidUnderlyingToken();
+            revert InvalidUnderlyingToken(wrappedToken);
         }
 
         // Register asset of wrapper, so it cannot change.
@@ -489,7 +489,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
     function _mintBufferShares(IERC4626 wrappedToken, address to, uint256 amount) internal {
         if (to == address(0)) {
-            revert BufferSharesInvalidReceiver(to);
+            revert BufferSharesInvalidReceiver();
         }
 
         uint256 newTotalSupply = _bufferTotalShares[wrappedToken] + amount;
@@ -586,7 +586,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
     function _burnBufferShares(IERC4626 wrappedToken, address from, uint256 amount) internal {
         if (from == address(0)) {
-            revert BufferSharesInvalidOwner(from);
+            revert BufferSharesInvalidOwner();
         }
 
         uint256 newTotalSupply = _bufferTotalShares[wrappedToken] - amount;

@@ -107,8 +107,8 @@ contract VaultExplorerTest is BaseVaultTest {
 
     function testGetVaultContracts() public view {
         assertEq(explorer.getVault(), address(vault), "Vault address mismatch");
-        assertEq(explorer.getVaultExtension(), vault.getVaultExtension(), "Vault Extension address mismatch");
-        assertEq(explorer.getVaultAdmin(), vault.getVaultAdmin(), "Vault Admin address mismatch");
+        assertEq(explorer.getVaultExtension(), vault.getVaultExtension(), "VaultExtension address mismatch");
+        assertEq(explorer.getVaultAdmin(), vault.getVaultAdmin(), "VaultAdmin address mismatch");
         assertEq(explorer.getAuthorizer(), address(vault.getAuthorizer()), "Authorizer address mismatch");
         assertEq(
             explorer.getProtocolFeeController(),

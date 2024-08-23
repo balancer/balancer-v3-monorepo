@@ -264,10 +264,10 @@ library EnumerableMap {
         mapping(IERC20 tokenKey => uint256 indexValue) indexes;
     }
 
-    /// @dev An index is beyond the current bounds of the set.
+    /// @notice An index is beyond the current bounds of the set.
     error IndexOutOfBounds();
 
-    /// @dev This error is thrown when attempting to retrieve an entry that is not present in the map.
+    /// @notice This error is thrown when attempting to retrieve an entry that is not present in the map.
     error KeyNotFound();
 
     /**

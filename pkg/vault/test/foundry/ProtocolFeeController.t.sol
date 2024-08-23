@@ -207,11 +207,11 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         );
 
         // Setting the creator fee is a permissioned call.
-        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, alice));
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, alice, pool));
         vm.prank(alice);
         feeController.setPoolCreatorSwapFeePercentage(pool, POOL_CREATOR_SWAP_FEE_PCT);
 
-        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, alice));
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, alice, pool));
         vm.prank(alice);
         feeController.setPoolCreatorYieldFeePercentage(pool, POOL_CREATOR_YIELD_FEE_PCT);
 
@@ -220,7 +220,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             feeControllerAuth.getActionId(IProtocolFeeController.setPoolCreatorSwapFeePercentage.selector),
             bob
         );
-        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, bob));
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, bob, pool));
         vm.prank(bob);
         feeController.setPoolCreatorSwapFeePercentage(pool, 0);
 
@@ -228,7 +228,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             feeControllerAuth.getActionId(IProtocolFeeController.setPoolCreatorYieldFeePercentage.selector),
             bob
         );
-        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, bob));
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, bob, pool));
         vm.prank(bob);
         feeController.setPoolCreatorYieldFeePercentage(pool, 0);
 
@@ -591,7 +591,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     }
 
     function testWithdrawalByNonPoolCreator() public {
-        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, alice));
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, alice, pool));
         vm.prank(alice);
         feeController.withdrawPoolCreatorFees(pool, alice);
     }
@@ -805,7 +805,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         // Now all that's left is to withdraw them.
         // Governance cannot withdraw creator fees.
         authorizer.grantRole(feeControllerAuth.getActionId(permissionedSelector), admin);
-        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, admin));
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, admin, pool));
         vm.prank(admin);
         feeController.withdrawPoolCreatorFees(pool, admin);
 

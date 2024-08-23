@@ -1066,7 +1066,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // If amount given is too small, rounding issues can be introduced that favors the user and can drain
             // the buffer. _MINIMUM_WRAP_AMOUNT prevents it. Most tokens have protections against it already, this
             // is just an extra layer of security.
-            revert WrapAmountTooSmall(address(params.wrappedToken));
+            revert WrapAmountTooSmall(params.wrappedToken);
         }
 
         if (params.direction == WrappingDirection.UNWRAP) {
@@ -1426,7 +1426,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     /**
      * @inheritdoc Proxy
      * @dev Override proxy implementation of `fallback` to disallow incoming ETH transfers.
-     * This function actually returns whatever the Vault Extension does when handling the request.
+     * This function actually returns whatever the VaultExtension does when handling the request.
      */
     fallback() external payable override {
         if (msg.value > 0) {
@@ -1447,7 +1447,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /**
      * @inheritdoc Proxy
-     * @dev Returns Vault Extension, where fallback requests are forwarded.
+     * @dev Returns the VaultExtension contract, to which fallback requests are forwarded.
      */
     function _implementation() internal view override returns (address) {
         return address(_vaultExtension);

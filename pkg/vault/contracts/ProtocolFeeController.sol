@@ -359,7 +359,7 @@ contract ProtocolFeeController is
         }
 
         if (poolCreator != msg.sender) {
-            revert CallerIsNotPoolCreator(msg.sender);
+            revert CallerIsNotPoolCreator(msg.sender, pool);
         }
     }
 
