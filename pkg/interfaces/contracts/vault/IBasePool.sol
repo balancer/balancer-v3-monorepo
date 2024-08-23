@@ -37,7 +37,7 @@ interface IBasePool is ISwapFeePercentageBounds, IUnbalancedLiquidityInvariantRa
     /**
      * @dev Computes the new balance of a token after an operation, given the invariant growth ratio and all other
      * balances. Similar to V2's `_getTokenBalanceGivenInvariantAndAllOtherBalances` in StableMath.
-     * The pool must round for the Vault to round in the protocol's favor when calling this function.
+     * The pool must round up for the Vault to round in the protocol's favor when calling this function.
      *
      * @param balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
      * @param tokenInIndex The index of the token we're computing the balance for, sorted in token registration order
