@@ -1426,7 +1426,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     /**
      * @inheritdoc Proxy
      * @dev Override proxy implementation of `fallback` to disallow incoming ETH transfers.
-     * This function actually returns whatever the Vault Extension does when handling the request.
+     * This function actually returns whatever the VaultExtension does when handling the request.
      */
     fallback() external payable override {
         if (msg.value > 0) {
@@ -1447,7 +1447,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     /**
      * @inheritdoc Proxy
-     * @dev Returns Vault Extension, where fallback requests are forwarded.
+     * @dev Returns the VaultExtension contract, to which fallback requests are forwarded.
      */
     function _implementation() internal view override returns (address) {
         return address(_vaultExtension);

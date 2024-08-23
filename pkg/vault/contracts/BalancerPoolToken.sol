@@ -27,13 +27,13 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvide
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     /**
-     * @notice Operationn failed due to an expired permit signature.
+     * @notice Operation failed due to an expired permit signature.
      * @param deadline The permit deadline that expired
      */
     error ERC2612ExpiredSignature(uint256 deadline);
 
     /**
-     * @notice Operationn failed due to a non-matching signature
+     * @notice Operation failed due to a non-matching signature
      * @param signer The address corresponding to the signature provider
      * @param owner The address of the owner (expected value of the signature provider)
      */
@@ -161,7 +161,7 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvide
 
     /**
      * @notice Get the BPT rate, which is defined as: pool invariant/total supply.
-     * @dev The Vault Extension defines a default implementation (`getBptRate`) to calculate the rate
+     * @dev The VaultExtension contract defines a default implementation (`getBptRate`) to calculate the rate
      * of any given pool, which should be sufficient in nearly all cases.
      *
      * @return rate Rate of the pool's BPT

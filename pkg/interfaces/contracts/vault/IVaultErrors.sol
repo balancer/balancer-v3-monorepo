@@ -396,18 +396,18 @@ interface IVaultErrors {
     error CannotReceiveEth();
 
     /**
-     * @notice The Vault extension was called by an account directly.
+     * @notice The `VaultExtension` contract was called by an account directly.
      * @dev It can only be called by the Vault via delegatecall.
      */
     error NotVaultDelegateCall();
 
-    /// @notice The vault extension was configured with an incorrect Vault address.
+    /// @notice The `VaultExtension` contract was configured with an incorrect Vault address.
     error WrongVaultExtensionDeployment();
 
-    /// @notice The protocol fee controller was configured with an incorrect Vault address.
+    /// @notice The `ProtocolFeeController` contract was configured with an incorrect Vault address.
     error WrongProtocolFeeControllerDeployment();
 
-    /// @notice The vault admin was configured with an incorrect Vault address.
+    /// @notice The `VaultAdmin` contract was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();
 
     /// @notice Quote reverted with a reserved error code.
