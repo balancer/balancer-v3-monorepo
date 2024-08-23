@@ -13,11 +13,11 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { GradualValueChange } from "./lib/GradualValueChange.sol";
 import { WeightValidation } from "./lib/WeightValidation.sol";
+
 /// @notice Inheriting from WeightedPool is only slightly wasteful (setting 2 immutable weights
 ///     that will not be used later), and it is tremendously helpful for pool validation and
 ///     any potential future parent class changes.
 contract LBPool is WeightedPool, Ownable {
-
     // Since we have max 2 tokens and the weights must sum to 1, we only need to store one weight
     struct PoolState {
         uint56 startTime;
@@ -49,16 +49,25 @@ contract LBPool is WeightedPool, Ownable {
     /// @dev Indicates that the swap fee is above the maximum allowable swap fee.
     error MaxSwapFee();
 
-    constructor(NewPoolParams memory params, IVault vault, address owner, bool swapEnabledOnStart)
-        WeightedPool(params, vault)
-        Ownable(owner)
-    {
+    constructor(
+        NewPoolParams memory params,
+        IVault vault,
+        address owner,
+        bool swapEnabledOnStart
+    ) WeightedPool(params, vault) Ownable(owner) {
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, params.numTokens);
         // WeightedPool validates `numTokens == normalizedWeights.length`
         // _startGradualWeightChange validates weights
 
         uint256 currentTime = block.timestamp;
-        _startGradualWeightChange(uint56(currentTime), uint56(currentTime), params.normalizedWeights, params.normalizedWeights, true, swapEnabledOnStart);
+        _startGradualWeightChange(
+            uint56(currentTime),
+            uint56(currentTime),
+            params.normalizedWeights,
+            params.normalizedWeights,
+            true,
+            swapEnabledOnStart
+        );
     }
 
     function updateWeightsGradually(
@@ -77,7 +86,7 @@ contract LBPool is WeightedPool, Ownable {
 
         _startGradualWeightChange(uint56(startTime), uint56(endTime), _getNormalizedWeights(), endWeights, false, true);
     }
-    
+
     /**
      * @dev Return start time, end time, and endWeights as an array.
      * Current weights should be retrieved via `getNormalizedWeights()`.
@@ -85,11 +94,7 @@ contract LBPool is WeightedPool, Ownable {
     function getGradualWeightUpdateParams()
         external
         view
-        returns (
-            uint256 startTime,
-            uint256 endTime,
-            uint256[] memory endWeights
-        )
+        returns (uint256 startTime, uint256 endTime, uint256[] memory endWeights)
     {
         PoolState memory poolState = _poolState;
 
@@ -103,7 +108,7 @@ contract LBPool is WeightedPool, Ownable {
 
     /**
      * @notice Set the swap fee percentage.
-     * @dev This is a permissioned function. The swap fee must be within the bounds set by 
+     * @dev This is a permissioned function. The swap fee must be within the bounds set by
      * MIN_SWAP_FEE_PERCENTAGE/MAX_SWAP_FEE_PERCENTAGE. Emits the SwapFeePercentageChanged event.
      */
     function setSwapFeePercentage(uint256 swapFeePercentage) public virtual onlyOwner {
@@ -136,7 +141,7 @@ contract LBPool is WeightedPool, Ownable {
      * ============HOOK FUNCTIONS===============
      * =========================================
      * =========================================
-    */
+     */
 
     /**
      * @notice Check that the caller who initiated the add liquidity operation is the owner.
@@ -159,7 +164,7 @@ contract LBPool is WeightedPool, Ownable {
      * @notice Called before a swap to give the Pool block swap in paused pool.
      * @return success True if the pool is not paused.
      */
-    function onBeforeSwap(PoolSwapParams calldata, address) public onlyVault virtual returns (bool) {
+    function onBeforeSwap(PoolSwapParams calldata, address) public virtual onlyVault returns (bool) {
         return _getPoolSwapEnabledState();
     }
 
@@ -172,7 +177,7 @@ contract LBPool is WeightedPool, Ownable {
         PoolSwapParams calldata,
         address,
         uint256
-    ) external onlyVault view returns (bool, uint256) {
+    ) external view onlyVault returns (bool, uint256) {
         return (true, getSwapFeePercentage());
     }
 
@@ -181,7 +186,7 @@ contract LBPool is WeightedPool, Ownable {
      * ==========INTERNAL FUNCTIONS=============
      * =========================================
      * =========================================
-    */
+     */
 
     function _getNormalizedWeight0() internal view virtual returns (uint256) {
         PoolState memory poolState = _poolState;

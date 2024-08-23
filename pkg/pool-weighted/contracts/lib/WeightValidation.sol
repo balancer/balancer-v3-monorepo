@@ -30,10 +30,7 @@ library WeightValidation {
      * @dev Returns a fixed-point number representing how far along the current value change is, where 0 means the
      * change has not yet started, and FixedPoint.ONE means it has fully completed.
      */
-    function validateWeights(
-        uint256[] memory normalizedWeights,
-        uint256 numTokens
-    ) internal pure {
+    function validateWeights(uint256[] memory normalizedWeights, uint256 numTokens) internal pure {
         // Ensure each normalized weight is above the minimum
         uint256 normalizedSum = 0;
         for (uint8 i = 0; i < numTokens; ++i) {
@@ -54,11 +51,7 @@ library WeightValidation {
      * @dev Returns a fixed-point number representing how far along the current value change is, where 0 means the
      * change has not yet started, and FixedPoint.ONE means it has fully completed.
      */
-    function validateTwoWeights(
-        uint256 normalizedWeight0,
-        uint256 normalizedWeight1
-    ) internal pure {
-
+    function validateTwoWeights(uint256 normalizedWeight0, uint256 normalizedWeight1) internal pure {
         // Ensure each normalized weight is above the minimum
         if (normalizedWeight0 < WeightedMath._MIN_WEIGHT || normalizedWeight1 < WeightedMath._MIN_WEIGHT) {
             revert MinWeight();
@@ -68,6 +61,5 @@ library WeightValidation {
         if (normalizedWeight0 + normalizedWeight1 != FixedPoint.ONE) {
             revert NormalizedWeightInvariant();
         }
-
     }
 }

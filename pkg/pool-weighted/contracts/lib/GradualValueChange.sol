@@ -90,5 +90,4 @@ library GradualValueChange {
         // We don't need to consider zero division here as this is covered above.
         return secondsElapsed.divDown(totalSeconds);
     }
-
 }
