@@ -27,9 +27,6 @@ library PoolConfigLib {
     using WordCodec for bytes32;
     using PoolConfigLib for PoolConfigBits;
 
-    /// @dev Given percentage is above FixedPoint.ONE (1e18 wei).
-    error InvalidPercentage(uint256 value);
-
     // #region Bit offsets for main pool config settings
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.POOL_REGISTERED_OFFSET);
@@ -174,7 +171,7 @@ library PoolConfigLib {
 
     function setStaticSwapFeePercentage(PoolConfigBits config, uint256 value) internal pure returns (PoolConfigBits) {
         if (value > MAX_FEE_PERCENTAGE) {
-            revert InvalidPercentage(value);
+            revert IVaultErrors.PercentageAboveMax();
         }
         value /= FEE_SCALING_FACTOR;
 
@@ -195,7 +192,7 @@ library PoolConfigLib {
         uint256 value
     ) internal pure returns (PoolConfigBits) {
         if (value > MAX_FEE_PERCENTAGE) {
-            revert InvalidPercentage(value);
+            revert IVaultErrors.PercentageAboveMax();
         }
         value /= FEE_SCALING_FACTOR;
 
@@ -220,7 +217,7 @@ library PoolConfigLib {
         uint256 value
     ) internal pure returns (PoolConfigBits) {
         if (value > MAX_FEE_PERCENTAGE) {
-            revert InvalidPercentage(value);
+            revert IVaultErrors.PercentageAboveMax();
         }
         value /= FEE_SCALING_FACTOR;
 
