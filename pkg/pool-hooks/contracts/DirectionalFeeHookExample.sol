@@ -13,7 +13,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
+import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 /**
@@ -30,7 +30,7 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
  * perhaps establishing a range within which swaps charge the standard fee, and ensuring a smooth and symmetrical
  * fee increase on either side.
  */
-contract DirectionalFeeHookExample is BaseHooks {
+contract DirectionalFeeHookExample is BaseHooks, VaultGuard {
     using FixedPoint for uint256;
 
     // Only stable pools from the allowed factory are able to register and use this hook.
@@ -49,7 +49,7 @@ contract DirectionalFeeHookExample is BaseHooks {
         address indexed pool
     );
 
-    constructor(IVault vault, address allowedStablePoolFactory) BaseHooks(vault) {
+    constructor(IVault vault, address allowedStablePoolFactory) VaultGuard(vault) {
         // Although the hook allows any factory to be registered during deployment, it should be a stable pool factory.
         _allowedStablePoolFactory = allowedStablePoolFactory;
     }
