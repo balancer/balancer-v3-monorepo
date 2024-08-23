@@ -44,12 +44,7 @@ contract VeBALFeeDiscountHookExample is BaseHooks, VaultGuard {
         address indexed pool
     );
 
-    constructor(
-        IVault vault,
-        address allowedFactory,
-        address veBAL,
-        address trustedRouter
-    ) VaultGuard(vault) {
+    constructor(IVault vault, address allowedFactory, address veBAL, address trustedRouter) VaultGuard(vault) {
         _allowedFactory = allowedFactory;
         _trustedRouter = trustedRouter;
         _veBAL = IERC20(veBAL);
