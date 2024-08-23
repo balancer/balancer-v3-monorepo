@@ -116,8 +116,8 @@ contract E2eSwapRateProviderWeightedTest is E2eSwapRateProviderTest {
                 : weightedMathFactor * tokenBCalculatedNotZero
         );
 
-        // 20% of initial liquidity to make sure weighted math ratios are respected (Cannot trade more than 30% of pool
-        // liquidity).
+        // 20% of initial liquidity to make sure weighted math ratios are respected.
+        // We cannot trade more than 30% of pool liquidity.
         maxSwapAmountTokenA = poolInitAmountTokenA.mulDown(20e16);
         maxSwapAmountTokenB = poolInitAmountTokenB.mulDown(20e16);
     }
