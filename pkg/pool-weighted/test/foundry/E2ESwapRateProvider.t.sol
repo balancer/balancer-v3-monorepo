@@ -97,7 +97,7 @@ contract E2eSwapRateProviderWeightedTest is E2eSwapRateProviderTest {
         // 3) amountCalculatedScaled18 = amountGivenScaled18 // Linear math, there's a factor to weighted math
         // introduced in the next step
         // 4) amountGivenScaled18 = amountGivenRaw * rateA * 10^18 / 10^(decumalsA)
-        // With the 4 formulas above, we reach that:
+        // Combining the four formulas above, we determine that:
         // amountCalculatedRaw > rateB * 10^(decimalsA) / (rateA * 10^(decimalsB))
         uint256 tokenACalculatedNotZero = (rateTokenB * (10 ** decimalsTokenA)) / (rateTokenA * (10 ** decimalsTokenB));
         uint256 tokenBCalculatedNotZero = (rateTokenA * (10 ** decimalsTokenB)) / (rateTokenB * (10 ** decimalsTokenA));
