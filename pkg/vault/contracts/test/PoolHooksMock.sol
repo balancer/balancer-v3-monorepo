@@ -66,7 +66,7 @@ contract PoolHooksMock is BaseHooks {
     bool public shouldIgnoreSavedSender;
     address private _savedSender;
 
-    mapping(address => bool) private _allowedFactories;
+    mapping(address pool => bool isFromFactory) private _allowedFactories;
 
     HookFlags private _hookFlags;
 

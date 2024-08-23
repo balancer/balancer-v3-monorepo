@@ -112,16 +112,18 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterAddLiquidity.selector,
-                address(router),
-                pool,
-                AddLiquidityKind.PROPORTIONAL,
-                actualAmountsIn,
-                actualAmountsIn,
-                expectedBptOut,
-                expectedBalances,
-                bytes("")
+            abi.encodeCall(
+                IHooks.onAfterAddLiquidity,
+                (
+                    address(router),
+                    pool,
+                    AddLiquidityKind.PROPORTIONAL,
+                    actualAmountsIn,
+                    actualAmountsIn,
+                    expectedBptOut,
+                    expectedBalances,
+                    bytes("")
+                )
             )
         );
 
@@ -159,16 +161,18 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterAddLiquidity.selector,
-                address(router),
-                pool,
-                AddLiquidityKind.PROPORTIONAL,
-                actualAmountsIn,
-                actualAmountsIn,
-                expectedBptOut,
-                expectedBalances,
-                bytes("")
+            abi.encodeCall(
+                IHooks.onAfterAddLiquidity,
+                (
+                    address(router),
+                    pool,
+                    AddLiquidityKind.PROPORTIONAL,
+                    actualAmountsIn,
+                    actualAmountsIn,
+                    expectedBptOut,
+                    expectedBalances,
+                    bytes("")
+                )
             )
         );
 
@@ -260,16 +264,18 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterRemoveLiquidity.selector,
-                address(router),
-                pool,
-                RemoveLiquidityKind.PROPORTIONAL,
-                expectedBptIn,
-                actualAmountsOut,
-                actualAmountsOut,
-                expectedBalances,
-                bytes("")
+            abi.encodeCall(
+                IHooks.onAfterRemoveLiquidity,
+                (
+                    address(router),
+                    pool,
+                    RemoveLiquidityKind.PROPORTIONAL,
+                    expectedBptIn,
+                    actualAmountsOut,
+                    actualAmountsOut,
+                    expectedBalances,
+                    bytes("")
+                )
             )
         );
 
@@ -318,16 +324,18 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterRemoveLiquidity.selector,
-                address(router),
-                pool,
-                RemoveLiquidityKind.PROPORTIONAL,
-                expectedBptIn,
-                actualAmountsOut,
-                actualAmountsOut,
-                expectedBalances,
-                bytes("")
+            abi.encodeCall(
+                IHooks.onAfterRemoveLiquidity,
+                (
+                    address(router),
+                    pool,
+                    RemoveLiquidityKind.PROPORTIONAL,
+                    expectedBptIn,
+                    actualAmountsOut,
+                    actualAmountsOut,
+                    expectedBalances,
+                    bytes("")
+                )
             )
         );
 

@@ -20,7 +20,7 @@ contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWi
     IVault private immutable _vault;
 
     // Avoid dependency on BasePoolFactory; copy storage here.
-    mapping(address => bool) private _isPoolFromFactory;
+    mapping(address pool => bool isFromFactory) private _isPoolFromFactory;
     bool private _disabled;
 
     constructor(
