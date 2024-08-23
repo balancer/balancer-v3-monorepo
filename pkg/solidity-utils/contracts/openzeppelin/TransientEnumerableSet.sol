@@ -202,11 +202,12 @@ library TransientEnumerableSet {
         }
     }
 
+    // solhint-disable no-inline-assembly
+
     function _values(AddressSet storage set) private view returns (AddressArraySlotType slot) {
         address[] storage structValues = set.__values;
 
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
+        assembly ("memory-safe") {
             slot := structValues.slot
         }
     }
@@ -214,8 +215,7 @@ library TransientEnumerableSet {
     function _indexes(AddressSet storage set) private view returns (AddressMappingSlot slot) {
         mapping(address addressKey => uint256 indexValue) storage indexes = set.__indexes;
 
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
+        assembly ("memory-safe") {
             slot := indexes.slot
         }
     }
