@@ -91,9 +91,9 @@ contract E2eSwapRateProviderStableTest is E2eSwapRateProviderTest {
         uint256 tokenACalculatedNotZero = (rateTokenB * (10 ** decimalsTokenA)) / (rateTokenA * (10 ** decimalsTokenB));
         uint256 tokenBCalculatedNotZero = (rateTokenA * (10 ** decimalsTokenB)) / (rateTokenB * (10 ** decimalsTokenA));
 
-        // Use the larger of the two values above to calculate the minSwapAmount. Also, multiply by 10 to account for
-        // swap fees and compensate for rate rounding issues.
-        uint256 mathFactor = 10;
+        // Use the larger of the two values above to calculate the minSwapAmount. Also, multiply by 100 to account for
+        // swap fees and compensate for rate and math rounding issues.
+        uint256 mathFactor = 100;
         minSwapAmountTokenA = (
             tokenAMinTradeAmount > tokenACalculatedNotZero
                 ? mathFactor * tokenAMinTradeAmount
