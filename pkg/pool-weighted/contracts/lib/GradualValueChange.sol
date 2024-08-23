@@ -19,6 +19,12 @@ pragma solidity ^0.8.24;
 // solhint-disable not-rely-on-time
 
 library GradualValueChange {
+    /// @dev Indicates that the start time is after the end time
+    error GradualUpdateTimeTravel();
+
+    /// @dev Indicates that an input time is larger than the maximum storage value.
+    error TimeTruncatedInStorage();
+
     using FixedPoint for uint256;
 
     function getInterpolatedValue(
@@ -38,7 +44,15 @@ library GradualValueChange {
         // only 10% of the period in the future, the value would immediately jump 90%
         resolvedStartTime = FixedPoint.max(block.timestamp, startTime);
 
-        _require(resolvedStartTime <= endTime, Errors.GRADUAL_UPDATE_TIME_TRAVEL);
+        if (resolvedStartTime > endTime) {
+            revert GradualUpdateTimeTravel();
+        }
+    }
+
+    function ensureNoTimeOverflow(uint256 time, uint256 maxTime) internal pure {
+        if (time > maxTime) {
+            revert TimeTruncatedInStorage();
+        }
     }
 
     function interpolateValue(

@@ -55,8 +55,8 @@ library WeightValidation {
      * change has not yet started, and FixedPoint.ONE means it has fully completed.
      */
     function validateTwoWeights(
-        uint256 memory normalizedWeight0,
-        uint256 memory normalizedWeight1,
+        uint256 normalizedWeight0,
+        uint256 normalizedWeight1
     ) internal pure {
 
         // Ensure each normalized weight is above the minimum
