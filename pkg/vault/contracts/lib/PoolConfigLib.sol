@@ -27,16 +27,6 @@ library PoolConfigLib {
     using WordCodec for bytes32;
     using PoolConfigLib for PoolConfigBits;
 
-<<<<<<< HEAD
-    /**
-     * @notice The calculated percentage is above FixedPoint.ONE (1e18 wei).
-     * @dev Providing the value might be helpful for debugging.
-     * @param value The invalid percentage value
-     */
-    error InvalidPercentage(uint256 value);
-
-=======
->>>>>>> main
     // #region Bit offsets for main pool config settings
     function isPoolRegistered(PoolConfigBits config) internal pure returns (bool) {
         return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.POOL_REGISTERED_OFFSET);
