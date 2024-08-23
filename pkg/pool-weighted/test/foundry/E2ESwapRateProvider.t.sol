@@ -102,8 +102,8 @@ contract E2eSwapRateProviderWeightedTest is E2eSwapRateProviderTest {
         uint256 tokenACalculatedNotZero = (rateTokenB * (10 ** decimalsTokenA)) / (rateTokenA * (10 ** decimalsTokenB));
         uint256 tokenBCalculatedNotZero = (rateTokenA * (10 ** decimalsTokenB)) / (rateTokenB * (10 ** decimalsTokenA));
 
-        // Use the biggest value from the 2 above to calculate the minSwapAmount. Also, multiplies by 10000 to consider
-        // swap fees for both swaps and approximation errors between weighted and linear maths.
+        // Use the larger of the two values above to calculate the minSwapAmount. Also, multiply by 10000 to account
+        // for both swap fees, and compensate for approximation errors between weighted and linear math.
         uint256 weightedMathFactor = 1e4;
         minSwapAmountTokenA = (
             tokenAMinTradeAmount > tokenACalculatedNotZero
