@@ -184,6 +184,15 @@ interface IVaultAdmin {
     *******************************************************************************/
 
     /**
+     * @notice Indicates whether the Vault buffers are paused.
+     * @dev When buffers are paused, all buffer operations (i.e., calls on the Router with `isBuffer` true)
+     * will revert.
+     *
+     * @return True if the Vault buffers are paused
+     */
+    function areBuffersPaused() external view returns (bool);
+
+    /**
      * @notice Pauses native vault buffers globally. When buffers are paused, it's not possible to add liquidity or
      * wrap/unwrap tokens using Vault's `erc4626BufferWrapOrUnwrap` primitive. However, it's still possible to remove
      * liquidity. Currently it's not possible to pause vault buffers individually.

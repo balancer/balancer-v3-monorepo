@@ -190,8 +190,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 vaultBalance = dai.balanceOf(address(vault));
 
         vault.unlock(
-            abi.encodeWithSelector(
-                BufferVaultPrimitiveTest.erc4626MaliciousHook.selector,
+            abi.encodeCall(
+                BufferVaultPrimitiveTest.erc4626MaliciousHook,
                 BufferWrapOrUnwrapParams({
                     kind: SwapKind.EXACT_IN,
                     direction: WrappingDirection.WRAP,
@@ -249,8 +249,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setMaliciousWrapper(true);
 
         vault.unlock(
-            abi.encodeWithSelector(
-                BufferVaultPrimitiveTest.erc4626MaliciousHook.selector,
+            abi.encodeCall(
+                BufferVaultPrimitiveTest.erc4626MaliciousHook,
                 BufferWrapOrUnwrapParams({
                     kind: SwapKind.EXACT_OUT,
                     direction: WrappingDirection.WRAP,

@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -148,6 +149,9 @@ contract RouterTest is BaseVaultTest {
         bytes32 disableQueryRole = vault.getActionId(IVaultAdmin.disableQuery.selector);
 
         authorizer.grantRole(disableQueryRole, alice);
+
+        vm.expectEmit();
+        emit IVaultEvents.VaultQueriesDisabled();
 
         vm.prank(alice);
         vault.disableQuery();

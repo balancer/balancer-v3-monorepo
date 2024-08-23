@@ -14,7 +14,7 @@ interface IRouter {
     ***************************************************************************/
 
     /**
-     * @notice Data for the pool initialization hook
+     * @notice Data for the pool initialization hook.
      * @param sender Account originating the pool initialization operation
      * @param pool Address of the liquidity pool
      * @param tokens Pool tokens, in token registration order
@@ -204,6 +204,7 @@ interface IRouter {
      * @notice Removes liquidity from a pool with a custom request.
      * @dev The given maximum and minimum amounts given may be interpreted as exact depending on the pool type.
      * In any case the caller can expect them to be hard boundaries for the request.
+     *
      * @param pool Address of the liquidity pool
      * @param maxBptAmountIn Maximum amount of pool tokens provided
      * @param minAmountsOut Minimum amounts of tokens to be received, sorted in token registration order

@@ -364,6 +364,8 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         VaultStateBits vaultState = _vaultStateBits;
         vaultState = vaultState.setQueryDisabled(true);
         _vaultStateBits = vaultState;
+
+        emit VaultQueriesDisabled();
     }
 
     /*******************************************************************************
@@ -371,17 +373,26 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     *******************************************************************************/
 
     /// @inheritdoc IVaultAdmin
+    function areBuffersPaused() external view onlyVaultDelegateCall returns (bool) {
+        return _vaultStateBits.areBuffersPaused();
+    }
+
+    /// @inheritdoc IVaultAdmin
     function pauseVaultBuffers() external onlyVaultDelegateCall authenticate {
-        VaultStateBits vaultState = _vaultStateBits;
-        vaultState = vaultState.setBuffersPaused(true);
-        _vaultStateBits = vaultState;
+        _setVaultBufferPauseState(true);
     }
 
     /// @inheritdoc IVaultAdmin
     function unpauseVaultBuffers() external onlyVaultDelegateCall authenticate {
+        _setVaultBufferPauseState(false);
+    }
+
+    function _setVaultBufferPauseState(bool paused) private {
         VaultStateBits vaultState = _vaultStateBits;
-        vaultState = vaultState.setBuffersPaused(false);
+        vaultState = vaultState.setBuffersPaused(paused);
         _vaultStateBits = vaultState;
+
+        emit VaultBuffersPausedStateChanged(paused);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -407,7 +418,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         if (underlyingToken == address(0)) {
             // Should never happen, but a malicious wrapper could return the zero address and cause the buffer
             // initialization code to run more than once.
-            revert InvalidUnderlyingToken();
+            revert InvalidUnderlyingToken(wrappedToken);
         }
 
         // Register asset of wrapper, so it cannot change.
@@ -478,7 +489,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
     function _mintBufferShares(IERC4626 wrappedToken, address to, uint256 amount) internal {
         if (to == address(0)) {
-            revert BufferSharesInvalidReceiver(to);
+            revert BufferSharesInvalidReceiver();
         }
 
         uint256 newTotalSupply = _bufferTotalShares[wrappedToken] + amount;
@@ -506,12 +517,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         return
             abi.decode(
                 _vault.unlock(
-                    abi.encodeWithSelector(
-                        VaultAdmin.removeLiquidityFromBufferHook.selector,
-                        wrappedToken,
-                        sharesToRemove,
-                        msg.sender
-                    )
+                    abi.encodeCall(VaultAdmin.removeLiquidityFromBufferHook, (wrappedToken, sharesToRemove, msg.sender))
                 ),
                 (uint256, uint256)
             );
@@ -580,7 +586,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
     function _burnBufferShares(IERC4626 wrappedToken, address from, uint256 amount) internal {
         if (from == address(0)) {
-            revert BufferSharesInvalidOwner(from);
+            revert BufferSharesInvalidOwner();
         }
 
         uint256 newTotalSupply = _bufferTotalShares[wrappedToken] - amount;

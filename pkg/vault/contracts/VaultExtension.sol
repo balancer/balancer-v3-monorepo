@@ -340,7 +340,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external onlyVaultDelegateCall onlyWhenUnlocked withRegisteredPool(pool) returns (uint256 bptAmountOut) {
+    )
+        external
+        onlyVaultDelegateCall
+        onlyWhenUnlocked
+        withRegisteredPool(pool)
+        nonReentrant
+        returns (uint256 bptAmountOut)
+    {
         _ensureUnpaused(pool);
 
         // Balances are zero until after initialize is called, so there is no need to charge pending yield fee here.
@@ -392,8 +399,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256[] memory exactAmountsIn,
         uint256[] memory exactAmountsInScaled18,
         uint256 minBptAmountOut
-    ) internal nonReentrant returns (uint256 bptAmountOut) {
-        mapping(uint256 => bytes32) storage poolBalances = _poolTokenBalances[pool];
+    ) internal returns (uint256 bptAmountOut) {
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < poolData.tokens.length; ++i) {
             IERC20 actualToken = poolData.tokens[i];
@@ -504,7 +511,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         )
     {
         // Retrieve the mapping of tokens and their balances for the specified pool.
-        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances = _poolTokenBalances[pool];
         tokens = _poolTokens[pool];
         uint256 numTokens = tokens.length;
         tokenInfo = new TokenInfo[](numTokens);
@@ -724,7 +731,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         returns (uint256[] memory amountsOutRaw)
     {
         // Retrieve the mapping of tokens and their balances for the specified pool.
-        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances = _poolTokenBalances[pool];
 
         // Initialize arrays to store tokens and balances based on the number of tokens in the pool.
         IERC20[] memory tokens = _poolTokens[pool];
@@ -751,7 +758,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Store the new pool balances - raw only, since we don't have rates in Recovery Mode.
         // In Recovery Mode, raw and last live balances will get out of sync. This is corrected when the pool is taken
         // out of Recovery Mode.
-        mapping(uint256 => bytes32) storage poolBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < numTokens; ++i) {
             packedBalances = poolBalances[i];
@@ -851,7 +858,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /**
      * @inheritdoc Proxy
      * @dev Override proxy implementation of `fallback` to disallow incoming ETH transfers.
-     * This function actually returns whatever the Vault Extension does when handling the request.
+     * This function actually returns whatever the VaultExtension does when handling the request.
      */
     fallback() external payable override {
         if (msg.value > 0) {
@@ -867,7 +874,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /**
      * @inheritdoc Proxy
-     * @dev Returns Vault Extension, where fallback requests are forwarded.
+     * @dev Returns the VaultAdmin contract, to which fallback requests are forwarded.
      */
     function _implementation() internal view override returns (address) {
         return address(_vaultAdmin);
