@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BaseHooks } from "../BaseHooks.sol";
@@ -11,8 +9,6 @@ import { BaseHooks } from "../BaseHooks.sol";
 /// @dev Simple hook contract that does nothing but return true on every call.
 contract MinimalHooksPoolMock is BaseHooks {
     HookFlags private _hookFlags;
-
-    constructor(IVault vault) BaseHooks(vault) {}
 
     function onRegister(
         address,
