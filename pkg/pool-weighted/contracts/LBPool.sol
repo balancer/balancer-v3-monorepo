@@ -123,10 +123,10 @@ contract LBPool is WeightedPool, Ownable {
     }
 
     /**
-     * @notice Pause/unpause trading.
+     * @notice Enable/disable trading.
      */
     function setSwapEnabled(bool swapEnabled) external onlyOwner {
-        _poolState.swapEnabled = !swapEnabled;
+        _poolState.swapEnabled = swapEnabled;
     }
 
     /**
@@ -161,8 +161,8 @@ contract LBPool is WeightedPool, Ownable {
     }
 
     /**
-     * @notice Called before a swap to give the Pool block swap in paused pool.
-     * @return success True if the pool is not paused.
+     * @notice Called before a swap to let pool block swaps if not enabled.
+     * @return success True if the pool has swaps enabled.
      */
     function onBeforeSwap(PoolSwapParams calldata, address) public virtual onlyVault returns (bool) {
         return _getPoolSwapEnabledState();
