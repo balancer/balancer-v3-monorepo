@@ -154,7 +154,7 @@ interface IVaultMain {
     *******************************************************************************/
 
     /**
-     * @notice Returns the Vault Extension address.
+     * @notice Returns the VaultExtension contract address.
      * @return Address of the VaultExtension
      */
     function getVaultExtension() external view returns (address);

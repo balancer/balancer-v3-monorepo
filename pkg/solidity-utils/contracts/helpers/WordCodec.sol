@@ -26,10 +26,10 @@ library WordCodec {
 
     // solhint-disable no-inline-assembly
 
-    /// @dev Function called with an invalid value.
+    /// @notice Function called with an invalid value.
     error CodecOverflow();
 
-    /// @dev Function called with an invalid bitLength or offset.
+    /// @notice Function called with an invalid bitLength or offset.
     error OutOfBounds();
 
     /***************************************************************************
@@ -51,7 +51,8 @@ library WordCodec {
         // uint256 mask = (1 << bitLength) - 1;
         // bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
         // result = clearedWord | bytes32(value << offset);
-        assembly {
+
+        assembly ("memory-safe") {
             let mask := sub(shl(bitLength, 1), 1)
             let clearedWord := and(word, not(shl(offset, mask)))
             result := or(clearedWord, shl(offset, value))
@@ -69,7 +70,8 @@ library WordCodec {
         // uint256 mask = (1 << bitLength) - 1;
         // bytes32 clearedWord = bytes32(uint256(word) & ~(mask << offset));
         // result = clearedWord | bytes32(value << offset);
-        assembly {
+
+        assembly ("memory-safe") {
             let mask := sub(shl(addressBitLength, 1), 1)
             let clearedWord := and(word, not(shl(offset, mask)))
             result := or(clearedWord, shl(offset, value))
@@ -128,7 +130,8 @@ library WordCodec {
     function decodeUint(bytes32 word, uint256 offset, uint256 bitLength) internal pure returns (uint256 result) {
         // Equivalent to:
         // result = uint256(word >> offset) & ((1 << bitLength) - 1);
-        assembly {
+
+        assembly ("memory-safe") {
             result := and(shr(offset, word), sub(shl(bitLength, 1), 1))
         }
     }
@@ -145,7 +148,8 @@ library WordCodec {
         //
         // Equivalent to:
         // result = value > maxInt ? (value | int256(~mask)) : value;
-        assembly {
+
+        assembly ("memory-safe") {
             result := or(mul(gt(value, maxInt), not(mask)), value)
         }
     }
@@ -154,7 +158,8 @@ library WordCodec {
     function decodeAddress(bytes32 word, uint256 offset) internal pure returns (address result) {
         // Equivalent to:
         // result = address(word >> offset) & ((1 << bitLength) - 1);
-        assembly {
+
+        assembly ("memory-safe") {
             result := and(shr(offset, word), sub(shl(160, 1), 1))
         }
     }
@@ -167,7 +172,8 @@ library WordCodec {
     function decodeBool(bytes32 word, uint256 offset) internal pure returns (bool result) {
         // Equivalent to:
         // result = (uint256(word >> offset) & 1) == 1;
-        assembly {
+
+        assembly ("memory-safe") {
             result := and(shr(offset, word), 1)
         }
     }
@@ -180,7 +186,8 @@ library WordCodec {
         // Equivalent to:
         // bytes32 clearedWord = bytes32(uint256(word) & ~(1 << offset));
         // bytes32 referenceInsertBool = clearedWord | bytes32(uint256(value ? 1 : 0) << offset);
-        assembly {
+
+        assembly ("memory-safe") {
             let clearedWord := and(word, not(shl(offset, 1)))
             result := or(clearedWord, shl(offset, value))
         }

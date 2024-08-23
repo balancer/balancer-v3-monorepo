@@ -23,6 +23,7 @@ library TransientStorageHelpers {
     using SlotDerivation for *;
     using StorageSlotExtension for *;
 
+    /// @notice An index is out of bounds on an array operation (e.g., at).
     error TransientIndexOutOfBounds();
 
     // Calculate the slot for a transient storage variable.

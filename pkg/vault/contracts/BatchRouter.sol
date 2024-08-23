@@ -64,8 +64,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         return
             abi.decode(
                 _vault.unlock(
-                    abi.encodeWithSelector(
-                        BatchRouter.swapExactInHook.selector,
+                    abi.encodeCall(
+                        BatchRouter.swapExactInHook,
                         SwapExactInHookParams({
                             sender: msg.sender,
                             paths: paths,
@@ -94,8 +94,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         return
             abi.decode(
                 _vault.unlock(
-                    abi.encodeWithSelector(
-                        BatchRouter.swapExactOutHook.selector,
+                    abi.encodeCall(
+                        BatchRouter.swapExactOutHook,
                         SwapExactOutHookParams({
                             sender: msg.sender,
                             paths: paths,
@@ -609,8 +609,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         return
             abi.decode(
                 _vault.quote(
-                    abi.encodeWithSelector(
-                        BatchRouter.querySwapExactInHook.selector,
+                    abi.encodeCall(
+                        BatchRouter.querySwapExactInHook,
                         SwapExactInHookParams({
                             sender: address(this),
                             paths: paths,
@@ -640,8 +640,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         return
             abi.decode(
                 _vault.quote(
-                    abi.encodeWithSelector(
-                        BatchRouter.querySwapExactOutHook.selector,
+                    abi.encodeCall(
+                        BatchRouter.querySwapExactOutHook,
                         SwapExactOutHookParams({
                             sender: address(this),
                             paths: paths,
@@ -691,8 +691,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     ) external payable saveSender returns (uint256 bptAmountOut) {
         bptAmountOut = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    BatchRouter.addLiquidityERC4626PoolUnbalancedHook.selector,
+                abi.encodeCall(
+                    BatchRouter.addLiquidityERC4626PoolUnbalancedHook,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -718,8 +718,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     ) external payable saveSender returns (uint256[] memory underlyingAmountsIn) {
         underlyingAmountsIn = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    BatchRouter.addLiquidityERC4626PoolProportionalHook.selector,
+                abi.encodeCall(
+                    BatchRouter.addLiquidityERC4626PoolProportionalHook,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -745,8 +745,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     ) external payable saveSender returns (uint256[] memory underlyingAmountsOut) {
         underlyingAmountsOut = abi.decode(
             _vault.unlock(
-                abi.encodeWithSelector(
-                    BatchRouter.removeLiquidityERC4626PoolProportionalHook.selector,
+                abi.encodeCall(
+                    BatchRouter.removeLiquidityERC4626PoolProportionalHook,
                     RemoveLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -770,8 +770,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     ) external saveSender returns (uint256 bptAmountOut) {
         bptAmountOut = abi.decode(
             _vault.quote(
-                abi.encodeWithSelector(
-                    BatchRouter.addLiquidityERC4626PoolUnbalancedHook.selector,
+                abi.encodeCall(
+                    BatchRouter.addLiquidityERC4626PoolUnbalancedHook,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -795,8 +795,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     ) external saveSender returns (uint256[] memory underlyingAmountsIn) {
         underlyingAmountsIn = abi.decode(
             _vault.quote(
-                abi.encodeWithSelector(
-                    BatchRouter.addLiquidityERC4626PoolProportionalHook.selector,
+                abi.encodeCall(
+                    BatchRouter.addLiquidityERC4626PoolProportionalHook,
                     AddLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
@@ -820,8 +820,8 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     ) external saveSender returns (uint256[] memory underlyingAmountsOut) {
         underlyingAmountsOut = abi.decode(
             _vault.quote(
-                abi.encodeWithSelector(
-                    BatchRouter.removeLiquidityERC4626PoolProportionalHook.selector,
+                abi.encodeCall(
+                    BatchRouter.removeLiquidityERC4626PoolProportionalHook,
                     RemoveLiquidityHookParams({
                         sender: msg.sender,
                         pool: pool,
