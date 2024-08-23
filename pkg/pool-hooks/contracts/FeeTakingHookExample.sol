@@ -19,6 +19,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 /**
@@ -33,7 +34,7 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
  * must be modified in order to charge the fee - `enableHookAdjustedAmounts` must also be set to true in the
  * pool configuration. Otherwise, the Vault would ignore the adjusted values, and not recognize the fee.
  */
-contract FeeTakingHookExample is BaseHooks, Ownable {
+contract FeeTakingHookExample is BaseHooks, VaultGuard, Ownable {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
 
@@ -97,7 +98,7 @@ contract FeeTakingHookExample is BaseHooks, Ownable {
         uint256 feeAmount
     );
 
-    constructor(IVault vault) BaseHooks(vault) Ownable(msg.sender) {
+    constructor(IVault vault) VaultGuard(vault) Ownable(msg.sender) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
