@@ -177,7 +177,7 @@ contract VaultUnitTest is BaseTest {
         addedReserves = bound(addedReserves, 0, 1e12 * 1e18);
         settleHint = bound(settleHint, 0, addedReserves * 2);
 
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vault.manualSetReservesOf(dai, initialReserves);
 
         dai.mint(address(vault), initialReserves);
@@ -196,7 +196,7 @@ contract VaultUnitTest is BaseTest {
     }
 
     function testSettleNegative() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vault.manualSetReservesOf(dai, 100);
         // Simulate balance decrease.
         vm.mockCall(address(dai), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(99));

@@ -68,25 +68,27 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         // Check that balances were not changed before onBeforeHook.
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onBeforeSwap.selector,
-                PoolSwapParams({
-                    kind: SwapKind.EXACT_IN,
-                    amountGivenScaled18: _swapAmount,
-                    balancesScaled18: originalBalances,
-                    indexIn: daiIdx,
-                    indexOut: usdcIdx,
-                    router: address(router),
-                    userData: bytes("")
-                }),
-                pool
+            abi.encodeCall(
+                IHooks.onBeforeSwap,
+                (
+                    PoolSwapParams({
+                        kind: SwapKind.EXACT_IN,
+                        amountGivenScaled18: _swapAmount,
+                        balancesScaled18: originalBalances,
+                        indexIn: daiIdx,
+                        indexOut: usdcIdx,
+                        router: address(router),
+                        userData: bytes("")
+                    }),
+                    pool
+                )
             )
         );
 
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(
-                IBasePool.onSwap.selector,
+            abi.encodeCall(
+                IBasePool.onSwap,
                 PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: _swapAmount,
@@ -119,27 +121,25 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         // Check that balances were not changed before onBeforeHook.
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onBeforeAddLiquidity.selector,
-                router,
-                pool,
-                AddLiquidityKind.CUSTOM,
-                amountsIn,
-                bptAmountRoundDown,
-                originalBalances,
-                bytes("")
+            abi.encodeCall(
+                IHooks.onBeforeAddLiquidity,
+                (
+                    address(router),
+                    pool,
+                    AddLiquidityKind.CUSTOM,
+                    amountsIn,
+                    bptAmountRoundDown,
+                    originalBalances,
+                    bytes("")
+                )
             )
         );
 
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(
-                IPoolLiquidity.onAddLiquidityCustom.selector,
-                router,
-                amountsIn,
-                bptAmountRoundDown,
-                newBalances,
-                bytes("")
+            abi.encodeCall(
+                IPoolLiquidity.onAddLiquidityCustom,
+                (address(router), amountsIn, bptAmountRoundDown, newBalances, bytes(""))
             )
         );
 
@@ -170,28 +170,18 @@ contract HooksAlteringBalancesTest is BaseVaultTest {
         // Check if balances were not changed before onBeforeHook.
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onBeforeRemoveLiquidity.selector,
-                router,
-                pool,
-                RemoveLiquidityKind.CUSTOM,
-                bptAmount,
-                amountsOut,
-                originalBalances,
-                bytes("")
+            abi.encodeCall(
+                IHooks.onBeforeRemoveLiquidity,
+                (address(router), pool, RemoveLiquidityKind.CUSTOM, bptAmount, amountsOut, originalBalances, bytes(""))
             )
         );
 
         // removeLiquidityCustom passes the minAmountsOut to the callback, so we can check that they are updated.
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(
-                IPoolLiquidity.onRemoveLiquidityCustom.selector,
-                router,
-                bptAmount,
-                amountsOut,
-                newBalances,
-                bytes("")
+            abi.encodeCall(
+                IPoolLiquidity.onRemoveLiquidityCustom,
+                (address(router), bptAmount, amountsOut, newBalances, bytes(""))
             )
         );
         vm.prank(alice);

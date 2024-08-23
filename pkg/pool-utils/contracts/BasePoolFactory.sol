@@ -33,7 +33,7 @@ import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREA
  * prevent the creation of any future pools from the factory.
  */
 abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, FactoryWidePauseWindow {
-    mapping(address => bool) private _isPoolFromFactory;
+    mapping(address pool => bool isFromFactory) private _isPoolFromFactory;
     bool private _disabled;
 
     // Store the creationCode of the contract to be deployed by create3.

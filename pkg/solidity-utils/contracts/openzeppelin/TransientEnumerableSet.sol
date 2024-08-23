@@ -48,7 +48,7 @@ library TransientEnumerableSet {
         address[] __values;
         // Position of the value in the `values` array, plus 1 because index 0
         // means a value is not in the set.
-        mapping(address => uint256) __indexes;
+        mapping(address addressKey => uint256 indexValue) __indexes;
     }
 
     /// @dev An index is beyond the current bounds of the set.
@@ -213,7 +213,7 @@ library TransientEnumerableSet {
     }
 
     function _indexes(AddressSet storage set) private view returns (AddressMappingSlot slot) {
-        mapping(address => uint256) storage indexes = set.__indexes;
+        mapping(address addressKey => uint256 indexValue) storage indexes = set.__indexes;
 
         assembly ("memory-safe") {
             slot := indexes.slot

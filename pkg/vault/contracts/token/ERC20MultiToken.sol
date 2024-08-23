@@ -37,14 +37,16 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiTokenErrors {
      */
     event Approval(address indexed pool, address indexed owner, address indexed spender, uint256 value);
 
-    // token -> (owner -> balance): Users' pool tokens balances
-    mapping(address => mapping(address => uint256)) private _balances;
+    // Users' pool token (BPT) balances.
+    mapping(address token => mapping(address owner => uint256 balance)) private _balances;
 
-    // token -> (owner -> (spender -> allowance)): Users' allowances
-    mapping(address => mapping(address => mapping(address => uint256))) private _allowances;
+    // Users' pool token (BPT) allowances.
+    mapping(address token => mapping(address owner => mapping(address spender => uint256 allowance)))
+        private _allowances;
 
-    // token -> total supply
-    mapping(address => uint256) private _totalSupplyOf;
+    // Total supply of all pool tokens (BPT). These are tokens minted and burned by the Vault.
+    // The Vault balances of regular pool tokens are stored in `_reservesOf`.
+    mapping(address token => uint256 totalSupply) private _totalSupplyOf;
 
     function _totalSupply(address pool) internal view returns (uint256) {
         return _totalSupplyOf[pool];

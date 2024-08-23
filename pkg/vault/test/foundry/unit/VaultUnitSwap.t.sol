@@ -553,8 +553,8 @@ contract VaultUnitSwapTest is BaseTest {
     ) internal {
         vm.mockCall(
             pool,
-            abi.encodeWithSelector(
-                IBasePool.onSwap.selector,
+            abi.encodeCall(
+                IBasePool.onSwap,
                 PoolSwapParams({
                     kind: params.kind,
                     amountGivenScaled18: state.amountGivenScaled18,
