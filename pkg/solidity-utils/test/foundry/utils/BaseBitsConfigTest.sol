@@ -10,7 +10,7 @@ contract BaseBitsConfigTest is Test {
         uint256 size;
     }
 
-    mapping(uint256 => bool) usedBits;
+    mapping(uint256 bitOffset => bool isUsed) usedBits;
 
     // This function checks that the bits are used once and follow each other
     function _checkBitsUsedOnce(Bits[] memory bits) internal {

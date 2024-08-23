@@ -148,7 +148,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
         vault.forceUnlock();
         waDAI.setAsset(IERC20(address(0)));
 
-        vm.expectRevert(IVaultErrors.InvalidUnderlyingToken.selector);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidUnderlyingToken.selector, waDAI));
         vault.initializeBuffer(waDAI, liquidityAmount, liquidityAmount, bob);
     }
 
@@ -264,8 +264,13 @@ contract VaultAdminUnitTest is BaseVaultTest {
     }
 
     function testMintBufferSharesIInvalidReceiver() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferSharesInvalidReceiver.selector, address(0)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferSharesInvalidReceiver.selector));
         vault.manualMintBufferShares(waDAI, address(0), _MINIMUM_TOTAL_SUPPLY);
+    }
+
+    function testBurnBufferSharesIInvalidOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferSharesInvalidOwner.selector));
+        vault.manualBurnBufferShares(waDAI, address(0), _MINIMUM_TOTAL_SUPPLY);
     }
 
     function _initializeBob() private {

@@ -77,7 +77,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
         emit ERC20MultiToken.Approval(POOL, OWNER, SPENDER, remainingAllowance);
         vm.mockCall(
             POOL,
-            abi.encodeWithSelector(BalancerPoolToken.emitApproval.selector, OWNER, SPENDER, remainingAllowance),
+            abi.encodeCall(BalancerPoolToken.emitApproval, (OWNER, SPENDER, remainingAllowance)),
             new bytes(0)
         );
         token.manualSpendAllowance(POOL, OWNER, SPENDER, spendAmount);
@@ -175,12 +175,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
         emit ERC20MultiToken.Transfer(POOL, ZERO_ADDRESS, ZERO_ADDRESS, MINIMUM_TOTAL_SUPPLY);
         vm.mockCall(
             POOL,
-            abi.encodeWithSelector(
-                BalancerPoolToken.emitTransfer.selector,
-                ZERO_ADDRESS,
-                ZERO_ADDRESS,
-                MINIMUM_TOTAL_SUPPLY
-            ),
+            abi.encodeCall(BalancerPoolToken.emitTransfer, (ZERO_ADDRESS, ZERO_ADDRESS, MINIMUM_TOTAL_SUPPLY)),
             new bytes(0)
         );
         token.manualMintMinimumSupplyReserve(POOL);
@@ -261,7 +256,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
 
         vm.mockCall(
             POOL,
-            abi.encodeWithSelector(BalancerPoolToken.emitTransfer.selector, OWNER, OWNER2, MINIMUM_TOTAL_SUPPLY),
+            abi.encodeCall(BalancerPoolToken.emitTransfer, (OWNER, OWNER2, MINIMUM_TOTAL_SUPPLY)),
             new bytes(0)
         );
         vm.expectEmit();
@@ -297,29 +292,17 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
 
     // #region Private functions
     function _approveWithBPTEmitApprovalMock(address pool, address owner, address spender, uint256 amount) internal {
-        vm.mockCall(
-            pool,
-            abi.encodeWithSelector(BalancerPoolToken.emitApproval.selector, owner, spender, amount),
-            new bytes(0)
-        );
+        vm.mockCall(pool, abi.encodeCall(BalancerPoolToken.emitApproval, (owner, spender, amount)), new bytes(0));
         token.manualApprove(pool, owner, spender, amount);
     }
 
     function _mintWithBPTEmitTransferMock(address pool, address owner, uint256 amount) internal {
-        vm.mockCall(
-            pool,
-            abi.encodeWithSelector(BalancerPoolToken.emitTransfer.selector, ZERO_ADDRESS, owner, amount),
-            new bytes(0)
-        );
+        vm.mockCall(pool, abi.encodeCall(BalancerPoolToken.emitTransfer, (ZERO_ADDRESS, owner, amount)), new bytes(0));
         token.manualMint(pool, owner, amount);
     }
 
     function _burnWithBPTEmitTransferMock(address pool, address from, uint256 amount) internal {
-        vm.mockCall(
-            pool,
-            abi.encodeWithSelector(BalancerPoolToken.emitTransfer.selector, from, ZERO_ADDRESS, amount),
-            new bytes(0)
-        );
+        vm.mockCall(pool, abi.encodeCall(BalancerPoolToken.emitTransfer, (from, ZERO_ADDRESS, amount)), new bytes(0));
         token.manualBurn(pool, from, amount);
     }
     // #endregion
