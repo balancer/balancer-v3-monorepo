@@ -3,7 +3,6 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "forge-std/console.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -16,6 +15,7 @@ import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMo
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
@@ -28,11 +28,11 @@ import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
 
 import { NftRouter } from "../../contracts/NftLiquidityPositionExample.sol";
-import { ExitFeeHookExample } from "../../contracts/ExitFeeHookExample.sol";
 
 contract NftLiquidityPositionExampleTest is BaseVaultTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
@@ -46,7 +46,6 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
 
     // Overrides to include a deployment for NftRouter
     function setUp() public virtual override {
-        // BaseVaultTest.setUp();
         BaseTest.setUp();
 
         vault = IVaultMock(address(VaultMockDeployer.deploy()));
@@ -68,7 +67,8 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         nftRouter = new NftRouter(IVault(address(vault)), weth, permit2);
         vm.label(address(nftRouter), "nftRouter");
 
-        poolHooksContract = createHook();
+        // Here the router is also the hook
+        poolHooksContract = address(nftRouter);
         pool = createPool();
 
         // Approve vault allowances
@@ -85,14 +85,6 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         initPool();
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
-    }
-
-    function createHook() internal override returns (address) {
-        // LP will be the owner of the hook. Only LP is able to set hook fee percentages.
-        vm.prank(lp);
-        address exitFeeHook = address(new ExitFeeHookExample(IVault(address(vault))));
-        vm.label(exitFeeHook, "Exit Fee Hook");
-        return exitFeeHook;
     }
 
     // Overrides approval to include NFTRouter
@@ -184,41 +176,141 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         assertEq(balancesAfter.bobBpt, 0, "bob should not hold any BPT");
     }
 
-    function testRemoveLiquidity() public {
+    function testRemoveLiquidityWithHalfDecayFee() public {
         // Add liquidity so bob has BPT to remove liquidity
         uint256[] memory maxAmountsIn = [dai.balanceOf(bob), usdc.balanceOf(bob)].toMemoryArray();
         vm.prank(bob);
         nftRouter.addLiquidityProportional(pool, maxAmountsIn, bptAmount, false, bytes(""));
         vm.stopPrank();
 
-        uint256 nftTokenId = 0;
+        // Skip to fee has decayed to 5%
+        skip(5 days);
 
-        vm.prank(lp);
-        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(MAX_EXIT_FEE_PERCENTAGE);
+        uint256 nftTokenId = 0;
         uint256[] memory minAmountsOut = [uint256(0), uint256(0)].toMemoryArray();
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
 
         vm.prank(bob);
-        uint256[] memory amountsOut = nftRouter.removeLiquidityProportional(
-            nftTokenId,
-            minAmountsOut,
-            false,
-            bytes("")
-        );
+        nftRouter.removeLiquidityProportional(nftTokenId, minAmountsOut, false);
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
 
+        // 5% exit fee
+        uint64 exitFeePercentage = 5e16;
+        uint256 amountOut = bptAmount / 2;
+        uint256 hookFee = amountOut.mulDown(exitFeePercentage);
+        // bob gets original liquidity with fee deducted
         assertEq(
             balancesAfter.bobTokens[daiIdx] - balancesBefore.bobTokens[daiIdx],
-            amountsOut[daiIdx],
+            amountOut - hookFee,
             "bob's DAI amount is wrong"
         );
         assertEq(
             balancesAfter.bobTokens[usdcIdx] - balancesBefore.bobTokens[usdcIdx],
-            amountsOut[usdcIdx],
+            amountOut - hookFee,
             "bob's USDC amount is wrong"
         );
+
+        // Pool balances decrease by amountOut, and receive hook fee
+        assertEq(
+            balancesBefore.poolTokens[daiIdx] - balancesAfter.poolTokens[daiIdx],
+            amountOut - hookFee,
+            "Pool's DAI amount is wrong"
+        );
+        assertEq(
+            balancesBefore.poolTokens[usdcIdx] - balancesAfter.poolTokens[usdcIdx],
+            amountOut - hookFee,
+            "Pool's USDC amount is wrong"
+        );
+        assertEq(balancesBefore.poolSupply - balancesAfter.poolSupply, 2 * amountOut, "BPT supply amount is wrong");
+
+        // Same happens with Vault balances: decrease by amountOut, and receive hook fee
+        assertEq(
+            balancesBefore.vaultTokens[daiIdx] - balancesAfter.vaultTokens[daiIdx],
+            amountOut - hookFee,
+            "Vault's DAI amount is wrong"
+        );
+        assertEq(
+            balancesBefore.vaultTokens[usdcIdx] - balancesAfter.vaultTokens[usdcIdx],
+            amountOut - hookFee,
+            "Vault's USDC amount is wrong"
+        );
+
+        // Hook balances remain unchanged
+        assertEq(balancesBefore.hookTokens[daiIdx], balancesAfter.hookTokens[daiIdx], "Hook's DAI amount is wrong");
+        assertEq(balancesBefore.hookTokens[usdcIdx], balancesAfter.hookTokens[usdcIdx], "Hook's USDC amount is wrong");
+
+        // Router should set all lp data to 0
+        assertEq(nftRouter.bptAmount(nftTokenId), 0, "bptAmount mapping should be 0");
+        assertEq(nftRouter.startTime(nftTokenId), 0, "startTime mapping should be 0");
+        assertEq(nftRouter.bpt(nftTokenId), address(0), "pool mapping should be 0");
+
+        assertEq(BalancerPoolToken(pool).balanceOf(address(nftRouter)), 0, "NftRouter should hold no BPT");
+        assertEq(balancesAfter.bobBpt, 0, "bob should not hold any BPT");
+    }
+
+    function testRemoveLiquidityFullDecay() public {
+        // Add liquidity so bob has BPT to remove liquidity
+        uint256[] memory maxAmountsIn = [dai.balanceOf(bob), usdc.balanceOf(bob)].toMemoryArray();
+        vm.prank(bob);
+        nftRouter.addLiquidityProportional(pool, maxAmountsIn, bptAmount, false, bytes(""));
+        vm.stopPrank();
+
+        // Skip to fee has decayed to 0
+        skip(13 days);
+
+        uint256 nftTokenId = 0;
+        uint256[] memory minAmountsOut = [uint256(0), uint256(0)].toMemoryArray();
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
+
+        vm.prank(bob);
+        nftRouter.removeLiquidityProportional(nftTokenId, minAmountsOut, false);
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
+
+        uint256 amountOut = bptAmount / 2;
+        // bob gets original liquidity with no fee applied because of full decay
+        assertEq(
+            balancesAfter.bobTokens[daiIdx] - balancesBefore.bobTokens[daiIdx],
+            amountOut,
+            "bob's DAI amount is wrong"
+        );
+        assertEq(
+            balancesAfter.bobTokens[usdcIdx] - balancesBefore.bobTokens[usdcIdx],
+            amountOut,
+            "bob's USDC amount is wrong"
+        );
+
+        // Pool balances decrease by amountOut
+        assertEq(
+            balancesBefore.poolTokens[daiIdx] - balancesAfter.poolTokens[daiIdx],
+            amountOut,
+            "Pool's DAI amount is wrong"
+        );
+        assertEq(
+            balancesBefore.poolTokens[usdcIdx] - balancesAfter.poolTokens[usdcIdx],
+            amountOut,
+            "Pool's USDC amount is wrong"
+        );
+        assertEq(balancesBefore.poolSupply - balancesAfter.poolSupply, 2 * amountOut, "BPT supply amount is wrong");
+
+        // Same happens with Vault balances: decrease by amountOut
+        assertEq(
+            balancesBefore.vaultTokens[daiIdx] - balancesAfter.vaultTokens[daiIdx],
+            amountOut,
+            "Vault's DAI amount is wrong"
+        );
+        assertEq(
+            balancesBefore.vaultTokens[usdcIdx] - balancesAfter.vaultTokens[usdcIdx],
+            amountOut,
+            "Vault's USDC amount is wrong"
+        );
+
+        // Hook balances remain unchanged
+        assertEq(balancesBefore.hookTokens[daiIdx], balancesAfter.hookTokens[daiIdx], "Hook's DAI amount is wrong");
+        assertEq(balancesBefore.hookTokens[usdcIdx], balancesAfter.hookTokens[usdcIdx], "Hook's USDC amount is wrong");
 
         // Router should set all lp data to 0
         assertEq(nftRouter.bptAmount(nftTokenId), 0, "bptAmount mapping should be 0");
@@ -239,9 +331,27 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         uint256 nftTokenId = 0;
         uint256[] memory minAmountsOut = [uint256(0), uint256(0)].toMemoryArray();
 
-        // Registration fails because this factory is not allowed to register the hook.
+        // Remove fails because lp isn't the owner of the NFT
         vm.expectRevert("You don't own this NFT");
         vm.prank(lp);
-        nftRouter.removeLiquidityProportional(nftTokenId, minAmountsOut, false, bytes(""));
+        nftRouter.removeLiquidityProportional(nftTokenId, minAmountsOut, false);
+    }
+
+    function testAddFromExternalRouter() public {
+        // Add fails because it must be done via NftRouter
+        uint256[] memory maxAmountsIn = [dai.balanceOf(bob), usdc.balanceOf(bob)].toMemoryArray();
+        vm.expectRevert("Can't use external router");
+        vm.prank(bob);
+        router.addLiquidityProportional(pool, maxAmountsIn, bptAmount, false, bytes(""));
+    }
+
+    function testRemoveFromExternalRouter() public {
+        uint256 amountOut = poolInitAmount / 2;
+        uint256[] memory minAmountsOut = [amountOut, amountOut].toMemoryArray();
+
+        // Remove fails because it must be done via NftRouter
+        vm.expectRevert("Can't use external router");
+        vm.prank(lp);
+        router.removeLiquidityProportional(pool, 2 * amountOut, minAmountsOut, false, bytes(""));
     }
 }
