@@ -5,7 +5,6 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
@@ -15,9 +14,10 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { RateProviderMock } from "./RateProviderMock.sol";
+import { VaultGuard } from "../VaultGuard.sol";
 import { BaseHooks } from "../BaseHooks.sol";
 
-contract PoolHooksMock is BaseHooks {
+contract PoolHooksMock is BaseHooks, VaultGuard {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
@@ -70,7 +70,7 @@ contract PoolHooksMock is BaseHooks {
 
     HookFlags private _hookFlags;
 
-    constructor(IVault vault) BaseHooks(vault) {
+    constructor(IVault vault) VaultGuard(vault) {
         shouldSettleDiscount = true;
     }
 

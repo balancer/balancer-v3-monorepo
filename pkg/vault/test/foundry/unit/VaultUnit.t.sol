@@ -44,11 +44,11 @@ contract VaultUnitTest is BaseTest {
     }
 
     function testBuildPoolSwapParams() public view {
-        SwapParams memory params;
-        params.kind = SwapKind.EXACT_IN;
-        params.userData = new bytes(20);
-        params.userData[0] = 0x01;
-        params.userData[19] = 0x05;
+        VaultSwapParams memory vaultSwapParams;
+        vaultSwapParams.kind = SwapKind.EXACT_IN;
+        vaultSwapParams.userData = new bytes(20);
+        vaultSwapParams.userData[0] = 0x01;
+        vaultSwapParams.userData[19] = 0x05;
 
         SwapState memory state;
         state.amountGivenScaled18 = 2e18;
@@ -58,9 +58,9 @@ contract VaultUnitTest is BaseTest {
         PoolData memory poolData;
         poolData.balancesLiveScaled18 = [uint256(1e18), 1e18].toMemoryArray();
 
-        PoolSwapParams memory poolSwapParams = vault.manualBuildPoolSwapParams(params, state, poolData);
+        PoolSwapParams memory poolSwapParams = vault.manualBuildPoolSwapParams(vaultSwapParams, state, poolData);
 
-        assertEq(uint8(poolSwapParams.kind), uint8(params.kind), "Unexpected kind");
+        assertEq(uint8(poolSwapParams.kind), uint8(vaultSwapParams.kind), "Unexpected kind");
         assertEq(poolSwapParams.amountGivenScaled18, state.amountGivenScaled18, "Unexpected amountGivenScaled18");
         assertEq(
             keccak256(abi.encodePacked(poolSwapParams.balancesScaled18)),
@@ -70,7 +70,7 @@ contract VaultUnitTest is BaseTest {
         assertEq(poolSwapParams.indexIn, state.indexIn, "Unexpected indexIn");
         assertEq(poolSwapParams.indexOut, state.indexOut, "Unexpected indexOut");
         assertEq(poolSwapParams.router, address(this), "Unexpected router");
-        assertEq(poolSwapParams.userData, params.userData, "Unexpected userData");
+        assertEq(poolSwapParams.userData, vaultSwapParams.userData, "Unexpected userData");
     }
 
     function testComputeAndChargeAggregateSwapFees() public {
