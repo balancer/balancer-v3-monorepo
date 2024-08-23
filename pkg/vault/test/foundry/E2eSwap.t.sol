@@ -153,8 +153,8 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 tokenACalculatedNotZero = (rateTokenB * (10 ** decimalsTokenA)) / (rateTokenA * (10 ** decimalsTokenB));
         uint256 tokenBCalculatedNotZero = (rateTokenA * (10 ** decimalsTokenB)) / (rateTokenB * (10 ** decimalsTokenA));
 
-        // Use the biggest value from the 2 above to calculate the minSwapAmount. Also, multiplies by 10 to consider
-        // swap fees and compensate rate rounding issues.
+        // Use the larger of the two values above to calculate the minSwapAmount. Also, multiply by 10 to account for
+        // swap fees and compensate for rate rounding issues.
         uint256 feeFactor = 10;
         minSwapAmountTokenA = (
             tokenAMinTradeAmount > tokenACalculatedNotZero
