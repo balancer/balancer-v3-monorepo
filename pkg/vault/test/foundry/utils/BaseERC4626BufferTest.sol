@@ -11,8 +11,9 @@ import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/v
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 import { BaseVaultTest } from "./BaseVaultTest.sol";
@@ -43,6 +44,12 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         _setupWrappedTokens();
         _initializeBuffers();
         _initializeERC4626Pool();
+    }
+
+    function testTokensPreconditions() public view {
+        // To test wrapped and underlying amounts correctly, the rate of wrapped tokens should not be 1.
+        assertNotEq(waDAI.getRate(), FixedPoint.ONE, "waDAI rate should not be 1");
+        assertNotEq(waUSDC.getRate(), FixedPoint.ONE, "waUSDC rate should not be 1");
     }
 
     function testERC4626BufferPreconditions() public view {
