@@ -19,7 +19,7 @@ interface IVaultExplorer {
     function getVault() external view returns (address);
 
     /**
-     * @notice Returns the Vault Extension contract address.
+     * @notice Returns the VaultExtension contract address.
      * @dev Function is in the main Vault contract. The VaultExtension handles most permissioned calls, and other
      * functions less frequently used, as delegate calls through the Vault are more expensive than direct calls.
      * The Vault itself contains the core code for swaps and liquidity operations.
@@ -29,7 +29,7 @@ interface IVaultExplorer {
     function getVaultExtension() external view returns (address);
 
     /**
-     * @notice Get the Vault Admin contract address.
+     * @notice Get the VaultAdmin contract address.
      * @return Address of the VaultAdmin
      */
     function getVaultAdmin() external view returns (address);
@@ -385,6 +385,15 @@ interface IVaultExplorer {
     /*******************************************************************************
                                   ERC4626 Buffers
     *******************************************************************************/
+
+    /**
+     * @notice Indicates whether the Vault buffers are paused.
+     * @dev When buffers are paused, all buffer operations (i.e., calls on the Router with `isBuffer` true)
+     * will revert.
+     *
+     * @return True if the Vault buffers are paused
+     */
+    function areBuffersPaused() external view returns (bool);
 
     /**
      * @notice Returns the shares (internal buffer BPT) of a liquidity owner: a user that deposited assets

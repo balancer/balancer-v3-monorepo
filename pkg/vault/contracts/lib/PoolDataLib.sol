@@ -30,9 +30,9 @@ library PoolDataLib {
 
     function load(
         PoolData memory poolData,
-        mapping(uint => bytes32) storage poolTokenBalances,
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances,
         PoolConfigBits poolConfigBits,
-        mapping(IERC20 => TokenInfo) storage poolTokenInfo,
+        mapping(IERC20 poolToken => TokenInfo tokenInfo) storage poolTokenInfo,
         IERC20[] storage tokens,
         Rounding roundingDirection
     ) internal view {
@@ -93,8 +93,8 @@ library PoolDataLib {
 
     function syncPoolBalancesAndFees(
         PoolData memory poolData,
-        mapping(uint256 => bytes32) storage poolTokenBalances,
-        mapping(IERC20 => bytes32) storage poolAggregateProtocolFeeAmounts
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances,
+        mapping(IERC20 token => bytes32 packedFeeAmounts) storage poolAggregateProtocolFeeAmounts
     ) internal {
         uint256 numTokens = poolData.balancesRaw.length;
 
@@ -130,7 +130,7 @@ library PoolDataLib {
      */
     function reloadBalancesAndRates(
         PoolData memory poolData,
-        mapping(uint256 => bytes32) storage poolTokenBalances,
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances,
         Rounding roundingDirection
     ) internal view {
         uint256 numTokens = poolData.tokens.length;

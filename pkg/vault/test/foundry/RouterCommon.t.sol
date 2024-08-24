@@ -73,7 +73,8 @@ contract RouterCommonTest is BaseVaultTest {
     }
 
     function testTakeTokenInWethIsNotEth() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
+
         uint256 amountToDeposit = weth.balanceOf(bob) / 100;
 
         EthStateTest memory vars = _createEthStateTest();
@@ -96,7 +97,8 @@ contract RouterCommonTest is BaseVaultTest {
     }
 
     function testSendTokenOutWethIsEth() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
+
         vm.startPrank(lp);
         uint256 wethDeposit = lp.balance / 10;
         weth.deposit{ value: wethDeposit }();
@@ -122,7 +124,7 @@ contract RouterCommonTest is BaseVaultTest {
     }
 
     function testSendTokenOutWethIsNotEth() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
 
         EthStateTest memory vars = _createEthStateTest();
 

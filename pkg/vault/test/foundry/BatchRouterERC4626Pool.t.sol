@@ -409,7 +409,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
     }
 
     function testInvalidUnderlyingToken() public {
-        vm.expectRevert(IVaultErrors.InvalidUnderlyingToken.selector);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidUnderlyingToken.selector, waInvalid));
         vm.prank(lp);
         router.initializeBuffer(waInvalid, bufferInitialAmount, bufferInitialAmount);
     }

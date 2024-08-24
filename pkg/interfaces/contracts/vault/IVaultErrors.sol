@@ -5,38 +5,38 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-/// @dev Errors are declared inside an interface (namespace) to improve DX with Typechain.
+/// @notice Errors are declared inside an interface (namespace) to improve DX with Typechain.
 interface IVaultErrors {
     /*******************************************************************************
                             Registration and Initialization
     *******************************************************************************/
 
     /**
-     * @dev A pool has already been registered. `registerPool` may only be called once.
+     * @notice A pool has already been registered. `registerPool` may only be called once.
      * @param pool The already registered pool
      */
     error PoolAlreadyRegistered(address pool);
 
     /**
-     * @dev A pool has already been initialized. `initialize` may only be called once.
+     * @notice A pool has already been initialized. `initialize` may only be called once.
      * @param pool The already initialized pool
      */
     error PoolAlreadyInitialized(address pool);
 
     /**
-     * @dev A pool has not been registered.
+     * @notice A pool has not been registered.
      * @param pool The unregistered pool
      */
     error PoolNotRegistered(address pool);
 
     /**
-     * @dev A referenced pool has not been initialized.
+     * @notice A referenced pool has not been initialized.
      * @param pool The uninitialized pool
      */
     error PoolNotInitialized(address pool);
 
     /**
-     * @dev A hook contract rejected a pool on registration.
+     * @notice A hook contract rejected a pool on registration.
      * @param poolHooksContract Address of the hook contract that rejected the pool registration
      * @param pool Address of the rejected pool
      * @param poolFactory Address of the pool factory
@@ -44,28 +44,28 @@ interface IVaultErrors {
     error HookRegistrationFailed(address poolHooksContract, address pool, address poolFactory);
 
     /**
-     * @dev A token was already registered (i.e., it is a duplicate in the pool).
+     * @notice A token was already registered (i.e., it is a duplicate in the pool).
      * @param token The duplicate token
      */
     error TokenAlreadyRegistered(IERC20 token);
 
-    /// @dev The token count is below the minimum allowed.
+    /// @notice The token count is below the minimum allowed.
     error MinTokens();
 
-    /// @dev The token count is above the maximum allowed.
+    /// @notice The token count is above the maximum allowed.
     error MaxTokens();
 
-    /// @dev Invalid tokens (e.g., zero) cannot be registered.
+    /// @notice Invalid tokens (e.g., zero) cannot be registered.
     error InvalidToken();
 
-    /// @dev The token type given in a TokenConfig during pool registration is invalid.
+    /// @notice The token type given in a TokenConfig during pool registration is invalid.
     error InvalidTokenType();
 
-    /// @dev The data in a TokenConfig struct is inconsistent or unsupported.
+    /// @notice The data in a TokenConfig struct is inconsistent or unsupported.
     error InvalidTokenConfiguration();
 
     /**
-     * @dev The token list passed into an operation does not match the pool tokens in the pool.
+     * @notice The token list passed into an operation does not match the pool tokens in the pool.
      * @param pool Address of the pool
      * @param expectedToken The correct token at a given index in the pool
      * @param actualToken The actual token found at that index
@@ -76,103 +76,142 @@ interface IVaultErrors {
                                  Transient Accounting
     *******************************************************************************/
 
-    /// @dev A transient accounting operation completed with outstanding token deltas.
+    /// @notice A transient accounting operation completed with outstanding token deltas.
     error BalanceNotSettled();
 
-    /// @dev A user called a Vault function (swap, add/remove liquidity) outside the lock context.
+    /// @notice A user called a Vault function (swap, add/remove liquidity) outside the lock context.
     error VaultIsNotUnlocked();
 
-    /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
+    /// @notice The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
     error DynamicSwapFeeHookFailed();
 
-    /// @dev The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
+    /// @notice The pool has returned false to the beforeSwap hook, indicating the transaction should revert.
     error BeforeSwapHookFailed();
 
-    /// @dev The pool has returned false to the afterSwap hook, indicating the transaction should revert.
+    /// @notice The pool has returned false to the afterSwap hook, indicating the transaction should revert.
     error AfterSwapHookFailed();
 
-    /// @dev The pool has returned false to the beforeInitialize hook, indicating the transaction should revert.
+    /// @notice The pool has returned false to the beforeInitialize hook, indicating the transaction should revert.
     error BeforeInitializeHookFailed();
 
-    /// @dev The pool has returned false to the afterInitialize hook, indicating the transaction should revert.
+    /// @notice The pool has returned false to the afterInitialize hook, indicating the transaction should revert.
     error AfterInitializeHookFailed();
 
-    /// @dev The pool has returned false to the beforeAddLiquidity hook, indicating the transaction should revert.
+    /// @notice The pool has returned false to the beforeAddLiquidity hook, indicating the transaction should revert.
     error BeforeAddLiquidityHookFailed();
 
-    /// @dev The pool has returned false to the afterAddLiquidity hook, indicating the transaction should revert.
+    /// @notice The pool has returned false to the afterAddLiquidity hook, indicating the transaction should revert.
     error AfterAddLiquidityHookFailed();
 
-    /// @dev The pool has returned false to the beforeRemoveLiquidity hook, indicating the transaction should revert.
+    /// @notice The pool has returned false to the beforeRemoveLiquidity hook, indicating the transaction should revert.
     error BeforeRemoveLiquidityHookFailed();
 
-    /// @dev The pool has returned false to the afterRemoveLiquidity hook, indicating the transaction should revert.
+    /// @notice The pool has returned false to the afterRemoveLiquidity hook, indicating the transaction should revert.
     error AfterRemoveLiquidityHookFailed();
 
-    /// @dev An unauthorized Router tried to call a permissioned function (i.e., using the Vault's token allowance).
+    /// @notice An unauthorized Router tried to call a permissioned function (i.e., using the Vault's token allowance).
     error RouterNotTrusted();
 
     /*******************************************************************************
                                         Swaps
     *******************************************************************************/
 
-    /// @dev The user tried to swap zero tokens.
+    /// @notice The user tried to swap zero tokens.
     error AmountGivenZero();
 
-    /// @dev The user attempted to swap a token for itself.
+    /// @notice The user attempted to swap a token for itself.
     error CannotSwapSameToken();
 
-    /// @dev The user attempted to operate with a token that is not in the pool.
+    /**
+     * @notice The user attempted to operate with a token that is not in the pool.
+     * @param token The unregistered token
+     */
     error TokenNotRegistered(IERC20 token);
 
-    /// @dev An amount in or out has exceeded the limit specified in the swap request.
+    /**
+     * @notice An amount in or out has exceeded the limit specified in the swap request.
+     * @param amount The total amount in or out
+     * @param limit The amount of the limit that has been exceeded
+     */
     error SwapLimit(uint256 amount, uint256 limit);
 
-    /// @dev A hook adjusted amount in or out has exceeded the limit specified in the swap request.
+    /**
+     * @notice A hook adjusted amount in or out has exceeded the limit specified in the swap request.
+     * @param amount The total amount in or out
+     * @param limit The amount of the limit that has been exceeded
+     */
     error HookAdjustedSwapLimit(uint256 amount, uint256 limit);
 
-    /// @dev The amount given or calculated for an operation is below the minimum limit.
+    /// @notice The amount given or calculated for an operation is below the minimum limit.
     error TradeAmountTooSmall();
 
     /*******************************************************************************
                                     Add Liquidity
     *******************************************************************************/
 
-    /// @dev Add liquidity kind not supported.
+    /// @notice Add liquidity kind not supported.
     error InvalidAddLiquidityKind();
 
-    /// @dev A required amountIn exceeds the maximum limit specified for the operation.
-    error AmountInAboveMax(IERC20 token, uint256 amount, uint256 limit);
+    /**
+     * @notice A required amountIn exceeds the maximum limit specified for the operation.
+     * @param tokenIn The incoming token
+     * @param amountIn The total token amount in
+     * @param maxAmountIn The amount of the limit that has been exceeded
+     */
+    error AmountInAboveMax(IERC20 tokenIn, uint256 amountIn, uint256 maxAmountIn);
 
-    /// @dev A hook adjusted amountIn exceeds the maximum limit specified for the operation.
-    error HookAdjustedAmountInAboveMax(IERC20 token, uint256 amount, uint256 limit);
+    /**
+     * @notice A hook adjusted amountIn exceeds the maximum limit specified for the operation.
+     * @param tokenIn The incoming token
+     * @param amountIn The total token amount in
+     * @param maxAmountIn The amount of the limit that has been exceeded
+     */
+    error HookAdjustedAmountInAboveMax(IERC20 tokenIn, uint256 amountIn, uint256 maxAmountIn);
 
-    /// @dev The BPT amount received from adding liquidity is below the minimum specified for the operation.
-    error BptAmountOutBelowMin(uint256 amount, uint256 limit);
+    /**
+     * @notice The BPT amount received from adding liquidity is below the minimum specified for the operation.
+     * @param amountOut The total BPT amount out
+     * @param minAmountOut The amount of the limit that has been exceeded
+     */
+    error BptAmountOutBelowMin(uint256 amountOut, uint256 minAmountOut);
 
-    /// @dev Pool does not support adding liquidity with a customized input.
+    /// @notice Pool does not support adding liquidity with a customized input.
     error DoesNotSupportAddLiquidityCustom();
 
-    /// @dev Pool does not support adding liquidity through donation.
+    /// @notice Pool does not support adding liquidity through donation.
     error DoesNotSupportDonation();
 
     /*******************************************************************************
                                     Remove Liquidity
     *******************************************************************************/
 
-    /// @dev Remove liquidity kind not supported.
+    /// @notice Remove liquidity kind not supported.
     error InvalidRemoveLiquidityKind();
 
-    /// @dev The actual amount out is below the minimum limit specified for the operation.
-    error AmountOutBelowMin(IERC20 token, uint256 amount, uint256 limit);
+    /**
+     * @notice The actual amount out is below the minimum limit specified for the operation.
+     * @param tokenOut The outgoing token
+     * @param amountOut The total BPT amount out
+     * @param minAmountOut The amount of the limit that has been exceeded
+     */
+    error AmountOutBelowMin(IERC20 tokenOut, uint256 amountOut, uint256 minAmountOut);
 
-    /// @dev The hook adjusted amount out is below the minimum limit specified for the operation.
-    error HookAdjustedAmountOutBelowMin(IERC20 token, uint256 amount, uint256 limit);
+    /**
+     * @notice The hook adjusted amount out is below the minimum limit specified for the operation.
+     * @param tokenOut The outgoing token
+     * @param amountOut The total BPT amount out
+     * @param minAmountOut The amount of the limit that has been exceeded
+     */
+    error HookAdjustedAmountOutBelowMin(IERC20 tokenOut, uint256 amountOut, uint256 minAmountOut);
 
-    /// @dev The required BPT amount in exceeds the maximum limit specified for the operation.
-    error BptAmountInAboveMax(uint256 amount, uint256 limit);
+    /**
+     * @notice The required BPT amount in exceeds the maximum limit specified for the operation.
+     * @param amountIn The total BPT amount in
+     * @param maxAmountIn The amount of the limit that has been exceeded
+     */
+    error BptAmountInAboveMax(uint256 amountIn, uint256 maxAmountIn);
 
-    /// @dev Pool does not support removing liquidity with a customized input.
+    /// @notice Pool does not support removing liquidity with a customized input.
     error DoesNotSupportRemoveLiquidityCustom();
 
     /*******************************************************************************
@@ -180,15 +219,16 @@ interface IVaultErrors {
     *******************************************************************************/
 
     /**
-     * @dev Error raised when the sum of the parts (aggregate swap or yield fee)
-     * is greater than the whole (total swap or yield fee). Also validated when the protocol fee
-     * controller updates aggregate fee percentages in the Vault.
+     * @notice Error raised when there is an overflow in the fee calculation.
+     * @dev This occurs when the sum of the parts (aggregate swap or yield fee) is greater than the whole
+     * (total swap or yield fee). Also validated when the protocol fee controller updates aggregate fee
+     * percentages in the Vault.
      */
     error ProtocolFeesExceedTotalCollected();
 
     /**
-     * @dev  Error raised when the swap fee percentage is less than the minimum allowed value.
-     * The Vault itself does not impose a universal minimum. Rather, it validates against the
+     * @notice Error raised when the swap fee percentage is less than the minimum allowed value.
+     * @dev The Vault itself does not impose a universal minimum. Rather, it validates against the
      * range specified by the `ISwapFeePercentageBounds` interface. and reverts with this error
      * if it is below the minimum value returned by the pool.
      *
@@ -197,8 +237,8 @@ interface IVaultErrors {
     error SwapFeePercentageTooLow();
 
     /**
-     * @dev  Error raised when the swap fee percentage is greater than the maximum allowed value.
-     * The Vault itself does not impose a universal minimum. Rather, it validates against the
+     * @notice Error raised when the swap fee percentage is greater than the maximum allowed value.
+     * @dev The Vault itself does not impose a universal minimum. Rather, it validates against the
      * range specified by the `ISwapFeePercentageBounds` interface. and reverts with this error
      * if it is above the maximum value returned by the pool.
      *
@@ -207,6 +247,7 @@ interface IVaultErrors {
     error SwapFeePercentageTooHigh();
 
     /**
+     * @notice Primary fee percentages result in an aggregate fee that cannot be stored with the required precision.
      * @dev Primary fee percentages are 18-decimal values, stored here in 64 bits, and calculated with full 256-bit
      * precision. However, the resulting aggregate fees are stored in the Vault with 24-bit precision, which
      * corresponds to 0.00001% resolution (i.e., a fee can be 1%, 1.00001%, 1.00002%, but not 1.000005%).
@@ -215,11 +256,17 @@ interface IVaultErrors {
      */
     error FeePrecisionTooHigh();
 
+    /**
+     * @notice A given percentage is above the maximum (usually FixedPoint.ONE, or 1e18 wei).
+     * @dev Providing the value might be helpful for debugging.
+     */
+    error PercentageAboveMax();
+
     /*******************************************************************************
                                     Queries
     *******************************************************************************/
 
-    /// @dev A user tried to execute a query operation when they were disabled.
+    /// @notice A user tried to execute a query operation when they were disabled.
     error QueriesDisabled();
 
     /*******************************************************************************
@@ -227,13 +274,13 @@ interface IVaultErrors {
     *******************************************************************************/
 
     /**
-     * @dev Cannot enable recovery mode when already enabled.
+     * @notice Cannot enable recovery mode when already enabled.
      * @param pool The pool
      */
     error PoolInRecoveryMode(address pool);
 
     /**
-     * @dev Cannot disable recovery mode when not enabled.
+     * @notice Cannot disable recovery mode when not enabled.
      * @param pool The pool
      */
     error PoolNotInRecoveryMode(address pool);
@@ -243,7 +290,7 @@ interface IVaultErrors {
     *******************************************************************************/
 
     /**
-     * @dev Error indicating the sender is not the Vault (e.g., someone is trying to call a permissioned function).
+     * @notice Error indicating the sender is not the Vault (e.g., someone is trying to call a permissioned function).
      * @param sender The account attempting to call a permissioned function
      */
     error SenderIsNotVault(address sender);
@@ -252,35 +299,35 @@ interface IVaultErrors {
                                         Pausing
     *******************************************************************************/
 
-    /// @dev The caller specified a pause window period longer than the maximum.
+    /// @notice The caller specified a pause window period longer than the maximum.
     error VaultPauseWindowDurationTooLarge();
 
-    /// @dev The caller specified a buffer period longer than the maximum.
+    /// @notice The caller specified a buffer period longer than the maximum.
     error PauseBufferPeriodDurationTooLarge();
 
-    /// @dev A user tried to perform an operation while the Vault was paused.
+    /// @notice A user tried to perform an operation while the Vault was paused.
     error VaultPaused();
 
-    /// @dev Governance tried to unpause the Vault when it was not paused.
+    /// @notice Governance tried to unpause the Vault when it was not paused.
     error VaultNotPaused();
 
-    /// @dev Governance tried to pause the Vault after the pause period expired.
+    /// @notice Governance tried to pause the Vault after the pause period expired.
     error VaultPauseWindowExpired();
 
     /**
-     * @dev A user tried to perform an operation involving a paused Pool.
+     * @notice A user tried to perform an operation involving a paused Pool.
      * @param pool The paused pool
      */
     error PoolPaused(address pool);
 
     /**
-     * @dev Governance tried to unpause the Pool when it was not paused.
+     * @notice Governance tried to unpause the Pool when it was not paused.
      * @param pool The unpaused pool
      */
     error PoolNotPaused(address pool);
 
     /**
-     * @dev Governance tried to pause a Pool after the pause period expired.
+     * @notice Governance tried to pause a Pool after the pause period expired.
      * @param pool The pool
      */
     error PoolPauseWindowExpired(address pool);
@@ -289,61 +336,80 @@ interface IVaultErrors {
                                 ERC4626 token buffers
     *******************************************************************************/
 
-    /// @dev Buffer for the given wrapped token was already initialized.
+    /**
+     * @notice The buffer for the given wrapped token was already initialized.
+     * @param wrappedToken The wrapped token corresponding to the buffer
+     */
     error BufferAlreadyInitialized(IERC4626 wrappedToken);
 
-    /// @dev Buffer for the given wrapped token was not initialized.
+    /**
+     * @notice The buffer for the given wrapped token was not initialized.
+     * @param wrappedToken The wrapped token corresponding to the buffer
+     */
     error BufferNotInitialized(IERC4626 wrappedToken);
 
-    /// @dev The user is trying to remove more than their allocated shares from the buffer.
+    /// @notice The user is trying to remove more than their allocated shares from the buffer.
     error NotEnoughBufferShares();
 
-    /// @dev The wrapped token asset does not match the underlying token.
+    /**
+     * @notice The wrapped token asset does not match the underlying token.
+     * @dev This should never happen, but a malicious wrapper contract might not return the correct address.
+     * Legitimate wrapper contracts should make the asset a constant or immutable value.
+     *
+     * @param wrappedToken The wrapped token corresponding to the buffer
+     * @param underlyingToken The underlying token returned by `asset`
+     */
     error WrongUnderlyingToken(IERC4626 wrappedToken, address underlyingToken);
 
-    /// @dev A wrapped token reported the zero address as its underlying token asset.
-    error InvalidUnderlyingToken();
+    /**
+     * @notice A wrapped token reported the zero address as its underlying token asset.
+     * @dev This should never happen, but a malicious wrapper contract might do this (e.g., in an attempt to
+     * re-initialize the buffer).
+     *
+     * @param wrappedToken The wrapped token corresponding to the buffer
+     */
+    error InvalidUnderlyingToken(IERC4626 wrappedToken);
 
-    /// @dev The amount given to wrap/unwrap was too small, which can introduce rounding issues.
-    error WrapAmountTooSmall(address wrappedToken);
+    /**
+     * @notice The amount given to wrap/unwrap was too small, which can introduce rounding issues.
+     * @param wrappedToken The wrapped token corresponding to the buffer
+     */
+    error WrapAmountTooSmall(IERC4626 wrappedToken);
 
-    /// @dev Vault buffers are paused.
+    /// @notice Buffer operation attempted while vault buffers are paused.
     error VaultBuffersArePaused();
 
-    /// @dev Buffer shares were minted to an invalid address.
-    error BufferSharesInvalidReceiver(address to);
+    /// @notice Buffer shares were minted to the zero address.
+    error BufferSharesInvalidReceiver();
 
-    /// @dev Buffer shares were burnt from an invalid address.
-    error BufferSharesInvalidOwner(address from);
+    /// @notice Buffer shares were burned from the zero address.
+    error BufferSharesInvalidOwner();
 
     /*******************************************************************************
                                     Miscellaneous
     *******************************************************************************/
 
-    /// @dev Optional User Data should be empty in the current add / remove liquidity kind.
-    error UserDataNotSupported();
-
-    /// @dev Pool does not support adding / removing liquidity with an unbalanced input.
+    /// @notice Pool does not support adding / removing liquidity with an unbalanced input.
     error DoesNotSupportUnbalancedLiquidity();
 
-    /// @dev The contract should not receive ETH.
+    /// @notice The contract should not receive ETH.
     error CannotReceiveEth();
 
-    /// @dev The Vault extension was called by an account directly; it can only be called by the Vault via delegatecall.
+    /**
+     * @notice The `VaultExtension` contract was called by an account directly.
+     * @dev It can only be called by the Vault via delegatecall.
+     */
     error NotVaultDelegateCall();
 
-    /// @dev Error thrown when a function is not supported.
-    error OperationNotSupported();
-
-    /// @dev The vault extension was configured with an incorrect Vault address.
+    /// @notice The `VaultExtension` contract was configured with an incorrect Vault address.
     error WrongVaultExtensionDeployment();
 
-    /// @dev The protocol fee controller was configured with an incorrect Vault address.
+    /// @notice The `ProtocolFeeController` contract was configured with an incorrect Vault address.
     error WrongProtocolFeeControllerDeployment();
 
-    /// @dev The vault admin was configured with an incorrect Vault address.
+    /// @notice The `VaultAdmin` contract was configured with an incorrect Vault address.
     error WrongVaultAdminDeployment();
 
-    /// @dev Quote reverted with a reserved error code.
+    /// @notice Quote reverted with a reserved error code.
     error QuoteResultSpoofed();
 }

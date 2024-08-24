@@ -15,21 +15,21 @@ import "./FixedPoint.sol";
 library WeightedMath {
     using FixedPoint for uint256;
 
-    /// @dev User Attempted to burn less BPT than allowed for a specific amountOut.
+    /// @notice User Attempted to burn less BPT than allowed for a specific amountOut.
     error MinBPTInForTokenOut();
 
-    /// @dev User attempted to mint more BPT than allowed for a specific amountIn.
+    /// @notice User attempted to mint more BPT than allowed for a specific amountIn.
     error MaxOutBptForTokenIn();
 
-    /// @dev User attempted to extract a disproportionate amountOut of tokens from a pool.
+    /// @notice User attempted to extract a disproportionate amountOut of tokens from a pool.
     error MaxOutRatio();
 
-    /// @dev User attempted to add a disproportionate amountIn of tokens to a pool.
+    /// @notice User attempted to add a disproportionate amountIn of tokens to a pool.
     error MaxInRatio();
 
     /**
-     * @dev Error thrown when the calculated invariant is zero, indicating an issue with the invariant calculation.
-     * Most commonly, this happens when a token balance is zero.
+     * @notice Error thrown when the calculated invariant is zero, indicating an issue with the invariant calculation.
+     * @dev Most commonly, this happens when a token balance is zero.
      */
     error ZeroInvariant();
 
