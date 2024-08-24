@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -205,11 +207,11 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         );
 
         // Setting the creator fee is a permissioned call.
-        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, alice));
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, alice, pool));
         vm.prank(alice);
         feeController.setPoolCreatorSwapFeePercentage(pool, POOL_CREATOR_SWAP_FEE_PCT);
 
-        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, alice));
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, alice, pool));
         vm.prank(alice);
         feeController.setPoolCreatorYieldFeePercentage(pool, POOL_CREATOR_YIELD_FEE_PCT);
 
@@ -218,7 +220,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             feeControllerAuth.getActionId(IProtocolFeeController.setPoolCreatorSwapFeePercentage.selector),
             bob
         );
-        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, bob));
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, bob, pool));
         vm.prank(bob);
         feeController.setPoolCreatorSwapFeePercentage(pool, 0);
 
@@ -226,7 +228,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             feeControllerAuth.getActionId(IProtocolFeeController.setPoolCreatorYieldFeePercentage.selector),
             bob
         );
-        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, bob));
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, bob, pool));
         vm.prank(bob);
         feeController.setPoolCreatorYieldFeePercentage(pool, 0);
 
@@ -589,7 +591,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
     }
 
     function testWithdrawalByNonPoolCreator() public {
-        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, alice));
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, alice, pool));
         vm.prank(alice);
         feeController.withdrawPoolCreatorFees(pool, alice);
     }
@@ -736,10 +738,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         swapAmounts[daiIdx] = PROTOCOL_SWAP_FEE_AMOUNT;
         yieldAmounts[usdcIdx] = PROTOCOL_YIELD_FEE_AMOUNT;
 
-        vm.expectCall(
-            address(feeController),
-            abi.encodeWithSelector(ProtocolFeeController.collectAggregateFeesHook.selector, pool)
-        );
+        vm.expectCall(address(feeController), abi.encodeCall(ProtocolFeeController.collectAggregateFeesHook, pool));
         // Move them to the fee controller.
         feeController.collectAggregateFees(pool);
 
@@ -806,7 +805,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         // Now all that's left is to withdraw them.
         // Governance cannot withdraw creator fees.
         authorizer.grantRole(feeControllerAuth.getActionId(permissionedSelector), admin);
-        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, admin));
+        vm.expectRevert(abi.encodeWithSelector(IProtocolFeeController.CallerIsNotPoolCreator.selector, admin, pool));
         vm.prank(admin);
         feeController.withdrawPoolCreatorFees(pool, admin);
 
@@ -826,6 +825,7 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             feeControllerAuth.getActionId(IProtocolFeeController.withdrawProtocolFees.selector),
             admin
         );
+
         vm.prank(admin);
         feeController.withdrawProtocolFees(pool, admin);
 
@@ -863,6 +863,65 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
             expectedCreatorFeeUSDC,
             "Wrong ending balance of USDC (creator)"
         );
+    }
+
+    function testProtocolFeeCollectionEvents() public {
+        _registerPoolWithMaxProtocolFees();
+        _verifyPoolProtocolFeePercentages(pool);
+
+        // Set a creator fee percentage (before there are any fees), so they will be disaggregated upon collection.
+        vm.startPrank(lp);
+        feeController.setPoolCreatorSwapFeePercentage(pool, POOL_CREATOR_SWAP_FEE_PCT);
+        feeController.setPoolCreatorYieldFeePercentage(pool, POOL_CREATOR_YIELD_FEE_PCT);
+        vm.stopPrank();
+
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
+        vault.manualSetAggregateYieldFeeAmount(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);
+
+        // Move them to the fee controller.
+        feeController.collectAggregateFees(pool);
+
+        uint256[] memory protocolFeeAmounts = feeController.getProtocolFeeAmounts(pool);
+        uint256[] memory poolCreatorFeeAmounts = feeController.getPoolCreatorFeeAmounts(pool);
+
+        // Governance can withdraw.
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.withdrawProtocolFees.selector),
+            admin
+        );
+
+        vm.expectEmit();
+        emit IProtocolFeeController.ProtocolFeesWithdrawn(pool, IERC20(dai), admin, protocolFeeAmounts[daiIdx]);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.ProtocolFeesWithdrawn(pool, IERC20(usdc), admin, protocolFeeAmounts[usdcIdx]);
+
+        vm.prank(admin);
+        feeController.withdrawProtocolFees(pool, admin);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.PoolCreatorFeesWithdrawn(pool, IERC20(dai), bob, poolCreatorFeeAmounts[daiIdx]);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.PoolCreatorFeesWithdrawn(pool, IERC20(usdc), bob, poolCreatorFeeAmounts[usdcIdx]);
+
+        // Test permissioned collection of pool creator fees.
+        vm.prank(lp);
+        feeController.withdrawPoolCreatorFees(pool, bob);
+
+        // Reset fees for permissionless test.
+        vault.manualSetAggregateSwapFeeAmount(pool, dai, PROTOCOL_SWAP_FEE_AMOUNT);
+        vault.manualSetAggregateYieldFeeAmount(pool, usdc, PROTOCOL_YIELD_FEE_AMOUNT);
+        feeController.collectAggregateFees(pool);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.PoolCreatorFeesWithdrawn(pool, IERC20(dai), lp, poolCreatorFeeAmounts[daiIdx]);
+
+        vm.expectEmit();
+        emit IProtocolFeeController.PoolCreatorFeesWithdrawn(pool, IERC20(usdc), lp, poolCreatorFeeAmounts[usdcIdx]);
+
+        // Test permissionless collection of pool creator fees.
+        feeController.withdrawPoolCreatorFees(pool);
     }
 
     function _registerPoolWithMaxProtocolFees() internal {

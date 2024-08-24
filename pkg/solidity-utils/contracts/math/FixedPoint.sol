@@ -6,7 +6,7 @@ import "./LogExpMath.sol";
 
 /// @notice Support 18-decimal fixed point arithmetic. All Vault calculations use this for high and uniform precision.
 library FixedPoint {
-    /// @dev Attempted division by zero.
+    /// @notice Attempted division by zero.
     error ZeroDivision();
 
     // solhint-disable no-inline-assembly
@@ -36,7 +36,7 @@ library FixedPoint {
         //
         // Equivalent to:
         // result = product == 0 ? 0 : ((product - 1) / FixedPoint.ONE) + 1;
-        assembly {
+        assembly ("memory-safe") {
             result := mul(iszero(iszero(product)), add(div(sub(product, 1), ONE), 1))
         }
     }
@@ -71,7 +71,7 @@ library FixedPoint {
         //
         // Equivalent to:
         // result = a == 0 ? 0 : (a * b - 1) / c + 1;
-        assembly {
+        assembly ("memory-safe") {
             result := mul(iszero(iszero(product)), add(div(sub(product, 1), c), 1))
         }
     }
@@ -90,7 +90,7 @@ library FixedPoint {
 
         // Equivalent to:
         // result = a == 0 ? 0 : 1 + (a - 1) / b;
-        assembly {
+        assembly ("memory-safe") {
             result := mul(iszero(iszero(a)), add(1, div(sub(a, 1), b)))
         }
     }
@@ -154,7 +154,7 @@ library FixedPoint {
     function complement(uint256 x) internal pure returns (uint256 result) {
         // Equivalent to:
         // result = (x < ONE) ? (ONE - x) : 0;
-        assembly {
+        assembly ("memory-safe") {
             result := mul(lt(x, ONE), sub(ONE, x))
         }
     }

@@ -277,7 +277,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * and poolData.liveBalances in the same storage slot.
      */
     function _writePoolBalancesToStorage(address pool, PoolData memory poolData) internal {
-        mapping(uint256 => bytes32) storage poolBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < poolData.balancesRaw.length; ++i) {
             // Since we assume all newBalances are properly ordered

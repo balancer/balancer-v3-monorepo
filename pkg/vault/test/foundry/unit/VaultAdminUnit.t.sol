@@ -137,7 +137,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
     ********************************************************************************/
 
     function testInitializeBufferTwice() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vault.initializeBuffer(waDAI, liquidityAmount, liquidityAmount, bob);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferAlreadyInitialized.selector, waDAI));
@@ -145,15 +145,15 @@ contract VaultAdminUnitTest is BaseVaultTest {
     }
 
     function testInitializeBufferAddressZero() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         waDAI.setAsset(IERC20(address(0)));
 
-        vm.expectRevert(IVaultErrors.InvalidUnderlyingToken.selector);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidUnderlyingToken.selector, waDAI));
         vault.initializeBuffer(waDAI, liquidityAmount, liquidityAmount, bob);
     }
 
     function testInitializeBufferBelowMinimumShares() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vm.expectRevert(
             abi.encodeWithSelector(IERC20MultiTokenErrors.TotalSupplyTooLow.selector, 3, _MINIMUM_TOTAL_SUPPLY)
         );
@@ -163,7 +163,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
     function testInitializeBuffer() public {
         dai.mint(address(waDAI), underlyingTokensToDeposit); // This will make the rate = 2
 
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         uint256 underlyingAmount = liquidityAmount * 2;
         uint256 wrappedAmount = liquidityAmount;
 
@@ -264,8 +264,13 @@ contract VaultAdminUnitTest is BaseVaultTest {
     }
 
     function testMintBufferSharesIInvalidReceiver() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferSharesInvalidReceiver.selector, address(0)));
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferSharesInvalidReceiver.selector));
         vault.manualMintBufferShares(waDAI, address(0), _MINIMUM_TOTAL_SUPPLY);
+    }
+
+    function testBurnBufferSharesIInvalidOwner() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferSharesInvalidOwner.selector));
+        vault.manualBurnBufferShares(waDAI, address(0), _MINIMUM_TOTAL_SUPPLY);
     }
 
     function _initializeBob() private {

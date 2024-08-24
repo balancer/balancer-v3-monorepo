@@ -64,9 +64,9 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     // Vault mock.
     IVaultMock internal vault;
-    // Vault extension mock.
+    // VaultExtension mock.
     IVaultExtension internal vaultExtension;
-    // Vault admin mock.
+    // VaultAdmin mock.
     IVaultAdmin internal vaultAdmin;
     // Router mock.
     RouterMock internal router;
