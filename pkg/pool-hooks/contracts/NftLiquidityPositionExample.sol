@@ -3,7 +3,6 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
@@ -16,8 +15,6 @@ import {
     HookFlags,
     AddLiquidityKind,
     RemoveLiquidityKind,
-    PoolSwapParams,
-    AfterSwapParams,
     AddLiquidityParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -25,18 +22,27 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 import { MinimalRouter } from "./MinimalRouter.sol";
 
+/// @notice Mint an NFT to pool depositors, and charge a decaying exit fee upon withdrawal.
 contract NftRouter is MinimalRouter, ERC721, BaseHooks {
-    // Initial fee of 10%
-    uint256 public constant INITIAL_FEE = 10e16;
+    using FixedPoint for uint256;
+
+    // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
+    // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
+    //solhint-disable not-rely-on-time
+
+    // Initial fee of 10%.
+    uint256 public constant INITIAL_FEE_PERCENTAGE = 10e16;
     uint256 public constant ONE_PERCENT = 1e16;
-    // After this amount of days the fee will be 0%
+    // After this amount of days the fee will be 0%.
     uint256 public constant FULL_DECAY_DAYS = 10;
 
-    using FixedPoint for uint256;
+    // `tokenId` uniquely identifies the NFT minted upon deposit.
+    mapping(uint256 tokenId => uint256 bptAmount) public bptAmount;
+    mapping(uint256 tokenId => uint256 timestamp) public startTime;
+    mapping(uint256 tokenId => address pool) public nftPool;
+
+    // NFT unique identifier.
     uint256 private _nextTokenId;
-    mapping(uint256 => uint256) public bptAmount;
-    mapping(uint256 => uint256) public startTime;
-    mapping(uint256 => address) public bpt;
 
     /**
      * @notice Hooks functions called from an external router.
@@ -44,6 +50,28 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
      * @param router The address of the router
      */
     error CannotUseExternalRouter(address router);
+
+    /**
+     * @notice The pool does not support adding liquidity through donation.
+     * @dev There is an existing similar error (IVaultErrors.DoesNotSupportDonation), but hooks should not throw
+     * "Vault" errors.
+     */
+    error PoolDoesNotSupportDonation();
+
+    /**
+     * @notice The pool supports adding unbalanced liquidity.
+     * @dev There is an existing similar error (IVaultErrors.DoesNotSupportUnbalancedLiquidity), but hooks should not
+     * throw "Vault" errors.
+     */
+    error PoolSupportsUnbalancedLiquidity();
+
+    /**
+     * @notice Attempted withdrawal of an NFT-associated position by an address that is not the owner.
+     * @param withdrawer The address attempting to withdraw
+     * @param owner The owner of the associated NFT
+     * @param nftId The id of the NFT
+     */
+    error WithdrawalByNonOwner(address withdrawer, address owner, uint256 nftId);
 
     modifier onlySelfRouter(address router) {
         _ensureSelfRouter(router);
@@ -58,6 +86,10 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
         // solhint-disable-previous-line no-empty-blocks
     }
 
+    /***************************************************************************
+                                  Router Functions
+    ***************************************************************************/
+
     function addLiquidityProportional(
         address pool,
         uint256[] memory maxAmountsIn,
@@ -65,7 +97,7 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
         bool wethIsEth,
         bytes memory userData
     ) external payable saveSender returns (uint256[] memory amountsIn) {
-        // Do addLiquidity operation - BPT is minted to this contract
+        // Do addLiquidity operation - BPT is minted to this contract.
         amountsIn = _addLiquidityProportional(
             pool,
             msg.sender,
@@ -77,13 +109,13 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
         );
 
         uint256 tokenId = _nextTokenId++;
-        // Store the initial liquidity amount associated with the NFT
+        // Store the initial liquidity amount associated with the NFT.
         bptAmount[tokenId] = exactBptAmountOut;
-        // Store the initial start time associated with the NFT
+        // Store the initial start time associated with the NFT.
         startTime[tokenId] = block.timestamp;
-        // Store the pool/bpt address associated with the NFT
-        bpt[tokenId] = pool;
-        // Mint the associated NFT to sender
+        // Store the pool/bpt address associated with the NFT.
+        nftPool[tokenId] = pool;
+        // Mint the associated NFT to sender.
         _safeMint(msg.sender, tokenId);
     }
 
@@ -92,12 +124,16 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
         uint256[] memory minAmountsOut,
         bool wethIsEth
     ) external payable saveSender returns (uint256[] memory amountsOut) {
-        // Ensure the user owns the NFT
-        require(ownerOf(tokenId) == msg.sender, "You don't own this NFT");
+        // Ensure the user owns the NFT.
+        address nftOwner = ownerOf(tokenId);
 
-        // Do removeLiquidity operation - tokens sent to msg.sender
+        if (nftOwner != msg.sender) {
+            revert WithdrawalByNonOwner(msg.sender, nftOwner, tokenId);
+        }
+
+        // Do removeLiquidity operation - tokens sent to msg.sender.
         amountsOut = _removeLiquidityProportional(
-            bpt[tokenId],
+            nftPool[tokenId],
             address(this),
             msg.sender,
             bptAmount[tokenId],
@@ -106,25 +142,17 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
             abi.encode(tokenId) // tokenId is passed to index fee data in hook
         );
 
-        // Set all associated NFT data to 0
+        // Set all associated NFT data to 0.
         bptAmount[tokenId] = 0;
         startTime[tokenId] = 0;
-        bpt[tokenId] = address(0);
+        nftPool[tokenId] = address(0);
         // Burn the NFT
         _burn(tokenId);
     }
 
     /***************************************************************************
-                                 Hook Logic
+                                  Hook Functions
     ***************************************************************************/
-
-    /**
-     * @dev The pool does not support adding liquidity through donation.
-     * There is an existing similar error (IVaultErrors.DoesNotSupportDonation), but hooks should not throw
-     * "Vault" errors.
-     */
-    error PoolDoesNotSupportDonation();
-    error PoolSupportsUnbalancedLiquidity();
 
     /// @inheritdoc BaseHooks
     function onRegister(
@@ -151,8 +179,8 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
         // in after hooks. Otherwise, the Vault will ignore any "hookAdjusted" amounts, and the transaction
         // might not settle. (It should be false if the after hooks do something else.)
         hookFlags.enableHookAdjustedAmounts = true;
-        hookFlags.shouldCallAfterRemoveLiquidity = true;
         hookFlags.shouldCallBeforeAddLiquidity = true;
+        hookFlags.shouldCallAfterRemoveLiquidity = true;
         return hookFlags;
     }
 
@@ -165,8 +193,8 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
         uint256,
         uint256[] memory,
         bytes memory
-    ) public pure override onlySelfRouter(router) returns (bool) {
-        // We only allow addLiquidity via the Router/Hook itself (as it must custody BPT)
+    ) public view override onlySelfRouter(router) returns (bool) {
+        // We only allow addLiquidity via the Router/Hook itself (as it must custody BPT).
         return true;
     }
 
@@ -180,27 +208,36 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
         uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory userData
-    ) public override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
-        // We only allow removeLiquidity via the Router/Hook itself so that fee is applied correctly
-        require(router == address(this), "Can't use external router");
-
+    ) public override onlySelfRouter(router) returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+        // We only allow removeLiquidity via the Router/Hook itself so that fee is applied correctly.
         uint256 tokenId = abi.decode(userData, (uint256));
         hookAdjustedAmountsOutRaw = amountsOutRaw;
-        uint256 currentFee = getCurrentFee(tokenId);
+        uint256 currentFee = getCurrentFeePercentage(tokenId);
         if (currentFee > 0) {
             hookAdjustedAmountsOutRaw = _takeFee(pool, amountsOutRaw, currentFee);
         }
         return (true, hookAdjustedAmountsOutRaw);
     }
 
-    function getCurrentFee(uint256 tokenId) public view returns (uint256 fee) {
+    /***************************************************************************
+                                Off-chain Getters
+    ***************************************************************************/
+
+    /**
+     * @notice Get the instantaneous value of the fee at the current block.
+     * @param tokenId The fee token
+     * @return feePercentage The current fee percentage
+     */
+    function getCurrentFeePercentage(uint256 tokenId) public view returns (uint256 feePercentage) {
         // Calculate the number of days that have passed since startTime
         uint256 daysPassed = (block.timestamp - startTime[tokenId]) / 1 days;
         if (daysPassed < FULL_DECAY_DAYS) {
             // decreasing fee by 1% per day
-            fee = INITIAL_FEE - ONE_PERCENT * daysPassed;
+            feePercentage = INITIAL_FEE_PERCENTAGE - ONE_PERCENT * daysPassed;
         }
     }
+
+    // Internal Functions
 
     function _takeFee(
         address pool,
@@ -220,7 +257,7 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
             // in the pool balance.
         }
 
-        // Donates accrued fees back to LPs
+        // Donates accrued fees back to LPs.
         _vault.addLiquidity(
             AddLiquidityParams({
                 pool: pool,
@@ -233,59 +270,7 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
         );
     }
 
-    function onBeforeInitialize(uint256[] memory, bytes memory) public virtual returns (bool) {
-        return false;
-    }
-
-    function onAfterInitialize(uint256[] memory, uint256, bytes memory) public virtual returns (bool) {
-        return false;
-    }
-
-    function onAfterAddLiquidity(
-        address,
-        address,
-        AddLiquidityKind,
-        uint256[] memory,
-        uint256[] memory amountsInRaw,
-        uint256,
-        uint256[] memory,
-        bytes memory
-    ) public virtual returns (bool, uint256[] memory) {
-        return (false, amountsInRaw);
-    }
-
-    function onBeforeRemoveLiquidity(
-        address,
-        address,
-        RemoveLiquidityKind,
-        uint256,
-        uint256[] memory,
-        uint256[] memory,
-        bytes memory
-    ) public virtual returns (bool) {
-        return false;
-    }
-
-    function onBeforeSwap(PoolSwapParams calldata, address) public virtual returns (bool) {
-        // return false to trigger an error if shouldCallBeforeSwap is true but this function is not overridden.
-        return false;
-    }
-
-    function onAfterSwap(AfterSwapParams calldata) public virtual returns (bool, uint256) {
-        // return false to trigger an error if shouldCallAfterSwap is true but this function is not overridden.
-        // The second argument is not used.
-        return (false, 0);
-    }
-
-    function onComputeDynamicSwapFeePercentage(
-        PoolSwapParams calldata,
-        address,
-        uint256
-    ) public view virtual returns (bool, uint256) {
-        return (false, 0);
-    }
-
-    function _ensureSelfRouter(address router) private {
+    function _ensureSelfRouter(address router) private view {
         if (router != address(this)) {
             revert CannotUseExternalRouter(router);
         }
