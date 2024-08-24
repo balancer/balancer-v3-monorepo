@@ -49,6 +49,9 @@ contract E2eBatchSwapTest is BaseVaultTest {
     uint256 internal minSwapAmountTokenD;
     uint256 internal maxSwapAmountTokenD;
 
+    uint256 internal poolMinSwapFeePercentage;
+    uint256 internal poolMaxSwapFeePercentage;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
@@ -89,6 +92,13 @@ contract E2eBatchSwapTest is BaseVaultTest {
         tokenBIdx = 1;
         tokenCIdx = 2;
         tokenDIdx = 3;
+
+        poolMinSwapFeePercentage = IBasePool(poolA).getMinimumSwapFeePercentage();
+        poolMaxSwapFeePercentage = IBasePool(poolA).getMaximumSwapFeePercentage();
+
+        // These tests rely on a minimum fee to work; set something very small for pool mock.
+        poolMinSwapFeePercentage = (poolMinSwapFeePercentage == 0 ? 1e12 : poolMinSwapFeePercentage);
+        poolMaxSwapFeePercentage = (poolMaxSwapFeePercentage == 1e18 ? 10e16 : poolMaxSwapFeePercentage);
     }
 
     /**
@@ -190,7 +200,7 @@ contract E2eBatchSwapTest is BaseVaultTest {
     }
 
     function testExactInRepeatExactOut__Fuzz(uint256 exactAmountIn, uint256 poolFeePercentage) public {
-        poolFeePercentage = bound(poolFeePercentage, 1e12, 10e16);
+        poolFeePercentage = bound(poolFeePercentage, poolMinSwapFeePercentage, poolMaxSwapFeePercentage);
 
         // For this test, we need equal fees to ensure symetry between exact_in and out.
         vault.manualSetStaticSwapFeePercentage(poolA, poolFeePercentage);
@@ -466,9 +476,9 @@ contract E2eBatchSwapTest is BaseVaultTest {
         uint256 poolBFeePercentage,
         uint256 poolCFeePercentage
     ) private {
-        poolAFeePercentage = bound(poolAFeePercentage, 1e12, 10e16);
-        poolBFeePercentage = bound(poolBFeePercentage, 1e12, 10e16);
-        poolCFeePercentage = bound(poolCFeePercentage, 1e12, 10e16);
+        poolAFeePercentage = bound(poolAFeePercentage, poolMinSwapFeePercentage, poolMaxSwapFeePercentage);
+        poolBFeePercentage = bound(poolBFeePercentage, poolMinSwapFeePercentage, poolMaxSwapFeePercentage);
+        poolCFeePercentage = bound(poolCFeePercentage, poolMinSwapFeePercentage, poolMaxSwapFeePercentage);
 
         vault.manualSetStaticSwapFeePercentage(poolA, poolAFeePercentage);
         vault.manualSetStaticSwapFeePercentage(poolB, poolBFeePercentage);

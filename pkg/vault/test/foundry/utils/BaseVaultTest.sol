@@ -105,8 +105,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     uint64 internal protocolSwapFeePercentage = 50e16; // 50%
 
     // Applies to Weighted Pools.
-    uint256 constant MIN_SWAP_FEE = 1e12; // 0.00001%
-    uint256 constant MAX_SWAP_FEE = 10e16; // 10%
+    uint256 constant BASE_MIN_SWAP_FEE = 1e12; // 0.00001%
+    uint256 constant BASE_MAX_SWAP_FEE = 10e16; // 10%
     uint256 constant MIN_TRADE_AMOUNT = 1e6;
 
     function setUp() public virtual override {
@@ -219,13 +219,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     }
 
     function _setSwapFeePercentage(address setPool, uint256 percentage) internal {
-        if (percentage < MIN_SWAP_FEE) {
-            vault.manuallySetSwapFee(setPool, percentage);
-        } else {
-            authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), admin);
-            vm.prank(admin);
-            vault.setStaticSwapFeePercentage(setPool, percentage);
-        }
+        vault.manuallySetSwapFee(setPool, percentage);
     }
 
     function getBalances(address user) internal view returns (Balances memory balances) {

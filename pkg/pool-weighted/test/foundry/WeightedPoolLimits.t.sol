@@ -33,6 +33,8 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
     using ArrayHelpers for *;
 
     uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
+    uint256 constant MIN_SWAP_FEE = 1e13;
+    uint256 constant MAX_SWAP_FEE = 10e16;
 
     WeightedMathMock math;
 

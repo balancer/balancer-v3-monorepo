@@ -34,6 +34,9 @@ contract BigWeightedPoolTest is BasePoolTest {
         tokenIndexOut = 7;
 
         BasePoolTest.setUp();
+
+        poolMinSwapFeePercentage = 1e13;
+        poolMaxSwapFeePercentage = 10e16;
     }
 
     function createPool() internal override returns (address) {

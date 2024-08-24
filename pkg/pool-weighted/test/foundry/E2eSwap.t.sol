@@ -36,8 +36,11 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         E2eSwapTest.setUp();
         poolWithMutableWeights = WeightedPoolMock(_createAndInitPoolWithMutableWeights());
 
-        // Set swap fees to 0.0001% (Min swap fee percentage of weighted pools).
-        vault.manualSetStaticSwapFeePercentage(address(poolWithMutableWeights), 1e12);
+        // Set swap fees to min swap fee percentage.
+        vault.manualSetStaticSwapFeePercentage(
+            address(poolWithMutableWeights),
+            IBasePool(poolWithMutableWeights).getMinimumSwapFeePercentage()
+        );
 
         vm.prank(poolCreator);
         // Weighted pools may be drained if there are no lp fees. So, set the creator fee to 99% to add some lp fee
