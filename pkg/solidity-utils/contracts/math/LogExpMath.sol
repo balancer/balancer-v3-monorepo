@@ -17,19 +17,19 @@ pragma solidity ^0.8.24;
  * @author Daniel Fernandez    - @dmf7z
  */
 library LogExpMath {
-    /// @dev This error is thrown when a base is not within an acceptable range.
+    /// @notice This error is thrown when a base is not within an acceptable range.
     error BaseOutOfBounds();
 
-    /// @dev This error is thrown when a exponent is not within an acceptable range.
+    /// @notice This error is thrown when a exponent is not within an acceptable range.
     error ExponentOutOfBounds();
 
-    /// @dev This error is thrown when the exponent * ln(base) is not within an acceptable range.
+    /// @notice This error is thrown when the exponent * ln(base) is not within an acceptable range.
     error ProductOutOfBounds();
 
-    /// @dev This error is thrown when an exponent used in the exp function is not within an acceptable range.
+    /// @notice This error is thrown when an exponent used in the exp function is not within an acceptable range.
     error InvalidExponent();
 
-    /// @dev This error is thrown when a variable or result is not within the acceptable bounds defined in the function.
+    /// @notice This error is thrown when a variable or result is not within the acceptable bounds defined in the function.
     error OutOfBounds();
 
     // All fixed point multiplications and divisions are inlined. This means we need to divide by ONE when multiplying

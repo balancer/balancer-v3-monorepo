@@ -11,8 +11,9 @@ import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/v
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 import { BaseVaultTest } from "./BaseVaultTest.sol";
@@ -45,11 +46,16 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         _initializeERC4626Pool();
     }
 
+    function testTokensPreconditions() public view {
+        // To test wrapped and underlying amounts correctly, the rate of wrapped tokens should not be 1.
+        assertNotEq(waDAI.getRate(), FixedPoint.ONE, "waDAI rate should not be 1");
+        assertNotEq(waUSDC.getRate(), FixedPoint.ONE, "waUSDC rate should not be 1");
+    }
+
     function testERC4626BufferPreconditions() public view {
-        // bob should have the full erc4626Pool BPT. Since BPT amount is based on ERC4626 rates (using rate providers
-        // to convert wrapped amounts to underlying amounts), some rounding imprecision can occur. The test below
-        // allows an error of 0.00000001%.
-        assertApproxEqRel(
+        // Bob should own all erc4626Pool BPTs. Since BPT amount is based on ERC4626 rates (using rate providers
+        // to convert wrapped amounts to underlying amounts), some rounding imprecision can occur.
+        assertApproxEqAbs(
             IERC20(erc4626Pool).balanceOf(bob),
             erc4626PoolInitialAmount * 2 - MIN_BPT,
             errorTolerance,
