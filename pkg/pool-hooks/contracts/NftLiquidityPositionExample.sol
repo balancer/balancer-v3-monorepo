@@ -8,7 +8,6 @@ import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import {
@@ -22,9 +21,11 @@ import {
     AddLiquidityParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
+
 import { MinimalRouter } from "./MinimalRouter.sol";
 
-contract NftRouter is MinimalRouter, ERC721, IHooks {
+contract NftRouter is MinimalRouter, ERC721, BaseHooks {
     // Initial fee of 10%
     uint256 public constant INITIAL_FEE = 10e16;
     uint256 public constant ONE_PERCENT = 1e16;
@@ -36,6 +37,18 @@ contract NftRouter is MinimalRouter, ERC721, IHooks {
     mapping(uint256 => uint256) public bptAmount;
     mapping(uint256 => uint256) public startTime;
     mapping(uint256 => address) public bpt;
+
+    /**
+     * @notice Hooks functions called from an external router.
+     * @dev This contract inherits both `MinimalRouter` and `BaseHooks`, and functions as is its own router.
+     * @param router The address of the router
+     */
+    error CannotUseExternalRouter(address router);
+
+    modifier onlySelfRouter(address router) {
+        _ensureSelfRouter(router);
+        _;
+    }
 
     constructor(
         IVault vault,
@@ -113,12 +126,13 @@ contract NftRouter is MinimalRouter, ERC721, IHooks {
     error PoolDoesNotSupportDonation();
     error PoolSupportsUnbalancedLiquidity();
 
+    /// @inheritdoc BaseHooks
     function onRegister(
         address,
         address,
         TokenConfig[] memory,
         LiquidityManagement calldata liquidityManagement
-    ) public virtual returns (bool) {
+    ) public view override onlyVault returns (bool) {
         // This hook requires donation support to work (see above).
         if (liquidityManagement.enableDonation == false) {
             revert PoolDoesNotSupportDonation();
@@ -130,7 +144,8 @@ contract NftRouter is MinimalRouter, ERC721, IHooks {
         return true;
     }
 
-    function getHookFlags() public view virtual returns (HookFlags memory) {
+    /// @inheritdoc BaseHooks
+    function getHookFlags() public pure override returns (HookFlags memory) {
         HookFlags memory hookFlags;
         // `enableHookAdjustedAmounts` must be true for all contracts that modify the `amountCalculated`
         // in after hooks. Otherwise, the Vault will ignore any "hookAdjusted" amounts, and the transaction
@@ -141,6 +156,7 @@ contract NftRouter is MinimalRouter, ERC721, IHooks {
         return hookFlags;
     }
 
+    /// @inheritdoc BaseHooks
     function onBeforeAddLiquidity(
         address router,
         address,
@@ -149,12 +165,12 @@ contract NftRouter is MinimalRouter, ERC721, IHooks {
         uint256,
         uint256[] memory,
         bytes memory
-    ) public virtual returns (bool) {
+    ) public pure override onlySelfRouter(router) returns (bool) {
         // We only allow addLiquidity via the Router/Hook itself (as it must custody BPT)
-        require(router == address(this), "Can't use external router");
         return true;
     }
 
+    /// @inheritdoc BaseHooks
     function onAfterRemoveLiquidity(
         address router,
         address pool,
@@ -164,7 +180,7 @@ contract NftRouter is MinimalRouter, ERC721, IHooks {
         uint256[] memory amountsOutRaw,
         uint256[] memory,
         bytes memory userData
-    ) public virtual returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
+    ) public override returns (bool, uint256[] memory hookAdjustedAmountsOutRaw) {
         // We only allow removeLiquidity via the Router/Hook itself so that fee is applied correctly
         require(router == address(this), "Can't use external router");
 
@@ -267,5 +283,11 @@ contract NftRouter is MinimalRouter, ERC721, IHooks {
         uint256
     ) public view virtual returns (bool, uint256) {
         return (false, 0);
+    }
+
+    function _ensureSelfRouter(address router) private {
+        if (router != address(this)) {
+            revert CannotUseExternalRouter(router);
+        }
     }
 }
