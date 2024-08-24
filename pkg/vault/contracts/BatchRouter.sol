@@ -983,13 +983,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             if (isStaticCall == false && kind == SwapKind.EXACT_OUT) {
                 // If SwapKind of wrap is EXACT_OUT, the limit of underlying tokens was taken from the user, so the
                 // difference between limit and exact underlying amount needs to be returned to the sender.
-                uint256 valueToSend;
-                unchecked {
-                    // `limits[i]` will always be bigger than `underlyingAmounts[i]` because
-                    // `erc4626BufferWrapOrUnwrap` checks it.
-                    valueToSend = limits[i] - underlyingAmounts[i];
-                }
-                _vault.sendTo(underlyingToken, params.sender, valueToSend);
+                _vault.sendTo(underlyingToken, params.sender, limits[i] - underlyingAmounts[i]);
             }
         }
     }
