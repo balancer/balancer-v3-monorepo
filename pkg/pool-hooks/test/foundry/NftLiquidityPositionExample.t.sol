@@ -168,7 +168,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         uint256 expectedTokenId = 0;
         assertEq(nftRouter.bptAmount(expectedTokenId), bptAmount, "bptAmount mapping is wrong");
         assertEq(nftRouter.startTime(expectedTokenId), block.timestamp, "startTime mapping is wrong");
-        assertEq(nftRouter.bpt(expectedTokenId), pool, "pool mapping is wrong");
+        assertEq(nftRouter.nftPool(expectedTokenId), pool, "pool mapping is wrong");
 
         // Router should receive BPT instead of bob, he gets the NFT
         assertEq(BalancerPoolToken(pool).balanceOf(address(nftRouter)), bptAmount, "NftRouter should hold BPT");
@@ -244,7 +244,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         // Router should set all lp data to 0
         assertEq(nftRouter.bptAmount(nftTokenId), 0, "bptAmount mapping should be 0");
         assertEq(nftRouter.startTime(nftTokenId), 0, "startTime mapping should be 0");
-        assertEq(nftRouter.bpt(nftTokenId), address(0), "pool mapping should be 0");
+        assertEq(nftRouter.nftPool(nftTokenId), address(0), "pool mapping should be 0");
 
         assertEq(BalancerPoolToken(pool).balanceOf(address(nftRouter)), 0, "NftRouter should hold no BPT");
         assertEq(balancesAfter.bobBpt, 0, "bob should not hold any BPT");
@@ -315,7 +315,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         // Router should set all lp data to 0
         assertEq(nftRouter.bptAmount(nftTokenId), 0, "bptAmount mapping should be 0");
         assertEq(nftRouter.startTime(nftTokenId), 0, "startTime mapping should be 0");
-        assertEq(nftRouter.bpt(nftTokenId), address(0), "pool mapping should be 0");
+        assertEq(nftRouter.nftPool(nftTokenId), address(0), "pool mapping should be 0");
 
         assertEq(BalancerPoolToken(pool).balanceOf(address(nftRouter)), 0, "NftRouter should hold no BPT");
         assertEq(balancesAfter.bobBpt, 0, "bob should not hold any BPT");
@@ -332,7 +332,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         uint256[] memory minAmountsOut = [uint256(0), uint256(0)].toMemoryArray();
 
         // Remove fails because lp isn't the owner of the NFT
-        vm.expectRevert("You don't own this NFT");
+        vm.expectRevert(abi.encodeWithSelector(NftRouter.WithdrawalByNonOwner.selector, lp, bob, nftTokenId));
         vm.prank(lp);
         nftRouter.removeLiquidityProportional(nftTokenId, minAmountsOut, false);
     }
@@ -340,7 +340,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
     function testAddFromExternalRouter() public {
         // Add fails because it must be done via NftRouter
         uint256[] memory maxAmountsIn = [dai.balanceOf(bob), usdc.balanceOf(bob)].toMemoryArray();
-        vm.expectRevert("Can't use external router");
+        vm.expectRevert(abi.encodeWithSelector(NftRouter.CannotUseExternalRouter.selector, router));
         vm.prank(bob);
         router.addLiquidityProportional(pool, maxAmountsIn, bptAmount, false, bytes(""));
     }
@@ -350,7 +350,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         uint256[] memory minAmountsOut = [amountOut, amountOut].toMemoryArray();
 
         // Remove fails because it must be done via NftRouter
-        vm.expectRevert("Can't use external router");
+        vm.expectRevert(abi.encodeWithSelector(NftRouter.CannotUseExternalRouter.selector, router));
         vm.prank(lp);
         router.removeLiquidityProportional(pool, 2 * amountOut, minAmountsOut, false, bytes(""));
     }
