@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -23,7 +24,7 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 import { MinimalRouter } from "./MinimalRouter.sol";
 
 /// @notice Mint an NFT to pool depositors, and charge a decaying exit fee upon withdrawal.
-contract NftRouter is MinimalRouter, ERC721, BaseHooks {
+contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
     using FixedPoint for uint256;
 
     // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
@@ -43,6 +44,39 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
 
     // NFT unique identifier.
     uint256 private _nextTokenId;
+
+    /**
+     * @notice A new `NftLiquidityPositionExample` contract has been registered successfully for a given pool.
+     * @dev If the registration fails the call will revert, so there will be no event.
+     * @param hooksContract This contract
+     * @param pool The pool on which the hook was registered
+     */
+    event NftLiquidityPositionExampleRegistered(address indexed hooksContract, address indexed pool);
+
+    /**
+     * @notice A user has added liquidity to an associated pool, and received an NFT.
+     * @param nftHolder The user who added liquidity to earn the NFT
+     * @param pool The pool that received the liquidity
+     * @param nftId The id of the newly minted NFT
+     */
+    event LiquidityPositionNftMinted(address indexed nftHolder, address indexed pool, uint256 nftId);
+
+    /**
+     * @notice A user has added liquidity to an associated pool, and received an NFT.
+     * @param nftHolder The NFT holder who withdrew liquidity in exchange for the NFT
+     * @param pool The pool from which the NFT holder withdrew liquidity
+     * @param nftId The id of the NFT that was burned
+     */
+    event LiquidityPositionNftBurned(address indexed nftHolder, address indexed pool, uint256 nftId);
+
+    /**
+     * @notice An NFT holder withdrew liquidity during the decay period, incurring an exit fee.
+     * @param nftHolder The NFT holder who withdrew liquidity in exchange for the NFT
+     * @param pool The pool from which the NFT holder withdrew liquidity
+     * @param feeToken The address of the token in which the fee was charged
+     * @param feeAmount The amount of the fee, in native token decimals
+     */
+    event ExitFeeCharged(address indexed nftHolder, address indexed pool, IERC20 indexed feeToken, uint256 feeAmount);
 
     /**
      * @notice Hooks functions called from an external router.
@@ -117,6 +151,8 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
         nftPool[tokenId] = pool;
         // Mint the associated NFT to sender.
         _safeMint(msg.sender, tokenId);
+
+        emit LiquidityPositionNftMinted(msg.sender, pool, tokenId);
     }
 
     function removeLiquidityProportional(
@@ -131,9 +167,11 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
             revert WithdrawalByNonOwner(msg.sender, nftOwner, tokenId);
         }
 
+        address pool = nftPool[tokenId];
+
         // Do removeLiquidity operation - tokens sent to msg.sender.
         amountsOut = _removeLiquidityProportional(
-            nftPool[tokenId],
+            pool,
             address(this),
             msg.sender,
             bptAmount[tokenId],
@@ -148,6 +186,8 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
         nftPool[tokenId] = address(0);
         // Burn the NFT
         _burn(tokenId);
+
+        emit LiquidityPositionNftBurned(msg.sender, pool, tokenId);
     }
 
     /***************************************************************************
@@ -157,10 +197,10 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
     /// @inheritdoc BaseHooks
     function onRegister(
         address,
-        address,
+        address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata liquidityManagement
-    ) public view override onlyVault returns (bool) {
+    ) public override onlyVault returns (bool) {
         // This hook requires donation support to work (see above).
         if (liquidityManagement.enableDonation == false) {
             revert PoolDoesNotSupportDonation();
@@ -168,6 +208,8 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
         if (liquidityManagement.disableUnbalancedLiquidity == false) {
             revert PoolSupportsUnbalancedLiquidity();
         }
+
+        emit NftLiquidityPositionExampleRegistered(address(this), pool);
 
         return true;
     }
@@ -214,7 +256,7 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
         hookAdjustedAmountsOutRaw = amountsOutRaw;
         uint256 currentFee = getCurrentFeePercentage(tokenId);
         if (currentFee > 0) {
-            hookAdjustedAmountsOutRaw = _takeFee(pool, amountsOutRaw, currentFee);
+            hookAdjustedAmountsOutRaw = _takeFee(IRouterCommon(router).getSender(), pool, amountsOutRaw, currentFee);
         }
         return (true, hookAdjustedAmountsOutRaw);
     }
@@ -240,6 +282,7 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
     // Internal Functions
 
     function _takeFee(
+        address nftHolder,
         address pool,
         uint256[] memory amountsOutRaw,
         uint256 currentFee
@@ -255,6 +298,8 @@ contract NftRouter is MinimalRouter, ERC721, BaseHooks {
             // Fees don't need to be transferred to the hook, because donation will redeposit them in the vault.
             // In effect, we will transfer a reduced amount of tokensOut to the caller, and leave the remainder
             // in the pool balance.
+
+            emit ExitFeeCharged(nftHolder, pool, tokens[i], exitFee);
         }
 
         // Donates accrued fees back to LPs.

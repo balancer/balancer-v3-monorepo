@@ -27,7 +27,7 @@ import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
 
-import { NftRouter } from "../../contracts/NftLiquidityPositionExample.sol";
+import { NftLiquidityPositionExample } from "../../contracts/NftLiquidityPositionExample.sol";
 
 contract NftLiquidityPositionExampleTest is BaseVaultTest {
     using CastingHelpers for address[];
@@ -42,9 +42,9 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
 
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
 
-    NftRouter internal nftRouter;
+    NftLiquidityPositionExample internal nftRouter;
 
-    // Overrides to include a deployment for NftRouter
+    // Overrides to include a deployment for NftLiquidityPositionExample
     function setUp() public virtual override {
         BaseTest.setUp();
 
@@ -64,7 +64,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         vm.label(address(batchRouter), "batch router");
         feeController = vault.getProtocolFeeController();
         vm.label(address(feeController), "fee controller");
-        nftRouter = new NftRouter(IVault(address(vault)), weth, permit2);
+        nftRouter = new NftLiquidityPositionExample(IVault(address(vault)), weth, permit2);
         vm.label(address(nftRouter), "nftRouter");
 
         // Here the router is also the hook
@@ -332,15 +332,17 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         uint256[] memory minAmountsOut = [uint256(0), uint256(0)].toMemoryArray();
 
         // Remove fails because lp isn't the owner of the NFT
-        vm.expectRevert(abi.encodeWithSelector(NftRouter.WithdrawalByNonOwner.selector, lp, bob, nftTokenId));
+        vm.expectRevert(
+            abi.encodeWithSelector(NftLiquidityPositionExample.WithdrawalByNonOwner.selector, lp, bob, nftTokenId)
+        );
         vm.prank(lp);
         nftRouter.removeLiquidityProportional(nftTokenId, minAmountsOut, false);
     }
 
     function testAddFromExternalRouter() public {
-        // Add fails because it must be done via NftRouter
+        // Add fails because it must be done via NftLiquidityPositionExample
         uint256[] memory maxAmountsIn = [dai.balanceOf(bob), usdc.balanceOf(bob)].toMemoryArray();
-        vm.expectRevert(abi.encodeWithSelector(NftRouter.CannotUseExternalRouter.selector, router));
+        vm.expectRevert(abi.encodeWithSelector(NftLiquidityPositionExample.CannotUseExternalRouter.selector, router));
         vm.prank(bob);
         router.addLiquidityProportional(pool, maxAmountsIn, bptAmount, false, bytes(""));
     }
@@ -349,8 +351,8 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         uint256 amountOut = poolInitAmount / 2;
         uint256[] memory minAmountsOut = [amountOut, amountOut].toMemoryArray();
 
-        // Remove fails because it must be done via NftRouter
-        vm.expectRevert(abi.encodeWithSelector(NftRouter.CannotUseExternalRouter.selector, router));
+        // Remove fails because it must be done via NftLiquidityPositionExample
+        vm.expectRevert(abi.encodeWithSelector(NftLiquidityPositionExample.CannotUseExternalRouter.selector, router));
         vm.prank(lp);
         router.removeLiquidityProportional(pool, 2 * amountOut, minAmountsOut, false, bytes(""));
     }
