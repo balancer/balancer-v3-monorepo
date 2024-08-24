@@ -15,8 +15,6 @@ import { FEE_BITLENGTH } from "@balancer-labs/v3-interfaces/contracts/vault/Vaul
  * and other data associated with pools.
  */
 library PoolConfigConst {
-    error InvalidSize(uint256 currentValue, uint256 expectedSize);
-
     // Bit offsets for main pool config settings
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;
