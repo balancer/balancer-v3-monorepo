@@ -19,7 +19,7 @@ import {
 
 import { EnumerableMap } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/EnumerableMap.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
+import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 /**
@@ -28,7 +28,7 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
  * If the drawn number is not equal to the LUCKY_NUMBER, the user will pay fees to the hook contract. But, if the
  * drawn number is equal to LUCKY_NUMBER, the user won't pay hook fees and will receive all fees accrued by the hook.
  */
-contract LotteryHookExample is BaseHooks, Ownable {
+contract LotteryHookExample is BaseHooks, VaultGuard, Ownable {
     using FixedPoint for uint256;
     using EnumerableMap for EnumerableMap.IERC20ToUint256Map;
     using SafeERC20 for IERC20;
@@ -90,7 +90,7 @@ contract LotteryHookExample is BaseHooks, Ownable {
         uint256 amountWon
     );
 
-    constructor(IVault vault, address router) BaseHooks(vault) Ownable(msg.sender) {
+    constructor(IVault vault, address router) VaultGuard(vault) Ownable(msg.sender) {
         _trustedRouter = router;
     }
 
