@@ -4,11 +4,15 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
 import { StablePoolFactory } from "@balancer-labs/v3-pool-stable/contracts/StablePoolFactory.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
@@ -17,12 +21,15 @@ import { ExitFeeHookExample } from "../../contracts/ExitFeeHookExample.sol";
 contract ExitFeeHookExampleStablePoolTest is BaseVaultTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
-    // Maximum exit fee of 10%
-    uint64 public constant MAX_EXIT_FEE_PERCENTAGE = 10e16;
+    // Exit fee of 10%
+    uint64 exitFeePercentage = 10e16;
+    // The minimum swap fee for a Stable Pool is 0.0001%.
+    uint256 MIN_STABLE_SWAP_FEE = 1e12;
 
     StablePoolFactory internal stablePoolFactory;
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
@@ -52,8 +59,8 @@ contract ExitFeeHookExampleStablePoolTest is BaseVaultTest {
             vault.buildTokenConfig(tokens.asIERC20()),
             DEFAULT_AMP_FACTOR,
             roleAccounts,
-            MAX_EXIT_FEE_PERCENTAGE,
-            address(0),
+            MIN_STABLE_SWAP_FEE,
+            poolHooksContract,
             true, // supports donation
             true, // does not support unbalanced add/remove liquidity
             ZERO_BYTES32
@@ -65,17 +72,30 @@ contract ExitFeeHookExampleStablePoolTest is BaseVaultTest {
 
     // Exit fee returns to LPs.
     function testExitFeeReturnToLPs() public {
+        vm.expectEmit();
+        emit ExitFeeHookExample.ExitFeePercentageChanged(poolHooksContract, exitFeePercentage);
+
         vm.prank(lp);
-        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(MAX_EXIT_FEE_PERCENTAGE);
-        uint256 amountOut = poolInitAmount / 100;
+        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(exitFeePercentage);
+
+        uint256 bptAmountIn = IERC20(pool).totalSupply() / 100;
+        uint256 expectedAmountOutNoFees = poolInitAmount / 100;
+        uint256 expectedHookFee = expectedAmountOutNoFees.mulDown(exitFeePercentage);
+
         uint256[] memory minAmountsOut = [uint256(0), uint256(0)].toMemoryArray();
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp);
 
+        vm.expectEmit();
+        emit ExitFeeHookExample.ExitFeeCharged(pool, IERC20(dai), expectedHookFee);
+
+        vm.expectEmit();
+        emit ExitFeeHookExample.ExitFeeCharged(pool, IERC20(usdc), expectedHookFee);
+
         vm.prank(lp);
         uint256[] memory amountsOut = router.removeLiquidityProportional(
             pool,
-            2 * amountOut,
+            bptAmountIn,
             minAmountsOut,
             false,
             bytes("")
@@ -83,41 +103,45 @@ contract ExitFeeHookExampleStablePoolTest is BaseVaultTest {
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(lp);
 
+        // amountsOut must be the expectedAmountsOut minus hook fees (which will stay in the pool, similar to lp fees).
+        assertEq(amountsOut[daiIdx], expectedAmountOutNoFees - expectedHookFee, "DAI amount out is wrong");
+        assertEq(amountsOut[usdcIdx], expectedAmountOutNoFees - expectedHookFee, "USDC amount out is wrong");
+
         // LP gets original liquidity minus hook fee.
         assertEq(
             balancesAfter.lpTokens[daiIdx] - balancesBefore.lpTokens[daiIdx],
-            amountsOut[daiIdx],
+            expectedAmountOutNoFees - expectedHookFee,
             "LP's DAI amount is wrong"
         );
         assertEq(
             balancesAfter.lpTokens[usdcIdx] - balancesBefore.lpTokens[usdcIdx],
-            amountsOut[usdcIdx],
+            expectedAmountOutNoFees - expectedHookFee,
             "LP's USDC amount is wrong"
         );
-        assertEq(balancesBefore.lpBpt - balancesAfter.lpBpt, 2 * amountOut, "LP's BPT amount is wrong");
+        assertEq(balancesBefore.lpBpt - balancesAfter.lpBpt, bptAmountIn, "LP's BPT amount is wrong");
 
         // Pool balances decrease by amountOut, and receive hook fee.
         assertEq(
             balancesBefore.poolTokens[daiIdx] - balancesAfter.poolTokens[daiIdx],
-            amountsOut[daiIdx],
+            expectedAmountOutNoFees - expectedHookFee,
             "Pool's DAI amount is wrong"
         );
         assertEq(
             balancesBefore.poolTokens[usdcIdx] - balancesAfter.poolTokens[usdcIdx],
-            amountsOut[usdcIdx],
+            expectedAmountOutNoFees - expectedHookFee,
             "Pool's USDC amount is wrong"
         );
-        assertEq(balancesBefore.poolSupply - balancesAfter.poolSupply, 2 * amountOut, "BPT supply amount is wrong");
+        assertEq(balancesBefore.poolSupply - balancesAfter.poolSupply, bptAmountIn, "BPT supply amount is wrong");
 
         // Same happens with Vault balances: decrease by amountOut, keep hook fee.
         assertEq(
             balancesBefore.vaultTokens[daiIdx] - balancesAfter.vaultTokens[daiIdx],
-            amountsOut[daiIdx],
+            expectedAmountOutNoFees - expectedHookFee,
             "Vault's DAI amount is wrong"
         );
         assertEq(
             balancesBefore.vaultTokens[usdcIdx] - balancesAfter.vaultTokens[usdcIdx],
-            amountsOut[usdcIdx],
+            expectedAmountOutNoFees - expectedHookFee,
             "Vault's USDC amount is wrong"
         );
 
