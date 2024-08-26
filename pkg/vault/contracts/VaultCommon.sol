@@ -309,12 +309,14 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /**
      * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
+     * This function modifies protocol fees and balance storage. Out of an abundance of caution, since `_loadPoolData`
+     * makes external calls, we are making anything that calls it and then modifies storage non-reentrant.
      * Side effects: updates `_aggregateFeeAmounts` and `_poolTokenBalances` in storage.
      */
     function _loadPoolDataUpdatingBalancesAndYieldFees(
         address pool,
         Rounding roundingDirection
-    ) internal returns (PoolData memory poolData) {
+    ) internal nonReentrant returns (PoolData memory poolData) {
         // Initialize poolData with base information for subsequent calculations.
         poolData = _loadPoolData(pool, roundingDirection);
 
