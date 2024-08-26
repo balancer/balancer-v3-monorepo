@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -12,30 +13,59 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 
 import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
-import { E2eSwapTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwap.t.sol";
+import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
+import { E2eSwapRateProviderTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwapRateProvider.t.sol";
 
 import { StablePoolFactory } from "../../contracts/StablePoolFactory.sol";
 import { StablePool } from "../../contracts/StablePool.sol";
 
-contract E2eSwapStableTest is E2eSwapTest {
+contract E2eSwapRateProviderStableTest is E2eSwapRateProviderTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
 
     uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
 
-    function setUp() public override {
-        E2eSwapTest.setUp();
-    }
+    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+        rateProviderTokenA = new RateProviderMock();
+        rateProviderTokenB = new RateProviderMock();
+        // Mock rates, so all tests that keep the rate constant use a rate different than 1.
+        rateProviderTokenA.mockRate(5.2453235e18);
+        rateProviderTokenB.mockRate(0.4362784e18);
 
-    function setUpVariables() internal override {
-        sender = lp;
-        poolCreator = lp;
+        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+        rateProviders[tokenAIdx] = IRateProvider(address(rateProviderTokenA));
+        rateProviders[tokenBIdx] = IRateProvider(address(rateProviderTokenB));
 
-        // 0.0001% max swap fee.
-        minPoolSwapFeePercentage = 1e12;
-        // 10% max swap fee.
-        maxPoolSwapFeePercentage = 10e16;
+        StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
+        PoolRoleAccounts memory roleAccounts;
+
+        // Allow pools created by `factory` to use poolHooksMock hooks.
+        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
+
+        StablePool newPool = StablePool(
+            factory.create(
+                "Stable Pool",
+                "STABLE",
+                vault.buildTokenConfig(tokens.asIERC20(), rateProviders),
+                DEFAULT_AMP_FACTOR,
+                roleAccounts,
+                DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
+                poolHooksContract,
+                false, // Do not enable donations
+                false, // Do not disable unbalanced add/remove liquidity
+                ZERO_BYTES32
+            )
+        );
+        vm.label(address(newPool), label);
+
+        // Cannot set the pool creator directly on a standard Balancer stable pool factory.
+        vault.manualSetPoolCreator(address(newPool), lp);
+
+        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
+        feeController.manualSetPoolCreator(address(newPool), lp);
+
+        return address(newPool);
     }
 
     function calculateMinAndMaxSwapAmounts() internal virtual override {
@@ -56,14 +86,14 @@ contract E2eSwapStableTest is E2eSwapTest {
         // 2) amountCalculatedRaw = amountCalculatedScaled18 * 10^(decimalsB) / (rateB * 10^18)
         // 3) amountCalculatedScaled18 = amountGivenScaled18 // Linear math, there's a factor to stable math
         // 4) amountGivenScaled18 = amountGivenRaw * rateA * 10^18 / 10^(decumalsA)
-        // Using the four formulas above, we determine that:
+        // Combining the four formulas above, we determine that:
         // amountCalculatedRaw > rateB * 10^(decimalsA) / (rateA * 10^(decimalsB))
         uint256 tokenACalculatedNotZero = (rateTokenB * (10 ** decimalsTokenA)) / (rateTokenA * (10 ** decimalsTokenB));
         uint256 tokenBCalculatedNotZero = (rateTokenA * (10 ** decimalsTokenB)) / (rateTokenB * (10 ** decimalsTokenA));
 
-        // Use the larger of the two values above to calculate the minSwapAmount. Also, multiply by 10 to account for
-        // swap fees and compensate for rate rounding issues.
-        uint256 mathFactor = 10;
+        // Use the larger of the two values above to calculate the minSwapAmount. Also, multiply by 100 to account for
+        // swap fees and compensate for rate and math rounding issues.
+        uint256 mathFactor = 100;
         minSwapAmountTokenA = (
             tokenAMinTradeAmount > tokenACalculatedNotZero
                 ? mathFactor * tokenAMinTradeAmount
@@ -78,38 +108,5 @@ contract E2eSwapStableTest is E2eSwapTest {
         // 50% of pool init amount to make sure LP has enough tokens to pay for the swap in case of EXACT_OUT.
         maxSwapAmountTokenA = poolInitAmountTokenA.mulDown(50e16);
         maxSwapAmountTokenB = poolInitAmountTokenB.mulDown(50e16);
-    }
-
-    /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
-        StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
-        PoolRoleAccounts memory roleAccounts;
-
-        // Allow pools created by `factory` to use poolHooksMock hooks.
-        PoolHooksMock(poolHooksContract).allowFactory(address(factory));
-
-        StablePool newPool = StablePool(
-            factory.create(
-                "Stable Pool",
-                "STABLE",
-                vault.buildTokenConfig(tokens.asIERC20()),
-                DEFAULT_AMP_FACTOR,
-                roleAccounts,
-                DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
-                poolHooksContract,
-                false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
-                ZERO_BYTES32
-            )
-        );
-        vm.label(address(newPool), label);
-
-        // Cannot set the pool creator directly on a standard Balancer stable pool factory.
-        vault.manualSetPoolCreator(address(newPool), lp);
-
-        ProtocolFeeControllerMock feeController = ProtocolFeeControllerMock(address(vault.getProtocolFeeController()));
-        feeController.manualSetPoolCreator(address(newPool), lp);
-
-        return address(newPool);
     }
 }
