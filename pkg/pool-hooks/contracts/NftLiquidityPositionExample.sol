@@ -27,8 +27,7 @@ import { MinimalRouter } from "./MinimalRouter.sol";
 contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
     using FixedPoint for uint256;
 
-    // This contract uses timestamps to slowly update its Amplification parameter over time. These changes must occur
-    // over a minimum time period much larger than the blocktime, making timestamp manipulation a non-issue.
+    // This contract uses timestamps to update its withdrawal fee over time.
     //solhint-disable not-rely-on-time
 
     // Initial fee of 10%.
