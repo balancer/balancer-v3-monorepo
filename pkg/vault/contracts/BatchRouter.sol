@@ -311,7 +311,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                 } else {
                     // No BPT involved in the operation: regular swap exact in.
                     (, , uint256 amountOut) = _vault.swap(
-                        SwapParams({
+                        VaultSwapParams({
                             kind: SwapKind.EXACT_IN,
                             pool: step.pool,
                             tokenIn: stepTokenIn,
@@ -567,7 +567,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                 } else {
                     // No BPT involved in the operation: regular swap exact out.
                     (, uint256 amountIn, ) = _vault.swap(
-                        SwapParams({
+                        VaultSwapParams({
                             kind: SwapKind.EXACT_OUT,
                             pool: step.pool,
                             tokenIn: stepTokenIn,

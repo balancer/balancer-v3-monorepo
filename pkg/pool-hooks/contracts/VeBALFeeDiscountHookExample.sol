@@ -15,13 +15,14 @@ import {
     HookFlags
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 /**
  * @notice Hook that gives a swap fee discount to veBAL holders.
  * @dev Uses the dynamic fee mechanism to give a 50% discount on swap fees.
  */
-contract VeBALFeeDiscountHookExample is BaseHooks {
+contract VeBALFeeDiscountHookExample is BaseHooks, VaultGuard {
     // Only pools from a specific factory are able to register and use this hook.
     address private immutable _allowedFactory;
     // Only trusted routers are allowed to call this hook, because the hook relies on the `getSender` implementation
@@ -30,7 +31,20 @@ contract VeBALFeeDiscountHookExample is BaseHooks {
     // The gauge token received from staking the 80/20 BAL/WETH pool token.
     IERC20 private immutable _veBAL;
 
-    constructor(IVault vault, address allowedFactory, address veBAL, address trustedRouter) BaseHooks(vault) {
+    /**
+     * @notice A new `VeBALFeeDiscountHookExample` contract has been registered successfully.
+     * @dev If the registration fails the call will revert, so there will be no event.
+     * @param hooksContract This contract
+     * @param factory The factory (must be the allowed factory, or the call will revert)
+     * @param pool The pool on which the hook was registered
+     */
+    event VeBALFeeDiscountHookExampleRegistered(
+        address indexed hooksContract,
+        address indexed factory,
+        address indexed pool
+    );
+
+    constructor(IVault vault, address allowedFactory, address veBAL, address trustedRouter) VaultGuard(vault) {
         _allowedFactory = allowedFactory;
         _trustedRouter = trustedRouter;
         _veBAL = IERC20(veBAL);
@@ -47,11 +61,14 @@ contract VeBALFeeDiscountHookExample is BaseHooks {
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) public view override onlyVault returns (bool) {
+    ) public override onlyVault returns (bool) {
         // This hook implements a restrictive approach, where we check if the factory is an allowed factory and if
         // the pool was created by the allowed factory. Since we only use onComputeDynamicSwapFeePercentage, this
         // might be an overkill in real applications because the pool math doesn't play a role in the discount
         // calculation.
+
+        emit VeBALFeeDiscountHookExampleRegistered(address(this), factory, pool);
+
         return factory == _allowedFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
     }
 

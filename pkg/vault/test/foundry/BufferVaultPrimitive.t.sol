@@ -224,8 +224,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // wrapper informs, that quantities must be settled by the router. So, an approval attack is not possible.
         vm.expectRevert(IVaultErrors.BalanceNotSettled.selector);
         vault.unlock(
-            abi.encodeWithSelector(
-                BufferVaultPrimitiveTest.erc4626MaliciousHook.selector,
+            abi.encodeCall(
+                BufferVaultPrimitiveTest.erc4626MaliciousHook,
                 BufferWrapOrUnwrapParams({
                     kind: SwapKind.EXACT_IN,
                     direction: WrappingDirection.WRAP,
@@ -279,8 +279,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         waDAI.setMaliciousWrapper(true);
 
         vault.unlock(
-            abi.encodeWithSelector(
-                BufferVaultPrimitiveTest.erc4626MaliciousHook.selector,
+            abi.encodeCall(
+                BufferVaultPrimitiveTest.erc4626MaliciousHook,
                 BufferWrapOrUnwrapParams({
                     kind: SwapKind.EXACT_OUT,
                     direction: WrappingDirection.WRAP,

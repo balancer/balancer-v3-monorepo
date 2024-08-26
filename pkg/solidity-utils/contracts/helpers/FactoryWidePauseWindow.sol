@@ -17,7 +17,7 @@ contract FactoryWidePauseWindow {
     // This contract relies on timestamps - the usual caveats apply.
     // solhint-disable not-rely-on-time
 
-    /// @dev The factory deployer gave a duration that would overflow the Unix timestamp.
+    /// @notice The factory deployer gave a duration that would overflow the Unix timestamp.
     error PoolPauseWindowDurationOverflow();
 
     // The pause window end time is stored in 32 bits.
