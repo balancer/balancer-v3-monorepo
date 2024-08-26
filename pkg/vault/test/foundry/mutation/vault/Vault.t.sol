@@ -66,7 +66,7 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testSettleReentrancy() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         vault.manualSettleReentrancy(dai);
     }
@@ -77,13 +77,13 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testSendToReentrancy() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         vault.manualSendToReentrancy(dai, address(0), 0);
     }
 
     function testSwapWithLockedVault() public {
-        SwapParams memory params = SwapParams(SwapKind.EXACT_IN, address(pool), dai, usdc, 1, 0, bytes(""));
+        VaultSwapParams memory params = VaultSwapParams(SwapKind.EXACT_IN, address(pool), dai, usdc, 1, 0, bytes(""));
 
         vm.expectRevert(IVaultErrors.VaultIsNotUnlocked.selector);
         vault.swap(params);
@@ -118,7 +118,7 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testSwapReentrancy() public {
-        SwapParams memory params;
+        VaultSwapParams memory params;
         SwapState memory state;
         PoolData memory poolData;
 
@@ -153,7 +153,7 @@ contract VaultMutationTest is BaseVaultTest {
 
     function testErc4626BufferWrapOrUnwrapWhenNotInitialized() public {
         IERC4626 wrappedToken = IERC4626(address(123));
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferNotInitialized.selector, wrappedToken));
         BufferWrapOrUnwrapParams memory params;
@@ -162,7 +162,7 @@ contract VaultMutationTest is BaseVaultTest {
     }
 
     function testErc4626BufferWrapOrUnwrapWhenBuffersArePaused() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
         vm.prank(admin);
         vault.pauseVaultBuffers();
@@ -175,7 +175,7 @@ contract VaultMutationTest is BaseVaultTest {
     function testErc4626BufferWrapOrUnwrapReentrancy() public {
         IERC4626 wrappedToken = IERC4626(address(123));
         address underlyingToken = address(345); // Anything non-zero
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vault.manualSetBufferAsset(wrappedToken, underlyingToken);
 
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);

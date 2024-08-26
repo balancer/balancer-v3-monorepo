@@ -105,6 +105,13 @@ contract VeBALFeeDiscountHookExampleTest is BaseVaultTest {
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
 
+        vm.expectEmit();
+        emit VeBALFeeDiscountHookExample.VeBALFeeDiscountHookExampleRegistered(
+            poolHooksContract,
+            address(factoryMock),
+            veBalFeePool
+        );
+
         _registerPoolWithHook(veBalFeePool, tokenConfig, address(factoryMock));
 
         HooksConfig memory hooksConfig = vault.getHooksConfig(veBalFeePool);

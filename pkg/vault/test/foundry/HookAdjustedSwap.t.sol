@@ -79,8 +79,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: dai,
@@ -141,8 +141,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Check that balances were not changed before onBeforeHook.
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: dai,
@@ -200,8 +200,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Check that balances were not changed before onBeforeHook.
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     tokenIn: dai,
@@ -271,8 +271,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Check that balances were not changed before onBeforeHook.
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     tokenIn: dai,
@@ -333,8 +333,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Check that  onAfterHook was called with the correct params.
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: dai,
@@ -378,8 +378,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Check that onAfterSwap was called with the correct parameters.
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     tokenIn: dai,
@@ -424,8 +424,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Check that onAfterHook was called with the correct params.
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: dai,
