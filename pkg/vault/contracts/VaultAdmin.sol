@@ -38,6 +38,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     using VaultStateLib for VaultStateBits;
     using VaultExtensionsLib for IVault;
     using SafeERC20 for IERC20;
+    using FixedPoint for uint256;
 
     /// @dev Functions with this modifier can only be delegate-called by the vault.
     modifier onlyVaultDelegateCall() {
@@ -472,16 +473,27 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _takeDebt(IERC20(underlyingToken), amountUnderlyingRaw);
         _takeDebt(wrappedToken, amountWrappedRaw);
 
-        // Update buffer balances
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
+
+        // The buffer invariant is the sum of buffer token balances converted to underlying.
+        uint256 bufferInvariant = bufferBalances.getBalanceRaw() +
+            wrappedToken.convertToAssets(bufferBalances.getBalanceDerived());
+        // The buffer share rate (equivalent to pool's "BPT rate") is the rate between invariant and total shares
+        // (equivalent to pool's "total supply").
+        uint256 currentBufferShareRate = bufferInvariant.divDown(_bufferTotalShares[wrappedToken]);
+
+        uint256 bufferInvariantDelta = (wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw);
+        // The amount of shares to issue is the added liquidity in underlying terms multiplied by the share rate.
+        issuedShares = bufferInvariantDelta.mulDown(currentBufferShareRate);
+
+        // Update buffer balances.
         bufferBalances = PackedTokenBalance.toPackedBalance(
             bufferBalances.getBalanceRaw() + amountUnderlyingRaw,
             bufferBalances.getBalanceDerived() + amountWrappedRaw
         );
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
-        // Amount of shares to issue is the total underlying token that the user is depositing.
-        issuedShares = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
+        // Mint shares to the sender.
         _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
 
         emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
