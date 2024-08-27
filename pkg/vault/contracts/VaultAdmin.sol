@@ -430,22 +430,23 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _takeDebt(wrappedToken, amountWrappedRaw);
 
         // Update buffer balances.
-        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
-        bufferBalances = PackedTokenBalance.toPackedBalance(
-            bufferBalances.getBalanceRaw() + amountUnderlyingRaw,
-            bufferBalances.getBalanceDerived() + amountWrappedRaw
-        );
+        _bufferTokenBalances[wrappedToken] = PackedTokenBalance.toPackedBalance(amountUnderlyingRaw, amountWrappedRaw);
 
-        _bufferTokenBalances[wrappedToken] = bufferBalances;
-
-        // Amount of shares to issue is the total underlying token that the user is depositing.
+        // At initialization, the initial "BPT rate" is 1, so the `issuedShares` is simply the sum of the initial
+        // buffer token balances, converted to underlying.
         issuedShares = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
-
         _ensureMinimumTotalSupply(issuedShares);
 
+        // Divide `issuedShares` between the zero address, which receives the minimum supply, and the account
+        // depositing the tokens to initialize the buffer, which receives the balance.
+        _bufferTotalShares[wrappedToken] = _MINIMUM_TOTAL_SUPPLY;
+        _bufferLpShares[wrappedToken][address(0)] = _MINIMUM_TOTAL_SUPPLY;
+
+        emit BufferSharesMinted(wrappedToken, address(0), _MINIMUM_TOTAL_SUPPLY);
+
         issuedShares -= _MINIMUM_TOTAL_SUPPLY;
+
         _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
-        _mintMinimumBufferSupplyReserve(wrappedToken);
 
         emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
     }
@@ -478,11 +479,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         // The buffer invariant is the sum of buffer token balances converted to underlying.
         uint256 bufferInvariant = bufferBalances.getBalanceRaw() +
             wrappedToken.convertToAssets(bufferBalances.getBalanceDerived());
-        // The buffer share rate (equivalent to pool's "BPT rate") is the rate between invariant and total shares
-        // (equivalent to pool's "total supply").
-        uint256 currentBufferShareRate = bufferInvariant.divDown(_bufferTotalShares[wrappedToken]);
+        // The buffer share rate (equivalent to pool's "BPT rate") is the ratio of the total shares
+        // (equivalent to pool's "total supply") to the buffer invariant. As the rate goes up (i.e., wrapped tokens
+        // become more valuable), the share rate will go down, and the user will receive fewer shares.
+        // The buffer must have been initialized to get here, so the balances cannot be zero, and the rate calculation
+        // will never revert.
+        uint256 currentBufferShareRate = _bufferTotalShares[wrappedToken].divDown(bufferInvariant);
 
-        uint256 bufferInvariantDelta = (wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw);
+        uint256 bufferInvariantDelta = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
         // The amount of shares to issue is the added liquidity in underlying terms multiplied by the share rate.
         issuedShares = bufferInvariantDelta.mulDown(currentBufferShareRate);
 
@@ -493,7 +497,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         );
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
-        // Mint shares to the sender.
+        // Mint shares to the owner.
         _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
 
         emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
@@ -504,21 +508,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
             revert BufferSharesInvalidReceiver();
         }
 
-        uint256 newTotalSupply = _bufferTotalShares[wrappedToken] + amount;
-
-        _ensureMinimumTotalSupply(newTotalSupply);
-
-        _bufferTotalShares[wrappedToken] = newTotalSupply;
+        _bufferTotalShares[wrappedToken] += amount;
         _bufferLpShares[wrappedToken][to] += amount;
 
         emit BufferSharesMinted(wrappedToken, to, amount);
-    }
-
-    function _mintMinimumBufferSupplyReserve(IERC4626 wrappedToken) internal {
-        _bufferTotalShares[wrappedToken] += _MINIMUM_TOTAL_SUPPLY;
-        _bufferLpShares[wrappedToken][address(0)] += _MINIMUM_TOTAL_SUPPLY;
-
-        emit BufferSharesMinted(wrappedToken, address(0), _MINIMUM_TOTAL_SUPPLY);
     }
 
     /// @inheritdoc IVaultAdmin
@@ -586,6 +579,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
+        // Ensures we cannot drop the supply below the minimum.
         _burnBufferShares(wrappedToken, sharesOwner, sharesToRemove);
 
         // This triggers an external call to itself; the vault is acting as a Router in this case.
