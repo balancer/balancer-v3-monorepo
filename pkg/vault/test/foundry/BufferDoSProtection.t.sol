@@ -212,7 +212,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
             "Vault reserves of wrapped token is wrong"
         );
 
-        // Check Vault balances. Vault balances should match vault reserves.
+        // Check that Vault balances match vault reserves.
         assertEq(
             balancesAfter.vaultReserves[daiIdx],
             balancesAfter.vaultTokens[daiIdx],
@@ -275,7 +275,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
             "Vault reserves of wrapped token is wrong"
         );
 
-        // Check Vault balances. Vault balances should match vault reserves.
+        // Check that Vault balances match vault reserves.
         assertEq(
             balancesAfter.vaultReserves[daiIdx],
             balancesAfter.vaultTokens[daiIdx],
