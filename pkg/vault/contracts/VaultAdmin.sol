@@ -506,7 +506,14 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
             revert BufferSharesInvalidReceiver();
         }
 
-        _bufferTotalShares[wrappedToken] += amount;
+        uint256 newTotalSupply = _bufferTotalShares[wrappedToken] + amount;
+
+        // This is called on buffer initialization - after the minimum reserve amount has been minted - and during
+        // subsequent adds, when we're increasing it, so we do not really need to check it against the minimum.
+        // We do it anyway out of an abundance of caution, and to preserve symmetry with `_burnBufferShares`.
+        _ensureMinimumTotalSupply(newTotalSupply);
+
+        _bufferTotalShares[wrappedToken] = newTotalSupply;
         _bufferLpShares[wrappedToken][to] += amount;
 
         emit BufferSharesMinted(wrappedToken, to, amount);
@@ -595,6 +602,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
         uint256 newTotalSupply = _bufferTotalShares[wrappedToken] - amount;
 
+        // Ensure that the buffer can never be drained below the minimum total supply.
         _ensureMinimumTotalSupply(newTotalSupply);
 
         _bufferTotalShares[wrappedToken] = newTotalSupply;
