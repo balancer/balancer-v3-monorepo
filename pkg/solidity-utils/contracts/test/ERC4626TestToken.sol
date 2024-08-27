@@ -13,12 +13,15 @@ import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRat
 import { FixedPoint } from "../math/FixedPoint.sol";
 
 contract ERC4626TestToken is ERC4626, IRateProvider {
+    using FixedPoint for uint256;
     using SafeERC20 for IERC20;
-
+    
     uint8 private immutable _wrappedTokenDecimals;
     IERC20 private _overrideAsset;
 
-    bool private maliciousWrapper;
+    bool private _maliciousWrapper;
+
+    uint256 private _mockRate;
 
     constructor(
         IERC20 underlyingToken,
@@ -28,6 +31,7 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
     ) ERC4626(underlyingToken) ERC20(tokenName, tokenSymbol) {
         _wrappedTokenDecimals = tokenDecimals;
         _overrideAsset = underlyingToken;
+        _mockRate = FixedPoint.ONE;
     }
 
     function decimals() public view override returns (uint8) {
@@ -36,6 +40,10 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
 
     function getRate() external view returns (uint256) {
         return _convertToAssets(FixedPoint.ONE, Math.Rounding.Ceil);
+    }
+
+    function mockRate(uint256 newRate) external {
+        _mockRate = newRate;
     }
 
     /*****************************************************************
@@ -55,18 +63,18 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
     }
 
     function setMaliciousWrapper(bool value) external {
-        maliciousWrapper = value;
+        _maliciousWrapper = value;
     }
 
     function convertToAssets(uint256 shares) public view override returns (uint256) {
-        if (maliciousWrapper) {
+        if (_maliciousWrapper) {
             return _overrideAsset.balanceOf(msg.sender);
         }
-        return super.convertToAssets(shares);
+        return super.convertToAssets(shares).mulDown(_mockRate);
     }
 
     function deposit(uint256 assets, address receiver) public override returns (uint256) {
-        if (maliciousWrapper) {
+        if (_maliciousWrapper) {
             // A malicious wrapper does nothing so it can use the approval to drain the vault.
             return 0;
         }
