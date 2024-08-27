@@ -17,6 +17,8 @@ import { VaultMock } from '@balancer-labs/v3-vault/typechain-types';
 import { BasicAuthorizerMock } from '@balancer-labs/v3-solidity-utils/typechain-types';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 
+const _MINIMUM_TRADE_AMOUNT = 1e6;
+
 export async function deploy(params: VaultDeploymentInputParams = {}): Promise<Vault> {
   const deployment = await TypesConverter.toVaultDeployment(params);
 
@@ -52,7 +54,7 @@ async function deployReal(deployment: VaultDeploymentParams, authorizer: BaseCon
   });
 
   return await contract.deploy('v3-vault/Vault', {
-    args: [vaultExtension, authorizer, protocolFeeController],
+    args: [vaultExtension, authorizer, protocolFeeController, _MINIMUM_TRADE_AMOUNT],
     from: admin,
   });
 }
@@ -78,7 +80,7 @@ async function deployMocked(deployment: VaultDeploymentParams, authorizer: BaseC
   });
 
   return await contract.deploy('v3-vault/VaultMock', {
-    args: [vaultExtension, authorizer, protocolFeeController],
+    args: [vaultExtension, authorizer, protocolFeeController, 0],
     from: admin,
   });
 }

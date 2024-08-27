@@ -104,6 +104,12 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Default protocol swap fee percentage.
     uint64 internal protocolSwapFeePercentage = 50e16; // 50%
 
+    // VaultMock can override min trade amount; tests shall use 0 by default to simplify fuzz tests.
+    // Min trade amount is meant to be an extra protection against unknown rounding errors; the Vault should still work
+    // without it, so it can be zeroed out in general.
+    // Change this value before calling `setUp` to test under real conditions.
+    uint256 vaultMockMinTradeAmount = 0;
+
     // Applies to Weighted Pools.
     uint256 constant BASE_MIN_SWAP_FEE = 1e12; // 0.00001%
     uint256 constant BASE_MAX_SWAP_FEE = 10e16; // 10%
@@ -112,7 +118,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     function setUp() public virtual override {
         BaseTest.setUp();
 
-        vault = IVaultMock(address(VaultMockDeployer.deploy()));
+        vault = IVaultMock(address(VaultMockDeployer.deploy(vaultMockMinTradeAmount)));
         vm.label(address(vault), "vault");
         vaultExtension = IVaultExtension(vault.getVaultExtension());
         vm.label(address(vaultExtension), "vaultExtension");
