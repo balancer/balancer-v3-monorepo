@@ -35,6 +35,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     uint256 private constant _wrapAmount = _userAmount / 100;
 
     uint256 private constant MIN_WRAP_AMOUNT = 1e3;
+    uint256 private constant MINIMUM_TOTAL_SUPPLY = 1e6;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -453,6 +454,49 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
             "LP Buffer shares is wrong"
         );
         assertEq(lpSharesAdded, underlyingAmountIn + waDAI.convertToAssets(wrappedAmountIn), "Issued shares is wrong");
+    }
+
+    function testAddLiquidityToBufferWithRateChange() public {
+        //vm.prank(lp);
+        //router.initializeBuffer(waDAI, 1e18, 1e18);
+
+        vm.prank(lp);
+        uint256 firstAddLpShares = router.initializeBuffer(waDAI, _wrapAmount, _wrapAmount);
+        // After the first add liquidity operation, ending balances are (using 1000 for _wrapAmount for simplicity):
+        // [1000 underlying, 1000 wrapped]; total supply is ~2000 (not counting the initialization).
+
+        assertEq(firstAddLpShares, _wrapAmount * 2 - MINIMUM_TOTAL_SUPPLY, "Wrong first lpShares added");
+        uint256 rate = 2e18;
+
+        // Add [2000 underlying, 0 wrapped] when the rate is 2: (1 wrapped = 2 underlying)
+        waDAI.mockRate(rate);
+        // So the buffer invariant is 1000 + 2 * 1000 = 3000, and the share rate is 2000 / 3000 = 2/3.
+        // Ending balances are [3000 underlying, 1000 wrapped].
+        // The buffer invariant delta is 2 * 0 + 2000 = 2000.
+        // Issued shares = 2/3 * 2000 = 4000/3 = 1333.333; total supply is now 3333.333.
+        uint256 secondAddUnderlying = _wrapAmount * 2;
+        uint256 shareRate = secondAddUnderlying.divDown(_wrapAmount * 3);
+
+        vm.prank(lp);
+        uint256 secondAddLpShares = router.addLiquidityToBuffer(waDAI, secondAddUnderlying, 0);
+        assertEq(secondAddLpShares, secondAddUnderlying.mulDown(shareRate), "Wrong second lpShares added");
+
+        uint256 proportionalWithdrawPct = secondAddLpShares.divDown(
+            vault.getBufferTotalShares(waDAI) - MINIMUM_TOTAL_SUPPLY
+        );
+        (uint256 bufferUnderlyingBalance, uint256 bufferWrappedBalance) = vault.getBufferBalance(waDAI);
+
+        uint256 expectedUnderlyingOut = proportionalWithdrawPct.mulDown(bufferUnderlyingBalance);
+        uint256 expectedWrappedOut = proportionalWithdrawPct.mulDown(bufferWrappedBalance);
+        // Will get 1333.333/3333.333 = 40% of value: [0.4 * 3000, 0.4 * 1000] = [1200 underlying, 400 wrapped] - worth 2000! (wrong then)
+        vm.prank(lp);
+        (uint256 removedUnderlying, uint256 removedWrapped) = vault.removeLiquidityFromBuffer(waDAI, secondAddLpShares);
+        assertApproxEqAbs(removedUnderlying, expectedUnderlyingOut, 1e6, "Wrong underlying amount removed");
+        assertApproxEqAbs(removedWrapped, expectedWrappedOut, 1e6, "Wrong wrapped amount removed");
+
+        uint256 totalUnderlyingValue = removedUnderlying + rate.mulDown(removedWrapped);
+        assertLe(totalUnderlyingValue, secondAddUnderlying, "Value removed > value added");
+        assertApproxEqAbs(totalUnderlyingValue, secondAddUnderlying, 1e6, "Value removed !~ value added");
     }
 
     function testRemoveLiquidityFromBuffer() public {
