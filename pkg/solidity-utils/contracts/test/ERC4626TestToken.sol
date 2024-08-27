@@ -15,7 +15,7 @@ import { FixedPoint } from "../math/FixedPoint.sol";
 contract ERC4626TestToken is ERC4626, IRateProvider {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
-    
+
     uint8 private immutable _wrappedTokenDecimals;
     IERC20 private _overrideAsset;
 
