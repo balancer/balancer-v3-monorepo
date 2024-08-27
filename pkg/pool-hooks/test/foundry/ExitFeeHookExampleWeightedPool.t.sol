@@ -18,36 +18,18 @@ import { WeightedPoolFactory } from "@balancer-labs/v3-pool-weighted/contracts/W
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
 
 import { ExitFeeHookExample } from "../../contracts/ExitFeeHookExample.sol";
+import { ExitFeeHookExampleTest } from "./ExitFeeHookExample.t.sol";
 
-contract ExitFeeHookExampleWeightedPoolTest is BaseVaultTest {
+contract ExitFeeHookExampleWeightedPoolTest is ExitFeeHookExampleTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
     using FixedPoint for uint256;
 
-    uint256 internal daiIdx;
-    uint256 internal usdcIdx;
-
-    // Exit fee of 10%
-    uint64 public constant exitFeePercentage = 10e16;
     // The minimum swap fee for a Weighted Pool is 0.0001%.
-    uint256 MIN_WEIGHTED_SWAP_FEE = 1e12;
+    uint256 internal constant MIN_WEIGHTED_SWAP_FEE = 1e12;
 
     WeightedPoolFactory internal weightedPoolFactory;
     uint256[] internal weights;
-
-    function setUp() public override {
-        super.setUp();
-
-        (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
-    }
-
-    function createHook() internal override returns (address) {
-        // LP will be the owner of the hook. Only LP is able to set hook fee percentages.
-        vm.prank(lp);
-        address exitFeeHook = address(new ExitFeeHookExample(IVault(address(vault))));
-        vm.label(exitFeeHook, "Exit Fee Hook");
-        return exitFeeHook;
-    }
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity and enables donation).
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
@@ -74,18 +56,18 @@ contract ExitFeeHookExampleWeightedPoolTest is BaseVaultTest {
     }
 
     // Exit fee returns to LPs.
-    function testExitFeeReturnToLPs() public {
+    function testExitFeeReturnToLPs() public override {
         vm.expectEmit();
-        emit ExitFeeHookExample.ExitFeePercentageChanged(poolHooksContract, exitFeePercentage);
+        emit ExitFeeHookExample.ExitFeePercentageChanged(poolHooksContract, EXIT_FEE_PERCENTAGE);
 
         vm.prank(lp);
-        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(exitFeePercentage);
+        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(EXIT_FEE_PERCENTAGE);
 
         uint256 bptAmountIn = IERC20(pool).totalSupply() / 100;
         // The weighted pool total supply is not exact and amountsOut will be rounded down, so we remove 1 wei from
         // expected amounts out.
         uint256 expectedAmountOutNoFees = poolInitAmount / 100 - 1;
-        uint256 expectedHookFee = expectedAmountOutNoFees.mulDown(exitFeePercentage);
+        uint256 expectedHookFee = expectedAmountOutNoFees.mulDown(EXIT_FEE_PERCENTAGE);
 
         uint256[] memory minAmountsOut = [uint256(0), uint256(0)].toMemoryArray();
 
