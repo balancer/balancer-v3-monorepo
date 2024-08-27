@@ -104,6 +104,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Default protocol swap fee percentage.
     uint64 internal protocolSwapFeePercentage = 50e16; // 50%
 
+    uint16 internal vaultConvertFactor;
+
     // Applies to Weighted Pools.
     uint256 constant MIN_SWAP_FEE = 1e12; // 0.00001%
     uint256 constant MAX_SWAP_FEE = 10e16; // 10%
@@ -144,6 +146,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         }
         // Add initial liquidity
         initPool();
+
+        vaultConvertFactor = vault.getConvertFactor();
     }
 
     function approveForSender() internal {

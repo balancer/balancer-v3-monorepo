@@ -174,7 +174,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         );
         assertEq(
             lpWrappedBalanceAfter,
-            lpWrappedBalanceBefore + waDAI.previewDeposit(_wrapAmount) - 1,
+            lpWrappedBalanceBefore + waDAI.previewDeposit(_wrapAmount) - vaultConvertFactor,
             "LP balance of wrapped token is wrong"
         );
     }
@@ -234,7 +234,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         assertEq(
             lpUnderlyingBalanceAfter,
-            lpUnderlyingBalanceBefore - waDAI.previewMint(_wrapAmount) - 1,
+            lpUnderlyingBalanceBefore - waDAI.previewMint(_wrapAmount) - vaultConvertFactor,
             "LP balance of underlying token is wrong"
         );
         assertEq(lpWrappedBalanceAfter, lpWrappedBalanceBefore + _wrapAmount, "LP balance of wrapped token is wrong");
@@ -293,7 +293,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         assertEq(
             lpUnderlyingBalanceAfter,
-            lpUnderlyingBalanceBefore + _wrapAmount - 1,
+            lpUnderlyingBalanceBefore + _wrapAmount - vaultConvertFactor,
             "LP balance of underlying token is wrong"
         );
         assertEq(
@@ -334,7 +334,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         );
         assertEq(
             lpWrappedBalanceAfter,
-            lpWrappedBalanceBefore - _wrapAmount - 1,
+            lpWrappedBalanceBefore - _wrapAmount - vaultConvertFactor,
             "LP balance of wrapped token is wrong"
         );
     }

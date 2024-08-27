@@ -84,8 +84,8 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         IERC20[] memory erc4626PoolTokens = vault.getPoolTokens(erc4626Pool);
         uint256[] memory exactWrappedAmountsIn = [
-            IERC4626(address(erc4626PoolTokens[0])).convertToShares(exactUnderlyingAmountsIn[0]) - 1,
-            IERC4626(address(erc4626PoolTokens[1])).convertToShares(exactUnderlyingAmountsIn[1]) - 1
+            IERC4626(address(erc4626PoolTokens[0])).convertToShares(exactUnderlyingAmountsIn[0]) - vaultConvertFactor,
+            IERC4626(address(erc4626PoolTokens[1])).convertToShares(exactUnderlyingAmountsIn[1]) - vaultConvertFactor
         ].toMemoryArray();
 
         uint256 expectBPTOut;
@@ -320,8 +320,8 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         uint256[] memory minAmountsOut = new uint256[](2);
-        minAmountsOut[waUsdcIdx] = waUSDC.convertToAssets(expectedAmountsOut[waUsdcIdx]) - 1;
-        minAmountsOut[waDaiIdx] = waDAI.convertToAssets(expectedAmountsOut[waDaiIdx]) - 1;
+        minAmountsOut[waUsdcIdx] = waUSDC.convertToAssets(expectedAmountsOut[waUsdcIdx]) - vaultConvertFactor;
+        minAmountsOut[waDaiIdx] = waDAI.convertToAssets(expectedAmountsOut[waDaiIdx]) - vaultConvertFactor;
 
         vm.prank(bob);
         uint256[] memory underlyingAmountsOut = batchRouter.removeLiquidityProportionalFromERC4626Pool(

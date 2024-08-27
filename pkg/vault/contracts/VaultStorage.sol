@@ -54,6 +54,12 @@ contract VaultStorage {
     uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 365 days * 4;
     uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
 
+    // When using the ERC4626 buffer liquidity directly to wrap/unwrap, convert is used to calculate how many tokens to
+    // return to the user. However, convert is not equal to the actual operation and may return an optimistic result.
+    // This factor makes sure that the use of buffer liquidity does not return more tokens than executing the
+    // wrap/unwrap operation directly.
+    uint16 internal constant _CONVERT_FACTOR = 1;
+
     /***************************************************************************
                           Transient Storage Declarations
     ***************************************************************************/
