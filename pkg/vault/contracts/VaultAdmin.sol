@@ -473,27 +473,22 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
         // The buffer invariant is the sum of buffer token balances converted to underlying.
-        uint256 bufferInvariant = bufferBalances.getBalanceRaw() +
+        uint256 currentInvariant = bufferBalances.getBalanceRaw() +
             wrappedToken.convertToAssets(bufferBalances.getBalanceDerived());
-        // The buffer share rate (equivalent to pool's "BPT rate") is the ratio of the total shares
-        // (equivalent to pool's "total supply") to the buffer invariant. As the rate goes up (i.e., wrapped tokens
-        // become more valuable), the share rate will go down, and the user will receive fewer shares.
-        // The buffer must have been initialized to get here, so the balances cannot be zero, and the rate calculation
-        // will never revert.
-        uint256 currentBufferShareRate = _bufferTotalShares[wrappedToken].divDown(bufferInvariant);
 
+        // The invariant delta is the amount we're adding (at the current rate) in terms of underlying.
         uint256 bufferInvariantDelta = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
-        // The amount of shares to issue is the added liquidity in underlying terms multiplied by the share rate.
-        issuedShares = bufferInvariantDelta.mulDown(currentBufferShareRate);
+        // The new share amount is the invariant ratio normalized by the total supply.
+        issuedShares = _bufferTotalShares[wrappedToken] * bufferInvariantDelta / currentInvariant;
 
-        // Update buffer balances.
+        // Add the amountsIn to the current buffer balances.
         bufferBalances = PackedTokenBalance.toPackedBalance(
             bufferBalances.getBalanceRaw() + amountUnderlyingRaw,
             bufferBalances.getBalanceDerived() + amountWrappedRaw
         );
         _bufferTokenBalances[wrappedToken] = bufferBalances;
 
-        // Mint shares to the owner.
+        // Mint new shares to the owner.
         _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
 
         emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
