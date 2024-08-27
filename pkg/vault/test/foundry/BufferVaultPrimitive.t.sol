@@ -457,9 +457,6 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     }
 
     function testAddLiquidityToBufferWithRateChange() public {
-        //vm.prank(lp);
-        //router.initializeBuffer(waDAI, 1e18, 1e18);
-
         vm.prank(lp);
         uint256 firstAddLpShares = router.initializeBuffer(waDAI, _wrapAmount, _wrapAmount);
         // After the first add liquidity operation, ending balances are (using 1000 for _wrapAmount for simplicity):
@@ -470,21 +467,23 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         // Add [2000 underlying, 0 wrapped] when the rate is 2: (1 wrapped = 2 underlying)
         waDAI.mockRate(rate);
-        // So the buffer invariant is 1000 + 2 * 1000 = 3000, and the share rate is 2000 / 3000 = 2/3.
-        // Ending balances are [3000 underlying, 1000 wrapped].
-        // The buffer invariant delta is 2 * 0 + 2000 = 2000.
-        // Issued shares = 2/3 * 2000 = 4000/3 = 1333.333; total supply is now 3333.333.
+
         uint256 secondAddUnderlying = _wrapAmount * 2;
-        uint256 shareRate = secondAddUnderlying.divDown(_wrapAmount * 3);
+
+        (uint256 bufferUnderlyingBalance, uint256 bufferWrappedBalance) = vault.getBufferBalance(waDAI);
+        uint256 currentInvariant = bufferUnderlyingBalance + bufferWrappedBalance.mulDown(rate);
+
+        // Shares = current supply (= first shares added) times the invariant ratio.
+        uint256 expectedSecondAddShares = vault.getBufferTotalShares(waDAI) * secondAddUnderlying / currentInvariant;
 
         vm.prank(lp);
         uint256 secondAddLpShares = router.addLiquidityToBuffer(waDAI, secondAddUnderlying, 0);
-        assertEq(secondAddLpShares, secondAddUnderlying.mulDown(shareRate), "Wrong second lpShares added");
+        assertEq(secondAddLpShares, expectedSecondAddShares, "Wrong second lpShares added");
 
         uint256 proportionalWithdrawPct = secondAddLpShares.divDown(
             vault.getBufferTotalShares(waDAI) - MINIMUM_TOTAL_SUPPLY
         );
-        (uint256 bufferUnderlyingBalance, uint256 bufferWrappedBalance) = vault.getBufferBalance(waDAI);
+        (bufferUnderlyingBalance, bufferWrappedBalance) = vault.getBufferBalance(waDAI);
 
         uint256 expectedUnderlyingOut = proportionalWithdrawPct.mulDown(bufferUnderlyingBalance);
         uint256 expectedWrappedOut = proportionalWithdrawPct.mulDown(bufferWrappedBalance);
@@ -497,7 +496,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         uint256 totalUnderlyingValue = removedUnderlying + rate.mulDown(removedWrapped);
         assertLe(totalUnderlyingValue, secondAddUnderlying, "Value removed > value added");
-        assertApproxEqAbs(totalUnderlyingValue, secondAddUnderlying, 1e6, "Value removed !~ value added");
+        assertApproxEqAbs(totalUnderlyingValue, secondAddUnderlying, 3, "Value removed !~ value added");
     }
 
     function testRemoveLiquidityFromBuffer() public {
