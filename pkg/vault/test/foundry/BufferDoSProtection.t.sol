@@ -299,7 +299,13 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         tokens[waDaiIdx] = IERC20(address(waDAI));
     }
 
-    /// @notice Hook used to interact with the ERC4626 wrap/unwrap primitive of the Vault.
+    /**
+     * @notice Hook used to interact with the ERC4626 wrap/unwrap primitive of the Vault.
+     * @dev The standard router cannot be used to test DoS attacks because it charges the underlying token upfront to
+     * cover wrap operations, which sync the reserves of the Vault and prevents the attack. To effectively test for
+     * DoS vulnerabilities, we need a custom malicious router that performs the donation after the initial payment
+     * and settlement. This will leave the Vault's reserves out of sync with its balances.
+     */
     function erc4626DoSHook(
         BufferWrapOrUnwrapParams memory params,
         address sender,
