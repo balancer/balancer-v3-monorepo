@@ -488,7 +488,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         uint256 expectedUnderlyingOut = proportionalWithdrawPct.mulDown(bufferUnderlyingBalance);
         uint256 expectedWrappedOut = proportionalWithdrawPct.mulDown(bufferWrappedBalance);
-        // Will get 1333.333/3333.333 = 40% of value: [0.4 * 3000, 0.4 * 1000] = [1200 underlying, 400 wrapped] - worth 2000! (wrong then)
+        // Will get 1333.333/3333.333 = 40% of value:
+        // [0.4 * 3000, 0.4 * 1000] = [1200 underlying, 400 wrapped] - worth 2000 = amount in
         vm.prank(lp);
         (uint256 removedUnderlying, uint256 removedWrapped) = vault.removeLiquidityFromBuffer(waDAI, secondAddLpShares);
         assertApproxEqAbs(removedUnderlying, expectedUnderlyingOut, 1e6, "Wrong underlying amount removed");
