@@ -439,13 +439,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
         // Divide `issuedShares` between the zero address, which receives the minimum supply, and the account
         // depositing the tokens to initialize the buffer, which receives the balance.
-        _bufferTotalShares[wrappedToken] = _MINIMUM_TOTAL_SUPPLY;
-        _bufferLpShares[wrappedToken][address(0)] = _MINIMUM_TOTAL_SUPPLY;
-
-        emit BufferSharesMinted(wrappedToken, address(0), _MINIMUM_TOTAL_SUPPLY);
-
         issuedShares -= _MINIMUM_TOTAL_SUPPLY;
 
+        _mintMinimumBufferSupplyReserve(wrappedToken);
         _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
 
         emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
@@ -501,6 +497,13 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
 
         emit LiquidityAddedToBuffer(wrappedToken, amountUnderlyingRaw, amountWrappedRaw);
+    }
+
+    function _mintMinimumBufferSupplyReserve(IERC4626 wrappedToken) internal {
+        _bufferTotalShares[wrappedToken] = _MINIMUM_TOTAL_SUPPLY;
+        _bufferLpShares[wrappedToken][address(0)] = _MINIMUM_TOTAL_SUPPLY;
+
+        emit BufferSharesMinted(wrappedToken, address(0), _MINIMUM_TOTAL_SUPPLY);
     }
 
     function _mintBufferShares(IERC4626 wrappedToken, address to, uint256 amount) internal {
