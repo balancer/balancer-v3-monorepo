@@ -67,6 +67,11 @@ const contractSettings: ContractSettings = {
     runs: 500,
     viaIR,
   },
+  '@balancer-labs/v3-vault/contracts/VaultExplorer.sol': {
+    version: '0.8.24',
+    runs: 9999,
+    viaIR,
+  },
 };
 
 export const warnings = {
