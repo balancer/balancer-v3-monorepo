@@ -7,11 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import {
-    PoolRoleAccounts,
-    LiquidityManagement,
-    Rounding
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
@@ -33,7 +29,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
     using ArrayHelpers for *;
 
     uint256 constant DEFAULT_SWAP_FEE = 1e16; // 1%
-    uint256 constant MIN_SWAP_FEE = 1e13;
+    uint256 constant MIN_SWAP_FEE = 0.001e16; // 0.001%
     uint256 constant MAX_SWAP_FEE = 10e16;
 
     WeightedMathMock math;

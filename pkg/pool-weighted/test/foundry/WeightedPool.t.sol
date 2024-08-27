@@ -42,7 +42,7 @@ contract WeightedPoolTest is BasePoolTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
-        poolMinSwapFeePercentage = 1e13;
+        poolMinSwapFeePercentage = 0.001e16; // 0.001%
         poolMaxSwapFeePercentage = 10e16;
     }
 

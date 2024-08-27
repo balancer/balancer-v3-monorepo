@@ -21,7 +21,7 @@ interface IBasePool is ISwapFeePercentageBounds, IUnbalancedLiquidityInvariantRa
     /**
      * @notice Computes the pool's invariant.
      * @dev This function computes the invariant based on current balances (and potentially other pool state).
-     * The given rounding direction must be respected for the Vault to round in its favor when calling this function.
+     * The given rounding direction must be respected for the Vault to round in pool's favor when calling this function.
      * If the invariant computation involves no precision loss (e.g. simple sum of balances), the same result can be
      * returned for both rounding directions.
      *
