@@ -84,14 +84,17 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         IERC20[] memory erc4626PoolTokens = vault.getPoolTokens(erc4626Pool);
         uint256[] memory exactWrappedAmountsIn = [
-            IERC4626(address(erc4626PoolTokens[0])).convertToShares(exactUnderlyingAmountsIn[0]),
-            IERC4626(address(erc4626PoolTokens[1])).convertToShares(exactUnderlyingAmountsIn[1])
+            IERC4626(address(erc4626PoolTokens[0])).convertToShares(exactUnderlyingAmountsIn[0]) - 1,
+            IERC4626(address(erc4626PoolTokens[1])).convertToShares(exactUnderlyingAmountsIn[1]) - 1
         ].toMemoryArray();
 
-        uint256 snapshot = vm.snapshot();
-        _prankStaticCall();
-        uint256 expectBPTOut = router.queryAddLiquidityUnbalanced(erc4626Pool, exactWrappedAmountsIn, bytes(""));
-        vm.revertTo(snapshot);
+        uint256 expectBPTOut;
+        {
+            uint256 snapshot = vm.snapshot();
+            _prankStaticCall();
+            expectBPTOut = router.queryAddLiquidityUnbalanced(erc4626Pool, exactWrappedAmountsIn, bytes(""));
+            vm.revertTo(snapshot);
+        }
 
         uint256 beforeUSDCBalance = usdc.balanceOf(alice);
         uint256 beforeDAIBalance = dai.balanceOf(alice);
@@ -155,16 +158,16 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             );
         }
         {
-            (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(address(erc4626Pool));
+            (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(erc4626Pool));
             assertApproxEqAbs(
-                lastBalancesLiveScaled18[waDaiIdx],
-                erc4626PoolInitialAmount + exactUnderlyingAmountsIn[waDaiIdx],
+                balances[waDaiIdx],
+                waDAI.convertToShares(erc4626PoolInitialAmount + exactUnderlyingAmountsIn[waDaiIdx]),
                 MAX_ERROR,
                 "ERC4626 Pool: wrong waDAI balance"
             );
             assertApproxEqAbs(
-                lastBalancesLiveScaled18[waUsdcIdx],
-                erc4626PoolInitialAmount + exactUnderlyingAmountsIn[waUsdcIdx],
+                balances[waUsdcIdx],
+                waUSDC.convertToShares(erc4626PoolInitialAmount + exactUnderlyingAmountsIn[waUsdcIdx]),
                 MAX_ERROR,
                 "ERC4626 Pool: wrong waUSDC balance"
             );
@@ -266,16 +269,16 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             );
         }
         {
-            (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(address(erc4626Pool));
+            (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(erc4626Pool));
             assertApproxEqAbs(
-                lastBalancesLiveScaled18[waDaiIdx],
-                erc4626PoolInitialAmount + amountsIn[waDaiIdx],
+                balances[waDaiIdx],
+                waDAI.convertToShares(erc4626PoolInitialAmount + amountsIn[waDaiIdx]),
                 MAX_ERROR,
                 "ERC4626 Pool: wrong waDAI balance"
             );
             assertApproxEqAbs(
-                lastBalancesLiveScaled18[waUsdcIdx],
-                erc4626PoolInitialAmount + amountsIn[waUsdcIdx],
+                balances[waUsdcIdx],
+                waUSDC.convertToShares(erc4626PoolInitialAmount + amountsIn[waUsdcIdx]),
                 MAX_ERROR,
                 "ERC4626 Pool: wrong waUSDC balance"
             );
@@ -317,8 +320,8 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         uint256[] memory minAmountsOut = new uint256[](2);
-        minAmountsOut[waUsdcIdx] = waUSDC.convertToAssets(expectedAmountsOut[waUsdcIdx]);
-        minAmountsOut[waDaiIdx] = waDAI.convertToAssets(expectedAmountsOut[waDaiIdx]);
+        minAmountsOut[waUsdcIdx] = waUSDC.convertToAssets(expectedAmountsOut[waUsdcIdx]) - 1;
+        minAmountsOut[waDaiIdx] = waDAI.convertToAssets(expectedAmountsOut[waDaiIdx]) - 1;
 
         vm.prank(bob);
         uint256[] memory underlyingAmountsOut = batchRouter.removeLiquidityProportionalFromERC4626Pool(
@@ -382,16 +385,16 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             );
         }
         {
-            (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(address(erc4626Pool));
+            (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(erc4626Pool));
             assertApproxEqAbs(
-                lastBalancesLiveScaled18[waDaiIdx],
-                erc4626PoolInitialAmount - underlyingAmountsOut[waDaiIdx],
+                balances[waDaiIdx],
+                waDAI.convertToShares(erc4626PoolInitialAmount - underlyingAmountsOut[waDaiIdx]),
                 MAX_ERROR,
                 "ERC4626 Pool: wrong waDAI balance"
             );
             assertApproxEqAbs(
-                lastBalancesLiveScaled18[waUsdcIdx],
-                erc4626PoolInitialAmount - underlyingAmountsOut[waUsdcIdx],
+                balances[waUsdcIdx],
+                waUSDC.convertToShares(erc4626PoolInitialAmount - underlyingAmountsOut[waUsdcIdx]),
                 MAX_ERROR,
                 "ERC4626 Pool: wrong waUSDC balance"
             );

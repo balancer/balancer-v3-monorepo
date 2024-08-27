@@ -317,4 +317,9 @@ library ScalingHelpers {
         uint256 decimalsDifference = 18 - tokenDecimals;
         return FixedPoint.ONE * 10 ** decimalsDifference;
     }
+
+    // TODO explain
+    function computeRateRoundUp(uint256 rate) internal pure returns (uint256) {
+        return (rate / FixedPoint.ONE) * FixedPoint.ONE == rate ? rate : rate + 1;
+    }
 }

@@ -10,6 +10,7 @@ import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoo
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -21,6 +22,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
+    using ScalingHelpers for uint256;
 
     // Track the indices for the standard dai/usdc pool.
     uint256 internal daiIdx;
@@ -69,7 +71,7 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         // so edges are not limited, and the pool math can return a bigger amountOut than the pool balance.
         uint256 exactAmountIn = biggerPoolInitAmount.mulUp(1e16);
         // Round down to favor vault.
-        uint256 expectedAmountOut = exactAmountIn.mulDown(daiMockRate).divDown(usdcMockRate);
+        uint256 expectedAmountOut = exactAmountIn.mulDown(daiMockRate).divDown(usdcMockRate.computeRateRoundUp());
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();
@@ -103,8 +105,8 @@ contract RouterQueriesDiffRatesTest is BaseVaultTest {
         // 1% of biggerPoolInitAmount, so we have flexibility to handle rate variations. The mock pool math is linear,
         // so edges are not limited, and the pool math can return a bigger amountOut than the pool balance.
         uint256 exactAmountOut = biggerPoolInitAmount.mulUp(1e16);
-        // Round up to favor vault.
-        uint256 expectedAmountIn = exactAmountOut.mulUp(usdcMockRate).divUp(daiMockRate);
+        // Round up to favor the Vault.
+        uint256 expectedAmountIn = exactAmountOut.mulUp(usdcMockRate.computeRateRoundUp()).divUp(daiMockRate);
 
         uint256 snapshotId = vm.snapshot();
         _prankStaticCall();

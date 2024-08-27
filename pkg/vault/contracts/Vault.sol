@@ -325,7 +325,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 )
                 : vaultSwapParams.amountGivenRaw.toScaled18ApplyRateRoundUp(
                     poolData.decimalScalingFactors[swapState.indexOut],
-                    poolData.tokenRates[swapState.indexOut]
+                    poolData.tokenRates[swapState.indexOut].computeRateRoundUp() // TODO explain
                 );
     }
 
@@ -383,7 +383,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // For `ExactIn` the amount calculated is leaving the Vault, so we round down.
             amountCalculatedRaw = amountCalculatedScaled18.toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[swapState.indexOut],
-                poolData.tokenRates[swapState.indexOut]
+                poolData.tokenRates[swapState.indexOut].computeRateRoundUp() // TODO explain
             );
 
             (amountInRaw, amountOutRaw) = (vaultSwapParams.amountGivenRaw, amountCalculatedRaw);
@@ -1131,13 +1131,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 return (amountGiven, wrappedToken.previewDeposit(amountGiven));
             }
             // EXACT_IN wrap, so AmountGiven is underlying amount.
-            (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.convertToShares(amountGiven));
+            (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.convertToShares(amountGiven) - 1);
         } else {
             if (isQueryContext) {
                 return (wrappedToken.previewMint(amountGiven), amountGiven);
             }
             // EXACT_OUT wrap, so AmountGiven is wrapped amount.
-            (amountInUnderlying, amountOutWrapped) = (wrappedToken.convertToAssets(amountGiven), amountGiven);
+            (amountInUnderlying, amountOutWrapped) = (wrappedToken.convertToAssets(amountGiven) + 1, amountGiven);
         }
 
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
@@ -1261,13 +1261,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 return (amountGiven, wrappedToken.previewRedeem(amountGiven));
             }
             // EXACT_IN unwrap, so AmountGiven is wrapped amount.
-            (amountOutUnderlying, amountInWrapped) = (wrappedToken.convertToAssets(amountGiven), amountGiven);
+            (amountOutUnderlying, amountInWrapped) = (wrappedToken.convertToAssets(amountGiven) - 1, amountGiven);
         } else {
             if (isQueryContext) {
                 return (wrappedToken.previewWithdraw(amountGiven), amountGiven);
             }
             // EXACT_OUT unwrap, so AmountGiven is underlying amount.
-            (amountOutUnderlying, amountInWrapped) = (amountGiven, wrappedToken.convertToShares(amountGiven));
+            (amountOutUnderlying, amountInWrapped) = (amountGiven, wrappedToken.convertToShares(amountGiven) + 1);
         }
 
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];

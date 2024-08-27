@@ -130,7 +130,6 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             waUSDC.convertToShares(swapAmount);
         // USDC buffer gives USDC to user.
         vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc - swapAmount;
-        // TODO review error tolerance (rounding issue with rates)
         vars.expectedAliceDelta = swapAmount;
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
@@ -349,20 +348,17 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             assertEq(tokens[0], address(usdc), "Wrong token for SwapKind");
         } else {
             // Rounding issues occurs in favor of vault, and are very small
-            // TODO remove tolerance of 1 wei, when rounding issues with rates are solved
-            assertGe(paths[0], vars.expectedAliceDelta - 1, "paths AmountIn must be >= expected amountIn");
+            assertGe(paths[0], vars.expectedAliceDelta, "paths AmountIn must be >= expected amountIn");
             assertApproxEqAbs(paths[0], vars.expectedAliceDelta, MAX_ERROR, "Wrong path count");
-            // TODO remove tolerance of 1 wei, when rounding issues with rates are solved
-            assertGe(amounts[0], vars.expectedAliceDelta - 1, "amounts AmountIn must be >= expected amountIn");
+            assertGe(amounts[0], vars.expectedAliceDelta, "amounts AmountIn must be >= expected amountIn");
             assertApproxEqAbs(amounts[0], vars.expectedAliceDelta, MAX_ERROR, "Wrong amounts count");
             assertEq(tokens[0], address(dai), "Wrong token for SwapKind");
         }
 
         // Tokens were transferred
-        // TODO remove tolerance of 1 wei, when rounding issues with rates are solved
         assertLe(
             dai.balanceOf(alice),
-            vars.aliceBalanceBeforeSwapDai - vars.expectedAliceDelta + 1,
+            vars.aliceBalanceBeforeSwapDai - vars.expectedAliceDelta,
             "Alice balance DAI must be <= expected balance"
         );
         assertApproxEqAbs(
@@ -371,10 +367,9 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             MAX_ERROR,
             "Wrong ending balance of DAI for Alice"
         );
-        // TODO remove tolerance of 1 wei, when rounding issues with rates are solved
         assertLe(
             usdc.balanceOf(alice),
-            vars.aliceBalanceBeforeSwapUsdc + vars.expectedAliceDelta + 1,
+            vars.aliceBalanceBeforeSwapUsdc + vars.expectedAliceDelta,
             "Alice balance USDC must be <= expected balance"
         );
         assertApproxEqAbs(
