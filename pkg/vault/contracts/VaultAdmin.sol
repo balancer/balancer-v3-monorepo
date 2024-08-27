@@ -479,7 +479,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         // The invariant delta is the amount we're adding (at the current rate) in terms of underlying.
         uint256 bufferInvariantDelta = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
         // The new share amount is the invariant ratio normalized by the total supply.
-        issuedShares = _bufferTotalShares[wrappedToken] * bufferInvariantDelta / currentInvariant;
+        issuedShares = (_bufferTotalShares[wrappedToken] * bufferInvariantDelta) / currentInvariant;
 
         // Add the amountsIn to the current buffer balances.
         bufferBalances = PackedTokenBalance.toPackedBalance(

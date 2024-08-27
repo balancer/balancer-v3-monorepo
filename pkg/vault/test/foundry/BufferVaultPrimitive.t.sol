@@ -474,7 +474,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 currentInvariant = bufferUnderlyingBalance + bufferWrappedBalance.mulDown(rate);
 
         // Shares = current supply (= first shares added) times the invariant ratio.
-        uint256 expectedSecondAddShares = vault.getBufferTotalShares(waDAI) * secondAddUnderlying / currentInvariant;
+        uint256 expectedSecondAddShares = (vault.getBufferTotalShares(waDAI) * secondAddUnderlying) / currentInvariant;
 
         vm.prank(lp);
         uint256 secondAddLpShares = router.addLiquidityToBuffer(waDAI, secondAddUnderlying, 0);
