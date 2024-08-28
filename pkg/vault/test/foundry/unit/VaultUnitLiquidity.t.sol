@@ -127,7 +127,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         (uint256 currentInvariant, uint256 newInvariantAndInvariantWithFeesApplied) = (1e16, 1e18);
         vm.mockCall(
             params.pool,
-            abi.encodeCall(IBasePool.computeInvariant, poolData.balancesLiveScaled18),
+            abi.encodeCall(IBasePool.computeInvariant, (poolData.balancesLiveScaled18, Rounding.ROUND_UP)),
             abi.encode(currentInvariant)
         );
 
@@ -138,7 +138,7 @@ contract VaultUnitLiquidityTest is BaseTest {
 
         vm.mockCall(
             params.pool,
-            abi.encodeCall(IBasePool.computeInvariant, newBalances),
+            abi.encodeCall(IBasePool.computeInvariant, (newBalances, Rounding.ROUND_DOWN)),
             abi.encode(newInvariantAndInvariantWithFeesApplied)
         );
 
@@ -473,7 +473,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             (uint256 currentInvariant, uint256 invariantAndInvariantWithFeesApplied) = (3e8, 3e9);
             vm.mockCall(
                 params.pool,
-                abi.encodeCall(IBasePool.computeInvariant, poolData.balancesLiveScaled18),
+                abi.encodeCall(IBasePool.computeInvariant, (poolData.balancesLiveScaled18, Rounding.ROUND_UP)),
                 abi.encode(currentInvariant)
             );
 
@@ -485,7 +485,7 @@ contract VaultUnitLiquidityTest is BaseTest {
 
             vm.mockCall(
                 params.pool,
-                abi.encodeCall(IBasePool.computeInvariant, newBalances),
+                abi.encodeCall(IBasePool.computeInvariant, (newBalances, Rounding.ROUND_UP)),
                 abi.encode(invariantAndInvariantWithFeesApplied)
             );
 
@@ -499,7 +499,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             uint256 newInvariantAndInvariantWithFeesApplied = 1e5;
             vm.mockCall(
                 params.pool,
-                abi.encodeCall(IBasePool.computeInvariant, newBalances),
+                abi.encodeCall(IBasePool.computeInvariant, (newBalances, Rounding.ROUND_DOWN)),
                 abi.encode(newInvariantAndInvariantWithFeesApplied)
             );
         }

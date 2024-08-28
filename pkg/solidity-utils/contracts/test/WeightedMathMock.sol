@@ -2,14 +2,21 @@
 
 pragma solidity ^0.8.24;
 
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import "../math/WeightedMath.sol";
 
 contract WeightedMathMock {
     function computeInvariant(
         uint256[] memory normalizedWeights,
-        uint256[] memory balances
+        uint256[] memory balances,
+        Rounding rounding
     ) external pure returns (uint256) {
-        return WeightedMath.computeInvariant(normalizedWeights, balances);
+        if (rounding == Rounding.ROUND_DOWN) {
+            return WeightedMath.computeInvariantDown(normalizedWeights, balances);
+        } else {
+            return WeightedMath.computeInvariantUp(normalizedWeights, balances);
+        }
     }
 
     function computeOutGivenExactIn(
