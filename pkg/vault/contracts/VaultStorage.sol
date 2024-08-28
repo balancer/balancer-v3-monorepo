@@ -54,7 +54,7 @@ contract VaultStorage {
     // return to the user. However, convert is not equal to the actual operation and may return an optimistic result.
     // This factor makes sure that the use of buffer liquidity does not return more tokens than executing the
     // wrap/unwrap operation directly.
-    uint16 internal constant _CONVERT_FACTOR = 1;
+    uint16 internal constant _CONVERT_FACTOR = 100;
 
     /***************************************************************************
                           Transient Storage Declarations
