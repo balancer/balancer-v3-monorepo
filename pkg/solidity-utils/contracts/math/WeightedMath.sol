@@ -64,7 +64,8 @@ library WeightedMath {
     uint256 internal constant _MIN_INVARIANT_RATIO = 70e16; // 70%
 
     // The invariant functions are called by the Vault during various liquidity operations, and require a specific
-    // rounding direction in order to ensure safety (i.e., that the final result is always rounded in favor of the protocol).
+    // rounding direction in order to ensure safety (i.e., that the final result is always rounded in favor of the
+    // protocol).
     function computeInvariantDown(
         uint256[] memory normalizedWeights,
         uint256[] memory balances
