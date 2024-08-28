@@ -25,8 +25,8 @@ contract ExitFeeHookExampleWeightedPoolTest is ExitFeeHookExampleTest {
     using ArrayHelpers for *;
     using FixedPoint for uint256;
 
-    // The minimum swap fee for a Weighted Pool is 0.0001%.
-    uint256 internal constant MIN_WEIGHTED_SWAP_FEE = 1e12;
+    // The minimum swap fee for a Weighted Pool is 0.001%.
+    uint256 internal constant MIN_WEIGHTED_SWAP_FEE = 0.001e16;
 
     WeightedPoolFactory internal weightedPoolFactory;
     uint256[] internal weights;
