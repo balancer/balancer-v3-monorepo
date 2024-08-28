@@ -199,7 +199,7 @@ library BasePoolMath {
         // `totalSupply * (invariantWithFeesApplied / currentInvariant - 1)`
         // Then, to round `bptAmountOut` down we use `invariantWithFeesApplied` rounded down and `currentInvariant`
         // rounded up.
-        // If rounding makes `invariantWithFeesApplied` smaller or equal than `currentInvariant`, this would effectively
+        // If rounding makes `invariantWithFeesApplied` smaller or equal to `currentInvariant`, this would effectively
         // be a donation. In that case we just let checked math revert for simplicity; it's not a valid use-case to
         // support at this point.
         bptAmountOut = (totalSupply * (invariantWithFeesApplied - currentInvariant)) / currentInvariant;
@@ -328,14 +328,14 @@ library BasePoolMath {
         swapFeeAmounts = new uint256[](numTokens);
         swapFeeAmounts[tokenOutIndex] = fee;
 
-        // Calculate the amount of BPT to burn. This is done by multiplying the total supply with the ratio of the
-        // change in invariant.
+        // Calculate the amount of BPT to burn. This is done by multiplying the total supply by the ratio of the
+        // invariant delta to the current invariant.
         // Calculating BPT amount in, so we round up. This is the most important result of this function, equivalent to:
         // `totalSupply * (1 - invariantWithFeesApplied / currentInvariant)`.
         // Then, to round `bptAmountIn` up we use `invariantWithFeesApplied` rounded down and `currentInvariant`
         // rounded up.
         // Since `currentInvariant` is rounded up and `invariantWithFeesApplied` is rounded down, the difference
-        // should always be positive. We revert if that is not the case with checked math.
+        // should always be positive. The checked math will revert if that is not the case.
         bptAmountIn = totalSupply.mulDivUp(currentInvariant - invariantWithFeesApplied, currentInvariant);
     }
 

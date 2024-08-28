@@ -106,11 +106,12 @@ contract WeightedPool is IWeightedPool, BalancerPoolToken, PoolInfo, Version {
 
     /// @inheritdoc IBasePool
     function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding rounding) public view returns (uint256) {
-        if (rounding == Rounding.ROUND_DOWN) {
-            return WeightedMath.computeInvariantDown(_getNormalizedWeights(), balancesLiveScaled18);
-        } else {
-            return WeightedMath.computeInvariantUp(_getNormalizedWeights(), balancesLiveScaled18);
-        }
+        function(uint256[] memory, uint256[] memory) internal pure returns (uint256) _upOrDown = rounding ==
+            Rounding.ROUND_UP
+            ? WeightedMath.computeInvariantUp
+            : WeightedMath.computeInvariantDown;
+
+        return _upOrDown(_getNormalizedWeights(), balancesLiveScaled18);
     }
 
     /// @inheritdoc IBasePool

@@ -63,9 +63,8 @@ library WeightedMath {
     // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
     uint256 internal constant _MIN_INVARIANT_RATIO = 70e16; // 70%
 
-    // The invariant is used to collect protocol swap fees by comparing its value between two times.
-    // So we can round always to the same direction. It is also used to initiate the BPT amount and,
-    // because there is a minimum BPT, we round down the invariant.
+    // The invariant functions are called by the Vault during various liquidity operations, and require a specific
+    // rounding direction in order to ensure safety (i.e., that the final result is always rounded in favor of the protocol).
     function computeInvariantDown(
         uint256[] memory normalizedWeights,
         uint256[] memory balances
