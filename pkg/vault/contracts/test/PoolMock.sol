@@ -32,7 +32,7 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
         // solhint-previous-line no-empty-blocks
     }
 
-    function computeInvariant(uint256[] memory balances) public pure returns (uint256) {
+    function computeInvariant(uint256[] memory balances, Rounding) public pure returns (uint256) {
         // inv = x + y
         uint256 invariant;
         for (uint256 i = 0; i < balances.length; ++i) {
@@ -48,7 +48,7 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
         uint256 invariantRatio
     ) external pure returns (uint256 newBalance) {
         // inv = x + y
-        uint256 invariant = computeInvariant(balances);
+        uint256 invariant = computeInvariant(balances, Rounding.ROUND_DOWN);
         return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
     }
 

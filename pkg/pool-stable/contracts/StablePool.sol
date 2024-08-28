@@ -14,8 +14,8 @@ import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { SwapKind, PoolSwapParams, PoolConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { BasePoolAuthentication } from "@balancer-labs/v3-pool-utils/contracts/BasePoolAuthentication.sol";
@@ -147,7 +147,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IBasePool
-    function computeInvariant(uint256[] memory balancesLiveScaled18) public view returns (uint256) {
+    function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding) public view returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
         return StableMath.computeInvariant(currentAmp, balancesLiveScaled18);
@@ -165,14 +165,14 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
             StableMath.computeBalance(
                 currentAmp,
                 balancesLiveScaled18,
-                computeInvariant(balancesLiveScaled18).mulDown(invariantRatio),
+                computeInvariant(balancesLiveScaled18, Rounding.ROUND_DOWN).mulDown(invariantRatio),
                 tokenInIndex
             );
     }
 
     /// @inheritdoc IBasePool
     function onSwap(PoolSwapParams memory request) public view onlyVault returns (uint256) {
-        uint256 invariant = computeInvariant(request.balancesScaled18);
+        uint256 invariant = computeInvariant(request.balancesScaled18, Rounding.ROUND_DOWN);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
         if (request.kind == SwapKind.EXACT_IN) {

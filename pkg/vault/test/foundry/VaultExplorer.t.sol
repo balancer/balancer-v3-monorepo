@@ -23,6 +23,7 @@ import {
     LiquidityManagement,
     PoolConfig,
     HooksConfig,
+    Rounding,
     SwapKind,
     PoolData,
     PoolSwapParams
@@ -400,7 +401,7 @@ contract VaultExplorerTest is BaseVaultTest {
     function testGetBptRate() public view {
         PoolData memory poolData = vault.getPoolData(pool);
 
-        uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18);
+        uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18, Rounding.ROUND_DOWN);
         uint256 expectedRate = invariant.divDown(vault.totalSupply(pool));
 
         uint256 bptRate = explorer.getBptRate(pool);

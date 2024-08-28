@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -35,6 +36,9 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
             IAuthentication(swapPool).getActionId(StablePool.startAmplificationParameterUpdate.selector),
             admin
         );
+
+        minSwapFeePercentage = IBasePool(swapPool).getMinimumSwapFeePercentage();
+        maxSwapFeePercentage = IBasePool(swapPool).getMaximumSwapFeePercentage();
     }
 
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
@@ -51,7 +55,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
                 vault.buildTokenConfig(tokens.asIERC20()),
                 DEFAULT_AMP_FACTOR,
                 roleAccounts,
-                MIN_SWAP_FEE,
+                0.01e16, // Initial swap fee: 0.01%
                 poolHooksContract,
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity
@@ -142,8 +146,7 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
         _setAmplificationParameter(liquidityPool, newAmplificationParameter);
         _setAmplificationParameter(swapPool, newAmplificationParameter);
 
-        // Vary swap fee from 0.0001% (min swap fee) - 10% (max swap fee).
-        swapFeePercentage = bound(swapFeePercentage, 1e12, maxSwapFeePercentage);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         return swapFeePercentage;
     }
 

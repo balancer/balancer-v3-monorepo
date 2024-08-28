@@ -12,7 +12,7 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
-import { HookFlags, FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { HookFlags, FEE_SCALING_FACTOR, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -111,9 +111,9 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     uint256 vaultMockMinTradeAmount = 0;
 
     // Applies to Weighted Pools.
-    uint256 constant MIN_SWAP_FEE = 1e12; // 0.00001%
-    uint256 constant MAX_SWAP_FEE = 10e16; // 10%
-    uint256 internal MIN_TRADE_AMOUNT = 1e6;
+    uint256 constant BASE_MIN_SWAP_FEE = 1e12; // 0.00001%
+    uint256 constant BASE_MAX_SWAP_FEE = 10e16; // 10%
+    uint256 constant MIN_TRADE_AMOUNT = 1e6;
 
     function setUp() public virtual override {
         BaseTest.setUp();
@@ -225,13 +225,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     }
 
     function _setSwapFeePercentage(address setPool, uint256 percentage) internal {
-        if (percentage < MIN_SWAP_FEE) {
-            vault.manuallySetSwapFee(setPool, percentage);
-        } else {
-            authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), admin);
-            vm.prank(admin);
-            vault.setStaticSwapFeePercentage(setPool, percentage);
-        }
+        vault.manuallySetSwapFee(setPool, percentage);
     }
 
     function getBalances(address user) internal view returns (Balances memory balances) {
@@ -248,7 +242,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         balances.poolTokens = poolBalances;
         uint256 numTokens = tokens.length;
 
-        balances.poolInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18);
+        balances.poolInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
         balances.userTokens = new uint256[](numTokens);
         balances.aliceTokens = new uint256[](numTokens);
         balances.bobTokens = new uint256[](numTokens);
