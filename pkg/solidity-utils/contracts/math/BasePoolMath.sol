@@ -197,6 +197,7 @@ library BasePoolMath {
         // Round down since we're calculating BPT amount out. This is the most important result of this function,
         // equivalent to:
         // `totalSupply * (invariantWithFeesApplied / currentInvariant - 1)`
+
         // Then, to round `bptAmountOut` down we use `invariantWithFeesApplied` rounded down and `currentInvariant`
         // rounded up.
         // If rounding makes `invariantWithFeesApplied` smaller or equal to `currentInvariant`, this would effectively
