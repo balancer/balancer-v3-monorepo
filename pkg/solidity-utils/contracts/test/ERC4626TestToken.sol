@@ -39,7 +39,8 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
     }
 
     function getRate() external view returns (uint256) {
-        return _convertToAssets(FixedPoint.ONE, Math.Rounding.Ceil);
+        // The rate is calculated using the most pessimistic scenario, which is rounding down.
+        return _convertToAssets(FixedPoint.ONE, Math.Rounding.Floor);
     }
 
     function mockRate(uint256 newRate) external {
