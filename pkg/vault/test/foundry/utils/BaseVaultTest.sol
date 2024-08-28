@@ -110,6 +110,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Change this value before calling `setUp` to test under real conditions.
     uint256 vaultMockMinTradeAmount = 0;
 
+    // Stores the Vault's CONVERT_FACTOR, used to fix the result of ERC4626 buffer's "convert" calls (amount used to
+    // wrap/unwrap using the buffer liquidity).
     uint16 internal vaultConvertFactor;
 
     // Applies to Weighted Pools.
