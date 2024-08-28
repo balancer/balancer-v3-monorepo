@@ -336,7 +336,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 )
                 : vaultSwapParams.amountGivenRaw.toScaled18ApplyRateRoundUp(
                     poolData.decimalScalingFactors[swapState.indexOut],
-                    poolData.tokenRates[swapState.indexOut].computeRateRoundUp() // TODO explain
+                    // If the swap is ExactOut, the amountGiven is the amount of tokenOut. So, we want to use the rate
+                    // rounded up to calculate the amountGivenScaled18, because if this value is bigger, the
+                    // amountCalculatedRaw will be bigger, implying that the user will pay for any rounding
+                    // inconsistency, and not the Vault.
+                    poolData.tokenRates[swapState.indexOut].computeRateRoundUp()
                 );
     }
 
@@ -394,7 +398,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // For `ExactIn` the amount calculated is leaving the Vault, so we round down.
             amountCalculatedRaw = amountCalculatedScaled18.toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[swapState.indexOut],
-                poolData.tokenRates[swapState.indexOut].computeRateRoundUp() // TODO explain
+                // If the swap is ExactIn, the amountCalculated is the amount of tokenOut. So, we want to use the rate
+                // rounded up to calculate the amountCalculatedRaw, because scale down (undo rate) is a division, the
+                // larger the rate, the smaller the amountCalculatedRaw. So, any rounding imprecision will stay in the
+                // Vault and not be drained by the user.
+                poolData.tokenRates[swapState.indexOut].computeRateRoundUp()
             );
 
             (amountInRaw, amountOutRaw) = (vaultSwapParams.amountGivenRaw, amountCalculatedRaw);
