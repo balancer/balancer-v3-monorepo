@@ -241,10 +241,19 @@ interface IVaultMainMock {
         uint256[] memory minAmountsOutScaled18
     ) external;
 
-    function manualUpdateReservesAfterWrapping(
+    function manualSettleWrap(
         IERC20 underlyingToken,
-        IERC20 wrappedToken
-    ) external returns (uint256, uint256);
+        IERC20 wrappedToken,
+        uint256 underlyingHint,
+        uint256 wrappedHint
+    ) external;
+
+    function manualSettleUnwrap(
+        IERC20 underlyingToken,
+        IERC20 wrappedToken,
+        uint256 underlyingHint,
+        uint256 wrappedHint
+    ) external;
 
     function manualTransfer(IERC20 token, address to, uint256 amount) external;
 
