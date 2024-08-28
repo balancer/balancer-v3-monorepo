@@ -916,8 +916,19 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
 
         for (uint256 i = 0; i < poolTokensLength; ++i) {
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
+            IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
 
-            // erc4626BufferWrapOrUnwrap will fail if the wrapper is not ERC4626.
+            // If the vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
+            // initialized. Thus, the router treats it as a non-ERC4626 token.
+            if (address(underlyingToken) == address(0)) {
+                underlyingAmountsOut[i] = wrappedAmountsOut[i];
+                if (isStaticCall == false) {
+                    _sendTokenOut(params.sender, erc4626PoolTokens[i], underlyingAmountsOut[i], params.wethIsEth);
+                }
+                continue;
+            }
+
+            // `erc4626BufferWrapOrUnwrap` will fail if the wrapper is not ERC4626.
             (, , underlyingAmountsOut[i]) = _vault.erc4626BufferWrapOrUnwrap(
                 BufferWrapOrUnwrapParams({
                     kind: SwapKind.EXACT_IN,
@@ -930,7 +941,6 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             );
 
             if (isStaticCall == false) {
-                IERC20 underlyingToken = IERC20(wrappedToken.asset());
                 _sendTokenOut(params.sender, underlyingToken, underlyingAmountsOut[i], params.wethIsEth);
             }
         }
@@ -954,7 +964,20 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
             // Treat all ERC4626 pool tokens as wrapped. The next step will verify if we can use the wrappedToken as
             // a valid ERC4626.
             IERC4626 wrappedToken = IERC4626(address(erc4626PoolTokens[i]));
-            IERC20 underlyingToken = IERC20(wrappedToken.asset());
+            IERC20 underlyingToken = IERC20(_vault.getBufferAsset(wrappedToken));
+
+            // If the vault returns address 0 as underlying, it means that the ERC4626 token buffer was not
+            // initialized. Thus, the router treats it as a non-ERC4626 token.
+            if (address(underlyingToken) == address(0)) {
+                underlyingAmounts[i] = amountsIn[i];
+                wrappedAmounts[i] = amountsIn[i];
+
+                if (isStaticCall == false) {
+                    _takeTokenIn(params.sender, erc4626PoolTokens[i], amountsIn[i], params.wethIsEth);
+                }
+
+                continue;
+            }
 
             if (isStaticCall == false) {
                 if (kind == SwapKind.EXACT_IN) {
