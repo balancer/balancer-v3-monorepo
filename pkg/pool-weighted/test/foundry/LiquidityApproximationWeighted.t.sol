@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { PoolRoleAccounts, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -32,6 +33,9 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
 
     function setUp() public virtual override {
         LiquidityApproximationTest.setUp();
+
+        minSwapFeePercentage = IBasePool(swapPool).getMinimumSwapFeePercentage();
+        maxSwapFeePercentage = IBasePool(swapPool).getMaximumSwapFeePercentage();
     }
 
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
@@ -74,7 +78,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     ) public {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
-        roundingDelta = 1e13;
+        excessRoundingDelta = 0.5e16; // 0.5%
 
         swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
 
@@ -89,7 +93,9 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     ) public {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
-        roundingDelta = 1e15;
+        excessRoundingDelta = 0.1e16; // 0.1%
+        defectRoundingDelta = 0.001e16; // 0.001%
+        absoluteRoundingDelta = 1e15;
 
         swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
 
@@ -104,7 +110,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     ) public {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
-        roundingDelta = 1e13;
+        defectRoundingDelta = 0.00001e16; // 0.00001%
 
         swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
 
@@ -119,7 +125,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     ) public {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
-        roundingDelta = 2e15;
+        excessRoundingDelta = 0.5e16; // 0.5%
 
         swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
 
@@ -134,7 +140,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     ) public {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
-        roundingDelta = 1e15;
+        excessRoundingDelta = 0.5e16; // 0.5%
 
         swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
 
@@ -149,7 +155,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     ) public {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
-        roundingDelta = 1e13;
+        defectRoundingDelta = 0.00001e16; // 0.000001%
 
         swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
 
@@ -172,7 +178,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         maxAmount = maxAmount.mulDown(25e16);
 
         // Vary swap fee from 0.0001% (min swap fee) - 10% (max swap fee).
-        swapFeePercentage = bound(swapFeePercentage, 1e12, maxSwapFeePercentage);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         return swapFeePercentage;
     }
 

@@ -14,6 +14,11 @@ import {
 
 import { WeightedMathMock } from '../typechain-types/contracts/test/WeightedMathMock';
 
+enum Rounding {
+  ROUND_UP,
+  ROUND_DOWN,
+}
+
 describe('WeightedMath', function () {
   let math: WeightedMathMock;
 
@@ -23,14 +28,17 @@ describe('WeightedMath', function () {
 
   context('computeInvariant', () => {
     it('reverts if zero invariant', async () => {
-      await expect(math.computeInvariant([bn(1)], [0])).to.be.revertedWithCustomError(math, 'ZeroInvariant');
+      await expect(math.computeInvariant([bn(1)], [0], Rounding.ROUND_DOWN)).to.be.revertedWithCustomError(
+        math,
+        'ZeroInvariant'
+      );
     });
 
     it('computes invariant for two tokens', async () => {
       const normalizedWeights = [bn(0.3e18), bn(0.7e18)];
       const balances = [bn(10e18), bn(12e18)];
 
-      const result = await math.computeInvariant(normalizedWeights, balances);
+      const result = await math.computeInvariant(normalizedWeights, balances, Rounding.ROUND_DOWN);
       const expected = computeInvariant(balances, normalizedWeights);
 
       expectEqualWithError(result, bn(expected), MAX_RELATIVE_ERROR);
@@ -40,7 +48,7 @@ describe('WeightedMath', function () {
       const normalizedWeights = [bn(0.3e18), bn(0.2e18), bn(0.5e18)];
       const balances = [bn(10e18), bn(12e18), bn(14e18)];
 
-      const result = await math.computeInvariant(normalizedWeights, balances);
+      const result = await math.computeInvariant(normalizedWeights, balances, Rounding.ROUND_DOWN);
       const expected = computeInvariant(balances, normalizedWeights);
 
       expectEqualWithError(result, bn(expected), MAX_RELATIVE_ERROR);

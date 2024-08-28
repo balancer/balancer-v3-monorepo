@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -81,6 +82,13 @@ contract E2eSwapTest is BaseVaultTest {
         vm.prank(poolCreator);
         // Set pool creator fee to 100%, so protocol + creator fees equals the total charged fees.
         feeController.setPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
+
+        minPoolSwapFeePercentage = IBasePool(pool).getMinimumSwapFeePercentage();
+        maxPoolSwapFeePercentage = IBasePool(pool).getMaximumSwapFeePercentage();
+
+        // These tests rely on a minimum fee to work; set something very small for pool mock.
+        minPoolSwapFeePercentage = (minPoolSwapFeePercentage == 0 ? 1e12 : minPoolSwapFeePercentage);
+        maxPoolSwapFeePercentage = (maxPoolSwapFeePercentage == 1e18 ? 10e16 : maxPoolSwapFeePercentage);
     }
 
     /**

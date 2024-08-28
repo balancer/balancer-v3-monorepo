@@ -55,7 +55,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     IVaultExtension private immutable _vaultExtension;
 
-    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer, IProtocolFeeController protocolFeeController) {
+    // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
+    // exploitation of rounding errors
+    // solhint-disable-next-line var-name-mixedcase
+    uint256 internal immutable _MINIMUM_TRADE_AMOUNT;
+
+    constructor(
+        IVaultExtension vaultExtension,
+        IAuthorizer authorizer,
+        IProtocolFeeController protocolFeeController,
+        uint256 minTradeAmount
+    ) {
         if (address(vaultExtension.vault()) != address(this)) {
             revert WrongVaultExtensionDeployment();
         }
@@ -72,6 +82,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _vaultBufferPeriodEndTime = IVaultAdmin(address(vaultExtension)).getBufferPeriodEndTime();
 
         _authorizer = authorizer;
+        _MINIMUM_TRADE_AMOUNT = minTradeAmount;
     }
 
     /*******************************************************************************
@@ -1407,7 +1418,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
     // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
     // exploitation of rounding errors.
-    function _ensureValidTradeAmount(uint256 tradeAmount) private pure {
+    function _ensureValidTradeAmount(uint256 tradeAmount) private view {
         if (tradeAmount != 0 && tradeAmount < _MINIMUM_TRADE_AMOUNT) {
             revert TradeAmountTooSmall();
         }

@@ -11,6 +11,7 @@ import { IEIP712 } from "permit2/src/interfaces/IEIP712.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -361,7 +362,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         vm.stopPrank();
 
         uint256[] memory liveBalancesScaled18 = vault.getCurrentLiveBalances(address(poolToken));
-        uint256 invariant = IBasePool(address(poolToken)).computeInvariant(liveBalancesScaled18);
+        uint256 invariant = IBasePool(address(poolToken)).computeInvariant(liveBalancesScaled18, Rounding.ROUND_DOWN);
         uint256 bptRate = invariant.divDown(poolToken.totalSupply());
 
         assertEq(poolToken.getRate(), bptRate, "BPT rate is wrong");

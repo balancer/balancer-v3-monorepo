@@ -425,7 +425,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _poolConfigBits[pool] = poolData.poolConfigBits;
 
         // Pass scaled balances to the pool.
-        bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18);
+        bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18, Rounding.ROUND_DOWN);
 
         _ensureMinimumTotalSupply(bptAmountOut);
 
@@ -572,7 +572,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool
     ) external view onlyVaultDelegateCall withInitializedPool(pool) returns (uint256 rate) {
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
-        uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18);
+        uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18, Rounding.ROUND_DOWN);
 
         return invariant.divDown(_totalSupply(pool));
     }
