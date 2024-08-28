@@ -268,5 +268,5 @@ interface IVaultMainMock {
 
     function manualSetPoolCreator(address pool, address newPoolCreator) external;
 
-    function getConvertFactor() external view returns (uint16);
+    function getConvertFactor() external pure returns (uint16);
 }

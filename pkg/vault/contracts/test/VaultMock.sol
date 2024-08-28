@@ -678,7 +678,7 @@ contract VaultMock is IVaultMainMock, Vault {
         _poolRoleAccounts[pool].poolCreator = newPoolCreator;
     }
 
-    function getConvertFactor() public view returns (uint16) {
+    function getConvertFactor() public pure returns (uint16) {
         return _CONVERT_FACTOR;
     }
 }
