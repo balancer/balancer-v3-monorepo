@@ -13,8 +13,15 @@ contract WeightedBasePoolMathMock is BasePoolMathMock {
         weights = _weights;
     }
 
-    function computeInvariant(uint256[] memory balancesLiveScaled18) public view override returns (uint256) {
-        return WeightedMath.computeInvariant(weights, balancesLiveScaled18);
+    function computeInvariant(
+        uint256[] memory balancesLiveScaled18,
+        Rounding rounding
+    ) public view override returns (uint256) {
+        if (rounding == Rounding.ROUND_DOWN) {
+            return WeightedMath.computeInvariantDown(weights, balancesLiveScaled18);
+        } else {
+            return WeightedMath.computeInvariantUp(weights, balancesLiveScaled18);
+        }
     }
 
     function computeBalance(
