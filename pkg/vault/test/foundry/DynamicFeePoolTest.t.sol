@@ -31,6 +31,9 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
     function setUp() public virtual override {
         defaultBalance = 1e10 * 1e18;
+        // We will use min trade amount in this test.
+        vaultMockMinTradeAmount = MIN_TRADE_AMOUNT;
+
         BaseVaultTest.setUp();
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));

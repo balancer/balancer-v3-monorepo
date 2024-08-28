@@ -26,15 +26,18 @@ abstract contract BasePoolTest is BaseVaultTest {
     IERC20[] internal poolTokens;
     uint256[] internal tokenAmounts;
 
-    uint256 tokenIndexIn = 0;
-    uint256 tokenIndexOut = 1;
-    uint256 tokenAmountIn = 1e18;
-    uint256 tokenAmountOut = 1e18;
+    uint256 internal tokenIndexIn = 0;
+    uint256 internal tokenIndexOut = 1;
+    uint256 internal tokenAmountIn = 1e18;
+    uint256 internal tokenAmountOut = 1e18;
 
-    uint256 expectedAddLiquidityBptAmountOut = 1e3 * 1e18;
-    bool isTestSwapFeeEnabled = true;
+    uint256 internal expectedAddLiquidityBptAmountOut = 1e3 * 1e18;
+    bool internal isTestSwapFeeEnabled = true;
 
-    uint256 bptAmountOut;
+    uint256 internal bptAmountOut;
+
+    uint256 internal poolMinSwapFeePercentage;
+    uint256 internal poolMaxSwapFeePercentage;
 
     InputHelpersMock public immutable inputHelpersMock = new InputHelpersMock();
 
@@ -43,6 +46,9 @@ abstract contract BasePoolTest is BaseVaultTest {
 
         require(poolTokens.length >= 2, "Minimum 2 tokens required (poolTokens)");
         require(poolTokens.length == tokenAmounts.length, "poolTokens and tokenAmounts length mismatch");
+
+        poolMinSwapFeePercentage = 0;
+        poolMaxSwapFeePercentage = 1e18;
     }
 
     function testPoolAddress() public view {
@@ -236,11 +242,11 @@ abstract contract BasePoolTest is BaseVaultTest {
     }
 
     function testMinimumSwapFee() public view {
-        assertEq(IBasePool(pool).getMinimumSwapFeePercentage(), MIN_SWAP_FEE, "Minimum swap fee mismatch");
+        assertEq(IBasePool(pool).getMinimumSwapFeePercentage(), poolMinSwapFeePercentage, "Minimum swap fee mismatch");
     }
 
     function testMaximumSwapFee() public view {
-        assertEq(IBasePool(pool).getMaximumSwapFeePercentage(), MAX_SWAP_FEE, "Maximum swap fee mismatch");
+        assertEq(IBasePool(pool).getMaximumSwapFeePercentage(), poolMaxSwapFeePercentage, "Maximum swap fee mismatch");
     }
 
     function testSetSwapFeeTooLow() public {
@@ -248,7 +254,7 @@ abstract contract BasePoolTest is BaseVaultTest {
         vm.prank(alice);
 
         vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
-        vault.setStaticSwapFeePercentage(pool, MIN_SWAP_FEE - 1);
+        vault.setStaticSwapFeePercentage(pool, poolMinSwapFeePercentage - 1);
     }
 
     function testSetSwapFeeTooHigh() public {
@@ -256,7 +262,7 @@ abstract contract BasePoolTest is BaseVaultTest {
         vm.prank(alice);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapFeePercentageTooHigh.selector));
-        vault.setStaticSwapFeePercentage(pool, MAX_SWAP_FEE + 1);
+        vault.setStaticSwapFeePercentage(pool, poolMaxSwapFeePercentage + 1);
     }
 
     function testAddLiquidityUnbalanced() public {
@@ -264,8 +270,8 @@ abstract contract BasePoolTest is BaseVaultTest {
         vm.prank(alice);
         vault.setStaticSwapFeePercentage(pool, 10e16);
 
-        uint256[] memory amountsIn = new uint256[](poolTokens.length);
-        amountsIn[0] *= 100;
+        uint256[] memory amountsIn = tokenAmounts;
+        amountsIn[0] = amountsIn[0].mulDown(IBasePool(pool).getMaximumInvariantRatio());
         vm.prank(bob);
 
         router.addLiquidityUnbalanced(pool, amountsIn, 0, false, bytes(""));

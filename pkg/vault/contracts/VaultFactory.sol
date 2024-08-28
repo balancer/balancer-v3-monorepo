@@ -31,6 +31,7 @@ contract VaultFactory is Authentication {
     IAuthorizer private immutable _authorizer;
     uint32 private immutable _pauseWindowDuration;
     uint32 private immutable _bufferPeriodDuration;
+    uint256 private immutable _minTradeAmount;
     address private immutable _deployer;
 
     bytes private _creationCode;
@@ -40,13 +41,15 @@ contract VaultFactory is Authentication {
     constructor(
         IAuthorizer authorizer,
         uint32 pauseWindowDuration,
-        uint32 bufferPeriodDuration
+        uint32 bufferPeriodDuration,
+        uint256 minTradeAmount
     ) Authentication(bytes32(uint256(uint160(address(this))))) {
         _deployer = msg.sender;
         _creationCode = type(Vault).creationCode;
         _authorizer = authorizer;
         _pauseWindowDuration = pauseWindowDuration;
         _bufferPeriodDuration = bufferPeriodDuration;
+        _minTradeAmount = minTradeAmount;
     }
 
     /**
@@ -73,7 +76,10 @@ contract VaultFactory is Authentication {
         VaultExtension vaultExtension = new VaultExtension(IVault(vaultAddress), vaultAdmin);
         ProtocolFeeController feeController = new ProtocolFeeController(IVault(vaultAddress));
 
-        address deployedAddress = _create(abi.encode(vaultExtension, _authorizer, feeController), salt);
+        address deployedAddress = _create(
+            abi.encode(vaultExtension, _authorizer, feeController, _minTradeAmount),
+            salt
+        );
 
         // This should always be the case, but we enforce the end state to match the expected outcome anyway.
         if (deployedAddress != targetAddress) {
