@@ -9,7 +9,7 @@ import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpe
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { BaseExtremeAmountsTest } from "./utils/BaseExtremeAmountsTest.sol";
 
-contract LinearBaseExtremeAmountsTest is BaseExtremeAmountsTest {
+contract LinearPoolExtremeAmountsTest is BaseExtremeAmountsTest {
     using ArrayHelpers for *;
     using CastingHelpers for *;
 
