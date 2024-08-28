@@ -21,7 +21,7 @@ contract E2eBatchSwapWeightedTest is E2eBatchSwapTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
 
-    uint256 internal constant DEFAULT_SWAP_FEE_WEIGHTED = 1e12; // 0.0001%
+    uint256 internal constant DEFAULT_SWAP_FEE_WEIGHTED = 1e16; // 1%
     uint256 internal poolCreationNonce;
 
     function setUp() public override {
@@ -54,7 +54,7 @@ contract E2eBatchSwapWeightedTest is E2eBatchSwapTest {
     }
 
     /// @notice Overrides BaseVaultTest _createPool(). This pool is used by E2eSwapTest tests.
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+    function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
         WeightedPoolFactory factory = new WeightedPoolFactory(
             IVault(address(vault)),
             365 days,

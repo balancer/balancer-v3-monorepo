@@ -19,6 +19,8 @@ contract VaultLiquidityTest is BaseVaultTest {
     uint256 internal usdcIdx;
 
     function setUp() public virtual override {
+        // We will use min trade amount in this test.
+        vaultMockMinTradeAmount = MIN_TRADE_AMOUNT;
         BaseVaultTest.setUp();
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));

@@ -7,7 +7,7 @@ import { PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/Vau
 import "../math/BasePoolMath.sol";
 
 abstract contract BasePoolMathMock is IBasePool {
-    function computeInvariant(uint256[] memory balances) public view virtual returns (uint256);
+    function computeInvariant(uint256[] memory balances, Rounding) public view virtual returns (uint256);
 
     function computeBalance(
         uint256[] memory balances,
