@@ -24,7 +24,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
     using CastingHelpers for address[];
 
     uint256 constant MIN_AMOUNT = 1e12;
-    uint256 internal constant MAX_ERROR = 10;
+    uint256 internal constant MAX_ERROR = 2;
 
     ERC4626TestToken internal waInvalid;
 
