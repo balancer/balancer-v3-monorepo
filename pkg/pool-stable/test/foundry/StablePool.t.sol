@@ -28,6 +28,9 @@ contract StablePoolTest is BasePoolTest {
         expectedAddLiquidityBptAmountOut = TOKEN_AMOUNT * 2;
 
         BasePoolTest.setUp();
+
+        poolMinSwapFeePercentage = 1e12;
+        poolMaxSwapFeePercentage = 10e16;
     }
 
     function createPool() internal override returns (address) {
@@ -56,7 +59,7 @@ contract StablePoolTest is BasePoolTest {
                     tokenConfigs,
                     DEFAULT_AMP_FACTOR,
                     roleAccounts,
-                    MIN_SWAP_FEE,
+                    BASE_MIN_SWAP_FEE,
                     poolHooksContract,
                     false, // Do not enable donations
                     false, // Do not disable unbalanced add/remove liquidity

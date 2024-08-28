@@ -34,6 +34,9 @@ contract BigWeightedPoolTest is BasePoolTest {
         tokenIndexOut = 7;
 
         BasePoolTest.setUp();
+
+        poolMinSwapFeePercentage = 0.001e16; // 0.001%
+        poolMaxSwapFeePercentage = 10e16;
     }
 
     function createPool() internal override returns (address) {
@@ -122,10 +125,10 @@ contract BigWeightedPoolTest is BasePoolTest {
         uint256[] memory amountsIn = new uint256[](poolTokens.length);
         amountsIn[0] = TOKEN_AMOUNT;
 
-        uint256 invariantBefore = WeightedMath.computeInvariant(weights, tokenAmounts);
+        uint256 invariantBefore = WeightedMath.computeInvariantDown(weights, tokenAmounts);
 
         tokenAmounts[0] += TOKEN_AMOUNT;
-        uint256 invariantAfter = WeightedMath.computeInvariant(weights, tokenAmounts);
+        uint256 invariantAfter = WeightedMath.computeInvariantDown(weights, tokenAmounts);
 
         _testGetBptRate(invariantBefore, invariantAfter, amountsIn);
     }
