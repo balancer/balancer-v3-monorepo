@@ -87,10 +87,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         exactWrappedAmountsIn[waUsdcIdx] = (waUSDC.convertToShares(exactUnderlyingAmountsIn[waUsdcIdx]) -
             vaultConvertFactor);
 
-        uint256 expectBPTOut;
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
-        expectBPTOut = router.queryAddLiquidityUnbalanced(erc4626Pool, exactWrappedAmountsIn, bytes(""));
+        uint256 expectBPTOut = router.queryAddLiquidityUnbalanced(erc4626Pool, exactWrappedAmountsIn, bytes(""));
         vm.revertTo(snapshot);
 
         TestBalances memory balancesBefore = _getTestBalances(alice);
@@ -299,6 +298,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             false,
             bytes("")
         );
+        uint256[] memory wrappedAmountsOut = new uint256[](2);
+        wrappedAmountsOut[waDaiIdx] = waDAI.convertToShares(underlyingAmountsOut[waDaiIdx]);
+        wrappedAmountsOut[waUsdcIdx] = waUSDC.convertToShares(underlyingAmountsOut[waUsdcIdx]);
 
         TestBalances memory balancesAfter = _getTestBalances(bob);
 
