@@ -36,47 +36,43 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
     }
 
     modifier checkBuffersWhenStaticCall(address sender) {
-        uint256 beforeUSDCBalance = usdc.balanceOf(sender);
-        uint256 beforeDAIBalance = dai.balanceOf(sender);
-        (uint256 beforeWaUSDCBufferBalanceUnderlying, uint256 beforeWaUSDCBufferBalanceWrapped) = vault
-            .getBufferBalance(waUSDC);
-        (uint256 beforeWaDAIBufferBalanceUnderlying, uint256 beforeWaDAIBufferBalanceWrapped) = vault.getBufferBalance(
-            waDAI
-        );
+        TestBalances memory balancesBefore = _getTestBalances(sender);
 
         _;
 
-        uint256 afterUSDCBalance = usdc.balanceOf(sender);
-        assertEq(beforeUSDCBalance, afterUSDCBalance, "USDC balance should be the same");
+        TestBalances memory balancesAfter = _getTestBalances(sender);
 
-        uint256 afterDAIBalance = dai.balanceOf(sender);
-        assertEq(beforeDAIBalance, afterDAIBalance, "DAI balance should be the same");
-
-        (uint256 afterWaUSDCBufferBalanceUnderlying, uint256 afterWaUSDCBufferBalanceWrapped) = vault.getBufferBalance(
-            waUSDC
-        );
         assertEq(
-            beforeWaUSDCBufferBalanceWrapped,
-            afterWaUSDCBufferBalanceWrapped,
+            balancesBefore.balances.userTokens[balancesBefore.usdcIdx],
+            balancesAfter.balances.userTokens[balancesBefore.usdcIdx],
+            "USDC balance should be the same"
+        );
+
+        assertEq(
+            balancesBefore.balances.userTokens[balancesBefore.daiIdx],
+            balancesAfter.balances.userTokens[balancesBefore.daiIdx],
+            "DAI balance should be the same"
+        );
+
+        assertEq(
+            balancesBefore.waUSDCBuffer.wrapped,
+            balancesAfter.waUSDCBuffer.wrapped,
             "waUSDC wrapped buffer balance should be the same"
         );
         assertEq(
-            beforeWaUSDCBufferBalanceUnderlying,
-            afterWaUSDCBufferBalanceUnderlying,
+            balancesBefore.waUSDCBuffer.underlying,
+            balancesAfter.waUSDCBuffer.underlying,
             "waUSDC underlying buffer balance should be the same"
         );
 
-        (uint256 afterWaDAIBufferBalanceUnderlying, uint256 afterWaDAIBufferBalanceWrapped) = vault.getBufferBalance(
-            waDAI
-        );
         assertEq(
-            beforeWaDAIBufferBalanceWrapped,
-            afterWaDAIBufferBalanceWrapped,
+            balancesBefore.waDAIBuffer.wrapped,
+            balancesAfter.waDAIBuffer.wrapped,
             "waDAI wrapped buffer balance should be the same"
         );
         assertEq(
-            beforeWaDAIBufferBalanceUnderlying,
-            afterWaDAIBufferBalanceUnderlying,
+            balancesBefore.waDAIBuffer.underlying,
+            balancesAfter.waDAIBuffer.underlying,
             "waDAI underlying buffer balance should be the same"
         );
     }
@@ -203,7 +199,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
         vm.revertTo(snapshot);
 
-        TestBalances memory balancesBefore = _getTestBalances();
+        TestBalances memory balancesBefore = _getTestBalances(alice);
 
         vm.prank(alice);
         uint256[] memory actualAmountsInUnderlying = batchRouter.addLiquidityProportionalToERC4626Pool(
@@ -214,7 +210,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             bytes("")
         );
 
-        TestBalances memory balancesAfter = _getTestBalances();
+        TestBalances memory balancesAfter = _getTestBalances(alice);
 
         assertApproxEqAbs(
             actualAmountsInUnderlying[waDaiIdx],
@@ -428,11 +424,11 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 waUsdcIdx;
     }
 
-    function _getTestBalances() private view returns (TestBalances memory testBalances) {
+    function _getTestBalances(address sender) private view returns (TestBalances memory testBalances) {
         IERC20[] memory tokenArray = [address(dai), address(usdc), address(waDAI), address(waUSDC)]
             .toMemoryArray()
             .asIERC20();
-        testBalances.balances = getBalances(alice, tokenArray);
+        testBalances.balances = getBalances(sender, tokenArray);
 
         (uint256 waDAIBufferBalanceUnderlying, uint256 waDAIBufferBalanceWrapped) = vault.getBufferBalance(waDAI);
         testBalances.waDAIBuffer.underlying = waDAIBufferBalanceUnderlying;
