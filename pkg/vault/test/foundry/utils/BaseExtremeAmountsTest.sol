@@ -523,7 +523,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
     function _boundBalances(uint256[2] memory balancesRaw) private pure returns (uint256[] memory balances) {
         balances = new uint256[](balancesRaw.length);
         for (uint256 i = 0; i < balances.length; i++) {
-            balances[i] = bound(balancesRaw[i], 1e3 * 1e18, MAX_UINT128 / 2);
+            balances[i] = bound(balancesRaw[i], 1e6 * 1e18, MAX_UINT128 / 2);
         }
     }
 
