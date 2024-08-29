@@ -33,7 +33,7 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
     // Initial fee of 10%.
     uint256 public constant INITIAL_FEE_PERCENTAGE = 10e16;
     uint256 public constant ONE_PERCENT = 1e16;
-    // After this amount of days the fee will be 0%.
+    // After this number of days the fee will be 0%.
     uint256 public constant FULL_DECAY_DAYS = 10;
 
     // `tokenId` uniquely identifies the NFT minted upon deposit.
