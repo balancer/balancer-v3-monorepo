@@ -17,8 +17,8 @@ import { GradualValueChange } from "./lib/GradualValueChange.sol";
 import { WeightValidation } from "./lib/WeightValidation.sol";
 
 /// @notice Inheriting from WeightedPool is only slightly wasteful (setting 2 immutable weights
-///     that will not be used later), and it is tremendously helpful for pool validation and
-///     any potential future parent class changes.
+///     and _totalTokens, which will not be used later), and it is tremendously helpful for pool
+///     validation and any potential future parent class changes.
 contract LBPool is WeightedPool, Ownable {
     // Since we have max 2 tokens and the weights must sum to 1, we only need to store one weight
     struct PoolState {
@@ -52,8 +52,11 @@ contract LBPool is WeightedPool, Ownable {
         bool swapEnabledOnStart,
         address trustedRoutersProvider
     ) WeightedPool(params, vault) Ownable(owner) {
-        InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, params.numTokens);
+
+        // _NUM_TOKENS == 2 == params.normalizedWeights.length == params.numTokens
         // WeightedPool validates `numTokens == normalizedWeights.length`
+        InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, params.numTokens);
+
         // _startGradualWeightChange validates weights
 
         // Provider address validation performed at the factory level
