@@ -114,8 +114,8 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesAfter = _getTestBalances(alice);
 
         TestLocals memory vars;
-        vars.daiAmountIn = exactUnderlyingAmountsIn[waDaiIdx];
-        vars.usdcAmountIn = exactUnderlyingAmountsIn[waUsdcIdx];
+        vars.daiAmountDelta = exactUnderlyingAmountsIn[waDaiIdx];
+        vars.usdcAmountDelta = exactUnderlyingAmountsIn[waUsdcIdx];
         vars.waDaiBufferDelta = exactWrappedAmountsIn[waDaiIdx];
         vars.waUsdcBufferDelta = exactWrappedAmountsIn[waUsdcIdx];
         vars.isPartialERC4626Pool = false;
@@ -153,8 +153,8 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesAfter = _getTestBalances(alice);
 
         TestLocals memory vars;
-        vars.daiAmountIn = exactUnderlyingAmountsIn[partialWaDaiIdx];
-        vars.usdcAmountIn = exactUnderlyingAmountsIn[partialUsdcIdx];
+        vars.daiAmountDelta = exactUnderlyingAmountsIn[partialWaDaiIdx];
+        vars.usdcAmountDelta = exactUnderlyingAmountsIn[partialUsdcIdx];
         vars.waDaiBufferDelta = exactWrappedAmountsIn[partialWaDaiIdx];
         vars.isPartialERC4626Pool = true;
 
@@ -278,8 +278,8 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesAfter = _getTestBalances(alice);
 
         TestLocals memory vars;
-        vars.daiAmountIn = actualUnderlyingAmountsIn[waDaiIdx];
-        vars.usdcAmountIn = actualUnderlyingAmountsIn[waUsdcIdx];
+        vars.daiAmountDelta = actualUnderlyingAmountsIn[waDaiIdx];
+        vars.usdcAmountDelta = actualUnderlyingAmountsIn[waUsdcIdx];
         vars.waDaiBufferDelta = expectedWrappedAmountsIn[waDaiIdx];
         vars.waUsdcBufferDelta = expectedWrappedAmountsIn[waUsdcIdx];
         vars.isPartialERC4626Pool = false;
@@ -340,8 +340,8 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesAfter = _getTestBalances(alice);
 
         TestLocals memory vars;
-        vars.daiAmountIn = actualUnderlyingAmountsIn[partialWaDaiIdx];
-        vars.usdcAmountIn = actualUnderlyingAmountsIn[partialUsdcIdx];
+        vars.daiAmountDelta = actualUnderlyingAmountsIn[partialWaDaiIdx];
+        vars.usdcAmountDelta = actualUnderlyingAmountsIn[partialUsdcIdx];
         vars.waDaiBufferDelta = expectedWrappedAmountsIn[partialWaDaiIdx];
         vars.isPartialERC4626Pool = true;
 
@@ -482,8 +482,8 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesAfter = _getTestBalances(bob);
 
         TestLocals memory vars;
-        vars.daiAmountIn = actualUnderlyingAmountsOut[waDaiIdx];
-        vars.usdcAmountIn = actualUnderlyingAmountsOut[waUsdcIdx];
+        vars.daiAmountDelta = actualUnderlyingAmountsOut[waDaiIdx];
+        vars.usdcAmountDelta = actualUnderlyingAmountsOut[waUsdcIdx];
         vars.waDaiBufferDelta = expectedWrappedAmountsOut[waDaiIdx];
         vars.waUsdcBufferDelta = expectedWrappedAmountsOut[waUsdcIdx];
         vars.isPartialERC4626Pool = false;
@@ -542,8 +542,8 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesAfter = _getTestBalances(bob);
 
         TestLocals memory vars;
-        vars.daiAmountIn = actualUnderlyingAmountsOut[partialWaDaiIdx];
-        vars.usdcAmountIn = actualUnderlyingAmountsOut[partialUsdcIdx];
+        vars.daiAmountDelta = actualUnderlyingAmountsOut[partialWaDaiIdx];
+        vars.usdcAmountDelta = actualUnderlyingAmountsOut[partialUsdcIdx];
         vars.waDaiBufferDelta = expectedWrappedAmountsOut[partialWaDaiIdx];
         vars.isPartialERC4626Pool = true;
 
@@ -685,8 +685,8 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
     }
 
     struct TestLocals {
-        uint256 daiAmountIn;
-        uint256 usdcAmountIn;
+        uint256 daiAmountDelta;
+        uint256 usdcAmountDelta;
         uint256 waDaiBufferDelta;
         uint256 waUsdcBufferDelta;
         bool isPartialERC4626Pool;
@@ -703,12 +703,12 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         assertEq(
             balancesAfter.balances.aliceTokens[balancesAfter.usdcIdx],
-            balancesBefore.balances.aliceTokens[balancesBefore.usdcIdx] - vars.usdcAmountIn,
+            balancesBefore.balances.aliceTokens[balancesBefore.usdcIdx] - vars.usdcAmountDelta,
             "Alice: wrong USDC balance"
         );
         assertEq(
             balancesAfter.balances.aliceTokens[balancesAfter.daiIdx],
-            balancesBefore.balances.aliceTokens[balancesBefore.daiIdx] - vars.daiAmountIn,
+            balancesBefore.balances.aliceTokens[balancesBefore.daiIdx] - vars.daiAmountDelta,
             "Alice: wrong DAI balance"
         );
 
@@ -719,7 +719,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
         assertEq(
             balancesAfter.waDAIBuffer.underlying,
-            balancesBefore.waDAIBuffer.underlying + vars.daiAmountIn,
+            balancesBefore.waDAIBuffer.underlying + vars.daiAmountDelta,
             "Vault: wrong waDAI underlying buffer balance"
         );
 
@@ -739,7 +739,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             );
             assertEq(
                 balancesAfter.waUSDCBuffer.underlying,
-                balancesBefore.waUSDCBuffer.underlying + vars.usdcAmountIn,
+                balancesBefore.waUSDCBuffer.underlying + vars.usdcAmountDelta,
                 "Vault: wrong waUSDC underlying buffer balance"
             );
             assertApproxEqAbs(
@@ -751,7 +751,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         } else {
             assertApproxEqAbs(
                 balances[ybUsdcIdx],
-                erc4626PoolInitialAmount + vars.usdcAmountIn,
+                erc4626PoolInitialAmount + vars.usdcAmountDelta,
                 MAX_ERROR,
                 "ERC4626 Pool: wrong USDC balance"
             );
@@ -769,12 +769,12 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         assertEq(
             balancesAfter.balances.bobTokens[balancesAfter.usdcIdx],
-            balancesBefore.balances.bobTokens[balancesBefore.usdcIdx] + vars.usdcAmountIn,
+            balancesBefore.balances.bobTokens[balancesBefore.usdcIdx] + vars.usdcAmountDelta,
             "Bob: wrong USDC balance"
         );
         assertEq(
             balancesAfter.balances.bobTokens[balancesAfter.daiIdx],
-            balancesBefore.balances.bobTokens[balancesBefore.daiIdx] + vars.daiAmountIn,
+            balancesBefore.balances.bobTokens[balancesBefore.daiIdx] + vars.daiAmountDelta,
             "Bob: wrong DAI balance"
         );
 
@@ -785,7 +785,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
         assertEq(
             balancesAfter.waDAIBuffer.underlying,
-            balancesBefore.waDAIBuffer.underlying - vars.daiAmountIn,
+            balancesBefore.waDAIBuffer.underlying - vars.daiAmountDelta,
             "Vault: wrong waDAI underlying buffer balance"
         );
 
@@ -805,7 +805,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             );
             assertEq(
                 balancesAfter.waUSDCBuffer.underlying,
-                balancesBefore.waUSDCBuffer.underlying - vars.usdcAmountIn,
+                balancesBefore.waUSDCBuffer.underlying - vars.usdcAmountDelta,
                 "Vault: wrong waUSDC underlying buffer balance"
             );
             assertApproxEqAbs(
@@ -817,7 +817,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         } else {
             assertApproxEqAbs(
                 balances[ybUsdcIdx],
-                erc4626PoolInitialAmount - vars.usdcAmountIn,
+                erc4626PoolInitialAmount - vars.usdcAmountDelta,
                 MAX_ERROR,
                 "ERC4626 Pool: wrong USDC balance"
             );
