@@ -35,6 +35,8 @@ contract LBPool is WeightedPool, Ownable {
     // `{start,end}Time` are `uint56`s. Ensure that no input time (passed as `uint256`) will overflow.
     uint256 private constant _MAX_TIME = type(uint56).max;
 
+    address internal immutable TRUSTED_ROUTERS_PROVIDER;
+
     event SwapEnabledSet(bool swapEnabled);
     event GradualWeightUpdateScheduled(
         uint256 startTime,
@@ -47,11 +49,15 @@ contract LBPool is WeightedPool, Ownable {
         NewPoolParams memory params,
         IVault vault,
         address owner,
-        bool swapEnabledOnStart
+        bool swapEnabledOnStart,
+        address trustedRoutersProvider
     ) WeightedPool(params, vault) Ownable(owner) {
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, params.numTokens);
         // WeightedPool validates `numTokens == normalizedWeights.length`
         // _startGradualWeightChange validates weights
+
+        // Provider address validation performed at the factory level
+        TRUSTED_ROUTERS_PROVIDER = trustedRoutersProvider;
 
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(
@@ -130,10 +136,10 @@ contract LBPool is WeightedPool, Ownable {
 
     /**
      * @notice Check that the caller who initiated the add liquidity operation is the owner.
-     * @param initiator The address (usually a router contract) that initiated a swap operation on the Vault
+     * @param router The address (usually a router contract) that initiated add liquidity operation on the Vault
      */
     function onBeforeAddLiquidity(
-        address initiator,
+        address router,
         address,
         AddLiquidityKind,
         uint256[] memory,
@@ -142,10 +148,11 @@ contract LBPool is WeightedPool, Ownable {
         bytes memory
     ) external view onlyVault returns (bool success) {
 
-        // TODO use TrustedRoutersProvider
+        // TODO use TrustedRoutersProvider. Presumably something like this:
+        // success = ITrustedRoutersProvider(TRUSTED_ROUTERS_PROVIDER).isTrusted(router);
 
-        // Check `initiator == owner` first to avoid calling `getSender()` on a potentially non-router contract/address
-        success = (initiator == owner()) || (IRouterCommon(initiator).getSender() == owner());
+        // Check `router == owner` first to avoid calling `getSender()` on a potentially non-router contract/address
+        success = (router == owner()) || (IRouterCommon(router).getSender() == owner());
     }
 
     /**
