@@ -9,7 +9,6 @@ import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import {
     TokenConfig,
     LiquidityManagement,
@@ -20,6 +19,7 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { MinimalRouter } from "./MinimalRouter.sol";
 
@@ -34,7 +34,7 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
     uint256 public constant INITIAL_FEE_PERCENTAGE = 10e16;
     uint256 public constant ONE_PERCENT = 1e16;
     // After this number of days the fee will be 0%.
-    uint256 public constant FULL_DECAY_DAYS = 10;
+    uint256 public constant DECAY_PERIOD_DAYS = 10;
 
     // `tokenId` uniquely identifies the NFT minted upon deposit.
     mapping(uint256 tokenId => uint256 bptAmount) public bptAmount;
@@ -272,7 +272,7 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
     function getCurrentFeePercentage(uint256 tokenId) public view returns (uint256 feePercentage) {
         // Calculate the number of days that have passed since startTime
         uint256 daysPassed = (block.timestamp - startTime[tokenId]) / 1 days;
-        if (daysPassed < FULL_DECAY_DAYS) {
+        if (daysPassed < DECAY_PERIOD_DAYS) {
             // decreasing fee by 1% per day
             feePercentage = INITIAL_FEE_PERCENTAGE - ONE_PERCENT * daysPassed;
         }

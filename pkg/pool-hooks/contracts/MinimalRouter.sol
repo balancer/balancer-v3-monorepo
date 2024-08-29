@@ -237,7 +237,9 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
             }
         }
 
-        // Send ETH to receiver.
-        payable(params.receiver).sendValue(ethAmountOut);
+        if(ethAmountOut > 0) {
+            // Send ETH to receiver.
+            payable(params.receiver).sendValue(ethAmountOut);
+        }
     }
 }
