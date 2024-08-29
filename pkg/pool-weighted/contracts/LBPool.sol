@@ -36,6 +36,7 @@ contract LBPool is WeightedPool, Ownable {
     uint256 private constant _MAX_TIME = type(uint56).max;
 
     address internal immutable TRUSTED_ROUTERS_PROVIDER;
+    address internal immutable TRUSTED_ROUTER_TODO_DELETE_ME;
 
     event SwapEnabledSet(bool swapEnabled);
     event GradualWeightUpdateScheduled(
@@ -45,12 +46,16 @@ contract LBPool is WeightedPool, Ownable {
         uint256[] endWeights
     );
 
+    /// @dev Indicates that the router that called the Vault is not trusted and should be ignored.
+    error RouterNotTrusted();
+
     constructor(
         NewPoolParams memory params,
         IVault vault,
         address owner,
         bool swapEnabledOnStart,
-        address trustedRoutersProvider
+        address trustedRoutersProvider,
+        address trustedRouterTodoDeleteMe
     ) WeightedPool(params, vault) Ownable(owner) {
 
         // _NUM_TOKENS == 2 == params.normalizedWeights.length == params.numTokens
@@ -61,6 +66,7 @@ contract LBPool is WeightedPool, Ownable {
 
         // Provider address validation performed at the factory level
         TRUSTED_ROUTERS_PROVIDER = trustedRoutersProvider;
+        TRUSTED_ROUTER_TODO_DELETE_ME = trustedRouterTodoDeleteMe;
 
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(
@@ -149,14 +155,14 @@ contract LBPool is WeightedPool, Ownable {
         uint256,
         uint256[] memory,
         bytes memory
-    ) external view onlyVault returns (bool success) {
+    ) external view onlyVault returns (bool) {
 
         // TODO use TrustedRoutersProvider. Presumably something like this:
-        //
         // if (ITrustedRoutersProvider(TRUSTED_ROUTERS_PROVIDER).isTrusted(router)) {
-        //      success = IRouterCommon(router).getSender() == owner();
-        // }
-        success = IRouterCommon(router).getSender() == owner();
+        if (router == TRUSTED_ROUTER_TODO_DELETE_ME) {
+            return IRouterCommon(router).getSender() == owner();
+        }
+        revert RouterNotTrusted(); //TODO: should hooks revert or just return false?
     }
 
     /**
