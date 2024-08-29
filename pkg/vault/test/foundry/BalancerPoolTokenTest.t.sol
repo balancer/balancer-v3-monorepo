@@ -358,7 +358,14 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         // Init pool, so it has a BPT supply and rate can be calculated.
         vm.startPrank(lp);
         IERC20[] memory tokens = vault.getPoolTokens(address(poolToken));
-        router.initialize(address(poolToken), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, bytes(""));
+        router.initialize(
+            address(poolToken),
+            tokens,
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("")
+        );
         vm.stopPrank();
 
         uint256[] memory liveBalancesScaled18 = vault.getCurrentLiveBalances(address(poolToken));

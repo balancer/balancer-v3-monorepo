@@ -176,7 +176,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
         vm.mockCall(
             POOL,
             abi.encodeCall(BalancerPoolToken.emitTransfer, (ZERO_ADDRESS, ZERO_ADDRESS, MINIMUM_TOTAL_SUPPLY)),
-            bytes(""))
+            bytes("")
         );
         token.manualMintMinimumSupplyReserve(POOL);
 
@@ -257,7 +257,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
         vm.mockCall(
             POOL,
             abi.encodeCall(BalancerPoolToken.emitTransfer, (OWNER, OWNER2, MINIMUM_TOTAL_SUPPLY)),
-            new bytes(""))
+            new bytes("")
         );
         vm.expectEmit();
         emit ERC20MultiToken.Transfer(POOL, OWNER, OWNER2, MINIMUM_TOTAL_SUPPLY);
@@ -292,17 +292,17 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
 
     // #region Private functions
     function _approveWithBPTEmitApprovalMock(address pool, address owner, address spender, uint256 amount) internal {
-        vm.mockCall(pool, abi.encodeCall(BalancerPoolToken.emitApproval, (owner, spender, amount)), bytes("")));
+        vm.mockCall(pool, abi.encodeCall(BalancerPoolToken.emitApproval, (owner, spender, amount)), bytes(""));
         token.manualApprove(pool, owner, spender, amount);
     }
 
     function _mintWithBPTEmitTransferMock(address pool, address owner, uint256 amount) internal {
-        vm.mockCall(pool, abi.encodeCall(BalancerPoolToken.emitTransfer, (ZERO_ADDRESS, owner, amount)), bytes("")));
+        vm.mockCall(pool, abi.encodeCall(BalancerPoolToken.emitTransfer, (ZERO_ADDRESS, owner, amount)), bytes(""));
         token.manualMint(pool, owner, amount);
     }
 
     function _burnWithBPTEmitTransferMock(address pool, address from, uint256 amount) internal {
-        vm.mockCall(pool, abi.encodeCall(BalancerPoolToken.emitTransfer, (from, ZERO_ADDRESS, amount)), bytes("")));
+        vm.mockCall(pool, abi.encodeCall(BalancerPoolToken.emitTransfer, (from, ZERO_ADDRESS, amount)), bytes(""));
         token.manualBurn(pool, from, amount);
     }
     // #endregion
