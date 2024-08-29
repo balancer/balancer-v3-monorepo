@@ -442,7 +442,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
         _ensureMinimumTotalSupply(issuedShares);
 
-        issuedShares -= _MINIMUM_TOTAL_SUPPLY;
+        issuedShares -= _BUFFER_MINIMUM_TOTAL_SUPPLY;
         _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
         _mintMinimumBufferSupplyReserve(wrappedToken);
 
@@ -503,10 +503,10 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     }
 
     function _mintMinimumBufferSupplyReserve(IERC4626 wrappedToken) internal {
-        _bufferTotalShares[wrappedToken] += _MINIMUM_TOTAL_SUPPLY;
-        _bufferLpShares[wrappedToken][address(0)] += _MINIMUM_TOTAL_SUPPLY;
+        _bufferTotalShares[wrappedToken] += _BUFFER_MINIMUM_TOTAL_SUPPLY;
+        _bufferLpShares[wrappedToken][address(0)] += _BUFFER_MINIMUM_TOTAL_SUPPLY;
 
-        emit BufferSharesMinted(wrappedToken, address(0), _MINIMUM_TOTAL_SUPPLY);
+        emit BufferSharesMinted(wrappedToken, address(0), _BUFFER_MINIMUM_TOTAL_SUPPLY);
     }
 
     /// @inheritdoc IVaultAdmin

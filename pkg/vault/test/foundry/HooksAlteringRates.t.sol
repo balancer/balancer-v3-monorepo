@@ -24,6 +24,8 @@ contract HooksAlteringRatesTest is BaseVaultTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
+    uint256 internal constant POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
+
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
@@ -111,7 +113,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
-        uint256 bptAmount = rateAdjustedAmount + defaultAmount - _MINIMUM_BPT;
+        uint256 bptAmount = rateAdjustedAmount + defaultAmount - POOL_MINIMUM_TOTAL_SUPPLY;
 
         uint256[] memory expectedAmounts = new uint256[](2);
         expectedAmounts[daiIdx] = rateAdjustedAmount;

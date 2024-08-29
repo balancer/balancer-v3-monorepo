@@ -19,7 +19,7 @@ contract ERC20MultiTokenMock is ERC20MultiToken {
     }
 
     function getMinimumTotalSupply() public pure returns (uint256) {
-        return _MINIMUM_TOTAL_SUPPLY;
+        return _POOL_MINIMUM_TOTAL_SUPPLY;
     }
 
     // #endregion
