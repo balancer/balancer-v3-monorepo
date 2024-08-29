@@ -14,6 +14,7 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
@@ -22,6 +23,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
+    using FixedPoint for *;
 
     uint256 constant MIN_AMOUNT = 1e12;
     uint256 internal constant MAX_ERROR = 2;
@@ -265,7 +267,21 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             bytes("")
         );
 
-        assertEq(queryBptAmountOut, actualBptAmountOut, "Query and actual bpt amount out do not match");
+        // Query and actual operation have a small difference in the buffer operation: a query in the buffer returns
+        // the amount of wrapped tokens calculated by a "preview" operation, while the actual operation in the buffer
+        // returns the "convertToShares" result + vaultConvertFactor. Since the wrapped amount out of each buffer is
+        // added to the yield-bearing pool and converted to the equivalent underlying amount to calculate the
+        // poolInvariantDelta (which, in this case, is the bptAmountOut), we need to consider the error added by
+        // vaultConvertFactor scaled by each token rate.
+        uint256 invariantError = vaultConvertFactor.mulDown(waDAI.getRate()) +
+            vaultConvertFactor.mulDown(waUSDC.getRate());
+
+        assertApproxEqAbs(
+            queryBptAmountOut,
+            actualBptAmountOut + invariantError,
+            MAX_ERROR,
+            "Query and actual bpt amount out do not match"
+        );
     }
 
     function testQueryAddLiquidityUnbalancedToPartialERC4626Pool() public {
@@ -290,7 +306,20 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             bytes("")
         );
 
-        assertEq(queryBptAmountOut, actualBptAmountOut, "Query and actual bpt amount out do not match");
+        // Query and actual operation have a small difference in the buffer operation: a query in the buffer returns
+        // the amount of wrapped tokens calculated by a "preview" operation, while the actual operation in the buffer
+        // returns the "convertToShares" result + vaultConvertFactor. Since the wrapped amount out of each buffer is
+        // added to the yield-bearing pool and converted to the equivalent underlying amount to calculate the
+        // poolInvariantDelta (which, in this case, is the bptAmountOut), we need to consider the error added by
+        // vaultConvertFactor scaled by each token rate.
+        uint256 invariantError = vaultConvertFactor.mulDown(waDAI.getRate());
+
+        assertApproxEqAbs(
+            queryBptAmountOut,
+            actualBptAmountOut + invariantError,
+            MAX_ERROR,
+            "Query and actual bpt amount out do not match"
+        );
     }
 
     function testAddLiquidityProportionalToERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
@@ -519,11 +548,13 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         for (uint256 i = 0; i < queryUnderlyingAmountsIn.length; i++) {
-            // Real operation and preview may have a difference.
+            // Query and actual operation have a small difference in the buffer operation: a query in the buffer
+            // returns the amount of underlying tokens calculated by a "preview" operation, while the actual operation
+            // in the buffer returns the "convertToAssets" result - vaultConvertFactor.
             assertApproxEqAbs(
                 queryUnderlyingAmountsIn[i],
-                actualUnderlyingAmountsIn[i],
-                5,
+                actualUnderlyingAmountsIn[i] - vaultConvertFactor,
+                MAX_ERROR,
                 "Query and actual underlying amounts in do not match"
             );
         }
@@ -552,15 +583,22 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             bytes("")
         );
 
-        for (uint256 i = 0; i < queryUnderlyingAmountsIn.length; i++) {
-            // Real operation and preview may have a difference.
-            assertApproxEqAbs(
-                queryUnderlyingAmountsIn[i],
-                actualUnderlyingAmountsIn[i],
-                5,
-                "Query and actual underlying amounts in do not match"
-            );
-        }
+        // Query and actual operation have a small difference in the buffer operation: a query in the buffer
+        // returns the amount of underlying tokens calculated by a "preview" operation, while the actual operation
+        // in the buffer returns the "convertToAssets" result - vaultConvertFactor.
+        assertApproxEqAbs(
+            queryUnderlyingAmountsIn[partialWaDaiIdx],
+            actualUnderlyingAmountsIn[partialWaDaiIdx] - vaultConvertFactor,
+            MAX_ERROR,
+            "Query and actual DAI amounts in do not match"
+        );
+
+        assertApproxEqAbs(
+            queryUnderlyingAmountsIn[partialUsdcIdx],
+            actualUnderlyingAmountsIn[partialUsdcIdx],
+            MAX_ERROR,
+            "Query and actual USDC amounts in do not match"
+        );
     }
 
     function testRemoveLiquidityProportionalFromERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
@@ -591,9 +629,6 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             false,
             bytes("")
         );
-        uint256[] memory wrappedAmountsOut = new uint256[](2);
-        wrappedAmountsOut[waDaiIdx] = waDAI.convertToShares(underlyingAmountsOut[waDaiIdx]);
-        wrappedAmountsOut[waUsdcIdx] = waUSDC.convertToShares(underlyingAmountsOut[waUsdcIdx]);
 
         TestBalances memory balancesAfter = _getTestBalances(bob);
 
