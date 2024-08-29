@@ -43,8 +43,8 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
     }
 
     /**
-     * Extends RemoveLiquidityHookParams to include a receiver
      * @notice Data for the remove liquidity hook.
+     * @dev Extends RemoveLiquidityHookParams to include a receiver.
      * @param sender Account originating the remove liquidity operation
      * @param receiver Account to receive the tokens
      * @param pool Address of the liquidity pool
