@@ -15,21 +15,21 @@ import "./FixedPoint.sol";
 library WeightedMath {
     using FixedPoint for uint256;
 
-    /// @dev User Attempted to burn less BPT than allowed for a specific amountOut.
+    /// @notice User Attempted to burn less BPT than allowed for a specific amountOut.
     error MinBPTInForTokenOut();
 
-    /// @dev User attempted to mint more BPT than allowed for a specific amountIn.
+    /// @notice User attempted to mint more BPT than allowed for a specific amountIn.
     error MaxOutBptForTokenIn();
 
-    /// @dev User attempted to extract a disproportionate amountOut of tokens from a pool.
+    /// @notice User attempted to extract a disproportionate amountOut of tokens from a pool.
     error MaxOutRatio();
 
-    /// @dev User attempted to add a disproportionate amountIn of tokens to a pool.
+    /// @notice User attempted to add a disproportionate amountIn of tokens to a pool.
     error MaxInRatio();
 
     /**
-     * @dev Error thrown when the calculated invariant is zero, indicating an issue with the invariant calculation.
-     * Most commonly, this happens when a token balance is zero.
+     * @notice Error thrown when the calculated invariant is zero, indicating an issue with the invariant calculation.
+     * @dev Most commonly, this happens when a token balance is zero.
      */
     error ZeroInvariant();
 
@@ -63,10 +63,10 @@ library WeightedMath {
     // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
     uint256 internal constant _MIN_INVARIANT_RATIO = 70e16; // 70%
 
-    // The invariant is used to collect protocol swap fees by comparing its value between two times.
-    // So we can round always to the same direction. It is also used to initiate the BPT amount and,
-    // because there is a minimum BPT, we round down the invariant.
-    function computeInvariant(
+    // The invariant functions are called by the Vault during various liquidity operations, and require a specific
+    // rounding direction in order to ensure safety (i.e., that the final result is always rounded in favor of the
+    // protocol).
+    function computeInvariantDown(
         uint256[] memory normalizedWeights,
         uint256[] memory balances
     ) internal pure returns (uint256 invariant) {
@@ -80,6 +80,27 @@ library WeightedMath {
         invariant = FixedPoint.ONE;
         for (uint256 i = 0; i < normalizedWeights.length; ++i) {
             invariant = invariant.mulDown(balances[i].powDown(normalizedWeights[i]));
+        }
+
+        if (invariant == 0) {
+            revert ZeroInvariant();
+        }
+    }
+
+    function computeInvariantUp(
+        uint256[] memory normalizedWeights,
+        uint256[] memory balances
+    ) internal pure returns (uint256 invariant) {
+        /**********************************************************************************************
+        // invariant               _____                                                             //
+        // wi = weight index i      | |      wi                                                      //
+        // bi = balance index i     | |  bi ^   = i                                                  //
+        // i = invariant                                                                             //
+        **********************************************************************************************/
+
+        invariant = FixedPoint.ONE;
+        for (uint256 i = 0; i < normalizedWeights.length; ++i) {
+            invariant = invariant.mulUp(balances[i].powUp(normalizedWeights[i]));
         }
 
         if (invariant == 0) {

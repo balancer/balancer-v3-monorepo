@@ -33,7 +33,7 @@ import { VaultExtension } from "../VaultExtension.sol";
 import { PoolDataLib } from "../lib/PoolDataLib.sol";
 
 struct SwapInternalStateLocals {
-    SwapParams params;
+    VaultSwapParams vaultSwapParams;
     SwapState swapState;
     PoolData poolData;
     VaultState vaultState;
@@ -55,8 +55,9 @@ contract VaultMock is IVaultMainMock, Vault {
     constructor(
         IVaultExtension vaultExtension,
         IAuthorizer authorizer,
-        IProtocolFeeController protocolFeeController
-    ) Vault(vaultExtension, authorizer, protocolFeeController) {
+        IProtocolFeeController protocolFeeController,
+        uint256 minTradeAmount
+    ) Vault(vaultExtension, authorizer, protocolFeeController, minTradeAmount) {
         uint32 pauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
         uint32 bufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
         _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowEndTime - bufferPeriodDuration);
@@ -142,10 +143,6 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualSetPoolRegistered(address pool, bool status) public {
         _poolConfigBits[pool] = _poolConfigBits[pool].setPoolRegistered(status);
-    }
-
-    function manualSetIsUnlocked(bool status) public {
-        _isUnlocked().tstore(status);
     }
 
     function manualSetInitializedPool(address pool, bool isPoolInitialized) public {
@@ -247,7 +244,7 @@ contract VaultMock is IVaultMainMock, Vault {
         require(tokens.length == tokenBalanceRaw.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
         require(tokens.length == tokenBalanceLiveScaled18.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
 
-        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances = _poolTokenBalances[pool];
         for (uint256 i = 0; i < tokens.length; ++i) {
             poolTokenBalances[i] = PackedTokenBalance.toPackedBalance(tokenBalanceRaw[i], tokenBalanceLiveScaled18[i]);
         }
@@ -265,7 +262,7 @@ contract VaultMock is IVaultMainMock, Vault {
         require(tokens.length == tokenBalanceRaw.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
         require(tokens.length == tokenBalanceLiveScaled18.length, "VaultMock: TOKENS_LENGTH_MISMATCH");
 
-        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances = _poolTokenBalances[pool];
         for (uint256 i = 0; i < tokens.length; ++i) {
             poolTokenBalances[i] = PackedTokenBalance.toPackedBalance(tokenBalanceRaw[i], tokenBalanceLiveScaled18[i]);
         }
@@ -387,7 +384,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw) {
-        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances = _poolTokenBalances[pool];
 
         uint256 numTokens = _poolTokens[pool].length;
         balancesRaw = new uint256[](numTokens);
@@ -398,7 +395,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function getLastLiveBalances(address pool) external view returns (uint256[] memory lastBalancesLiveScaled18) {
-        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances = _poolTokenBalances[pool];
 
         uint256 numTokens = _poolTokens[pool].length;
         lastBalancesLiveScaled18 = new uint256[](numTokens);
@@ -441,7 +438,7 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualInternalSwap(
-        SwapParams memory params,
+        VaultSwapParams memory vaultSwapParams,
         SwapState memory state,
         PoolData memory poolData
     )
@@ -451,30 +448,30 @@ contract VaultMock is IVaultMainMock, Vault {
             uint256 amountCalculatedScaled18,
             uint256 amountIn,
             uint256 amountOut,
-            SwapParams memory,
+            VaultSwapParams memory,
             SwapState memory,
             PoolData memory
         )
     {
-        PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
+        PoolSwapParams memory poolSwapParams = _buildPoolSwapParams(vaultSwapParams, state, poolData);
 
         (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut) = _swap(
-            params,
+            vaultSwapParams,
             state,
             poolData,
-            swapParams
+            poolSwapParams
         );
 
-        return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut, params, state, poolData);
+        return (amountCalculatedRaw, amountCalculatedScaled18, amountIn, amountOut, vaultSwapParams, state, poolData);
     }
 
     function manualReentrancySwap(
-        SwapParams memory params,
+        VaultSwapParams memory vaultSwapParams,
         SwapState memory state,
         PoolData memory poolData
     ) external nonReentrant {
-        PoolSwapParams memory swapParams = _buildPoolSwapParams(params, state, poolData);
-        _swap(params, state, poolData, swapParams);
+        PoolSwapParams memory poolSwapParams = _buildPoolSwapParams(vaultSwapParams, state, poolData);
+        _swap(vaultSwapParams, state, poolData, poolSwapParams);
     }
 
     function manualGetAggregateSwapFeeAmount(address pool, IERC20 token) external view returns (uint256) {
@@ -502,11 +499,11 @@ contract VaultMock is IVaultMainMock, Vault {
     }
 
     function manualBuildPoolSwapParams(
-        SwapParams memory params,
+        VaultSwapParams memory vaultSwapParams,
         SwapState memory state,
         PoolData memory poolData
     ) external view returns (PoolSwapParams memory) {
-        return _buildPoolSwapParams(params, state, poolData);
+        return _buildPoolSwapParams(vaultSwapParams, state, poolData);
     }
 
     function manualComputeAndChargeAggregateSwapFees(
@@ -605,11 +602,22 @@ contract VaultMock is IVaultMainMock, Vault {
         return _bufferTokenBalances[wrappedToken];
     }
 
-    function manualUpdateReservesAfterWrapping(
+    function manualSettleWrap(
         IERC20 underlyingToken,
-        IERC20 wrappedToken
-    ) external returns (uint256, uint256) {
-        return _updateReservesAfterWrapping(underlyingToken, wrappedToken);
+        IERC20 wrappedToken,
+        uint256 underlyingHint,
+        uint256 wrappedHint
+    ) external {
+        _settleWrap(underlyingToken, wrappedToken, underlyingHint, wrappedHint);
+    }
+
+    function manualSettleUnwrap(
+        IERC20 underlyingToken,
+        IERC20 wrappedToken,
+        uint256 underlyingHint,
+        uint256 wrappedHint
+    ) external {
+        _settleUnwrap(underlyingToken, wrappedToken, underlyingHint, wrappedHint);
     }
 
     function manualTransfer(IERC20 token, address to, uint256 amount) external {
@@ -638,6 +646,18 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualGetTokenDeltas() external view returns (TokenDeltaMappingSlotType slot) {
         return _tokenDeltas();
+    }
+
+    function manualSetBufferAsset(IERC4626 wrappedToken, address underlyingToken) external {
+        _bufferAssets[wrappedToken] = underlyingToken;
+    }
+
+    function manualSetBufferOwnerShares(IERC4626 wrappedToken, address owner, uint256 shares) external {
+        _bufferLpShares[wrappedToken][owner] = shares;
+    }
+
+    function manualSetBufferTotalShares(IERC4626 wrappedToken, uint256 shares) external {
+        _bufferTotalShares[wrappedToken] = shares;
     }
 
     function manualErc4626BufferWrapOrUnwrapReentrancy(

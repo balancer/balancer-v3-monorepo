@@ -8,10 +8,12 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IERC20MultiTokenErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiTokenErrors.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -20,6 +22,7 @@ import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers
 import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { RouterCommon } from "../../contracts/RouterCommon.sol";
 
@@ -52,6 +55,8 @@ contract RouterTest is BaseVaultTest {
     IERC20[] internal wethDaiTokens;
 
     function setUp() public virtual override {
+        rateProvider = new RateProviderMock();
+
         BaseVaultTest.setUp();
 
         approveForPool(IERC20(wethPool));
@@ -61,9 +66,20 @@ contract RouterTest is BaseVaultTest {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), "pool");
 
+        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+        rateProviders[0] = rateProvider;
+        rateProviders[1] = rateProvider;
+        bool[] memory paysYieldFees = new bool[](2);
+        paysYieldFees[0] = true;
+        paysYieldFees[1] = true;
+
         factoryMock.registerTestPool(
             address(newPool),
-            vault.buildTokenConfig([address(dai), address(usdc)].toMemoryArray().asIERC20()),
+            vault.buildTokenConfig(
+                [address(dai), address(usdc)].toMemoryArray().asIERC20(),
+                rateProviders,
+                paysYieldFees
+            ),
             poolHooksContract,
             lp
         );
@@ -133,6 +149,9 @@ contract RouterTest is BaseVaultTest {
         bytes32 disableQueryRole = vault.getActionId(IVaultAdmin.disableQuery.selector);
 
         authorizer.grantRole(disableQueryRole, alice);
+
+        vm.expectEmit();
+        emit IVaultEvents.VaultQueriesDisabled();
 
         vm.prank(alice);
         vault.disableQuery();
@@ -375,6 +394,17 @@ contract RouterTest is BaseVaultTest {
         BaseVaultTest.Balances memory afterBalances = getBalances(alice);
 
         _assertBalanceChangeRemoveLiquidityRecovery(beforeBalances, afterBalances, bptAmountIn, amountsOut);
+
+        // Change rates (would normally incur yield) - test that yield fees are *not* charged to raw balances.
+        vault.manualSetAggregateYieldFeePercentage(pool, 50e16);
+        rateProvider.mockRate(2e18);
+        authorizer.grantRole(vault.getActionId(IVaultAdmin.disableRecoveryMode.selector), admin);
+        vm.prank(admin);
+        vault.disableRecoveryMode(pool);
+
+        afterBalances = getBalances(alice);
+
+        _assertBalanceChangeRemoveLiquidityRecovery(beforeBalances, afterBalances, bptAmountIn, amountsOut);
     }
 
     function testRemoveLiquidityRecovery__Fuzz(uint256 amountIn1, uint256 amountIn2, uint256 exitPercentage) public {
@@ -463,6 +493,26 @@ contract RouterTest is BaseVaultTest {
             afterBalances.vaultReserves[usdcIdx],
             beforeBalances.vaultReserves[usdcIdx] - amountsOut[usdcIdx],
             "Vault Reserve USDC is wrong"
+        );
+        assertEq(
+            afterBalances.swapFeeAmounts[daiIdx],
+            beforeBalances.swapFeeAmounts[daiIdx],
+            "Vault DAI Swap Fee amount changed"
+        );
+        assertEq(
+            afterBalances.swapFeeAmounts[usdcIdx],
+            beforeBalances.swapFeeAmounts[usdcIdx],
+            "Vault USDC Swap Fee amount changed"
+        );
+        assertEq(
+            afterBalances.yieldFeeAmounts[daiIdx],
+            beforeBalances.yieldFeeAmounts[daiIdx],
+            "Vault DAI Yield Fee amount changed"
+        );
+        assertEq(
+            afterBalances.yieldFeeAmounts[usdcIdx],
+            beforeBalances.yieldFeeAmounts[usdcIdx],
+            "Vault USDC Yield Fee amount changed"
         );
     }
 

@@ -296,8 +296,13 @@ contract VaultExplorer is IVaultExplorer {
     }
 
     /*******************************************************************************
-                              Yield-bearing Token Buffers
+                                  ERC4626 Buffers
     *******************************************************************************/
+
+    /// @inheritdoc IVaultExplorer
+    function areBuffersPaused() external view returns (bool) {
+        return _vault.areBuffersPaused();
+    }
 
     /// @inheritdoc IVaultExplorer
     function getBufferOwnerShares(IERC4626 token, address user) external view returns (uint256 shares) {

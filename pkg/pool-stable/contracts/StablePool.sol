@@ -14,8 +14,8 @@ import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { SwapKind, PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { BasePoolAuthentication } from "@balancer-labs/v3-pool-utils/contracts/BasePoolAuthentication.sol";
@@ -75,31 +75,40 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
     uint256 private constant _MAX_INVARIANT_RATIO = 500e16; // 500%
 
-    /// @dev Store amplification state.
+    /// @notice Store amplification state.
     AmplificationState private _amplificationState;
 
-    /// @dev An amplification update has started.
+    /**
+     * @notice An amplification update has started.
+     * @param startValue Starting value of the amplification parameter
+     * @param endValue Ending value of the amplification parameter
+     * @param startTime Timestamp when the update starts
+     * @param endTime Timestamp when the update is complete
+     */
     event AmpUpdateStarted(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime);
 
-    /// @dev An amplification update has been stopped.
+    /**
+     * @notice An amplification update has been stopped.
+     * @param currentValue The value at which it stopped
+     */
     event AmpUpdateStopped(uint256 currentValue);
 
-    /// @dev The amplification factor is below the minimum of the range (1 - 5000).
+    /// @notice The amplification factor is below the minimum of the range (1 - 5000).
     error AmplificationFactorTooLow();
 
-    /// @dev The amplification factor is above the maximum of the range (1 - 5000).
+    /// @notice The amplification factor is above the maximum of the range (1 - 5000).
     error AmplificationFactorTooHigh();
 
-    /// @dev The amplification change duration is too short.
+    /// @notice The amplification change duration is too short.
     error AmpUpdateDurationTooShort();
 
-    /// @dev The amplification change rate is too fast.
+    /// @notice The amplification change rate is too fast.
     error AmpUpdateRateTooFast();
 
-    /// @dev Amplification update operations must be done one at a time.
+    /// @notice Amplification update operations must be done one at a time.
     error AmpUpdateAlreadyStarted();
 
-    /// @dev Cannot stop an amplification update before it starts.
+    /// @notice Cannot stop an amplification update before it starts.
     error AmpUpdateNotStarted();
 
     /**
@@ -138,7 +147,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IBasePool
-    function computeInvariant(uint256[] memory balancesLiveScaled18) public view returns (uint256) {
+    function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding) public view returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
         return StableMath.computeInvariant(currentAmp, balancesLiveScaled18);
@@ -156,14 +165,14 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
             StableMath.computeBalance(
                 currentAmp,
                 balancesLiveScaled18,
-                computeInvariant(balancesLiveScaled18).mulDown(invariantRatio),
+                computeInvariant(balancesLiveScaled18, Rounding.ROUND_DOWN).mulDown(invariantRatio),
                 tokenInIndex
             );
     }
 
     /// @inheritdoc IBasePool
     function onSwap(PoolSwapParams memory request) public view onlyVault returns (uint256) {
-        uint256 invariant = computeInvariant(request.balancesScaled18);
+        uint256 invariant = computeInvariant(request.balancesScaled18, Rounding.ROUND_DOWN);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
         if (request.kind == SwapKind.EXACT_IN) {
@@ -333,6 +342,11 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
         data.totalSupply = totalSupply();
         data.bptRate = getRate();
         (data.amplificationParameter, data.isAmpUpdating) = _getAmplificationParameter();
+
+        PoolConfig memory poolConfig = _vault.getPoolConfig(address(this));
+        data.isPoolInitialized = poolConfig.isPoolInitialized;
+        data.isPoolPaused = poolConfig.isPoolPaused;
+        data.isPoolInRecoveryMode = poolConfig.isPoolInRecoveryMode;
     }
 
     /// @inheritdoc IStablePool

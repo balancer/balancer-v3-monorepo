@@ -106,21 +106,6 @@ struct PoolRoleAccounts {
 }
 
 /**
- * @notice Record pool function permissions (as a sort of local authorizer).
- * @dev For each permissioned function controlled by a role (e.g., pause/unpause), store the account empowered to call
- * that function, and flag indicating whether, if the caller is not the designated account (which might be zero),
- * it should then delegate to governance. If the `onlyOwner` flag is true, it can only be called by the designated
- * account.
- *
- * @param account The account with permission to perform the role
- * @param onlyOwner Flag indicating whether it is reserved to the account alone, or also governance
- */
-struct PoolFunctionPermission {
-    address account;
-    bool onlyOwner;
-}
-
-/**
  * @notice Token types supported by the Vault.
  * @dev In general, pools may contain any combination of these tokens.
  *
@@ -211,6 +196,15 @@ enum SwapKind {
     EXACT_OUT
 }
 
+// There are two "SwapParams" structs defined below. `VaultSwapParams` corresponds to the external swap API defined
+// in the Router contracts, which uses explicit token addresses, the amount given and limit on the calculated amount
+// expressed in native token decimals, and optional user data passed in from the caller.
+//
+// `PoolSwapParams` passes some of this information through (kind, userData), but "translates" the parameters to fit
+// the internal swap API used by `IBasePool`. It scales amounts to full 18-decimal precision, adds the token balances,
+// converts the raw token addresses to indices, and adds the address of the router originating the request. It does
+// not need the limit, since this is checked at the Router level.
+
 /**
  * @notice Data passed into primary Vault `swap` operations.
  * @param kind Type of swap (Exact In or Exact Out)
@@ -218,16 +212,36 @@ enum SwapKind {
  * @param tokenIn The token entering the Vault (balance increases)
  * @param tokenOut The token leaving the Vault (balance decreases)
  * @param amountGivenRaw Amount specified for tokenIn or tokenOut (depending on the type of swap)
- * @param limitRaw
+ * @param limitRaw Minimum or maximum value of the calculated amount (depending on the type of swap)
  * @param userData Additional (optional) user data
  */
-struct SwapParams {
+struct VaultSwapParams {
     SwapKind kind;
     address pool;
     IERC20 tokenIn;
     IERC20 tokenOut;
     uint256 amountGivenRaw;
     uint256 limitRaw;
+    bytes userData;
+}
+
+/**
+ * @notice Data for a swap operation, used by contracts implementing `IBasePool`.
+ * @param kind Type of swap (exact in or exact out)
+ * @param amountGivenScaled18 Amount given based on kind of the swap (e.g., tokenIn for EXACT_IN)
+ * @param balancesScaled18 Current pool balances
+ * @param indexIn Index of tokenIn
+ * @param indexOut Index of tokenOut
+ * @param router The address (usually a router contract) that initiated a swap operation on the Vault
+ * @param userData Additional (optional) data required for the swap
+ */
+struct PoolSwapParams {
+    SwapKind kind;
+    uint256 amountGivenScaled18;
+    uint256[] balancesScaled18;
+    uint256 indexIn;
+    uint256 indexOut;
+    address router;
     bytes userData;
 }
 
@@ -259,26 +273,6 @@ struct AfterSwapParams {
     uint256 amountCalculatedRaw;
     address router;
     address pool;
-    bytes userData;
-}
-
-/**
- * @notice Data for a swap operation, used by contracts implementing `IBasePool`.
- * @param kind Type of swap (exact in or exact out)
- * @param amountGivenScaled18 Amount given based on kind of the swap (e.g., tokenIn for exact in)
- * @param balancesScaled18 Current pool balances
- * @param indexIn Index of tokenIn
- * @param indexOut Index of tokenOut
- * @param router The address (usually a router contract) that initiated a swap operation on the Vault
- * @param userData Additional (optional) data required for the swap
- */
-struct PoolSwapParams {
-    SwapKind kind;
-    uint256 amountGivenScaled18;
-    uint256[] balancesScaled18;
-    uint256 indexIn;
-    uint256 indexOut;
-    address router;
     bytes userData;
 }
 

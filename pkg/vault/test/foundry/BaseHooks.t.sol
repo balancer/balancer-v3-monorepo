@@ -19,7 +19,7 @@ contract BaseHooksTest is BaseVaultTest {
         BaseVaultTest.setUp();
 
         // Not using PoolHooksMock address because onRegister of BaseHooks fails, so the test does not run.
-        testHook = new BaseHooksMock(IVault(address(vault)));
+        testHook = new BaseHooksMock();
     }
 
     function testOnRegister() public {

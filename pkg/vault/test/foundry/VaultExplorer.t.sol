@@ -11,7 +11,6 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { SwapKind, SwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
@@ -24,6 +23,8 @@ import {
     LiquidityManagement,
     PoolConfig,
     HooksConfig,
+    Rounding,
+    SwapKind,
     PoolData,
     PoolSwapParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
@@ -107,8 +108,8 @@ contract VaultExplorerTest is BaseVaultTest {
 
     function testGetVaultContracts() public view {
         assertEq(explorer.getVault(), address(vault), "Vault address mismatch");
-        assertEq(explorer.getVaultExtension(), vault.getVaultExtension(), "Vault Extension address mismatch");
-        assertEq(explorer.getVaultAdmin(), vault.getVaultAdmin(), "Vault Admin address mismatch");
+        assertEq(explorer.getVaultExtension(), vault.getVaultExtension(), "VaultExtension address mismatch");
+        assertEq(explorer.getVaultAdmin(), vault.getVaultAdmin(), "VaultAdmin address mismatch");
         assertEq(explorer.getAuthorizer(), address(vault.getAuthorizer()), "Authorizer address mismatch");
         assertEq(
             explorer.getProtocolFeeController(),
@@ -128,7 +129,7 @@ contract VaultExplorerTest is BaseVaultTest {
     function testUnlocked() public {
         assertFalse(explorer.isUnlocked(), "Should be locked");
 
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         assertTrue(explorer.isUnlocked(), "Should be unlocked");
     }
 
@@ -145,7 +146,7 @@ contract VaultExplorerTest is BaseVaultTest {
 
         dai.mint(address(vault), defaultAmount);
 
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         uint256 settlementAmount = vault.settle(dai, defaultAmount);
         int256 vaultDelta = vault.getTokenDelta(dai);
 
@@ -157,7 +158,7 @@ contract VaultExplorerTest is BaseVaultTest {
     function testGetReservesOf() public {
         dai.mint(address(vault), defaultAmount);
 
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         uint256 settlementAmount = vault.settle(dai, defaultAmount);
 
         assertEq(settlementAmount, defaultAmount, "Wrong settlement amount");
@@ -400,7 +401,7 @@ contract VaultExplorerTest is BaseVaultTest {
     function testGetBptRate() public view {
         PoolData memory poolData = vault.getPoolData(pool);
 
-        uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18);
+        uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18, Rounding.ROUND_DOWN);
         uint256 expectedRate = invariant.divDown(vault.totalSupply(pool));
 
         uint256 bptRate = explorer.getBptRate(pool);
@@ -558,6 +559,18 @@ contract VaultExplorerTest is BaseVaultTest {
         vault.disableQuery();
 
         assertTrue(explorer.isQueryDisabled(), "Queries are not disabled");
+    }
+
+    function testAreBuffersPaused() public {
+        assertFalse(explorer.areBuffersPaused(), "Buffers are initially paused");
+
+        bytes32 pauseBufferRole = vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector);
+        authorizer.grantRole(pauseBufferRole, alice);
+
+        vm.prank(alice);
+        vault.pauseVaultBuffers();
+
+        assertTrue(explorer.areBuffersPaused(), "Buffers are not paused");
     }
 
     function testGetPauseWindowEndTime() public view {
@@ -767,7 +780,7 @@ contract VaultExplorerTest is BaseVaultTest {
 
         uint256 depositAmount = 100e18;
 
-        router.addLiquidityToBuffer(IERC4626(address(waDAI)), depositAmount, depositAmount);
+        router.initializeBuffer(IERC4626(address(waDAI)), depositAmount, depositAmount);
         vm.stopPrank();
     }
 }

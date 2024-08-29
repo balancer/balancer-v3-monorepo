@@ -263,7 +263,7 @@ contract VaultLiquidityWithFeesTest is BaseVaultTest {
             "Remove - Pool balance: token 1"
         );
 
-        // User has burnt the correct amount of BPT.
+        // User has burned the correct amount of BPT.
         assertEq(balancesBefore.userBpt - balancesAfter.userBpt, bptAmountIn, "Wrong amount of BPT burned");
     }
 }

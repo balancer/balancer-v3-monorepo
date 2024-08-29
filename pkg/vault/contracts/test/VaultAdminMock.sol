@@ -23,10 +23,12 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
     }
 
     function manualPausePool(address pool) external {
+        _poolRoleAccounts[pool].pauseManager = msg.sender;
         _setPoolPaused(pool, true);
     }
 
     function manualUnpausePool(address pool) external {
+        _poolRoleAccounts[pool].pauseManager = msg.sender;
         _setPoolPaused(pool, false);
     }
 
@@ -40,6 +42,15 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
         _setPoolRecoveryMode(pool, false);
     }
 
+    function manualReentrancyInitializeBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped,
+        address sharesOwner
+    ) external nonReentrant {
+        IVault(address(this)).initializeBuffer(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
+    }
+
     function manualReentrancyAddLiquidityToBuffer(
         IERC4626 wrappedToken,
         uint256 amountUnderlying,
@@ -49,12 +60,12 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
         IVault(address(this)).addLiquidityToBuffer(wrappedToken, amountUnderlying, amountWrapped, sharesOwner);
     }
 
-    function manualReentrancyRemoveLiquidityFromBuffer(
+    function manualReentrancyRemoveLiquidityFromBufferHook(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner
     ) external nonReentrant {
-        IVault(address(this)).removeLiquidityFromBuffer(wrappedToken, sharesToRemove, sharesOwner);
+        this.removeLiquidityFromBufferHook(wrappedToken, sharesToRemove, sharesOwner);
     }
 
     function mockWithValidPercentage(uint256 percentage) external pure withValidPercentage(percentage) {
@@ -63,5 +74,17 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
 
     function mockEnsurePoolNotInRecoveryMode(address pool) external view {
         _ensurePoolNotInRecoveryMode(pool);
+    }
+
+    function manualMintBufferShares(IERC4626 wrappedToken, address to, uint256 amount) external {
+        _mintBufferShares(wrappedToken, to, amount);
+    }
+
+    function manualBurnBufferShares(IERC4626 wrappedToken, address from, uint256 amount) external {
+        _burnBufferShares(wrappedToken, from, amount);
+    }
+
+    function manualMintMinimumBufferSupplyReserve(IERC4626 wrappedToken) external {
+        _mintMinimumBufferSupplyReserve(wrappedToken);
     }
 }

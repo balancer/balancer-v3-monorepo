@@ -9,12 +9,7 @@ import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 
-import {
-    SwapKind,
-    SwapParams,
-    HooksConfig,
-    PoolSwapParams
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { SwapKind, VaultSwapParams, HooksConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
@@ -38,6 +33,9 @@ contract VaultSwapTest is BaseVaultTest {
     uint256 internal usdcIdx;
 
     function setUp() public virtual override {
+        // We will use min trade amount in this test.
+        vaultMockMinTradeAmount = MIN_TRADE_AMOUNT;
+
         BaseVaultTest.setUp();
 
         noInitPool = PoolMock(createPool());
@@ -456,7 +454,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function reentrancyHook() public {
         // Do second swap.
-        SwapParams memory params = SwapParams({
+        VaultSwapParams memory params = VaultSwapParams({
             kind: SwapKind.EXACT_IN,
             pool: pool,
             tokenIn: dai,
@@ -469,7 +467,7 @@ contract VaultSwapTest is BaseVaultTest {
     }
 
     function startSwap() public {
-        SwapParams memory params = SwapParams({
+        VaultSwapParams memory params = VaultSwapParams({
             kind: SwapKind.EXACT_IN,
             pool: pool,
             tokenIn: usdc,

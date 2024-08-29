@@ -99,13 +99,16 @@ interface IVaultEvents {
     event PoolBalanceChanged(address indexed pool, address indexed liquidityProvider, int256[] deltas);
 
     /**
-     * @dev The Vault's pause status has changed.
+     * @notice The Vault's pause status has changed.
      * @param paused True if the Vault was paused
      */
     event VaultPausedStateChanged(bool paused);
 
+    /// @notice `disableQuery` has been called on the Vault, permanently disabling query functionality.
+    event VaultQueriesDisabled();
+
     /**
-     * @dev A Pool's pause status has changed.
+     * @notice A Pool's pause status has changed.
      * @param pool The pool that was just paused or unpaused
      * @param paused True if the pool was paused
      */
@@ -118,7 +121,7 @@ interface IVaultEvents {
     event SwapFeePercentageChanged(address indexed pool, uint256 swapFeePercentage);
 
     /**
-     * @dev Recovery mode has been enabled or disabled for a pool.
+     * @notice Recovery mode has been enabled or disabled for a pool.
      * @param pool The pool
      * @param recoveryMode True if recovery mode was enabled
      */
@@ -137,42 +140,55 @@ interface IVaultEvents {
     event ProtocolFeeControllerChanged(IProtocolFeeController indexed newProtocolFeeController);
 
     /**
-     * @notice Liquidity was added to an ERC4626 buffer.
-     * @dev The underlying token can be derived from the wrapped token, so it's not included here. The shares are not
-     * tokenized like pool BPT, but accounted for in the Vault. `getBufferOwnerShares` retrieves the current total
-     * shares for a given buffer and address, and `getBufferTotalShares` returns the "totalSupply" of a buffer.
+     * @notice Liquidity was added to an ERC4626 buffer corresponding to the given wrapped token.
+     * @dev The underlying token can be derived from the wrapped token, so it's not included here.
      *
      * @param wrappedToken The wrapped token that identifies the buffer
-     * @param sharesOwner The address depositing the funds
-     * @param amountWrapped The amount of the wrapped token that was deposited
      * @param amountUnderlying The amount of the underlying token that was deposited
-     * @param issuedShares The "internal BPT" shares credited to the depositor
+     * @param amountWrapped The amount of the wrapped token that was deposited
      */
-    event LiquidityAddedToBuffer(
-        IERC4626 indexed wrappedToken,
-        address indexed sharesOwner,
-        uint256 amountWrapped,
-        uint256 amountUnderlying,
-        uint256 issuedShares
-    );
+    event LiquidityAddedToBuffer(IERC4626 indexed wrappedToken, uint256 amountUnderlying, uint256 amountWrapped);
+
+    /**
+     * @notice Buffer shares were minted for an ERC4626 buffer corresponding to a given wrapped token.
+     * @dev The shares are not tokenized like pool BPT, but accounted for in the Vault. `getBufferOwnerShares`
+     * retrieves the current total shares for a given buffer and address, and `getBufferTotalShares` returns the
+     * "totalSupply" of a buffer.
+     *
+     * @param wrappedToken The wrapped token that identifies the buffer
+     * @param to The owner of the minted shares
+     * @param issuedShares The amount of "internal BPT" shares created
+     */
+    event BufferSharesMinted(IERC4626 indexed wrappedToken, address indexed to, uint256 issuedShares);
+
+    /**
+     * @notice Buffer shares were burned for an ERC4626 buffer corresponding to a given wrapped token.
+     * @dev The shares are not tokenized like pool BPT, but accounted for in the Vault. `getBufferOwnerShares`
+     * retrieves the current total shares for a given buffer and address, and `getBufferTotalShares` returns the
+     * "totalSupply" of a buffer.
+     *
+     * @param wrappedToken The wrapped token that identifies the buffer
+     * @param from The owner of the burned shares
+     * @param burnedShares The amount of "internal BPT" shares burned
+     */
+    event BufferSharesBurned(IERC4626 indexed wrappedToken, address indexed from, uint256 burnedShares);
 
     /**
      * @notice Liquidity was removed from an ERC4626 buffer.
-     * @dev The underlying token can be derived from the wrapped token, so it's not included here. The shares are not
-     * tokenized like pool BPT, but accounted for in the Vault. `getBufferOwnerShares` retrieves the current total
-     * shares for a given buffer and address, and `getBufferTotalShares` returns the "totalSupply" of a buffer.
+     * @dev The underlying token can be derived from the wrapped token, so it's not included here.
      *
      * @param wrappedToken The wrapped token that identifies the buffer
-     * @param sharesOwner The address withdrawing the funds
-     * @param amountWrapped The amount of the wrapped token that was withdrawn
      * @param amountUnderlying The amount of the underlying token that was withdrawn
-     * @param removedShares The "internal BPT" shares debited from the share owner
+     * @param amountWrapped The amount of the wrapped token that was withdrawn
      */
-    event LiquidityRemovedFromBuffer(
-        IERC4626 indexed wrappedToken,
-        address indexed sharesOwner,
-        uint256 amountWrapped,
-        uint256 amountUnderlying,
-        uint256 removedShares
-    );
+    event LiquidityRemovedFromBuffer(IERC4626 indexed wrappedToken, uint256 amountUnderlying, uint256 amountWrapped);
+
+    /**
+     * @notice The Vault buffers pause status has changed.
+     * @dev If buffers all paused, all buffer operations (i.e., all calls through the Router with `isBuffer`
+     * set to true) will revert.
+     *
+     * @param paused True if the Vault buffers were paused
+     */
+    event VaultBuffersPausedStateChanged(bool paused);
 }

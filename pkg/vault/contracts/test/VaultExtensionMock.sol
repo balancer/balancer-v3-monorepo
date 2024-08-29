@@ -41,4 +41,15 @@ contract VaultExtensionMock is IVaultExtensionMock, VaultExtension {
             liquidityManagement
         );
     }
+
+    function manualInitializePoolReentrancy(
+        address pool,
+        address to,
+        IERC20[] memory tokens,
+        uint256[] memory exactAmountsIn,
+        uint256 minBptAmountOut,
+        bytes memory userData
+    ) external nonReentrant {
+        IVault(address(this)).initialize(pool, to, tokens, exactAmountsIn, minBptAmountOut, userData);
+    }
 }
