@@ -5,6 +5,8 @@ pragma solidity ^0.8.24;
 import { WeightedPool } from "./WeightedPool.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { HookFlags } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { AddLiquidityKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -119,6 +121,13 @@ contract LBPool is WeightedPool, Ownable {
      * =========================================
      */
 
+    // Return HookFlags struct that indicates which hooks this contract supports
+    function getHookFlags() public pure returns (HookFlags memory hookFlags) {
+        // Support hooks before swap/join for swapEnabled/onlyOwner LP
+        hookFlags.shouldCallBeforeSwap = true;
+        hookFlags.shouldCallBeforeAddLiquidity = true;
+    }
+
     /**
      * @notice Check that the caller who initiated the add liquidity operation is the owner.
      * @param initiator The address (usually a router contract) that initiated a swap operation on the Vault
@@ -132,6 +141,9 @@ contract LBPool is WeightedPool, Ownable {
         uint256[] memory,
         bytes memory
     ) external view onlyVault returns (bool success) {
+
+        // TODO use TrustedRoutersProvider
+
         // Check `initiator == owner` first to avoid calling `getSender()` on a potentially non-router contract/address
         success = (initiator == owner()) || (IRouterCommon(initiator).getSender() == owner());
     }
