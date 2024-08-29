@@ -92,10 +92,8 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
         uint256[] memory exactWrappedAmountsIn = new uint256[](2);
-        exactWrappedAmountsIn[waDaiIdx] = (waDAI.convertToShares(exactUnderlyingAmountsIn[waDaiIdx]) -
-            vaultConvertFactor);
-        exactWrappedAmountsIn[waUsdcIdx] = (waUSDC.convertToShares(exactUnderlyingAmountsIn[waUsdcIdx]) -
-            vaultConvertFactor);
+        exactWrappedAmountsIn[waDaiIdx] = waDAI.convertToShares(operationAmount) - vaultConvertFactor;
+        exactWrappedAmountsIn[waUsdcIdx] = waUSDC.convertToShares(operationAmount) - vaultConvertFactor;
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
@@ -120,6 +118,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         vars.usdcAmountIn = exactUnderlyingAmountsIn[waUsdcIdx];
         vars.waDaiBufferDelta = exactWrappedAmountsIn[waDaiIdx];
         vars.waUsdcBufferDelta = exactWrappedAmountsIn[waUsdcIdx];
+        vars.isPartialERC4626Pool = false;
 
         _checkAddLiquidityBalances(balancesBefore, balancesAfter, vars);
 
@@ -131,21 +130,16 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 operationAmount = bound(rawOperationAmount, MIN_AMOUNT, bufferInitialAmount / 2);
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
-        uint256[] memory amountsInErc4626Pool = new uint256[](2);
-        amountsInErc4626Pool[partialWaDaiIdx] = waDAI.convertToShares(operationAmount);
-        amountsInErc4626Pool[partialUsdcIdx] = operationAmount;
+        uint256[] memory exactWrappedAmountsIn = new uint256[](2);
+        exactWrappedAmountsIn[partialWaDaiIdx] = waDAI.convertToShares(operationAmount) - vaultConvertFactor;
+        exactWrappedAmountsIn[partialUsdcIdx] = operationAmount;
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
-        uint256 expectBPTOut = router.queryAddLiquidityUnbalanced(partialErc4626Pool, amountsInErc4626Pool, bytes(""));
+        uint256 expectBPTOut = router.queryAddLiquidityUnbalanced(partialErc4626Pool, exactWrappedAmountsIn, bytes(""));
         vm.revertTo(snapshot);
 
-        uint256 beforeUSDCBalance = usdc.balanceOf(alice);
-        uint256 beforeDAIBalance = dai.balanceOf(alice);
-
-        (uint256 beforeWaDAIBufferBalanceUnderlying, uint256 beforeWaDAIBufferBalanceWrapped) = vault.getBufferBalance(
-            waDAI
-        );
+        TestBalances memory balancesBefore = _getTestBalances(alice);
 
         vm.prank(alice);
         uint256 bptOut = batchRouter.addLiquidityUnbalancedToERC4626Pool(
@@ -156,43 +150,16 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             bytes("")
         );
 
-        {
-            uint256 afterUSDCBalance = usdc.balanceOf(alice);
-            assertEq(afterUSDCBalance, beforeUSDCBalance - operationAmount, "Alice: wrong USDC balance");
-        }
-        {
-            uint256 afterDAIBalance = dai.balanceOf(alice);
-            assertEq(afterDAIBalance, beforeDAIBalance - operationAmount, "Alice: wrong DAI balance");
-        }
-        {
-            (uint256 afterWaDAIBufferBalanceUnderlying, uint256 afterWaDAIBufferBalanceWrapped) = vault
-                .getBufferBalance(waDAI);
-            assertEq(
-                afterWaDAIBufferBalanceWrapped,
-                beforeWaDAIBufferBalanceWrapped - amountsInErc4626Pool[partialWaDaiIdx],
-                "Vault: wrong waDAI wrapped buffer balance"
-            );
-            assertEq(
-                beforeWaDAIBufferBalanceUnderlying,
-                afterWaDAIBufferBalanceUnderlying - exactUnderlyingAmountsIn[partialWaDaiIdx],
-                "Vault: wrong waDAI underlying buffer balance"
-            );
-        }
-        {
-            (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(address(partialErc4626Pool));
-            assertApproxEqAbs(
-                lastBalancesLiveScaled18[partialWaDaiIdx],
-                erc4626PoolInitialAmount + exactUnderlyingAmountsIn[partialWaDaiIdx],
-                MAX_ERROR,
-                "Partial ERC4626 Pool: wrong waDAI balance"
-            );
-            assertApproxEqAbs(
-                lastBalancesLiveScaled18[partialUsdcIdx],
-                erc4626PoolInitialAmount + exactUnderlyingAmountsIn[partialUsdcIdx],
-                MAX_ERROR,
-                "Partial ERC4626 Pool: wrong USDC balance"
-            );
-        }
+        TestBalances memory balancesAfter = _getTestBalances(alice);
+
+        CheckAddLiquidityLocals memory vars;
+        vars.daiAmountIn = exactUnderlyingAmountsIn[partialWaDaiIdx];
+        vars.usdcAmountIn = exactUnderlyingAmountsIn[partialUsdcIdx];
+        vars.waDaiBufferDelta = exactWrappedAmountsIn[partialWaDaiIdx];
+        vars.waUsdcBufferDelta = 0;
+        vars.isPartialERC4626Pool = true;
+
+        _checkAddLiquidityBalances(balancesBefore, balancesAfter, vars);
 
         assertEq(bptOut, expectBPTOut, "Wrong BPT out");
         assertEq(IERC20(address(partialErc4626Pool)).balanceOf(alice), bptOut, "Alice: wrong BPT balance");
@@ -291,7 +258,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory expectedAmountsInWrapped = router.queryAddLiquidityProportional(
+        uint256[] memory expectedWrappedAmountsIn = router.queryAddLiquidityProportional(
             erc4626Pool,
             exactBptAmountOut,
             bytes("")
@@ -301,7 +268,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesBefore = _getTestBalances(alice);
 
         vm.prank(alice);
-        uint256[] memory actualAmountsInUnderlying = batchRouter.addLiquidityProportionalToERC4626Pool(
+        uint256[] memory actualUnderlyingAmountsIn = batchRouter.addLiquidityProportionalToERC4626Pool(
             erc4626Pool,
             maxAmountsIn,
             exactBptAmountOut,
@@ -312,22 +279,23 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesAfter = _getTestBalances(alice);
 
         CheckAddLiquidityLocals memory vars;
-        vars.daiAmountIn = actualAmountsInUnderlying[waDaiIdx];
-        vars.usdcAmountIn = actualAmountsInUnderlying[waUsdcIdx];
-        vars.waDaiBufferDelta = expectedAmountsInWrapped[waDaiIdx];
-        vars.waUsdcBufferDelta = expectedAmountsInWrapped[waUsdcIdx];
+        vars.daiAmountIn = actualUnderlyingAmountsIn[waDaiIdx];
+        vars.usdcAmountIn = actualUnderlyingAmountsIn[waUsdcIdx];
+        vars.waDaiBufferDelta = expectedWrappedAmountsIn[waDaiIdx];
+        vars.waUsdcBufferDelta = expectedWrappedAmountsIn[waUsdcIdx];
+        vars.isPartialERC4626Pool = false;
 
         _checkAddLiquidityBalances(balancesBefore, balancesAfter, vars);
 
         assertApproxEqAbs(
-            actualAmountsInUnderlying[waDaiIdx],
-            waDAI.convertToAssets(expectedAmountsInWrapped[waDaiIdx]) + vaultConvertFactor,
+            actualUnderlyingAmountsIn[waDaiIdx],
+            waDAI.convertToAssets(expectedWrappedAmountsIn[waDaiIdx]) + vaultConvertFactor,
             MAX_ERROR,
             "DAI actualAmountsInUnderlying should match expected"
         );
         assertApproxEqAbs(
-            actualAmountsInUnderlying[waUsdcIdx],
-            waUSDC.convertToAssets(expectedAmountsInWrapped[waUsdcIdx]) + vaultConvertFactor,
+            actualUnderlyingAmountsIn[waUsdcIdx],
+            waUSDC.convertToAssets(expectedWrappedAmountsIn[waUsdcIdx]) + vaultConvertFactor,
             MAX_ERROR,
             "USDC actualAmountsInUnderlying should match expected"
         );
@@ -359,14 +327,10 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         expectedUnderlyingAmountsIn[partialUsdcIdx] = expectedWrappedAmountsIn[partialUsdcIdx];
         vm.revertTo(snapshot);
 
-        uint256 beforeUSDCBalance = usdc.balanceOf(alice);
-        uint256 beforeDAIBalance = dai.balanceOf(alice);
-        (uint256 beforeWaDAIBufferBalanceUnderlying, uint256 beforeWaDAIBufferBalanceWrapped) = vault.getBufferBalance(
-            waDAI
-        );
+        TestBalances memory balancesBefore = _getTestBalances(alice);
 
         vm.prank(alice);
-        uint256[] memory underlyingAmountsIn = batchRouter.addLiquidityProportionalToERC4626Pool(
+        uint256[] memory actualUnderlyingAmountsIn = batchRouter.addLiquidityProportionalToERC4626Pool(
             partialErc4626Pool,
             maxAmountsIn,
             exactBptAmountOut,
@@ -374,63 +338,30 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             bytes("")
         );
 
-        for (uint256 i = 0; i < underlyingAmountsIn.length; i++) {
-            // The query and actual operation may differ by 1 wei.
-            assertApproxEqAbs(
-                underlyingAmountsIn[i],
-                expectedUnderlyingAmountsIn[i],
-                1,
-                "underlyingAmountsIn should match expected"
-            );
-        }
+        TestBalances memory balancesAfter = _getTestBalances(alice);
 
-        {
-            uint256 afterUSDCBalance = usdc.balanceOf(alice);
-            assertEq(
-                afterUSDCBalance,
-                beforeUSDCBalance - underlyingAmountsIn[partialUsdcIdx],
-                "Alice: wrong USDC balance"
-            );
-        }
-        {
-            uint256 afterDAIBalance = dai.balanceOf(alice);
-            assertEq(
-                afterDAIBalance,
-                beforeDAIBalance - underlyingAmountsIn[partialWaDaiIdx],
-                "Alice: wrong DAI balance"
-            );
-        }
-        {
-            (uint256 afterWaDAIBufferBalanceUnderlying, uint256 afterWaDAIBufferBalanceWrapped) = vault
-                .getBufferBalance(waDAI);
+        CheckAddLiquidityLocals memory vars;
+        vars.daiAmountIn = actualUnderlyingAmountsIn[partialWaDaiIdx];
+        vars.usdcAmountIn = actualUnderlyingAmountsIn[partialUsdcIdx];
+        vars.waDaiBufferDelta = expectedWrappedAmountsIn[partialWaDaiIdx];
+        vars.waUsdcBufferDelta = 0;
+        vars.isPartialERC4626Pool = true;
 
-            assertEq(
-                afterWaDAIBufferBalanceWrapped,
-                beforeWaDAIBufferBalanceWrapped - expectedWrappedAmountsIn[partialWaDaiIdx],
-                "Vault: wrong waDAI wrapped buffer balance"
-            );
-            assertEq(
-                afterWaDAIBufferBalanceUnderlying,
-                beforeWaDAIBufferBalanceUnderlying + underlyingAmountsIn[partialWaDaiIdx],
-                "Vault: wrong waDAI underlying buffer balance"
-            );
-        }
-        {
-            (, , , uint256[] memory lastBalancesLiveScaled18) = vault.getPoolTokenInfo(address(partialErc4626Pool));
-            // There may be a difference of some wei between preview and actual wrap operation.
-            assertApproxEqAbs(
-                lastBalancesLiveScaled18[partialWaDaiIdx],
-                erc4626PoolInitialAmount + expectedUnderlyingAmountsIn[partialWaDaiIdx],
-                MAX_ERROR,
-                "Partial ERC4626 Pool: wrong waDAI balance"
-            );
-            assertApproxEqAbs(
-                lastBalancesLiveScaled18[partialUsdcIdx],
-                erc4626PoolInitialAmount + expectedUnderlyingAmountsIn[partialUsdcIdx],
-                MAX_ERROR,
-                "Partial ERC4626 Pool: wrong waUSDC balance"
-            );
-        }
+        _checkAddLiquidityBalances(balancesBefore, balancesAfter, vars);
+
+        assertApproxEqAbs(
+            actualUnderlyingAmountsIn[partialWaDaiIdx],
+            waDAI.convertToAssets(expectedWrappedAmountsIn[partialWaDaiIdx]) + vaultConvertFactor,
+            MAX_ERROR,
+            "DAI actualAmountsInUnderlying should match expected"
+        );
+        // `expectedWrappedAmountsIn` in this case is equal to expected underlying since USDC is not a wrapped token.
+        assertApproxEqAbs(
+            actualUnderlyingAmountsIn[partialUsdcIdx],
+            expectedWrappedAmountsIn[partialUsdcIdx],
+            MAX_ERROR,
+            "USDC actualAmountsInUnderlying should match expected"
+        );
 
         assertEq(IERC20(address(partialErc4626Pool)).balanceOf(alice), exactBptAmountOut, "Alice: wrong BPT balance");
     }
@@ -839,6 +770,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 usdcAmountIn;
         uint256 waDaiBufferDelta;
         uint256 waUsdcBufferDelta;
+        bool isPartialERC4626Pool;
     }
 
     function _checkAddLiquidityBalances(
@@ -846,6 +778,10 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesAfter,
         CheckAddLiquidityLocals memory vars
     ) private {
+        address ybPool = vars.isPartialERC4626Pool ? partialErc4626Pool : erc4626Pool;
+        uint256 ybDaiIdx = vars.isPartialERC4626Pool ? partialWaDaiIdx : waDaiIdx;
+        uint256 ybUsdcIdx = vars.isPartialERC4626Pool ? partialUsdcIdx : waUsdcIdx;
+
         assertEq(
             balancesAfter.balances.aliceTokens[balancesAfter.usdcIdx],
             balancesBefore.balances.aliceTokens[balancesBefore.usdcIdx] - vars.usdcAmountIn,
@@ -855,17 +791,6 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             balancesAfter.balances.aliceTokens[balancesAfter.daiIdx],
             balancesBefore.balances.aliceTokens[balancesBefore.daiIdx] - vars.daiAmountIn,
             "Alice: wrong DAI balance"
-        );
-
-        assertEq(
-            balancesAfter.waUSDCBuffer.wrapped,
-            balancesBefore.waUSDCBuffer.wrapped - vars.waUsdcBufferDelta,
-            "Vault: wrong waUSDC wrapped buffer balance"
-        );
-        assertEq(
-            balancesAfter.waUSDCBuffer.underlying,
-            balancesBefore.waUSDCBuffer.underlying + vars.usdcAmountIn,
-            "Vault: wrong waUSDC underlying buffer balance"
         );
 
         assertEq(
@@ -879,19 +804,39 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             "Vault: wrong waDAI underlying buffer balance"
         );
 
-        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(address(erc4626Pool));
+        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(ybPool);
         assertApproxEqAbs(
-            balances[waDaiIdx],
+            balances[ybDaiIdx],
             waDAI.convertToShares(erc4626PoolInitialAmount) + vars.waDaiBufferDelta,
             MAX_ERROR,
             "ERC4626 Pool: wrong waDAI balance"
         );
-        assertApproxEqAbs(
-            balances[waUsdcIdx],
-            waUSDC.convertToShares(erc4626PoolInitialAmount) + vars.waUsdcBufferDelta,
-            MAX_ERROR,
-            "ERC4626 Pool: wrong waUSDC balance"
-        );
+
+        if (vars.isPartialERC4626Pool == false) {
+            assertEq(
+                balancesAfter.waUSDCBuffer.wrapped,
+                balancesBefore.waUSDCBuffer.wrapped - vars.waUsdcBufferDelta,
+                "Vault: wrong waUSDC wrapped buffer balance"
+            );
+            assertEq(
+                balancesAfter.waUSDCBuffer.underlying,
+                balancesBefore.waUSDCBuffer.underlying + vars.usdcAmountIn,
+                "Vault: wrong waUSDC underlying buffer balance"
+            );
+            assertApproxEqAbs(
+                balances[ybUsdcIdx],
+                waUSDC.convertToShares(erc4626PoolInitialAmount) + vars.waUsdcBufferDelta,
+                MAX_ERROR,
+                "ERC4626 Pool: wrong waUSDC balance"
+            );
+        } else {
+            assertApproxEqAbs(
+                balances[ybUsdcIdx],
+                erc4626PoolInitialAmount + vars.usdcAmountIn,
+                MAX_ERROR,
+                "ERC4626 Pool: wrong waUSDC balance"
+            );
+        }
     }
 
     function _initializePartialERC4626Pool() private returns (address newPool) {
