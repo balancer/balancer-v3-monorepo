@@ -20,8 +20,8 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
     using Address for address payable;
 
     /**
-     * Extends AddLiquidityHookParams to include a receiver
      * @notice Data for the add liquidity hook.
+     * @dev Extends AddLiquidityHookParams to include a receiver.
      * @param sender Account originating the add liquidity operation
      * @param receiver Account to receive the BPT
      * @param pool Address of the liquidity pool
