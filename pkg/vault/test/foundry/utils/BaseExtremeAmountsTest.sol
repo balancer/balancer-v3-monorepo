@@ -432,9 +432,15 @@ abstract contract BaseExtremeAmountsTest is BaseVaultTest {
     // #region testSwap
     function testSwap_Fuzz(uint256 swapAmount, uint256 swapFee) public {
         swapFee = bound(swapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
+
+        console.log("swapFee: %d", swapFee);
         _manualSetUp([HUGE_INIT_AMOUNT, HUGE_INIT_AMOUNT].toMemoryArray(), swapFee);
 
+        console.log("balance 0: %d", initBalances[0]);
+        console.log("balance 1: %d", initBalances[1]);
+
         swapAmount = bound(swapAmount, minAmount, initBalances[0] / 10);
+        console.log("swapAmount: %d", swapAmount);
         _testSwap(swapAmount);
     }
 
