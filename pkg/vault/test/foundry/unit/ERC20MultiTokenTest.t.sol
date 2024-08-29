@@ -257,7 +257,7 @@ contract ERC20MultiTokenTest is Test, IERC20Errors, ERC20MultiToken {
         vm.mockCall(
             POOL,
             abi.encodeCall(BalancerPoolToken.emitTransfer, (OWNER, OWNER2, MINIMUM_TOTAL_SUPPLY)),
-            new bytes("")
+            bytes("")
         );
         vm.expectEmit();
         emit ERC20MultiToken.Transfer(POOL, OWNER, OWNER2, MINIMUM_TOTAL_SUPPLY);
