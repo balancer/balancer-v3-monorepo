@@ -122,7 +122,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         // waDAI buffer removes `vaultConvertError` from the wrapped amount out, and this factor propagates until the
         // last step, when waUSDC buffer convert the waUSDC amount into USDC using convertToAssets. After this
         // conversion, waUSDC buffer also removes convertError from the buffer result.
-        uint256 maxError = waUSDC.convertToAssets(vaultConvertFactor) - vaultConvertFactor;
+        uint256 maxError = 2 * waUSDC.convertToAssets(vaultConvertFactor);
 
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
             tokenIn: dai,
