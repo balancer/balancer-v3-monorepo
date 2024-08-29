@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/console.sol";
+
 import { Proxy } from "@openzeppelin/contracts/proxy/Proxy.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -462,6 +464,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.balancesRaw[swapState.indexIn] + locals.balanceInIncrement,
             Rounding.ROUND_UP
         );
+
+        console.log("poolData.balancesRaw[swapState.indexOut]", poolData.balancesRaw[swapState.indexOut]);
+        console.log("locals.balanceOutDecrement", locals.balanceOutDecrement);
+
         poolData.updateRawAndLiveBalance(
             swapState.indexOut,
             poolData.balancesRaw[swapState.indexOut] - locals.balanceOutDecrement,

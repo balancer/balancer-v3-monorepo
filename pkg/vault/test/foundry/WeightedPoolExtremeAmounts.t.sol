@@ -38,7 +38,7 @@ contract WeightedPoolExtremeAmountsTest is BaseExtremeAmountsTest {
                 vault.buildTokenConfig(tokens.asIERC20()),
                 [uint256(50e16), uint256(50e16)].toMemoryArray(),
                 roleAccounts,
-                MIN_SWAP_FEE,
+                0.001e16,
                 address(0),
                 false,
                 false,

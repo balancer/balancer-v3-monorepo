@@ -118,7 +118,12 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     function setUp() public virtual override {
         BaseTest.setUp();
+        _setUpBaseVaultTest();
+        // Add initial liquidity
+        initPool();
+    }
 
+    function _setUpBaseVaultTest() internal {
         vault = IVaultMock(address(VaultMockDeployer.deploy(vaultMockMinTradeAmount)));
         vm.label(address(vault), "vault");
         vaultExtension = IVaultExtension(vault.getVaultExtension());
@@ -149,8 +154,6 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         if (pool != address(0)) {
             approveForPool(IERC20(pool));
         }
-        // Add initial liquidity
-        initPool();
     }
 
     function approveForSender() internal virtual {

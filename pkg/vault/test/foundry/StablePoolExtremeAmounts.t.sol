@@ -41,7 +41,7 @@ contract StablePoolExtremeAmountsTest is BaseExtremeAmountsTest {
                 vault.buildTokenConfig(tokens.asIERC20()),
                 DEFAULT_AMP_FACTOR,
                 roleAccounts,
-                MIN_SWAP_FEE, // Set min swap fee
+                BASE_MIN_SWAP_FEE, // Set min swap fee
                 address(0),
                 false, // Do not enable donations
                 false, // Do not disable unbalanced add/remove liquidity
