@@ -152,10 +152,11 @@ contract LBPool is WeightedPool, Ownable {
     ) external view onlyVault returns (bool success) {
 
         // TODO use TrustedRoutersProvider. Presumably something like this:
-        // success = ITrustedRoutersProvider(TRUSTED_ROUTERS_PROVIDER).isTrusted(router);
-
-        // Check `router == owner` first to avoid calling `getSender()` on a potentially non-router contract/address
-        success = (router == owner()) || (IRouterCommon(router).getSender() == owner());
+        //
+        // if (ITrustedRoutersProvider(TRUSTED_ROUTERS_PROVIDER).isTrusted(router)) {
+        //      success = IRouterCommon(router).getSender() == owner();
+        // }
+        success = IRouterCommon(router).getSender() == owner();
     }
 
     /**
