@@ -704,7 +704,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             kind: kind,
             maxAmountsIn: new uint256[](tokens.length),
             minBptAmountOut: minBptAmountOut,
-            userData: new bytes(0)
+            userData: bytes("")
         });
 
         maxAmountsInScaled18 = new uint256[](tokens.length);
@@ -729,7 +729,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             maxBptAmountIn: maxBptAmountIn,
             minAmountsOut: new uint256[](tokens.length),
             kind: kind,
-            userData: new bytes(0)
+            userData: bytes("")
         });
 
         minAmountsOutScaled18 = new uint256[](tokens.length);
@@ -766,7 +766,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function _mockMintCallback(address to, uint256 amount) internal {
-        vm.mockCall(pool, abi.encodeCall(BalancerPoolToken.emitTransfer, (ZERO_ADDRESS, to, amount)), new bytes(0));
+        vm.mockCall(pool, abi.encodeCall(BalancerPoolToken.emitTransfer, (ZERO_ADDRESS, to, amount)), bytes(""));
     }
 
     function _testAddLiquidity(PoolData memory poolData, TestAddLiquidityParams memory params) internal {
