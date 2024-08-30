@@ -115,7 +115,8 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         amountsIn[daiIdx] = TOKEN_AMOUNT.mulDown(weights[daiIdx]);
         amountsIn[usdcIdx] = TOKEN_AMOUNT.mulDown(weights[usdcIdx]);
 
-        uint256 expectedBptAmountOut = math.computeInvariant(weights, amountsIn, Rounding.ROUND_DOWN) - POOL_MINIMUM_TOTAL_SUPPLY;
+        uint256 expectedBptAmountOut = math.computeInvariant(weights, amountsIn, Rounding.ROUND_DOWN) -
+            POOL_MINIMUM_TOTAL_SUPPLY;
 
         // Cannot use vm.prank, because `_initPool` does multiple calls.
         vm.startPrank(lp);
