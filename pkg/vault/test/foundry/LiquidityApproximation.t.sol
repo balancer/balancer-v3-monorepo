@@ -135,7 +135,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
 
-    function testAddLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactBptAmountOut) public checkInvariant {
+    function testAddLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactBptAmountOut) public {
         addExactOutArbitraryBptOut(exactBptAmountOut, 0);
         assertLiquidityOperationNoSwapFee();
     }
