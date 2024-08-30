@@ -297,7 +297,7 @@ contract VaultUnitSwapTest is BaseTest {
             tokenOut: swapTokens[1],
             amountGivenRaw: amountGivenRaw,
             limitRaw: limitRaw,
-            userData: new bytes(0)
+            userData: bytes("")
         });
 
         swapState.indexIn = 0;
