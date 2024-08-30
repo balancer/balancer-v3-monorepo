@@ -234,7 +234,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         // pool liquidity, or else the hook won't be able to charge fees
         expectedBptOut = bound(
             expectedBptOut,
-            POOL_MINIMUM_TOTAL_SUPPLY * MIN_TRADE_AMOUNT,
+            POOL_MINIMUM_TOTAL_SUPPLY * PRODUCTION_MIN_TRADE_AMOUNT,
             hookFeePercentage == 0 ? MAX_UINT256 : poolInitAmount.divDown(hookFeePercentage)
         );
 
@@ -312,7 +312,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         // Make sure bob has enough to pay for the transaction
         expectedBptIn = bound(
             expectedBptIn,
-            POOL_MINIMUM_TOTAL_SUPPLY * MIN_TRADE_AMOUNT,
+            POOL_MINIMUM_TOTAL_SUPPLY * PRODUCTION_MIN_TRADE_AMOUNT,
             BalancerPoolToken(pool).balanceOf(bob)
         );
 
