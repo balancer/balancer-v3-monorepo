@@ -318,7 +318,13 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         Rounding roundingDirection
     ) internal nonReentrant returns (PoolData memory poolData) {
         // Initialize poolData with base information for subsequent calculations.
-        poolData = _loadPoolData(pool, roundingDirection);
+        poolData.load(
+            _poolTokenBalances[pool],
+            _poolConfigBits[pool],
+            _poolTokenInfo[pool],
+            _poolTokens[pool],
+            roundingDirection
+        );
 
         PoolDataLib.syncPoolBalancesAndFees(poolData, _poolTokenBalances[pool], _aggregateFeeAmounts[pool]);
     }
