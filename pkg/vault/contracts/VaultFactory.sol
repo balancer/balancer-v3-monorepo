@@ -32,6 +32,7 @@ contract VaultFactory is Authentication {
     uint32 private immutable _pauseWindowDuration;
     uint32 private immutable _bufferPeriodDuration;
     uint256 private immutable _minTradeAmount;
+    uint256 private immutable _minWrapAmount;
     address private immutable _deployer;
 
     bytes private _creationCode;
@@ -42,7 +43,8 @@ contract VaultFactory is Authentication {
         IAuthorizer authorizer,
         uint32 pauseWindowDuration,
         uint32 bufferPeriodDuration,
-        uint256 minTradeAmount
+        uint256 minTradeAmount,
+        uint256 minWrapAmount
     ) Authentication(bytes32(uint256(uint160(address(this))))) {
         _deployer = msg.sender;
         _creationCode = type(Vault).creationCode;
@@ -50,6 +52,7 @@ contract VaultFactory is Authentication {
         _pauseWindowDuration = pauseWindowDuration;
         _bufferPeriodDuration = bufferPeriodDuration;
         _minTradeAmount = minTradeAmount;
+        _minWrapAmount = minWrapAmount;
     }
 
     /**
@@ -77,7 +80,7 @@ contract VaultFactory is Authentication {
         ProtocolFeeController feeController = new ProtocolFeeController(IVault(vaultAddress));
 
         address deployedAddress = _create(
-            abi.encode(vaultExtension, _authorizer, feeController, _minTradeAmount),
+            abi.encode(vaultExtension, _authorizer, feeController, _minTradeAmount, _minWrapAmount),
             salt
         );
 

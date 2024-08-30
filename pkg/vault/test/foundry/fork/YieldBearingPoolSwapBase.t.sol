@@ -238,8 +238,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn;
         int256 expectedBufferDeltaTokenOut;
 
-        // If the buffer is unbalanced beyond MIN_TRADE_AMOUNT, we expect a delta in the buffer.
-        if (unbalancedToken1 > _token1BufferInitAmount / 2 + MIN_TRADE_AMOUNT) {
+        // If the buffer is unbalanced beyond PRODUCTION_MIN_TRADE_AMOUNT, we expect a delta in the buffer.
+        if (unbalancedToken1 > _token1BufferInitAmount / 2 + PRODUCTION_MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenIn = int256(_token1BufferInitAmount / 2) - int256(unbalancedToken1);
         } else {
             // The unbalance operation was to remove underlying tokens, which generated a surplus of wrapped tokens.
@@ -248,8 +248,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             expectedBufferDeltaTokenIn = 0;
         }
 
-        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
-        if (unbalancedToken2 < _token2BufferInitAmount / 2 - MIN_TRADE_AMOUNT) {
+        // If the difference is smaller than PRODUCTION_MIN_TRADE_AMOUNT, buffer is not unbalanced.
+        if (unbalancedToken2 < _token2BufferInitAmount / 2 - PRODUCTION_MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenOut = int256(_token2BufferInitAmount / 2) - int256(unbalancedToken2);
         } else {
             // The unbalance operation was to remove wrapped tokens, which generated a surplus of underlying tokens.
@@ -280,8 +280,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn;
         int256 expectedBufferDeltaTokenOut;
 
-        // If the buffer is unbalanced beyond MIN_TRADE_AMOUNT, we expect a delta in the buffer.
-        if (unbalancedToken1 > _token1BufferInitAmount / 2 + MIN_TRADE_AMOUNT) {
+        // If the buffer is unbalanced beyond PRODUCTION_MIN_TRADE_AMOUNT, we expect a delta in the buffer.
+        if (unbalancedToken1 > _token1BufferInitAmount / 2 + PRODUCTION_MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenIn = int256(_token1BufferInitAmount / 2) - int256(unbalancedToken1);
         } else {
             // The unbalance operation was to remove underlying tokens, which generated a surplus of wrapped tokens.
@@ -290,8 +290,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             expectedBufferDeltaTokenIn = 0;
         }
 
-        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
-        if (unbalancedToken2 < _token2BufferInitAmount / 2 - MIN_TRADE_AMOUNT) {
+        // If the difference is smaller than PRODUCTION_MIN_TRADE_AMOUNT, buffer is not unbalanced.
+        if (unbalancedToken2 < _token2BufferInitAmount / 2 - PRODUCTION_MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenOut = int256(_token2BufferInitAmount / 2) - int256(unbalancedToken2);
         } else {
             // The unbalance operation was to remove wrapped tokens, which generated a surplus of underlying tokens.
@@ -382,8 +382,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn;
         int256 expectedBufferDeltaTokenOut;
 
-        // If the buffer is unbalanced beyond MIN_TRADE_AMOUNT, we expect a delta in the buffer.
-        if (unbalancedToken1 < _token1BufferInitAmount / 2 - MIN_TRADE_AMOUNT) {
+        // If the buffer is unbalanced beyond PRODUCTION_MIN_TRADE_AMOUNT, we expect a delta in the buffer.
+        if (unbalancedToken1 < _token1BufferInitAmount / 2 - PRODUCTION_MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenOut = int256(_token1BufferInitAmount / 2) - int256(unbalancedToken1);
         } else {
             // The unbalance operation was to remove wrapped tokens, which generated a surplus of underlying tokens.
@@ -392,8 +392,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             expectedBufferDeltaTokenOut = 0;
         }
 
-        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
-        if (unbalancedToken2 > _token2BufferInitAmount / 2 + MIN_TRADE_AMOUNT) {
+        // If the difference is smaller than PRODUCTION_MIN_TRADE_AMOUNT, buffer is not unbalanced.
+        if (unbalancedToken2 > _token2BufferInitAmount / 2 + PRODUCTION_MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenIn = int256(_token2BufferInitAmount / 2) - int256(unbalancedToken2);
         } else {
             // The unbalance operation was to remove underlying tokens, which generated a surplus of wrapped tokens.
@@ -424,8 +424,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         int256 expectedBufferDeltaTokenIn;
         int256 expectedBufferDeltaTokenOut;
 
-        // If the buffer is unbalanced beyond MIN_TRADE_AMOUNT, we expect a delta in the buffer.
-        if (unbalancedToken1 < _token1BufferInitAmount / 2 - MIN_TRADE_AMOUNT) {
+        // If the buffer is unbalanced beyond PRODUCTION_MIN_TRADE_AMOUNT, we expect a delta in the buffer.
+        if (unbalancedToken1 < _token1BufferInitAmount / 2 - PRODUCTION_MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenOut = int256(_token1BufferInitAmount / 2) - int256(unbalancedToken1);
         } else {
             // The unbalance operation was to remove wrapped tokens, which generated a surplus of underlying tokens.
@@ -434,8 +434,8 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             expectedBufferDeltaTokenOut = 0;
         }
 
-        // If the difference is smaller than MIN_TRADE_AMOUNT, buffer is not unbalanced.
-        if (unbalancedToken2 > _token2BufferInitAmount / 2 + MIN_TRADE_AMOUNT) {
+        // If the difference is smaller than PRODUCTION_MIN_TRADE_AMOUNT, buffer is not unbalanced.
+        if (unbalancedToken2 > _token2BufferInitAmount / 2 + PRODUCTION_MIN_TRADE_AMOUNT) {
             expectedBufferDeltaTokenIn = int256(_token2BufferInitAmount / 2) - int256(unbalancedToken2);
         } else {
             // The unbalance operation was to remove underlying tokens, which generated a surplus of wrapped tokens.
@@ -907,7 +907,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
     }
 
     function _unbalanceBuffer(WrappingDirection direction, IERC4626 wToken, uint256 amountToUnbalance) private {
-        if (amountToUnbalance < MIN_TRADE_AMOUNT) {
+        if (amountToUnbalance < PRODUCTION_MIN_TRADE_AMOUNT) {
             // If amountToUnbalance is very low, returns without unbalancing the buffer.
             return;
         }

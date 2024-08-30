@@ -32,7 +32,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
     function setUp() public virtual override {
         defaultBalance = 1e10 * 1e18;
         // We will use min trade amount in this test.
-        vaultMockMinTradeAmount = MIN_TRADE_AMOUNT;
+        vaultMockMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT;
 
         BaseVaultTest.setUp();
 
@@ -219,7 +219,7 @@ contract DynamicFeePoolTest is BaseVaultTest {
         dynamicSwapFeePercentage = bound(
             dynamicSwapFeePercentage,
             0,
-            FixedPoint.ONE - MIN_TRADE_AMOUNT.divDown(defaultAmount)
+            FixedPoint.ONE - PRODUCTION_MIN_TRADE_AMOUNT.divDown(defaultAmount)
         );
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
 

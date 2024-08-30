@@ -34,6 +34,9 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     uint256 private _swapAmount;
 
     function setUp() public virtual override {
+        // We will use min trade amount in this test.
+        vaultMockMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT;
+
         BaseVaultTest.setUp();
 
         _swapAmount = poolInitAmount / 100;
@@ -85,7 +88,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
             // pool liquidity, or else the hook won't be able to charge fees.
             expectedBptOut = bound(
                 expectedBptOut,
-                POOL_MINIMUM_TOTAL_SUPPLY * MIN_TRADE_AMOUNT,
+                POOL_MINIMUM_TOTAL_SUPPLY * PRODUCTION_MIN_TRADE_AMOUNT,
                 hookFeePercentage == 0 ? bobDaiBalance : poolInitAmount.divDown(hookFeePercentage)
             );
 
@@ -138,7 +141,11 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         PoolHooksMock(poolHooksContract).setAddLiquidityHookDiscountPercentage(hookDiscountPercentage);
 
         // Make sure bob has enough to pay for the transaction.
-        expectedBptOut = bound(expectedBptOut, POOL_MINIMUM_TOTAL_SUPPLY * MIN_TRADE_AMOUNT, dai.balanceOf(bob));
+        expectedBptOut = bound(
+            expectedBptOut,
+            POOL_MINIMUM_TOTAL_SUPPLY * PRODUCTION_MIN_TRADE_AMOUNT,
+            dai.balanceOf(bob)
+        );
 
         uint256[] memory actualAmountsIn = BasePoolMath.computeProportionalAmountsIn(
             [poolInitAmount, poolInitAmount].toMemoryArray(),
@@ -246,7 +253,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         // Make sure Bob has enough to pay for the transaction.
         expectedBptIn = bound(
             expectedBptIn,
-            POOL_MINIMUM_TOTAL_SUPPLY * MIN_TRADE_AMOUNT,
+            POOL_MINIMUM_TOTAL_SUPPLY * PRODUCTION_MIN_TRADE_AMOUNT,
             BalancerPoolToken(pool).balanceOf(bob)
         );
 
@@ -306,7 +313,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         // Make sure Bob has enough to pay for the transaction.
         expectedBptIn = bound(
             expectedBptIn,
-            POOL_MINIMUM_TOTAL_SUPPLY * MIN_TRADE_AMOUNT,
+            POOL_MINIMUM_TOTAL_SUPPLY * PRODUCTION_MIN_TRADE_AMOUNT,
             BalancerPoolToken(pool).balanceOf(bob)
         );
 

@@ -57,8 +57,13 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         uint256[] yieldFeeAmounts;
     }
 
-    uint256 internal constant BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
+    // Pool limits.
     uint256 internal constant POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
+    uint256 internal constant PRODUCTION_MIN_TRADE_AMOUNT = 1e6;
+
+    // ERC4626 buffer limits.
+    uint256 internal constant BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
+    uint256 internal constant PRODUCTION_MIN_WRAP_AMOUNT = 1e4;
 
     bytes32 internal constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     bytes32 internal constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
@@ -111,15 +116,20 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Change this value before calling `setUp` to test under real conditions.
     uint256 vaultMockMinTradeAmount = 0;
 
+    // VaultMock can override min wrap amount; tests shall use 0 by default to simplify fuzz tests.
+    // Min wrap amount is meant to be an extra protection against unknown rounding errors; the Vault should still work
+    // without it, so it can be zeroed out in general.
+    // Change this value before calling `setUp` to test under real conditions.
+    uint256 vaultMockMinWrapAmount = 0;
+
     // Applies to Weighted Pools.
     uint256 internal constant BASE_MIN_SWAP_FEE = 1e12; // 0.00001%
     uint256 internal constant BASE_MAX_SWAP_FEE = 10e16; // 10%
-    uint256 internal constant MIN_TRADE_AMOUNT = 1e6;
 
     function setUp() public virtual override {
         BaseTest.setUp();
 
-        vault = IVaultMock(address(VaultMockDeployer.deploy(vaultMockMinTradeAmount)));
+        vault = IVaultMock(address(VaultMockDeployer.deploy(vaultMockMinTradeAmount, vaultMockMinWrapAmount)));
 
         vm.label(address(vault), "vault");
         vaultExtension = IVaultExtension(vault.getVaultExtension());

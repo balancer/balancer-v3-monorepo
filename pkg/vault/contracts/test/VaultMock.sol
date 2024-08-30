@@ -56,8 +56,9 @@ contract VaultMock is IVaultMainMock, Vault {
         IVaultExtension vaultExtension,
         IAuthorizer authorizer,
         IProtocolFeeController protocolFeeController,
-        uint256 minTradeAmount
-    ) Vault(vaultExtension, authorizer, protocolFeeController, minTradeAmount) {
+        uint256 minTradeAmount,
+        uint256 minWrapAmount
+    ) Vault(vaultExtension, authorizer, protocolFeeController, minTradeAmount, minWrapAmount) {
         uint32 pauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
         uint32 bufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
         _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowEndTime - bufferPeriodDuration);

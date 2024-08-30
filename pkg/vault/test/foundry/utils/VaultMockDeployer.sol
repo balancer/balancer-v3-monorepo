@@ -15,10 +15,10 @@ import { ProtocolFeeController } from "../../../contracts/ProtocolFeeController.
 
 library VaultMockDeployer {
     function deploy() internal returns (VaultMock vault) {
-        return deploy(0);
+        return deploy(0, 0);
     }
 
-    function deploy(uint256 minTradeAmount) internal returns (VaultMock vault) {
+    function deploy(uint256 minTradeAmount, uint256 minWrapAmount) internal returns (VaultMock vault) {
         IAuthorizer authorizer = new BasicAuthorizerMock();
         bytes32 salt = bytes32(0);
         vault = VaultMock(payable(CREATE3.getDeployed(salt)));
@@ -26,7 +26,7 @@ library VaultMockDeployer {
         VaultExtensionMock vaultExtension = new VaultExtensionMock(IVault(address(vault)), vaultAdmin);
         ProtocolFeeController protocolFeeController = new ProtocolFeeControllerMock(IVault(address(vault)));
 
-        _create(abi.encode(vaultExtension, authorizer, protocolFeeController, minTradeAmount), salt);
+        _create(abi.encode(vaultExtension, authorizer, protocolFeeController, minTradeAmount, minWrapAmount), salt);
         return vault;
     }
 

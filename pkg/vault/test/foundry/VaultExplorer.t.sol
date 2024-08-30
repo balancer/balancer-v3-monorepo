@@ -65,6 +65,7 @@ contract VaultExplorerTest is BaseVaultTest {
     uint256 internal constant PROTOCOL_YIELD_FEE_AMOUNT = 50e18;
 
     uint256 internal constant TEST_MIN_TRADE_AMOUNT = 1.43e6;
+    uint256 internal constant TEST_MIN_WRAP_AMOUNT = 1.23e4;
 
     VaultExplorer internal explorer;
     IAuthentication feeControllerAuth;
@@ -83,6 +84,7 @@ contract VaultExplorerTest is BaseVaultTest {
     function setUp() public virtual override {
         // Set this so that it is non-zero, and we can test the getter for the minimum trade amount.
         vaultMockMinTradeAmount = TEST_MIN_TRADE_AMOUNT;
+        vaultMockMinWrapAmount = TEST_MIN_WRAP_AMOUNT;
 
         BaseVaultTest.setUp();
 
@@ -623,7 +625,7 @@ contract VaultExplorerTest is BaseVaultTest {
     function testGetMinimumWrapAmount() public view {
         uint256 vaultMinimum = vault.getMinimumWrapAmount();
 
-        assertEq(vaultMinimum, 1e3, "Unexpected minimum wrap amount");
+        assertEq(vaultMinimum, TEST_MIN_WRAP_AMOUNT, "Unexpected minimum wrap amount");
         assertEq(explorer.getMinimumWrapAmount(), vaultMinimum, "Minimum wrap amount mismatch");
     }
 
