@@ -10,6 +10,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
+import { ERC20TestToken } from "./ERC20TestToken.sol";
 import { FixedPoint } from "../math/FixedPoint.sol";
 
 contract ERC4626TestToken is ERC4626, IRateProvider {
@@ -37,6 +38,22 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
     function getRate() external view returns (uint256) {
         // The rate is calculated using the most pessimistic scenario, which is rounding down.
         return _convertToAssets(FixedPoint.ONE, Math.Rounding.Floor);
+    }
+
+    /**
+     * @notice Mints underlying and/or wrapped amount to the ERC4626 token.
+     * @dev If we set a rate to the ERC4626 token directly, we do not reproduce rounding issues when dividing assets
+     * by total supply. The best way to mock a rate is to inflate underlying and wrapped amounts.
+     */
+    function inflateUnderlyingOrWrapped(uint256 underlyingToInflate, uint256 wrappedToInflate) external {
+        if (underlyingToInflate > 0) {
+            // Mint underlying to the address of the wrapper, increasing the token rate.
+            ERC20TestToken(address(_overrideAsset)).mint(address(this), underlyingToInflate);
+        }
+        if (wrappedToInflate > 0) {
+            // Mint wrapped to address 0, decreasing the token rate.
+            _mint(address(0), wrappedToInflate);
+        }
     }
 
     /*****************************************************************
