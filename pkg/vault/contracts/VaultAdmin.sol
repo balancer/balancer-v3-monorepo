@@ -354,7 +354,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
      */
     function _setPoolRecoveryMode(address pool, bool recoveryMode) internal {
         if (recoveryMode == false) {
-            _writePoolBalancesToStorage(pool, _loadPoolData(pool, Rounding.ROUND_DOWN));
+            _syncPoolBalancesAfterRecoveryMode(pool);
         }
 
         // Update poolConfigBits. `_writePoolBalancesToStorage` updates *only* balances, not yield fees, which are
@@ -363,6 +363,15 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _poolConfigBits[pool] = _poolConfigBits[pool].setPoolInRecoveryMode(recoveryMode);
 
         emit PoolRecoveryModeStateChanged(pool, recoveryMode);
+    }
+
+    /**
+     * @dev Raw and live balances will diverge as tokens are withdrawn during Recovery Mode. Live balances cannot
+     * be updated in Recovery Mode, as this would require making external calls to update rates, which could fail.
+     * When Recovery Mode is disabled, re-sync the balances.
+     */
+    function _syncPoolBalancesAfterRecoveryMode(address pool) private nonReentrant {
+        _writePoolBalancesToStorage(pool, _loadPoolData(pool, Rounding.ROUND_DOWN));
     }
 
     /*******************************************************************************
