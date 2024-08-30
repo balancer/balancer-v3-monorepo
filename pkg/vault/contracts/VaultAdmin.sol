@@ -116,11 +116,6 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     }
 
     /// @inheritdoc IVaultAdmin
-    function getMinimumWrapAmount() external pure returns (uint256) {
-        return _MINIMUM_WRAP_AMOUNT;
-    }
-
-    /// @inheritdoc IVaultAdmin
     function getPoolMinimumTotalSupply() external pure returns (uint256) {
         return _POOL_MINIMUM_TOTAL_SUPPLY;
     }

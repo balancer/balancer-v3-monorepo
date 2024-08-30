@@ -58,6 +58,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     // solhint-disable-next-line var-name-mixedcase
     uint256 internal immutable _MINIMUM_TRADE_AMOUNT;
 
+    // Minimum given amount to wrap/unwrap (applied to native decimal values), to avoid rounding issues.
+    // solhint-disable-next-line var-name-mixedcase
+    uint256 internal immutable _MINIMUM_WRAP_AMOUNT;
+
     // Local reference to the Proxy pattern Vault extension contract.
     IVaultExtension private immutable _vaultExtension;
 
@@ -65,7 +69,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         IVaultExtension vaultExtension,
         IAuthorizer authorizer,
         IProtocolFeeController protocolFeeController,
-        uint256 minTradeAmount
+        uint256 minTradeAmount,
+        uint256 minWrapAmount
     ) {
         if (address(vaultExtension.vault()) != address(this)) {
             revert WrongVaultExtensionDeployment();
@@ -84,6 +89,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _authorizer = authorizer;
         _MINIMUM_TRADE_AMOUNT = minTradeAmount;
+        _MINIMUM_WRAP_AMOUNT = minWrapAmount;
     }
 
     /*******************************************************************************
@@ -1535,6 +1541,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     /// @inheritdoc IVaultMain
     function getMinimumTradeAmount() external view returns (uint256) {
         return _MINIMUM_TRADE_AMOUNT;
+    }
+
+    /// @inheritdoc IVaultMain
+    function getMinimumWrapAmount() external view returns (uint256) {
+        return _MINIMUM_WRAP_AMOUNT;
     }
 
     /**

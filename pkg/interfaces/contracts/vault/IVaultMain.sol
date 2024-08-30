@@ -177,4 +177,11 @@ interface IVaultMain {
      * @return minimumTradeAmount The minimum trade amount as an 18-decimal floating point number
      */
     function getMinimumTradeAmount() external view returns (uint256);
+
+    /**
+     * @notice Get the minimum wrap amount in a buffer operation.
+     * @dev This limit is applied to the wrap operation amount, in native underlying token decimals.
+     * @return minimumWrapAmount The minimum wrap amount in native underlying token decimals
+     */
+    function getMinimumWrapAmount() external view returns (uint256);
 }

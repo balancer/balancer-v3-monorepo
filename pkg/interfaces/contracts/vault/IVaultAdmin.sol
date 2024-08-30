@@ -64,13 +64,6 @@ interface IVaultAdmin {
     function getMaximumPoolTokens() external pure returns (uint256);
 
     /**
-     * @notice Get the minimum amount that can be wrapped by an ERC4626 token buffer by the Vault.
-     * @dev This limit is applied to native decimal values, and guards against rounding errors.
-     * @return minimumWrapAmount The minimum wrap amount
-     */
-    function getMinimumWrapAmount() external pure returns (uint256);
-
-    /**
      * @notice Get the minimum total supply of pool tokens (BPT) for an initialized pool.
      * @dev This prevents pools from being completely drained. When the pool is initialized, this minimum amount of BPT
      * is minted to the zero address. This is an 18-decimal floating point number; BPT are always 18 decimals.
