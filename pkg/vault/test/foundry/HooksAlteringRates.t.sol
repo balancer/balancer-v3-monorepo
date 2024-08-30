@@ -121,7 +121,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeCall(IHooks.onAfterInitialize, (expectedAmounts, bptAmount, ""))
+            abi.encodeCall(IHooks.onAfterInitialize, (expectedAmounts, bptAmount, bytes("")))
         );
 
         router.initialize(
@@ -130,7 +130,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
             false,
-            ""
+            bytes("")
         );
     }
 

@@ -108,7 +108,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
@@ -176,7 +176,7 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
