@@ -100,7 +100,7 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
 
         // Initialize pool.
         vm.prank(lp);
-        router.initialize(weightedPool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
+        router.initialize(weightedPool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, bytes(""));
 
         return weightedPool;
     }

@@ -601,7 +601,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         // Predict the amount of shares to receive
         (uint256 bufferUnderlyingBalance, uint256 bufferWrappedBalance) = vault.getBufferBalance(waDAI);
-        uint256 currentInvariant = bufferUnderlyingBalance + bufferWrappedBalance.mulDown(rate);
+        uint256 currentInvariant = bufferUnderlyingBalance + waDAI.convertToAssets(bufferWrappedBalance)
 
         // Shares = current supply (= first shares added) times the invariant ratio.
         uint256 expectedSecondAddShares = (vault.getBufferTotalShares(waDAI) * secondDepositUnderlying) /
@@ -613,10 +613,10 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         assertEq(secondAddLpShares, expectedSecondAddShares, "Wrong second lpShares added");
 
         // stack-too-deep
-        _verifyWithdrawal(secondDepositUnderlying, secondAddLpShares, rate);
+        _verifyWithdrawal(secondDepositUnderlying, secondAddLpShares);
     }
 
-    function _verifyWithdrawal(uint256 secondDepositUnderlying, uint256 secondAddLpShares, uint256 rate) internal {
+    function _verifyWithdrawal(uint256 secondDepositUnderlying, uint256 secondAddLpShares) internal {
         // Predict results of proportional withdrawal of `secondAddLpShares`.
         uint256 proportionalWithdrawPct = secondAddLpShares.divDown(vault.getBufferTotalShares(waDAI));
 
@@ -631,7 +631,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         assertApproxEqAbs(removedUnderlying, expectedUnderlyingOut, 1e8, "Wrong underlying amount removed");
         assertApproxEqAbs(removedWrapped, expectedWrappedOut, 1e8, "Wrong wrapped amount removed");
 
-        uint256 totalUnderlyingValue = removedUnderlying + rate.mulDown(removedWrapped);
+        uint256 bufferInvariantAfter = removedUnderlying + waDAI.convertToAssets(removedWrapped);
         // Ensure we get out less value than we put in.
         assertLe(totalUnderlyingValue, secondDepositUnderlying, "Value removed > value added");
         assertApproxEqAbs(totalUnderlyingValue, secondDepositUnderlying, 1e12, "Value removed !~ value added");

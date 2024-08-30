@@ -275,7 +275,7 @@ contract E2eSwapWeightedTest is E2eSwapTest {
         amountsIn[tokenBIdx] = poolInitAmountTokenB;
 
         vm.prank(lp);
-        router.initialize(address(weightedPool), tokens.asIERC20(), amountsIn, 0, false, "");
+        router.initialize(address(weightedPool), tokens.asIERC20(), amountsIn, 0, false, bytes(""));
 
         return address(weightedPool);
     }

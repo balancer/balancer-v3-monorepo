@@ -126,7 +126,7 @@ contract StablePoolFactoryTest is BaseVaultTest {
 
         // Initialize pool
         vm.prank(lp);
-        router.initialize(stablePool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
+        router.initialize(stablePool, tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, bytes(""));
 
         return stablePool;
     }
