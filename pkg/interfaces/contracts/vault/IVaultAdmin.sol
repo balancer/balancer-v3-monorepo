@@ -129,7 +129,7 @@ interface IVaultAdmin {
      * @notice Pause the Pool: an emergency action which disables all pool functions.
      * @dev This is a permissioned function that will only work during the Pause Window set during pool factory
      * deployment.
-     * 
+     *
      * @param pool The pool being paused
      */
     function pausePool(address pool) external;
@@ -138,7 +138,7 @@ interface IVaultAdmin {
      * @notice Reverse a `pause` operation, and restore the Pool to normal functionality.
      * @dev This is a permissioned function that will only work on a paused Pool within the Buffer Period set during
      * deployment. Note that the Pool will automatically unpause after the Buffer Period expires.
-     * 
+     *
      * @param pool The pool being unpaused
      */
     function unpausePool(address pool) external;

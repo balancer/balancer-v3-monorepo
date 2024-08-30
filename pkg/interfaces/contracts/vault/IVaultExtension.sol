@@ -40,7 +40,7 @@ interface IVaultExtension {
     *******************************************************************************/
 
     /**
-     * @notice Returns whether the Vault is unlocked (i.e., executing an operation). 
+     * @notice Returns whether the Vault is unlocked (i.e., executing an operation).
      * @dev The Vault must be unlocked to perform state-changing liquidity operations.
      * @return unlocked True if the Vault is unlocked, false otherwise
      */

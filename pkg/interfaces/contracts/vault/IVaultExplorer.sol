@@ -14,7 +14,7 @@ import { TokenInfo, PoolRoleAccounts, PoolData, PoolConfig, PoolSwapParams, Hook
  * for liquidity operations, invoked through a Router. This is unhelpful for off-chain processes (e.g., Etherscan).
  * The proxy contracts (`VaultExtension` and `VaultAdmin`) can only be delegate-called through the main Vault, so
  * although the functions are visible off-chain, they cannot be called from Etherscan.
- * 
+ *
  * The `VaultExplorer` performs the delegate calls, in order to expose the entire Vault interface in a user-friendly
  * manner. It exposes all the "getters," plus permissionless write operations (e.g., fee collection).
  */
@@ -67,7 +67,7 @@ interface IVaultExplorer {
     *******************************************************************************/
 
     /**
-     * @notice Returns whether the Vault is unlocked (i.e., executing an operation). 
+     * @notice Returns whether the Vault is unlocked (i.e., executing an operation).
      * @dev The Vault must be unlocked to perform state-changing liquidity operations.
      * @return unlocked True if the Vault is unlocked, false otherwise
      */
@@ -383,7 +383,7 @@ interface IVaultExplorer {
      * @return minimumTradeAmount The minimum trade amount as an 18-decimal floating point number
      */
     function getMinimumTradeAmount() external view returns (uint256);
-    
+
     /**
      * @notice Get the minimum amount that can be wrapped by an ERC4626 token buffer by the Vault.
      * @dev This limit is applied to native decimal values, and guards against rounding errors.
