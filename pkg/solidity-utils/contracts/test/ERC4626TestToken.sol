@@ -15,6 +15,7 @@ import { FixedPoint } from "../math/FixedPoint.sol";
 
 contract ERC4626TestToken is ERC4626, IRateProvider {
     using SafeERC20 for IERC20;
+    using FixedPoint for uint256;
 
     uint8 private immutable _wrappedTokenDecimals;
     IERC20 private _overrideAsset;
@@ -44,16 +45,47 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
      * @notice Mints underlying and/or wrapped amount to the ERC4626 token.
      * @dev If we set a rate to the ERC4626 token directly, we do not reproduce rounding issues when dividing assets
      * by total supply. The best way to mock a rate is to inflate underlying and wrapped amounts.
+     * For example, let's say we have an ERC4626 token with 100 underlying and 100 total supply (or wrapped amount).
+     * If we want to set the rate to 2, we need to call `inflateUnderlyingOrWrapped(100, 0)`, so that the final
+     * asset balance is 200 and the final total supply is still 100 (200/100 = 2).
+     * However, if we want the rate to be 0.5, we need to call `inflateUnderlyingOrWrapped(0, 100)`, so that underlying
+     * balance does not change but final total supply is 200 (100/200 = 0.5).
      */
-    function inflateUnderlyingOrWrapped(uint256 underlyingToInflate, uint256 wrappedToInflate) external {
-        if (underlyingToInflate > 0) {
+    function inflateUnderlyingOrWrapped(uint256 underlyingDelta, uint256 wrappedDelta) external {
+        if (underlyingDelta > 0) {
             // Mint underlying to the address of the wrapper, increasing the token rate.
-            ERC20TestToken(address(_overrideAsset)).mint(address(this), underlyingToInflate);
+            ERC20TestToken(address(_overrideAsset)).mint(address(this), underlyingDelta);
         }
-        if (wrappedToInflate > 0) {
+        if (wrappedDelta > 0) {
             // Mint wrapped to address 0, decreasing the token rate.
-            _mint(address(0), wrappedToInflate);
+            _mint(address(0), wrappedDelta);
         }
+    }
+
+    /**
+     * @notice Use inflateUnderlyingOrWrapped to inflate underlying or total supply amounts, which sets the current
+     * token rate to the desired rate.
+     * @dev Although this function is a shortcut to inflateUnderlyingOrWrapped, it has a limited power: it cannot
+     * reproduce a rate that is not exact between assets and shares. So, if we want to test a rate that is problematic,
+     * we need to use the inflateUnderlyingOrWrapped and not this one.
+     */
+    function mockRate(uint256 newRate) external {
+        uint256 totalSupply = ERC4626TestToken(address(this)).totalSupply();
+        uint256 totalAssets = ERC4626TestToken(address(this)).totalAssets();
+
+        uint256 underlyingDelta;
+        uint256 wrappedDelta;
+
+        // If rate is lower than one, inflates the total supply. Else, inflates the underlying amount.
+        if (newRate < FixedPoint.ONE) {
+            uint256 newTotalWrappedAmount = totalAssets.divDown(newRate);
+            uint256 wrappedDelta = newTotalWrappedAmount - totalSupply;
+        } else {
+            uint256 newTotalUnderlyingAmount = totalSupply.mulDown(newRate);
+            uint256 underlyingDelta = newTotalUnderlyingAmount - totalAssets;
+        }
+
+        ERC4626TestToken(address(this)).inflateUnderlyingOrWrapped(underlyingDelta, wrappedDelta);
     }
 
     /*****************************************************************
