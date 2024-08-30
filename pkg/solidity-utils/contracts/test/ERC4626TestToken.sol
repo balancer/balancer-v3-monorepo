@@ -63,8 +63,7 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
     }
 
     /**
-     * @notice Use inflateUnderlyingOrWrapped to inflate underlying or total supply amounts, which sets the current
-     * token rate to the desired rate.
+     * @notice Set the token rate by inflating either the underlying or total supply amount.
      * @dev Although this function is a shortcut to inflateUnderlyingOrWrapped, it has a limited power: it cannot
      * reproduce a rate that is not exact between assets and shares. So, if we want to test a rate that is problematic,
      * we need to use the inflateUnderlyingOrWrapped and not this one.
