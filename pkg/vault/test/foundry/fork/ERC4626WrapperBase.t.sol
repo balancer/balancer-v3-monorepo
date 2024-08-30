@@ -90,7 +90,7 @@ abstract contract ERC4626WrapperBaseTest is Test {
 
     function testMint__Fork__Fuzz(uint256 amountToMint) public {
         // When user mints, a round up may occur and add some wei in the amount of underlying required to deposit.
-        // This can cause the user to don't have enough tokens to deposit.
+        // This can cause the user to not have enough tokens to deposit.
         // So, the maximum amountToMint must be the initialShares (which is exactly the initialUnderlying, converted to
         // shares) less a tolerance.
         amountToMint = bound(

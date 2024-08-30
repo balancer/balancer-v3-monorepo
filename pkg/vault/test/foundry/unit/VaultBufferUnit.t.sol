@@ -354,7 +354,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         uint256 wrappedReservesBefore,
         uint256 underlyingDeltaHint,
         uint256 wrappedDeltaHint
-    ) private {
+    ) private view {
         // Measure reserves after the wrap operation.
         uint256 wrappedReservesAfter = vault.getReservesOf(IERC20(address(wDaiInitialized)));
         uint256 underlyingReservesAfter = vault.getReservesOf(dai);
@@ -374,7 +374,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         uint256 wrappedReservesBefore,
         uint256 underlyingDeltaHint,
         uint256 wrappedDeltaHint
-    ) private {
+    ) private view {
         // Measure reserves after the unwrap operation.
         uint256 wrappedReservesAfter = vault.getReservesOf(IERC20(address(wDaiInitialized)));
         uint256 underlyingReservesAfter = vault.getReservesOf(dai);
