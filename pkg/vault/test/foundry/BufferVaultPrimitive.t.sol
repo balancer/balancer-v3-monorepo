@@ -28,8 +28,9 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     uint256 private constant _userAmount = 10e6 * 1e18;
     uint256 private constant _wrapAmount = _userAmount / 100;
 
-    uint256 private constant MIN_WRAP_AMOUNT = 1e3;
-    uint256 private constant MINIMUM_TOTAL_SUPPLY = 1e6;
+    // TODO: delete after #936 (will be defined in BaseVaultTest)
+    uint256 private constant PRODUCTION_MIN_WRAP_AMOUNT = 1e4;
+    uint256 private constant BUFFER_MINIMUM_TOTAL_SUPPLY = 1e6;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -279,7 +280,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
                     kind: SwapKind.EXACT_OUT,
                     direction: WrappingDirection.WRAP,
                     wrappedToken: IERC4626(address(waDAI)),
-                    amountGivenRaw: MIN_WRAP_AMOUNT,
+                    amountGivenRaw: PRODUCTION_MIN_WRAP_AMOUNT,
                     limitRaw: MAX_UINT128,
                     userData: bytes("")
                 })
@@ -515,7 +516,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // After the first add liquidity operation, ending balances are (using 1000 for _wrapAmount for simplicity):
         // [1000 underlying, 1000 wrapped]; total supply is ~2000 (not counting the initialization).
 
-        assertEq(firstAddLpShares, _wrapAmount * 2 - MINIMUM_TOTAL_SUPPLY, "Wrong first lpShares added");
+        assertEq(firstAddLpShares, _wrapAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY, "Wrong first lpShares added");
         uint256 rate = 2e18;
 
         // Add [2000 underlying, 0 wrapped] when the rate is 2: (1 wrapped = 2 underlying)
@@ -586,13 +587,13 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         uint256 rate
     ) internal {
         // Ensure we're adding more than the minimum, or it will revert.
-        vm.assume(firstDepositUnderlying + wrappedAmount >= MINIMUM_TOTAL_SUPPLY);
+        vm.assume(firstDepositUnderlying + wrappedAmount >= BUFFER_MINIMUM_TOTAL_SUPPLY);
 
         vm.prank(lp);
         uint256 firstAddLpShares = router.initializeBuffer(waDAI, firstDepositUnderlying, wrappedAmount);
         assertEq(
             firstAddLpShares,
-            firstDepositUnderlying + wrappedAmount - MINIMUM_TOTAL_SUPPLY,
+            firstDepositUnderlying + wrappedAmount - BUFFER_MINIMUM_TOTAL_SUPPLY,
             "Wrong first lpShares added"
         );
 
