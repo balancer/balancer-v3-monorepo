@@ -296,7 +296,7 @@ contract HooksTest is BaseVaultTest {
                     amountCalculatedRaw: expectedAmountOut,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );

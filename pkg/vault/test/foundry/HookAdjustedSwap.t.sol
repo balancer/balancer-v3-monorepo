@@ -93,7 +93,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
@@ -155,7 +155,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
@@ -214,7 +214,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
@@ -285,7 +285,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
@@ -347,7 +347,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     amountCalculatedRaw: _swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
@@ -392,7 +392,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     amountCalculatedRaw: _swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
@@ -438,7 +438,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     amountCalculatedRaw: _swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
