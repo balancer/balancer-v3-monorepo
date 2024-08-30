@@ -58,7 +58,7 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
         }
         if (wrappedDelta > 0) {
             // Mint wrapped to address 0, decreasing the token rate.
-            _mint(address(0), wrappedDelta);
+            _mint(address(this), wrappedDelta);
         }
     }
 
