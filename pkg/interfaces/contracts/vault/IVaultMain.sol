@@ -32,14 +32,18 @@ interface IVaultMain {
      * @dev Protects the caller against leftover dust in the vault for the token being settled. The caller
      * should know in advance how many tokens were paid to the Vault, so it can provide it as a hint to discard any
      * excess in the Vault balance.
+     *
      * If the given hint is equal to or higher than the difference in reserves, the difference in reserves is given as
      * credit to the caller. If it's higher, the caller sent fewer tokens than expected, so settlement would fail.
+     *
      * If the given hint is lower than the difference in reserves, the hint is given as credit to the caller.
      * In this case, the excess would be absorbed by the Vault (and reflected correctly in the reserves), but would
      * not affect settlement.
+     *
      * The credit supplied by the Vault can be calculated as `min(reserveDifference, amountHint)`, where the reserve
      * difference equals current balance of the token minus existing reserves of the token when the function is called.
-     * @param token Token's address
+     *
+     * @param token Address of the token
      * @param amountHint Amount paid as reported by the caller
      * @return credit Credit received in return of the payment
      */
@@ -49,8 +53,9 @@ interface IVaultMain {
      * @notice Sends tokens to a recipient.
      * @dev There is no inverse operation for this function. Transfer funds to the Vault and call `settle` to cancel
      * debts.
-     * @param token Token's address
-     * @param to Recipient's address
+     *
+     * @param token Address of the token
+     * @param to Recipient address
      * @param amount Amount of tokens to send
      */
     function sendTo(IERC20 token, address to, uint256 amount) external;
@@ -127,9 +132,10 @@ interface IVaultMain {
     *******************************************************************************/
 
     /**
-     * @notice Wraps/unwraps tokens based on provided parameters, using the buffer of the wrapped token when it has
-     * enough liquidity to avoid external calls.
-     * @dev All parameters are given in raw token decimal encoding. Requires the buffer to be initialized beforehand.
+     * @notice Wraps/unwraps tokens based on the parameters provided.
+     * @dev All parameters are given in raw token decimal encoding. It requires the buffer to be initialized,
+     * and uses the internal wrapped token buffer when it has enough liquidity to avoid external calls.
+     *
      * @param params Parameters for the wrap/unwrap operation (see struct definition)
      * @return amountCalculatedRaw Calculated swap amount
      * @return amountInRaw Amount of input tokens for the swap
@@ -144,8 +150,11 @@ interface IVaultMain {
     *******************************************************************************/
 
     /**
-     * @notice Returns the Vault's Authorizer.
-     * @return Address of the authorizer
+     * @notice Returns the Authorizer address.
+     * @dev The authorizer holds the permissions granted by governance. It is set on Vault deployment,
+     * and can be changed through a permissioned call.
+     *
+     * @return authorizer Address of the authorizer contract
      */
     function getAuthorizer() external view returns (IAuthorizer);
 
@@ -155,7 +164,17 @@ interface IVaultMain {
 
     /**
      * @notice Returns the VaultExtension contract address.
-     * @return Address of the VaultExtension
+     * @dev Function is in the main Vault contract. The VaultExtension handles less critical or frequently used
+     * functions, since delegate calls through the Vault are more expensive than direct calls.
+     *
+     * @return vaultExtension Address of the VaultExtension
      */
     function getVaultExtension() external view returns (address);
+
+    /**
+     * @notice Get the minimum trade amount in a pool operation.
+     * @dev This limit is applied to the 18-decimal "upscaled" amount in any operation (swap, add/remove liquidity).
+     * @return minimumTradeAmount The minimum trade amount as an 18-decimal floating point number
+     */
+    function getMinimumTradeAmount() external view returns (uint256);
 }

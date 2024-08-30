@@ -53,9 +53,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using StorageSlotExtension for *;
     using PoolDataLib for PoolData;
 
-    // Minimum given amount to wrap/unwrap (applied to native decimal values), to avoid rounding issues.
-    uint256 internal constant _MINIMUM_WRAP_AMOUNT = 1e3;
-
     // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
     // exploitation of rounding errors.
     // solhint-disable-next-line var-name-mixedcase
@@ -1533,6 +1530,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     /// @inheritdoc IVaultMain
     function getVaultExtension() external view returns (address) {
         return _implementation();
+    }
+
+    /// @inheritdoc IVaultMain
+    function getMinimumTradeAmount() external view returns (uint256) {
+        return _MINIMUM_TRADE_AMOUNT;
     }
 
     /**

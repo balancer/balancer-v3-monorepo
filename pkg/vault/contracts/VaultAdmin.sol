@@ -115,6 +115,21 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         return _MAX_TOKENS;
     }
 
+    /// @inheritdoc IVaultAdmin
+    function getMinimumWrapAmount() external pure returns (uint256) {
+        return _MINIMUM_WRAP_AMOUNT;
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getPoolMinimumTotalSupply() external pure returns (uint256) {
+        return _POOL_MINIMUM_TOTAL_SUPPLY;
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getBufferMinimumTotalSupply() external pure returns (uint256) {
+        return _BUFFER_MINIMUM_TOTAL_SUPPLY;
+    }
+
     /*******************************************************************************
                                     Vault Pausing
     *******************************************************************************/
@@ -440,7 +455,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         // Amount of shares to issue is the total underlying token that the user is depositing.
         issuedShares = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
 
-        _ensureMinimumTotalSupply(issuedShares);
+        _ensureBufferMinimumTotalSupply(issuedShares);
 
         issuedShares -= _BUFFER_MINIMUM_TOTAL_SUPPLY;
         _mintBufferShares(wrappedToken, sharesOwner, issuedShares);
@@ -494,7 +509,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
         uint256 newTotalSupply = _bufferTotalShares[wrappedToken] + amount;
 
-        _ensureMinimumTotalSupply(newTotalSupply);
+        _ensureBufferMinimumTotalSupply(newTotalSupply);
 
         _bufferTotalShares[wrappedToken] = newTotalSupply;
         _bufferLpShares[wrappedToken][to] += amount;
@@ -591,7 +606,7 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
         uint256 newTotalSupply = _bufferTotalShares[wrappedToken] - amount;
 
-        _ensureMinimumTotalSupply(newTotalSupply);
+        _ensureBufferMinimumTotalSupply(newTotalSupply);
 
         _bufferTotalShares[wrappedToken] = newTotalSupply;
         _bufferLpShares[wrappedToken][from] -= amount;
@@ -623,6 +638,12 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     function getBufferBalance(IERC4626 token) external view onlyVaultDelegateCall returns (uint256, uint256) {
         // The first balance is underlying, and the last is wrapped balance.
         return (_bufferTokenBalances[token].getBalanceRaw(), _bufferTokenBalances[token].getBalanceDerived());
+    }
+
+    function _ensureBufferMinimumTotalSupply(uint256 newTotalSupply) private pure {
+        if (newTotalSupply < _BUFFER_MINIMUM_TOTAL_SUPPLY) {
+            revert BufferTotalSupplyTooLow(newTotalSupply);
+        }
     }
 
     /*******************************************************************************
