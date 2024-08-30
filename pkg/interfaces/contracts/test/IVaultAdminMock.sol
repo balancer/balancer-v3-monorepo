@@ -37,6 +37,8 @@ interface IVaultAdminMock {
         address sharesOwner
     ) external;
 
+    function manualReentrancyDisableRecoveryMode(address pool) external;
+
     function mockWithValidPercentage(uint256 percentage) external view;
 
     function mockEnsurePoolNotInRecoveryMode(address pool) external view;
