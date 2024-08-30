@@ -194,7 +194,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     ) internal virtual returns (uint256 bptOut) {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(poolToInit);
 
-        return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, "");
+        return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, bytes(""));
     }
 
     function createPool() internal virtual returns (address) {
