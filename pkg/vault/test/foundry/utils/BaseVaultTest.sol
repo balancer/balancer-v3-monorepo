@@ -152,7 +152,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         initPool();
     }
 
-    function approveForSender() internal {
+    function approveForSender() internal virtual {
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokens[i].approve(address(permit2), type(uint256).max);
             permit2.approve(address(tokens[i]), address(router), type(uint160).max, type(uint48).max);
@@ -160,7 +160,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         }
     }
 
-    function approveForPool(IERC20 bpt) internal {
+    function approveForPool(IERC20 bpt) internal virtual {
         for (uint256 i = 0; i < users.length; ++i) {
             vm.startPrank(users[i]);
 
@@ -188,7 +188,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     ) internal virtual returns (uint256 bptOut) {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(poolToInit);
 
-        return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, "");
+        return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, bytes(""));
     }
 
     function createPool() internal virtual returns (address) {

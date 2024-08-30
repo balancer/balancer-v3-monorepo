@@ -269,7 +269,7 @@ contract YieldFeesTest is BaseVaultTest {
 
         // Dummy swap.
         vm.prank(alice);
-        router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, "");
+        router.swapSingleTokenExactIn(pool, dai, wsteth, 1e18, 0, MAX_UINT256, false, bytes(""));
 
         // No matter what the rates are, the value of wsteth grows from 1x to 10x.
         // Then, the protocol takes its cut out of the 9x difference.

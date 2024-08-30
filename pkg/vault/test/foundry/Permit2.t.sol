@@ -135,6 +135,6 @@ contract Permit2Test is BaseVaultTest {
 
         vm.expectCall(address(router), multicallData[0]);
         vm.prank(alice);
-        router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, "", multicallData);
+        router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, bytes(""), multicallData);
     }
 }
