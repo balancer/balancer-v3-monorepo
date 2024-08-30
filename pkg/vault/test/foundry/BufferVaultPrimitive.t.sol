@@ -601,7 +601,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         // Predict the amount of shares to receive
         (uint256 bufferUnderlyingBalance, uint256 bufferWrappedBalance) = vault.getBufferBalance(waDAI);
-        uint256 currentInvariant = bufferUnderlyingBalance + waDAI.convertToAssets(bufferWrappedBalance)
+        uint256 currentInvariant = bufferUnderlyingBalance + waDAI.convertToAssets(bufferWrappedBalance);
 
         // Shares = current supply (= first shares added) times the invariant ratio.
         uint256 expectedSecondAddShares = (vault.getBufferTotalShares(waDAI) * secondDepositUnderlying) /
@@ -633,8 +633,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
         uint256 bufferInvariantAfter = removedUnderlying + waDAI.convertToAssets(removedWrapped);
         // Ensure we get out less value than we put in.
-        assertLe(totalUnderlyingValue, secondDepositUnderlying, "Value removed > value added");
-        assertApproxEqAbs(totalUnderlyingValue, secondDepositUnderlying, 1e12, "Value removed !~ value added");
+        assertLe(bufferInvariantAfter, secondDepositUnderlying, "Value removed > value added");
+        assertApproxEqAbs(bufferInvariantAfter, secondDepositUnderlying, 1e12, "Value removed !~ value added");
     }
 
     function testRemoveLiquidityFromBuffer() public {
