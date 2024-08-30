@@ -79,10 +79,10 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
         // If rate is lower than one, inflates the total supply. Else, inflates the underlying amount.
         if (newRate < FixedPoint.ONE) {
             uint256 newTotalWrappedAmount = totalAssets.divDown(newRate);
-            uint256 wrappedDelta = newTotalWrappedAmount - totalSupply;
+            wrappedDelta = newTotalWrappedAmount - totalSupply;
         } else {
             uint256 newTotalUnderlyingAmount = totalSupply.mulDown(newRate);
-            uint256 underlyingDelta = newTotalUnderlyingAmount - totalAssets;
+            underlyingDelta = newTotalUnderlyingAmount - totalAssets;
         }
 
         ERC4626TestToken(address(this)).inflateUnderlyingOrWrapped(underlyingDelta, wrappedDelta);
