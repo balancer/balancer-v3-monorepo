@@ -32,9 +32,6 @@ contract LotteryHookExampleTest is BaseVaultTest {
     // Maximum swap fee of 10%
     uint64 public constant MAX_SWAP_FEE_PERCENTAGE = 10e16;
 
-    uint256 private constant _minSwapAmount = 1e6;
-    uint256 private constant _minBptOut = 1e6;
-
     // Maximum number of swaps executed on each test, while attempting to win the lottery.
     uint256 private constant MAX_ITERATIONS = 100;
 

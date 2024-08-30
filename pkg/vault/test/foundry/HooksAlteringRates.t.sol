@@ -24,8 +24,6 @@ contract HooksAlteringRatesTest is BaseVaultTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
 
-    uint256 internal constant POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
-
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 

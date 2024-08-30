@@ -18,7 +18,7 @@ contract ERC20MultiTokenMock is ERC20MultiToken {
         return _allowance(pool, owner, spender);
     }
 
-    function getMinimumTotalSupply() public pure returns (uint256) {
+    function getPoolMinimumTotalSupply() public pure returns (uint256) {
         return _POOL_MINIMUM_TOTAL_SUPPLY;
     }
 
@@ -34,7 +34,7 @@ contract ERC20MultiTokenMock is ERC20MultiToken {
     }
 
     function manualEnsureMinimumTotalSupply(uint256 newTotalSupply) public pure {
-        _ensureMinimumTotalSupply(newTotalSupply);
+        _ensurePoolMinimumTotalSupply(newTotalSupply);
     }
 
     function manualMintMinimumSupplyReserve(address pool) public {

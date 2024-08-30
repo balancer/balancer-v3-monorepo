@@ -32,7 +32,6 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
     uint64 public constant MAX_HOOK_FEE_PERCENTAGE = 10e16;
 
     uint256 private _swapAmount;
-    uint256 private constant _minBptOut = 1e6;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
@@ -86,7 +85,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
             // pool liquidity, or else the hook won't be able to charge fees.
             expectedBptOut = bound(
                 expectedBptOut,
-                _minBptOut * MIN_TRADE_AMOUNT,
+                POOL_MINIMUM_TOTAL_SUPPLY * MIN_TRADE_AMOUNT,
                 hookFeePercentage == 0 ? bobDaiBalance : poolInitAmount.divDown(hookFeePercentage)
             );
 
@@ -139,7 +138,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         PoolHooksMock(poolHooksContract).setAddLiquidityHookDiscountPercentage(hookDiscountPercentage);
 
         // Make sure bob has enough to pay for the transaction.
-        expectedBptOut = bound(expectedBptOut, _minBptOut * MIN_TRADE_AMOUNT, dai.balanceOf(bob));
+        expectedBptOut = bound(expectedBptOut, POOL_MINIMUM_TOTAL_SUPPLY * MIN_TRADE_AMOUNT, dai.balanceOf(bob));
 
         uint256[] memory actualAmountsIn = BasePoolMath.computeProportionalAmountsIn(
             [poolInitAmount, poolInitAmount].toMemoryArray(),
@@ -245,7 +244,11 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         PoolHooksMock(poolHooksContract).setRemoveLiquidityHookFeePercentage(hookFeePercentage);
 
         // Make sure Bob has enough to pay for the transaction.
-        expectedBptIn = bound(expectedBptIn, _minBptOut * MIN_TRADE_AMOUNT, BalancerPoolToken(pool).balanceOf(bob));
+        expectedBptIn = bound(
+            expectedBptIn,
+            POOL_MINIMUM_TOTAL_SUPPLY * MIN_TRADE_AMOUNT,
+            BalancerPoolToken(pool).balanceOf(bob)
+        );
 
         // Since Bob added poolInitAmount in each token of the pool, the pool balances are doubled.
         uint256[] memory actualAmountsOut = BasePoolMath.computeProportionalAmountsOut(
@@ -301,7 +304,11 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         PoolHooksMock(poolHooksContract).setRemoveLiquidityHookDiscountPercentage(hookDiscountPercentage);
 
         // Make sure Bob has enough to pay for the transaction.
-        expectedBptIn = bound(expectedBptIn, _minBptOut * MIN_TRADE_AMOUNT, BalancerPoolToken(pool).balanceOf(bob));
+        expectedBptIn = bound(
+            expectedBptIn,
+            POOL_MINIMUM_TOTAL_SUPPLY * MIN_TRADE_AMOUNT,
+            BalancerPoolToken(pool).balanceOf(bob)
+        );
 
         // Since Bob added poolInitAmount in each token of the pool, the pool balances are doubled.
         uint256[] memory actualAmountsOut = BasePoolMath.computeProportionalAmountsOut(

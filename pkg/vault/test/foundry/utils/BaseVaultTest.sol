@@ -57,10 +57,11 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         uint256[] yieldFeeAmounts;
     }
 
-    uint256 constant MIN_BPT = 1e6;
+    uint256 internal constant BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
+    uint256 internal constant POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
 
-    bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
-    bytes32 constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
+    bytes32 internal constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    bytes32 internal constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
 
     // Vault mock.
     IVaultMock internal vault;
@@ -111,14 +112,15 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     uint256 vaultMockMinTradeAmount = 0;
 
     // Applies to Weighted Pools.
-    uint256 constant BASE_MIN_SWAP_FEE = 1e12; // 0.00001%
-    uint256 constant BASE_MAX_SWAP_FEE = 10e16; // 10%
-    uint256 constant MIN_TRADE_AMOUNT = 1e6;
+    uint256 internal constant BASE_MIN_SWAP_FEE = 1e12; // 0.00001%
+    uint256 internal constant BASE_MAX_SWAP_FEE = 10e16; // 10%
+    uint256 internal constant MIN_TRADE_AMOUNT = 1e6;
 
     function setUp() public virtual override {
         BaseTest.setUp();
 
         vault = IVaultMock(address(VaultMockDeployer.deploy(vaultMockMinTradeAmount)));
+
         vm.label(address(vault), "vault");
         vaultExtension = IVaultExtension(vault.getVaultExtension());
         vm.label(address(vaultExtension), "vaultExtension");

@@ -23,7 +23,6 @@ contract VaultAdminUnitTest is BaseVaultTest {
     address internal constant TEST_POOL = address(0x123);
     uint256 internal constant UNDERLYING_TOKENS_TO_DEPOSIT = 2e18;
     uint256 internal constant LIQUIDITY_AMOUNT = 1e18;
-    uint256 internal constant BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
 
     ERC4626TestToken internal waDAI;
 
@@ -154,9 +153,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
 
     function testInitializeBufferBelowMinimumShares() public {
         vault.forceUnlock();
-        vm.expectRevert(
-            abi.encodeWithSelector(IERC20MultiTokenErrors.TotalSupplyTooLow.selector, 3, BUFFER_MINIMUM_TOTAL_SUPPLY)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferTotalSupplyTooLow.selector, 3));
         vault.initializeBuffer(waDAI, 1, 2, bob);
     }
 
@@ -209,7 +206,11 @@ contract VaultAdminUnitTest is BaseVaultTest {
         emit IVaultEvents.BufferSharesMinted(waDAI, address(0), BUFFER_MINIMUM_TOTAL_SUPPLY);
         vault.manualMintMinimumBufferSupplyReserve(waDAI);
 
-        assertEq(vault.getBufferOwnerShares(waDAI, address(0)), BUFFER_MINIMUM_TOTAL_SUPPLY, "address(0): wrong shares");
+        assertEq(
+            vault.getBufferOwnerShares(waDAI, address(0)),
+            BUFFER_MINIMUM_TOTAL_SUPPLY,
+            "address(0): wrong shares"
+        );
         assertEq(vault.getBufferTotalShares(waDAI), BUFFER_MINIMUM_TOTAL_SUPPLY, "Wrong total buffer shares");
     }
 
@@ -253,13 +254,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
 
     function testMintBufferSharesBelowMinimumTotalSupply() public {
         uint256 supplyBelowMin = BUFFER_MINIMUM_TOTAL_SUPPLY - 1;
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IERC20MultiTokenErrors.TotalSupplyTooLow.selector,
-                supplyBelowMin,
-                BUFFER_MINIMUM_TOTAL_SUPPLY
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferTotalSupplyTooLow.selector, supplyBelowMin));
         vault.manualMintBufferShares(waDAI, bob, supplyBelowMin);
     }
 

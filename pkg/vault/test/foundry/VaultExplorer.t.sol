@@ -64,6 +64,8 @@ contract VaultExplorerTest is BaseVaultTest {
     uint256 internal constant PROTOCOL_SWAP_FEE_AMOUNT = 100e18;
     uint256 internal constant PROTOCOL_YIELD_FEE_AMOUNT = 50e18;
 
+    uint256 internal constant TEST_MIN_TRADE_AMOUNT = 1.43e6;
+
     VaultExplorer internal explorer;
     IAuthentication feeControllerAuth;
     ERC4626TestToken internal waDAI;
@@ -79,6 +81,9 @@ contract VaultExplorerTest is BaseVaultTest {
     IRateProvider[] internal rateProviders;
 
     function setUp() public virtual override {
+        // Set this so that it is non-zero, and we can test the getter for the minimum trade amount.
+        vaultMockMinTradeAmount = TEST_MIN_TRADE_AMOUNT;
+
         BaseVaultTest.setUp();
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
@@ -608,6 +613,34 @@ contract VaultExplorerTest is BaseVaultTest {
         assertEq(explorer.getMaximumPoolTokens(), vaultMaximum, "Maximum pool token mismatch");
     }
 
+    function testGetMinimumTradeAmount() public view {
+        uint256 vaultMinimum = vault.getMinimumTradeAmount();
+
+        assertEq(vaultMinimum, TEST_MIN_TRADE_AMOUNT, "Unexpected minimum trade amount");
+        assertEq(explorer.getMinimumTradeAmount(), vaultMinimum, "Minimum trade amount mismatch");
+    }
+
+    function testGetMinimumWrapAmount() public view {
+        uint256 vaultMinimum = vault.getMinimumWrapAmount();
+
+        assertEq(vaultMinimum, 1e3, "Unexpected minimum wrap amount");
+        assertEq(explorer.getMinimumWrapAmount(), vaultMinimum, "Minimum wrap amount mismatch");
+    }
+
+    function testGetPoolMinimumTotalSupply() public view {
+        uint256 vaultMinimum = vault.getPoolMinimumTotalSupply();
+
+        assertEq(vaultMinimum, 1e6, "Unexpected pool minimum total supply");
+        assertEq(explorer.getPoolMinimumTotalSupply(), vaultMinimum, "Pool minimum total supply mismatch");
+    }
+
+    function testGetBufferMinimumTotalSupply() public view {
+        uint256 vaultMinimum = vault.getBufferMinimumTotalSupply();
+
+        assertEq(vaultMinimum, 1e4, "Unexpected buffer minimum total supply");
+        assertEq(explorer.getBufferMinimumTotalSupply(), vaultMinimum, "Buffer minimum total supply mismatch");
+    }
+
     function testIsVaultPaused() public {
         assertFalse(vault.isVaultPaused(), "Vault is paused");
         assertFalse(explorer.isVaultPaused(), "Explorer says Vault is paused");
@@ -705,6 +738,13 @@ contract VaultExplorerTest is BaseVaultTest {
         assertTrue(lpShares > 0, "LP has no shares");
     }
 
+    function testGetBufferAsset() public {
+        _setupBuffer();
+
+        address underlyingToken = explorer.getBufferAsset(waDAI);
+        assertEq(underlyingToken, address(dai));
+    }
+
     function testGetBufferTotalShares() public {
         _setupBuffer();
 
@@ -713,7 +753,7 @@ contract VaultExplorerTest is BaseVaultTest {
 
         // A single depositor has all the shares (except for the security premint).
         assertTrue(lpShares > 0, "LP has no shares");
-        assertEq(totalShares - MIN_BPT, lpShares, "Share value mismatch");
+        assertEq(totalShares - BUFFER_MINIMUM_TOTAL_SUPPLY, lpShares, "Share value mismatch");
     }
 
     function testGetBufferBalance() public {
