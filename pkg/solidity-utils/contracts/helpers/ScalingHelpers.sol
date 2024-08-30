@@ -320,7 +320,7 @@ library ScalingHelpers {
 
     /**
      * @notice Rounds up a rate informed by a rate provider.
-     * @dev The rates are calculated by an external rate provider have rounding errors. Intuitively, a rate provider
+     * @dev Rates calculated by an external rate provider have rounding errors. Intuitively, a rate provider
      * rounds the rate down so the pool math is executed with conservative amounts. However, when upscaling or
      * downscaling the amount out, the rate should be rounded up to make sure the amounts scaled are conservative.
      */
