@@ -710,6 +710,8 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 ybDaiIdx = vars.isPartialERC4626Pool ? partialWaDaiIdx : waDaiIdx;
         uint256 ybUsdcIdx = vars.isPartialERC4626Pool ? partialUsdcIdx : waUsdcIdx;
 
+        (, , uint256[] memory poolBalances, ) = vault.getPoolTokenInfo(ybPool);
+
         // When adding liquidity, Alice transfers underlying tokens to the Vault.
         assertEq(
             balancesAfter.balances.aliceTokens[balancesAfter.usdcIdx],
@@ -722,26 +724,28 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             "Alice: wrong DAI balance"
         );
 
-        assertEq(
-            balancesAfter.waDAIBuffer.wrapped,
-            balancesBefore.waDAIBuffer.wrapped - vars.wrappedDaiPoolDelta,
-            "Vault: wrong waDAI wrapped buffer balance"
-        );
+        // The underlying tokens are wrapped in the buffer, so the buffer gains underlying and loses wrapped tokens.
         assertEq(
             balancesAfter.waDAIBuffer.underlying,
             balancesBefore.waDAIBuffer.underlying + vars.underlyingDaiAmountDelta,
             "Vault: wrong waDAI underlying buffer balance"
         );
+        assertEq(
+            balancesAfter.waDAIBuffer.wrapped,
+            balancesBefore.waDAIBuffer.wrapped - vars.wrappedDaiPoolDelta,
+            "Vault: wrong waDAI wrapped buffer balance"
+        );
 
-        (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(ybPool);
+        // The pool gains the wrapped tokens from the buffer and mints BPT to the user.
         assertApproxEqAbs(
-            balances[ybDaiIdx],
+            poolBalances[ybDaiIdx],
             waDAI.convertToShares(erc4626PoolInitialAmount) + vars.wrappedDaiPoolDelta,
             MAX_ERROR,
             "ERC4626 Pool: wrong waDAI balance"
         );
 
         if (vars.isPartialERC4626Pool == false) {
+            // The underlying tokens are wrapped in the buffer, so the buffer gains underlying and loses wrapped tokens.
             assertEq(
                 balancesAfter.waUSDCBuffer.wrapped,
                 balancesBefore.waUSDCBuffer.wrapped - vars.wrappedUsdcPoolDelta,
@@ -752,15 +756,18 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
                 balancesBefore.waUSDCBuffer.underlying + vars.underlyingUsdcAmountDelta,
                 "Vault: wrong waUSDC underlying buffer balance"
             );
+
+            // The pool gains the wrapped tokens from the buffer and mints BPT to the user.
             assertApproxEqAbs(
-                balances[ybUsdcIdx],
+                poolBalances[ybUsdcIdx],
                 waUSDC.convertToShares(erc4626PoolInitialAmount) + vars.wrappedUsdcPoolDelta,
                 MAX_ERROR,
                 "ERC4626 Pool: wrong waUSDC balance"
             );
         } else {
+            // If partially yield-bearing pool, the pool gains the underlying USDC directly.
             assertApproxEqAbs(
-                balances[ybUsdcIdx],
+                poolBalances[ybUsdcIdx],
                 erc4626PoolInitialAmount + vars.underlyingUsdcAmountDelta,
                 MAX_ERROR,
                 "ERC4626 Pool: wrong USDC balance"
