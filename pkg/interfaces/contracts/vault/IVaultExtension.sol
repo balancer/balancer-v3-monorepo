@@ -6,10 +6,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { PoolSwapParams, TokenConfig } from "../solidity-utils/BasePoolTypes.sol";
-
+import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import { IVault } from "./IVault.sol";
 import { IHooks } from "./IHooks.sol";
-import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import "./VaultTypes.sol";
 
 /// @notice Extension of the Vault contract (via the Proxy pattern), intended for less common operations.
