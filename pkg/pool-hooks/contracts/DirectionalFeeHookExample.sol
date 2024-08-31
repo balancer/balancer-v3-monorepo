@@ -2,15 +2,11 @@
 
 pragma solidity ^0.8.24;
 
+import { TokenConfig, PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/BasePoolTypes.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    LiquidityManagement,
-    TokenConfig,
-    PoolSwapParams,
-    HookFlags
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { LiquidityManagement, HookFlags } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";

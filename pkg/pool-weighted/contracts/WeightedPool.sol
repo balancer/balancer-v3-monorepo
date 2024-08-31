@@ -7,13 +7,16 @@ import {
     WeightedPoolDynamicData,
     WeightedPoolImmutableData
 } from "@balancer-labs/v3-interfaces/contracts/pool-weighted/IWeightedPool.sol";
-import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
+import {
+    ISwapFeePercentageBounds
+} from "@balancer-labs/v3-interfaces/contracts/solidity-utils/ISwapFeePercentageBounds.sol";
 import {
     IUnbalancedLiquidityInvariantRatioBounds
-} from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+} from "@balancer-labs/v3-interfaces/contracts/solidity-utils/IUnbalancedLiquidityInvariantRatioBounds.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/IBasePool.sol";
+import { PoolSwapParams, Rounding } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/BasePoolTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";

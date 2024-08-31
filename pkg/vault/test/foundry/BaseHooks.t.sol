@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/BasePoolTypes.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";

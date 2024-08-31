@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.24;
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/BasePoolTypes.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/IBasePool.sol";
 
 import { FixedPoint } from "./FixedPoint.sol";
 

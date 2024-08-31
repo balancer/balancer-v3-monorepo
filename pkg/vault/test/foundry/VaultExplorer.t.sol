@@ -10,25 +10,28 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/IBasePool.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import {
+    PoolSwapParams,
+    SwapKind,
+    Rounding,
     TokenConfig,
+    TokenType
+} from "@balancer-labs/v3-interfaces/contracts/solidity-utils/BasePoolTypes.sol";
+import {
     TokenInfo,
-    TokenType,
     PoolRoleAccounts,
     LiquidityManagement,
     PoolConfig,
     HooksConfig,
-    Rounding,
-    SwapKind,
-    PoolData,
-    PoolSwapParams
+    PoolData
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+import { RateProviderMock } from "@balancer-labs/v3-solidity-utils/contracts/test/RateProviderMock.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -40,7 +43,6 @@ import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/tes
 import { PoolConfigLib, PoolConfigBits } from "../../contracts/lib/PoolConfigLib.sol";
 import { VaultExplorer } from "../../contracts/VaultExplorer.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
-import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 

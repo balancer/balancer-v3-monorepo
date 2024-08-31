@@ -103,11 +103,11 @@ describe('ERC4626VaultPrimitive', function () {
       args: [await vault.getAddress(), 'Yield-bearing Pool DAI-USDC', 'BP-DAI_USDC'],
     });
 
-    const rpwDAI: ERC4626RateProvider = await deploy('v3-vault/ERC4626RateProvider', {
+    const rpwDAI: ERC4626RateProvider = await deploy('v3-solidity-utils/ERC4626RateProvider', {
       args: [await wDAI.getAddress()],
     });
 
-    const rpwUSDC: ERC4626RateProvider = await deploy('v3-vault/ERC4626RateProvider', {
+    const rpwUSDC: ERC4626RateProvider = await deploy('v3-solidity-utils/ERC4626RateProvider', {
       args: [await wUSDC.getAddress()],
     });
 

@@ -2,14 +2,13 @@
 
 pragma solidity ^0.8.24;
 
+import { PoolSwapParams, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/BasePoolTypes.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import {
     AddLiquidityKind,
     HookFlags,
     LiquidityManagement,
     RemoveLiquidityKind,
-    TokenConfig,
-    PoolSwapParams,
     AfterSwapParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 

@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.24;
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthorizer.sol";
 import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { Vault } from "./Vault.sol";
 import { VaultAdmin } from "./VaultAdmin.sol";

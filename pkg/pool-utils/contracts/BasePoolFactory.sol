@@ -3,12 +3,9 @@
 pragma solidity ^0.8.24;
 
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/BasePoolTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import {
-    TokenConfig,
-    PoolRoleAccounts,
-    LiquidityManagement
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolRoleAccounts, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
     SingletonAuthentication
@@ -46,7 +43,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         IVault vault,
         uint32 pauseWindowDuration,
         bytes memory creationCode
-    ) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {
+    ) SingletonAuthentication(address(vault)) FactoryWidePauseWindow(pauseWindowDuration) {
         _creationCode = creationCode;
     }
 
@@ -112,7 +109,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         address poolHooksContract,
         LiquidityManagement memory liquidityManagement
     ) internal {
-        getVault().registerPool(
+        IVault(getVault()).registerPool(
             pool,
             tokens,
             swapFeePercentage,

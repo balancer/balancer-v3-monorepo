@@ -4,7 +4,8 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { PoolData, TokenInfo, TokenType, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { PoolData, TokenInfo } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { Rounding, TokenType } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/BasePoolTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";

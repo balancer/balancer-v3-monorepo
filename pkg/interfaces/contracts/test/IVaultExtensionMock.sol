@@ -4,7 +4,8 @@ pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { TokenConfig, PoolRoleAccounts, LiquidityManagement } from "../../contracts/vault/VaultTypes.sol";
+import { TokenConfig } from "../../contracts/solidity-utils/BasePoolTypes.sol";
+import { PoolRoleAccounts, LiquidityManagement } from "../../contracts/vault/VaultTypes.sol";
 
 interface IVaultExtensionMock {
     // Used in tests to circumvent minimum swap fees.

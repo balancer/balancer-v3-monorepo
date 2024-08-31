@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
+import { IAuthorizer } from "../solidity-utils/helpers/IAuthorizer.sol";
 import { IProtocolFeeController } from "./IProtocolFeeController.sol";
-import { IAuthorizer } from "./IAuthorizer.sol";
 import { IVault } from "./IVault.sol";
 
 interface IVaultAdmin {

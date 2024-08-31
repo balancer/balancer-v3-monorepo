@@ -150,7 +150,7 @@ contract ProtocolFeeController is
         _;
     }
 
-    constructor(IVault vault_) SingletonAuthentication(vault_) VaultGuard(vault_) {
+    constructor(IVault vault_) SingletonAuthentication(address(vault_)) VaultGuard(vault_) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

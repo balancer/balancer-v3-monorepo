@@ -8,13 +8,13 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IVaultExplorer } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExplorer.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/BasePoolTypes.sol";
 import {
     TokenInfo,
     PoolRoleAccounts,
     PoolConfig,
     HooksConfig,
-    PoolData,
-    PoolSwapParams
+    PoolData
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 contract VaultExplorer is IVaultExplorer {

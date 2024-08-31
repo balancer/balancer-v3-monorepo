@@ -355,7 +355,7 @@ describe('Vault', function () {
       oldAuthorizerAddress = await vault.getAuthorizer();
       oldAuthorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', oldAuthorizerAddress);
 
-      newAuthorizer = await deploy('NullAuthorizer');
+      newAuthorizer = await deploy('v3-solidity-utils/NullAuthorizer');
     });
 
     context('without permission', () => {

@@ -2,8 +2,10 @@
 
 pragma solidity ^0.8.24;
 
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/BasePoolTypes.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
@@ -26,7 +28,7 @@ contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWi
     constructor(
         IVault vault,
         uint32 pauseWindowDuration
-    ) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {
+    ) SingletonAuthentication(address(vault)) FactoryWidePauseWindow(pauseWindowDuration) {
         _vault = vault;
     }
 

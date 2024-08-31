@@ -5,7 +5,9 @@ pragma solidity ^0.8.24;
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { TokenInfo, PoolRoleAccounts, PoolData, PoolConfig, PoolSwapParams, HooksConfig } from "./VaultTypes.sol";
+import { PoolSwapParams } from "../solidity-utils/BasePoolTypes.sol";
+
+import { TokenInfo, PoolRoleAccounts, PoolData, PoolConfig, HooksConfig } from "./VaultTypes.sol";
 
 interface IVaultExplorer {
     /***************************************************************************

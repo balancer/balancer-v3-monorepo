@@ -5,15 +5,14 @@ pragma solidity ^0.8.24;
 // Explicitly import VaultTypes structs because we expect this interface to be heavily used by external developers.
 // Internally, when this list gets too long, we usually just do a simple import to keep things tidy.
 import {
-    TokenConfig,
     LiquidityManagement,
-    PoolSwapParams,
     AfterSwapParams,
     HookFlags,
     AddLiquidityKind,
-    RemoveLiquidityKind,
-    SwapKind
+    RemoveLiquidityKind
 } from "./VaultTypes.sol";
+
+import { PoolSwapParams, SwapKind, TokenConfig } from "../solidity-utils/BasePoolTypes.sol";
 
 /**
  * @notice Interface for pool hooks.
