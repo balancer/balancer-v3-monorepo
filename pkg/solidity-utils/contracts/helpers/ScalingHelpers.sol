@@ -325,6 +325,12 @@ library ScalingHelpers {
      * downscaling the amount out, the rate should be rounded up to make sure the amounts scaled are conservative.
      */
     function computeRateRoundUp(uint256 rate) internal pure returns (uint256) {
-        return (rate / FixedPoint.ONE) * FixedPoint.ONE == rate ? rate : rate + 1;
+        uint256 roundedRate;
+        // If rate is divisible by FixedPoint.ONE, roundedRate and rate will be equal. It means that rate has 18 zeros,
+        // so there's no rounding issue and the rate should not be rounded up.
+        unchecked {
+            roundedRate = (rate / FixedPoint.ONE) * FixedPoint.ONE;
+        }
+        return roundedRate == rate ? rate : rate + 1;
     }
 }
