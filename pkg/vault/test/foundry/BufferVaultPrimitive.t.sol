@@ -657,32 +657,23 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         (uint256 daiIdx, uint256 waDaiIdx, IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesAfter = getBalances(lp, tokens);
 
-        // Check wrap results.
-        assertEq(
-            amountIn,
-            _wrapAmount + (withBufferLiquidity && kind == SwapKind.EXACT_OUT ? vaultConvertFactor : 0),
-            "AmountIn (underlying deposited) is wrong"
-        );
-        assertEq(
-            amountOut,
-            waDAI.previewDeposit(_wrapAmount) -
-                (withBufferLiquidity && kind == SwapKind.EXACT_IN ? vaultConvertFactor : 0),
-            "AmountOut (wrapped minted) is wrong"
-        );
-
-        // Check user balances.
+        // Check wrap results. For wrap exact out, when the buffer has enough liquidity to fulfill the operation,
+        // amount in increases by conversion factor.
+        uint256 convertFactorIn = withBufferLiquidity && kind == SwapKind.EXACT_OUT ? vaultConvertFactor : 0;
+        assertEq(amountIn, _wrapAmount + convertFactorIn, "AmountIn (underlying deposited) is wrong");
         assertEq(
             balancesAfter.lpTokens[daiIdx],
-            balancesBefore.lpTokens[daiIdx] -
-                _wrapAmount -
-                (withBufferLiquidity && kind == SwapKind.EXACT_OUT ? vaultConvertFactor : 0),
+            balancesBefore.lpTokens[daiIdx] - _wrapAmount - convertFactorIn,
             "LP balance of underlying token is wrong"
         );
+        // For wrap exact in, when the buffer has enough liquidity to fulfill the operation, amount out decreases by
+        // conversion factor.
+        uint256 convertFactorOut = withBufferLiquidity && kind == SwapKind.EXACT_IN ? vaultConvertFactor : 0;
+        uint256 expectedAmountOut = waDAI.previewDeposit(_wrapAmount) - convertFactorOut;
+        assertEq(amountOut, expectedAmountOut, "AmountOut (wrapped minted) is wrong");
         assertEq(
             balancesAfter.lpTokens[waDaiIdx],
-            balancesBefore.lpTokens[waDaiIdx] +
-                waDAI.previewDeposit(_wrapAmount) -
-                (withBufferLiquidity && kind == SwapKind.EXACT_IN ? vaultConvertFactor : 0),
+            balancesBefore.lpTokens[waDaiIdx] + expectedAmountOut,
             "LP balance of wrapped token is wrong"
         );
 
