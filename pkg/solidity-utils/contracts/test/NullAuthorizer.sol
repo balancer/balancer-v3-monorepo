@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthorizer.sol";
 
 /// @notice Dummy Authorizer that always allows access.
 contract NullAuthorizer is IAuthorizer {
