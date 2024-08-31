@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.24;
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/vault/IAuthorizer.sol";
+import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthorizer.sol";
+import { IGovernance } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IGovernance.sol";
 
 import "./Authentication.sol";
 
@@ -14,18 +14,18 @@ import "./Authentication.sol";
  * function name.
  */
 abstract contract SingletonAuthentication is Authentication {
-    IVault private immutable _vault;
+    address private immutable _vault;
 
     // Use the contract's own address to disambiguate action identifiers
-    constructor(IVault vault) Authentication(bytes32(uint256(uint160(address(this))))) {
+    constructor(address vault) Authentication(bytes32(uint256(uint160(address(this))))) {
         _vault = vault;
     }
 
     /**
      * @notice Get the address of the Balancer Vault.
-     * @return An interface pointer to the Vault
+     * @return vault The main Vault address
      */
-    function getVault() public view returns (IVault) {
+    function getVault() public view returns (address) {
         return _vault;
     }
 
@@ -34,7 +34,7 @@ abstract contract SingletonAuthentication is Authentication {
      * @return An interface pointer to the Authorizer
      */
     function getAuthorizer() public view returns (IAuthorizer) {
-        return getVault().getAuthorizer();
+        return IGovernance(_vault).getAuthorizer();
     }
 
     function _canPerform(bytes32 actionId, address account) internal view override returns (bool) {
