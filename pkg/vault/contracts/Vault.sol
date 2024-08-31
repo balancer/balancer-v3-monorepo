@@ -10,7 +10,6 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { PoolSwapParams, Rounding } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/BasePoolTypes.sol";
 import { IAuthorizer } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthorizer.sol";
-import { IGovernance } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IGovernance.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/IBasePool.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
@@ -1496,7 +1495,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                                     Authentication
     *******************************************************************************/
 
-    /// @inheritdoc IGovernance
+    /// @inheritdoc IVaultMain
     function getAuthorizer() external view returns (IAuthorizer) {
         return _authorizer;
     }

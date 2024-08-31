@@ -5,7 +5,6 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthorizer } from "../solidity-utils/helpers/IAuthorizer.sol";
-import { IGovernance } from "../solidity-utils/helpers/IGovernance.sol";
 import "./VaultTypes.sol";
 
 /**
@@ -13,7 +12,7 @@ import "./VaultTypes.sol";
  * @dev These are generally "critical path" functions (swap, add/remove liquidity) that are in the main contract
  * for technical or performance reasons.
  */
-interface IVaultMain is IGovernance {
+interface IVaultMain {
     /*******************************************************************************
                               Transient Accounting
     *******************************************************************************/
@@ -139,6 +138,16 @@ interface IVaultMain is IGovernance {
     function erc4626BufferWrapOrUnwrap(
         BufferWrapOrUnwrapParams memory params
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
+
+    /*******************************************************************************
+                                Authentication
+    *******************************************************************************/
+
+    /**
+     * @notice Returns the Vault's Authorizer.
+     * @return Address of the authorizer
+     */
+    function getAuthorizer() external view returns (IAuthorizer);
 
     /*******************************************************************************
                                      Miscellaneous

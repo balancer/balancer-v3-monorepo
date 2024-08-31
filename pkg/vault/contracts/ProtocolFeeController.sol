@@ -9,15 +9,12 @@ import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/v
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-
-import {
-    SingletonAuthentication
-} from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { SingletonAuthentication } from "./SingletonAuthentication.sol";
 import { VaultGuard } from "./VaultGuard.sol";
 
 /**
@@ -150,7 +147,7 @@ contract ProtocolFeeController is
         _;
     }
 
-    constructor(IVault vault_) SingletonAuthentication(address(vault_)) VaultGuard(vault_) {
+    constructor(IVault vault_) SingletonAuthentication(vault_) VaultGuard(vault_) {
         // solhint-disable-previous-line no-empty-blocks
     }
 

@@ -7,10 +7,8 @@ import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/solidity-uti
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { PoolRoleAccounts, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import {
-    SingletonAuthentication
-} from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import { FactoryWidePauseWindow } from "@balancer-labs/v3-solidity-utils/contracts/helpers/FactoryWidePauseWindow.sol";
+import { SingletonAuthentication } from "@balancer-labs/v3-vault/contracts/SingletonAuthentication.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
 /**
@@ -43,7 +41,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         IVault vault,
         uint32 pauseWindowDuration,
         bytes memory creationCode
-    ) SingletonAuthentication(address(vault)) FactoryWidePauseWindow(pauseWindowDuration) {
+    ) SingletonAuthentication(vault) FactoryWidePauseWindow(pauseWindowDuration) {
         _creationCode = creationCode;
     }
 
@@ -109,7 +107,7 @@ abstract contract BasePoolFactory is IBasePoolFactory, SingletonAuthentication, 
         address poolHooksContract,
         LiquidityManagement memory liquidityManagement
     ) internal {
-        IVault(getVault()).registerPool(
+        getVault().registerPool(
             pool,
             tokens,
             swapFeePercentage,
