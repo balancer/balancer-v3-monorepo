@@ -203,6 +203,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 invariantError = vaultConvertFactor.mulDown(waDAI.getRate()) +
             vaultConvertFactor.mulDown(waUSDC.getRate());
 
+        // Since these are amounts out, the query (which uses the wrap preview) should be better than the actual
+        // operation (that uses buffer liquidity to fulfill an ExactIn wrap and calculate the amount of wrapped tokens
+        // out using convertToShares - vaultConvertFactor).
         assertApproxEqAbs(
             queryBptAmountOut,
             actualBptAmountOut + invariantError,
@@ -241,6 +244,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         // vaultConvertFactor scaled by each token rate.
         uint256 invariantError = vaultConvertFactor.mulDown(waDAI.getRate());
 
+        // Since these are amounts out, the query (which uses the wrap preview) should be better than the actual
+        // operation (that uses buffer liquidity to fulfill an ExactIn wrap and calculate the amount of wrapped tokens
+        // out using convertToShares - vaultConvertFactor).
         assertApproxEqAbs(
             queryBptAmountOut,
             actualBptAmountOut + invariantError,
@@ -395,10 +401,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         for (uint256 i = 0; i < queryUnderlyingAmountsIn.length; i++) {
-            // Query and actual operation have a small difference in the buffer operation: a query in the buffer
-            // returns the amount of underlying tokens calculated by a "preview" operation, while the actual operation
-            // in the buffer returns the "convertToAssets" result - vaultConvertFactor. In the addLiquidity case, we
-            // charge "vaultConvertFactor" extra tokens from the user than the query predicted.
+            // Since these are amounts in, the query (which uses the wrap preview) should be better than the actual
+            // operation (that uses buffer liquidity to fulfill an ExactOut wrap and calculate the amount of underlying
+            // tokens in using convertToAssets + vaultConvertFactor).
             assertApproxEqAbs(
                 actualUnderlyingAmountsIn[i],
                 queryUnderlyingAmountsIn[i] + vaultConvertFactor,
@@ -431,10 +436,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             bytes("")
         );
 
-        // Query and actual operation have a small difference in the buffer operation: a query in the buffer
-        // returns the amount of underlying tokens calculated by a "preview" operation, while the actual operation
-        // in the buffer returns the "convertToAssets" result - vaultConvertFactor. In the addLiquidity case, we charge
-        // "vaultConvertFactor" extra tokens from the user than the query predicted.
+        // Since these are amounts in, the query (which uses the wrap preview) should be better than the actual
+        // operation (that uses buffer liquidity to fulfill an ExactOut wrap and calculate the amount of underlying
+        // tokens in using convertToAssets + vaultConvertFactor).
         assertApproxEqAbs(
             actualUnderlyingAmountsIn[partialWaDaiIdx],
             queryUnderlyingAmountsIn[partialWaDaiIdx] + vaultConvertFactor,
@@ -442,6 +446,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             "Query and actual DAI amounts in do not match"
         );
 
+        // In USDC terms, actual and query values should be equal because no buffer is involved in the operation.
         assertApproxEqAbs(
             queryUnderlyingAmountsIn[partialUsdcIdx],
             actualUnderlyingAmountsIn[partialUsdcIdx],
@@ -610,10 +615,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         for (uint256 i = 0; i < queryUnderlyingAmountsOut.length; i++) {
-            // Query and actual operation have a small difference in the buffer operation: a query in the buffer
-            // returns the amount of underlying tokens calculated by a "preview" operation, while the actual operation
-            // in the buffer returns the "convertToAssets" result - vaultConvertFactor. In the removeLiquidity case, we
-            // return "vaultConvertFactor" less tokens to the user than the query predicted.
+            // Since these are amounts out, the query (which uses the unwrap preview) should be better than the actual
+            // operation (that uses buffer liquidity to fulfill an ExactIn unwrap and calculate the amount of
+            // underlying tokens out using convertToAssets - vaultConvertFactor).
             assertApproxEqAbs(
                 actualUnderlyingAmountsOut[i],
                 queryUnderlyingAmountsOut[i] - vaultConvertFactor,
@@ -659,10 +663,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             bytes("")
         );
 
-        // Query and actual operation have a small difference in the buffer operation: a query in the buffer
-        // returns the amount of underlying tokens calculated by a "preview" operation, while the actual operation
-        // in the buffer returns the "convertToAssets" result - vaultConvertFactor. In the removeLiquidity case, we
-        // return "vaultConvertFactor" less tokens to the user than the query predicted.
+        // Since these are amounts out, the query (which uses the unwrap preview) should be better than the actual
+        // operation (that uses buffer liquidity to fulfill an ExactIn unwrap and calculate the amount of
+        // underlying tokens out using convertToAssets - vaultConvertFactor).
         assertApproxEqAbs(
             actualUnderlyingAmountsOut[partialWaDaiIdx],
             queryUnderlyingAmountsOut[partialWaDaiIdx] - vaultConvertFactor,
@@ -670,6 +673,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             "Query and actual DAI amounts out do not match"
         );
 
+        // In USDC terms, actual and query values should be equal because no buffer is involved in the operation.
         assertApproxEqAbs(
             queryUnderlyingAmountsOut[partialUsdcIdx],
             actualUnderlyingAmountsOut[partialUsdcIdx],
