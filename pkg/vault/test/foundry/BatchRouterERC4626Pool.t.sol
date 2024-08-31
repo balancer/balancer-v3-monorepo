@@ -919,6 +919,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         testBalances.waUSDCBuffer.underlying = waUSDCBufferBalanceUnderlying;
         testBalances.waUSDCBuffer.wrapped = waUSDCBufferBalanceWrapped;
 
+        // The index of each token is defined by the order of tokenArray, defined in this function.
         testBalances.daiIdx = 0;
         testBalances.usdcIdx = 1;
         testBalances.waDaiIdx = 2;
