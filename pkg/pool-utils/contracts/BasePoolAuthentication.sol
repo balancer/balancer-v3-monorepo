@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { Authentication } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Authentication.sol";
+import { Authentication } from "@balancer-labs/v3-vault/contracts/Authentication.sol";
 
 /// @dev Base contract for performing access control on external functions within pools.
 abstract contract BasePoolAuthentication is Authentication {

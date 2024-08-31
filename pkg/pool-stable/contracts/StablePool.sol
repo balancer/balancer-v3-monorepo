@@ -9,7 +9,9 @@ import {
     StablePoolDynamicData,
     StablePoolImmutableData
 } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
-import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/ISwapFeePercentageBounds.sol";
+import {
+    ISwapFeePercentageBounds
+} from "@balancer-labs/v3-interfaces/contracts/solidity-utils/ISwapFeePercentageBounds.sol";
 import {
     IUnbalancedLiquidityInvariantRatioBounds
 } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/IUnbalancedLiquidityInvariantRatioBounds.sol";
