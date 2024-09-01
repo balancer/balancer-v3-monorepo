@@ -276,4 +276,6 @@ interface IVaultMainMock {
     function manualFindTokenIndex(IERC20[] memory tokens, IERC20 token) external pure returns (uint256 index);
 
     function manualSetPoolCreator(address pool, address newPoolCreator) external;
+
+    function getConvertFactor() external pure returns (uint16);
 }
