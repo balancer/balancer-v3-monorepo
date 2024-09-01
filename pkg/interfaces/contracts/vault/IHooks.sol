@@ -14,6 +14,7 @@ import {
     RemoveLiquidityKind,
     SwapKind
 } from "./VaultTypes.sol";
+
 /**
  * @notice Interface for pool hooks.
  * @dev Hooks are functions invoked by the Vault at specific points in the flow of each operation. This guarantees that
