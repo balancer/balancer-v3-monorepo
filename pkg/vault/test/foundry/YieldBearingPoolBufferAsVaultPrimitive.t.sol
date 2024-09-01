@@ -96,16 +96,18 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
 
         // For ExactIn, the steps are computed in order (Wrap -> Swap -> Unwrap).
         // Compute Wrap. The exact amount is `swapAmount`. The token in is DAI, so the wrap occurs in the waDAI buffer.
-        // Since the buffer has liquidity, we need to consider the vaultConvertError.
+        // `waDaiAmountInRaw` is the output of the wrap, and since the buffer has liquidity, we need to consider the
+        // vaultConvertError.
         uint256 waDaiAmountInRaw = waDAI.convertToShares(swapAmount) - vaultConvertFactor;
-        // Compute Swap. To compute the swap with precision, we need to take into account the rates used by the Vault,
-        // instead of using a wrapper "convert" function.
+        // Compute Swap. `waDaiAmountInRaw` is the amount in of pool swap. To compute the swap with precision, we
+        // need to take into account the rates used by the Vault, instead of using a wrapper "convert" function.
         uint256 waDaiAmountInScaled18 = waDaiAmountInRaw.mulDown(waDAI.getRate());
         // Since the pool is linear, waDaiAmountInScaled18 = waUsdcAmountOutScaled18. Besides, since we're scaling a
         // tokenOut amount, we need to round the rate up.
         uint256 waUsdcAmountOutRaw = waDaiAmountInScaled18.divDown(waUSDC.getRate().computeRateRoundUp());
-        // Compute Unwrap. The amount out USDC is calculated by the waUSDC buffer and, since the buffer has liquidity,
-        // we need to consider the vaultConvertError.
+        // Compute Unwrap. `waUsdcAmountOutRaw` is the output of the swap and the input of the unwrap. The amount out
+        // USDC is calculated by the waUSDC buffer and, since the buffer has liquidity, we need to consider the
+        // vaultConvertError.
         uint256 usdcAmountOutRaw = waUSDC.convertToAssets(waUsdcAmountOutRaw) - vaultConvertFactor;
 
         // When the buffer has enough liquidity to wrap/unwrap, buffer balances should change by swapAmount
@@ -138,12 +140,15 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         // For ExactOut, the last step is computed first (Unwrap -> Swap -> Wrap).
         // Compute Unwrap. The exact amount out in USDC is `swapAmount` and the token out is USDC, so the unwrap
         // occurs in the waUSDC buffer. Since the buffer has liquidity, we need to consider the vaultConvertError.
+        // `waUsdcAmountOutRaw` is the ExactOut amount of the pool swap, and input to the unwrap, that's why the
+        // vaultConvertFactor is added.
         uint256 waUsdcAmountOutRaw = waUSDC.convertToShares(swapAmount) + vaultConvertFactor;
-        // Compute Swap. To compute the swap with precision, we need to take into account the rates used by the Vault,
-        // instead of using a wrapper "convert" function. Besides, since we're scaling a tokenOut amount, we need to
-        // round the rate up.
+        // Compute Swap. `waUsdcAmountOutRaw` is the ExactOut amount of the pool swap. To compute the swap with
+        // precision, we need to take into account the rates used by the Vault, instead of using a wrapper "convert"
+        // function. Besides, since we're scaling a tokenOut amount, we need to round the rate up.
         uint256 waUsdcAmountOutScaled18 = waUsdcAmountOutRaw.mulDown(waUSDC.getRate().computeRateRoundUp());
-        // Since the pool is linear, waUsdcAmountOutScaled18 = waDaiAmountInScaled18.
+        // Since the pool is linear, waUsdcAmountOutScaled18 = waDaiAmountInScaled18. `waDaiAmountInRaw` is the
+        // calculated amount in of the pool swap, and the ExactOut value of the wrap operation.
         uint256 waDaiAmountInRaw = waUsdcAmountOutScaled18.divDown(waDAI.getRate());
         // Compute Wrap. The amount in DAI is calculated by the waDAI buffer and, since the buffer has liquidity, we
         // need to consider the vaultConvertError.
