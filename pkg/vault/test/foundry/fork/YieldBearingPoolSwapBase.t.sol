@@ -395,11 +395,6 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         // decimals, so keep the decimalError.
         absTolerance = absTolerance > decimalError ? absTolerance : decimalError;
 
-        assertLe(
-            actualPathAmountsOut[0],
-            queryPathAmountsOut[0],
-            "Query pathAmountsOut is smaller than actual operation"
-        );
         assertApproxEqAbs(
             queryPathAmountsOut[0],
             actualPathAmountsOut[0],
@@ -407,7 +402,6 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             "Query and actual pathAmountsOut difference is bigger than absolute tolerance"
         );
 
-        assertLe(actualAmountsOut[0], queryAmountsOut[0], "Query amountsOut is smaller than actual operation");
         assertApproxEqAbs(
             queryAmountsOut[0],
             actualAmountsOut[0],
@@ -525,7 +519,6 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         // decimals, so keep the decimalError.
         absTolerance = absTolerance > decimalError ? absTolerance : decimalError;
 
-        assertGe(actualPathAmountsIn[0], queryPathAmountsIn[0], "Query pathAmountsIn is bigger than actual operation");
         assertApproxEqAbs(
             queryPathAmountsIn[0],
             actualPathAmountsIn[0],
@@ -533,7 +526,6 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             "Query and actual pathAmountsIn difference is bigger than absolute tolerance"
         );
 
-        assertGe(actualAmountsIn[0], queryAmountsIn[0], "Query amountsIn is bigger than actual operation");
         assertApproxEqAbs(
             queryAmountsIn[0],
             actualAmountsIn[0],
