@@ -337,7 +337,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 )
                 : vaultSwapParams.amountGivenRaw.toScaled18ApplyRateRoundUp(
                     poolData.decimalScalingFactors[swapState.indexOut],
-                    poolData.tokenRates[swapState.indexOut]
+                    // If the swap is ExactOut, the amountGiven is the amount of tokenOut. So, we want to use the rate
+                    // rounded up to calculate the amountGivenScaled18, because if this value is bigger, the
+                    // amountCalculatedRaw will be bigger, implying that the user will pay for any rounding
+                    // inconsistency, and not the Vault.
+                    poolData.tokenRates[swapState.indexOut].computeRateRoundUp()
                 );
     }
 
@@ -395,7 +399,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // For `ExactIn` the amount calculated is leaving the Vault, so we round down.
             amountCalculatedRaw = amountCalculatedScaled18.toRawUndoRateRoundDown(
                 poolData.decimalScalingFactors[swapState.indexOut],
-                poolData.tokenRates[swapState.indexOut]
+                // If the swap is ExactIn, the amountCalculated is the amount of tokenOut. So, we want to use the rate
+                // rounded up to calculate the amountCalculatedRaw, because scale down (undo rate) is a division, the
+                // larger the rate, the smaller the amountCalculatedRaw. So, any rounding imprecision will stay in the
+                // Vault and not be drained by the user.
+                poolData.tokenRates[swapState.indexOut].computeRateRoundUp()
             );
 
             (amountInRaw, amountOutRaw) = (vaultSwapParams.amountGivenRaw, amountCalculatedRaw);
@@ -1142,14 +1150,28 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (isQueryContext) {
                 return (amountGiven, wrappedToken.previewDeposit(amountGiven));
             }
-            // EXACT_IN wrap, so AmountGiven is underlying amount.
-            (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.convertToShares(amountGiven));
+            // EXACT_IN wrap, so AmountGiven is underlying amount. If the buffer has enough liquidity to handle the
+            // wrap, it'll send amountOutWrapped to the user without calling the wrapper protocol, so it can't check
+            // if the "convert" function has rounding errors or is oversimplified. To make sure the buffer is not
+            // drained we remove a convert factor that decreases the amount of wrapped tokens out, protecting the
+            // buffer balance.
+            (amountInUnderlying, amountOutWrapped) = (
+                amountGiven,
+                wrappedToken.convertToShares(amountGiven) - _CONVERT_FACTOR
+            );
         } else {
             if (isQueryContext) {
                 return (wrappedToken.previewMint(amountGiven), amountGiven);
             }
-            // EXACT_OUT wrap, so AmountGiven is wrapped amount.
-            (amountInUnderlying, amountOutWrapped) = (wrappedToken.convertToAssets(amountGiven), amountGiven);
+            // EXACT_OUT wrap, so AmountGiven is wrapped amount. If the buffer has enough liquidity to handle the
+            // wrap, it'll charge amountInUnderlying from the user without calling the wrapper protocol, so it can't
+            // check if the "convert" function has rounding errors or is oversimplified. To make sure the buffer is not
+            // drained we add a convert factor that increases the amount of underlying tokens in, protecting the
+            // buffer balance.
+            (amountInUnderlying, amountOutWrapped) = (
+                wrappedToken.convertToAssets(amountGiven) + _CONVERT_FACTOR,
+                amountGiven
+            );
         }
 
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
@@ -1273,14 +1295,28 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             if (isQueryContext) {
                 return (amountGiven, wrappedToken.previewRedeem(amountGiven));
             }
-            // EXACT_IN unwrap, so AmountGiven is wrapped amount.
-            (amountOutUnderlying, amountInWrapped) = (wrappedToken.convertToAssets(amountGiven), amountGiven);
+            // EXACT_IN unwrap, so AmountGiven is wrapped amount. If the buffer has enough liquidity to handle the
+            // unwrap, it'll send amountOutUnderlying to the user without calling the wrapper protocol, so it can't
+            // check if the "convert" function has rounding errors or is oversimplified. To make sure the buffer is not
+            // drained we remove a convert factor that decreases the amount of underlying tokens out, protecting the
+            // buffer balance.
+            (amountOutUnderlying, amountInWrapped) = (
+                wrappedToken.convertToAssets(amountGiven) - _CONVERT_FACTOR,
+                amountGiven
+            );
         } else {
             if (isQueryContext) {
                 return (wrappedToken.previewWithdraw(amountGiven), amountGiven);
             }
-            // EXACT_OUT unwrap, so AmountGiven is underlying amount.
-            (amountOutUnderlying, amountInWrapped) = (amountGiven, wrappedToken.convertToShares(amountGiven));
+            // EXACT_OUT unwrap, so AmountGiven is underlying amount. If the buffer has enough liquidity to handle the
+            // unwrap, it'll charge amountInWrapped from the user without calling the wrapper protocol, so it can't
+            // check if the "convert" function has rounding errors or is oversimplified. To make sure the buffer is not
+            // drained we add a convert factor that increases the amount of wrapped tokens in, protecting the
+            // buffer balance.
+            (amountOutUnderlying, amountInWrapped) = (
+                amountGiven,
+                wrappedToken.convertToShares(amountGiven) + _CONVERT_FACTOR
+            );
         }
 
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
