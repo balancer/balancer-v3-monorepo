@@ -688,4 +688,8 @@ contract VaultMock is IVaultMainMock, Vault {
     function manualSetPoolCreator(address pool, address newPoolCreator) public {
         _poolRoleAccounts[pool].poolCreator = newPoolCreator;
     }
+
+    function getConvertFactor() public pure returns (uint16) {
+        return _CONVERT_FACTOR;
+    }
 }

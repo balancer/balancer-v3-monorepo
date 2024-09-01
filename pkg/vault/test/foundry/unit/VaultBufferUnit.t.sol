@@ -73,9 +73,10 @@ contract VaultBufferUnitTest is BaseVaultTest {
 
         uint256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wDaiInitialized)));
         // Before swap, buffer had _wrapAmount of underlying and wrapped.
-        // After swap, buffer has 3/2 _wrapAmount of underlying and 1/2 _wrapAmount of wrapped
-        // surplus = (3/2 _wrapAmount - (1/2 _wrapAmount * rate)) / 2 = 1/4 _wrapAmount.
-        assertApproxEqAbs(surplus, _wrapAmount / 4, 1, "Wrong underlying surplus");
+        // After swap, buffer has 3/2 _wrapAmount of underlying and (1/2 _wrapAmount + vaultConvertFactor) of wrapped.
+        // surplus = (3/2 _wrapAmount - ((1/2 _wrapAmount + vaultConvertFactor)* rate)) / 2 =
+        // `1/4 _wrapAmount - vaultConvertFactor`.
+        assertApproxEqAbs(surplus, _wrapAmount / 4 - vaultConvertFactor, 1, "Wrong underlying surplus");
     }
 
     function testWrappedSurplusBalanceZero() public view {
@@ -122,9 +123,10 @@ contract VaultBufferUnitTest is BaseVaultTest {
 
         uint256 surplus = vault.internalGetBufferWrappedSurplus(IERC4626(address(wDaiInitialized)));
         // Before swap, buffer had _wrapAmount of underlying and wrapped.
-        // After swap, buffer has 1/2 _wrapAmount of underlying and 3/2 _wrapAmount of wrapped
-        // surplus = (3/2 _wrapAmount - (1/2 _wrapAmount / rate)) / 2 = 5/8 _wrapAmount.
-        assertApproxEqAbs(surplus, (5 * _wrapAmount) / 8, 1, "Wrong wrapped surplus");
+        // After swap, buffer has `1/2 _wrapAmount + vaultConvertFactor` of underlying and 3/2 _wrapAmount of wrapped.
+        // surplus = (3/2 _wrapAmount - ((1/2 _wrapAmount + vaultConvertFactor) / rate)) / 2 =
+        // `5/8 _wrapAmount - vaultConvertFactor/4`.
+        assertApproxEqAbs(surplus, (5 * _wrapAmount) / 8 - (vaultConvertFactor / 4), 1, "Wrong wrapped surplus");
     }
 
     function testSettleWrap() public {
