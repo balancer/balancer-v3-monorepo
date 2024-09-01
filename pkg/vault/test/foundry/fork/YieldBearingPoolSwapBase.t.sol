@@ -375,9 +375,9 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         assertEq(queryTokensOut[0], actualTokensOut[0], "Query and actual tokensOut do not match");
 
-        // The error is proportional to the amount of decimals of token in and token out. If tokenIn has 6 decimals
-        // and tokenOut has 18 decimals, an error of 1 wei in amountOut of the first buffer generates an error in the
-        // order of 1e12 (1e18/1e6) in amountOut of the last buffer.
+        // The error between the query and the actual operation is proportional to the amount of decimals of token in
+        // and token out. If tokenIn has 6 decimals and tokenOut has 18 decimals, an error of 1 wei in amountOut of
+        // the first buffer generates an error in the order of 1e12 (1e18/1e6) in amountOut of the last buffer.
         // But, if it's the opposite case, 1e6/1e18 is rounded to 0, but the max error is actually 1 (the error in the
         // tokenOut token itself), so the division is incremented by 1.
         uint256 decimalError = (
@@ -395,12 +395,19 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         // decimals, so keep the decimalError.
         absTolerance = absTolerance > decimalError ? absTolerance : decimalError;
 
+        assertLe(
+            actualPathAmountsOut[0],
+            queryPathAmountsOut[0],
+            "Query pathAmountsOut is smaller than actual operation"
+        );
         assertApproxEqAbs(
             queryPathAmountsOut[0],
             actualPathAmountsOut[0],
             absTolerance,
             "Query and actual pathAmountsOut difference is bigger than absolute tolerance"
         );
+
+        assertLe(actualAmountsOut[0], queryAmountsOut[0], "Query amountsOut is smaller than actual operation");
         assertApproxEqAbs(
             queryAmountsOut[0],
             actualAmountsOut[0],
@@ -498,9 +505,9 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         assertEq(queryTokensIn[0], actualTokensIn[0], "Query and actual tokensIn do not match");
 
-        // The error is proportional to the amount of decimals of token in and token out. If tokenIn has 6 decimals
-        // and tokenOut has 18 decimals, an error of 1 wei in amountOut of the first buffer generates an error in the
-        // order of 1e12 (1e18/1e6) in amountOut of the last buffer.
+        // The error between the query and the actual operation is proportional to the amount of decimals of token in
+        // and token out. If tokenIn has 6 decimals and tokenOut has 18 decimals, an error of 1 wei in amountOut of
+        // the first buffer generates an error in the order of 1e12 (1e18/1e6) in amountOut of the last buffer.
         // But, if it's the opposite case, 1e6/1e18 is rounded to 0, but the max error is actually 1 (the error in the
         // tokenOut token itself), so the division is incremented by 1.
         uint256 decimalError = (
@@ -518,12 +525,15 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         // decimals, so keep the decimalError.
         absTolerance = absTolerance > decimalError ? absTolerance : decimalError;
 
+        assertGe(actualPathAmountsIn[0], queryPathAmountsIn[0], "Query pathAmountsIn is bigger than actual operation");
         assertApproxEqAbs(
             queryPathAmountsIn[0],
             actualPathAmountsIn[0],
             absTolerance,
             "Query and actual pathAmountsIn difference is bigger than absolute tolerance"
         );
+
+        assertGe(actualAmountsIn[0], queryAmountsIn[0], "Query amountsIn is bigger than actual operation");
         assertApproxEqAbs(
             queryAmountsIn[0],
             actualAmountsIn[0],
