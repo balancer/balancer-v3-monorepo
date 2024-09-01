@@ -2,7 +2,9 @@
 
 pragma solidity ^0.8.24;
 
-import { WeightedMath } from "../math/WeightedMath.sol";
+import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
 import "./BasePoolMathMock.sol";
 
 // Mock Weighted5050 to test rounding in BasePoolMath for consistency with other implementations.

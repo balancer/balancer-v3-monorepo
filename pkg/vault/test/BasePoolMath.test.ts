@@ -15,7 +15,7 @@ import {
   computeRemoveLiquiditySingleTokenExactIn,
 } from '@balancer-labs/v3-helpers/src/math/base';
 
-import { LinearBasePoolMathMock } from '../typechain-types/contracts/test/LinearBasePoolMathMock';
+import { LinearBasePoolMathMock } from '@balancer-labs/v3-vault/typechain-types/contracts/test/LinearBasePoolMathMock';
 
 const SWAP_FEE = fp(0.01);
 
