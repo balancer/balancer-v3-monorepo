@@ -195,6 +195,8 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             vars.yieldBearingPoolBalanceBeforeSwapWaUsdc -
             waUSDC.convertToShares(tooLargeSwapAmount);
 
+        // Delta DAI and USDC are the same because the _verifySwapResult will check them in opposite directions (DAI
+        // going in, USDC going out)
         vars.expectedAliceDeltaDai = tooLargeSwapAmount;
         vars.expectedAliceDeltaUsdc = tooLargeSwapAmount;
 
