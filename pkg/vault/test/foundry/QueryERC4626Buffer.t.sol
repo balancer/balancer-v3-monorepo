@@ -120,7 +120,7 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
 
         // When the buffer liquidity is used, it adds a convertError to avoid a buffer from being drained. So, the
         // waDAI buffer removes `vaultConvertError` from the wrapped amount out, and this factor propagates until the
-        // last step, when waUSDC buffer convert the waUSDC amount into USDC using convertToAssets. After this
+        // last step, when the waUSDC buffer converts the waUSDC amount into USDC using convertToAssets. After this
         // conversion, waUSDC buffer also removes convertError from the buffer result.
         uint256 maxError = 2 * waUSDC.convertToAssets(vaultConvertFactor);
 
