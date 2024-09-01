@@ -140,8 +140,8 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         // For ExactOut, the last step is computed first (Unwrap -> Swap -> Wrap).
         // Compute Unwrap. The exact amount out in USDC is `swapAmount` and the token out is USDC, so the unwrap
         // occurs in the waUSDC buffer. Since the buffer has liquidity, we need to consider the vaultConvertError.
-        // `waUsdcAmountOutRaw` is the ExactOut amount of the pool swap, and input to the unwrap, that's why the
-        // vaultConvertFactor is added.
+        // `waUsdcAmountOutRaw` is the ExactOut amount of the pool swap, and the input to the unwrap.
+        // That's why the `vaultConvertFactor` is added.
         uint256 waUsdcAmountOutRaw = waUSDC.convertToShares(swapAmount) + vaultConvertFactor;
         // Compute Swap. `waUsdcAmountOutRaw` is the ExactOut amount of the pool swap. To compute the swap with
         // precision, we need to take into account the rates used by the Vault, instead of using a wrapper "convert"
