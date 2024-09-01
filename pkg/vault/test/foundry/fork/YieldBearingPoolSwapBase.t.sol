@@ -938,16 +938,17 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
     function _previewDepositWithBuffer(
         IERC4626 wToken,
         uint256 underlyingToDeposit,
-        bool shouldUseConvert
+        bool withBufferLiquidity
     ) private returns (uint256 mintedShares, uint256 underlyingSurplus, uint256 wrappedSurplus) {
-        if (shouldUseConvert) {
-            // If operation is within buffer range, convert is used by the vault to save some gas.
+        if (withBufferLiquidity) {
+            // If operation is within buffer range, convert is used by the vault to save some gas. Surpluses are 0,
+            // since there's no interaction with the wrapper protocol (therefore, no rebalance).
             mintedShares = wToken.convertToShares(underlyingToDeposit) - vaultConvertFactor;
         } else {
             bytes32 bufferBalances = vault.getBufferTokenBalancesBytes(wToken);
             // Deposit converts underlying to wrapped. If buffer has a surplus of underlying, the vault wraps it to
             // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our result
-            // preview.
+            // preview. The logic below reproduces Vault's rebalance logic.
             underlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wToken);
 
             // Do the actual operation to impact the rate used to calculate wrapped surplus.
@@ -966,16 +967,17 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
     function _previewMintWithBuffer(
         IERC4626 wToken,
         uint256 wrappedToMint,
-        bool shouldUseConvert
+        bool withBufferLiquidity
     ) private view returns (uint256 depositedAssets, uint256 underlyingSurplus, uint256 wrappedSurplus) {
-        if (shouldUseConvert) {
-            // If operation is within buffer range, convert is used by the vault to save some gas.
+        if (withBufferLiquidity) {
+            // If operation is within buffer range, convert is used by the vault to save some gas. Surpluses are 0,
+            // since there's no interaction with the wrapper protocol (therefore, no rebalance).
             depositedAssets = wToken.convertToAssets(wrappedToMint) + vaultConvertFactor;
         } else {
             bytes32 bufferBalances = vault.getBufferTokenBalancesBytes(wToken);
             // Mint converts underlying to wrapped. If buffer has a surplus of underlying, the vault wraps it to
             // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our
-            // result preview.
+            // result preview. The logic below reproduces Vault's rebalance logic.
             underlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wToken);
             wrappedSurplus = wToken.convertToShares(underlyingSurplus);
             uint256 vaultUnderlyingDelta = wToken.previewMint(wrappedToMint + wrappedSurplus);
@@ -989,13 +991,14 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         bool withBufferLiquidity
     ) private view returns (uint256 burnedShares, uint256 underlyingSurplus, uint256 wrappedSurplus) {
         if (withBufferLiquidity) {
-            // If operation is within buffer range, convert is used by the vault to save some gas.
+            // If operation is within buffer range, convert is used by the vault to save some gas. Surpluses are 0,
+            // since there's no interaction with the wrapper protocol (therefore, no rebalance).
             burnedShares = wToken.convertToShares(underlyingToWithdraw) + vaultConvertFactor;
         } else {
             bytes32 bufferBalances = vault.getBufferTokenBalancesBytes(wToken);
             // Withdraw converts wrapped to underlying. If buffer has a surplus of wrapped, the vault wraps it to
             // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our
-            // result preview.
+            // result preview. The logic below reproduces Vault's rebalance logic.
             wrappedSurplus = bufferBalances.getBufferWrappedSurplus(wToken);
             underlyingSurplus = wToken.convertToAssets(wrappedSurplus);
             uint256 vaultWrappedDelta = wToken.previewWithdraw(underlyingToWithdraw + underlyingSurplus);
@@ -1009,13 +1012,14 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         bool withBufferLiquidity
     ) private returns (uint256 withdrawnAssets, uint256 underlyingSurplus, uint256 wrappedSurplus) {
         if (withBufferLiquidity) {
-            // If operation is within buffer range, convert is used by the vault to save some gas.
+            // If operation is within buffer range, convert is used by the vault to save some gas. Surpluses are 0,
+            // since there's no interaction with the wrapper protocol (therefore, no rebalance).
             withdrawnAssets = wToken.convertToAssets(wrappedToRedeem) - vaultConvertFactor;
         } else {
             bytes32 bufferBalances = vault.getBufferTokenBalancesBytes(wToken);
             // Redeem converts wrapped to underlying. If buffer has a surplus of wrapped, the vault wraps it to
             // rebalance the buffer. It can introduce rounding issues, so we should consider the rebalance in our
-            // result preview.
+            // result preview. The logic below reproduces Vault's rebalance logic.
             wrappedSurplus = bufferBalances.getBufferWrappedSurplus(wToken);
 
             // Do the actual operation to impact the rate used to calculate underlying surplus.
