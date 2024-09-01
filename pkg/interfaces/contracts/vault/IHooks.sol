@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 
 // Explicitly import VaultTypes structs because we expect this interface to be heavily used by external developers.
 // Internally, when this list gets too long, we usually just do a simple import to keep things tidy.
+import { TokenConfig } from "../solidity-utils/BasePoolTypes.sol";
 import {
-    TokenConfig,
     LiquidityManagement,
     PoolSwapParams,
     AfterSwapParams,
@@ -14,7 +14,6 @@ import {
     RemoveLiquidityKind,
     SwapKind
 } from "./VaultTypes.sol";
-
 /**
  * @notice Interface for pool hooks.
  * @dev Hooks are functions invoked by the Vault at specific points in the flow of each operation. This guarantees that

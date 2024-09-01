@@ -11,13 +11,11 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
-    SingletonAuthentication
-} from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
-import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { SingletonAuthentication } from "./SingletonAuthentication.sol";
 import { VaultGuard } from "./VaultGuard.sol";
 
 /**

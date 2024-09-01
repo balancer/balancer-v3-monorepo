@@ -5,9 +5,10 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
+import { IProtocolFeeController } from "./IProtocolFeeController.sol";
+import { TokenConfig } from "../solidity-utils/BasePoolTypes.sol";
 import { IAuthorizer } from "./IAuthorizer.sol";
 import { IHooks } from "./IHooks.sol";
-import { IProtocolFeeController } from "./IProtocolFeeController.sol";
 import "./VaultTypes.sol";
 
 /// @dev Events are declared inside an interface (namespace) to improve DX with Typechain.

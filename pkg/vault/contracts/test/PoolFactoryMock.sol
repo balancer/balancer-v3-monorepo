@@ -2,16 +2,15 @@
 
 pragma solidity ^0.8.24;
 
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/BasePoolTypes.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import {
-    SingletonAuthentication
-} from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import { FactoryWidePauseWindow } from "@balancer-labs/v3-solidity-utils/contracts/helpers/FactoryWidePauseWindow.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
+import { SingletonAuthentication } from "../SingletonAuthentication.sol";
 import { PoolMock } from "./PoolMock.sol";
 
 contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWidePauseWindow {

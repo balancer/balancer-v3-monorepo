@@ -8,6 +8,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IVault } from "./IVault.sol";
 import { IHooks } from "./IHooks.sol";
 import { IProtocolFeeController } from "./IProtocolFeeController.sol";
+import { TokenConfig } from "../solidity-utils/BasePoolTypes.sol";
 import "./VaultTypes.sol";
 
 /// @notice Extension of the Vault contract (via the Proxy pattern), intended for less common operations.

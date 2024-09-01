@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import { TokenConfig } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/BasePoolTypes.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BaseHooks } from "../BaseHooks.sol";

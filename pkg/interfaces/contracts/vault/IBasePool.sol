@@ -4,7 +4,8 @@ pragma solidity ^0.8.24;
 
 import { ISwapFeePercentageBounds } from "./ISwapFeePercentageBounds.sol";
 import { IUnbalancedLiquidityInvariantRatioBounds } from "./IUnbalancedLiquidityInvariantRatioBounds.sol";
-import { PoolSwapParams, Rounding, SwapKind } from "./VaultTypes.sol";
+import { Rounding } from "../solidity-utils/BasePoolTypes.sol";
+import { PoolSwapParams, SwapKind } from "./VaultTypes.sol";
 
 /**
  * @notice Base interface for a Balancer Pool.
