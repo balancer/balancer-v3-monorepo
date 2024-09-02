@@ -14,13 +14,14 @@ import { ERC20TestToken } from "./ERC20TestToken.sol";
 import { FixedPoint } from "../math/FixedPoint.sol";
 
 contract ERC4626TestToken is ERC4626, IRateProvider {
+    using FixedPoint for uint256;
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
 
     uint8 private immutable _wrappedTokenDecimals;
     IERC20 private _overrideAsset;
 
-    bool private maliciousWrapper;
+    bool private _maliciousWrapper;
 
     constructor(
         IERC20 underlyingToken,
@@ -104,18 +105,18 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
     }
 
     function setMaliciousWrapper(bool value) external {
-        maliciousWrapper = value;
+        _maliciousWrapper = value;
     }
 
     function convertToAssets(uint256 shares) public view override returns (uint256) {
-        if (maliciousWrapper) {
+        if (_maliciousWrapper) {
             return _overrideAsset.balanceOf(msg.sender);
         }
         return super.convertToAssets(shares);
     }
 
     function deposit(uint256 assets, address receiver) public override returns (uint256) {
-        if (maliciousWrapper) {
+        if (_maliciousWrapper) {
             // A malicious wrapper does nothing so it can use the approval to drain the vault.
             return 0;
         }

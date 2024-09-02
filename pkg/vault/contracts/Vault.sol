@@ -57,7 +57,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     IVaultExtension private immutable _vaultExtension;
 
     // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
-    // exploitation of rounding errors
+    // exploitation of rounding errors.
     // solhint-disable-next-line var-name-mixedcase
     uint256 internal immutable _MINIMUM_TRADE_AMOUNT;
 
