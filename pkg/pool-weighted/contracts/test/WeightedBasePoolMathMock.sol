@@ -3,8 +3,9 @@
 pragma solidity ^0.8.24;
 
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import "./BasePoolMathMock.sol";
+import { BasePoolMathMock } from "@balancer-labs/v3-vault/contracts/test/BasePoolMathMock.sol";
 
 // Mock Weighted5050 to test rounding in BasePoolMath for consistency with other implementations.
 contract WeightedBasePoolMathMock is BasePoolMathMock {
