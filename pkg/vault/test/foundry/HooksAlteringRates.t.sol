@@ -111,7 +111,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
-        uint256 bptAmount = rateAdjustedAmount + defaultAmount - _MINIMUM_BPT;
+        uint256 bptAmount = rateAdjustedAmount + defaultAmount - POOL_MINIMUM_TOTAL_SUPPLY;
 
         uint256[] memory expectedAmounts = new uint256[](2);
         expectedAmounts[daiIdx] = rateAdjustedAmount;

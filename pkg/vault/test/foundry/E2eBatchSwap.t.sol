@@ -53,6 +53,9 @@ contract E2eBatchSwapTest is BaseVaultTest {
     uint256 internal poolMaxSwapFeePercentage;
 
     function setUp() public virtual override {
+        // We will use min trade amount in this test.
+        vaultMockMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT;
+
         BaseVaultTest.setUp();
 
         IProtocolFeeController feeController = vault.getProtocolFeeController();
@@ -116,10 +119,10 @@ contract E2eBatchSwapTest is BaseVaultTest {
 
         // If there are swap fees, the amountCalculated may be lower than MIN_TRADE_AMOUNT. So, multiplying
         // MIN_TRADE_AMOUNT by 10 creates a margin.
-        minSwapAmountTokenA = 10 * MIN_TRADE_AMOUNT;
+        minSwapAmountTokenA = 10 * PRODUCTION_MIN_TRADE_AMOUNT;
         maxSwapAmountTokenA = poolInitAmount / 2;
 
-        minSwapAmountTokenD = 10 * MIN_TRADE_AMOUNT;
+        minSwapAmountTokenD = 10 * PRODUCTION_MIN_TRADE_AMOUNT;
         maxSwapAmountTokenD = poolInitAmount / 2;
     }
 
