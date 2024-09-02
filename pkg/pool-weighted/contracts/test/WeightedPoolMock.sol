@@ -7,7 +7,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import "../WeightedPool.sol";
+import { WeightedPool } from "../WeightedPool.sol";
 
 contract WeightedPoolMock is WeightedPool {
     // Local storage of weights, so that they can be changed for tests.

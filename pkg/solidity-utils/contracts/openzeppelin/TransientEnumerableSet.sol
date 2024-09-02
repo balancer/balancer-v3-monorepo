@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.24;
 
+import { StorageSlotExtension } from "./StorageSlotExtension.sol";
 import {
     AddressArraySlotType,
     AddressMappingSlot,
     TransientStorageHelpers
 } from "../helpers/TransientStorageHelpers.sol";
-import "./StorageSlotExtension.sol";
 
 /**
  * @notice Library for managing sets of primitive types.

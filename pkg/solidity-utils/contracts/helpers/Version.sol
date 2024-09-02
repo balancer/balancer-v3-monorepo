@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
+import { IVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IVersion.sol";
 
 /**
  * @notice Retrieves a contract's version from storage.
