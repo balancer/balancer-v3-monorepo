@@ -632,10 +632,10 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         assertApproxEqAbs(removedUnderlying, expectedUnderlyingOut, 1e8, "Wrong underlying amount removed");
         assertApproxEqAbs(removedWrapped, expectedWrappedOut, 1e8, "Wrong wrapped amount removed");
 
-        uint256 bufferInvariantAfter = removedUnderlying + waDAI.convertToAssets(removedWrapped);
+        uint256 totalValueRemoved = removedUnderlying + waDAI.convertToAssets(removedWrapped);
         // Ensure we get out less value than we put in.
-        assertLe(bufferInvariantAfter, secondDepositUnderlying, "Value removed > value added");
-        assertApproxEqAbs(bufferInvariantAfter, secondDepositUnderlying, 1e12, "Value removed !~ value added");
+        assertLe(totalValueRemoved, secondDepositUnderlying, "Value removed > value added");
+        assertApproxEqAbs(totalValueRemoved, secondDepositUnderlying, 1e12, "Value removed !~ value added");
     }
 
     function testRemoveLiquidityFromBuffer() public {
