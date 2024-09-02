@@ -87,4 +87,8 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
     function manualBurnBufferShares(IERC4626 wrappedToken, address from, uint256 amount) external {
         _burnBufferShares(wrappedToken, from, amount);
     }
+
+    function manualMintMinimumBufferSupplyReserve(IERC4626 wrappedToken) external {
+        _mintMinimumBufferSupplyReserve(wrappedToken);
+    }
 }

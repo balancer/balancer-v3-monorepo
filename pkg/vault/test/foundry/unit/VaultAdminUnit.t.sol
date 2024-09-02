@@ -210,6 +210,15 @@ contract VaultAdminUnitTest is BaseVaultTest {
         assertEq(vault.getBufferTotalShares(waDAI), issuedShares + _MINIMUM_TOTAL_SUPPLY, "Wrong total shares");
     }
 
+    function testMintMinimumBufferSupplyReserve() public {
+        vm.expectEmit();
+        emit IVaultEvents.BufferSharesMinted(waDAI, address(0), _MINIMUM_TOTAL_SUPPLY);
+        vault.manualMintMinimumBufferSupplyReserve(waDAI);
+
+        assertEq(vault.getBufferOwnerShares(waDAI, address(0)), _MINIMUM_TOTAL_SUPPLY, "address(0): wrong shares");
+        assertEq(vault.getBufferTotalShares(waDAI), _MINIMUM_TOTAL_SUPPLY, "Wrong total buffer shares");
+    }
+
     function testMintBufferShares() public {
         // 1st  mint
         uint256 amountToMint = _MINIMUM_TOTAL_SUPPLY;
@@ -248,12 +257,25 @@ contract VaultAdminUnitTest is BaseVaultTest {
         assertEq(vault.getBufferTotalShares(waDAI), totalMinted, "Wrong total buffer shares (3)");
     }
 
-    function testMintBufferSharesIInvalidReceiver() public {
+    function testMintBufferSharesBelowMinimumTotalSupply() public {
+        uint256 supplyBelowMin = _MINIMUM_TOTAL_SUPPLY - 1;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IERC20MultiTokenErrors.TotalSupplyTooLow.selector,
+                supplyBelowMin,
+                _MINIMUM_TOTAL_SUPPLY
+            )
+        );
+        vault.manualMintBufferShares(waDAI, bob, supplyBelowMin);
+    }
+
+
+    function testMintBufferSharesInvalidReceiver() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferSharesInvalidReceiver.selector));
         vault.manualMintBufferShares(waDAI, address(0), _MINIMUM_TOTAL_SUPPLY);
     }
 
-    function testBurnBufferSharesIInvalidOwner() public {
+    function testBurnBufferSharesInvalidOwner() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferSharesInvalidOwner.selector));
         vault.manualBurnBufferShares(waDAI, address(0), _MINIMUM_TOTAL_SUPPLY);
     }
