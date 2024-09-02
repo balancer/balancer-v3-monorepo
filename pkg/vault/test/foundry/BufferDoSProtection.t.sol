@@ -145,11 +145,11 @@ contract BufferDoSProtectionTest is BaseVaultTest {
                 abi.encodeWithSelector(
                     BufferDoSProtectionTest.erc4626DoSHook.selector,
                     BufferWrapOrUnwrapParams({
-                        kind: SwapKind.EXACT_IN,
+                        kind: kind,
                         direction: WrappingDirection.UNWRAP,
                         wrappedToken: IERC4626(address(waDAI)),
-                        amountGivenRaw: waDAI.previewWithdraw(_wrapAmount),
-                        limitRaw: _wrapAmount,
+                        amountGivenRaw: amountGivenRaw,
+                        limitRaw: limitRaw,
                         userData: bytes("")
                     }),
                     lp,

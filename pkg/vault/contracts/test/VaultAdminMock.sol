@@ -11,8 +11,10 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
     constructor(
         IVault mainVault,
         uint32 pauseWindowDuration,
-        uint32 bufferPeriodDuration
-    ) VaultAdmin(mainVault, pauseWindowDuration, bufferPeriodDuration) {}
+        uint32 bufferPeriodDuration,
+        uint256 minTradeAmount,
+        uint256 minWrapAmount
+    ) VaultAdmin(mainVault, pauseWindowDuration, bufferPeriodDuration, minTradeAmount, minWrapAmount) {}
 
     function manualPauseVault() external {
         _setVaultPaused(true);
@@ -66,6 +68,10 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
         address sharesOwner
     ) external nonReentrant {
         this.removeLiquidityFromBufferHook(wrappedToken, sharesToRemove, sharesOwner);
+    }
+
+    function manualReentrancyDisableRecoveryMode(address pool) external nonReentrant {
+        this.disableRecoveryMode(pool);
     }
 
     function mockWithValidPercentage(uint256 percentage) external pure withValidPercentage(percentage) {

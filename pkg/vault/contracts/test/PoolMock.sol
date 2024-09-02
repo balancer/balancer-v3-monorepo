@@ -16,8 +16,6 @@ import { BalancerPoolToken } from "../BalancerPoolToken.sol";
 contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
     using FixedPoint for uint256;
 
-    uint256 public constant MIN_INIT_BPT = 1e6;
-
     // Amounts in are multiplied by the multiplier, amounts out are divided by it.
     uint256 private _multiplier = FixedPoint.ONE;
 

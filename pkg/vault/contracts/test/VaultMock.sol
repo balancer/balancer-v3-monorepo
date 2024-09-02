@@ -55,9 +55,8 @@ contract VaultMock is IVaultMainMock, Vault {
     constructor(
         IVaultExtension vaultExtension,
         IAuthorizer authorizer,
-        IProtocolFeeController protocolFeeController,
-        uint256 minTradeAmount
-    ) Vault(vaultExtension, authorizer, protocolFeeController, minTradeAmount) {
+        IProtocolFeeController protocolFeeController
+    ) Vault(vaultExtension, authorizer, protocolFeeController) {
         uint32 pauseWindowEndTime = IVaultAdmin(address(vaultExtension)).getPauseWindowEndTime();
         uint32 bufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
         _poolFactoryMock = new PoolFactoryMock(IVault(address(this)), pauseWindowEndTime - bufferPeriodDuration);
@@ -687,5 +686,9 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualSetPoolCreator(address pool, address newPoolCreator) public {
         _poolRoleAccounts[pool].poolCreator = newPoolCreator;
+    }
+
+    function getConvertFactor() public pure returns (uint16) {
+        return _CONVERT_FACTOR;
     }
 }

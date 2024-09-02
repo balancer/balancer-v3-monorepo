@@ -19,7 +19,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract Permit2Test is BaseVaultTest {
     using ArrayHelpers for *;
 
-    uint256 internal usdcAmountIn = 1e3 * 1e6;
+    uint256 internal usdcAmountIn = 1e3 * 1e6; // USDC has 6 decimals
     uint256 internal daiAmountIn = 1e3 * 1e18;
     uint256 internal daiAmountOut = 1e2 * 1e18;
     uint256 internal ethAmountIn = 1e3 ether;
@@ -135,6 +135,6 @@ contract Permit2Test is BaseVaultTest {
 
         vm.expectCall(address(router), multicallData[0]);
         vm.prank(alice);
-        router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, "", multicallData);
+        router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, bytes(""), multicallData);
     }
 }
