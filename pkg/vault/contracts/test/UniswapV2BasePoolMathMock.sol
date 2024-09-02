@@ -6,7 +6,8 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import "../math/FixedPoint.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
 import "./BasePoolMathMock.sol";
 
 // Mock UniswapV2 to test rounding in BasePoolMath for consistency with other implementations.

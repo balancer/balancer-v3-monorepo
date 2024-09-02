@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.24;
 
-import "../../contracts/test/BasePoolMathMock.sol";
 import "../../contracts/test/UniswapV2BasePoolMathMock.sol";
-import "./utils/BasePoolMathRoundingTest.sol";
+import "../../contracts/test/BasePoolMathMock.sol";
+import "./BasePoolMathRoundingTest.sol";
 
 contract UniswapV2BasePoolMathRoundingTest is BasePoolMathRoundingTest {
     function setUp() public override {
