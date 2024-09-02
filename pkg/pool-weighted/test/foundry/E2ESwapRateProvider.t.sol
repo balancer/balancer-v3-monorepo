@@ -4,22 +4,22 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 import { ProtocolFeeControllerMock } from "@balancer-labs/v3-vault/contracts/test/ProtocolFeeControllerMock.sol";
-import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
 import { E2eSwapRateProviderTest } from "@balancer-labs/v3-vault/test/foundry/E2eSwapRateProvider.t.sol";
+import { RateProviderMock } from "@balancer-labs/v3-vault/contracts/test/RateProviderMock.sol";
+import { PoolHooksMock } from "@balancer-labs/v3-vault/contracts/test/PoolHooksMock.sol";
 
 import { WeightedPoolFactory } from "../../contracts/WeightedPoolFactory.sol";
-import { WeightedPool } from "../../contracts/WeightedPool.sol";
 import { WeightedPoolMock } from "../../contracts/test/WeightedPoolMock.sol";
+import { WeightedPool } from "../../contracts/WeightedPool.sol";
 
 contract E2eSwapRateProviderWeightedTest is E2eSwapRateProviderTest {
     using ArrayHelpers for *;

@@ -2,10 +2,12 @@
 
 pragma solidity ^0.8.24;
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdminMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultAdminMock.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import "../VaultAdmin.sol";
+import { IVaultAdminMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultAdminMock.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+
+import { VaultAdmin } from "../VaultAdmin.sol";
 
 contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
     constructor(

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import "./LogExpMath.sol";
+import { LogExpMath } from "./LogExpMath.sol";
 
 /// @notice Support 18-decimal fixed point arithmetic. All Vault calculations use this for high and uniform precision.
 library FixedPoint {
