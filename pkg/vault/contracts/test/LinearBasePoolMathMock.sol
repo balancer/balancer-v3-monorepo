@@ -4,8 +4,9 @@ pragma solidity ^0.8.24;
 
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import "../math/FixedPoint.sol";
-import "./BasePoolMathMock.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
+import { BasePoolMathMock } from "./BasePoolMathMock.sol";
 
 // Mock the linear math that we use in pool mocks for testing.
 contract LinearBasePoolMathMock is BasePoolMathMock {

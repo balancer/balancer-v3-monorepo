@@ -6,8 +6,12 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../../contracts/helpers/TransientStorageHelpers.sol";
-import "../../contracts/openzeppelin/StorageSlotExtension.sol";
+import {
+    TransientStorageHelpers,
+    TokenDeltaMappingSlotType,
+    AddressArraySlotType
+} from "../../contracts/helpers/TransientStorageHelpers.sol";
+import { StorageSlotExtension } from "../../contracts/openzeppelin/StorageSlotExtension.sol";
 
 contract TransientStorageHelpersTest is Test {
     using TransientStorageHelpers for *;

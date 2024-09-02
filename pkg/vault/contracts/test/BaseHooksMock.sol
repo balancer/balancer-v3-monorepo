@@ -2,9 +2,10 @@
 
 pragma solidity ^0.8.24;
 
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import "../BaseHooks.sol";
+import { BaseHooks } from "../BaseHooks.sol";
 
 contract BaseHooksMock is BaseHooks {
     /// @inheritdoc IHooks
