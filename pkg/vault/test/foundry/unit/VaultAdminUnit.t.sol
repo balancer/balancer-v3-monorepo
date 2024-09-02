@@ -21,9 +21,8 @@ contract VaultAdminUnitTest is BaseVaultTest {
     // This pool address was not registered and initialized and should be used only to test internal functions that
     // don't require access to pool information.
     address internal constant TEST_POOL = address(0x123);
-    uint256 internal constant underlyingTokensToDeposit = 2e18;
-    uint256 internal constant liquidityAmount = 1e18;
-    uint256 internal constant _MINIMUM_TOTAL_SUPPLY = 1e6;
+    uint256 internal constant UNDERLYING_TOKENS_TO_DEPOSIT = 2e18;
+    uint256 internal constant LIQUIDITY_AMOUNT = 1e18;
 
     ERC4626TestToken internal waDAI;
 
@@ -123,7 +122,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
 
     function testRemoveLiquidityFromBufferNotEnoughShares() public {
         vm.startPrank(bob);
-        uint256 shares = router.initializeBuffer(waDAI, liquidityAmount, liquidityAmount);
+        uint256 shares = router.initializeBuffer(waDAI, LIQUIDITY_AMOUNT, LIQUIDITY_AMOUNT);
 
         authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
         vm.expectRevert(IVaultErrors.NotEnoughBufferShares.selector);
@@ -138,7 +137,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
 
     function testInitializeBufferTwice() public {
         vault.forceUnlock();
-        vault.initializeBuffer(waDAI, liquidityAmount, liquidityAmount, bob);
+        vault.initializeBuffer(waDAI, LIQUIDITY_AMOUNT, LIQUIDITY_AMOUNT, bob);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferAlreadyInitialized.selector, waDAI));
         vault.initializeBuffer(waDAI, 1, 1, bob);
@@ -149,33 +148,35 @@ contract VaultAdminUnitTest is BaseVaultTest {
         waDAI.setAsset(IERC20(address(0)));
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.InvalidUnderlyingToken.selector, waDAI));
-        vault.initializeBuffer(waDAI, liquidityAmount, liquidityAmount, bob);
+        vault.initializeBuffer(waDAI, LIQUIDITY_AMOUNT, LIQUIDITY_AMOUNT, bob);
     }
 
     function testInitializeBufferBelowMinimumShares() public {
         vault.forceUnlock();
-        vm.expectRevert(
-            abi.encodeWithSelector(IERC20MultiTokenErrors.TotalSupplyTooLow.selector, 3, _MINIMUM_TOTAL_SUPPLY)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferTotalSupplyTooLow.selector, 3));
         vault.initializeBuffer(waDAI, 1, 2, bob);
     }
 
     function testInitializeBuffer() public {
-        dai.mint(address(waDAI), underlyingTokensToDeposit); // This will make the rate = 2
+        dai.mint(address(waDAI), UNDERLYING_TOKENS_TO_DEPOSIT); // This will make the rate = 2
 
         vault.forceUnlock();
-        uint256 underlyingAmount = liquidityAmount * 2;
-        uint256 wrappedAmount = liquidityAmount;
+        uint256 underlyingAmount = LIQUIDITY_AMOUNT * 2;
+        uint256 wrappedAmount = LIQUIDITY_AMOUNT;
 
         // Get issued shares to match the event. The actual shares amount will be validated below.
         uint256 preInitSnap = vm.snapshot();
         uint256 issuedShares = vault.initializeBuffer(waDAI, underlyingAmount, wrappedAmount, bob);
         vm.revertTo(preInitSnap);
 
+        // Try to initialize below minimum
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferTotalSupplyTooLow.selector, 0));
+        vault.initializeBuffer(waDAI, 0, 0, bob);
+
+        vm.expectEmit();
+        emit IVaultEvents.BufferSharesMinted(waDAI, address(0), BUFFER_MINIMUM_TOTAL_SUPPLY);
         vm.expectEmit();
         emit IVaultEvents.BufferSharesMinted(waDAI, bob, issuedShares);
-        vm.expectEmit();
-        emit IVaultEvents.BufferSharesMinted(waDAI, address(0), _MINIMUM_TOTAL_SUPPLY);
         vm.expectEmit();
         emit IVaultEvents.LiquidityAddedToBuffer(waDAI, underlyingAmount, wrappedAmount);
         issuedShares = vault.initializeBuffer(waDAI, underlyingAmount, wrappedAmount, bob);
@@ -194,28 +195,32 @@ contract VaultAdminUnitTest is BaseVaultTest {
         // Shares (wrapped rate is ~2; allow rounding error)
         assertApproxEqAbs(
             issuedShares,
-            underlyingAmount + wrappedAmount * 2 - _MINIMUM_TOTAL_SUPPLY,
+            underlyingAmount + wrappedAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY,
             1,
             "Wrong issued shares"
         );
 
         assertEq(vault.getBufferOwnerShares(waDAI, bob), issuedShares, "Wrong bob shares");
-        assertEq(vault.getBufferOwnerShares(waDAI, address(0)), _MINIMUM_TOTAL_SUPPLY, "Wrong burned shares");
-        assertEq(vault.getBufferTotalShares(waDAI), issuedShares + _MINIMUM_TOTAL_SUPPLY, "Wrong total shares");
+        assertEq(vault.getBufferOwnerShares(waDAI, address(0)), BUFFER_MINIMUM_TOTAL_SUPPLY, "Wrong burned shares");
+        assertEq(vault.getBufferTotalShares(waDAI), issuedShares + BUFFER_MINIMUM_TOTAL_SUPPLY, "Wrong total shares");
     }
 
     function testMintMinimumBufferSupplyReserve() public {
         vm.expectEmit();
-        emit IVaultEvents.BufferSharesMinted(waDAI, address(0), _MINIMUM_TOTAL_SUPPLY);
+        emit IVaultEvents.BufferSharesMinted(waDAI, address(0), BUFFER_MINIMUM_TOTAL_SUPPLY);
         vault.manualMintMinimumBufferSupplyReserve(waDAI);
 
-        assertEq(vault.getBufferOwnerShares(waDAI, address(0)), _MINIMUM_TOTAL_SUPPLY, "address(0): wrong shares");
-        assertEq(vault.getBufferTotalShares(waDAI), _MINIMUM_TOTAL_SUPPLY, "Wrong total buffer shares");
+        assertEq(
+            vault.getBufferOwnerShares(waDAI, address(0)),
+            BUFFER_MINIMUM_TOTAL_SUPPLY,
+            "address(0): wrong shares"
+        );
+        assertEq(vault.getBufferTotalShares(waDAI), BUFFER_MINIMUM_TOTAL_SUPPLY, "Wrong total buffer shares");
     }
 
     function testMintBufferShares() public {
         // 1st  mint
-        uint256 amountToMint = _MINIMUM_TOTAL_SUPPLY;
+        uint256 amountToMint = BUFFER_MINIMUM_TOTAL_SUPPLY;
         uint256 totalMinted = amountToMint;
 
         vm.expectEmit();
@@ -226,7 +231,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
         assertEq(vault.getBufferTotalShares(waDAI), amountToMint, "Wrong total buffer shares (1)");
 
         // 2nd mint
-        amountToMint = _MINIMUM_TOTAL_SUPPLY + 12345;
+        amountToMint = BUFFER_MINIMUM_TOTAL_SUPPLY + 12345;
         totalMinted += amountToMint;
 
         vm.expectEmit();
@@ -245,42 +250,36 @@ contract VaultAdminUnitTest is BaseVaultTest {
         vault.manualMintBufferShares(waDAI, bob, amountToMint);
         assertEq(
             vault.getBufferOwnerShares(waDAI, bob),
-            _MINIMUM_TOTAL_SUPPLY + amountToMint,
+            BUFFER_MINIMUM_TOTAL_SUPPLY + amountToMint,
             "Bob: Incorrect buffer shares (2)"
         );
         assertEq(vault.getBufferTotalShares(waDAI), totalMinted, "Wrong total buffer shares (3)");
     }
 
     function testMintBufferSharesBelowMinimumTotalSupply() public {
-        uint256 supplyBelowMin = _MINIMUM_TOTAL_SUPPLY - 1;
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IERC20MultiTokenErrors.TotalSupplyTooLow.selector,
-                supplyBelowMin,
-                _MINIMUM_TOTAL_SUPPLY
-            )
-        );
+        uint256 supplyBelowMin = BUFFER_MINIMUM_TOTAL_SUPPLY - 1;
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferTotalSupplyTooLow.selector, supplyBelowMin));
         vault.manualMintBufferShares(waDAI, bob, supplyBelowMin);
     }
 
-    function testMintBufferSharesIInvalidReceiver() public {
+    function testMintBufferSharesInvalidReceiver() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferSharesInvalidReceiver.selector));
-        vault.manualMintBufferShares(waDAI, address(0), _MINIMUM_TOTAL_SUPPLY);
+        vault.manualMintBufferShares(waDAI, address(0), BUFFER_MINIMUM_TOTAL_SUPPLY);
     }
 
-    function testBurnBufferSharesIInvalidOwner() public {
+    function testBurnBufferSharesInvalidOwner() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferSharesInvalidOwner.selector));
-        vault.manualBurnBufferShares(waDAI, address(0), _MINIMUM_TOTAL_SUPPLY);
+        vault.manualBurnBufferShares(waDAI, address(0), BUFFER_MINIMUM_TOTAL_SUPPLY);
     }
 
     function _initializeBob() private {
         vm.startPrank(bob);
-        dai.approve(address(waDAI), underlyingTokensToDeposit);
+        dai.approve(address(waDAI), UNDERLYING_TOKENS_TO_DEPOSIT);
         waDAI.approve(address(permit2), MAX_UINT256);
         permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
 
         // Deposit some DAI to mint waDAI to bob, so he can add liquidity to the buffer.
-        waDAI.deposit(underlyingTokensToDeposit, bob);
+        waDAI.deposit(UNDERLYING_TOKENS_TO_DEPOSIT, bob);
         vm.stopPrank();
     }
 }

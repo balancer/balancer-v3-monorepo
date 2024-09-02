@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -50,6 +51,9 @@ contract E2eSwapTest is BaseVaultTest {
     uint256 private constant _LOW_DECIMAL_LIMIT = 6;
 
     function setUp() public virtual override {
+        // We will use min trade amount in this test.
+        vaultMockMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT;
+
         BaseVaultTest.setUp();
 
         // Tokens must be set before other variables, so the variables can be calculated based on tokens.
@@ -81,6 +85,13 @@ contract E2eSwapTest is BaseVaultTest {
         vm.prank(poolCreator);
         // Set pool creator fee to 100%, so protocol + creator fees equals the total charged fees.
         feeController.setPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
+
+        minPoolSwapFeePercentage = IBasePool(pool).getMinimumSwapFeePercentage();
+        maxPoolSwapFeePercentage = IBasePool(pool).getMaximumSwapFeePercentage();
+
+        // These tests rely on a minimum fee to work; set something very small for pool mock.
+        minPoolSwapFeePercentage = (minPoolSwapFeePercentage == 0 ? 1e12 : minPoolSwapFeePercentage);
+        maxPoolSwapFeePercentage = (maxPoolSwapFeePercentage == 1e18 ? 10e16 : maxPoolSwapFeePercentage);
     }
 
     /**
@@ -136,11 +147,11 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 rateTokenB = getRate(tokenB);
 
         // The vault does not allow trade amounts (amountGivenScaled18 or amountCalculatedScaled18) to be less than
-        // MIN_TRADE_AMOUNT. For "linear" pools (PoolMock), amountGivenScaled18 and amountCalculatedScaled18 are
-        // the same. So, minAmountGivenScaled18 > MIN_TRADE_AMOUNT. To derive the formula below, note that
-        // `amountGivenRaw = amountGivenScaled18/(rateToken * scalingFactor)`.
-        uint256 tokenAMinTradeAmount = MIN_TRADE_AMOUNT.divUp(rateTokenA).mulUp(10 ** decimalsTokenA);
-        uint256 tokenBMinTradeAmount = MIN_TRADE_AMOUNT.divUp(rateTokenB).mulUp(10 ** decimalsTokenB);
+        // PRODUCTION_MIN_TRADE_AMOUNT. For "linear" pools (PoolMock), amountGivenScaled18 and amountCalculatedScaled18
+        // are the same. So, minAmountGivenScaled18 > PRODUCTION_MIN_TRADE_AMOUNT. To derive the formula below, note
+        // that `amountGivenRaw = amountGivenScaled18/(rateToken * scalingFactor)`.
+        uint256 tokenAMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT.divUp(rateTokenA).mulUp(10 ** decimalsTokenA);
+        uint256 tokenBMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT.divUp(rateTokenB).mulUp(10 ** decimalsTokenB);
 
         // Also, since we undo the operation (reverse swap with the output of the first swap), amountCalculatedRaw
         // cannot be 0. Considering that amountCalculated is tokenB, and amountGiven is tokenA:
@@ -351,7 +362,7 @@ contract E2eSwapTest is BaseVaultTest {
         uint256 feesTokenA = vault.getAggregateSwapFeeAmount(pool, tokenA);
         vm.stopPrank();
 
-        if (decimalsTokenA != decimalsTokenB || exactAmountIn < MIN_TRADE_AMOUNT) {
+        if (decimalsTokenA != decimalsTokenB || exactAmountIn < PRODUCTION_MIN_TRADE_AMOUNT) {
             // If tokens have different decimals, an error is introduced in the computeBalance in the order of the
             // difference of the decimals.
             uint256 tolerance;

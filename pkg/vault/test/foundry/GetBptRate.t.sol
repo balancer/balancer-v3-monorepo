@@ -81,12 +81,12 @@ contract GetBptRateTest is BaseVaultTest {
     }
 
     function testGetBptRateWithRateProvider() public {
-        uint256 totalSupply = initBptAmountOut + MIN_BPT;
+        uint256 totalSupply = initBptAmountOut + POOL_MINIMUM_TOTAL_SUPPLY;
         uint256[] memory liveBalances = new uint256[](2);
         liveBalances[daiIdx] = defaultAmount.mulDown(daiMockRate);
         liveBalances[usdcIdx] = defaultAmount.mulDown(usdcMockRate);
 
-        uint256 weightedInvariant = WeightedMath.computeInvariant(weights, liveBalances);
+        uint256 weightedInvariant = WeightedMath.computeInvariantDown(weights, liveBalances);
         uint256 expectedRate = weightedInvariant.divDown(totalSupply);
         uint256 actualRate = vault.getBptRate(pool);
         assertEq(actualRate, expectedRate, "Wrong rate");
@@ -101,7 +101,7 @@ contract GetBptRateTest is BaseVaultTest {
         liveBalances[daiIdx] = 2 * defaultAmount.mulDown(daiMockRate);
         liveBalances[usdcIdx] = defaultAmount.mulDown(usdcMockRate);
 
-        weightedInvariant = WeightedMath.computeInvariant(weights, liveBalances);
+        weightedInvariant = WeightedMath.computeInvariantDown(weights, liveBalances);
 
         expectedRate = weightedInvariant.divDown(totalSupply);
         actualRate = vault.getBptRate(pool);

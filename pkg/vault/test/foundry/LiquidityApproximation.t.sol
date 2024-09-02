@@ -59,13 +59,27 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     address internal swapPool;
     address internal liquidityPool;
-    // Allows small roundingDelta to account for rounding.
-    uint256 internal roundingDelta = 1e12;
+    // Allow small roundingDelta to account for rounding.
+    // Up to this delta it's acceptable for it to be beneficial to swap with the direct method vs swapping with the
+    // indirect method).
+    uint256 internal excessRoundingDelta = 0.05e16; // 0.05%
+
+    // We want the indirect method to be as close to the direct one in the worst case. Therefore, the delta
+    // in the opposite direction (i.e. indirect better than direct) is much tighter.
+    uint256 internal defectRoundingDelta = 0.0000001e16; // 0.0000001%
+
+    // Absolute rounding delta whenever indirect method is more beneficial.
+    uint256 internal absoluteRoundingDelta = 1e12;
+
     // The percentage delta of the swap fee, which is sufficiently large to compensate for
     // inaccuracies in liquidity approximations within the specified limits for these tests.
     uint256 internal liquidityPercentageDelta = 25e16; // 25%
     uint256 internal swapFeePercentageDelta = 20e16; // 20%
-    uint256 internal maxSwapFeePercentage = 10e16; // 10%
+
+    // Pool dependent: min / max swap fee percentage.
+    // Overwrite these in pool-specific setups if required.
+    uint256 internal maxSwapFeePercentage = 10e16; // 10%;
+    uint256 internal minSwapFeePercentage = 0;
     uint256 internal maxAmount = 3e8 * 1e18 - 1;
 
     uint256 internal daiIdx;
@@ -104,8 +118,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     /// Add
     function testAddLiquidityUnbalanced__Fuzz(uint256 daiAmountIn, uint256 swapFeePercentage) public {
-        // Vary swap fee from 0% - 10%.
-        swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         uint256 amountOut = addUnbalancedOnlyDai(daiAmountIn, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
@@ -116,8 +129,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function testAddLiquiditySingleTokenExactOut__Fuzz(uint256 exactBptAmountOut, uint256 swapFeePercentage) public {
-        // Vary swap fee from 0% - 10%.
-        swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         uint256 amountOut = addExactOutArbitraryBptOut(exactBptAmountOut, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, true);
     }
@@ -131,8 +143,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         uint256 exactBptAmountOut,
         uint256 swapFeePercentage
     ) public {
-        // Vary swap fee from 0% - 10%.
-        swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         uint256 amountOut = removeExactInAllBptIn(exactBptAmountOut, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
@@ -146,8 +157,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
         uint256 exactBptAmountOut,
         uint256 swapFeePercentage
     ) public {
-        // Vary swap fee from 0% - 10%.
-        swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         uint256 amountOut = removeExactOutAllUsdcAmountOut(exactBptAmountOut, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
@@ -160,8 +170,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     /// Remove
 
     function testRemoveLiquiditySingleTokenExactOut__Fuzz(uint256 exactAmountOut, uint256 swapFeePercentage) public {
-        // Vary swap fee from 0% - 10%.
-        swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         uint256 amountOut = removeExactOutArbitraryAmountOut(exactAmountOut, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
@@ -172,8 +181,7 @@ contract LiquidityApproximationTest is BaseVaultTest {
     }
 
     function testRemoveLiquiditySingleTokenExactIn__Fuzz(uint256 exactBptAmountIn, uint256 swapFeePercentage) public {
-        // Vary swap fee from 0% - 10%.
-        swapFeePercentage = bound(swapFeePercentage, 0, maxSwapFeePercentage);
+        swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         uint256 amountOut = removeExactInArbitraryBptIn(exactBptAmountIn, swapFeePercentage);
         assertLiquidityOperation(amountOut, swapFeePercentage, false);
     }
@@ -195,10 +203,12 @@ contract LiquidityApproximationTest is BaseVaultTest {
         uint256 bobAmountOut = usdc.balanceOf(bob) - defaultBalance;
         uint256 bobToAliceRatio = bobAmountOut.divDown(aliceAmountOut);
 
-        assertApproxEqAbs(aliceAmountOut, bobAmountOut, roundingDelta, "Swap fee delta is too big");
+        assertGe(bobAmountOut, aliceAmountOut - absoluteRoundingDelta, "Swap fee delta is too big");
 
-        assertGe(bobToAliceRatio, 1e18 - roundingDelta, "Bob has less USDC compare to Alice");
-        assertLe(bobToAliceRatio, 1e18 + roundingDelta, "Bob has too much USDC compare to Alice");
+        // It's ok if a direct swap is more convenient than an indirect swap, up to `excessRoundingDelta`.
+        // In the other direction, the margin is tighter.
+        assertGe(bobToAliceRatio, 1e18 - defectRoundingDelta, "Bob has less USDC compared to Alice");
+        assertLe(bobToAliceRatio, 1e18 + excessRoundingDelta, "Bob has too much USDC compared to Alice");
 
         // Alice and Bob have no BPT tokens.
         assertEq(PoolMock(swapPool).balanceOf(alice), 0, "Alice should have 0 BPT");
@@ -218,23 +228,27 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
         uint256 swapFee = amountOut.divUp(swapFeePercentage.complement()) - amountOut;
 
-        assertApproxEqAbs(
-            aliceAmountOut,
+        assertGe(
             bobAmountOut,
-            swapFee.mulDown(swapFeePercentageDelta) + roundingDelta,
+            aliceAmountOut - swapFee.mulDown(swapFeePercentageDelta) - absoluteRoundingDelta,
             "Swap fee delta is too big"
         );
 
         assertGe(
             bobToAliceRatio,
-            1e18 - (addLiquidity ? liquidityTaxPercentage : 0) - roundingDelta,
-            "Bob has too little USDC compare to Alice"
+            1e18 - (addLiquidity ? liquidityTaxPercentage : 0) - defectRoundingDelta,
+            "Bob has too little USDC compared to Alice"
         );
         assertLe(
             bobToAliceRatio,
-            1e18 + (addLiquidity ? 0 : liquidityTaxPercentage) + roundingDelta,
-            "Bob has too much USDC compare to Alice"
+            1e18 + (addLiquidity ? 0 : liquidityTaxPercentage) + excessRoundingDelta,
+            "Bob has too much USDC compared to Alice"
         );
+
+        if (bobToAliceRatio < 1e18) {
+            uint256 discountPercentage = 1e18 - bobToAliceRatio;
+            assertLt(discountPercentage, swapFeePercentage, "Discount percentage is larger than swap fee percentage");
+        }
     }
 
     function addUnbalancedOnlyDai(uint256 daiAmountIn, uint256 swapFeePercentage) internal returns (uint256 amountOut) {

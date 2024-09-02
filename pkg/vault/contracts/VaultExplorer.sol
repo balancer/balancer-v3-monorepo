@@ -263,6 +263,26 @@ contract VaultExplorer is IVaultExplorer {
         return _vault.getMaximumPoolTokens();
     }
 
+    /// @inheritdoc IVaultExplorer
+    function getMinimumTradeAmount() external view returns (uint256) {
+        return _vault.getMinimumTradeAmount();
+    }
+
+    /// @inheritdoc IVaultExplorer
+    function getMinimumWrapAmount() external view returns (uint256) {
+        return _vault.getMinimumWrapAmount();
+    }
+
+    /// @inheritdoc IVaultExplorer
+    function getPoolMinimumTotalSupply() external view returns (uint256) {
+        return _vault.getPoolMinimumTotalSupply();
+    }
+
+    /// @inheritdoc IVaultExplorer
+    function getBufferMinimumTotalSupply() external view returns (uint256) {
+        return _vault.getBufferMinimumTotalSupply();
+    }
+
     /*******************************************************************************
                                     Vault Pausing
     *******************************************************************************/
@@ -282,9 +302,7 @@ contract VaultExplorer is IVaultExplorer {
     *******************************************************************************/
 
     /// @inheritdoc IVaultExplorer
-    function getAggregateFeePercentages(
-        address pool
-    ) external view returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage) {
+    function getAggregateFeePercentages(address pool) external view returns (uint256, uint256) {
         PoolConfig memory poolConfig = _vault.getPoolConfig(pool);
 
         return (poolConfig.aggregateSwapFeePercentage, poolConfig.aggregateYieldFeePercentage);
@@ -305,7 +323,12 @@ contract VaultExplorer is IVaultExplorer {
     }
 
     /// @inheritdoc IVaultExplorer
-    function getBufferOwnerShares(IERC4626 token, address user) external view returns (uint256 shares) {
+    function getBufferAsset(IERC4626 wrappedToken) external view returns (address) {
+        return _vault.getBufferAsset(wrappedToken);
+    }
+
+    /// @inheritdoc IVaultExplorer
+    function getBufferOwnerShares(IERC4626 token, address user) external view returns (uint256) {
         return _vault.getBufferOwnerShares(token, user);
     }
 

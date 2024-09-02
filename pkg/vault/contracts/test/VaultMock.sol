@@ -601,11 +601,22 @@ contract VaultMock is IVaultMainMock, Vault {
         return _bufferTokenBalances[wrappedToken];
     }
 
-    function manualUpdateReservesAfterWrapping(
+    function manualSettleWrap(
         IERC20 underlyingToken,
-        IERC20 wrappedToken
-    ) external returns (uint256, uint256) {
-        return _updateReservesAfterWrapping(underlyingToken, wrappedToken);
+        IERC20 wrappedToken,
+        uint256 underlyingHint,
+        uint256 wrappedHint
+    ) external {
+        _settleWrap(underlyingToken, wrappedToken, underlyingHint, wrappedHint);
+    }
+
+    function manualSettleUnwrap(
+        IERC20 underlyingToken,
+        IERC20 wrappedToken,
+        uint256 underlyingHint,
+        uint256 wrappedHint
+    ) external {
+        _settleUnwrap(underlyingToken, wrappedToken, underlyingHint, wrappedHint);
     }
 
     function manualTransfer(IERC20 token, address to, uint256 amount) external {
@@ -675,5 +686,9 @@ contract VaultMock is IVaultMainMock, Vault {
 
     function manualSetPoolCreator(address pool, address newPoolCreator) public {
         _poolRoleAccounts[pool].poolCreator = newPoolCreator;
+    }
+
+    function getConvertFactor() public pure returns (uint16) {
+        return _CONVERT_FACTOR;
     }
 }

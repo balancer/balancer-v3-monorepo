@@ -127,7 +127,7 @@ contract VaultUnitLiquidityTest is BaseTest {
         (uint256 currentInvariant, uint256 newInvariantAndInvariantWithFeesApplied) = (1e16, 1e18);
         vm.mockCall(
             params.pool,
-            abi.encodeCall(IBasePool.computeInvariant, poolData.balancesLiveScaled18),
+            abi.encodeCall(IBasePool.computeInvariant, (poolData.balancesLiveScaled18, Rounding.ROUND_UP)),
             abi.encode(currentInvariant)
         );
 
@@ -138,7 +138,7 @@ contract VaultUnitLiquidityTest is BaseTest {
 
         vm.mockCall(
             params.pool,
-            abi.encodeCall(IBasePool.computeInvariant, newBalances),
+            abi.encodeCall(IBasePool.computeInvariant, (newBalances, Rounding.ROUND_DOWN)),
             abi.encode(newInvariantAndInvariantWithFeesApplied)
         );
 
@@ -473,7 +473,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             (uint256 currentInvariant, uint256 invariantAndInvariantWithFeesApplied) = (3e8, 3e9);
             vm.mockCall(
                 params.pool,
-                abi.encodeCall(IBasePool.computeInvariant, poolData.balancesLiveScaled18),
+                abi.encodeCall(IBasePool.computeInvariant, (poolData.balancesLiveScaled18, Rounding.ROUND_UP)),
                 abi.encode(currentInvariant)
             );
 
@@ -485,7 +485,7 @@ contract VaultUnitLiquidityTest is BaseTest {
 
             vm.mockCall(
                 params.pool,
-                abi.encodeCall(IBasePool.computeInvariant, newBalances),
+                abi.encodeCall(IBasePool.computeInvariant, (newBalances, Rounding.ROUND_UP)),
                 abi.encode(invariantAndInvariantWithFeesApplied)
             );
 
@@ -499,7 +499,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             uint256 newInvariantAndInvariantWithFeesApplied = 1e5;
             vm.mockCall(
                 params.pool,
-                abi.encodeCall(IBasePool.computeInvariant, newBalances),
+                abi.encodeCall(IBasePool.computeInvariant, (newBalances, Rounding.ROUND_DOWN)),
                 abi.encode(newInvariantAndInvariantWithFeesApplied)
             );
         }
@@ -704,7 +704,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             kind: kind,
             maxAmountsIn: new uint256[](tokens.length),
             minBptAmountOut: minBptAmountOut,
-            userData: new bytes(0)
+            userData: bytes("")
         });
 
         maxAmountsInScaled18 = new uint256[](tokens.length);
@@ -729,7 +729,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             maxBptAmountIn: maxBptAmountIn,
             minAmountsOut: new uint256[](tokens.length),
             kind: kind,
-            userData: new bytes(0)
+            userData: bytes("")
         });
 
         minAmountsOutScaled18 = new uint256[](tokens.length);
@@ -766,7 +766,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function _mockMintCallback(address to, uint256 amount) internal {
-        vm.mockCall(pool, abi.encodeCall(BalancerPoolToken.emitTransfer, (ZERO_ADDRESS, to, amount)), new bytes(0));
+        vm.mockCall(pool, abi.encodeCall(BalancerPoolToken.emitTransfer, (ZERO_ADDRESS, to, amount)), bytes(""));
     }
 
     function _testAddLiquidity(PoolData memory poolData, TestAddLiquidityParams memory params) internal {

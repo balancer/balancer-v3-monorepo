@@ -12,6 +12,10 @@ import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/
 import { VaultFactory } from "../../contracts/VaultFactory.sol";
 
 contract VaultFactoryTest is Test {
+    // Should match the "PRODUCTION" limits in BaseVaultTest.
+    uint256 private constant _MIN_TRADE_AMOUNT = 1e6;
+    uint256 private constant _MIN_WRAP_AMOUNT = 1e4;
+
     address deployer;
     BasicAuthorizerMock authorizer;
     VaultFactory factory;
@@ -19,7 +23,7 @@ contract VaultFactoryTest is Test {
     function setUp() public virtual {
         deployer = makeAddr("deployer");
         authorizer = new BasicAuthorizerMock();
-        factory = new VaultFactory(authorizer, 90 days, 30 days);
+        factory = new VaultFactory(authorizer, 90 days, 30 days, _MIN_TRADE_AMOUNT, _MIN_WRAP_AMOUNT);
     }
 
     /// forge-config: default.fuzz.runs = 100

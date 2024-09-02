@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -40,6 +41,9 @@ contract WeightedPoolTest is BasePoolTest {
         BasePoolTest.setUp();
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
+
+        poolMinSwapFeePercentage = 0.001e16; // 0.001%
+        poolMaxSwapFeePercentage = 10e16;
     }
 
     function createPool() internal override returns (address) {
@@ -87,8 +91,11 @@ contract WeightedPoolTest is BasePoolTest {
     }
 
     function testGetBptRate() public {
-        uint256 invariantBefore = WeightedMath.computeInvariant(weights, [TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray());
-        uint256 invariantAfter = WeightedMath.computeInvariant(
+        uint256 invariantBefore = WeightedMath.computeInvariantDown(
+            weights,
+            [TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray()
+        );
+        uint256 invariantAfter = WeightedMath.computeInvariantDown(
             weights,
             [2 * TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray()
         );
@@ -110,7 +117,7 @@ contract WeightedPoolTest is BasePoolTest {
             tokenConfigs,
             [uint256(50e16), uint256(50e16)].toMemoryArray(),
             roleAccounts,
-            MIN_SWAP_FEE - 1, // Swap fee too low
+            IBasePool(pool).getMinimumSwapFeePercentage() - 1, // Swap fee too low
             poolHooksContract,
             false, // Do not enable donations
             false, // Do not disable unbalanced add/remove liquidity

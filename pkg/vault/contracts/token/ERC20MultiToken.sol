@@ -17,7 +17,7 @@ import { BalancerPoolToken } from "../BalancerPoolToken.sol";
  */
 abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiTokenErrors {
     // Minimum total supply amount.
-    uint256 internal constant _MINIMUM_TOTAL_SUPPLY = 1e6;
+    uint256 internal constant _POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
 
     /**
      * @notice Pool tokens are moved from one account (`from`) to another (`to`). Note that `value` may be zero.
@@ -91,7 +91,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiTokenErrors {
             _balances[pool][to] += amount;
         }
 
-        _ensureMinimumTotalSupply(newTotalSupply);
+        _ensurePoolMinimumTotalSupply(newTotalSupply);
 
         _totalSupplyOf[pool] = newTotalSupply;
 
@@ -101,22 +101,22 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiTokenErrors {
         BalancerPoolToken(pool).emitTransfer(address(0), to, amount);
     }
 
-    function _ensureMinimumTotalSupply(uint256 newTotalSupply) internal pure {
-        if (newTotalSupply < _MINIMUM_TOTAL_SUPPLY) {
-            revert TotalSupplyTooLow(newTotalSupply, _MINIMUM_TOTAL_SUPPLY);
+    function _ensurePoolMinimumTotalSupply(uint256 newTotalSupply) internal pure {
+        if (newTotalSupply < _POOL_MINIMUM_TOTAL_SUPPLY) {
+            revert PoolTotalSupplyTooLow(newTotalSupply);
         }
     }
 
     function _mintMinimumSupplyReserve(address pool) internal {
-        _totalSupplyOf[pool] += _MINIMUM_TOTAL_SUPPLY;
+        _totalSupplyOf[pool] += _POOL_MINIMUM_TOTAL_SUPPLY;
         unchecked {
             // Overflow is not possible. balance + amount is at most totalSupply + amount, which is checked above.
-            _balances[pool][address(0)] += _MINIMUM_TOTAL_SUPPLY;
+            _balances[pool][address(0)] += _POOL_MINIMUM_TOTAL_SUPPLY;
         }
-        emit Transfer(pool, address(0), address(0), _MINIMUM_TOTAL_SUPPLY);
+        emit Transfer(pool, address(0), address(0), _POOL_MINIMUM_TOTAL_SUPPLY);
 
         // We also emit the "transfer" event on the pool token to ensure full compliance with the ERC20 standard.
-        BalancerPoolToken(pool).emitTransfer(address(0), address(0), _MINIMUM_TOTAL_SUPPLY);
+        BalancerPoolToken(pool).emitTransfer(address(0), address(0), _POOL_MINIMUM_TOTAL_SUPPLY);
     }
 
     function _burn(address pool, address from, uint256 amount) internal {
@@ -134,7 +134,7 @@ abstract contract ERC20MultiToken is IERC20Errors, IERC20MultiTokenErrors {
         }
         uint256 newTotalSupply = _totalSupplyOf[pool] - amount;
 
-        _ensureMinimumTotalSupply(newTotalSupply);
+        _ensurePoolMinimumTotalSupply(newTotalSupply);
 
         _totalSupplyOf[pool] = newTotalSupply;
 

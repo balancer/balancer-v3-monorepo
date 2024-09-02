@@ -56,7 +56,7 @@ contract VaultSwapWithRatesTest is BaseVaultTest {
         // Mock pool invariant is linear (just a sum of all balances).
         assertEq(
             PoolMock(pool).balanceOf(lp),
-            defaultAmount + defaultAmount.mulDown(mockRate) - 1e6,
+            defaultAmount + defaultAmount.mulDown(mockRate) - POOL_MINIMUM_TOTAL_SUPPLY,
             "Invalid amount of BPT"
         );
     }

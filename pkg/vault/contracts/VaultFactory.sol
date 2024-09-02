@@ -31,6 +31,8 @@ contract VaultFactory is Authentication {
     IAuthorizer private immutable _authorizer;
     uint32 private immutable _pauseWindowDuration;
     uint32 private immutable _bufferPeriodDuration;
+    uint256 private immutable _minTradeAmount;
+    uint256 private immutable _minWrapAmount;
     address private immutable _deployer;
 
     bytes private _creationCode;
@@ -40,13 +42,17 @@ contract VaultFactory is Authentication {
     constructor(
         IAuthorizer authorizer,
         uint32 pauseWindowDuration,
-        uint32 bufferPeriodDuration
+        uint32 bufferPeriodDuration,
+        uint256 minTradeAmount,
+        uint256 minWrapAmount
     ) Authentication(bytes32(uint256(uint160(address(this))))) {
         _deployer = msg.sender;
         _creationCode = type(Vault).creationCode;
         _authorizer = authorizer;
         _pauseWindowDuration = pauseWindowDuration;
         _bufferPeriodDuration = bufferPeriodDuration;
+        _minTradeAmount = minTradeAmount;
+        _minWrapAmount = minWrapAmount;
     }
 
     /**
@@ -69,7 +75,13 @@ contract VaultFactory is Authentication {
             revert VaultAddressMismatch();
         }
 
-        VaultAdmin vaultAdmin = new VaultAdmin(IVault(vaultAddress), _pauseWindowDuration, _bufferPeriodDuration);
+        VaultAdmin vaultAdmin = new VaultAdmin(
+            IVault(vaultAddress),
+            _pauseWindowDuration,
+            _bufferPeriodDuration,
+            _minTradeAmount,
+            _minWrapAmount
+        );
         VaultExtension vaultExtension = new VaultExtension(IVault(vaultAddress), vaultAdmin);
         ProtocolFeeController feeController = new ProtocolFeeController(IVault(vaultAddress));
 
