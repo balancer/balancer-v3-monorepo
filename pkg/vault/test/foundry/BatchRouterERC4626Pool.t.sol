@@ -705,7 +705,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesBefore,
         TestBalances memory balancesAfter,
         TestLocals memory vars
-    ) private {
+    ) private view {
         address ybPool = vars.isPartialERC4626Pool ? partialErc4626Pool : erc4626Pool;
         uint256 ybDaiIdx = vars.isPartialERC4626Pool ? partialWaDaiIdx : waDaiIdx;
         uint256 ybUsdcIdx = vars.isPartialERC4626Pool ? partialUsdcIdx : waUsdcIdx;
@@ -784,7 +784,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesBefore,
         TestBalances memory balancesAfter,
         TestLocals memory vars
-    ) private {
+    ) private view {
         address ybPool = vars.isPartialERC4626Pool ? partialErc4626Pool : erc4626Pool;
         uint256 ybDaiIdx = vars.isPartialERC4626Pool ? partialWaDaiIdx : waDaiIdx;
         uint256 ybUsdcIdx = vars.isPartialERC4626Pool ? partialUsdcIdx : waUsdcIdx;
