@@ -81,7 +81,7 @@ contract GetBptRateTest is BaseVaultTest {
     }
 
     function testGetBptRateWithRateProvider() public {
-        uint256 totalSupply = initBptAmountOut + MIN_BPT;
+        uint256 totalSupply = initBptAmountOut + POOL_MINIMUM_TOTAL_SUPPLY;
         uint256[] memory liveBalances = new uint256[](2);
         liveBalances[daiIdx] = defaultAmount.mulDown(daiMockRate);
         liveBalances[usdcIdx] = defaultAmount.mulDown(usdcMockRate);

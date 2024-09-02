@@ -32,8 +32,8 @@ contract E2eBatchSwapStableTest is E2eBatchSwapTest {
 
         // If there are swap fees, the amountCalculated may be lower than MIN_TRADE_AMOUNT. So, multiplying
         // MIN_TRADE_AMOUNT by 10 creates a margin.
-        minSwapAmountTokenA = 10 * MIN_TRADE_AMOUNT;
-        minSwapAmountTokenD = 10 * MIN_TRADE_AMOUNT;
+        minSwapAmountTokenA = 10 * PRODUCTION_MIN_TRADE_AMOUNT;
+        minSwapAmountTokenD = 10 * PRODUCTION_MIN_TRADE_AMOUNT;
 
         // Divide init amount by 10 to make sure weighted math ratios are respected (Cannot trade more than 30% of pool
         // balance).

@@ -54,19 +54,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using StorageSlotExtension for *;
     using PoolDataLib for PoolData;
 
+    // Local reference to the Proxy pattern Vault extension contract.
     IVaultExtension private immutable _vaultExtension;
 
-    // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
-    // exploitation of rounding errors.
-    // solhint-disable-next-line var-name-mixedcase
-    uint256 internal immutable _MINIMUM_TRADE_AMOUNT;
-
-    constructor(
-        IVaultExtension vaultExtension,
-        IAuthorizer authorizer,
-        IProtocolFeeController protocolFeeController,
-        uint256 minTradeAmount
-    ) {
+    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer, IProtocolFeeController protocolFeeController) {
         if (address(vaultExtension.vault()) != address(this)) {
             revert WrongVaultExtensionDeployment();
         }
@@ -82,8 +73,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _vaultBufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
         _vaultBufferPeriodEndTime = IVaultAdmin(address(vaultExtension)).getBufferPeriodEndTime();
 
+        _MINIMUM_TRADE_AMOUNT = IVaultAdmin(address(vaultExtension)).getMinimumTradeAmount();
+        _MINIMUM_WRAP_AMOUNT = IVaultAdmin(address(vaultExtension)).getMinimumWrapAmount();
+
         _authorizer = authorizer;
-        _MINIMUM_TRADE_AMOUNT = minTradeAmount;
     }
 
     /*******************************************************************************
@@ -1001,7 +994,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         }
         // When removing liquidity, we must burn tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
-        // Burning will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
+        // Burning will be reverted if it results in a total supply less than the _POOL_MINIMUM_TOTAL_SUPPLY.
         _burn(address(params.pool), params.from, bptAmountIn);
 
         // 8) Off-chain events

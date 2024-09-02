@@ -706,7 +706,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesBefore,
         TestBalances memory balancesAfter,
         TestLocals memory vars
-    ) private {
+    ) private view {
         address ybPool = vars.isPartialERC4626Pool ? partialErc4626Pool : erc4626Pool;
         uint256 ybDaiIdx = vars.isPartialERC4626Pool ? partialWaDaiIdx : waDaiIdx;
         uint256 ybUsdcIdx = vars.isPartialERC4626Pool ? partialUsdcIdx : waUsdcIdx;
@@ -785,7 +785,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         TestBalances memory balancesBefore,
         TestBalances memory balancesAfter,
         TestLocals memory vars
-    ) private {
+    ) private view {
         address ybPool = vars.isPartialERC4626Pool ? partialErc4626Pool : erc4626Pool;
         uint256 ybDaiIdx = vars.isPartialERC4626Pool ? partialWaDaiIdx : waDaiIdx;
         uint256 ybUsdcIdx = vars.isPartialERC4626Pool ? partialUsdcIdx : waUsdcIdx;
@@ -887,7 +887,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         initAmounts[partialWaDaiIdx] = waDaiShares;
         initAmounts[partialUsdcIdx] = erc4626PoolInitialAmount;
 
-        _initPool(newPool, initAmounts, erc4626PoolInitialBPTAmount - MAX_ERROR - MIN_BPT);
+        _initPool(newPool, initAmounts, erc4626PoolInitialBPTAmount - MAX_ERROR - POOL_MINIMUM_TOTAL_SUPPLY);
 
         IERC20(newPool).approve(address(permit2), MAX_UINT256);
         permit2.approve(newPool, address(router), type(uint160).max, type(uint48).max);

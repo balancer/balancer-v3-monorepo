@@ -34,7 +34,7 @@ contract VaultSwapTest is BaseVaultTest {
 
     function setUp() public virtual override {
         // We will use min trade amount in this test.
-        vaultMockMinTradeAmount = MIN_TRADE_AMOUNT;
+        vaultMockMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT;
 
         BaseVaultTest.setUp();
 
@@ -114,7 +114,16 @@ contract VaultSwapTest is BaseVaultTest {
     function testSwapTooSmallAmountGiven() public {
         vm.prank(alice);
         vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
-        router.swapSingleTokenExactIn(pool, usdc, dai, MIN_TRADE_AMOUNT - 1, 0, MAX_UINT256, false, bytes(""));
+        router.swapSingleTokenExactIn(
+            pool,
+            usdc,
+            dai,
+            PRODUCTION_MIN_TRADE_AMOUNT - 1,
+            0,
+            MAX_UINT256,
+            false,
+            bytes("")
+        );
     }
 
     function testSwapDeadlineExactIn() public {

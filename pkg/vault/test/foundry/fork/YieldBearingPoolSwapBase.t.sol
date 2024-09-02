@@ -112,13 +112,13 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
         assertApproxEqAbs(
             vault.getBufferOwnerShares(ybToken1, lp),
-            _token1BufferInitAmount * 2 - MIN_BPT,
+            _token1BufferInitAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY,
             1,
             "Wrong share of ybToken1 buffer belonging to LP"
         );
         assertApproxEqAbs(
             vault.getBufferOwnerShares(ybToken2, lp),
-            (_token2BufferInitAmount * 2) - MIN_BPT,
+            (_token2BufferInitAmount * 2) - BUFFER_MINIMUM_TOTAL_SUPPLY,
             1,
             "Wrong share of ybToken2 buffer belonging to LP"
         );
@@ -815,7 +815,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
     }
 
     function _unbalanceBuffer(WrappingDirection direction, IERC4626 wToken, uint256 amountToUnbalance) private {
-        if (amountToUnbalance < MIN_TRADE_AMOUNT) {
+        if (amountToUnbalance < PRODUCTION_MIN_TRADE_AMOUNT) {
             // If amountToUnbalance is very low, returns without unbalancing the buffer.
             return;
         }
