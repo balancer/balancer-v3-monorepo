@@ -53,25 +53,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using StorageSlotExtension for *;
     using PoolDataLib for PoolData;
 
-    // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
-    // exploitation of rounding errors.
-    // solhint-disable-next-line var-name-mixedcase
-    uint256 internal immutable _MINIMUM_TRADE_AMOUNT;
-
-    // Minimum given amount to wrap/unwrap (applied to native decimal values), to avoid rounding issues.
-    // solhint-disable-next-line var-name-mixedcase
-    uint256 internal immutable _MINIMUM_WRAP_AMOUNT;
-
     // Local reference to the Proxy pattern Vault extension contract.
     IVaultExtension private immutable _vaultExtension;
 
-    constructor(
-        IVaultExtension vaultExtension,
-        IAuthorizer authorizer,
-        IProtocolFeeController protocolFeeController,
-        uint256 minTradeAmount,
-        uint256 minWrapAmount
-    ) {
+    constructor(IVaultExtension vaultExtension, IAuthorizer authorizer, IProtocolFeeController protocolFeeController) {
         if (address(vaultExtension.vault()) != address(this)) {
             revert WrongVaultExtensionDeployment();
         }
@@ -87,9 +72,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _vaultBufferPeriodDuration = IVaultAdmin(address(vaultExtension)).getBufferPeriodDuration();
         _vaultBufferPeriodEndTime = IVaultAdmin(address(vaultExtension)).getBufferPeriodEndTime();
 
+        _MINIMUM_TRADE_AMOUNT = IVaultAdmin(address(vaultExtension)).getMinimumTradeAmount();
+        _MINIMUM_WRAP_AMOUNT = IVaultAdmin(address(vaultExtension)).getMinimumWrapAmount();
+
         _authorizer = authorizer;
-        _MINIMUM_TRADE_AMOUNT = minTradeAmount;
-        _MINIMUM_WRAP_AMOUNT = minWrapAmount;
     }
 
     /*******************************************************************************
@@ -1572,16 +1558,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     /// @inheritdoc IVaultMain
     function getVaultExtension() external view returns (address) {
         return _implementation();
-    }
-
-    /// @inheritdoc IVaultMain
-    function getMinimumTradeAmount() external view returns (uint256) {
-        return _MINIMUM_TRADE_AMOUNT;
-    }
-
-    /// @inheritdoc IVaultMain
-    function getMinimumWrapAmount() external view returns (uint256) {
-        return _MINIMUM_WRAP_AMOUNT;
     }
 
     /**

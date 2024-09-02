@@ -11,8 +11,10 @@ contract VaultAdminMock is IVaultAdminMock, VaultAdmin {
     constructor(
         IVault mainVault,
         uint32 pauseWindowDuration,
-        uint32 bufferPeriodDuration
-    ) VaultAdmin(mainVault, pauseWindowDuration, bufferPeriodDuration) {}
+        uint32 bufferPeriodDuration,
+        uint256 minTradeAmount,
+        uint256 minWrapAmount
+    ) VaultAdmin(mainVault, pauseWindowDuration, bufferPeriodDuration, minTradeAmount, minWrapAmount) {}
 
     function manualPauseVault() external {
         _setVaultPaused(true);

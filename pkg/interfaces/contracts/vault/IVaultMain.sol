@@ -170,18 +170,4 @@ interface IVaultMain {
      * @return vaultExtension Address of the VaultExtension
      */
     function getVaultExtension() external view returns (address);
-
-    /**
-     * @notice Get the minimum trade amount in a pool operation.
-     * @dev This limit is applied to the 18-decimal "upscaled" amount in any operation (swap, add/remove liquidity).
-     * @return minimumTradeAmount The minimum trade amount as an 18-decimal floating point number
-     */
-    function getMinimumTradeAmount() external view returns (uint256);
-
-    /**
-     * @notice Get the minimum wrap amount in a buffer operation.
-     * @dev This limit is applied to the wrap operation amount, in native underlying token decimals.
-     * @return minimumWrapAmount The minimum wrap amount in native underlying token decimals
-     */
-    function getMinimumWrapAmount() external view returns (uint256);
 }

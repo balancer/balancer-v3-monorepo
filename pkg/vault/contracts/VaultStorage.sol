@@ -53,6 +53,15 @@ contract VaultStorage {
     // wrap/unwrap operation directly.
     uint16 internal constant _CONVERT_FACTOR = 100;
 
+    // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
+    // exploitation of rounding errors.
+    // solhint-disable-next-line var-name-mixedcase
+    uint256 internal immutable _MINIMUM_TRADE_AMOUNT;
+
+    // Minimum given amount to wrap/unwrap (applied to native decimal values), to avoid rounding issues.
+    // solhint-disable-next-line var-name-mixedcase
+    uint256 internal immutable _MINIMUM_WRAP_AMOUNT;
+
     /***************************************************************************
                           Transient Storage Declarations
     ***************************************************************************/

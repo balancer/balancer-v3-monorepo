@@ -22,11 +22,17 @@ library VaultMockDeployer {
         IAuthorizer authorizer = new BasicAuthorizerMock();
         bytes32 salt = bytes32(0);
         vault = VaultMock(payable(CREATE3.getDeployed(salt)));
-        VaultAdminMock vaultAdmin = new VaultAdminMock(IVault(address(vault)), 90 days, 30 days);
+        VaultAdminMock vaultAdmin = new VaultAdminMock(
+            IVault(address(vault)),
+            90 days,
+            30 days,
+            minTradeAmount,
+            minWrapAmount
+        );
         VaultExtensionMock vaultExtension = new VaultExtensionMock(IVault(address(vault)), vaultAdmin);
         ProtocolFeeController protocolFeeController = new ProtocolFeeControllerMock(IVault(address(vault)));
 
-        _create(abi.encode(vaultExtension, authorizer, protocolFeeController, minTradeAmount, minWrapAmount), salt);
+        _create(abi.encode(vaultExtension, authorizer, protocolFeeController), salt);
         return vault;
     }
 

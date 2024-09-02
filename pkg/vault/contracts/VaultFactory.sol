@@ -75,14 +75,17 @@ contract VaultFactory is Authentication {
             revert VaultAddressMismatch();
         }
 
-        VaultAdmin vaultAdmin = new VaultAdmin(IVault(vaultAddress), _pauseWindowDuration, _bufferPeriodDuration);
+        VaultAdmin vaultAdmin = new VaultAdmin(
+            IVault(vaultAddress),
+            _pauseWindowDuration,
+            _bufferPeriodDuration,
+            _minTradeAmount,
+            _minWrapAmount
+        );
         VaultExtension vaultExtension = new VaultExtension(IVault(vaultAddress), vaultAdmin);
         ProtocolFeeController feeController = new ProtocolFeeController(IVault(vaultAddress));
 
-        address deployedAddress = _create(
-            abi.encode(vaultExtension, _authorizer, feeController, _minTradeAmount, _minWrapAmount),
-            salt
-        );
+        address deployedAddress = _create(abi.encode(vaultExtension, _authorizer, feeController), salt);
 
         // This should always be the case, but we enforce the end state to match the expected outcome anyway.
         if (deployedAddress != targetAddress) {

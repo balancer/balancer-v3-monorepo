@@ -65,7 +65,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     constructor(
         IVault mainVault,
         uint32 pauseWindowDuration,
-        uint32 bufferPeriodDuration
+        uint32 bufferPeriodDuration,
+        uint256 minTradeAmount,
+        uint256 minWrapAmount
     ) Authentication(bytes32(uint256(uint160(address(mainVault))))) VaultGuard(mainVault) {
         if (pauseWindowDuration > _MAX_PAUSE_WINDOW_DURATION) {
             revert VaultPauseWindowDurationTooLarge();
@@ -80,6 +82,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _vaultPauseWindowEndTime = pauseWindowEndTime;
         _vaultBufferPeriodDuration = bufferPeriodDuration;
         _vaultBufferPeriodEndTime = pauseWindowEndTime + bufferPeriodDuration;
+
+        _MINIMUM_TRADE_AMOUNT = minTradeAmount;
+        _MINIMUM_WRAP_AMOUNT = minWrapAmount;
     }
 
     /*******************************************************************************
@@ -124,6 +129,16 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     /// @inheritdoc IVaultAdmin
     function getBufferMinimumTotalSupply() external pure returns (uint256) {
         return _BUFFER_MINIMUM_TOTAL_SUPPLY;
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getMinimumTradeAmount() external view returns (uint256) {
+        return _MINIMUM_TRADE_AMOUNT;
+    }
+
+    /// @inheritdoc IVaultAdmin
+    function getMinimumWrapAmount() external view returns (uint256) {
+        return _MINIMUM_WRAP_AMOUNT;
     }
 
     /*******************************************************************************
