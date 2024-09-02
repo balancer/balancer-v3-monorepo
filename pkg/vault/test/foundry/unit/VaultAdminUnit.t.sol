@@ -269,7 +269,6 @@ contract VaultAdminUnitTest is BaseVaultTest {
         vault.manualMintBufferShares(waDAI, bob, supplyBelowMin);
     }
 
-
     function testMintBufferSharesInvalidReceiver() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferSharesInvalidReceiver.selector));
         vault.manualMintBufferShares(waDAI, address(0), _MINIMUM_TOTAL_SUPPLY);
