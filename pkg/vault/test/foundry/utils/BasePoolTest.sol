@@ -278,7 +278,7 @@ abstract contract BasePoolTest is BaseVaultTest {
     }
 
     function _testGetBptRate(uint256 invariantBefore, uint256 invariantAfter, uint256[] memory amountsIn) internal {
-        uint256 totalSupply = bptAmountOut + MIN_BPT;
+        uint256 totalSupply = bptAmountOut + POOL_MINIMUM_TOTAL_SUPPLY;
         uint256 expectedRate = invariantBefore.divDown(totalSupply);
         uint256 actualRate = IRateProvider(pool).getRate();
         assertEq(actualRate, expectedRate, "Wrong rate");

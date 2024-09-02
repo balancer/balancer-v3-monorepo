@@ -28,10 +28,6 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
     uint256 private constant _userAmount = 10e6 * 1e18;
     uint256 private constant _wrapAmount = _userAmount / 100;
 
-    // TODO: delete after #936 (will be defined in BaseVaultTest)
-    uint256 private constant PRODUCTION_MIN_WRAP_AMOUNT = 1e4;
-    uint256 private constant BUFFER_MINIMUM_TOTAL_SUPPLY = 1e6;
-
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
@@ -640,17 +636,19 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         (uint256 underlyingRemoved, uint256 wrappedRemoved) = vault.removeLiquidityFromBuffer(waDAI, lpShares);
 
         // The underlying and wrapped removed are not exactly the same as amountsIn, because part of the first deposit
-        // is kept to don't deplete the buffer and these shares (MIN_BPT) are "burned". The remove liquidity operation
+        // is kept to not deplete the buffer and these shares (POOL_MINIMUM_TOTAL_SUPPLY) are "burned". The remove liquidity operation
         // is proportional to buffer balances, so the amount of burned shares must be discounted proportionally from
         // underlying and wrapped.
         assertEq(
             underlyingRemoved,
-            underlyingAmountIn - MIN_BPT.mulUp(underlyingAmountIn).divUp(underlyingAmountIn + wrappedAmountIn),
+            underlyingAmountIn -
+                BUFFER_MINIMUM_TOTAL_SUPPLY.mulUp(underlyingAmountIn).divUp(underlyingAmountIn + wrappedAmountIn),
             "Underlying removed is wrong"
         );
         assertEq(
             wrappedRemoved,
-            wrappedAmountIn - MIN_BPT.mulUp(wrappedAmountIn).divUp(underlyingAmountIn + wrappedAmountIn),
+            wrappedAmountIn -
+                BUFFER_MINIMUM_TOTAL_SUPPLY.mulUp(wrappedAmountIn).divUp(underlyingAmountIn + wrappedAmountIn),
             "Wrapped removed is wrong"
         );
 

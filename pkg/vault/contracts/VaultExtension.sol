@@ -427,13 +427,13 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Pass scaled balances to the pool.
         bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18, Rounding.ROUND_DOWN);
 
-        _ensureMinimumTotalSupply(bptAmountOut);
+        _ensurePoolMinimumTotalSupply(bptAmountOut);
 
-        // At this point we know that bptAmountOut >= _MINIMUM_TOTAL_SUPPLY, so this will not revert.
-        bptAmountOut -= _MINIMUM_TOTAL_SUPPLY;
+        // At this point we know that bptAmountOut >= _POOL_MINIMUM_TOTAL_SUPPLY, so this will not revert.
+        bptAmountOut -= _POOL_MINIMUM_TOTAL_SUPPLY;
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
-        // Minting will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
+        // Minting will be reverted if it results in a total supply less than the _POOL_MINIMUM_TOTAL_SUPPLY.
         _mintMinimumSupplyReserve(address(pool));
         _mint(address(pool), to, bptAmountOut);
 
