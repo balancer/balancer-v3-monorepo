@@ -740,7 +740,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.updateRawAndLiveBalance(
                 i,
                 poolData.balancesRaw[i] + amountInRaw - locals.totalFeesRaw,
-                Rounding.ROUND_DOWN
+                Rounding.ROUND_UP
             );
         }
 
