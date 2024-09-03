@@ -1489,9 +1489,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (underlyingBalancesAfter < expectedUnderlyingReservesAfter) {
             // If Vault's underlying balance is smaller than expected, the Vault was drained and the operation should
             // revert. It may happen in different ways, depending on the wrap/unwrap operation:
-            // * deposit: the wrapper didn't respect the exact amount in of underlying.
-            // * mint: the underlying amount subtracted from the vault is bigger than wrapper's calculated amount in.
-            // * withdraw: the wrapper didn't respect the exact amount out of underlying.
+            // * deposit: the wrapper didn't respect the exact amount in of underlying;
+            // * mint: the underlying amount subtracted from the vault is bigger than wrapper's calculated amount in;
+            // * withdraw: the wrapper didn't respect the exact amount out of underlying;
             // * redeem: the underlying amount added to the vault is smaller than wrapper's calculated amount out.
             revert NotEnoughUnderlying(
                 IERC4626(address(wrappedToken)),
@@ -1508,9 +1508,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         if (wrappedBalancesAfter < expectedWrappedReservesAfter) {
             // If the Vault's wrapped balance is smaller than expected, the Vault was drained and the operation should
             // revert. It may happen in different ways, depending on the wrap/unwrap operation:
-            // * deposit: the wrapped amount added to the vault is smaller than wrapper's calculated amount out.
-            // * mint: the wrapper didn't respect the exact amount out of wrapped.
-            // * withdraw: the wrapped amount subtracted from the vault is bigger than wrapper's calculated amount in.
+            // * deposit: the wrapped amount added to the vault is smaller than wrapper's calculated amount out;
+            // * mint: the wrapper didn't respect the exact amount out of wrapped;
+            // * withdraw: the wrapped amount subtracted from the vault is bigger than wrapper's calculated amount in;
             // * redeem: the wrapper didn't respect the exact amount in of wrapped.
             revert NotEnoughWrapped(
                 IERC4626(address(wrappedToken)),
