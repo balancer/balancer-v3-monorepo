@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.24;
 
+import "forge-std/console.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
@@ -46,10 +47,18 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
         uint256[] memory balances,
         uint256 tokenInIndex,
         uint256 invariantRatio
-    ) external pure returns (uint256 newBalance) {
+    ) external view returns (uint256 newBalance) {
         // inv = x + y
         uint256 invariant = computeInvariant(balances, Rounding.ROUND_DOWN);
-        return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
+        console.log("\n");
+        console.log("Invariant: %d", invariant);
+        console.log("balances[0]: %d", balances[0]);
+        console.log("balances[1]: %d", balances[1]);
+        console.log("tokenInIndex: %d", tokenInIndex);
+        console.log("invariantRatio: %d", invariantRatio);
+        console.log("invariant.mulDown(invariantRatio): %d", invariant.mulDown(invariantRatio));
+        console.log("invariant.mulUp(invariantRatio): %d", invariant.mulUp(invariantRatio));
+        return (balances[tokenInIndex] + invariant.mulUp(invariantRatio)) - invariant;
     }
 
     function setMultiplier(uint256 newMultiplier) external {

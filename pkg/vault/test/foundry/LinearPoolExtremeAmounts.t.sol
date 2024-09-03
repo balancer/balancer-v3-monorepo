@@ -25,4 +25,10 @@ contract LinearPoolExtremeAmountsTest is BaseExtremeAmountsTest {
 
         return address(newPool);
     }
+
+    function _boundBalances(uint256[2] memory balancesRaw) internal pure override returns (uint256[] memory balances) {
+        balances = new uint256[](2);
+        balances[0] = bound(balancesRaw[0], MIN_BALANCE, MAX_BALANCE);
+        balances[1] = balances[0];
+    }
 }
