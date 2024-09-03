@@ -44,7 +44,7 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
         uint256[] memory balances,
         uint256 tokenInIndex,
         uint256 invariantRatio
-    ) external view returns (uint256 newBalance) {
+    ) external pure returns (uint256 newBalance) {
         // inv = x + y
         uint256 invariant = computeInvariant(balances, Rounding.ROUND_DOWN);
         return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
