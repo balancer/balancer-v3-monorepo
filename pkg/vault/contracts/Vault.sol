@@ -1224,6 +1224,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // drain the vault.
             underlyingToken.forceApprove(address(wrappedToken), 0);
 
+            // Check if the Vault's underlying balance decreased by `vaultUnderlyingDeltaHint` and the Vault's
+            // wrapped balance increased by `vaultWrappedDeltaHint`. If not, reverts.
             _settleWrap(underlyingToken, IERC20(wrappedToken), vaultUnderlyingDeltaHint, vaultWrappedDeltaHint);
 
             // Only updates buffer balances if buffer has a surplus of underlying tokens.
@@ -1358,6 +1360,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 vaultWrappedDeltaHint = wrappedToken.withdraw(vaultUnderlyingDeltaHint, address(this), address(this));
             }
 
+            // Check if the Vault's underlying balance increased by `vaultUnderlyingDeltaHint` and the Vault's
+            // wrapped balance decreased by `vaultWrappedDeltaHint`. If not, reverts.
             _settleUnwrap(underlyingToken, IERC20(wrappedToken), vaultUnderlyingDeltaHint, vaultWrappedDeltaHint);
 
             // Only updates buffer balances if buffer has a surplus of wrapped tokens.
