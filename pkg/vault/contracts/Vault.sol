@@ -703,6 +703,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 uint256 amountInScaled18 = amountsInScaled18[i];
                 _ensureValidTradeAmount(amountInScaled18);
 
+                // If the value in memory is not set, convert scaled amount to raw.
                 if (amountsInRaw[i] == 0) {
                     // amountsInRaw are amounts actually entering the Pool, so we round up.
                     // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` hook.
@@ -713,6 +714,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
                     amountsInRaw[i] = amountInRaw;
                 } else {
+                    // Exact in requests will have the raw amount in memory already, so we use it moving forward and
+                    // skip unscaling.
                     amountInRaw = amountsInRaw[i];
                 }
             }
@@ -953,7 +956,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     );
                     amountsOutRaw[i] = amountOutRaw;
                 } else {
-                    // Exact out requests will have the raw amount in memory already.
+                    // Exact out requests will have the raw amount in memory already, so we use it moving forward and
+                    // skip unscaling.
                     amountOutRaw = amountsOutRaw[i];
                 }
             }
