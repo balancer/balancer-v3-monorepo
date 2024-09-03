@@ -20,7 +20,7 @@ import { PoolConfigLib, PoolConfigBits } from "../../../contracts/lib/PoolConfig
 import { VaultMockDeployer } from "../../../test/foundry/utils/VaultMockDeployer.sol";
 
 struct TestStateLocals {
-    SwapParams params;
+    VaultSwapParams params;
     SwapState swapState;
     PoolData poolData;
 }
@@ -161,7 +161,7 @@ contract VaultUnitSwapTest is BaseTest {
     function testSwapExactInSwapLimitRevert() public {
         uint256 swapLimit = mockedPoolAmountCalculatedScaled18 - 1;
 
-        (SwapParams memory params, SwapState memory state, PoolData memory poolData) = _makeParams(
+        (VaultSwapParams memory params, SwapState memory state, PoolData memory poolData) = _makeParams(
             SwapKind.EXACT_IN,
             defaultAmountGivenRaw,
             swapLimit,
@@ -182,7 +182,7 @@ contract VaultUnitSwapTest is BaseTest {
     }
 
     function testSwapExactOutSwapLimitRevert() public {
-        (SwapParams memory params, SwapState memory state, PoolData memory poolData) = _makeParams(
+        (VaultSwapParams memory params, SwapState memory state, PoolData memory poolData) = _makeParams(
             SwapKind.EXACT_OUT,
             defaultAmountGivenRaw,
             0,
@@ -289,15 +289,15 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 swapFeePercentage,
         uint256 protocolFeePercentage,
         uint256 poolCreatorFeePercentage
-    ) internal view returns (SwapParams memory params, SwapState memory swapState, PoolData memory poolData) {
-        params = SwapParams({
+    ) internal view returns (VaultSwapParams memory params, SwapState memory swapState, PoolData memory poolData) {
+        params = VaultSwapParams({
             kind: kind,
             pool: pool,
             tokenIn: swapTokens[0],
             tokenOut: swapTokens[1],
             amountGivenRaw: amountGivenRaw,
             limitRaw: limitRaw,
-            userData: new bytes(0)
+            userData: bytes("")
         });
 
         swapState.indexIn = 0;
@@ -328,7 +328,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 amountCalculatedScaled18,
         uint256 amountIn,
         uint256 amountOut,
-        SwapParams memory params,
+        VaultSwapParams memory params,
         SwapState memory swapState,
         PoolData memory poolData
     ) internal view {
@@ -394,7 +394,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 amountCalculatedScaled18,
         uint256 amountIn,
         uint256 amountOut,
-        SwapParams memory params,
+        VaultSwapParams memory params,
         SwapState memory swapState,
         PoolData memory poolData
     ) internal view {
@@ -460,7 +460,7 @@ contract VaultUnitSwapTest is BaseTest {
         uint256 amountIn,
         uint256 amountOut,
         uint256 totalFees,
-        SwapParams memory params,
+        VaultSwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
     ) internal view {
@@ -547,22 +547,22 @@ contract VaultUnitSwapTest is BaseTest {
 
     function _mockOnSwap(
         uint256 amountCalculatedScaled18,
-        SwapParams memory params,
+        VaultSwapParams memory vaultSwapParams,
         SwapState memory state,
         PoolData memory poolData
     ) internal {
         vm.mockCall(
             pool,
-            abi.encodeWithSelector(
-                IBasePool.onSwap.selector,
+            abi.encodeCall(
+                IBasePool.onSwap,
                 PoolSwapParams({
-                    kind: params.kind,
+                    kind: vaultSwapParams.kind,
                     amountGivenScaled18: state.amountGivenScaled18,
                     balancesScaled18: poolData.balancesLiveScaled18,
                     indexIn: state.indexIn,
                     indexOut: state.indexOut,
                     router: address(this),
-                    userData: params.userData
+                    userData: vaultSwapParams.userData
                 })
             ),
             abi.encodePacked(amountCalculatedScaled18)

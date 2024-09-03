@@ -4,12 +4,12 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import {
     AddLiquidityKind,
     RemoveLiquidityKind,
@@ -24,8 +24,9 @@ import {
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 import { PoolHooksMock } from "../../../../contracts/test/PoolHooksMock.sol";
-import { Router } from "../../../../contracts/Router.sol";
+import { BasePoolMath } from "../../../../contracts/BasePoolMath.sol";
 import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
+import { Router } from "../../../../contracts/Router.sol";
 
 contract RouterMutationTest is BaseVaultTest {
     using ArrayHelpers for *;
@@ -132,22 +133,12 @@ contract RouterMutationTest is BaseVaultTest {
 
     function testAddLiquidityToBufferHookWhenNotVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        router.addLiquidityToBufferHook(IERC4626(address(0)), 0, 0, address(0));
+        router.addLiquidityToBufferHook(IERC4626(address(0)), 0, 0, address(0), false);
     }
 
     function testAddLiquidityToBufferHookReentrancy() public {
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         router.manualReentrancyAddLiquidityToBufferHook();
-    }
-
-    function testRemoveLiquidityFromBufferHookWhenNotVault() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        router.removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
-    }
-
-    function testRemoveLiquidityFromBufferHookReentrancy() public {
-        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
-        router.manualReentrancyRemoveLiquidityFromBufferHook();
     }
 
     function testQuerySwapHookWhenNotVault() public {

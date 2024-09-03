@@ -19,7 +19,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract Permit2Test is BaseVaultTest {
     using ArrayHelpers for *;
 
-    uint256 internal usdcAmountIn = 1e3 * 1e6;
+    uint256 internal usdcAmountIn = 1e3 * 1e6; // USDC has 6 decimals
     uint256 internal daiAmountIn = 1e3 * 1e18;
     uint256 internal daiAmountOut = 1e2 * 1e18;
     uint256 internal ethAmountIn = 1e3 ether;
@@ -93,23 +93,15 @@ contract Permit2Test is BaseVaultTest {
         );
 
         bytes[] memory multicallData = new bytes[](2);
-        multicallData[0] = abi.encodeWithSelector(
-            IRouter.addLiquidityUnbalanced.selector,
-            pool,
-            amountsIn,
-            bptAmountOut,
-            false,
-            bytes("")
+        multicallData[0] = abi.encodeCall(
+            IRouter.addLiquidityUnbalanced,
+            (pool, amountsIn, bptAmountOut, false, bytes(""))
         );
 
         uint256[] memory minAmountsOut = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
-        multicallData[1] = abi.encodeWithSelector(
-            IRouter.removeLiquidityProportional.selector,
-            pool,
-            bptAmountOut,
-            minAmountsOut,
-            false,
-            bytes("")
+        multicallData[1] = abi.encodeCall(
+            IRouter.removeLiquidityProportional,
+            (pool, bptAmountOut, minAmountsOut, false, bytes(""))
         );
 
         vm.prank(alice);
@@ -136,17 +128,13 @@ contract Permit2Test is BaseVaultTest {
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
         bptAmountOut = defaultAmount * 2;
 
-        multicallData[0] = abi.encodeWithSelector(
-            IRouter.addLiquidityUnbalanced.selector,
-            pool,
-            amountsIn,
-            bptAmountOut,
-            false,
-            bytes("")
+        multicallData[0] = abi.encodeCall(
+            IRouter.addLiquidityUnbalanced,
+            (pool, amountsIn, bptAmountOut, false, bytes(""))
         );
 
         vm.expectCall(address(router), multicallData[0]);
         vm.prank(alice);
-        router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, "", multicallData);
+        router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, bytes(""), multicallData);
     }
 }

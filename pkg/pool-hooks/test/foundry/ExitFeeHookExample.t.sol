@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
     HooksConfig,
@@ -31,7 +33,7 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
     uint256 internal usdcIdx;
 
     // 10% exit fee
-    uint64 exitFeePercentage = 10e16;
+    uint64 internal constant EXIT_FEE_PERCENTAGE = 10e16;
 
     function setUp() public override {
         super.setUp();
@@ -48,7 +50,7 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
     }
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity and enables donation)
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+    function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), label);
 
@@ -58,6 +60,9 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.disableUnbalancedLiquidity = true;
         liquidityManagement.enableDonation = true;
+
+        vm.expectEmit();
+        emit ExitFeeHookExample.ExitFeeHookExampleRegistered(poolHooksContract, address(newPool));
 
         factoryMock.registerPool(
             address(newPool),
@@ -97,14 +102,23 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
     }
 
     // Exit fee returns to LPs
-    function testExitFeeReturnToLPs() public {
+    function testExitFeeReturnToLPs() public virtual {
+        vm.expectEmit();
+        emit ExitFeeHookExample.ExitFeePercentageChanged(poolHooksContract, EXIT_FEE_PERCENTAGE);
+
         vm.prank(lp);
-        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(exitFeePercentage);
+        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(EXIT_FEE_PERCENTAGE);
         uint256 amountOut = poolInitAmount / 2;
-        uint256 hookFee = amountOut.mulDown(exitFeePercentage);
+        uint256 hookFee = amountOut.mulDown(EXIT_FEE_PERCENTAGE);
         uint256[] memory minAmountsOut = [amountOut - hookFee, amountOut - hookFee].toMemoryArray();
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp);
+
+        vm.expectEmit();
+        emit ExitFeeHookExample.ExitFeeCharged(pool, IERC20(dai), hookFee);
+
+        vm.expectEmit();
+        emit ExitFeeHookExample.ExitFeeCharged(pool, IERC20(usdc), hookFee);
 
         vm.prank(lp);
         router.removeLiquidityProportional(pool, 2 * amountOut, minAmountsOut, false, bytes(""));
@@ -159,7 +173,7 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         uint64 highFee = uint64(FixedPoint.ONE);
 
         vm.expectRevert(
-            abi.encodeWithSelector(ExitFeeHookExample.ExitFeeAboveLimit.selector, highFee, exitFeePercentage)
+            abi.encodeWithSelector(ExitFeeHookExample.ExitFeeAboveLimit.selector, highFee, EXIT_FEE_PERCENTAGE)
         );
         vm.prank(lp);
         ExitFeeHookExample(poolHooksContract).setExitFeePercentage(highFee);

@@ -4,7 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { FixedPoint } from "../../contracts/math/FixedPoint.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
 import { WeightedMathMock } from "../../contracts/test/WeightedMathMock.sol";
 
 contract WeightedMathRoundingTest is Test {

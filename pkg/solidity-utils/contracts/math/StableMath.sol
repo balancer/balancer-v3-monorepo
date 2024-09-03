@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import "./FixedPoint.sol";
+import { FixedPoint } from "./FixedPoint.sol";
 
 /**
  * @notice Stable Pool math library based on Curve's `StableSwap`.
@@ -17,10 +17,10 @@ library StableMath {
     // Some variables have non mixed case names (e.g. P_D) that relate to the mathematical derivations.
     // solhint-disable private-vars-leading-underscore, var-name-mixedcase
 
-    /// @dev The iterations to calculate the invariant didn't converge.
+    /// @notice The iterations to calculate the invariant didn't converge.
     error StableInvariantDidNotConverge();
 
-    /// @dev The iterations to calculate the balance didn't converge.
+    /// @notice The iterations to calculate the balance didn't converge.
     error StableGetBalanceDidNotConverge();
 
     // The max token count is limited by the math, and is less than the Vault's maximum.

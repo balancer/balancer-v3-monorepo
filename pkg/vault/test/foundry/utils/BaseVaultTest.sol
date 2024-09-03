@@ -6,30 +6,29 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { HookFlags, FEE_SCALING_FACTOR, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
-import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
-import { HookFlags, FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { BasicAuthorizerMock } from "../../../contracts/test/BasicAuthorizerMock.sol";
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
-import { VaultStorage } from "../../../contracts/VaultStorage.sol";
-import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
-import { PoolMock } from "../../../contracts/test/PoolMock.sol";
-import { PoolHooksMock } from "../../../contracts/test/PoolHooksMock.sol";
 import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
+import { PoolHooksMock } from "../../../contracts/test/PoolHooksMock.sol";
+import { RouterMock } from "../../../contracts/test/RouterMock.sol";
+import { VaultStorage } from "../../../contracts/VaultStorage.sol";
+import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
 import { VaultMockDeployer } from "./VaultMockDeployer.sol";
-
 import { Permit2Helpers } from "./Permit2Helpers.sol";
 
 abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
@@ -53,18 +52,26 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         uint256[] poolTokens;
         uint256 poolSupply;
         uint256 poolInvariant;
+        uint256[] swapFeeAmounts;
+        uint256[] yieldFeeAmounts;
     }
 
-    uint256 constant MIN_BPT = 1e6;
+    // Pool limits.
+    uint256 internal constant POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
+    uint256 internal constant PRODUCTION_MIN_TRADE_AMOUNT = 1e6;
 
-    bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
-    bytes32 constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
+    // ERC4626 buffer limits.
+    uint256 internal constant BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
+    uint256 internal constant PRODUCTION_MIN_WRAP_AMOUNT = 1e3;
+
+    bytes32 internal constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    bytes32 internal constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
 
     // Vault mock.
     IVaultMock internal vault;
-    // Vault extension mock.
+    // VaultExtension mock.
     IVaultExtension internal vaultExtension;
-    // Vault admin mock.
+    // VaultAdmin mock.
     IVaultAdmin internal vaultAdmin;
     // Router mock.
     RouterMock internal router;
@@ -102,16 +109,31 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Default protocol swap fee percentage.
     uint64 internal protocolSwapFeePercentage = 50e16; // 50%
 
+    // VaultMock can override min trade amount; tests shall use 0 by default to simplify fuzz tests.
+    // Min trade amount is meant to be an extra protection against unknown rounding errors; the Vault should still work
+    // without it, so it can be zeroed out in general.
+    // Change this value before calling `setUp` to test under real conditions.
+    uint256 vaultMockMinTradeAmount = 0;
+
+    // VaultMock can override min wrap amount; tests shall use 0 by default to simplify fuzz tests.
+    // Min wrap amount is meant to be an extra protection against unknown rounding errors; the Vault should still work
+    // without it, so it can be zeroed out in general.
+    // Change this value before calling `setUp` to test under real conditions.
+    uint256 vaultMockMinWrapAmount = 0;
+
+    // Stores the Vault's CONVERT_FACTOR, used to fix the result of ERC4626 buffer's "convert" calls (amount used to
+    // wrap/unwrap using the buffer liquidity).
+    uint16 internal vaultConvertFactor;
+
     // Applies to Weighted Pools.
-    uint256 constant MIN_SWAP_FEE = 1e12; // 0.00001%
-    uint256 constant MAX_SWAP_FEE = 10e16; // 10%
-    uint256 constant FIFTY_PERCENT = 50e16; // 50%
-    uint256 constant MIN_TRADE_AMOUNT = 1e6;
+    uint256 internal constant BASE_MIN_SWAP_FEE = 1e12; // 0.00001%
+    uint256 internal constant BASE_MAX_SWAP_FEE = 10e16; // 10%
 
     function setUp() public virtual override {
         BaseTest.setUp();
 
-        vault = IVaultMock(address(VaultMockDeployer.deploy()));
+        vault = IVaultMock(address(VaultMockDeployer.deploy(vaultMockMinTradeAmount, vaultMockMinWrapAmount)));
+
         vm.label(address(vault), "vault");
         vaultExtension = IVaultExtension(vault.getVaultExtension());
         vm.label(address(vaultExtension), "vaultExtension");
@@ -143,9 +165,11 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         }
         // Add initial liquidity
         initPool();
+
+        vaultConvertFactor = vault.getConvertFactor();
     }
 
-    function approveForSender() internal {
+    function approveForSender() internal virtual {
         for (uint256 i = 0; i < tokens.length; ++i) {
             tokens[i].approve(address(permit2), type(uint256).max);
             permit2.approve(address(tokens[i]), address(router), type(uint160).max, type(uint48).max);
@@ -153,7 +177,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         }
     }
 
-    function approveForPool(IERC20 bpt) internal {
+    function approveForPool(IERC20 bpt) internal virtual {
         for (uint256 i = 0; i < users.length; ++i) {
             vm.startPrank(users[i]);
 
@@ -181,7 +205,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     ) internal virtual returns (uint256 bptOut) {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(poolToInit);
 
-        return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, "");
+        return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, bytes(""));
     }
 
     function createPool() internal virtual returns (address) {
@@ -218,13 +242,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     }
 
     function _setSwapFeePercentage(address setPool, uint256 percentage) internal {
-        if (percentage < MIN_SWAP_FEE) {
-            vault.manuallySetSwapFee(setPool, percentage);
-        } else {
-            authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), admin);
-            vm.prank(admin);
-            vault.setStaticSwapFeePercentage(setPool, percentage);
-        }
+        vault.manuallySetSwapFee(setPool, percentage);
     }
 
     function getBalances(address user) internal view returns (Balances memory balances) {
@@ -239,15 +257,19 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         (IERC20[] memory tokens, , uint256[] memory poolBalances, uint256[] memory lastBalancesLiveScaled18) = vault
             .getPoolTokenInfo(pool);
         balances.poolTokens = poolBalances;
-        balances.poolInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18);
-        balances.userTokens = new uint256[](poolBalances.length);
-        balances.aliceTokens = new uint256[](poolBalances.length);
-        balances.bobTokens = new uint256[](poolBalances.length);
-        balances.hookTokens = new uint256[](poolBalances.length);
-        balances.lpTokens = new uint256[](poolBalances.length);
-        balances.vaultTokens = new uint256[](poolBalances.length);
-        balances.vaultReserves = new uint256[](poolBalances.length);
-        for (uint256 i = 0; i < poolBalances.length; ++i) {
+        uint256 numTokens = tokens.length;
+
+        balances.poolInvariant = IBasePool(pool).computeInvariant(lastBalancesLiveScaled18, Rounding.ROUND_DOWN);
+        balances.userTokens = new uint256[](numTokens);
+        balances.aliceTokens = new uint256[](numTokens);
+        balances.bobTokens = new uint256[](numTokens);
+        balances.hookTokens = new uint256[](numTokens);
+        balances.lpTokens = new uint256[](numTokens);
+        balances.vaultTokens = new uint256[](numTokens);
+        balances.vaultReserves = new uint256[](numTokens);
+        balances.swapFeeAmounts = new uint256[](numTokens);
+        balances.yieldFeeAmounts = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
             // Don't assume token ordering.
             balances.userTokens[i] = tokens[i].balanceOf(user);
             balances.aliceTokens[i] = tokens[i].balanceOf(alice);
@@ -256,6 +278,37 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
             balances.lpTokens[i] = tokens[i].balanceOf(lp);
             balances.vaultTokens[i] = tokens[i].balanceOf(address(vault));
             balances.vaultReserves[i] = vault.getReservesOf(tokens[i]);
+            balances.swapFeeAmounts[i] = vault.manualGetAggregateSwapFeeAmount(pool, tokens[i]);
+            balances.yieldFeeAmounts[i] = vault.manualGetAggregateYieldFeeAmount(pool, tokens[i]);
+        }
+    }
+
+    /// @dev A different function is needed to measure token balances when tracking tokens across multiple pools.
+    function getBalances(address user, IERC20[] memory tokensToTrack) internal view returns (Balances memory balances) {
+        balances.userBpt = IERC20(pool).balanceOf(user);
+        balances.aliceBpt = IERC20(pool).balanceOf(alice);
+        balances.bobBpt = IERC20(pool).balanceOf(bob);
+        balances.hookBpt = IERC20(pool).balanceOf(poolHooksContract);
+        balances.lpBpt = IERC20(pool).balanceOf(lp);
+
+        uint256 numTokens = tokensToTrack.length;
+
+        balances.userTokens = new uint256[](numTokens);
+        balances.aliceTokens = new uint256[](numTokens);
+        balances.bobTokens = new uint256[](numTokens);
+        balances.hookTokens = new uint256[](numTokens);
+        balances.lpTokens = new uint256[](numTokens);
+        balances.vaultTokens = new uint256[](numTokens);
+        balances.vaultReserves = new uint256[](numTokens);
+        for (uint256 i = 0; i < numTokens; ++i) {
+            // Don't assume token ordering.
+            balances.userTokens[i] = tokensToTrack[i].balanceOf(user);
+            balances.aliceTokens[i] = tokensToTrack[i].balanceOf(alice);
+            balances.bobTokens[i] = tokensToTrack[i].balanceOf(bob);
+            balances.hookTokens[i] = tokensToTrack[i].balanceOf(poolHooksContract);
+            balances.lpTokens[i] = tokensToTrack[i].balanceOf(lp);
+            balances.vaultTokens[i] = tokensToTrack[i].balanceOf(address(vault));
+            balances.vaultReserves[i] = vault.getReservesOf(tokensToTrack[i]);
         }
     }
 

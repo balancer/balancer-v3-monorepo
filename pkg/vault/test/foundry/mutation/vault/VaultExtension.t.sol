@@ -69,7 +69,17 @@ contract VaultExtensionMutationTest is BaseVaultTest {
         uint256[] memory exactAmountsIn;
 
         vm.expectRevert(IVaultErrors.NotVaultDelegateCall.selector);
-        vaultExtension.initialize(pool, address(0), tokens, exactAmountsIn, 0, "");
+        vaultExtension.initialize(pool, address(0), tokens, exactAmountsIn, 0, bytes(""));
+    }
+
+    function testInitializeReentrancy() public {
+        IERC20[] memory tokens;
+        uint256[] memory exactAmountsIn;
+
+        vault.forceUnlock();
+
+        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
+        vault.manualInitializePoolReentrancy(pool, address(0), tokens, exactAmountsIn, 0, bytes(""));
     }
 
     function testIsPoolInitializedWhenNotVault() public {

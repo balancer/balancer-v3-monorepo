@@ -3,15 +3,17 @@
 pragma solidity ^0.8.24;
 
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { FixedPoint } from "./FixedPoint.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 library BasePoolMath {
     using FixedPoint for uint256;
 
     /**
-     * @dev An add liquidity operation increased the invariant above the limit. This value is determined by each pool
-     * type, and depends on the specific math used to compute the price curve.
+     * @notice An add liquidity operation increased the invariant above the limit.
+     * @dev This value is determined by each pool type, and depends on the specific math used to compute
+     * the price curve.
      *
      * @param invariantRatio The ratio of the new invariant (after an operation) to the old
      * @param maxInvariantRatio The maximum allowed invariant ratio
@@ -19,8 +21,9 @@ library BasePoolMath {
     error InvariantRatioAboveMax(uint256 invariantRatio, uint256 maxInvariantRatio);
 
     /**
-     * @dev A remove liquidity operation decreased the invariant below the limit. This value is determined by each pool
-     * type, and depends on the specific math used to compute the price curve.
+     * @notice A remove liquidity operation decreased the invariant below the limit.
+     * @dev This value is determined by each pool type, and depends on the specific math used to compute
+     * the price curve.
      *
      * @param invariantRatio The ratio of the new invariant (after an operation) to the old
      * @param minInvariantRatio The minimum allowed invariant ratio
@@ -152,9 +155,10 @@ library BasePoolMath {
         }
 
         // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
-        uint256 currentInvariant = pool.computeInvariant(currentBalances);
+        // Rounding current invariant up reduces BPT amount out at the end (see comments below).
+        uint256 currentInvariant = pool.computeInvariant(currentBalances, Rounding.ROUND_UP);
         // Round down to make `taxableAmount` larger below.
-        uint256 invariantRatio = pool.computeInvariant(newBalances).divDown(currentInvariant);
+        uint256 invariantRatio = pool.computeInvariant(newBalances, Rounding.ROUND_DOWN).divDown(currentInvariant);
 
         ensureInvariantRatioBelowMaximumBound(pool, invariantRatio);
 
@@ -184,13 +188,21 @@ library BasePoolMath {
 
         // Calculate the new invariant with fees applied.
         // This invariant should be lower than the original one, so we don't need to check invariant ratio bounds again.
-        uint256 invariantWithFeesApplied = pool.computeInvariant(newBalances);
+        // Rounding down makes bptAmountOut go down (see comment below).
+        uint256 invariantWithFeesApplied = pool.computeInvariant(newBalances, Rounding.ROUND_DOWN);
 
         // Calculate the amount of BPT to mint. This is done by multiplying the
         // total supply with the ratio of the change in invariant.
         // Since we multiply and divide we don't need to use FP math.
-        // Round down since we're calculating BPT amount out. `invariantWithFeesApplied` calculated with `newBalances`
-        // rounded down, which also contributes to a lower `bptAmountOut`.
+        // Round down since we're calculating BPT amount out. This is the most important result of this function,
+        // equivalent to:
+        // `totalSupply * (invariantWithFeesApplied / currentInvariant - 1)`
+
+        // Then, to round `bptAmountOut` down we use `invariantWithFeesApplied` rounded down and `currentInvariant`
+        // rounded up.
+        // If rounding makes `invariantWithFeesApplied` smaller or equal to `currentInvariant`, this would effectively
+        // be a donation. In that case we just let checked math revert for simplicity; it's not a valid use-case to
+        // support at this point.
         bptAmountOut = (totalSupply * (invariantWithFeesApplied - currentInvariant)) / currentInvariant;
     }
 
@@ -289,9 +301,13 @@ library BasePoolMath {
         // Calculate the new invariant ratio by dividing the new invariant by the old invariant.
         // Calculate the new proportional balance by multiplying the new invariant ratio by the current balance.
         // Calculate the taxable amount by subtracting the new balance from the equivalent proportional balance.
-        uint256 currentInvariant = pool.computeInvariant(currentBalances);
+        // We round `currentInvariant` up as it affects the calculated `bptAmountIn` directly (see below).
+        uint256 currentInvariant = pool.computeInvariant(currentBalances, Rounding.ROUND_UP);
         // We round invariant ratio up (see reason below).
-        uint256 invariantRatio = pool.computeInvariant(newBalances).divUp(currentInvariant);
+        // This invariant ratio could be rounded up even more by rounding `currentInvariant` down. But since it only
+        // affects the taxable amount and the fee calculation, whereas `currentInvariant` affects BPT in more directly,
+        // we use `currentInvariant` rounded up here as well.
+        uint256 invariantRatio = pool.computeInvariant(newBalances, Rounding.ROUND_UP).divUp(currentInvariant);
 
         ensureInvariantRatioAboveMinimumBound(pool, invariantRatio);
 
@@ -307,18 +323,20 @@ library BasePoolMath {
 
         // Calculate the new invariant with fees applied.
         // Larger fee means `invariantWithFeesApplied` goes lower.
-        uint256 invariantWithFeesApplied = pool.computeInvariant(newBalances);
+        uint256 invariantWithFeesApplied = pool.computeInvariant(newBalances, Rounding.ROUND_DOWN);
 
         // Create swap fees amount array and set the single fee we charge
         swapFeeAmounts = new uint256[](numTokens);
         swapFeeAmounts[tokenOutIndex] = fee;
 
-        // Calculate the amount of BPT to burn. This is done by multiplying the
-        // total supply with the ratio of the change in invariant.
-        // Since we multiply and divide we don't need to use FP math.
-        // Calculating BPT amount in, so we round up.
-        // Finally, lower `invariantWithFeesApplied` makes the subtraction larger, which also helps `bptAmountIn` to be
-        // larger since it's in the numerator.
+        // Calculate the amount of BPT to burn. This is done by multiplying the total supply by the ratio of the
+        // invariant delta to the current invariant.
+        // Calculating BPT amount in, so we round up. This is the most important result of this function, equivalent to:
+        // `totalSupply * (1 - invariantWithFeesApplied / currentInvariant)`.
+        // Then, to round `bptAmountIn` up we use `invariantWithFeesApplied` rounded down and `currentInvariant`
+        // rounded up.
+        // Since `currentInvariant` is rounded up and `invariantWithFeesApplied` is rounded down, the difference
+        // should always be positive. The checked math will revert if that is not the case.
         bptAmountIn = totalSupply.mulDivUp(currentInvariant - invariantWithFeesApplied, currentInvariant);
     }
 
@@ -358,7 +376,7 @@ library BasePoolMath {
         // Compute the amount to be withdrawn from the pool.
         uint256 amountOut = currentBalances[tokenOutIndex] - newBalance;
 
-        // Calculate the new balance proportionate to the BPT burnt.
+        // Calculate the new balance proportionate to the amount of BPT burned.
         // We round up: higher `newBalanceBeforeTax` makes `taxableAmount` go up, which rounds in the Vault's favor.
         uint256 newBalanceBeforeTax = newSupply.mulDivUp(currentBalances[tokenOutIndex], totalSupply);
 

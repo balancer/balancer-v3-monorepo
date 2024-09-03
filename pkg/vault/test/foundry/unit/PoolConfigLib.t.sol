@@ -245,9 +245,19 @@ contract PoolConfigLibTest is Test {
         );
     }
 
+    function testSetAggregateSwapFeePercentageAlmostMaxFee() public pure {
+        PoolConfigBits config;
+        config = config.setAggregateSwapFeePercentage(MAX_FEE_PERCENTAGE);
+        assertEq(
+            config.getAggregateSwapFeePercentage(),
+            MAX_FEE_PERCENTAGE,
+            "getAggregateSwapFeePercentage mismatch (testSetAggregateSwapFeePercentageAlmostMaxFee)"
+        );
+    }
+
     function testSetAggregateSwapFeePercentageAboveMax() public {
         PoolConfigBits config;
-        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
+        vm.expectRevert(IVaultErrors.PercentageAboveMax.selector);
         config.setAggregateSwapFeePercentage(MAX_FEE_PERCENTAGE + 1);
     }
 
@@ -280,7 +290,7 @@ contract PoolConfigLibTest is Test {
 
     function testSetAggregateYieldFeePercentageAboveMax() public {
         PoolConfigBits config;
-        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
+        vm.expectRevert(IVaultErrors.PercentageAboveMax.selector);
         config.setAggregateYieldFeePercentage(MAX_FEE_PERCENTAGE + 1);
     }
 
@@ -313,7 +323,7 @@ contract PoolConfigLibTest is Test {
 
     function testSetStaticSwapFeePercentageAboveMax() public {
         PoolConfigBits config;
-        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
+        vm.expectRevert(IVaultErrors.PercentageAboveMax.selector);
         config.setStaticSwapFeePercentage(MAX_FEE_PERCENTAGE + 1);
     }
 

@@ -7,6 +7,7 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolConfigConst } from "./PoolConfigConst.sol";
 
@@ -194,6 +195,10 @@ library HooksConfigLib {
             revert IVaultErrors.DynamicSwapFeeHookFailed();
         }
 
+        if (swapFeePercentage > FixedPoint.ONE) {
+            revert IVaultErrors.PercentageAboveMax();
+        }
+
         return swapFeePercentage;
     }
 
@@ -219,7 +224,7 @@ library HooksConfigLib {
      * @param amountCalculatedScaled18 Token amount calculated by the swap
      * @param amountCalculatedRaw Token amount calculated by the swap
      * @param router Router address
-     * @param params The swap parameters
+     * @param vaultSwapParams The swap parameters
      * @param state Temporary state used in swap operations
      * @param poolData Struct containing balance and token information of the pool
      * @param hooksContract Storage slot with the address of the hooks contract
@@ -230,21 +235,21 @@ library HooksConfigLib {
         uint256 amountCalculatedScaled18,
         uint256 amountCalculatedRaw,
         address router,
-        SwapParams memory params,
+        VaultSwapParams memory vaultSwapParams,
         SwapState memory state,
         PoolData memory poolData,
         IHooks hooksContract
     ) internal returns (uint256) {
         // Adjust balances for the AfterSwap hook.
-        (uint256 amountInScaled18, uint256 amountOutScaled18) = params.kind == SwapKind.EXACT_IN
+        (uint256 amountInScaled18, uint256 amountOutScaled18) = vaultSwapParams.kind == SwapKind.EXACT_IN
             ? (state.amountGivenScaled18, amountCalculatedScaled18)
             : (amountCalculatedScaled18, state.amountGivenScaled18);
 
         (bool success, uint256 hookAdjustedAmountCalculatedRaw) = hooksContract.onAfterSwap(
             AfterSwapParams({
-                kind: params.kind,
-                tokenIn: params.tokenIn,
-                tokenOut: params.tokenOut,
+                kind: vaultSwapParams.kind,
+                tokenIn: vaultSwapParams.tokenIn,
+                tokenOut: vaultSwapParams.tokenOut,
                 amountInScaled18: amountInScaled18,
                 amountOutScaled18: amountOutScaled18,
                 tokenInBalanceScaled18: poolData.balancesLiveScaled18[state.indexIn],
@@ -252,8 +257,8 @@ library HooksConfigLib {
                 amountCalculatedScaled18: amountCalculatedScaled18,
                 amountCalculatedRaw: amountCalculatedRaw,
                 router: router,
-                pool: params.pool,
-                userData: params.userData
+                pool: vaultSwapParams.pool,
+                userData: vaultSwapParams.userData
             })
         );
 
@@ -268,10 +273,10 @@ library HooksConfigLib {
         }
 
         if (
-            (params.kind == SwapKind.EXACT_IN && hookAdjustedAmountCalculatedRaw < params.limitRaw) ||
-            (params.kind == SwapKind.EXACT_OUT && hookAdjustedAmountCalculatedRaw > params.limitRaw)
+            (vaultSwapParams.kind == SwapKind.EXACT_IN && hookAdjustedAmountCalculatedRaw < vaultSwapParams.limitRaw) ||
+            (vaultSwapParams.kind == SwapKind.EXACT_OUT && hookAdjustedAmountCalculatedRaw > vaultSwapParams.limitRaw)
         ) {
-            revert IVaultErrors.HookAdjustedSwapLimit(hookAdjustedAmountCalculatedRaw, params.limitRaw);
+            revert IVaultErrors.HookAdjustedSwapLimit(hookAdjustedAmountCalculatedRaw, vaultSwapParams.limitRaw);
         }
 
         return hookAdjustedAmountCalculatedRaw;

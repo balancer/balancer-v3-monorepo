@@ -17,6 +17,13 @@ interface IVaultAdminMock {
 
     function manualDisableRecoveryMode(address pool) external;
 
+    function manualReentrancyInitializeBuffer(
+        IERC4626 wrappedToken,
+        uint256 amountUnderlying,
+        uint256 amountWrapped,
+        address sharesOwner
+    ) external;
+
     function manualReentrancyAddLiquidityToBuffer(
         IERC4626 wrappedToken,
         uint256 amountUnderlying,
@@ -24,13 +31,21 @@ interface IVaultAdminMock {
         address sharesOwner
     ) external;
 
-    function manualReentrancyRemoveLiquidityFromBuffer(
+    function manualReentrancyRemoveLiquidityFromBufferHook(
         IERC4626 wrappedToken,
         uint256 sharesToRemove,
         address sharesOwner
     ) external;
 
+    function manualReentrancyDisableRecoveryMode(address pool) external;
+
     function mockWithValidPercentage(uint256 percentage) external view;
 
     function mockEnsurePoolNotInRecoveryMode(address pool) external view;
+
+    function manualMintBufferShares(IERC4626 wrappedToken, address to, uint256 amount) external;
+
+    function manualBurnBufferShares(IERC4626 wrappedToken, address from, uint256 amount) external;
+
+    function manualMintMinimumBufferSupplyReserve(IERC4626 wrappedToken) external;
 }

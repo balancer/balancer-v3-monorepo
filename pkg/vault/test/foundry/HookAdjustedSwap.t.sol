@@ -24,7 +24,6 @@ contract HookAdjustedSwapTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
 
-    uint256 private constant _minSwapAmount = 1e6;
     uint256 private _swapAmount;
 
     function setUp() public virtual override {
@@ -66,8 +65,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
     }
 
     function testFeeExactIn__Fuzz(uint256 swapAmount, uint256 hookFeePercentage) public {
-        // Swap between _minSwapAmount and whole pool liquidity (pool math is linear).
-        swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
+        // Swap between POOL_MINIMUM_TOTAL_SUPPLY and whole pool liquidity (pool math is linear).
+        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount);
 
         // Fee between 0 and 100%.
         hookFeePercentage = bound(hookFeePercentage, 0, FixedPoint.ONE);
@@ -79,8 +78,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: dai,
@@ -93,7 +92,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
@@ -123,8 +122,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
     }
 
     function testDiscountExactIn__Fuzz(uint256 swapAmount, uint256 hookDiscountPercentage) public {
-        // Swap between _minSwapAmount and whole pool liquidity (pool math is linear).
-        swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
+        // Swap between POOL_MINIMUM_TOTAL_SUPPLY and whole pool liquidity (pool math is linear).
+        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount);
 
         // Discount between 0 and 100%
         hookDiscountPercentage = bound(hookDiscountPercentage, 0, FixedPoint.ONE);
@@ -141,8 +140,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Check that balances were not changed before onBeforeHook.
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: dai,
@@ -155,7 +154,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
@@ -185,8 +184,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
     }
 
     function testFeeExactOut__Fuzz(uint256 swapAmount, uint256 hookFeePercentage) public {
-        // Swap between _minSwapAmount and whole pool liquidity (pool math is linear).
-        swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
+        // Swap between POOL_MINIMUM_TOTAL_SUPPLY and whole pool liquidity (pool math is linear).
+        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount);
 
         // Fee between 0 and 100%.
         hookFeePercentage = bound(hookFeePercentage, 0, FixedPoint.ONE);
@@ -200,8 +199,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Check that balances were not changed before onBeforeHook.
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     tokenIn: dai,
@@ -214,7 +213,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
@@ -253,8 +252,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
     }
 
     function testDiscountExactOut__Fuzz(uint256 swapAmount, uint256 hookDiscountPercentage) public {
-        // Swap between _minSwapAmount and whole pool liquidity (pool math is linear).
-        swapAmount = bound(swapAmount, _minSwapAmount, poolInitAmount);
+        // Swap between POOL_MINIMUM_TOTAL_SUPPLY and whole pool liquidity (pool math is linear).
+        swapAmount = bound(swapAmount, POOL_MINIMUM_TOTAL_SUPPLY, poolInitAmount);
 
         // Discount between 0 and 100%
         hookDiscountPercentage = bound(hookDiscountPercentage, 0, FixedPoint.ONE);
@@ -271,8 +270,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Check that balances were not changed before onBeforeHook.
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     tokenIn: dai,
@@ -285,7 +284,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     amountCalculatedRaw: swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
@@ -333,8 +332,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Check that  onAfterHook was called with the correct params.
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: dai,
@@ -347,7 +346,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     amountCalculatedRaw: _swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
@@ -378,8 +377,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Check that onAfterSwap was called with the correct parameters.
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_OUT,
                     tokenIn: dai,
@@ -392,7 +391,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     amountCalculatedRaw: _swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );
@@ -424,8 +423,8 @@ contract HookAdjustedSwapTest is BaseVaultTest {
         // Check that onAfterHook was called with the correct params.
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterSwap.selector,
+            abi.encodeCall(
+                IHooks.onAfterSwap,
                 AfterSwapParams({
                     kind: SwapKind.EXACT_IN,
                     tokenIn: dai,
@@ -438,7 +437,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
                     amountCalculatedRaw: _swapAmount,
                     router: address(router),
                     pool: pool,
-                    userData: ""
+                    userData: bytes("")
                 })
             )
         );

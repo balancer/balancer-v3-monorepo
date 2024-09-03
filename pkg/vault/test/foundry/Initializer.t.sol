@@ -61,11 +61,7 @@ contract InitializerTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onBeforeInitialize.selector,
-                [defaultAmount, defaultAmount].toMemoryArray(),
-                bytes("0xff")
-            )
+            abi.encodeCall(IHooks.onBeforeInitialize, ([defaultAmount, defaultAmount].toMemoryArray(), bytes("0xff")))
         );
         router.initialize(
             pool,
@@ -95,11 +91,13 @@ contract InitializerTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterInitialize.selector,
-                [defaultAmount, defaultAmount].toMemoryArray(),
-                2 * defaultAmount - MIN_BPT,
-                bytes("0xff")
+            abi.encodeCall(
+                IHooks.onAfterInitialize,
+                (
+                    [defaultAmount, defaultAmount].toMemoryArray(),
+                    2 * defaultAmount - POOL_MINIMUM_TOTAL_SUPPLY,
+                    bytes("0xff")
+                )
             )
         );
         router.initialize(

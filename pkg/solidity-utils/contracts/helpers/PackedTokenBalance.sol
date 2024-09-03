@@ -20,7 +20,7 @@ library PackedTokenBalance {
     // The 'derivedBalance' part uses the remaining 128 bits.
     uint256 private constant _MAX_BALANCE = 2 ** (128) - 1;
 
-    /// @dev One of the balances is above the maximum value that can be stored.
+    /// @notice One of the balances is above the maximum value that can be stored.
     error BalanceOverflow();
 
     function getBalanceRaw(bytes32 balance) internal pure returns (uint256) {

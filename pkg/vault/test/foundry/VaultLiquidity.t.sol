@@ -19,6 +19,9 @@ contract VaultLiquidityTest is BaseVaultTest {
     uint256 internal usdcIdx;
 
     function setUp() public virtual override {
+        // We will use min trade amount in this test.
+        vaultMockMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT;
+
         BaseVaultTest.setUp();
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
@@ -62,7 +65,7 @@ contract VaultLiquidityTest is BaseVaultTest {
     }
 
     function testAddLiquidityTradeLimit() public {
-        uint256[] memory amountsIn = [defaultAmount, MIN_TRADE_AMOUNT - 1].toMemoryArray();
+        uint256[] memory amountsIn = [defaultAmount, PRODUCTION_MIN_TRADE_AMOUNT - 1].toMemoryArray();
 
         vm.prank(alice);
         vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
@@ -221,7 +224,7 @@ contract VaultLiquidityTest is BaseVaultTest {
         vm.expectRevert(IVaultErrors.TradeAmountTooSmall.selector);
         router.removeLiquidityProportional(
             pool,
-            MIN_TRADE_AMOUNT * 2 - 1,
+            PRODUCTION_MIN_TRADE_AMOUNT * 2 - 1,
             [defaultAmount, defaultAmount].toMemoryArray(),
             false,
             bytes("")
@@ -466,7 +469,7 @@ contract VaultLiquidityTest is BaseVaultTest {
             "Remove - Pool balance: token 1"
         );
 
-        // User has burnt the correct amount of BPT.
+        // User has burned the correct amount of BPT.
         assertEq(balancesBefore.userBpt, bptAmountIn, "Remove - User BPT balance before");
         assertEq(balancesAfter.userBpt, 0, "Remove - User BPT balance after");
 

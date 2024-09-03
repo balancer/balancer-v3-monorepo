@@ -4,8 +4,11 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import "../../../contracts/math/FixedPoint.sol";
-import "../../../contracts/test/BasePoolMathMock.sol";
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+
+import { BasePoolMathMock } from "../../contracts/test/BasePoolMathMock.sol";
 
 abstract contract BasePoolMathRoundingTest is Test {
     uint256 constant MIN_BALANCE = 1e18;
@@ -34,7 +37,7 @@ abstract contract BasePoolMathRoundingTest is Test {
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
         }
-        uint256 totalSupply = mock.computeInvariant(balances);
+        uint256 totalSupply = mock.computeInvariant(balances, Rounding.ROUND_DOWN);
         uint256 bptAmountOut = bound(rawBptAmountOut, MIN_AMOUNT, totalSupply);
 
         uint256[] memory standardResult = mock.computeProportionalAmountsIn(balances, totalSupply, bptAmountOut);
@@ -75,7 +78,7 @@ abstract contract BasePoolMathRoundingTest is Test {
         for (uint256 i = 0; i < balances.length; ++i) {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
         }
-        uint256 totalSupply = mock.computeInvariant(balances);
+        uint256 totalSupply = mock.computeInvariant(balances, Rounding.ROUND_DOWN);
         uint256 bptAmountIn = bound(rawBptAmountIn, MIN_AMOUNT, totalSupply);
 
         uint256[] memory standardResult = mock.computeProportionalAmountsOut(balances, totalSupply, bptAmountIn);
@@ -119,7 +122,7 @@ abstract contract BasePoolMathRoundingTest is Test {
             balances[i] = bound(rawBalances[i], MIN_BALANCE, MAX_AMOUNT);
             amountsIn[i] = bound(rawAmountsIn[i], MIN_BALANCE, MAX_AMOUNT);
         }
-        uint256 totalSupply = mock.computeInvariant(balances);
+        uint256 totalSupply = mock.computeInvariant(balances, Rounding.ROUND_DOWN);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
         uint256 standardResultBpt;
@@ -193,7 +196,7 @@ abstract contract BasePoolMathRoundingTest is Test {
 
         uint256 tokenInIndex = bound(rawTokenInIndex, 0, 1);
         uint256 bptAmountOut = bound(rawBptAmountOut, MIN_AMOUNT, MAX_AMOUNT);
-        uint256 totalSupply = mock.computeInvariant(balances);
+        uint256 totalSupply = mock.computeInvariant(balances, Rounding.ROUND_DOWN);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
         uint256 standardResultAmountInWithFee;
@@ -270,7 +273,7 @@ abstract contract BasePoolMathRoundingTest is Test {
         uint256 tokenOutIndex = bound(rawTokenOutIndex, 0, 1);
         uint256 amountOut = bound(rawAmountOut, MIN_BALANCE, balances[tokenOutIndex] / 5);
 
-        uint256 totalSupply = mock.computeInvariant(balances);
+        uint256 totalSupply = mock.computeInvariant(balances, Rounding.ROUND_DOWN);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 
         uint256 standardResultBptAmountIn;
@@ -346,7 +349,7 @@ abstract contract BasePoolMathRoundingTest is Test {
         }
 
         uint256 tokenOutIndex = bound(rawTokenOutIndex, 0, 1);
-        uint256 totalSupply = mock.computeInvariant(balances);
+        uint256 totalSupply = mock.computeInvariant(balances, Rounding.ROUND_DOWN);
         uint256 bptAmountIn = bound(rawBptAmountIn, MIN_AMOUNT, totalSupply / 4);
         uint256 swapFee = bound(rawSwapFee, MIN_SWAP_FEE, MAX_SWAP_FEE);
 

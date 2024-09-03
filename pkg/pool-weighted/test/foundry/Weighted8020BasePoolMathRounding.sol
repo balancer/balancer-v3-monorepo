@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.24;
 
+import { BasePoolMathRoundingTest } from "@balancer-labs/v3-vault/test/foundry/BasePoolMathRoundingTest.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { BasePoolMathMock } from "@balancer-labs/v3-vault/contracts/test/BasePoolMathMock.sol";
 
-import { BasePoolMathMock } from "../../contracts/test/BasePoolMathMock.sol";
 import { WeightedBasePoolMathMock } from "../../contracts/test/WeightedBasePoolMathMock.sol";
-import { BasePoolMathRoundingTest } from "./utils/BasePoolMathRoundingTest.sol";
 
 contract Weighted8020BasePoolMathRounding is BasePoolMathRoundingTest {
     using ArrayHelpers for *;

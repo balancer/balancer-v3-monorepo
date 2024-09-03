@@ -3,6 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -242,6 +243,32 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
     }
 
     /*******************************************************************************
+                          Buffer Initialization & Validation
+    *******************************************************************************/
+
+    modifier withInitializedBuffer(IERC4626 wrappedToken) {
+        _ensureBufferInitialized(wrappedToken);
+        _;
+    }
+
+    function _ensureBufferInitialized(IERC4626 wrappedToken) internal view {
+        if (_bufferAssets[wrappedToken] == address(0)) {
+            revert BufferNotInitialized(wrappedToken);
+        }
+    }
+
+    /**
+     * @dev This assumes `underlyingToken` is non-zero; should be called by functions that have already ensured the
+     * buffer has been initialized (e.g., those protected by `withInitializedBuffer`).
+     */
+    function _ensureCorrectBufferAsset(IERC4626 wrappedToken, address underlyingToken) internal view {
+        if (_bufferAssets[wrappedToken] != underlyingToken) {
+            // Asset was changed since the buffer was initialized.
+            revert WrongUnderlyingToken(wrappedToken, underlyingToken);
+        }
+    }
+
+    /*******************************************************************************
                                     Pool Information
     *******************************************************************************/
 
@@ -250,7 +277,7 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
      * and poolData.liveBalances in the same storage slot.
      */
     function _writePoolBalancesToStorage(address pool, PoolData memory poolData) internal {
-        mapping(uint256 => bytes32) storage poolBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < poolData.balancesRaw.length; ++i) {
             // Since we assume all newBalances are properly ordered
@@ -261,6 +288,15 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         }
     }
 
+    /**
+     * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
+     * In normal operation, we update both balances and fees together. However, while Recovery Mode is enabled,
+     * we cannot track yield fees, as that would involve making external calls that could fail and block withdrawals.
+     *
+     * Therefore, disabling Recovery Mode requires writing *only* the balances to storage, so we still need this
+     * as a separate function. It is normally called by `_loadPoolDataUpdatingBalancesAndYieldFees`, but in the
+     * Recovery Mode special case, it is called separately, with the result passed into `_writePoolBalancesToStorage`.
+     */
     function _loadPoolData(address pool, Rounding roundingDirection) internal view returns (PoolData memory poolData) {
         poolData.load(
             _poolTokenBalances[pool],
@@ -273,8 +309,8 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
 
     /**
      * @dev Fill in PoolData, including paying protocol yield fees and computing final raw and live balances.
-     * This function modifies protocol fees and balance storage. Since it modifies storage and makes external
-     * calls, it must be nonReentrant.
+     * This function modifies protocol fees and balance storage. Out of an abundance of caution, since `_loadPoolData`
+     * makes external calls, we are making anything that calls it and then modifies storage non-reentrant.
      * Side effects: updates `_aggregateFeeAmounts` and `_poolTokenBalances` in storage.
      */
     function _loadPoolDataUpdatingBalancesAndYieldFees(

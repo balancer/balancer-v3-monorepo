@@ -8,14 +8,14 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
-import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -26,7 +26,6 @@ import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/h
 import {
     TransientStorageHelpers
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
-import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { StorageSlotExtension } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/StorageSlotExtension.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { PackedTokenBalance } from "@balancer-labs/v3-solidity-utils/contracts/helpers/PackedTokenBalance.sol";
@@ -37,6 +36,7 @@ import { HooksConfigLib } from "./lib/HooksConfigLib.sol";
 import { VaultExtensionsLib } from "./lib/VaultExtensionsLib.sol";
 import { VaultCommon } from "./VaultCommon.sol";
 import { PoolDataLib } from "./lib/PoolDataLib.sol";
+import { BasePoolMath } from "./BasePoolMath.sol";
 
 /**
  * @notice Bytecode extension for the Vault containing permissionless functions outside the critical path.
@@ -238,9 +238,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Store the role account addresses (for getters).
         _poolRoleAccounts[pool] = params.roleAccounts;
 
-        // Make pool role assignments. A zero address means default to the authorizer.
-        _assignPoolRoles(pool, params.roleAccounts);
-
         PoolConfigBits poolConfigBits;
 
         // Store the configuration, and mark the pool as registered.
@@ -330,31 +327,6 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         );
     }
 
-    function _assignPoolRoles(address pool, PoolRoleAccounts memory roleAccounts) private {
-        mapping(bytes32 => PoolFunctionPermission) storage roleAssignments = _poolFunctionPermissions[pool];
-        IAuthentication vaultAdmin = IAuthentication(address(_vaultAdmin));
-
-        if (roleAccounts.pauseManager != address(0)) {
-            roleAssignments[vaultAdmin.getActionId(IVaultAdmin.pausePool.selector)] = PoolFunctionPermission({
-                account: roleAccounts.pauseManager,
-                onlyOwner: false
-            });
-            roleAssignments[vaultAdmin.getActionId(IVaultAdmin.unpausePool.selector)] = PoolFunctionPermission({
-                account: roleAccounts.pauseManager,
-                onlyOwner: false
-            });
-        }
-
-        if (roleAccounts.swapFeeManager != address(0)) {
-            bytes32 swapFeeAction = vaultAdmin.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector);
-
-            roleAssignments[swapFeeAction] = PoolFunctionPermission({
-                account: roleAccounts.swapFeeManager,
-                onlyOwner: true
-            });
-        }
-    }
-
     /// @inheritdoc IVaultExtension
     function isPoolRegistered(address pool) external view onlyVaultDelegateCall returns (bool) {
         return _isPoolRegistered(pool);
@@ -368,7 +340,14 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256[] memory exactAmountsIn,
         uint256 minBptAmountOut,
         bytes memory userData
-    ) external onlyVaultDelegateCall onlyWhenUnlocked withRegisteredPool(pool) returns (uint256 bptAmountOut) {
+    )
+        external
+        onlyVaultDelegateCall
+        onlyWhenUnlocked
+        withRegisteredPool(pool)
+        nonReentrant
+        returns (uint256 bptAmountOut)
+    {
         _ensureUnpaused(pool);
 
         // Balances are zero until after initialize is called, so there is no need to charge pending yield fee here.
@@ -420,8 +399,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         uint256[] memory exactAmountsIn,
         uint256[] memory exactAmountsInScaled18,
         uint256 minBptAmountOut
-    ) internal nonReentrant returns (uint256 bptAmountOut) {
-        mapping(uint256 => bytes32) storage poolBalances = _poolTokenBalances[pool];
+    ) internal returns (uint256 bptAmountOut) {
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < poolData.tokens.length; ++i) {
             IERC20 actualToken = poolData.tokens[i];
@@ -446,15 +425,15 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         _poolConfigBits[pool] = poolData.poolConfigBits;
 
         // Pass scaled balances to the pool.
-        bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18);
+        bptAmountOut = IBasePool(pool).computeInvariant(exactAmountsInScaled18, Rounding.ROUND_DOWN);
 
-        _ensureMinimumTotalSupply(bptAmountOut);
+        _ensurePoolMinimumTotalSupply(bptAmountOut);
 
-        // At this point we know that bptAmountOut >= _MINIMUM_TOTAL_SUPPLY, so this will not revert.
-        bptAmountOut -= _MINIMUM_TOTAL_SUPPLY;
+        // At this point we know that bptAmountOut >= _POOL_MINIMUM_TOTAL_SUPPLY, so this will not revert.
+        bptAmountOut -= _POOL_MINIMUM_TOTAL_SUPPLY;
         // When adding liquidity, we must mint tokens concurrently with updating pool balances,
         // as the pool's math relies on totalSupply.
-        // Minting will be reverted if it results in a total supply less than the _MINIMUM_TOTAL_SUPPLY.
+        // Minting will be reverted if it results in a total supply less than the _POOL_MINIMUM_TOTAL_SUPPLY.
         _mintMinimumSupplyReserve(address(pool));
         _mint(address(pool), to, bptAmountOut);
 
@@ -532,7 +511,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         )
     {
         // Retrieve the mapping of tokens and their balances for the specified pool.
-        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances = _poolTokenBalances[pool];
         tokens = _poolTokens[pool];
         uint256 numTokens = tokens.length;
         tokenInfo = new TokenInfo[](numTokens);
@@ -593,7 +572,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         address pool
     ) external view onlyVaultDelegateCall withInitializedPool(pool) returns (uint256 rate) {
         PoolData memory poolData = _loadPoolData(pool, Rounding.ROUND_DOWN);
-        uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18);
+        uint256 invariant = IBasePool(pool).computeInvariant(poolData.balancesLiveScaled18, Rounding.ROUND_DOWN);
 
         return invariant.divDown(_totalSupply(pool));
     }
@@ -752,7 +731,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         returns (uint256[] memory amountsOutRaw)
     {
         // Retrieve the mapping of tokens and their balances for the specified pool.
-        mapping(uint256 => bytes32) storage poolTokenBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolTokenBalances = _poolTokenBalances[pool];
 
         // Initialize arrays to store tokens and balances based on the number of tokens in the pool.
         IERC20[] memory tokens = _poolTokens[pool];
@@ -779,7 +758,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
         // Store the new pool balances - raw only, since we don't have rates in Recovery Mode.
         // In Recovery Mode, raw and last live balances will get out of sync. This is corrected when the pool is taken
         // out of Recovery Mode.
-        mapping(uint256 => bytes32) storage poolBalances = _poolTokenBalances[pool];
+        mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolBalances = _poolTokenBalances[pool];
 
         for (uint256 i = 0; i < numTokens; ++i) {
             packedBalances = poolBalances[i];
@@ -834,15 +813,16 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     }
 
     /// @inheritdoc IVaultExtension
-    function quote(bytes calldata data) external payable query onlyVaultDelegateCall returns (bytes memory result) {
+    function quote(bytes calldata data) external query onlyVaultDelegateCall returns (bytes memory result) {
         // Forward the incoming call to the original sender of this transaction.
-        return (msg.sender).functionCallWithValue(data, msg.value);
+        return (msg.sender).functionCall(data);
     }
 
     /// @inheritdoc IVaultExtension
-    function quoteAndRevert(bytes calldata data) external payable query onlyVaultDelegateCall {
+    function quoteAndRevert(bytes calldata data) external query onlyVaultDelegateCall {
         // Forward the incoming call to the original sender of this transaction.
-        (bool success, bytes memory result) = (msg.sender).call{ value: msg.value }(data);
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, bytes memory result) = (msg.sender).call(data);
         if (success) {
             // This will only revert if result is empty and sender account has no code.
             Address.verifyCallResultFromTarget(msg.sender, success, result);
@@ -878,7 +858,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
     /**
      * @inheritdoc Proxy
      * @dev Override proxy implementation of `fallback` to disallow incoming ETH transfers.
-     * This function actually returns whatever the Vault Extension does when handling the request.
+     * This function actually returns whatever the VaultExtension does when handling the request.
      */
     fallback() external payable override {
         if (msg.value > 0) {
@@ -894,7 +874,7 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
     /**
      * @inheritdoc Proxy
-     * @dev Returns Vault Extension, where fallback requests are forwarded.
+     * @dev Returns the VaultAdmin contract, to which fallback requests are forwarded.
      */
     function _implementation() internal view override returns (address) {
         return address(_vaultAdmin);

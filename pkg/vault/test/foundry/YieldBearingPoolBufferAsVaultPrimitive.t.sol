@@ -7,199 +7,82 @@ import "forge-std/Test.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { TokenConfig, TokenType, SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
-import { PoolMock } from "../../contracts/test/PoolMock.sol";
+import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 
-import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
-
-// TODO: rename file. Do later so that we can see the diff.
-contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
+contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
     using ArrayHelpers for *;
-
-    ERC4626TestToken internal waDAI;
-    ERC4626TestToken internal waUSDC;
-
-    // For two-token pools with waDAI/waUSDC, keep track of sorted token order.
-    uint256 internal waDaiIdx;
-    uint256 internal waUsdcIdx;
-
-    address internal yieldBearingPool;
+    using FixedPoint for uint256;
+    using ScalingHelpers for uint256;
 
     // The yield-bearing pool will have 100x the liquidity of the buffer.
-    uint256 internal yieldBearingPoolAmount = 10e6 * 1e18;
-    uint256 internal bufferAmount = yieldBearingPoolAmount / 100;
-    uint256 internal tooLargeSwapAmount = yieldBearingPoolAmount / 2;
+    uint256 internal tooLargeSwapAmount = erc4626PoolInitialAmount / 2;
     // We will swap with 10% of the buffer.
-    uint256 internal swapAmount = bufferAmount / 10;
+    uint256 internal swapAmount;
     // LP can unbalance buffer with this amount.
-    uint256 internal unbalanceDelta = bufferAmount / 2;
+    uint256 internal unbalancedUnderlyingDelta;
+
+    uint256 internal bufferTestAmount;
+    uint256 internal constant MAX_ERROR = 5;
 
     function setUp() public virtual override {
-        BaseVaultTest.setUp();
-
-        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
-        vm.label(address(waDAI), "waDAI");
-
-        // "USDC" is deliberately 18 decimals to test one thing at a time.
-        waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
-        vm.label(address(waUSDC), "waUSDC");
-
-        (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
-
-        initializeBuffers();
-        initializeYieldBearingPool();
+        bufferInitialAmount = erc4626PoolInitialAmount / 50;
+        swapAmount = bufferInitialAmount / 10;
+        unbalancedUnderlyingDelta = bufferInitialAmount / 2;
+        bufferTestAmount = erc4626PoolInitialAmount / 100;
+        BaseERC4626BufferTest.setUp();
     }
 
     function testAddLiquidityEvents() public {
-        initializeBuffers();
-
+        vm.startPrank(lp);
         // Can add the same amount again, since twice as much was minted.
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(waDAI, lp, bufferAmount, bufferAmount, bufferAmount * 2);
-        router.addLiquidityToBuffer(waDAI, bufferAmount, bufferAmount, lp);
+        emit IVaultEvents.LiquidityAddedToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount);
+        router.addLiquidityToBuffer(waDAI, bufferInitialAmount, bufferInitialAmount);
 
         vm.expectEmit();
-        emit IVaultEvents.LiquidityAddedToBuffer(waUSDC, lp, bufferAmount, bufferAmount, bufferAmount * 2);
-        router.addLiquidityToBuffer(waUSDC, bufferAmount, bufferAmount, lp);
+        emit IVaultEvents.LiquidityAddedToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount);
+        router.addLiquidityToBuffer(waUSDC, bufferInitialAmount, bufferInitialAmount);
+        vm.stopPrank();
     }
 
     function testRemoveLiquidityEvents() public {
-        initializeBuffers();
-
         // Authorizes router to call removeLiquidityFromBuffer (trusted router).
         authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
 
-        vm.expectEmit();
-        emit IVaultEvents.LiquidityRemovedFromBuffer(waDAI, lp, bufferAmount / 2, bufferAmount / 2, bufferAmount);
-        vm.prank(lp);
-        router.removeLiquidityFromBuffer(waDAI, bufferAmount);
+        (uint256 underlyingBalance, uint256 wrappedBalance) = vault.getBufferBalance(waDAI);
+        uint256 bufferTotalShares = vault.getBufferTotalShares(waDAI);
 
         vm.expectEmit();
-        emit IVaultEvents.LiquidityRemovedFromBuffer(waUSDC, lp, bufferAmount / 2, bufferAmount / 2, bufferAmount);
+        emit IVaultEvents.LiquidityRemovedFromBuffer(
+            waDAI,
+            (underlyingBalance * bufferTestAmount) / bufferTotalShares,
+            (wrappedBalance * bufferTestAmount) / bufferTotalShares
+        );
         vm.prank(lp);
-        router.removeLiquidityFromBuffer(waUSDC, bufferAmount);
-    }
+        vault.removeLiquidityFromBuffer(waDAI, bufferTestAmount);
 
-    function initializeBuffers() private {
-        // Create and fund buffer pools.
-        vm.startPrank(lp);
-        dai.mint(lp, 2 * bufferAmount);
-        dai.approve(address(waDAI), 2 * bufferAmount);
-        waDAI.deposit(2 * bufferAmount, lp);
+        (underlyingBalance, wrappedBalance) = vault.getBufferBalance(waUSDC);
+        bufferTotalShares = vault.getBufferTotalShares(waUSDC);
 
-        usdc.mint(lp, 2 * bufferAmount);
-        usdc.approve(address(waUSDC), 2 * bufferAmount);
-        waUSDC.deposit(2 * bufferAmount, lp);
-        vm.stopPrank();
-
-        vm.startPrank(lp);
-        waDAI.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
-        waUSDC.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
-
-        router.addLiquidityToBuffer(waDAI, bufferAmount, bufferAmount, lp);
-        router.addLiquidityToBuffer(waUSDC, bufferAmount, bufferAmount, lp);
-        vm.stopPrank();
-    }
-
-    function initializeYieldBearingPool() private {
-        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
-        tokenConfig[waDaiIdx].token = IERC20(waDAI);
-        tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
-        tokenConfig[0].tokenType = TokenType.WITH_RATE;
-        tokenConfig[1].tokenType = TokenType.WITH_RATE;
-        tokenConfig[waDaiIdx].rateProvider = IRateProvider(address(waDAI));
-        tokenConfig[waUsdcIdx].rateProvider = IRateProvider(address(waUSDC));
-
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "Yield-bearing Pool", "YIELDYBOI");
-
-        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract);
-
-        vm.label(address(newPool), "Yield-bearing pool");
-        yieldBearingPool = address(newPool);
-
-        vm.startPrank(bob);
-        waDAI.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
-        waUSDC.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
-
-        dai.mint(bob, yieldBearingPoolAmount);
-        dai.approve(address(waDAI), yieldBearingPoolAmount);
-        waDAI.deposit(yieldBearingPoolAmount, bob);
-
-        usdc.mint(bob, yieldBearingPoolAmount);
-        usdc.approve(address(waUSDC), yieldBearingPoolAmount);
-        waUSDC.deposit(yieldBearingPoolAmount, bob);
-
-        _initPool(
-            yieldBearingPool,
-            [yieldBearingPoolAmount, yieldBearingPoolAmount].toMemoryArray(),
-            yieldBearingPoolAmount * 2 - MIN_BPT
+        vm.expectEmit();
+        emit IVaultEvents.LiquidityRemovedFromBuffer(
+            waUSDC,
+            (underlyingBalance * bufferTestAmount) / bufferTotalShares,
+            (wrappedBalance * bufferTestAmount) / bufferTotalShares
         );
-        vm.stopPrank();
-    }
-
-    function testSwapPreconditions() public view {
-        // bob should have the full yieldBearingPool BPT.
-        assertEq(
-            IERC20(yieldBearingPool).balanceOf(bob),
-            yieldBearingPoolAmount * 2 - MIN_BPT,
-            "Wrong yield-bearing pool BPT amount"
-        );
-
-        (IERC20[] memory tokens, , uint256[] memory balancesRaw, ) = vault.getPoolTokenInfo(yieldBearingPool);
-        // The yield-bearing pool should have `yieldBearingPoolAmount` of both tokens.
-        assertEq(address(tokens[waDaiIdx]), address(waDAI), "Wrong yield-bearing pool token (waDAI)");
-        assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong yield-bearing pool token (waUSDC)");
-        assertEq(balancesRaw[0], yieldBearingPoolAmount, "Wrong yield-bearing pool balance [0]");
-        assertEq(balancesRaw[1], yieldBearingPoolAmount, "Wrong yield-bearing pool balance [1]");
-
-        // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
-        assertEq(
-            vault.getBufferOwnerShares(IERC4626(waDAI), lp),
-            bufferAmount * 2 - MIN_BPT,
-            "Wrong share of waDAI buffer belonging to LP"
-        );
-        assertEq(
-            vault.getBufferOwnerShares(IERC4626(waUSDC), lp),
-            bufferAmount * 2 - MIN_BPT,
-            "Wrong share of waUSDC buffer belonging to LP"
-        );
-
-        // Buffer should have the correct amount of issued shares
-        assertEq(vault.getBufferTotalShares(IERC4626(waDAI)), bufferAmount * 2, "Wrong issued shares of waDAI buffer");
-        assertEq(
-            vault.getBufferTotalShares(IERC4626(waUSDC)),
-            bufferAmount * 2,
-            "Wrong issued shares of waUSDC buffer"
-        );
-
-        uint256 baseBalance;
-        uint256 wrappedBalance;
-
-        // The vault buffers should each have `bufferAmount` of their respective tokens.
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waDAI));
-        assertEq(baseBalance, bufferAmount, "Wrong waDAI buffer balance for base token");
-        assertEq(wrappedBalance, bufferAmount, "Wrong waDAI buffer balance for wrapped token");
-
-        (baseBalance, wrappedBalance) = vault.getBufferBalance(IERC4626(waUSDC));
-        assertEq(baseBalance, bufferAmount, "Wrong waUSDC buffer balance for base token");
-        assertEq(wrappedBalance, bufferAmount, "Wrong waUSDC buffer balance for wrapped token");
+        vm.prank(lp);
+        vault.removeLiquidityFromBuffer(waUSDC, bufferTestAmount);
     }
 
     function testYieldBearingPoolSwapWithinBufferRangeExactIn() public {
@@ -211,15 +94,36 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         (uint256[] memory pathAmountsOut, address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
             .swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
+        // For ExactIn, the steps are computed in order (Wrap -> Swap -> Unwrap).
+        // Compute Wrap. The exact amount is `swapAmount`. The token in is DAI, so the wrap occurs in the waDAI buffer.
+        // `waDaiAmountInRaw` is the output of the wrap, and since the buffer has liquidity, we need to consider the
+        // vaultConvertError.
+        uint256 waDaiAmountInRaw = waDAI.convertToShares(swapAmount) - vaultConvertFactor;
+        // Compute Swap. `waDaiAmountInRaw` is the amount in of pool swap. To compute the swap with precision, we
+        // need to take into account the rates used by the Vault, instead of using a wrapper "convert" function.
+        uint256 waDaiAmountInScaled18 = waDaiAmountInRaw.mulDown(waDAI.getRate());
+        // Since the pool is linear, waDaiAmountInScaled18 = waUsdcAmountOutScaled18. Besides, since we're scaling a
+        // tokenOut amount, we need to round the rate up.
+        uint256 waUsdcAmountOutRaw = waDaiAmountInScaled18.divDown(waUSDC.getRate().computeRateRoundUp());
+        // Compute Unwrap. `waUsdcAmountOutRaw` is the output of the swap and the input of the unwrap. The amount out
+        // USDC is calculated by the waUSDC buffer and, since the buffer has liquidity, we need to consider the
+        // vaultConvertError.
+        uint256 usdcAmountOutRaw = waUSDC.convertToAssets(waUsdcAmountOutRaw) - vaultConvertFactor;
+
         // When the buffer has enough liquidity to wrap/unwrap, buffer balances should change by swapAmount
         // DAI buffer receives DAI from user.
         vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai + swapAmount;
-        vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai - swapAmount;
+        vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai - waDaiAmountInRaw;
         // Yield-bearing pool receives WaDai from DAI buffer, and gives waUSDC to USDC buffer.
-        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc + swapAmount;
+        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc + waUsdcAmountOutRaw;
         // USDC buffer gives USDC to user.
-        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc - swapAmount;
-        vars.expectedAliceDelta = swapAmount;
+        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc - usdcAmountOutRaw;
+
+        vars.expectedPoolBalanceAfterSwapWaDai = vars.yieldBearingPoolBalanceBeforeSwapWaDai + waDaiAmountInRaw;
+        vars.expectedPoolBalanceAfterSwapWaUsdc = vars.yieldBearingPoolBalanceBeforeSwapWaUsdc - waUsdcAmountOutRaw;
+
+        vars.expectedAliceDeltaDai = swapAmount;
+        vars.expectedAliceDeltaUsdc = usdcAmountOutRaw;
 
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, vars);
     }
@@ -233,15 +137,37 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         (uint256[] memory pathAmountsIn, address[] memory tokensIn, uint256[] memory amountsIn) = batchRouter
             .swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
+        // For ExactOut, the last step is computed first (Unwrap -> Swap -> Wrap).
+        // Compute Unwrap. The exact amount out in USDC is `swapAmount` and the token out is USDC, so the unwrap
+        // occurs in the waUSDC buffer. Since the buffer has liquidity, we need to consider the vaultConvertError.
+        // `waUsdcAmountOutRaw` is the ExactOut amount of the pool swap, and the input to the unwrap.
+        // That's why the `vaultConvertFactor` is added.
+        uint256 waUsdcAmountOutRaw = waUSDC.convertToShares(swapAmount) + vaultConvertFactor;
+        // Compute Swap. `waUsdcAmountOutRaw` is the ExactOut amount of the pool swap. To compute the swap with
+        // precision, we need to take into account the rates used by the Vault, instead of using a wrapper "convert"
+        // function. Besides, since we're scaling a tokenOut amount, we need to round the rate up.
+        uint256 waUsdcAmountOutScaled18 = waUsdcAmountOutRaw.mulDown(waUSDC.getRate().computeRateRoundUp());
+        // Since the pool is linear, waUsdcAmountOutScaled18 = waDaiAmountInScaled18. `waDaiAmountInRaw` is the
+        // calculated amount in of the pool swap, and the ExactOut value of the wrap operation.
+        uint256 waDaiAmountInRaw = waUsdcAmountOutScaled18.divDown(waDAI.getRate());
+        // Compute Wrap. The amount in DAI is calculated by the waDAI buffer and, since the buffer has liquidity, we
+        // need to consider the vaultConvertError.
+        uint256 daiAmountInRaw = waDAI.convertToAssets(waDaiAmountInRaw) + vaultConvertFactor;
+
         // When the buffer has enough liquidity to wrap/unwrap, buffer balances should change by swapAmount
         // DAI buffer receives DAI from user.
-        vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai + swapAmount;
-        vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai - swapAmount;
+        vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai + daiAmountInRaw;
+        vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai - waDaiAmountInRaw;
         // Yield-bearing pool receives WaDai from DAI buffer, and gives waUSDC to USDC buffer.
-        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc + swapAmount;
+        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc + waUsdcAmountOutRaw;
         // USDC buffer gives USDC to user.
         vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc - swapAmount;
-        vars.expectedAliceDelta = swapAmount;
+
+        vars.expectedPoolBalanceAfterSwapWaDai = vars.yieldBearingPoolBalanceBeforeSwapWaDai + waDaiAmountInRaw;
+        vars.expectedPoolBalanceAfterSwapWaUsdc = vars.yieldBearingPoolBalanceBeforeSwapWaUsdc - waUsdcAmountOutRaw;
+
+        vars.expectedAliceDeltaDai = daiAmountInRaw;
+        vars.expectedAliceDeltaUsdc = swapAmount;
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
@@ -261,7 +187,18 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai;
         vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc;
         vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc;
-        vars.expectedAliceDelta = tooLargeSwapAmount;
+
+        vars.expectedPoolBalanceAfterSwapWaDai =
+            vars.yieldBearingPoolBalanceBeforeSwapWaDai +
+            waDAI.convertToShares(tooLargeSwapAmount);
+        vars.expectedPoolBalanceAfterSwapWaUsdc =
+            vars.yieldBearingPoolBalanceBeforeSwapWaUsdc -
+            waUSDC.convertToShares(tooLargeSwapAmount);
+
+        // Delta DAI and USDC are the same because the _verifySwapResult will check them in opposite directions (DAI
+        // going in, USDC going out)
+        vars.expectedAliceDeltaDai = tooLargeSwapAmount;
+        vars.expectedAliceDeltaUsdc = tooLargeSwapAmount;
 
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, vars);
     }
@@ -281,7 +218,16 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai;
         vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc;
         vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc;
-        vars.expectedAliceDelta = tooLargeSwapAmount;
+
+        vars.expectedPoolBalanceAfterSwapWaDai =
+            vars.yieldBearingPoolBalanceBeforeSwapWaDai +
+            waDAI.convertToShares(tooLargeSwapAmount);
+        vars.expectedPoolBalanceAfterSwapWaUsdc =
+            vars.yieldBearingPoolBalanceBeforeSwapWaUsdc -
+            waUSDC.convertToShares(tooLargeSwapAmount);
+
+        vars.expectedAliceDeltaDai = tooLargeSwapAmount;
+        vars.expectedAliceDeltaUsdc = tooLargeSwapAmount;
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
@@ -289,9 +235,9 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     function testYieldBearingPoolSwapUnbalancedBufferExactIn() public {
         vm.startPrank(lp);
         // Surplus of underlying.
-        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, lp);
+        router.addLiquidityToBuffer(waDAI, unbalancedUnderlyingDelta, 0);
         // Surplus of wrapped.
-        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, lp);
+        router.addLiquidityToBuffer(waUSDC, 0, waUSDC.convertToShares(unbalancedUnderlyingDelta));
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
@@ -308,11 +254,24 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         // - If user is wrapping and buffer has a surplus of underlying, buffer will be balanced
         // - If user is unwrapping and buffer has a surplus of wrapped, buffer will be balanced
         // - But if user is wrapping and buffer has a surplus of wrapped, buffer will stay as is
-        vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai - (unbalanceDelta / 2);
-        vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai + (unbalanceDelta / 2);
-        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc + (unbalanceDelta / 2);
-        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc - (unbalanceDelta / 2);
-        vars.expectedAliceDelta = tooLargeSwapAmount;
+        vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai - (unbalancedUnderlyingDelta / 2);
+        vars.expectedBufferBalanceAfterSwapWaDai =
+            vars.bufferBalanceBeforeSwapWaDai +
+            waDAI.convertToShares(unbalancedUnderlyingDelta / 2);
+        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc + (unbalancedUnderlyingDelta / 2);
+        vars.expectedBufferBalanceAfterSwapWaUsdc =
+            vars.bufferBalanceBeforeSwapWaUsdc -
+            waUSDC.convertToShares(unbalancedUnderlyingDelta / 2);
+
+        vars.expectedPoolBalanceAfterSwapWaDai =
+            vars.yieldBearingPoolBalanceBeforeSwapWaDai +
+            waDAI.convertToShares(tooLargeSwapAmount);
+        vars.expectedPoolBalanceAfterSwapWaUsdc =
+            vars.yieldBearingPoolBalanceBeforeSwapWaUsdc -
+            waUSDC.convertToShares(tooLargeSwapAmount);
+
+        vars.expectedAliceDeltaDai = tooLargeSwapAmount;
+        vars.expectedAliceDeltaUsdc = tooLargeSwapAmount;
 
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, vars);
     }
@@ -320,9 +279,9 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
     function testYieldBearingPoolSwapUnbalancedBufferExactOut() public {
         vm.startPrank(lp);
         // Surplus of underlying.
-        router.addLiquidityToBuffer(waDAI, unbalanceDelta, 0, lp);
+        router.addLiquidityToBuffer(waDAI, unbalancedUnderlyingDelta, 0);
         // Surplus of wrapped.
-        router.addLiquidityToBuffer(waUSDC, 0, unbalanceDelta, lp);
+        router.addLiquidityToBuffer(waUSDC, 0, waUSDC.convertToShares(unbalancedUnderlyingDelta));
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
@@ -339,11 +298,24 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         // - If user is wrapping and buffer has a surplus of underlying, buffer will be balanced
         // - If user is unwrapping and buffer has a surplus of wrapped, buffer will be balanced
         // - But if user is wrapping and buffer has a surplus of wrapped, buffer will stay as is
-        vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai - (unbalanceDelta / 2);
-        vars.expectedBufferBalanceAfterSwapWaDai = vars.bufferBalanceBeforeSwapWaDai + (unbalanceDelta / 2);
-        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc + (unbalanceDelta / 2);
-        vars.expectedBufferBalanceAfterSwapWaUsdc = vars.bufferBalanceBeforeSwapWaUsdc - (unbalanceDelta / 2);
-        vars.expectedAliceDelta = tooLargeSwapAmount;
+        vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai - (unbalancedUnderlyingDelta / 2);
+        vars.expectedBufferBalanceAfterSwapWaDai =
+            vars.bufferBalanceBeforeSwapWaDai +
+            waDAI.convertToShares(unbalancedUnderlyingDelta / 2);
+        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc + (unbalancedUnderlyingDelta / 2);
+        vars.expectedBufferBalanceAfterSwapWaUsdc =
+            vars.bufferBalanceBeforeSwapWaUsdc -
+            waUSDC.convertToShares(unbalancedUnderlyingDelta / 2);
+
+        vars.expectedPoolBalanceAfterSwapWaDai =
+            vars.yieldBearingPoolBalanceBeforeSwapWaDai +
+            waDAI.convertToShares(tooLargeSwapAmount);
+        vars.expectedPoolBalanceAfterSwapWaUsdc =
+            vars.yieldBearingPoolBalanceBeforeSwapWaUsdc -
+            waUSDC.convertToShares(tooLargeSwapAmount);
+
+        vars.expectedAliceDeltaDai = tooLargeSwapAmount;
+        vars.expectedAliceDeltaUsdc = tooLargeSwapAmount;
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
     }
@@ -359,14 +331,20 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         // and finally post-swap the waUSDC through the USDC buffer to calculate the USDC amount out.
         // The only token transfers are DAI in (given) and USDC out (calculated).
         steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: yieldBearingPool, tokenOut: waUSDC, isBuffer: false });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waUSDC, isBuffer: false });
         steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
+
+        // When the buffer liquidity is used, it adds a convertError to avoid a buffer from being drained. So, the
+        // waDAI buffer removes `vaultConvertError` from the wrapped amount out, and this factor propagates until the
+        // last step, when waUSDC buffer convert the waUSDC amount into USDC using convertToAssets. After this
+        // conversion, waUSDC buffer also removes convertError from the buffer result.
+        uint256 maxError = 2 * waUSDC.convertToAssets(vaultConvertFactor);
 
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
             tokenIn: dai,
             steps: steps,
             exactAmountIn: amount,
-            minAmountOut: amount - 1 // rebalance tests are a wei off
+            minAmountOut: amount - maxError
         });
     }
 
@@ -381,13 +359,19 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         // and finally post-swap the waDAI for DAI through the DAI buffer to calculate the DAI amount in.
         // The only token transfers are DAI in (calculated) and USDC out (given).
         steps[0] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: waDAI, isBuffer: true });
-        steps[1] = IBatchRouter.SwapPathStep({ pool: yieldBearingPool, tokenOut: waUSDC, isBuffer: false });
+        steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waUSDC, isBuffer: false });
         steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
+
+        // When the buffer liquidity is used, it adds a convertError to avoid a buffer from being drained. So, the
+        // waDAI buffer removes `vaultConvertError` from the wrapped amount out, and this factor propagates until the
+        // last step, when waUSDC buffer convert the waUSDC amount into USDC using convertToAssets. After this
+        // conversion, waUSDC buffer also removes convertError from the buffer result.
+        uint256 maxError = waUSDC.convertToAssets(vaultConvertFactor) + vaultConvertFactor;
 
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
             tokenIn: dai,
             steps: steps,
-            maxAmountIn: amount,
+            maxAmountIn: amount + maxError,
             exactAmountOut: amount
         });
     }
@@ -402,11 +386,14 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         uint256 bufferBalanceBeforeSwapWaUsdc;
         uint256 yieldBearingPoolBalanceBeforeSwapWaDai;
         uint256 yieldBearingPoolBalanceBeforeSwapWaUsdc;
-        uint256 expectedAliceDelta;
+        uint256 expectedAliceDeltaDai;
+        uint256 expectedAliceDeltaUsdc;
         uint256 expectedBufferBalanceAfterSwapDai;
         uint256 expectedBufferBalanceAfterSwapWaDai;
         uint256 expectedBufferBalanceAfterSwapUsdc;
         uint256 expectedBufferBalanceAfterSwapWaUsdc;
+        uint256 expectedPoolBalanceAfterSwapWaDai;
+        uint256 expectedPoolBalanceAfterSwapWaUsdc;
     }
 
     function _createSwapResultLocals(SwapKind kind) private view returns (SwapResultLocals memory vars) {
@@ -425,7 +412,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
         uint256[] memory balancesRaw;
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
-        (, , balancesRaw, ) = vault.getPoolTokenInfo(yieldBearingPool);
+        (, , balancesRaw, ) = vault.getPoolTokenInfo(erc4626Pool);
         vars.yieldBearingPoolBalanceBeforeSwapWaDai = balancesRaw[daiIdx];
         vars.yieldBearingPoolBalanceBeforeSwapWaUsdc = balancesRaw[usdcIdx];
     }
@@ -443,59 +430,59 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
 
         // Check results
         if (vars.kind == SwapKind.EXACT_IN) {
-            // Rounding issues occurs in favor of vault, and are very small
-            assertLe(paths[0], vars.expectedAliceDelta, "paths AmountOut must be <= expected amountOut");
-            assertApproxEqAbs(paths[0], vars.expectedAliceDelta, 1, "Wrong path count");
-            assertLe(paths[0], vars.expectedAliceDelta, "amounts AmountOut must be <= expected amountOut");
-            assertApproxEqAbs(amounts[0], vars.expectedAliceDelta, 1, "Wrong amounts count");
+            // Rounding issues occurs in favor of vault, and are very small. Usdc is the token out.
+            assertLe(paths[0], vars.expectedAliceDeltaUsdc, "paths AmountOut must be <= expected amountOut");
+            assertApproxEqAbs(paths[0], vars.expectedAliceDeltaUsdc, MAX_ERROR, "Wrong path count");
+            assertLe(paths[0], vars.expectedAliceDeltaUsdc, "amounts AmountOut must be <= expected amountOut");
+            assertApproxEqAbs(amounts[0], vars.expectedAliceDeltaUsdc, MAX_ERROR, "Wrong amounts count");
             assertEq(tokens[0], address(usdc), "Wrong token for SwapKind");
         } else {
-            // Rounding issues occurs in favor of vault, and are very small
-            assertGe(paths[0], vars.expectedAliceDelta, "paths AmountIn must be >= expected amountIn");
-            assertApproxEqAbs(paths[0], vars.expectedAliceDelta, 5, "Wrong path count");
-            assertGe(amounts[0], vars.expectedAliceDelta, "amounts AmountIn must be >= expected amountIn");
-            assertApproxEqAbs(amounts[0], vars.expectedAliceDelta, 5, "Wrong amounts count");
+            // Rounding issues occurs in favor of vault, and are very small. Dai is the token in.
+            assertGe(paths[0], vars.expectedAliceDeltaDai, "paths AmountIn must be >= expected amountIn");
+            assertApproxEqAbs(paths[0], vars.expectedAliceDeltaDai, MAX_ERROR, "Wrong path count");
+            assertGe(amounts[0], vars.expectedAliceDeltaDai, "amounts AmountIn must be >= expected amountIn");
+            assertApproxEqAbs(amounts[0], vars.expectedAliceDeltaDai, MAX_ERROR, "Wrong amounts count");
             assertEq(tokens[0], address(dai), "Wrong token for SwapKind");
         }
 
         // Tokens were transferred
         assertLe(
             dai.balanceOf(alice),
-            vars.aliceBalanceBeforeSwapDai - vars.expectedAliceDelta,
+            vars.aliceBalanceBeforeSwapDai - vars.expectedAliceDeltaDai,
             "Alice balance DAI must be <= expected balance"
         );
         assertApproxEqAbs(
             dai.balanceOf(alice),
-            vars.aliceBalanceBeforeSwapDai - vars.expectedAliceDelta,
-            5,
+            vars.aliceBalanceBeforeSwapDai - vars.expectedAliceDeltaDai,
+            MAX_ERROR,
             "Wrong ending balance of DAI for Alice"
         );
         assertLe(
             usdc.balanceOf(alice),
-            vars.aliceBalanceBeforeSwapUsdc + vars.expectedAliceDelta,
+            vars.aliceBalanceBeforeSwapUsdc + vars.expectedAliceDeltaUsdc,
             "Alice balance USDC must be <= expected balance"
         );
         assertApproxEqAbs(
             usdc.balanceOf(alice),
-            vars.aliceBalanceBeforeSwapUsdc + vars.expectedAliceDelta,
-            1,
+            vars.aliceBalanceBeforeSwapUsdc + vars.expectedAliceDeltaUsdc,
+            MAX_ERROR,
             "Wrong ending balance of USDC for Alice"
         );
 
         uint256[] memory balancesRaw;
 
         (uint256 daiIdx, uint256 usdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
-        (, , balancesRaw, ) = vault.getPoolTokenInfo(yieldBearingPool);
+        (, , balancesRaw, ) = vault.getPoolTokenInfo(erc4626Pool);
         assertApproxEqAbs(
             balancesRaw[daiIdx],
-            vars.yieldBearingPoolBalanceBeforeSwapWaDai + waDAI.convertToShares(vars.expectedAliceDelta),
-            5,
+            vars.expectedPoolBalanceAfterSwapWaDai,
+            MAX_ERROR,
             "Wrong yield-bearing pool DAI balance"
         );
         assertApproxEqAbs(
             balancesRaw[usdcIdx],
-            vars.yieldBearingPoolBalanceBeforeSwapWaUsdc - waUSDC.convertToShares(vars.expectedAliceDelta),
-            1,
+            vars.expectedPoolBalanceAfterSwapWaUsdc,
+            MAX_ERROR,
             "Wrong yield-bearing pool USDC balance"
         );
 
@@ -505,13 +492,13 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         assertApproxEqAbs(
             underlyingBalance,
             vars.expectedBufferBalanceAfterSwapDai,
-            5,
+            MAX_ERROR,
             "Wrong DAI buffer pool underlying balance"
         );
         assertApproxEqAbs(
             wrappedBalance,
             vars.expectedBufferBalanceAfterSwapWaDai,
-            5,
+            MAX_ERROR,
             "Wrong DAI buffer pool wrapped balance"
         );
 
@@ -519,13 +506,13 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseVaultTest {
         assertApproxEqAbs(
             underlyingBalance,
             vars.expectedBufferBalanceAfterSwapUsdc,
-            1,
+            MAX_ERROR,
             "Wrong USDC buffer pool underlying balance"
         );
         assertApproxEqAbs(
             wrappedBalance,
             vars.expectedBufferBalanceAfterSwapWaUsdc,
-            1,
+            MAX_ERROR,
             "Wrong USDC buffer pool wrapped balance"
         );
     }

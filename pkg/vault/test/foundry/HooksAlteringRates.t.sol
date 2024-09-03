@@ -70,8 +70,8 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(
-                IBasePool.onSwap.selector,
+            abi.encodeCall(
+                IBasePool.onSwap,
                 PoolSwapParams({
                     kind: SwapKind.EXACT_IN,
                     amountGivenScaled18: rateAdjustedAmount,
@@ -111,7 +111,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
-        uint256 bptAmount = rateAdjustedAmount + defaultAmount - _MINIMUM_BPT;
+        uint256 bptAmount = rateAdjustedAmount + defaultAmount - POOL_MINIMUM_TOTAL_SUPPLY;
 
         uint256[] memory expectedAmounts = new uint256[](2);
         expectedAmounts[daiIdx] = rateAdjustedAmount;
@@ -121,7 +121,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(IHooks.onAfterInitialize.selector, expectedAmounts, bptAmount, "")
+            abi.encodeCall(IHooks.onAfterInitialize, (expectedAmounts, bptAmount, bytes("")))
         );
 
         router.initialize(
@@ -130,7 +130,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
             false,
-            ""
+            bytes("")
         );
     }
 
@@ -160,16 +160,18 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onAfterAddLiquidity.selector,
-                router,
-                pool,
-                AddLiquidityKind.UNBALANCED,
-                expectedAmountsIn,
-                [defaultAmount, defaultAmount].toMemoryArray(),
-                defaultAmount * 2,
-                expectedBalances,
-                bytes("")
+            abi.encodeCall(
+                IHooks.onAfterAddLiquidity,
+                (
+                    address(router),
+                    pool,
+                    AddLiquidityKind.UNBALANCED,
+                    expectedAmountsIn,
+                    [defaultAmount, defaultAmount].toMemoryArray(),
+                    defaultAmount * 2,
+                    expectedBalances,
+                    bytes("")
+                )
             )
         );
 
@@ -213,13 +215,9 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         // removeLiquidityCustom passes the minAmountsOut to the callback, so we can check that they are updated.
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(
-                IPoolLiquidity.onRemoveLiquidityCustom.selector,
-                router,
-                bptAmount,
-                expectedAmountsOut,
-                expectedBalances,
-                bytes("")
+            abi.encodeCall(
+                IPoolLiquidity.onRemoveLiquidityCustom,
+                (address(router), bptAmount, expectedAmountsOut, expectedBalances, bytes(""))
             )
         );
         vm.prank(alice);

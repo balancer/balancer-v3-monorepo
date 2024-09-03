@@ -31,6 +31,9 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
     function setUp() public virtual override {
         defaultBalance = 1e10 * 1e18;
+        // We will use min trade amount in this test.
+        vaultMockMinTradeAmount = PRODUCTION_MIN_TRADE_AMOUNT;
+
         BaseVaultTest.setUp();
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
@@ -92,13 +95,13 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFeePercentage.selector, poolSwapParams, pool, 0),
+            abi.encodeCall(PoolHooksMock.onComputeDynamicSwapFeePercentage, (poolSwapParams, pool, 0)),
             1 // callCount
         );
 
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(PoolMock.onSwap.selector, poolSwapParams),
+            abi.encodeCall(PoolMock.onSwap, poolSwapParams),
             1 // callCount
         );
 
@@ -130,13 +133,13 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(PoolHooksMock.onComputeDynamicSwapFeePercentage.selector, poolSwapParams, pool, 0),
+            abi.encodeCall(PoolHooksMock.onComputeDynamicSwapFeePercentage, (poolSwapParams, pool, 0)),
             1 // callCount
         );
 
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(PoolMock.onSwap.selector, poolSwapParams),
+            abi.encodeCall(PoolMock.onSwap, poolSwapParams),
             1 // callCount
         );
 
@@ -173,19 +176,21 @@ contract DynamicFeePoolTest is BaseVaultTest {
 
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeWithSelector(
-                IHooks.onComputeDynamicSwapFeePercentage.selector,
-                PoolSwapParams({
-                    kind: SwapKind.EXACT_IN,
-                    amountGivenScaled18: 0,
-                    balancesScaled18: balances,
-                    indexIn: 0,
-                    indexOut: 0,
-                    router: address(0),
-                    userData: bytes("")
-                }),
-                pool,
-                10e16
+            abi.encodeCall(
+                IHooks.onComputeDynamicSwapFeePercentage,
+                (
+                    PoolSwapParams({
+                        kind: SwapKind.EXACT_IN,
+                        amountGivenScaled18: 0,
+                        balancesScaled18: balances,
+                        indexIn: 0,
+                        indexOut: 0,
+                        router: address(0),
+                        userData: bytes("")
+                    }),
+                    pool,
+                    10e16
+                )
             ),
             1 // callCount
         );
@@ -200,11 +205,21 @@ contract DynamicFeePoolTest is BaseVaultTest {
         assertEq(actualDynamicSwapFee, dynamicSwapFeePercentage, "Wrong dynamicSwapFeePercentage");
     }
 
+    function testExternalComputeFeeInvalid() public {
+        PoolSwapParams memory swapParams;
+        uint256 invalidPercentage = 101e16; // 101%
+
+        PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(invalidPercentage);
+
+        vm.expectRevert(IVaultErrors.PercentageAboveMax.selector);
+        vault.computeDynamicSwapFeePercentage(pool, swapParams);
+    }
+
     function testSwapChargesFees__Fuzz(uint256 dynamicSwapFeePercentage) public {
         dynamicSwapFeePercentage = bound(
             dynamicSwapFeePercentage,
             0,
-            FixedPoint.ONE - MIN_TRADE_AMOUNT.divDown(defaultAmount)
+            FixedPoint.ONE - PRODUCTION_MIN_TRADE_AMOUNT.divDown(defaultAmount)
         );
         PoolHooksMock(poolHooksContract).setDynamicSwapFeePercentage(dynamicSwapFeePercentage);
 
