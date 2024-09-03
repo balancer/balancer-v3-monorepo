@@ -353,7 +353,7 @@ describe('Vault', function () {
 
     sharedBeforeEach('get old and deploy new authorizer', async () => {
       oldAuthorizerAddress = await vault.getAuthorizer();
-      oldAuthorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', oldAuthorizerAddress);
+      oldAuthorizer = await deployedAt('BasicAuthorizerMock', oldAuthorizerAddress);
 
       newAuthorizer = await deploy('NullAuthorizer');
     });

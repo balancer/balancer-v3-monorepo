@@ -111,7 +111,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
 
         uint256 rateAdjustedAmount = defaultAmount / 2;
 
-        uint256 bptAmount = rateAdjustedAmount + defaultAmount - _MINIMUM_BPT;
+        uint256 bptAmount = rateAdjustedAmount + defaultAmount - POOL_MINIMUM_TOTAL_SUPPLY;
 
         uint256[] memory expectedAmounts = new uint256[](2);
         expectedAmounts[daiIdx] = rateAdjustedAmount;
@@ -121,7 +121,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
         vm.prank(bob);
         vm.expectCall(
             address(poolHooksContract),
-            abi.encodeCall(IHooks.onAfterInitialize, (expectedAmounts, bptAmount, ""))
+            abi.encodeCall(IHooks.onAfterInitialize, (expectedAmounts, bptAmount, bytes("")))
         );
 
         router.initialize(
@@ -130,7 +130,7 @@ contract HooksAlteringRatesTest is BaseVaultTest {
             [defaultAmount, defaultAmount].toMemoryArray(),
             0,
             false,
-            ""
+            bytes("")
         );
     }
 

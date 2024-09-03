@@ -31,8 +31,6 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
     uint256 private constant CURRENT_NONCE = 0;
 
-    uint256 internal constant MINIMUM_TOTAL_SUPPLY = 1e6;
-
     uint256 internal privateKey = 0xBEEF;
     address user = vm.addr(privateKey);
 
@@ -61,7 +59,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     function testBurn() public {
-        uint256 burnAmount = defaultAmount - MINIMUM_TOTAL_SUPPLY;
+        uint256 burnAmount = defaultAmount - POOL_MINIMUM_TOTAL_SUPPLY;
 
         vault.mintERC20(pool, user, defaultAmount);
 
@@ -69,7 +67,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         emit IERC20.Transfer(user, address(0), burnAmount);
         vault.burnERC20(pool, user, burnAmount);
 
-        assertEq(poolToken.balanceOf(user), MINIMUM_TOTAL_SUPPLY, "balance mismatch");
+        assertEq(poolToken.balanceOf(user), POOL_MINIMUM_TOTAL_SUPPLY, "balance mismatch");
     }
 
     function testApprove() public {
@@ -358,7 +356,14 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         // Init pool, so it has a BPT supply and rate can be calculated.
         vm.startPrank(lp);
         IERC20[] memory tokens = vault.getPoolTokens(address(poolToken));
-        router.initialize(address(poolToken), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
+        router.initialize(
+            address(poolToken),
+            tokens,
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("")
+        );
         vm.stopPrank();
 
         uint256[] memory liveBalancesScaled18 = vault.getCurrentLiveBalances(address(poolToken));

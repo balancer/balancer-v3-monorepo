@@ -6,30 +6,29 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { HookFlags, FEE_SCALING_FACTOR, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IVaultExtension } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultExtension.sol";
-import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
-import { HookFlags, FEE_SCALING_FACTOR, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { BasicAuthorizerMock } from "@balancer-labs/v3-solidity-utils/contracts/test/BasicAuthorizerMock.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
+import { BasicAuthorizerMock } from "../../../contracts/test/BasicAuthorizerMock.sol";
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
-import { VaultStorage } from "../../../contracts/VaultStorage.sol";
-import { RouterMock } from "../../../contracts/test/RouterMock.sol";
 import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
-import { PoolMock } from "../../../contracts/test/PoolMock.sol";
-import { PoolHooksMock } from "../../../contracts/test/PoolHooksMock.sol";
 import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
+import { PoolHooksMock } from "../../../contracts/test/PoolHooksMock.sol";
+import { RouterMock } from "../../../contracts/test/RouterMock.sol";
+import { VaultStorage } from "../../../contracts/VaultStorage.sol";
+import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
 import { VaultMockDeployer } from "./VaultMockDeployer.sol";
-
 import { Permit2Helpers } from "./Permit2Helpers.sol";
 
 abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
@@ -57,11 +56,16 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         uint256[] yieldFeeAmounts;
     }
 
-    uint256 constant MIN_BPT = 1e6;
-    uint256 constant MINIMUM_TRADE_AMOUNT = 1e6;
+    // Pool limits.
+    uint256 internal constant POOL_MINIMUM_TOTAL_SUPPLY = 1e6;
+    uint256 internal constant PRODUCTION_MIN_TRADE_AMOUNT = 1e6;
 
-    bytes32 constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
-    bytes32 constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
+    // ERC4626 buffer limits.
+    uint256 internal constant BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
+    uint256 internal constant PRODUCTION_MIN_WRAP_AMOUNT = 1e3;
+
+    bytes32 internal constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    bytes32 internal constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
 
     // Vault mock.
     IVaultMock internal vault;
@@ -111,20 +115,31 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Change this value before calling `setUp` to test under real conditions.
     uint256 vaultMockMinTradeAmount = 0;
 
+    // VaultMock can override min wrap amount; tests shall use 0 by default to simplify fuzz tests.
+    // Min wrap amount is meant to be an extra protection against unknown rounding errors; the Vault should still work
+    // without it, so it can be zeroed out in general.
+    // Change this value before calling `setUp` to test under real conditions.
+    uint256 vaultMockMinWrapAmount = 0;
+
+    // Stores the Vault's CONVERT_FACTOR, used to fix the result of ERC4626 buffer's "convert" calls (amount used to
+    // wrap/unwrap using the buffer liquidity).
+    uint16 internal vaultConvertFactor;
+
     // Applies to Weighted Pools.
-    uint256 constant BASE_MIN_SWAP_FEE = 1e12; // 0.00001%
-    uint256 constant BASE_MAX_SWAP_FEE = 10e16; // 10%
-    uint256 constant MIN_TRADE_AMOUNT = 1e6;
+    uint256 internal constant BASE_MIN_SWAP_FEE = 1e12; // 0.00001%
+    uint256 internal constant BASE_MAX_SWAP_FEE = 10e16; // 10%
 
     function setUp() public virtual override {
         BaseTest.setUp();
         _setUpBaseVaultTest();
         // Add initial liquidity
         initPool();
+        vaultConvertFactor = vault.getConvertFactor();
     }
 
     function _setUpBaseVaultTest() internal {
-        vault = IVaultMock(address(VaultMockDeployer.deploy(vaultMockMinTradeAmount)));
+        vault = IVaultMock(address(VaultMockDeployer.deploy(vaultMockMinTradeAmount, vaultMockMinWrapAmount)));
+
         vm.label(address(vault), "vault");
         vaultExtension = IVaultExtension(vault.getVaultExtension());
         vm.label(address(vaultExtension), "vaultExtension");
@@ -192,7 +207,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     ) internal virtual returns (uint256 bptOut) {
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(poolToInit);
 
-        return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, "");
+        return router.initialize(poolToInit, tokens, amountsIn, minBptOut, false, bytes(""));
     }
 
     function createPool() internal virtual returns (address) {

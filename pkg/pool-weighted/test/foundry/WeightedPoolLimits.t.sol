@@ -6,21 +6,21 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-import { WeightedMathMock } from "@balancer-labs/v3-solidity-utils/contracts/test/WeightedMathMock.sol";
-import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { BasePoolMath } from "@balancer-labs/v3-vault/contracts/BasePoolMath.sol";
 
 import { WeightedPoolMock } from "../../contracts/test/WeightedPoolMock.sol";
+import { WeightedMathMock } from "../../contracts/test/WeightedMathMock.sol";
 import { WeightedPool } from "../../contracts/WeightedPool.sol";
 
 contract WeightedPoolLimitsTest is BaseVaultTest {
@@ -115,7 +115,8 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
         amountsIn[daiIdx] = TOKEN_AMOUNT.mulDown(weights[daiIdx]);
         amountsIn[usdcIdx] = TOKEN_AMOUNT.mulDown(weights[usdcIdx]);
 
-        uint256 expectedBptAmountOut = math.computeInvariant(weights, amountsIn, Rounding.ROUND_DOWN) - MIN_BPT;
+        uint256 expectedBptAmountOut = math.computeInvariant(weights, amountsIn, Rounding.ROUND_DOWN) -
+            POOL_MINIMUM_TOTAL_SUPPLY;
 
         // Cannot use vm.prank, because `_initPool` does multiple calls.
         vm.startPrank(lp);
@@ -323,7 +324,7 @@ contract WeightedPoolLimitsTest is BaseVaultTest {
     }
 
     function _testGetBptRate() internal {
-        uint256 totalSupply = bptAmountOut + MIN_BPT;
+        uint256 totalSupply = bptAmountOut + POOL_MINIMUM_TOTAL_SUPPLY;
         uint256[] memory weights = weightedPool.getNormalizedWeights();
 
         uint256 weightedInvariant = WeightedMath.computeInvariantDown(weights, amountsIn);

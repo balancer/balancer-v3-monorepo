@@ -7,12 +7,12 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { TokenConfig, TokenType } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../../contracts/test/PoolMock.sol";
@@ -57,7 +57,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         // to convert wrapped amounts to underlying amounts), some rounding imprecision can occur.
         assertApproxEqAbs(
             IERC20(erc4626Pool).balanceOf(bob),
-            erc4626PoolInitialAmount * 2 - MIN_BPT,
+            erc4626PoolInitialAmount * 2 - BUFFER_MINIMUM_TOTAL_SUPPLY,
             errorTolerance,
             "Wrong yield-bearing pool BPT amount"
         );
@@ -80,13 +80,13 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
         assertApproxEqAbs(
             vault.getBufferOwnerShares(IERC4626(waDAI), lp),
-            2 * bufferInitialAmount - MIN_BPT,
+            2 * bufferInitialAmount - BUFFER_MINIMUM_TOTAL_SUPPLY,
             1, // 1 wei error due to rounding issues
             "Wrong share of waDAI buffer belonging to LP"
         );
         assertApproxEqAbs(
             vault.getBufferOwnerShares(IERC4626(waUSDC), lp),
-            2 * bufferInitialAmount - MIN_BPT,
+            2 * bufferInitialAmount - BUFFER_MINIMUM_TOTAL_SUPPLY,
             1, // 1 wei error due to rounding issues
             "Wrong share of waUSDC buffer belonging to LP"
         );
@@ -189,7 +189,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         amountsIn[waUsdcIdx] = waUsdcBobShares;
 
         // Since token rates are rounding down, the BPT calculation may be a little less than the predicted amount.
-        _initPool(erc4626Pool, amountsIn, erc4626PoolInitialBPTAmount - errorTolerance - MIN_BPT);
+        _initPool(erc4626Pool, amountsIn, erc4626PoolInitialBPTAmount - errorTolerance - BUFFER_MINIMUM_TOTAL_SUPPLY);
 
         IERC20(address(erc4626Pool)).approve(address(permit2), MAX_UINT256);
         permit2.approve(address(erc4626Pool), address(router), type(uint160).max, type(uint48).max);
@@ -222,7 +222,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         waUSDC.deposit(10 * erc4626PoolInitialAmount, lp);
         vm.stopPrank();
         // Changing asset balances without minting shares changes the rate so that it is no longer 1.
-        dai.mint(address(waDAI), 2 * erc4626PoolInitialAmount);
-        usdc.mint(address(waUSDC), 4 * erc4626PoolInitialAmount);
+        waDAI.inflateUnderlyingOrWrapped(2 * erc4626PoolInitialAmount, 0);
+        waUSDC.inflateUnderlyingOrWrapped(23 * erc4626PoolInitialAmount, 0);
     }
 }
