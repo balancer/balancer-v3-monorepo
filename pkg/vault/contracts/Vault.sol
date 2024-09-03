@@ -1361,7 +1361,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             }
 
             // Check if the Vault's underlying balance increased by `vaultUnderlyingDeltaHint` and the Vault's
-            // wrapped balance decreased by `vaultWrappedDeltaHint`. If not, reverts.
+            // wrapped balance decreased by `vaultWrappedDeltaHint`. If not, it reverts.
             _settleUnwrap(underlyingToken, IERC20(wrappedToken), vaultUnderlyingDeltaHint, vaultWrappedDeltaHint);
 
             // Only updates buffer balances if buffer has a surplus of wrapped tokens.
