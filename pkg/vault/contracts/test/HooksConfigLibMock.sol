@@ -29,7 +29,7 @@ contract HooksConfigLibMock {
         uint256 amountCalculatedScaled18,
         uint256 amountCalculatedRaw,
         address router,
-        SwapParams memory params,
+        PoolSwapParams memory params,
         SwapState memory state,
         PoolData memory poolData,
         IHooks hooksContract
