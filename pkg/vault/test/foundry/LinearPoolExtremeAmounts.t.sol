@@ -21,7 +21,7 @@ contract LinearPoolExtremeAmountsTest is BaseExtremeAmountsTest {
         address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool - DAI/USDC", "ERC20_POOL_DAI_USDC"));
         vm.label(newPool, label);
 
-        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), poolHooksContract, lp);
+        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens.asIERC20()), address(0), lp);
 
         return address(newPool);
     }
