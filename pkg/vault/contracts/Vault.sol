@@ -468,7 +468,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.balancesRaw[swapState.indexOut] - locals.balanceOutDecrement,
             Rounding.ROUND_DOWN
         );
-
         // 6) Store pool balances, raw and live (only index in and out).
         mapping(uint256 tokenIndex => bytes32 packedTokenBalance) storage poolBalances = _poolTokenBalances[
             vaultSwapParams.pool

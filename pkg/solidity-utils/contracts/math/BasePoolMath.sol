@@ -89,7 +89,7 @@ library BasePoolMath {
         uint256[] memory balances,
         uint256 bptTotalSupply,
         uint256 bptAmountIn
-    ) internal view returns (uint256[] memory amountsOut) {
+    ) internal pure returns (uint256[] memory amountsOut) {
         /**********************************************************************************************
         // computeProportionalAmountsOut                                                             //
         // (per token)                                                                               //
@@ -159,6 +159,7 @@ library BasePoolMath {
         uint256 currentInvariant = pool.computeInvariant(currentBalances, Rounding.ROUND_UP);
         // Round down to make `taxableAmount` larger below.
         uint256 invariantRatio = pool.computeInvariant(newBalances, Rounding.ROUND_DOWN).divDown(currentInvariant);
+
         ensureInvariantRatioBelowMaximumBound(pool, invariantRatio);
 
         // Loop through each token to apply fees if necessary.
@@ -364,6 +365,7 @@ library BasePoolMath {
         uint256 newSupply = totalSupply - exactBptAmountIn;
         uint256 invariantRatio = newSupply.divUp(totalSupply);
         ensureInvariantRatioAboveMinimumBound(pool, invariantRatio);
+
         // Calculate the new balance of the output token after the BPT burn.
         // "divUp" leads to a higher "newBalance", which in turn results in a lower "amountOut", but also a lower
         // "taxableAmount". Although the former leads to giving less tokens for the same amount of BPT burned,
