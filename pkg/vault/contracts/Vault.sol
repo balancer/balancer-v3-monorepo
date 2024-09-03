@@ -648,7 +648,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
 
             amountsInScaled18 = maxAmountsInScaled18;
-            amountsInRaw = params.maxAmountsIn;
+            // Deep copy given max amounts in raw to calculated amounts in raw to avoid scaling later, ensuring that
+            // `maxAmountsIn` is preserved.
+            ScalingHelpers.copyToArray(params.maxAmountsIn, amountsInRaw);
+
             (bptAmountOut, swapFeeAmountsScaled18) = BasePoolMath.computeAddLiquidityUnbalanced(
                 poolData.balancesLiveScaled18,
                 maxAmountsInScaled18,
