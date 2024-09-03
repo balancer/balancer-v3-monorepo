@@ -91,7 +91,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256 amountCalculatedScaled18,
             uint256 amountCalculatedRaw,
             uint256 hookAdjustedAmountCalculatedRaw,
-            SwapParams memory params,
+            VaultSwapParams memory params,
             SwapState memory state,
             PoolData memory poolData
         ) = _getParamsForCallAfterSwap(SwapKind.EXACT_IN, 0);
@@ -115,7 +115,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256 amountCalculatedScaled18,
             uint256 amountCalculatedRaw,
             uint256 hookAdjustedAmountCalculatedRaw,
-            SwapParams memory params,
+            VaultSwapParams memory params,
             SwapState memory state,
             PoolData memory poolData
         ) = _getParamsForCallAfterSwap(SwapKind.EXACT_OUT, type(uint256).max);
@@ -139,7 +139,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256 amountCalculatedScaled18,
             uint256 amountCalculatedRaw,
             uint256 hookAdjustedAmountCalculatedRaw,
-            SwapParams memory params,
+            VaultSwapParams memory params,
             SwapState memory state,
             PoolData memory poolData
         ) = _getParamsForCallAfterSwap(SwapKind.EXACT_IN, 0);
@@ -165,7 +165,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256 amountCalculatedScaled18,
             uint256 amountCalculatedRaw,
             uint256 hookAdjustedAmountCalculatedRaw,
-            SwapParams memory params,
+            VaultSwapParams memory params,
             SwapState memory state,
             PoolData memory poolData
         ) = _getParamsForCallAfterSwap(SwapKind.EXACT_OUT, type(uint256).max);
@@ -191,7 +191,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256 amountCalculatedScaled18,
             uint256 amountCalculatedRaw,
             uint256 hookAdjustedAmountCalculatedRaw,
-            SwapParams memory params,
+            VaultSwapParams memory params,
             SwapState memory state,
             PoolData memory poolData
         ) = _getParamsForCallAfterSwap(SwapKind.EXACT_IN, type(uint256).max);
@@ -215,7 +215,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256 amountCalculatedScaled18,
             uint256 amountCalculatedRaw,
             uint256 hookAdjustedAmountCalculatedRaw,
-            SwapParams memory params,
+            VaultSwapParams memory params,
             SwapState memory state,
             PoolData memory poolData
         ) = _getParamsForCallAfterSwap(SwapKind.EXACT_OUT, 0);
@@ -239,7 +239,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256 amountCalculatedScaled18,
             uint256 amountCalculatedRaw,
             uint256 hookAdjustedAmountCalculatedRaw,
-            SwapParams memory params,
+            VaultSwapParams memory params,
             SwapState memory state,
             PoolData memory poolData
         ) = _getParamsForCallAfterSwap(SwapKind.EXACT_OUT, 0);
@@ -290,7 +290,7 @@ contract HooksConfigLibHelpersTest is Test {
             uint256 amountCalculatedScaled18,
             uint256 amountCalculatedRaw,
             uint256 hookAdjustedAmountCalculatedRaw,
-            SwapParams memory params,
+            VaultSwapParams memory params,
             SwapState memory state,
             PoolData memory poolData
         )
@@ -316,7 +316,7 @@ contract HooksConfigLibHelpersTest is Test {
         uint256 amountCalculatedScaled18,
         uint256 amountCalculatedRaw,
         uint256 hookAdjustedAmountCalculatedRaw,
-        SwapParams memory params,
+        VaultSwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
     ) internal returns (uint256 value) {
@@ -364,7 +364,7 @@ contract HooksConfigLibHelpersTest is Test {
         uint256 amountCalculatedScaled18,
         uint256 amountCalculatedRaw,
         uint256 hookAdjustedAmountCalculatedRaw,
-        SwapParams memory params,
+        VaultSwapParams memory params,
         SwapState memory state,
         PoolData memory poolData
     ) internal {
