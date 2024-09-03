@@ -240,7 +240,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
     }
 
     // testAddProportionalAndRemoveLiquidityExactIn
-    function testAddProportionalAndRemoveLiquidityExactInTTT_Fuzz(
+    function testAddProportionalAndRemoveLiquidityExactIn_Fuzz(
         uint256 exactBPTAmount,
         uint256[2] memory balancesRaw,
         uint256 swapFee
