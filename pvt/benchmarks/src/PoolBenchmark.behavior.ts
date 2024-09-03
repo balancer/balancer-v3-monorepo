@@ -737,6 +737,8 @@ export class Benchmark {
     });
 
     describe.only('test ERC4626 pool', () => {
+      const amountToTrade = TOKEN_AMOUNT / 10n;
+
       sharedBeforeEach('Deploy and Initialize pool', async () => {
         poolTokens = sortAddresses([wTokenAAddress, wTokenBAddress]);
         this.tokenConfig = buildTokenConfig(poolTokens, true);
@@ -777,7 +779,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
               ],
-              exactAmountIn: (TOKEN_AMOUNT * 1n) / 2n,
+              exactAmountIn: amountToTrade,
               minAmountOut: 0,
             },
           ],
@@ -808,7 +810,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
               ],
-              exactAmountIn: (TOKEN_AMOUNT * 1n) / 2n,
+              exactAmountIn: amountToTrade,
               minAmountOut: 0,
             },
           ],
@@ -848,7 +850,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
               ],
-              exactAmountOut: (TOKEN_AMOUNT * 1n) / 2n,
+              exactAmountOut: amountToTrade,
               maxAmountIn: TOKEN_AMOUNT,
             },
           ],
@@ -879,7 +881,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
               ],
-              exactAmountOut: (TOKEN_AMOUNT * 1n) / 2n,
+              exactAmountOut: amountToTrade,
               maxAmountIn: TOKEN_AMOUNT,
             },
           ],
@@ -923,7 +925,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
               ],
-              exactAmountIn: (TOKEN_AMOUNT * 1n) / 2n,
+              exactAmountIn: amountToTrade,
               minAmountOut: 0,
             },
           ],
@@ -954,7 +956,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
               ],
-              exactAmountIn: (TOKEN_AMOUNT * 1n) / 2n,
+              exactAmountIn: amountToTrade,
               minAmountOut: 0,
             },
           ],
@@ -998,7 +1000,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
               ],
-              exactAmountOut: (TOKEN_AMOUNT * 1n) / 2n,
+              exactAmountOut: amountToTrade,
               maxAmountIn: TOKEN_AMOUNT,
             },
           ],
@@ -1029,7 +1031,7 @@ export class Benchmark {
                   isBuffer: true,
                 },
               ],
-              exactAmountOut: (TOKEN_AMOUNT * 1n) / 2n,
+              exactAmountOut: amountToTrade,
               maxAmountIn: TOKEN_AMOUNT,
             },
           ],
