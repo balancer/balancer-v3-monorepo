@@ -1225,7 +1225,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             underlyingToken.forceApprove(address(wrappedToken), 0);
 
             // Check if the Vault's underlying balance decreased by `vaultUnderlyingDeltaHint` and the Vault's
-            // wrapped balance increased by `vaultWrappedDeltaHint`. If not, reverts.
+            // wrapped balance increased by `vaultWrappedDeltaHint`. If not, it reverts.
             _settleWrap(underlyingToken, IERC20(wrappedToken), vaultUnderlyingDeltaHint, vaultWrappedDeltaHint);
 
             // Only updates buffer balances if buffer has a surplus of underlying tokens.
