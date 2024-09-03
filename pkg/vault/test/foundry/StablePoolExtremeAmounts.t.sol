@@ -25,10 +25,6 @@ contract StablePoolExtremeAmountsTest is BaseExtremeAmountsTest {
         BaseExtremeAmountsTest.setUp();
     }
 
-    function _initMaxBPTAmount() internal pure override returns (uint256) {
-        return 1e12 * 1e18;
-    }
-
     function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
         StablePoolFactory factory = new StablePoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1");
 

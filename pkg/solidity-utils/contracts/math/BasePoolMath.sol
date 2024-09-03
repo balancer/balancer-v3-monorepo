@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import "forge-std/console.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
@@ -103,13 +102,9 @@ library BasePoolMath {
         // Create a new array to hold the amounts of each token to be withdrawn.
         amountsOut = new uint256[](balances.length);
         for (uint256 i = 0; i < balances.length; ++i) {
-            console.log("balances[i]", i, balances[i]);
-            console.log("bptAmountIn", bptAmountIn);
-            console.log("bptTotalSupply", bptTotalSupply);
             // Since we multiply and divide we don't need to use FP math.
             // Round down since we're calculating amounts out.
             amountsOut[i] = (balances[i] * bptAmountIn) / bptTotalSupply;
-            console.log("amountsOut[i]", i, amountsOut[i]);
         }
     }
 
@@ -163,16 +158,7 @@ library BasePoolMath {
         // Rounding current invariant up reduces BPT amount out at the end (see comments below).
         uint256 currentInvariant = pool.computeInvariant(currentBalances, Rounding.ROUND_UP);
         // Round down to make `taxableAmount` larger below.
-
-        console.log("newBalances[0]", newBalances[0]);
-        console.log("newBalances[1]", newBalances[1]);
-        console.log("currentInvariant", currentInvariant);
         uint256 invariantRatio = pool.computeInvariant(newBalances, Rounding.ROUND_DOWN).divDown(currentInvariant);
-        console.log("invariantRatio", invariantRatio);
-        console.log(
-            "pool.computeInvariant(newBalances, Rounding.ROUND_DOWN)",
-            pool.computeInvariant(newBalances, Rounding.ROUND_DOWN)
-        );
         ensureInvariantRatioBelowMaximumBound(pool, invariantRatio);
 
         // Loop through each token to apply fees if necessary.
@@ -378,7 +364,6 @@ library BasePoolMath {
         uint256 newSupply = totalSupply - exactBptAmountIn;
         uint256 invariantRatio = newSupply.divUp(totalSupply);
         ensureInvariantRatioAboveMinimumBound(pool, invariantRatio);
-
         // Calculate the new balance of the output token after the BPT burn.
         // "divUp" leads to a higher "newBalance", which in turn results in a lower "amountOut", but also a lower
         // "taxableAmount". Although the former leads to giving less tokens for the same amount of BPT burned,
