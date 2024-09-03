@@ -221,13 +221,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
 
         vm.startPrank(alice);
 
-        router.addLiquidityUnbalanced(
-            pool,
-            [wstEthAmountOut, wstEthAmountOut].toMemoryArray(),
-            1,
-            false,
-            bytes("")
-        );
+        router.addLiquidityUnbalanced(pool, [wstEthAmountOut, wstEthAmountOut].toMemoryArray(), 1, false, bytes(""));
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
         router.removeLiquiditySingleTokenExactOut(pool, MAX_UINT128, wsteth, wstEthAmountOut, false, bytes(""));

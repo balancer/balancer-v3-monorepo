@@ -962,7 +962,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 }
             }
 
-
             IERC20 token = poolData.tokens[i];
             // 2) Check limits for raw amounts.
             if (amountOutRaw < params.minAmountsOut[i]) {
