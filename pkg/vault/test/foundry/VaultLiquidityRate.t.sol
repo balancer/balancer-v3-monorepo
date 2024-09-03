@@ -213,4 +213,31 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             bytes("")
         );
     }
+
+    function testRemoveLiquiditySingleTokenExactOutWithRate__Fuzz(uint256 wstEthRate, uint256 wstEthAmountOut) public {
+        wstEthAmountOut = bound(wstEthAmountOut, defaultAmount / 1e3, defaultAmount * 1e3);
+        wstEthRate = bound(wstEthRate, 1e14, 1e22);
+        rateProvider.mockRate(wstEthRate);
+
+        vm.startPrank(alice);
+
+        router.addLiquidityUnbalanced(
+            pool,
+            [wstEthAmountOut, wstEthAmountOut].toMemoryArray(),
+            1,
+            false,
+            bytes("")
+        );
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
+        router.removeLiquiditySingleTokenExactOut(pool, MAX_UINT128, wsteth, wstEthAmountOut, false, bytes(""));
+        BaseVaultTest.Balances memory balancesAfter = getBalances(alice);
+        vm.stopPrank();
+
+        assertEq(
+            wstEthAmountOut,
+            balancesAfter.aliceTokens[wstethIdx] - balancesBefore.aliceTokens[wstethIdx],
+            "Alice wstEth is wrong"
+        );
+    }
 }
