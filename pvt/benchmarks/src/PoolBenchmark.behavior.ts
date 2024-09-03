@@ -736,7 +736,7 @@ export class Benchmark {
       itTestsDonation();
     });
 
-    describe.only('test ERC4626 pool', () => {
+    describe('test ERC4626 pool', () => {
       const amountToTrade = TOKEN_AMOUNT / 10n;
 
       sharedBeforeEach('Deploy and Initialize pool', async () => {
@@ -1047,7 +1047,6 @@ export class Benchmark {
           receipt
         );
       });
-      // Test swap with buffer liquidity
     });
   };
 }
