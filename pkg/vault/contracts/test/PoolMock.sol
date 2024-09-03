@@ -47,15 +47,7 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
     ) external view returns (uint256 newBalance) {
         // inv = x + y
         uint256 invariant = computeInvariant(balances, Rounding.ROUND_DOWN);
-        console.log("\n");
-        console.log("Invariant: %d", invariant);
-        console.log("balances[0]: %d", balances[0]);
-        console.log("balances[1]: %d", balances[1]);
-        console.log("tokenInIndex: %d", tokenInIndex);
-        console.log("invariantRatio: %d", invariantRatio);
-        console.log("invariant.mulDown(invariantRatio): %d", invariant.mulDown(invariantRatio));
-        console.log("invariant.mulUp(invariantRatio): %d", invariant.mulUp(invariantRatio));
-        return (balances[tokenInIndex] + invariant.mulUp(invariantRatio)) - invariant;
+        return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
     }
 
     function setMultiplier(uint256 newMultiplier) external {
