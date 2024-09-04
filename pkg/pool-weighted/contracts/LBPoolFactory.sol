@@ -92,7 +92,7 @@ contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
             pool,
             tokens,
             swapFeePercentage,
-            true,
+            true, //protocol fee exempt
             roleAccounts,
             pool,
             getDefaultLiquidityManagement()

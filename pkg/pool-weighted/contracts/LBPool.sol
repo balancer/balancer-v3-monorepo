@@ -5,14 +5,14 @@ pragma solidity ^0.8.24;
 import { WeightedPool } from "./WeightedPool.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { HookFlags } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { HookFlags, TokenConfig, AddLiquidityKind, LiquidityManagement } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
-import { AddLiquidityKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { GradualValueChange } from "./lib/GradualValueChange.sol";
 import { WeightValidation } from "./lib/WeightValidation.sol";
 
@@ -135,6 +135,27 @@ contract LBPool is WeightedPool, Ownable {
      * =========================================
      * =========================================
      */
+
+    /**
+     * @notice Hook to be executed when pool is registered. Returns true if registration was successful, and false to
+     * revert the registration of the pool. Make sure this function is properly implemented (e.g. check the factory,
+     * and check that the given pool is from the factory).
+     *
+     * @param factory Address of the pool factory
+     * @param pool Address of the pool
+     * @return success True if the hook allowed the registration, false otherwise
+     */
+    function onRegister(
+        address factory,
+        address pool,
+        TokenConfig[] memory,
+        LiquidityManagement calldata
+    ) external view onlyVault returns (bool success) {
+        if (pool == address(this) && IBasePoolFactory(factory).isPoolFromFactory(pool)) {
+            success = true;
+        }
+    }
+
 
     // Return HookFlags struct that indicates which hooks this contract supports
     function getHookFlags() public pure returns (HookFlags memory hookFlags) {
