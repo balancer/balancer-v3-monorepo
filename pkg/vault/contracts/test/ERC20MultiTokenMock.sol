@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { ERC20MultiToken } from "../token/ERC20MultiToken.sol";
 
 contract ERC20MultiTokenMock is ERC20MultiToken {
-    // #region View functions
+    // View functions
     function totalSupply(address pool) public view returns (uint256) {
         return _totalSupply(pool);
     }
@@ -22,9 +22,7 @@ contract ERC20MultiTokenMock is ERC20MultiToken {
         return _POOL_MINIMUM_TOTAL_SUPPLY;
     }
 
-    // #endregion
-
-    // #region Mutable functions
+    // Mutable functions
     function manualQueryModeBalanceIncrease(address pool, address to, uint256 amount) public {
         _queryModeBalanceIncrease(pool, to, amount);
     }
@@ -56,5 +54,4 @@ contract ERC20MultiTokenMock is ERC20MultiToken {
     function manualSpendAllowance(address pool, address owner, address spender, uint256 amount) public {
         _spendAllowance(pool, owner, spender, amount);
     }
-    // #endregion
 }
