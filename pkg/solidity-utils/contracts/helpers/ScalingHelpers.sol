@@ -155,6 +155,15 @@ library ScalingHelpers {
                                     Array Functions
     ***************************************************************************/
 
+    function copyToArray(uint256[] memory from, uint256[] memory to) internal pure {
+        uint256 length = from.length;
+        InputHelpers.ensureInputLengthMatch(length, to.length);
+
+        for (uint256 i = 0; i < length; ++i) {
+            to[i] = from[i];
+        }
+    }
+
     /**
      * @notice Same as `toScaled18RoundDown`, but for an entire array.
      * @dev This function does not return anything, but instead *mutates* the `amounts` array.
