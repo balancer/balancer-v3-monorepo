@@ -132,7 +132,6 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
         // maxAmountsIn length is checked against tokens length at the vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
-        uint256 ethAmountIn;
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
@@ -144,7 +143,6 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
                 }
 
                 _weth.deposit{ value: amountIn }();
-                ethAmountIn = amountIn;
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
             } else {

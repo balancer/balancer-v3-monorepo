@@ -213,19 +213,13 @@ abstract contract RouterCommon is IRouterCommon, VaultGuard {
         amountsGiven[tokenIndex] = amountGiven;
     }
 
-    function _takeTokenIn(
-        address sender,
-        IERC20 tokenIn,
-        uint256 amountIn,
-        bool wethIsEth
-    ) internal returns (uint256 ethAmountIn) {
+    function _takeTokenIn(address sender, IERC20 tokenIn, uint256 amountIn, bool wethIsEth) internal {
         // If the tokenIn is ETH, then wrap `amountIn` into WETH.
         if (wethIsEth && tokenIn == _weth) {
             if (address(this).balance < amountIn) {
                 revert InsufficientEth();
             }
 
-            ethAmountIn = amountIn;
             // wrap amountIn to WETH.
             _weth.deposit{ value: amountIn }();
             // send WETH to Vault.
