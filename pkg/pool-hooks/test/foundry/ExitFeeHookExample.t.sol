@@ -4,8 +4,9 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import {
     HooksConfig,
     LiquidityManagement,
@@ -14,21 +15,25 @@ import {
     TokenConfig
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "@balancer-labs/v3-vault/test/foundry/utils/BaseVaultTest.sol";
-import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 
 import { ExitFeeHookExample } from "../../contracts/ExitFeeHookExample.sol";
 
 contract ExitFeeHookExampleTest is BaseVaultTest {
+    using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
 
     uint256 internal daiIdx;
     uint256 internal usdcIdx;
+
+    // 10% exit fee
+    uint64 internal constant EXIT_FEE_PERCENTAGE = 10e16;
 
     function setUp() public override {
         super.setUp();
@@ -45,7 +50,7 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
     }
 
     // Overrides pool creation to set liquidityManagement (disables unbalanced liquidity and enables donation)
-    function _createPool(address[] memory tokens, string memory label) internal override returns (address) {
+    function _createPool(address[] memory tokens, string memory label) internal virtual override returns (address) {
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL");
         vm.label(address(newPool), label);
 
@@ -55,6 +60,9 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement;
         liquidityManagement.disableUnbalancedLiquidity = true;
         liquidityManagement.enableDonation = true;
+
+        vm.expectEmit();
+        emit ExitFeeHookExample.ExitFeeHookExampleRegistered(poolHooksContract, address(newPool));
 
         factoryMock.registerPool(
             address(newPool),
@@ -87,27 +95,30 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         PoolConfig memory poolConfig = vault.getPoolConfig(exitFeePool);
         HooksConfig memory hooksConfig = vault.getHooksConfig(exitFeePool);
 
-        assertEq(poolConfig.liquidityManagement.enableDonation, true, "pool's enableDonation is wrong");
-        assertEq(
-            poolConfig.liquidityManagement.disableUnbalancedLiquidity,
-            true,
-            "pool's disableUnbalancedLiquidity is wrong"
-        );
-        assertEq(hooksConfig.hooksContract, poolHooksContract, "pool's hooks contract is wrong");
-        assertEq(hooksConfig.enableHookAdjustedAmounts, true, "hook's enableHookAdjustedAmounts is wrong");
+        assertTrue(poolConfig.liquidityManagement.enableDonation, "enableDonation is false");
+        assertTrue(poolConfig.liquidityManagement.disableUnbalancedLiquidity, "disableUnbalancedLiquidity is false");
+        assertTrue(hooksConfig.enableHookAdjustedAmounts, "enableHookAdjustedAmounts is false");
+        assertEq(hooksConfig.hooksContract, poolHooksContract, "hooksContract is wrong");
     }
 
     // Exit fee returns to LPs
-    function testExitFeeReturnToLPs() public {
-        // 10% exit fee
-        uint64 exitFeePercentage = 1e17;
+    function testExitFeeReturnToLPs() public virtual {
+        vm.expectEmit();
+        emit ExitFeeHookExample.ExitFeePercentageChanged(poolHooksContract, EXIT_FEE_PERCENTAGE);
+
         vm.prank(lp);
-        ExitFeeHookExample(poolHooksContract).setRemoveLiquidityHookFeePercentage(exitFeePercentage);
+        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(EXIT_FEE_PERCENTAGE);
         uint256 amountOut = poolInitAmount / 2;
-        uint256 hookFee = amountOut.mulDown(exitFeePercentage);
+        uint256 hookFee = amountOut.mulDown(EXIT_FEE_PERCENTAGE);
         uint256[] memory minAmountsOut = [amountOut - hookFee, amountOut - hookFee].toMemoryArray();
 
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp);
+
+        vm.expectEmit();
+        emit ExitFeeHookExample.ExitFeeCharged(pool, IERC20(dai), hookFee);
+
+        vm.expectEmit();
+        emit ExitFeeHookExample.ExitFeeCharged(pool, IERC20(usdc), hookFee);
 
         vm.prank(lp);
         router.removeLiquidityProportional(pool, 2 * amountOut, minAmountsOut, false, bytes(""));
@@ -156,6 +167,16 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         assertEq(balancesBefore.hookTokens[daiIdx], balancesAfter.hookTokens[daiIdx], "Hook's DAI amount is wrong");
         assertEq(balancesBefore.hookTokens[usdcIdx], balancesAfter.hookTokens[usdcIdx], "Hook's USDC amount is wrong");
         assertEq(balancesBefore.hookBpt, balancesAfter.hookBpt, "Hook's BPT amount is wrong");
+    }
+
+    function testPercentageTooHigh() public {
+        uint64 highFee = uint64(FixedPoint.ONE);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ExitFeeHookExample.ExitFeeAboveLimit.selector, highFee, EXIT_FEE_PERCENTAGE)
+        );
+        vm.prank(lp);
+        ExitFeeHookExample(poolHooksContract).setExitFeePercentage(highFee);
     }
 
     // Registry tests require a new pool, because an existent pool may be already registered

@@ -51,7 +51,7 @@ describe('StablePoolAmplification', () => {
     const stopAmpUpdateAction = await actionId(pool, 'stopAmplificationParameterUpdate');
 
     const authorizerAddress = await vault.getAuthorizer();
-    const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
+    const authorizer = await deployedAt('v3-vault/BasicAuthorizerMock', authorizerAddress);
 
     await authorizer.grantRole(startAmpUpdateAction, admin.address);
     await authorizer.grantRole(stopAmpUpdateAction, admin.address);

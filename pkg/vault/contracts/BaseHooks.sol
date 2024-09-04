@@ -2,30 +2,24 @@
 
 pragma solidity ^0.8.24;
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import {
     AddLiquidityKind,
-    HooksConfig,
     HookFlags,
     LiquidityManagement,
     RemoveLiquidityKind,
-    TokenConfig
+    TokenConfig,
+    PoolSwapParams,
+    AfterSwapParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { VaultGuard } from "./VaultGuard.sol";
-
 /**
- * @dev Pools that only implement a subset of callbacks can inherit from here instead of IHooks,
- * and only override what they need. `VaultGuard` allows use of the `onlyVault` modifier, which
- * isn't used in this abstract contract, but should be used in real derived hook contracts.
+ * @notice Base for pool hooks contracts.
+ * @dev Hook contracts that only implement a subset of callbacks can inherit from here instead of IHooks,
+ * and only override what they need. `VaultGuard` allows use of the `onlyVault` modifier, which isn't used
+ * in this abstract contract, but should be used in real derived hook contracts.
  */
-abstract contract BaseHooks is IHooks, VaultGuard {
-    constructor(IVault vault) VaultGuard(vault) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
+abstract contract BaseHooks is IHooks {
     /// @inheritdoc IHooks
     function onRegister(
         address,
@@ -105,7 +99,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
     }
 
     /// @inheritdoc IHooks
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata, address) public virtual returns (bool) {
+    function onBeforeSwap(PoolSwapParams calldata, address) public virtual returns (bool) {
         // return false to trigger an error if shouldCallBeforeSwap is true but this function is not overridden.
         return false;
     }
@@ -119,7 +113,7 @@ abstract contract BaseHooks is IHooks, VaultGuard {
 
     /// @inheritdoc IHooks
     function onComputeDynamicSwapFeePercentage(
-        IBasePool.PoolSwapParams calldata,
+        PoolSwapParams calldata,
         address,
         uint256
     ) public view virtual returns (bool, uint256) {

@@ -3,7 +3,8 @@
 pragma solidity ^0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../vault/VaultTypes.sol";
+
+import { TokenInfo } from "../vault/VaultTypes.sol";
 
 /**
  * @notice Convenience interface for pools, to get easy access to information stored in the Vault.
@@ -12,16 +13,16 @@ import "../vault/VaultTypes.sol";
 interface IPoolInfo {
     /**
      * @notice Gets the tokens registered in the pool.
-     * @return tokens List of tokens in the pool in registration order
+     * @return tokens List of tokens in the pool, sorted in registration order
      */
     function getTokens() external view returns (IERC20[] memory tokens);
 
     /**
-     * @notice Gets the raw data for the pool: tokens, token info, raw balances, last live balances.
-     * @return tokens The pool tokens, in registration order
-     * @return tokenInfo Corresponding token info (type, rate provider, yield flag)
-     * @return balancesRaw Corresponding raw balances of the tokens
-     * @return lastLiveBalances Corresponding last live balances from the previous operation
+     * @notice Gets the raw data for the pool: tokens, token info, raw balances, and last live balances.
+     * @return tokens Pool tokens, sorted in pool registration order
+     * @return tokenInfo Token info structs (type, rate provider, yield flag), sorted in pool registration order
+     * @return balancesRaw Current native decimal balances of the pool tokens, sorted in pool registration order
+     * @return lastBalancesLiveScaled18 Last saved live balances, sorted in token registration order
      */
     function getTokenInfo()
         external
@@ -30,15 +31,33 @@ interface IPoolInfo {
             IERC20[] memory tokens,
             TokenInfo[] memory tokenInfo,
             uint256[] memory balancesRaw,
-            uint256[] memory lastLiveBalances
+            uint256[] memory lastBalancesLiveScaled18
         );
 
     /**
-     * @notice Gets current live balances of the pool (fixed-point, 18 decimals).
+     * @notice Gets the current live balances of the pool as fixed point, 18-decimal numbers.
+     * @dev Note that live balances will not necessarily be accurate if the pool is in Recovery Mode.
+     * Withdrawals in Recovery Mode do not make external calls (including those necessary for updating live balances),
+     * so if there are withdrawals, raw and live balances will be out of sync until Recovery Mode is disabled.
+     *
      * @return balancesLiveScaled18 Token balances after paying yield fees, applying decimal scaling and rates
      */
     function getCurrentLiveBalances() external view returns (uint256[] memory balancesLiveScaled18);
 
-    /// @notice Fetches the static swap fee percentage for the pool.
-    function getStaticSwapFeePercentage() external view returns (uint256);
+    /**
+     * @notice Fetches the static swap fee percentage for the pool.
+     * @return staticSwapFeePercentage 18-decimal FP value of the static swap fee percentage
+     */
+    function getStaticSwapFeePercentage() external view returns (uint256 staticSwapFeePercentage);
+
+    /**
+     * @notice Gets the aggregate swap and yield fee percentages for a pool.
+     * @dev These are determined by the current protocol and pool creator fees, set in the `ProtocolFeeController`.
+     * @return aggregateSwapFeePercentage The aggregate percentage fee applied to swaps
+     * @return aggregateYieldFeePercentage The aggregate percentage fee applied to yield
+     */
+    function getAggregateFeePercentages()
+        external
+        view
+        returns (uint256 aggregateSwapFeePercentage, uint256 aggregateYieldFeePercentage);
 }

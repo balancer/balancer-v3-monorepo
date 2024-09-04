@@ -2,24 +2,12 @@
 
 pragma solidity ^0.8.24;
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import {
-    AddLiquidityKind,
-    HooksConfig,
-    HookFlags,
-    LiquidityManagement,
-    RemoveLiquidityKind,
-    TokenConfig
-} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import "../BaseHooks.sol";
+import { BaseHooks } from "../BaseHooks.sol";
 
 contract BaseHooksMock is BaseHooks {
-    constructor(IVault vault) BaseHooks(vault) {
-        // solhint-disable-previous-line no-empty-blocks
-    }
-
     /// @inheritdoc IHooks
     function onRegister(
         address factory,
@@ -143,7 +131,7 @@ contract BaseHooksMock is BaseHooks {
     }
 
     /// @inheritdoc IHooks
-    function onBeforeSwap(IBasePool.PoolSwapParams calldata params, address pool) public override returns (bool) {
+    function onBeforeSwap(PoolSwapParams calldata params, address pool) public override returns (bool) {
         return super.onBeforeSwap(params, pool);
     }
 
@@ -154,7 +142,7 @@ contract BaseHooksMock is BaseHooks {
 
     /// @inheritdoc IHooks
     function onComputeDynamicSwapFeePercentage(
-        IBasePool.PoolSwapParams calldata params,
+        PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
     ) public view override returns (bool, uint256) {

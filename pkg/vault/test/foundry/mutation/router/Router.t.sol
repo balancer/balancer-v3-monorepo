@@ -4,36 +4,29 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { GasSnapshot } from "forge-gas-snapshot/GasSnapshot.sol";
-
-import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
-import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
+import {
+    AddLiquidityKind,
+    RemoveLiquidityKind,
+    SwapKind,
+    HooksConfig
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
-import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import {
     ReentrancyGuardTransient
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
-import { PoolMock } from "../../../../contracts/test/PoolMock.sol";
 import { PoolHooksMock } from "../../../../contracts/test/PoolHooksMock.sol";
-import { Router } from "../../../../contracts/Router.sol";
-import { RouterCommon } from "../../../../contracts/RouterCommon.sol";
-import { VaultMock } from "../../../../contracts/test/VaultMock.sol";
-import { VaultExtensionMock } from "../../../../contracts/test/VaultExtensionMock.sol";
-import { VaultMockDeployer } from "../../utils/VaultMockDeployer.sol";
+import { BasePoolMath } from "../../../../contracts/BasePoolMath.sol";
 import { BaseVaultTest } from "../../utils/BaseVaultTest.sol";
+import { Router } from "../../../../contracts/Router.sol";
 
 contract RouterMutationTest is BaseVaultTest {
     using ArrayHelpers for *;
@@ -66,7 +59,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testAddLiquidityHookWhenNotVault() public {
-        IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
+        IRouterCommon.AddLiquidityHookParams memory hookParams = IRouterCommon.AddLiquidityHookParams(
             msg.sender,
             pool,
             amountsIn,
@@ -86,7 +79,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testRemoveLiquidityHookWhenNotVault() public {
-        IRouter.RemoveLiquidityHookParams memory params = IRouter.RemoveLiquidityHookParams(
+        IRouterCommon.RemoveLiquidityHookParams memory params = IRouterCommon.RemoveLiquidityHookParams(
             msg.sender,
             pool,
             [uint256(0), uint256(0)].toMemoryArray(),
@@ -140,22 +133,12 @@ contract RouterMutationTest is BaseVaultTest {
 
     function testAddLiquidityToBufferHookWhenNotVault() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        router.addLiquidityToBufferHook(IERC4626(address(0)), 0, 0, address(0));
+        router.addLiquidityToBufferHook(IERC4626(address(0)), 0, 0, address(0), false);
     }
 
     function testAddLiquidityToBufferHookReentrancy() public {
         vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
         router.manualReentrancyAddLiquidityToBufferHook();
-    }
-
-    function testRemoveLiquidityFromBufferHookWhenNotVault() public {
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
-        router.removeLiquidityFromBufferHook(IERC4626(address(0)), 0, address(0));
-    }
-
-    function testRemoveLiquidityFromBufferHookReentrancy() public {
-        vm.expectRevert(ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector);
-        router.manualReentrancyRemoveLiquidityFromBufferHook();
     }
 
     function testQuerySwapHookWhenNotVault() public {
@@ -182,7 +165,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testQueryAddLiquidityHookWhenNotVault() public {
-        IRouter.AddLiquidityHookParams memory hookParams = IRouter.AddLiquidityHookParams(
+        IRouterCommon.AddLiquidityHookParams memory hookParams = IRouterCommon.AddLiquidityHookParams(
             msg.sender,
             pool,
             amountsIn,
@@ -197,7 +180,7 @@ contract RouterMutationTest is BaseVaultTest {
     }
 
     function testQueryRemoveLiquidityHookWhenNotVault() public {
-        IRouter.RemoveLiquidityHookParams memory params = IRouter.RemoveLiquidityHookParams(
+        IRouterCommon.RemoveLiquidityHookParams memory params = IRouterCommon.RemoveLiquidityHookParams(
             msg.sender,
             pool,
             amountsIn,
@@ -253,7 +236,7 @@ contract RouterMutationTest is BaseVaultTest {
 
         // tx.origin needs to be 0x0 for the transaction to be considered a query
         vm.prank(address(bob), address(0));
-        router.queryAddLiquidityProportional(pool, amountsIn, poolInitAmount.mulDown(2e18), bytes(""));
+        router.queryAddLiquidityProportional(pool, poolInitAmount.mulDown(2e18), bytes(""));
 
         assertEq(PoolHooksMock(poolHooksContract).getSavedSender(), bob, "saveSender not implemented");
     }

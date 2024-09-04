@@ -2,21 +2,14 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import {
-    SingletonAuthentication
-} from "@balancer-labs/v3-solidity-utils/contracts/helpers/SingletonAuthentication.sol";
 import { FactoryWidePauseWindow } from "@balancer-labs/v3-solidity-utils/contracts/helpers/FactoryWidePauseWindow.sol";
 import { CREATE3 } from "@balancer-labs/v3-solidity-utils/contracts/solmate/CREATE3.sol";
 
-import { PoolConfigBits } from "../lib/PoolConfigLib.sol";
+import { SingletonAuthentication } from "../SingletonAuthentication.sol";
 import { PoolMock } from "./PoolMock.sol";
 
 contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWidePauseWindow {
@@ -25,7 +18,7 @@ contract PoolFactoryMock is IBasePoolFactory, SingletonAuthentication, FactoryWi
     IVault private immutable _vault;
 
     // Avoid dependency on BasePoolFactory; copy storage here.
-    mapping(address => bool) private _isPoolFromFactory;
+    mapping(address pool => bool isFromFactory) private _isPoolFromFactory;
     bool private _disabled;
 
     constructor(

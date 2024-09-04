@@ -12,17 +12,16 @@ import { IAllowanceTransfer } from "permit2/src/interfaces/IAllowanceTransfer.so
 import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract Permit2Test is BaseVaultTest {
     using ArrayHelpers for *;
 
-    uint256 internal usdcAmountIn = 1e3 * 1e6;
+    uint256 internal usdcAmountIn = 1e3 * 1e6; // USDC has 6 decimals
     uint256 internal daiAmountIn = 1e3 * 1e18;
     uint256 internal daiAmountOut = 1e2 * 1e18;
-    uint256 internal ethAmountIn = 1e3 ether;
     uint256 internal initBpt = 10e18;
     uint256 internal bptAmountOut = 1e18;
 
@@ -31,7 +30,7 @@ contract Permit2Test is BaseVaultTest {
     }
 
     function testNoPermitCall() public {
-        // Revoke allowance
+        // Revoke allowance.
         vm.prank(alice);
         permit2.approve(address(usdc), address(router), 0, 0);
 
@@ -43,7 +42,7 @@ contract Permit2Test is BaseVaultTest {
     }
 
     function testPermitBatchAndCall() public {
-        // Revoke allowance
+        // Revoke allowance.
         vm.prank(alice);
         permit2.approve(address(usdc), address(router), 0, 0);
         vm.prank(alice);
@@ -93,37 +92,29 @@ contract Permit2Test is BaseVaultTest {
         );
 
         bytes[] memory multicallData = new bytes[](2);
-        multicallData[0] = abi.encodeWithSelector(
-            IRouter.addLiquidityUnbalanced.selector,
-            pool,
-            amountsIn,
-            bptAmountOut,
-            false,
-            bytes("")
+        multicallData[0] = abi.encodeCall(
+            IRouter.addLiquidityUnbalanced,
+            (pool, amountsIn, bptAmountOut, false, bytes(""))
         );
 
         uint256[] memory minAmountsOut = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
-        multicallData[1] = abi.encodeWithSelector(
-            IRouter.removeLiquidityProportional.selector,
-            pool,
-            bptAmountOut,
-            minAmountsOut,
-            false,
-            bytes("")
+        multicallData[1] = abi.encodeCall(
+            IRouter.removeLiquidityProportional,
+            (pool, bptAmountOut, minAmountsOut, false, bytes(""))
         );
 
         vm.prank(alice);
         router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, permit2Signature, multicallData);
 
-        // Alice has no BPT
+        // Alice has no BPT.
         assertEq(IERC20(pool).balanceOf(alice), 0, "Alice has pool tokens");
 
         (amount, , ) = permit2.allowance(alice, address(dai), address(router));
-        // Allowance is spent
+        // Allowance is spent.
         assertEq(amount, 0, "DAI allowance is not spent");
 
         (amount, , ) = permit2.allowance(alice, address(usdc), address(router));
-        // Allowance is spent
+        // Allowance is spent.
         assertEq(amount, 0, "USDC allowance is not spent");
     }
 
@@ -136,17 +127,13 @@ contract Permit2Test is BaseVaultTest {
         uint256[] memory amountsIn = [uint256(defaultAmount), uint256(defaultAmount)].toMemoryArray();
         bptAmountOut = defaultAmount * 2;
 
-        multicallData[0] = abi.encodeWithSelector(
-            IRouter.addLiquidityUnbalanced.selector,
-            pool,
-            amountsIn,
-            bptAmountOut,
-            false,
-            bytes("")
+        multicallData[0] = abi.encodeCall(
+            IRouter.addLiquidityUnbalanced,
+            (pool, amountsIn, bptAmountOut, false, bytes(""))
         );
 
         vm.expectCall(address(router), multicallData[0]);
         vm.prank(alice);
-        router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, "", multicallData);
+        router.permitBatchAndCall(permitBatch, permitSignatures, permit2Batch, bytes(""), multicallData);
     }
 }

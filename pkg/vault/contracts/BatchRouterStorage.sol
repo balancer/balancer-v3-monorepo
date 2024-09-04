@@ -11,6 +11,7 @@ import {
     AddressMappingSlot
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
+/// @notice Transient storage for Batch Router operations.
 contract BatchRouterStorage {
     using TransientStorageHelpers for *;
 
@@ -29,21 +30,20 @@ contract BatchRouterStorage {
     bytes32 private immutable _SETTLED_TOKEN_AMOUNTS_SLOT = _calculateBatchRouterStorageSlot("settledTokenAmounts");
 
     // solhint-enable var-name-mixedcase
+    // solhint-disable no-inline-assembly
 
     // We use transient storage to track tokens and amounts flowing in and out of a batch swap.
     // Set of input tokens involved in a batch swap.
     function _currentSwapTokensIn() internal view returns (TransientEnumerableSet.AddressSet storage enumerableSet) {
         bytes32 slot = _CURRENT_SWAP_TOKEN_IN_SLOT;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
+        assembly ("memory-safe") {
             enumerableSet.slot := slot
         }
     }
 
     function _currentSwapTokensOut() internal view returns (TransientEnumerableSet.AddressSet storage enumerableSet) {
         bytes32 slot = _CURRENT_SWAP_TOKEN_OUT_SLOT;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
+        assembly ("memory-safe") {
             enumerableSet.slot := slot
         }
     }
@@ -59,7 +59,7 @@ contract BatchRouterStorage {
     }
 
     // token -> amount that is part of the current input / output amounts, but is settled preemptively.
-    // This situation happens whenever there is BPT involved in the operation, which is minted and burnt instantly.
+    // This situation happens whenever there is BPT involved in the operation, which is minted and burned instantly.
     // Since those amounts are not tracked in the inputs / outputs to settle, we need to track them elsewhere
     // to return the correct total amounts in and out for each token involved in the operation.
     function _settledTokenAmounts() internal view returns (AddressMappingSlot slot) {

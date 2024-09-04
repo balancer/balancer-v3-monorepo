@@ -4,13 +4,14 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { PoolData, Rounding, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
@@ -19,7 +20,9 @@ import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract VaultLiquidityWithRatesTest is BaseVaultTest {
+    using CastingHelpers for address[];
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     // Track the indices for the local dai/wsteth pool.
     uint256 internal daiIdx;
@@ -51,7 +54,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
     }
 
     function testLastLiveBalanceInitialization() public {
-        // Need to set the rate before initialization for this test
+        // Need to set the rate before initialization for this test.
         pool = createPool();
         rateProvider.mockRate(mockRate);
         initPool();
@@ -71,11 +74,13 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         vm.startPrank(alice);
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(
-                IBasePool.computeBalance.selector,
-                expectedBalances, // liveBalancesScaled18
-                wstethIdx,
-                150e16 // 150% growth
+            abi.encodeCall(
+                IBasePool.computeBalance,
+                (
+                    expectedBalances, // liveBalancesScaled18
+                    wstethIdx,
+                    150e16 // 150% growth
+                )
             )
         );
 
@@ -97,13 +102,15 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         vm.startPrank(alice);
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(
-                IPoolLiquidity.onAddLiquidityCustom.selector,
-                router,
-                expectedAmountsInRaw, // maxAmountsIn
-                defaultAmount, // minBptOut
-                expectedBalancesRaw,
-                bytes("")
+            abi.encodeCall(
+                IPoolLiquidity.onAddLiquidityCustom,
+                (
+                    address(router),
+                    expectedAmountsInRaw, // maxAmountsIn
+                    defaultAmount, // minBptOut
+                    expectedBalancesRaw,
+                    bytes("")
+                )
             )
         );
 
@@ -127,7 +134,7 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             bytes("")
         );
 
-        // TODO: Find a way to test rates inside the Vault
+        // TODO: Find a way to test rates inside the Vault.
         router.removeLiquidityProportional(
             pool,
             defaultAmount * 2,
@@ -155,11 +162,13 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
 
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(
-                IBasePool.computeBalance.selector,
-                [balances.balancesLiveScaled18[daiIdx], balances.balancesLiveScaled18[wstethIdx]].toMemoryArray(),
-                wstethIdx, // tokenOutIndex
-                50e16 // invariantRatio
+            abi.encodeCall(
+                IBasePool.computeBalance,
+                (
+                    [balances.balancesLiveScaled18[daiIdx], balances.balancesLiveScaled18[wstethIdx]].toMemoryArray(),
+                    wstethIdx, // tokenOutIndex
+                    50e16 // invariantRatio
+                )
             )
         );
 
@@ -185,13 +194,15 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
 
         vm.expectCall(
             pool,
-            abi.encodeWithSelector(
-                IPoolLiquidity.onRemoveLiquidityCustom.selector,
-                router,
-                defaultAmount, // maxBptAmountIn
-                expectedAmountsOutRaw, // minAmountsOut
-                [balances.balancesLiveScaled18[daiIdx], balances.balancesLiveScaled18[wstethIdx]].toMemoryArray(),
-                bytes("")
+            abi.encodeCall(
+                IPoolLiquidity.onRemoveLiquidityCustom,
+                (
+                    address(router),
+                    defaultAmount, // maxBptAmountIn
+                    expectedAmountsOutRaw, // minAmountsOut
+                    [balances.balancesLiveScaled18[daiIdx], balances.balancesLiveScaled18[wstethIdx]].toMemoryArray(),
+                    bytes("")
+                )
             )
         );
 
@@ -201,6 +212,47 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             [defaultAmount, defaultAmount].toMemoryArray(),
             false,
             bytes("")
+        );
+    }
+
+    function testRemoveLiquiditySingleTokenExactOutWithRate__Fuzz(
+        uint256 wstEthRate,
+        uint256 wstEthAmountOut,
+        uint256 removePercentage
+    ) public {
+        wstEthAmountOut = bound(wstEthAmountOut, defaultAmount / 1e3, defaultAmount * 1e3);
+        wstEthRate = bound(wstEthRate, 1e14, 1e22);
+        removePercentage = bound(removePercentage, 1e4, 1e18);
+        rateProvider.mockRate(wstEthRate);
+
+        vm.startPrank(alice);
+
+        uint256[] memory amountsIn = new uint256[](2);
+        amountsIn[wstethIdx] = wstEthAmountOut;
+        amountsIn[daiIdx] = wstEthAmountOut * 2;
+
+        BaseVaultTest.Balances memory balancesBeforeAdd = getBalances(alice);
+
+        router.addLiquidityUnbalanced(pool, amountsIn, 1, false, bytes(""));
+
+        BaseVaultTest.Balances memory balancesBeforeRemove = getBalances(alice);
+
+        assertEq(
+            wstEthAmountOut,
+            balancesBeforeAdd.aliceTokens[wstethIdx] - balancesBeforeRemove.aliceTokens[wstethIdx],
+            "Alice wstEth is wrong after add"
+        );
+
+        uint256 removeAmount = wstEthAmountOut.mulDown(removePercentage);
+
+        router.removeLiquiditySingleTokenExactOut(pool, MAX_UINT128, wsteth, removeAmount, false, bytes(""));
+        BaseVaultTest.Balances memory balancesAfterRemove = getBalances(alice);
+        vm.stopPrank();
+
+        assertEq(
+            removeAmount,
+            balancesAfterRemove.aliceTokens[wstethIdx] - balancesBeforeRemove.aliceTokens[wstethIdx],
+            "Alice wstEth is wrong after remove"
         );
     }
 }

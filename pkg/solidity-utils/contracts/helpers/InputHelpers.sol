@@ -5,13 +5,28 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 library InputHelpers {
-    /// @dev Arrays passed to a function and intended to be parallel have different lengths.
+    /// @notice Arrays passed to a function and intended to be parallel have different lengths.
     error InputLengthMismatch();
 
+    /**
+     * @notice More than one non-zero value was given for a single token operation.
+     * @dev Input arrays for single token add/remove liquidity operations are expected to have only one non-zero value,
+     * corresponding to the token being added or removed. This error results if there are multiple non-zero entries.
+     */
     error MultipleNonZeroInputs();
 
+    /**
+     * @notice No valid input was given for a single token operation.
+     * @dev Input arrays for single token add/remove liquidity operations are expected to have one non-zero value,
+     * corresponding to the token being added or removed. This error results if all entries are zero.
+     */
     error AllZeroInputs();
 
+    /**
+     * @notice The tokens supplied to an array argument were not sorted in numerical order.
+     * @dev Tokens are not sorted by address on registration. This is an optimization so that off-chain processes can
+     * predict the token order without having to query the Vault. (It is also legacy v2 behavior.)
+     */
     error TokensNotSorted();
 
     function ensureInputLengthMatch(uint256 a, uint256 b) internal pure {
@@ -26,6 +41,7 @@ library InputHelpers {
         }
     }
 
+    // Find the single non-zero input; revert if there is not exactly one such value.
     function getSingleInputIndex(uint256[] memory maxAmountsIn) internal pure returns (uint256 inputIndex) {
         uint256 length = maxAmountsIn.length;
         inputIndex = length;
@@ -52,8 +68,11 @@ library InputHelpers {
      * and non-duplication. All this does is the sorting.
      *
      * A bubble sort should be gas- and bytecode-efficient enough for such small arrays.
-     * Could have also done "manual" comparisons for each of the three cases, but this is
+     * Could have also done "manual" comparisons for each of the cases, but this is
      * about the same number of operations, and more concise.
+     *
+     * This is less efficient for larger token count (i.e., above 4), but such pools should
+     * be rare. And in any case, sorting is only done on-chain in test code.
      */
     function sortTokens(IERC20[] memory tokens) internal pure returns (IERC20[] memory) {
         for (uint256 i = 0; i < tokens.length - 1; ++i) {

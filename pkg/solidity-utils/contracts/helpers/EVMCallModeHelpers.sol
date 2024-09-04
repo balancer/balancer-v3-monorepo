@@ -2,8 +2,9 @@
 
 pragma solidity ^0.8.24;
 
+/// @notice Library used to check whether the current operation was initiated through a static call.
 library EVMCallModeHelpers {
-    /// @dev Indicates a state-changing transaction was initiated in a context that only allows static calls.
+    /// @notice A state-changing transaction was initiated in a context that only allows static calls.
     error NotStaticCall();
 
     /**

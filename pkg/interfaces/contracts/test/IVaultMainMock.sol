@@ -2,9 +2,11 @@
 
 pragma solidity ^0.8.24;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+
+import { IRateProvider } from "../solidity-utils/helpers/IRateProvider.sol";
 import "../vault/VaultTypes.sol";
-import { IRateProvider } from "../vault/IRateProvider.sol";
-import { IBasePool } from "../vault/IBasePool.sol";
 
 interface IVaultMainMock {
     function getPoolFactoryMock() external view returns (address);
@@ -28,8 +30,6 @@ interface IVaultMainMock {
 
     function manualSetPoolRegistered(address pool, bool status) external;
 
-    function manualSetIsUnlocked(bool status) external;
-
     function manualSetInitializedPool(address pool, bool isPoolInitialized) external;
 
     function manualSetPoolPaused(address, bool) external;
@@ -50,7 +50,12 @@ interface IVaultMainMock {
 
     function manualSetStaticSwapFeePercentage(address pool, uint256 value) external;
 
+    /// @dev Does not check the value against any min/max limits normally enforced by the pool.
+    function manualUnsafeSetStaticSwapFeePercentage(address pool, uint256 value) external;
+
     function manualSetPoolTokensAndBalances(address, IERC20[] memory, uint256[] memory, uint256[] memory) external;
+
+    function manualSetPoolBalances(address, uint256[] memory, uint256[] memory) external;
 
     function manualSetPoolConfigBits(address pool, PoolConfigBits config) external;
 
@@ -66,7 +71,7 @@ interface IVaultMainMock {
 
     function internalGetBufferWrappedSurplus(IERC4626 wrappedToken) external view returns (uint256);
 
-    function getMaxConvertError() external pure returns (uint256);
+    function getBufferTokenBalancesBytes(IERC4626 wrappedToken) external view returns (bytes32);
 
     function recoveryModeExit(address pool) external view;
 
@@ -82,7 +87,7 @@ interface IVaultMainMock {
 
     function getRawBalances(address pool) external view returns (uint256[] memory balancesRaw);
 
-    function getLastLiveBalances(address pool) external view returns (uint256[] memory lastLiveBalances);
+    function getLastLiveBalances(address pool) external view returns (uint256[] memory lastBalancesLiveScaled18);
 
     function updateLiveTokenBalanceInPoolData(
         PoolData memory poolData,
@@ -139,7 +144,7 @@ interface IVaultMainMock {
     function manualSetReservesOf(IERC20 token, uint256 reserves) external;
 
     function manualInternalSwap(
-        SwapParams memory params,
+        VaultSwapParams memory vaultSwapParams,
         SwapState memory state,
         PoolData memory poolData
     )
@@ -149,12 +154,16 @@ interface IVaultMainMock {
             uint256 amountCalculatedScaled18,
             uint256 amountIn,
             uint256 amountOut,
-            SwapParams memory,
+            VaultSwapParams memory,
             SwapState memory,
             PoolData memory
         );
 
-    function manualReentrancySwap(SwapParams memory params, SwapState memory state, PoolData memory poolData) external;
+    function manualReentrancySwap(
+        VaultSwapParams memory vaultSwapParams,
+        SwapState memory state,
+        PoolData memory poolData
+    ) external;
 
     function manualGetAggregateSwapFeeAmount(address pool, IERC20 token) external view returns (uint256);
 
@@ -169,10 +178,10 @@ interface IVaultMainMock {
     function manualSetAggregateYieldFeePercentage(address pool, uint256 value) external;
 
     function manualBuildPoolSwapParams(
-        SwapParams memory params,
+        VaultSwapParams memory vaultSwapParams,
         SwapState memory state,
         PoolData memory poolData
-    ) external view returns (IBasePool.PoolSwapParams memory);
+    ) external view returns (PoolSwapParams memory);
 
     function manualComputeAndChargeAggregateSwapFees(
         PoolData memory poolData,
@@ -232,10 +241,19 @@ interface IVaultMainMock {
         uint256[] memory minAmountsOutScaled18
     ) external;
 
-    function manualUpdateReservesAfterWrapping(
+    function manualSettleWrap(
         IERC20 underlyingToken,
-        IERC20 wrappedToken
-    ) external returns (uint256, uint256);
+        IERC20 wrappedToken,
+        uint256 underlyingHint,
+        uint256 wrappedHint
+    ) external;
+
+    function manualSettleUnwrap(
+        IERC20 underlyingToken,
+        IERC20 wrappedToken,
+        uint256 underlyingHint,
+        uint256 wrappedHint
+    ) external;
 
     function manualTransfer(IERC20 token, address to, uint256 amount) external;
 
@@ -245,7 +263,19 @@ interface IVaultMainMock {
         BufferWrapOrUnwrapParams memory params
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
+    function manualSetBufferAsset(IERC4626 wrappedToken, address underlyingToken) external;
+
+    function manualSetBufferOwnerShares(IERC4626 wrappedToken, address owner, uint256 shares) external;
+
+    function manualSetBufferTotalShares(IERC4626 wrappedToken, uint256 shares) external;
+
     function manualSettleReentrancy(IERC20 token) external returns (uint256 paid);
 
     function manualSendToReentrancy(IERC20 token, address to, uint256 amount) external;
+
+    function manualFindTokenIndex(IERC20[] memory tokens, IERC20 token) external pure returns (uint256 index);
+
+    function manualSetPoolCreator(address pool, address newPoolCreator) external;
+
+    function getConvertFactor() external pure returns (uint16);
 }

@@ -95,7 +95,7 @@ export class Benchmark {
       const setYieldFeeAction = await actionId(feeCollector, 'setGlobalProtocolYieldFeePercentage');
 
       const authorizerAddress = await this.vault.getAuthorizer();
-      const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
+      const authorizer = await deployedAt('v3-vault/BasicAuthorizerMock', authorizerAddress);
 
       await authorizer.grantRole(setSwapFeeAction, admin.address);
       await authorizer.grantRole(setYieldFeeAction, admin.address);
@@ -630,7 +630,7 @@ export class Benchmark {
 
       const setPoolSwapFeeAction = await actionId(this.vault, 'setStaticSwapFeePercentage');
       const authorizerAddress = await this.vault.getAuthorizer();
-      const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
+      const authorizer = await deployedAt('v3-vault/BasicAuthorizerMock', authorizerAddress);
       await authorizer.grantRole(setPoolSwapFeeAction, admin.address);
       await this.vault.connect(admin).setStaticSwapFeePercentage(this.pool, SWAP_FEE);
 

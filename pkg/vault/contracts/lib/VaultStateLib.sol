@@ -2,19 +2,16 @@
 
 pragma solidity ^0.8.24;
 
-import { VaultState } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
-
 import { WordCodec } from "@balancer-labs/v3-solidity-utils/contracts/helpers/WordCodec.sol";
 
-// @notice Config type to store entire configuration of the vault state.
+// @notice Custom type to store the Vault configuration.
 type VaultStateBits is bytes32;
 
-using VaultStateLib for VaultStateBits global;
-
+/// @notice Helper functions for reading and writing the `VaultState` struct.
 library VaultStateLib {
     using WordCodec for bytes32;
 
-    // Bit offsets for pool config
+    // Bit offsets for the Vault state flags.
     uint256 public constant QUERY_DISABLED_OFFSET = 0;
     uint256 public constant VAULT_PAUSED_OFFSET = QUERY_DISABLED_OFFSET + 1;
     uint256 public constant BUFFER_PAUSED_OFFSET = VAULT_PAUSED_OFFSET + 1;

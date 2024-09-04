@@ -4,9 +4,17 @@ pragma solidity ^0.8.24;
 
 import { FEE_BITLENGTH } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
+/**
+ * @notice Helper functions to read and write the packed configuration flags stored in `_poolConfigBits`.
+ * @dev Note that the entire configuration of each pool is stored in the `_poolConfigBits` mapping (one slot per pool).
+ * This includes the data in the `PoolConfig` struct, plus the data in the `HookFlags` struct. The layout (i.e.,
+ * offsets for each data field) is specified here.
+ *
+ * There are two libraries for interpreting these data. `HooksConfigLib` parses fields related to hooks, while
+ * `PoolConfigLib` contains helpers related to the non-hook-related flags, along with aggregate fee percentages
+ * and other data associated with pools.
+ */
 library PoolConfigConst {
-    error InvalidSize(uint256 currentValue, uint256 expectedSize);
-
     // Bit offsets for main pool config settings
     uint8 public constant POOL_REGISTERED_OFFSET = 0;
     uint8 public constant POOL_INITIALIZED_OFFSET = POOL_REGISTERED_OFFSET + 1;

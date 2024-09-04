@@ -5,9 +5,8 @@ pragma solidity ^0.8.24;
 import { StorageSlotExtension } from "./StorageSlotExtension.sol";
 
 /**
- * @dev Variant of {ReentrancyGuard} that uses transient storage.
- *
- * NOTE: This variant only works on networks where EIP-1153 is available.
+ * @notice Variant of {ReentrancyGuard} that uses transient storage.
+ * @dev NOTE: This variant only works on networks where EIP-1153 is available.
  */
 abstract contract ReentrancyGuardTransient {
     using StorageSlotExtension for *;
@@ -16,9 +15,7 @@ abstract contract ReentrancyGuardTransient {
     bytes32 private constant _REENTRANCY_GUARD_STORAGE =
         0x9b779b17422d0df92223018b32b4d1fa46e071723d6817e2486d003becc55f00;
 
-    /**
-     * @dev Unauthorized reentrant call.
-     */
+    /// @notice Unauthorized reentrant call.
     error ReentrancyGuardReentrantCall();
 
     /**

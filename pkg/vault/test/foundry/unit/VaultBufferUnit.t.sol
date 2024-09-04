@@ -10,6 +10,7 @@ import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
@@ -34,7 +35,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
     }
 
     function testUnderlyingSurplusWrongBalance() public {
-        // Unbalances buffer so that buffer has less underlying than wrapped
+        // Unbalances buffer so that buffer has less underlying than wrapped.
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
             0,
@@ -51,7 +52,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
     }
 
     function testUnderlyingSurplusCorrectBalance() public {
-        // Unbalances buffer so that buffer has more underlying than wrapped (so it has a surplus of underlying)
+        // Unbalances buffer so that buffer has more underlying than wrapped (so it has a surplus of underlying).
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
             0,
@@ -71,10 +72,11 @@ contract VaultBufferUnitTest is BaseVaultTest {
         assertApproxEqAbs(wDaiInitialized.getRate(), 2e18, 1, "Wrong wDAI rate");
 
         uint256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wDaiInitialized)));
-        // Before swap, buffer had _wrapAmount of underlying and wrapped
-        // After swap, buffer has 3/2 _wrapAmount of underlying and 1/2 _wrapAmount of wrapped
-        // surplus = (3/2 _wrapAmount - (1/2 _wrapAmount * rate)) / 2 = 1/4 _wrapAmount
-        assertApproxEqAbs(surplus, _wrapAmount / 4, 1, "Wrong underlying surplus");
+        // Before swap, buffer had _wrapAmount of underlying and wrapped.
+        // After swap, buffer has 3/2 _wrapAmount of underlying and (1/2 _wrapAmount + vaultConvertFactor) of wrapped.
+        // surplus = (3/2 _wrapAmount - ((1/2 _wrapAmount + vaultConvertFactor)* rate)) / 2 =
+        // `1/4 _wrapAmount - vaultConvertFactor`.
+        assertApproxEqAbs(surplus, _wrapAmount / 4 - vaultConvertFactor, 1, "Wrong underlying surplus");
     }
 
     function testWrappedSurplusBalanceZero() public view {
@@ -83,7 +85,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
     }
 
     function testWrappedSurplusWrongBalance() public {
-        // Unbalances buffer so that buffer has more underlying than wrapped
+        // Unbalances buffer so that buffer has more underlying than wrapped.
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
             0,
@@ -100,7 +102,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
     }
 
     function testWrappedSurplusCorrectBalance() public {
-        // Unbalances buffer so that buffer has less underlying than wrapped (so it has a surplus of wrapped)
+        // Unbalances buffer so that buffer has less underlying than wrapped (so it has a surplus of wrapped).
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             _wrapAmount / 2,
             0,
@@ -113,95 +115,280 @@ contract VaultBufferUnitTest is BaseVaultTest {
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         // rate = assets / supply. If we double the assets, we double the rate.
-        // Donate to wrapped token to inflate rate to 2
+        // Donate to wrapped token to inflate rate to 2.
         dai.transfer(address(wDaiInitialized), wDaiInitialized.totalAssets());
         vm.stopPrank();
 
         assertApproxEqAbs(wDaiInitialized.getRate(), 2e18, 1, "Wrong wDAI rate");
 
         uint256 surplus = vault.internalGetBufferWrappedSurplus(IERC4626(address(wDaiInitialized)));
-        // Before swap, buffer had _wrapAmount of underlying and wrapped
-        // After swap, buffer has 1/2 _wrapAmount of underlying and 3/2 _wrapAmount of wrapped
-        // surplus = (3/2 _wrapAmount - (1/2 _wrapAmount / rate)) / 2 = 5/8 _wrapAmount
-        assertApproxEqAbs(surplus, (5 * _wrapAmount) / 8, 1, "Wrong wrapped surplus");
+        // Before swap, buffer had _wrapAmount of underlying and wrapped.
+        // After swap, buffer has `1/2 _wrapAmount + vaultConvertFactor` of underlying and 3/2 _wrapAmount of wrapped.
+        // surplus = (3/2 _wrapAmount - ((1/2 _wrapAmount + vaultConvertFactor) / rate)) / 2 =
+        // `5/8 _wrapAmount - vaultConvertFactor/4`.
+        assertApproxEqAbs(surplus, (5 * _wrapAmount) / 8 - (vaultConvertFactor / 4), 1, "Wrong wrapped surplus");
     }
 
-    function testReservesAfterWrappingWithVaultBalances() public {
-        uint256 underlyingDeposited = 4e6;
-        uint256 wrappedMinted = 2e5;
+    function testSettleWrap() public {
+        uint256 actualUnderlyingDeposited = 4e6;
+        uint256 actualWrappedMinted = 2e5;
 
-        // Simulate a wrapping operation
+        _simulateWrapOperation(actualUnderlyingDeposited, actualWrappedMinted);
 
-        // 1) Vault deposits underlying tokens into yield bearing protocol (a.k.a. Bob)
-        vault.manualTransfer(dai, bob, underlyingDeposited);
-
-        vm.prank(bob);
-        // 2) Yield bearing protocol transfers wrapped tokens to vault (simulating an yield bearing protocol)
-        IERC20(address(wDaiInitialized)).transfer(address(vault), wrappedMinted);
-
-        // Measure reserves
         uint256 wrappedReservesBefore = vault.getReservesOf(IERC20(address(wDaiInitialized)));
         uint256 underlyingReservesBefore = vault.getReservesOf(dai);
 
-        // Call _updateReservesAfterWrapping
-        (uint256 actualUnderlying, uint256 actualWrapped) = vault.manualUpdateReservesAfterWrapping(
+        vault.manualSettleWrap(dai, IERC20(address(wDaiInitialized)), actualUnderlyingDeposited, actualWrappedMinted);
+
+        _checkVaultReservesAfterWrap(
+            underlyingReservesBefore,
+            wrappedReservesBefore,
+            actualUnderlyingDeposited,
+            actualWrappedMinted
+        );
+    }
+
+    function testSettleWrapWithMoreUnderlyingDeposited() public {
+        uint256 actualUnderlyingDeposited = 4e6;
+        uint256 expectedUnderlyingDeposited = actualUnderlyingDeposited - 1;
+        uint256 actualWrappedMinted = 2e5;
+
+        _simulateWrapOperation(actualUnderlyingDeposited, actualWrappedMinted);
+
+        uint256 underlyingReservesBefore = vault.getReservesOf(dai);
+
+        // _settleWrap will revert because the wrap operation deposited more underlying tokens than expected.
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.NotEnoughUnderlying.selector,
+                IERC4626(address(wDaiInitialized)),
+                underlyingReservesBefore - expectedUnderlyingDeposited,
+                underlyingReservesBefore - actualUnderlyingDeposited
+            )
+        );
+        vault.manualSettleWrap(dai, IERC20(address(wDaiInitialized)), expectedUnderlyingDeposited, actualWrappedMinted);
+    }
+
+    function testSettleWrapWithLessUnderlyingDeposited() public {
+        uint256 actualUnderlyingDeposited = 4e6;
+        uint256 expectedUnderlyingDeposited = actualUnderlyingDeposited + 1;
+        uint256 actualWrappedMinted = 2e5;
+
+        _simulateWrapOperation(actualUnderlyingDeposited, actualWrappedMinted);
+
+        uint256 wrappedReservesBefore = vault.getReservesOf(IERC20(address(wDaiInitialized)));
+        uint256 underlyingReservesBefore = vault.getReservesOf(dai);
+
+        vault.manualSettleWrap(dai, IERC20(address(wDaiInitialized)), expectedUnderlyingDeposited, actualWrappedMinted);
+
+        _checkVaultReservesAfterWrap(
+            underlyingReservesBefore,
+            wrappedReservesBefore,
+            actualUnderlyingDeposited,
+            actualWrappedMinted
+        );
+    }
+
+    function testSettleWrapWithMoreWrappedMinted() public {
+        uint256 actualUnderlyingDeposited = 4e6;
+        uint256 actualWrappedMinted = 2e5;
+        uint256 expectedWrappedMinted = actualWrappedMinted - 1;
+
+        _simulateWrapOperation(actualUnderlyingDeposited, actualWrappedMinted);
+
+        uint256 wrappedReservesBefore = vault.getReservesOf(IERC20(address(wDaiInitialized)));
+        uint256 underlyingReservesBefore = vault.getReservesOf(dai);
+
+        vault.manualSettleWrap(dai, IERC20(address(wDaiInitialized)), actualUnderlyingDeposited, expectedWrappedMinted);
+
+        _checkVaultReservesAfterWrap(
+            underlyingReservesBefore,
+            wrappedReservesBefore,
+            actualUnderlyingDeposited,
+            actualWrappedMinted
+        );
+    }
+
+    function testSettleWrapWithLessWrappedMinted() public {
+        uint256 actualUnderlyingDeposited = 4e6;
+        uint256 actualWrappedMinted = 2e5;
+        uint256 expectedWrappedMinted = actualWrappedMinted + 1;
+
+        _simulateWrapOperation(actualUnderlyingDeposited, actualWrappedMinted);
+
+        uint256 wrappedReservesBefore = vault.getReservesOf(IERC20(address(wDaiInitialized)));
+
+        // _settleWrap will revert because the wrap operation minted less wrapped tokens than expected.
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.NotEnoughWrapped.selector,
+                IERC4626(address(wDaiInitialized)),
+                wrappedReservesBefore + expectedWrappedMinted,
+                wrappedReservesBefore + actualWrappedMinted
+            )
+        );
+        vault.manualSettleWrap(dai, IERC20(address(wDaiInitialized)), actualUnderlyingDeposited, expectedWrappedMinted);
+    }
+
+    function testSettleUnwrap() public {
+        uint256 actualUnderlyingWithdrawn = 4e6;
+        uint256 actualWrappedBurned = 2e5;
+
+        _simulateUnwrapOperation(actualUnderlyingWithdrawn, actualWrappedBurned);
+
+        uint256 wrappedReservesBefore = vault.getReservesOf(IERC20(address(wDaiInitialized)));
+        uint256 underlyingReservesBefore = vault.getReservesOf(dai);
+
+        vault.manualSettleUnwrap(dai, IERC20(address(wDaiInitialized)), actualUnderlyingWithdrawn, actualWrappedBurned);
+
+        _checkVaultReservesAfterUnwrap(
+            underlyingReservesBefore,
+            wrappedReservesBefore,
+            actualUnderlyingWithdrawn,
+            actualWrappedBurned
+        );
+    }
+
+    function testSettleUnwrapWithMoreUnderlyingWithdrawn() public {
+        uint256 actualUnderlyingWithdrawn = 4e6;
+        uint256 expectedUnderlyingWithdrawn = actualUnderlyingWithdrawn - 1;
+        uint256 actualWrappedBurned = 2e5;
+
+        _simulateUnwrapOperation(actualUnderlyingWithdrawn, actualWrappedBurned);
+
+        uint256 wrappedReservesBefore = vault.getReservesOf(IERC20(address(wDaiInitialized)));
+        uint256 underlyingReservesBefore = vault.getReservesOf(dai);
+
+        vault.manualSettleUnwrap(
             dai,
-            IERC20(address(wDaiInitialized))
+            IERC20(address(wDaiInitialized)),
+            expectedUnderlyingWithdrawn,
+            actualWrappedBurned
         );
 
-        // Measure output of _updateReservesAfterWrapping
-        assertEq(actualUnderlying, underlyingDeposited, "Wrong underlying deposited");
-        assertEq(actualWrapped, wrappedMinted, "Wrong wrapped minted");
+        _checkVaultReservesAfterUnwrap(
+            underlyingReservesBefore,
+            wrappedReservesBefore,
+            actualUnderlyingWithdrawn,
+            actualWrappedBurned
+        );
+    }
 
-        // Measure reserves
+    function testSettleUnwrapWithLessUnderlyingWithdrawn() public {
+        uint256 actualUnderlyingWithdrawn = 4e6;
+        uint256 expectedUnderlyingWithdrawn = actualUnderlyingWithdrawn + 1;
+        uint256 actualWrappedBurned = 2e5;
+
+        _simulateUnwrapOperation(actualUnderlyingWithdrawn, actualWrappedBurned);
+
+        uint256 underlyingReservesBefore = vault.getReservesOf(dai);
+
+        // _settleUnwrap will revert because the unwrap operation has withdrawn less underlying tokens than expected.
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.NotEnoughUnderlying.selector,
+                IERC4626(address(wDaiInitialized)),
+                underlyingReservesBefore + expectedUnderlyingWithdrawn,
+                underlyingReservesBefore + actualUnderlyingWithdrawn
+            )
+        );
+        vault.manualSettleUnwrap(
+            dai,
+            IERC20(address(wDaiInitialized)),
+            expectedUnderlyingWithdrawn,
+            actualWrappedBurned
+        );
+    }
+
+    function testSettleUnwrapWithMoreWrappedBurned() public {
+        uint256 actualUnderlyingWithdrawn = 4e6;
+        uint256 actualWrappedBurned = 2e5;
+        uint256 expectedWrappedBurned = actualWrappedBurned - 1;
+
+        _simulateUnwrapOperation(actualUnderlyingWithdrawn, actualWrappedBurned);
+
+        uint256 wrappedReservesBefore = vault.getReservesOf(IERC20(address(wDaiInitialized)));
+
+        // _settleUnwrap will revert because the unwrap operation has burned more wrapped tokens than expected.
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IVaultErrors.NotEnoughWrapped.selector,
+                IERC4626(address(wDaiInitialized)),
+                wrappedReservesBefore - expectedWrappedBurned,
+                wrappedReservesBefore - actualWrappedBurned
+            )
+        );
+        vault.manualSettleUnwrap(
+            dai,
+            IERC20(address(wDaiInitialized)),
+            actualUnderlyingWithdrawn,
+            expectedWrappedBurned
+        );
+    }
+
+    function testSettleUnwrapWithLessWrappedBurned() public {
+        uint256 actualUnderlyingWithdrawn = 4e6;
+        uint256 actualWrappedBurned = 2e5;
+        uint256 expectedWrappedBurned = actualWrappedBurned + 1;
+
+        _simulateUnwrapOperation(actualUnderlyingWithdrawn, actualWrappedBurned);
+
+        uint256 wrappedReservesBefore = vault.getReservesOf(IERC20(address(wDaiInitialized)));
+        uint256 underlyingReservesBefore = vault.getReservesOf(dai);
+
+        vault.manualSettleUnwrap(
+            dai,
+            IERC20(address(wDaiInitialized)),
+            actualUnderlyingWithdrawn,
+            expectedWrappedBurned
+        );
+
+        _checkVaultReservesAfterUnwrap(
+            underlyingReservesBefore,
+            wrappedReservesBefore,
+            actualUnderlyingWithdrawn,
+            actualWrappedBurned
+        );
+    }
+
+    function _checkVaultReservesAfterWrap(
+        uint256 underlyingReservesBefore,
+        uint256 wrappedReservesBefore,
+        uint256 underlyingDeltaHint,
+        uint256 wrappedDeltaHint
+    ) private view {
+        // Measure reserves after the wrap operation.
         uint256 wrappedReservesAfter = vault.getReservesOf(IERC20(address(wDaiInitialized)));
         uint256 underlyingReservesAfter = vault.getReservesOf(dai);
 
+        // Assumes that the expected amount was deposited and discards any surplus of underlying tokens.
         assertEq(
             underlyingReservesBefore - underlyingReservesAfter,
-            underlyingDeposited,
+            underlyingDeltaHint,
             "Wrong reserves of underlying"
         );
-        assertEq(wrappedReservesAfter - wrappedReservesBefore, wrappedMinted, "Wrong reserves of wrapped");
+        // Assumes that the expected amount was minted and discards any surplus of wrapped tokens.
+        assertEq(wrappedReservesAfter - wrappedReservesBefore, wrappedDeltaHint, "Wrong reserves of wrapped");
     }
 
-    function testReservesAfterUnwrapping() public {
-        uint256 underlyingWithdrawn = 4e6;
-        uint256 wrappedBurned = 2e5;
-
-        // Simulate a wrapping operation
-
-        // 1) Vault burns wrapped tokens (simulated by depositing to Bob, the YB Protocol)
-        vault.manualTransfer(IERC20(address(wDaiInitialized)), bob, wrappedBurned);
-
-        vm.prank(bob);
-        // 2) Yield bearing protocol transfers underlying tokens to vault (simulating an yield bearing protocol)
-        dai.transfer(address(vault), underlyingWithdrawn);
-
-        // Measure reserves
-        uint256 wrappedReservesBefore = vault.getReservesOf(IERC20(address(wDaiInitialized)));
-        uint256 underlyingReservesBefore = vault.getReservesOf(dai);
-
-        // Call _updateReservesAfterWrapping
-        (uint256 actualUnderlying, uint256 actualWrapped) = vault.manualUpdateReservesAfterWrapping(
-            dai,
-            IERC20(address(wDaiInitialized))
-        );
-
-        // Measure output of _updateReservesAfterWrapping
-        assertEq(actualUnderlying, underlyingWithdrawn, "Wrong underlying deposited");
-        assertEq(actualWrapped, wrappedBurned, "Wrong wrapped minted");
-
-        // Measure reserves
+    function _checkVaultReservesAfterUnwrap(
+        uint256 underlyingReservesBefore,
+        uint256 wrappedReservesBefore,
+        uint256 underlyingDeltaHint,
+        uint256 wrappedDeltaHint
+    ) private view {
+        // Measure reserves after the unwrap operation.
         uint256 wrappedReservesAfter = vault.getReservesOf(IERC20(address(wDaiInitialized)));
         uint256 underlyingReservesAfter = vault.getReservesOf(dai);
 
+        // Assumes that the expected amount was withdrawn and discards any surplus of underlying tokens.
         assertEq(
             underlyingReservesAfter - underlyingReservesBefore,
-            underlyingWithdrawn,
+            underlyingDeltaHint,
             "Wrong reserves of underlying"
         );
-        assertEq(wrappedReservesBefore - wrappedReservesAfter, wrappedBurned, "Wrong reserves of wrapped");
+        // Assumes that the expected amount was burned and discards any surplus of wrapped tokens.
+        assertEq(wrappedReservesBefore - wrappedReservesAfter, wrappedDeltaHint, "Wrong reserves of wrapped");
     }
 
     function _createWrappedToken() private {
@@ -233,7 +420,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         permit2.approve(address(wUSDCNotInitialized), address(batchRouter), type(uint160).max, type(uint48).max);
         vm.stopPrank();
 
-        // Fund an Yield-Bearing Protocol, in this case represented by Bob
+        // Fund a yield-bearing protocol, in this case represented by Bob.
         vm.startPrank(bob);
 
         dai.mint(bob, 3 * _userAmount);
@@ -255,7 +442,25 @@ contract VaultBufferUnitTest is BaseVaultTest {
 
     function _initializeBuffer() private {
         vm.prank(lp);
-        router.addLiquidityToBuffer(IERC4626(address(wDaiInitialized)), _wrapAmount, _wrapAmount, lp);
+        router.initializeBuffer(IERC4626(address(wDaiInitialized)), _wrapAmount, _wrapAmount);
+    }
+
+    function _simulateWrapOperation(uint256 underlyingToDeposit, uint256 wrappedToMint) private {
+        // 1) Vault deposits underlying tokens into yield bearing protocol (a.k.a. Bob).
+        vault.manualTransfer(dai, bob, underlyingToDeposit);
+
+        vm.prank(bob);
+        // 2) Yield bearing protocol transfers wrapped tokens to vault.
+        IERC20(address(wDaiInitialized)).transfer(address(vault), wrappedToMint);
+    }
+
+    function _simulateUnwrapOperation(uint256 underlyingToWithdraw, uint256 wrappedToBurn) private {
+        // 1) Vault burns wrapped tokens (simulated by depositing to Bob, the yield-bearing Protocol).
+        vault.manualTransfer(IERC20(address(wDaiInitialized)), bob, wrappedToBurn);
+
+        vm.prank(bob);
+        // 2) Yield bearing protocol transfers underlying tokens to vault.
+        dai.transfer(address(vault), underlyingToWithdraw);
     }
 
     function _exactInWrapUnwrapPath(

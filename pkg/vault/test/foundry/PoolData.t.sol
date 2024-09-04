@@ -4,11 +4,12 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { PoolData, Rounding, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
@@ -17,8 +18,9 @@ import { RateProviderMock } from "../../contracts/test/RateProviderMock.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract PoolDataTest is BaseVaultTest {
-    using ArrayHelpers for *;
+    using CastingHelpers for address[];
     using FixedPoint for uint256;
+    using ArrayHelpers for *;
 
     RateProviderMock wstETHRateProvider;
     RateProviderMock daiRateProvider;
@@ -32,6 +34,7 @@ contract PoolDataTest is BaseVaultTest {
         wstETHRateProvider = new RateProviderMock();
         daiRateProvider = new RateProviderMock();
 
+        // Providers will be sorted along with the tokens by `buildTokenConfig`.
         rateProviders[0] = daiRateProvider;
         rateProviders[1] = wstETHRateProvider;
 

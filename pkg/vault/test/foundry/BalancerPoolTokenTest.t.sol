@@ -5,17 +5,15 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC20Errors } from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { IEIP712 } from "permit2/src/interfaces/IEIP712.sol";
 
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
-import { IERC20MultiToken } from "@balancer-labs/v3-interfaces/contracts/vault/IERC20MultiToken.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
@@ -32,8 +30,6 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     uint256 private constant CURRENT_NONCE = 0;
-
-    uint256 internal constant MINIMUM_TOTAL_SUPPLY = 1e6;
 
     uint256 internal privateKey = 0xBEEF;
     address user = vm.addr(privateKey);
@@ -63,7 +59,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
     }
 
     function testBurn() public {
-        uint256 burnAmount = defaultAmount - MINIMUM_TOTAL_SUPPLY;
+        uint256 burnAmount = defaultAmount - POOL_MINIMUM_TOTAL_SUPPLY;
 
         vault.mintERC20(pool, user, defaultAmount);
 
@@ -71,7 +67,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         emit IERC20.Transfer(user, address(0), burnAmount);
         vault.burnERC20(pool, user, burnAmount);
 
-        assertEq(poolToken.balanceOf(user), MINIMUM_TOTAL_SUPPLY, "balance mismatch");
+        assertEq(poolToken.balanceOf(user), POOL_MINIMUM_TOTAL_SUPPLY, "balance mismatch");
     }
 
     function testApprove() public {
@@ -79,7 +75,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
 
         vm.expectEmit();
         emit IERC20.Approval(address(this), user, defaultAmount);
-        poolToken.approve(user, defaultAmount);
+        assertTrue(poolToken.approve(user, defaultAmount), "approve failed");
 
         assertEq(poolToken.allowance(address(this), user), defaultAmount, "allowance mismatch");
     }
@@ -110,11 +106,39 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         vm.expectEmit();
         emit IERC20.Transfer(from, user, defaultAmount);
 
-        poolToken.transferFrom(from, user, defaultAmount);
+        assertTrue(poolToken.transferFrom(from, user, defaultAmount), "transferFrom failed");
 
         assertEq(poolToken.allowance(from, user), 0, "allowance(from, user) isn't 0");
         assertEq(poolToken.balanceOf(user), defaultAmount, "user balance mismatch");
         assertEq(poolToken.balanceOf(from), 0, "sender balance mismatch");
+    }
+
+    function testEmitTransfer() public {
+        vm.expectEmit();
+        emit IERC20.Transfer(user, address(this), defaultAmount);
+
+        vm.prank(address(vault));
+        poolToken.emitTransfer(user, address(this), defaultAmount);
+    }
+
+    function testEmitApproval() public {
+        vm.expectEmit();
+        emit IERC20.Approval(user, address(this), defaultAmount);
+
+        vm.prank(address(vault));
+        poolToken.emitApproval(user, address(this), defaultAmount);
+    }
+
+    function testEmitTransferRevertIfCallerIsNotVault() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+
+        poolToken.emitTransfer(user, address(this), defaultAmount);
+    }
+
+    function testEmitApprovalRevertIfCallerIsNotVault() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SenderIsNotVault.selector, address(this)));
+
+        poolToken.emitApproval(user, address(this), defaultAmount);
     }
 
     function testPermit() public {
@@ -134,7 +158,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         assertEq(poolToken.nonces(user), CURRENT_NONCE + 1, "nonce mismatch");
     }
 
-    // @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitBadNonce() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
@@ -150,7 +174,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp, v, r, s);
     }
 
-    // @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitBadDeadline() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
@@ -165,7 +189,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp + 1, v, r, s);
     }
 
-    // @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitPastDeadline() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
@@ -180,7 +204,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(user, address(0xCAFE), defaultAmount, block.timestamp - 1, v, r, s);
     }
 
-    // @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitReplay() public {
         (uint8 v, bytes32 r, bytes32 s) = getPermitSignature(
             IEIP712(address(poolToken)),
@@ -222,7 +246,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         assertEq(poolToken.nonces(usr), CURRENT_NONCE + 1, "nonce mismatch");
     }
 
-    // @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitBadNonce__Fuzz(
         uint256 privKey,
         address to,
@@ -250,7 +274,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(usr, to, amount, deadline, v, r, s);
     }
 
-    // @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitBadDeadline__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
         deadline = bound(deadline, 0, block.timestamp - 1);
         vm.assume(privKey != 0);
@@ -292,7 +316,7 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         poolToken.permit(usr, to, amount, deadline, v, r, s);
     }
 
-    // @dev Just test for general fail as it is hard to compute error arguments
+    /// @dev Just test for general fail as it is hard to compute error arguments.
     function testFailPermitReplay__Fuzz(uint248 privKey, address to, uint256 amount, uint256 deadline) public {
         vm.assume(privKey != 0);
         vm.assume(to != address(0));
@@ -332,14 +356,29 @@ contract BalancerPoolTokenTest is BaseVaultTest {
         // Init pool, so it has a BPT supply and rate can be calculated.
         vm.startPrank(lp);
         IERC20[] memory tokens = vault.getPoolTokens(address(poolToken));
-        router.initialize(address(poolToken), tokens, [poolInitAmount, poolInitAmount].toMemoryArray(), 0, false, "");
+        router.initialize(
+            address(poolToken),
+            tokens,
+            [poolInitAmount, poolInitAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("")
+        );
         vm.stopPrank();
 
         uint256[] memory liveBalancesScaled18 = vault.getCurrentLiveBalances(address(poolToken));
-        uint256 invariant = IBasePool(address(poolToken)).computeInvariant(liveBalancesScaled18);
+        uint256 invariant = IBasePool(address(poolToken)).computeInvariant(liveBalancesScaled18, Rounding.ROUND_DOWN);
         uint256 bptRate = invariant.divDown(poolToken.totalSupply());
 
         assertEq(poolToken.getRate(), bptRate, "BPT rate is wrong");
         assertEq(bptRate, FixedPoint.ONE, "BPT rate is not 1");
+    }
+
+    function testOverrideRate() public {
+        uint256 mockRate = 51.567e16;
+
+        poolToken.setMockRate(mockRate);
+
+        assertEq(poolToken.getRate(), mockRate, "Wrong overridden mock rate");
     }
 }

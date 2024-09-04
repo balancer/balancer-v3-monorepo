@@ -2,29 +2,54 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import {
     LiquidityManagement,
     TokenConfig,
+    PoolSwapParams,
     HookFlags
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-
+import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
-contract DirectionalFeeHookExample is BaseHooks {
+/**
+ * @notice Increase the swap fee percentage on trades that move pools away from equilibrium.
+ * @dev This is most applicable to stable pools with approximately linear math
+ * (e.g., with higher amplificationFactor values).
+ *
+ * This hook implements `onComputeDynamicSwapFeePercentage`, which is called before each swap to determine the final
+ * value of the swap fee percentage. If a trade moves the pool balances toward equilibrium, this hook returns the
+ * regular static swap fee. Otherwise, it charges a larger fee, approaching 100% as the balance of `tokenOut`
+ * approaches zero.
+ *
+ * Note that this is just an example to illustrate the concept. A real hook would likely be more sophisticated,
+ * perhaps establishing a range within which swaps charge the standard fee, and ensuring a smooth and symmetrical
+ * fee increase on either side.
+ */
+contract DirectionalFeeHookExample is BaseHooks, VaultGuard {
     using FixedPoint for uint256;
 
     // Only stable pools from the allowed factory are able to register and use this hook.
     address private immutable _allowedStablePoolFactory;
 
-    constructor(IVault vault, address allowedStablePoolFactory) BaseHooks(vault) {
+    /**
+     * @notice A new `DirectionalFeeHookExample` contract has been registered successfully for a given factory and pool.
+     * @dev If the registration fails the call will revert, so there will be no event.
+     * @param hooksContract This contract
+     * @param factory The factory (must be the allowed factory, or the call will revert)
+     * @param pool The pool on which the hook was registered
+     */
+    event DirectionalFeeHookExampleRegistered(
+        address indexed hooksContract,
+        address indexed factory,
+        address indexed pool
+    );
+
+    constructor(IVault vault, address allowedStablePoolFactory) VaultGuard(vault) {
         // Although the hook allows any factory to be registered during deployment, it should be a stable pool factory.
         _allowedStablePoolFactory = allowedStablePoolFactory;
     }
@@ -35,8 +60,10 @@ contract DirectionalFeeHookExample is BaseHooks {
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) public view override onlyVault returns (bool) {
-        // This hook allows only pools deployed by the registered factory to register it.
+    ) public override onlyVault returns (bool) {
+        emit DirectionalFeeHookExampleRegistered(address(this), factory, pool);
+
+        // This hook only allows pools deployed by `_allowedStablePoolFactory` to register it.
         return factory == _allowedStablePoolFactory && IBasePoolFactory(factory).isPoolFromFactory(pool);
     }
 
@@ -47,15 +74,15 @@ contract DirectionalFeeHookExample is BaseHooks {
 
     /// @inheritdoc IHooks
     function onComputeDynamicSwapFeePercentage(
-        IBasePool.PoolSwapParams calldata params,
+        PoolSwapParams calldata params,
         address pool,
         uint256 staticSwapFeePercentage
     ) public view override onlyVault returns (bool, uint256) {
         // Get pool balances
-        (, , , uint256[] memory lastLiveBalances) = _vault.getPoolTokenInfo(pool);
+        (, , , uint256[] memory lastBalancesLiveScaled18) = _vault.getPoolTokenInfo(pool);
 
         uint256 calculatedSwapFeePercentage = _calculatedExpectedSwapFeePercentage(
-            lastLiveBalances,
+            lastBalancesLiveScaled18,
             params.amountGivenScaled18,
             params.indexIn,
             params.indexOut
@@ -72,7 +99,7 @@ contract DirectionalFeeHookExample is BaseHooks {
 
     /** @notice This example assumes that the pool math is linear and that final balances of token in and out are
      *  changed proportionally. This approximation is just to illustrate this hook in a simple manner, but is
-     *  also reasonable, since stable pools behave linearly near the equilibrium. Also, this example requires
+     *  also reasonable, since stable pools behave linearly near equilibrium. Also, this example requires
      *  the rates to be 1:1, which is common among assets that are pegged around the same value, such as USD.
      *  The charged fee percentage is:
      *

@@ -9,7 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenConfig, PoolConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
@@ -19,7 +19,6 @@ contract ProtocolFeeExemptionTest is BaseVaultTest {
     uint256 internal GLOBAL_SWAP_FEE = 50e16;
     uint256 internal GLOBAL_YIELD_FEE = 20e16;
 
-    IProtocolFeeController internal feeController;
     PoolRoleAccounts internal roleAccounts;
 
     uint256 daiIdx;
@@ -30,10 +29,9 @@ contract ProtocolFeeExemptionTest is BaseVaultTest {
 
         (daiIdx, usdcIdx) = getSortedIndexes(address(dai), address(usdc));
 
-        feeController = vault.getProtocolFeeController();
         IAuthentication feeControllerAuth = IAuthentication(address(feeController));
 
-        // Set default protocol fees
+        // Set default protocol fees.
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
             alice

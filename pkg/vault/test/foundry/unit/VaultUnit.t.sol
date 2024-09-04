@@ -8,15 +8,16 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
 import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
 import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
@@ -25,6 +26,7 @@ import { VaultMockDeployer } from "../../../test/foundry/utils/VaultMockDeployer
 contract VaultUnitTest is BaseTest {
     using ArrayHelpers for *;
     using ScalingHelpers for *;
+    using CastingHelpers for *;
     using FixedPoint for *;
     using PoolConfigLib for PoolConfigBits;
     using SafeCast for *;
@@ -42,11 +44,11 @@ contract VaultUnitTest is BaseTest {
     }
 
     function testBuildPoolSwapParams() public view {
-        SwapParams memory params;
-        params.kind = SwapKind.EXACT_IN;
-        params.userData = new bytes(20);
-        params.userData[0] = 0x01;
-        params.userData[19] = 0x05;
+        VaultSwapParams memory vaultSwapParams;
+        vaultSwapParams.kind = SwapKind.EXACT_IN;
+        vaultSwapParams.userData = new bytes(20);
+        vaultSwapParams.userData[0] = 0x01;
+        vaultSwapParams.userData[19] = 0x05;
 
         SwapState memory state;
         state.amountGivenScaled18 = 2e18;
@@ -56,9 +58,9 @@ contract VaultUnitTest is BaseTest {
         PoolData memory poolData;
         poolData.balancesLiveScaled18 = [uint256(1e18), 1e18].toMemoryArray();
 
-        IBasePool.PoolSwapParams memory poolSwapParams = vault.manualBuildPoolSwapParams(params, state, poolData);
+        PoolSwapParams memory poolSwapParams = vault.manualBuildPoolSwapParams(vaultSwapParams, state, poolData);
 
-        assertEq(uint8(poolSwapParams.kind), uint8(params.kind), "Unexpected kind");
+        assertEq(uint8(poolSwapParams.kind), uint8(vaultSwapParams.kind), "Unexpected kind");
         assertEq(poolSwapParams.amountGivenScaled18, state.amountGivenScaled18, "Unexpected amountGivenScaled18");
         assertEq(
             keccak256(abi.encodePacked(poolSwapParams.balancesScaled18)),
@@ -68,7 +70,7 @@ contract VaultUnitTest is BaseTest {
         assertEq(poolSwapParams.indexIn, state.indexIn, "Unexpected indexIn");
         assertEq(poolSwapParams.indexOut, state.indexOut, "Unexpected indexOut");
         assertEq(poolSwapParams.router, address(this), "Unexpected router");
-        assertEq(poolSwapParams.userData, params.userData, "Unexpected userData");
+        assertEq(poolSwapParams.userData, vaultSwapParams.userData, "Unexpected userData");
     }
 
     function testComputeAndChargeAggregateSwapFees() public {
@@ -175,7 +177,7 @@ contract VaultUnitTest is BaseTest {
         addedReserves = bound(addedReserves, 0, 1e12 * 1e18);
         settleHint = bound(settleHint, 0, addedReserves * 2);
 
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vault.manualSetReservesOf(dai, initialReserves);
 
         dai.mint(address(vault), initialReserves);
@@ -194,13 +196,54 @@ contract VaultUnitTest is BaseTest {
     }
 
     function testSettleNegative() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
         vault.manualSetReservesOf(dai, 100);
         // Simulate balance decrease.
         vm.mockCall(address(dai), abi.encodeWithSelector(IERC20.balanceOf.selector), abi.encode(99));
 
         vm.expectRevert(stdError.arithmeticError);
         vault.settle(dai, 0);
+    }
+
+    function testPoolGetTokenCountAndIndexOfTokenNotRegistered() public {
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.PoolNotRegistered.selector, pool));
+        vault.getPoolTokenCountAndIndexOfToken(pool, dai);
+    }
+
+    function testPoolGetTokenCountAndIndexOfToken() public {
+        vault.manualSetPoolRegistered(pool, true);
+        vault.manualSetPoolTokensAndBalances(
+            pool,
+            [address(dai), address(usdc), address(weth), address(wsteth), address(veBAL)].toMemoryArray().asIERC20(),
+            new uint256[](5),
+            new uint256[](5)
+        );
+
+        uint256 count;
+        uint256 index;
+
+        (count, index) = vault.getPoolTokenCountAndIndexOfToken(pool, dai);
+        assertEq(count, 5, "wrong token count (dai)");
+        assertEq(index, 0, "wrong token count (dai)");
+
+        (count, index) = vault.getPoolTokenCountAndIndexOfToken(pool, usdc);
+        assertEq(count, 5, "wrong token count (usdc)");
+        assertEq(index, 1, "wrong token count (usdc)");
+
+        (count, index) = vault.getPoolTokenCountAndIndexOfToken(pool, weth);
+        assertEq(count, 5, "wrong token count (weth)");
+        assertEq(index, 2, "wrong token count (weth)");
+
+        (count, index) = vault.getPoolTokenCountAndIndexOfToken(pool, wsteth);
+        assertEq(count, 5, "wrong token count (wsteth)");
+        assertEq(index, 3, "wrong token count (wsteth)");
+
+        (count, index) = vault.getPoolTokenCountAndIndexOfToken(pool, veBAL);
+        assertEq(count, 5, "wrong token count (veBAL)");
+        assertEq(index, 4, "wrong token count (veBAL)");
+
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.TokenNotRegistered.selector, alice));
+        vault.getPoolTokenCountAndIndexOfToken(pool, IERC20(alice));
     }
 
     function testFeeConstants() public pure {

@@ -18,9 +18,7 @@ class PoolMockWithHooksBenchmark extends Benchmark {
       args: [await this.vault.getAddress(), MONTH * 12],
     })) as unknown as PoolFactoryMock;
 
-    const hooks = (await deploy('MinimalHooksPoolMock', {
-      args: [this.vault],
-    })) as unknown as MinimalHooksPoolMock;
+    const hooks = (await deploy('MinimalHooksPoolMock')) as unknown as MinimalHooksPoolMock;
 
     await hooks.setHookFlags({
       enableHookAdjustedAmounts: false,

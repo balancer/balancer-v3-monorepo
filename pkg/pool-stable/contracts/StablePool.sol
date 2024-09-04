@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ERC165 } from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {
@@ -12,9 +10,12 @@ import {
     StablePoolImmutableData
 } from "@balancer-labs/v3-interfaces/contracts/pool-stable/IStablePool.sol";
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
+import {
+    IUnbalancedLiquidityInvariantRatioBounds
+} from "@balancer-labs/v3-interfaces/contracts/vault/IUnbalancedLiquidityInvariantRatioBounds.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { SwapKind } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { BalancerPoolToken } from "@balancer-labs/v3-vault/contracts/BalancerPoolToken.sol";
 import { BasePoolAuthentication } from "@balancer-labs/v3-pool-utils/contracts/BasePoolAuthentication.sol";
@@ -23,7 +24,22 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { StableMath } from "@balancer-labs/v3-solidity-utils/contracts/math/StableMath.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
-/// @notice Basic Stable Pool.
+/**
+ * @notice Standard Balancer Stable Pool.
+ * @dev Stable Pools are designed for assets that are either expected to consistently swap at near parity,
+ * or at a known exchange rate. Stable Pools use `StableMath` (based on StableSwap, popularized by Curve),
+ * which allows for swaps of significant size before encountering substantial price impact, vastly
+ * increasing capital efficiency for like-kind and correlated-kind swaps.
+ *
+ * The `amplificationParameter` determines the "flatness" of the price curve. Higher values "flatten" the
+ * curve, meaning there is a larger range of balances over which tokens will trade near parity, with very low
+ * slippage. Generally, the `amplificationParameter` can be higher for tokens with lower volatility, and pools
+ * with higher liquidity. Lower values more closely approximate the "weighted" math curve, handling greater
+ * volatility at the cost of higher slippage. This parameter can be changed through permissioned calls
+ * (see below for details).
+ *
+ * The swap fee percentage is bounded by minimum and maximum values (same as were used in v2).
+ */
 contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, PoolInfo, Version {
     using FixedPoint for uint256;
     using SafeCast for *;
@@ -52,35 +68,57 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     // Minimum values help make the math well-behaved (i.e., the swap fee should overwhelm any rounding error).
     // Maximum values protect users by preventing permissioned actors from setting excessively high swap fees.
     uint256 private constant _MIN_SWAP_FEE_PERCENTAGE = 1e12; // 0.0001%
-    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 0.1e18; // 10%
+    uint256 private constant _MAX_SWAP_FEE_PERCENTAGE = 10e16; // 10%
 
-    /// @dev Store amplification state.
+    // Invariant growth limit: non-proportional add cannot cause the invariant to increase by more than this ratio.
+    uint256 private constant _MIN_INVARIANT_RATIO = 60e16; // 60%
+    // Invariant shrink limit: non-proportional remove cannot cause the invariant to decrease by less than this ratio.
+    uint256 private constant _MAX_INVARIANT_RATIO = 500e16; // 500%
+
+    /// @notice Store amplification state.
     AmplificationState private _amplificationState;
 
-    /// @dev An amplification update has started.
+    /**
+     * @notice An amplification update has started.
+     * @param startValue Starting value of the amplification parameter
+     * @param endValue Ending value of the amplification parameter
+     * @param startTime Timestamp when the update starts
+     * @param endTime Timestamp when the update is complete
+     */
     event AmpUpdateStarted(uint256 startValue, uint256 endValue, uint256 startTime, uint256 endTime);
 
-    /// @dev An amplification update has been stopped.
+    /**
+     * @notice An amplification update has been stopped.
+     * @param currentValue The value at which it stopped
+     */
     event AmpUpdateStopped(uint256 currentValue);
 
-    /// @dev The amplification factor is below the minimum of the range (1 - 5000).
+    /// @notice The amplification factor is below the minimum of the range (1 - 5000).
     error AmplificationFactorTooLow();
 
-    /// @dev The amplification factor is above the maximum of the range (1 - 5000).
+    /// @notice The amplification factor is above the maximum of the range (1 - 5000).
     error AmplificationFactorTooHigh();
 
-    /// @dev The amplification change duration is too short.
+    /// @notice The amplification change duration is too short.
     error AmpUpdateDurationTooShort();
 
-    /// @dev The amplification change rate is too fast.
+    /// @notice The amplification change rate is too fast.
     error AmpUpdateRateTooFast();
 
-    /// @dev Amplification update operations must be done one at a time.
+    /// @notice Amplification update operations must be done one at a time.
     error AmpUpdateAlreadyStarted();
 
-    /// @dev Cannot stop an amplification update before it starts.
+    /// @notice Cannot stop an amplification update before it starts.
     error AmpUpdateNotStarted();
 
+    /**
+     * @notice Parameters used to deploy a new Stable Pool.
+     * @param name ERC20 token name
+     * @param symbol ERC20 token symbol
+     * @param amplificationParameter Controls the "flatness" of the invariant curve. higher values = lower slippage,
+     * and assumes prices are near parity. lower values = closer to the constant product curve (e.g., more like a
+     * weighted pool). This has higher slippage, and accommodates greater price volatility.
+     */
     struct NewPoolParams {
         string name;
         string symbol;
@@ -109,7 +147,7 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
     }
 
     /// @inheritdoc IBasePool
-    function computeInvariant(uint256[] memory balancesLiveScaled18) public view returns (uint256) {
+    function computeInvariant(uint256[] memory balancesLiveScaled18, Rounding) public view returns (uint256) {
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
         return StableMath.computeInvariant(currentAmp, balancesLiveScaled18);
@@ -127,14 +165,14 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
             StableMath.computeBalance(
                 currentAmp,
                 balancesLiveScaled18,
-                computeInvariant(balancesLiveScaled18).mulDown(invariantRatio),
+                computeInvariant(balancesLiveScaled18, Rounding.ROUND_DOWN).mulDown(invariantRatio),
                 tokenInIndex
             );
     }
 
     /// @inheritdoc IBasePool
-    function onSwap(IBasePool.PoolSwapParams memory request) public view onlyVault returns (uint256) {
-        uint256 invariant = computeInvariant(request.balancesScaled18);
+    function onSwap(PoolSwapParams memory request) public view onlyVault returns (uint256) {
+        uint256 invariant = computeInvariant(request.balancesScaled18, Rounding.ROUND_DOWN);
         (uint256 currentAmp, ) = _getAmplificationParameter();
 
         if (request.kind == SwapKind.EXACT_IN) {
@@ -286,14 +324,29 @@ contract StablePool is IStablePool, BalancerPoolToken, BasePoolAuthentication, P
         return _MAX_SWAP_FEE_PERCENTAGE;
     }
 
+    /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
+    function getMinimumInvariantRatio() external pure returns (uint256) {
+        return _MIN_INVARIANT_RATIO;
+    }
+
+    /// @inheritdoc IUnbalancedLiquidityInvariantRatioBounds
+    function getMaximumInvariantRatio() external pure returns (uint256) {
+        return _MAX_INVARIANT_RATIO;
+    }
+
     /// @inheritdoc IStablePool
     function getStablePoolDynamicData() external view returns (StablePoolDynamicData memory data) {
-        data.liveBalances = _vault.getCurrentLiveBalances(address(this));
+        data.balancesLiveScaled18 = _vault.getCurrentLiveBalances(address(this));
         (, data.tokenRates) = _vault.getPoolTokenRates(address(this));
         data.staticSwapFeePercentage = _vault.getStaticSwapFeePercentage((address(this)));
         data.totalSupply = totalSupply();
         data.bptRate = getRate();
         (data.amplificationParameter, data.isAmpUpdating) = _getAmplificationParameter();
+
+        PoolConfig memory poolConfig = _vault.getPoolConfig(address(this));
+        data.isPoolInitialized = poolConfig.isPoolInitialized;
+        data.isPoolPaused = poolConfig.isPoolPaused;
+        data.isPoolInRecoveryMode = poolConfig.isPoolInRecoveryMode;
     }
 
     /// @inheritdoc IStablePool

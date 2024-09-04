@@ -4,8 +4,12 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    PoolConfigBits,
+    FEE_BITLENGTH,
+    MAX_FEE_PERCENTAGE,
+    FEE_SCALING_FACTOR
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { PoolConfigConst } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigConst.sol";
 import { PoolConfigLib } from "@balancer-labs/v3-vault/contracts/lib/PoolConfigLib.sol";
@@ -185,6 +189,32 @@ contract PoolConfigLibTest is Test {
         config.requireRemoveCustomLiquidityEnabled();
     }
 
+    function testSupportsDonation() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.DONATION_OFFSET));
+        assertTrue(config.supportsDonation(), "supportDonation is false (getter)");
+    }
+
+    function testSetDonation() public pure {
+        PoolConfigBits config;
+        config = config.setDonation(true);
+        assertTrue(config.supportsDonation(), "supportDonation is false (setter)");
+    }
+
+    function testRequireDonationEnabled() public pure {
+        PoolConfigBits config;
+        config = config.setDonation(true);
+
+        config.requireDonationEnabled();
+    }
+
+    function testRequireDonationRevertIfIsDisabled() public {
+        PoolConfigBits config;
+
+        vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
+        config.requireDonationEnabled();
+    }
+
     // #endregion
 
     // #region Tests for uint values
@@ -215,9 +245,19 @@ contract PoolConfigLibTest is Test {
         );
     }
 
+    function testSetAggregateSwapFeePercentageAlmostMaxFee() public pure {
+        PoolConfigBits config;
+        config = config.setAggregateSwapFeePercentage(MAX_FEE_PERCENTAGE);
+        assertEq(
+            config.getAggregateSwapFeePercentage(),
+            MAX_FEE_PERCENTAGE,
+            "getAggregateSwapFeePercentage mismatch (testSetAggregateSwapFeePercentageAlmostMaxFee)"
+        );
+    }
+
     function testSetAggregateSwapFeePercentageAboveMax() public {
         PoolConfigBits config;
-        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
+        vm.expectRevert(IVaultErrors.PercentageAboveMax.selector);
         config.setAggregateSwapFeePercentage(MAX_FEE_PERCENTAGE + 1);
     }
 
@@ -250,7 +290,7 @@ contract PoolConfigLibTest is Test {
 
     function testSetAggregateYieldFeePercentageAboveMax() public {
         PoolConfigBits config;
-        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
+        vm.expectRevert(IVaultErrors.PercentageAboveMax.selector);
         config.setAggregateYieldFeePercentage(MAX_FEE_PERCENTAGE + 1);
     }
 
@@ -283,7 +323,7 @@ contract PoolConfigLibTest is Test {
 
     function testSetStaticSwapFeePercentageAboveMax() public {
         PoolConfigBits config;
-        vm.expectRevert(abi.encodeWithSelector(PoolConfigLib.InvalidPercentage.selector, MAX_FEE_PERCENTAGE + 1));
+        vm.expectRevert(IVaultErrors.PercentageAboveMax.selector);
         config.setStaticSwapFeePercentage(MAX_FEE_PERCENTAGE + 1);
     }
 

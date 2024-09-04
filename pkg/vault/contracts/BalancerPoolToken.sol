@@ -10,25 +10,33 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { VaultGuard } from "./VaultGuard.sol";
 
 /**
- * @notice A fully ERC20-compatible token to be used as the base contract for Balancer Pools,
+ * @notice `BalancerPoolToken` is a fully ERC20-compatible token to be used as the base contract for Balancer Pools,
  * with all the data and implementation delegated to the ERC20Multitoken contract.
 
  * @dev Implementation of the ERC-20 Permit extension allowing approvals to be made via signatures, as defined in
  * https://eips.ethereum.org/EIPS/eip-2612[ERC-2612].
  */
-contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonces, ERC165, VaultGuard {
+contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, IRateProvider, EIP712, Nonces, ERC165, VaultGuard {
     bytes32 public constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
-    // @dev Permit deadline has expired.
+    /**
+     * @notice Operation failed due to an expired permit signature.
+     * @param deadline The permit deadline that expired
+     */
     error ERC2612ExpiredSignature(uint256 deadline);
 
-    // @dev Mismatched signature.
+    /**
+     * @notice Operation failed due to a non-matching signature
+     * @param signer The address corresponding to the signature provider
+     * @param owner The address of the owner (expected value of the signature provider)
+     */
     error ERC2612InvalidSigner(address signer, address owner);
 
     // EIP712 also defines _name.
@@ -41,17 +49,17 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonc
     }
 
     /// @inheritdoc IERC20Metadata
-    function name() public view returns (string memory) {
+    function name() external view returns (string memory) {
         return _bptName;
     }
 
     /// @inheritdoc IERC20Metadata
-    function symbol() public view returns (string memory) {
+    function symbol() external view returns (string memory) {
         return _bptSymbol;
     }
 
     /// @inheritdoc IERC20Metadata
-    function decimals() public pure returns (uint8) {
+    function decimals() external pure returns (uint8) {
         // Always 18 decimals for BPT.
         return 18;
     }
@@ -66,31 +74,31 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonc
     }
 
     /// @inheritdoc IERC20
-    function balanceOf(address account) public view returns (uint256) {
+    function balanceOf(address account) external view returns (uint256) {
         return _vault.balanceOf(address(this), account);
     }
 
     /// @inheritdoc IERC20
-    function transfer(address to, uint256 amount) public returns (bool) {
+    function transfer(address to, uint256 amount) external returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
         _vault.transfer(msg.sender, to, amount);
         return true;
     }
 
     /// @inheritdoc IERC20
-    function allowance(address owner, address spender) public view returns (uint256) {
+    function allowance(address owner, address spender) external view returns (uint256) {
         return _vault.allowance(address(this), owner, spender);
     }
 
     /// @inheritdoc IERC20
-    function approve(address spender, uint256 amount) public returns (bool) {
+    function approve(address spender, uint256 amount) external returns (bool) {
         // Vault will perform the approval and call emitApproval to emit the event from this contract.
         _vault.approve(msg.sender, spender, amount);
         return true;
     }
 
     /// @inheritdoc IERC20
-    function transferFrom(address from, address to, uint256 amount) public returns (bool) {
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
         // Vault will perform the transfer and call emitTransfer to emit the event from this contract.
         _vault.transferFrom(msg.sender, from, to, amount);
         return true;
@@ -153,7 +161,7 @@ contract BalancerPoolToken is IERC20, IERC20Metadata, IERC20Permit, EIP712, Nonc
 
     /**
      * @notice Get the BPT rate, which is defined as: pool invariant/total supply.
-     * @dev The Vault Extension defines a default implementation (`getBptRate`) to calculate the rate
+     * @dev The VaultExtension contract defines a default implementation (`getBptRate`) to calculate the rate
      * of any given pool, which should be sufficient in nearly all cases.
      *
      * @return rate Rate of the pool's BPT

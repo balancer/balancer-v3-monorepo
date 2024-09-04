@@ -11,10 +11,19 @@ type TokenDeltaMappingSlotType is bytes32;
 type AddressMappingSlot is bytes32;
 type AddressArraySlotType is bytes32;
 
+/**
+ * @notice Helper functions to read and write values from transient storage, including support for arrays and mappings.
+ * @dev This is temporary, based on Open Zeppelin's partially released library. When the final version is published, we
+ * should be able to remove our copies and import directly from OZ. When Solidity catches up and puts direct support
+ * for transient storage in the language, we should be able to get rid of this altogether.
+ *
+ * This only works on networks where EIP-1153 is supported.
+ */
 library TransientStorageHelpers {
     using SlotDerivation for *;
     using StorageSlotExtension for *;
 
+    /// @notice An index is out of bounds on an array operation (e.g., at).
     error TransientIndexOutOfBounds();
 
     // Calculate the slot for a transient storage variable.
@@ -25,7 +34,9 @@ library TransientStorageHelpers {
             ) & ~bytes32(uint256(0xff));
     }
 
-    // Mappings
+    /***************************************************************************
+                                    Mappings
+    ***************************************************************************/
 
     function tGet(TokenDeltaMappingSlotType slot, IERC20 k1) internal view returns (int256) {
         return TokenDeltaMappingSlotType.unwrap(slot).deriveMapping(address(k1)).asInt256().tload();
@@ -52,7 +63,9 @@ library TransientStorageHelpers {
         AddressMappingSlot.unwrap(slot).deriveMapping(key).asUint256().tstore(tGet(slot, key) - value);
     }
 
-    // Arrays
+    /***************************************************************************
+                                      Arrays
+    ***************************************************************************/
 
     function tLength(AddressArraySlotType slot) internal view returns (uint256) {
         return AddressArraySlotType.unwrap(slot).asUint256().tload();
@@ -106,7 +119,9 @@ library TransientStorageHelpers {
         lastElementSlot.tstore(address(0));
     }
 
-    // Uint256
+    /***************************************************************************
+                                  Uint256 Values
+    ***************************************************************************/
 
     function tIncrement(StorageSlotExtension.Uint256SlotType slot) internal {
         slot.tstore(slot.tload() + 1);

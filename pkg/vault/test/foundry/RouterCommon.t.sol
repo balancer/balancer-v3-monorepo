@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
@@ -74,7 +73,8 @@ contract RouterCommonTest is BaseVaultTest {
     }
 
     function testTakeTokenInWethIsNotEth() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
+
         uint256 amountToDeposit = weth.balanceOf(bob) / 100;
 
         EthStateTest memory vars = _createEthStateTest();
@@ -97,7 +97,8 @@ contract RouterCommonTest is BaseVaultTest {
     }
 
     function testSendTokenOutWethIsEth() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
+
         vm.startPrank(lp);
         uint256 wethDeposit = lp.balance / 10;
         weth.deposit{ value: wethDeposit }();
@@ -123,7 +124,7 @@ contract RouterCommonTest is BaseVaultTest {
     }
 
     function testSendTokenOutWethIsNotEth() public {
-        vault.manualSetIsUnlocked(true);
+        vault.forceUnlock();
 
         EthStateTest memory vars = _createEthStateTest();
 

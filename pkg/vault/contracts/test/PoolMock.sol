@@ -2,41 +2,35 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-
 import { ISwapFeePercentageBounds } from "@balancer-labs/v3-interfaces/contracts/vault/ISwapFeePercentageBounds.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
-import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IVaultMock } from "@balancer-labs/v3-interfaces/contracts/test/IVaultMock.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
+import { PoolInfo } from "@balancer-labs/v3-pool-utils/contracts/PoolInfo.sol";
 
-import { PoolConfigBits, PoolConfigLib } from "../lib/PoolConfigLib.sol";
-import { PoolFactoryMock } from "./PoolFactoryMock.sol";
 import { BalancerPoolToken } from "../BalancerPoolToken.sol";
-import { BaseHooks } from "../BaseHooks.sol";
 
-contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
+contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken, PoolInfo {
     using FixedPoint for uint256;
-    using ScalingHelpers for uint256;
 
-    uint256 public constant MIN_INIT_BPT = 1e6;
-
-    // Amounts in are multiplied by the multiplier, amounts out are divided by it
+    // Amounts in are multiplied by the multiplier, amounts out are divided by it.
     uint256 private _multiplier = FixedPoint.ONE;
 
-    constructor(IVault vault, string memory name, string memory symbol) BalancerPoolToken(vault, name, symbol) {
+    // If non-zero, use this return value for `getRate` (otherwise, defer to BalancerPoolToken's base implementation).
+    uint256 private _mockRate;
+
+    constructor(
+        IVault vault,
+        string memory name,
+        string memory symbol
+    ) BalancerPoolToken(vault, name, symbol) PoolInfo(vault) {
         // solhint-previous-line no-empty-blocks
     }
 
-    function computeInvariant(uint256[] memory balances) public pure returns (uint256) {
+    function computeInvariant(uint256[] memory balances, Rounding) public pure returns (uint256) {
         // inv = x + y
         uint256 invariant;
         for (uint256 i = 0; i < balances.length; ++i) {
@@ -52,7 +46,7 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
         uint256 invariantRatio
     ) external pure returns (uint256 newBalance) {
         // inv = x + y
-        uint256 invariant = computeInvariant(balances);
+        uint256 invariant = computeInvariant(balances, Rounding.ROUND_DOWN);
         return (balances[tokenInIndex] + invariant.mulDown(invariantRatio)) - invariant;
     }
 
@@ -60,9 +54,7 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
         _multiplier = newMultiplier;
     }
 
-    function onSwap(
-        IBasePool.PoolSwapParams calldata params
-    ) external view override returns (uint256 amountCalculated) {
+    function onSwap(PoolSwapParams calldata params) external view override returns (uint256 amountCalculated) {
         return
             params.kind == SwapKind.EXACT_IN
                 ? params.amountGivenScaled18.mulDown(_multiplier)
@@ -94,13 +86,27 @@ contract PoolMock is IBasePool, IPoolLiquidity, BalancerPoolToken {
         (scalingFactors, ) = _vault.getPoolTokenRates(address(this));
     }
 
-    /// @inheritdoc ISwapFeePercentageBounds
-    function getMinimumSwapFeePercentage() external pure returns (uint256) {
+    function getMinimumSwapFeePercentage() external pure override returns (uint256) {
         return 0;
     }
 
-    /// @inheritdoc ISwapFeePercentageBounds
-    function getMaximumSwapFeePercentage() external pure returns (uint256) {
+    function getMaximumSwapFeePercentage() external pure override returns (uint256) {
         return FixedPoint.ONE;
+    }
+
+    function getMinimumInvariantRatio() external view virtual override returns (uint256) {
+        return 0;
+    }
+
+    function getMaximumInvariantRatio() external view virtual override returns (uint256) {
+        return 1e40; // Something just really big; should always work.
+    }
+
+    function setMockRate(uint256 mockRate) external {
+        _mockRate = mockRate;
+    }
+
+    function getRate() public view override returns (uint256) {
+        return _mockRate == 0 ? super.getRate() : _mockRate;
     }
 }

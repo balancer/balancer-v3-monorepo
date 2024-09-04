@@ -11,15 +11,16 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { PoolRoleAccounts, TokenConfig } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FactoryWidePauseWindow } from "@balancer-labs/v3-solidity-utils/contracts/helpers/FactoryWidePauseWindow.sol";
-import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ArrayHelpers.sol";
+import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 import { PoolFactoryMock } from "../../contracts/test/PoolFactoryMock.sol";
-import { PoolConfigBits, PoolConfigLib } from "../../contracts/lib/PoolConfigLib.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract PoolPauseTest is BaseVaultTest {
+    using CastingHelpers for address[];
     using ArrayHelpers for *;
 
     PoolMock internal unmanagedPool;

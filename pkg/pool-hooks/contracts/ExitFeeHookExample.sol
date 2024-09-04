@@ -17,42 +17,94 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { VaultGuard } from "@balancer-labs/v3-vault/contracts/VaultGuard.sol";
 import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
-contract ExitFeeHookExample is BaseHooks, Ownable {
+/**
+ * @notice Impose an "exit fee" on a pool. The value of the fee is returned to the LPs.
+ * @dev This hook extracts a fee on all withdrawals, then donates it back to the pool (effectively increasing the value
+ * of BPT shares for all users).
+ *
+ * Since the Vault always takes fees on the calculated amounts, and only supports taking fees in tokens, this hook
+ * must be restricted to pools that require proportional liquidity operations. The calculated amount for EXACT_OUT
+ * withdrawals would be in BPT, and charging fees on BPT is unsupported.
+ *
+ * Since the fee must be taken *after* the `amountOut` is calculated - and the actual `amountOut` returned to the Vault
+ * must be modified in order to charge the fee - `enableHookAdjustedAmounts` must also be set to true in the
+ * pool configuration. Otherwise, the Vault would ignore the adjusted values, and not recognize the fee.
+ *
+ * Finally, since the only way to deposit fee tokens back into the pool balance (without minting new BPT) is through
+ * the special "donation" add liquidity type, this hook also requires that the pool support donation.
+ */
+contract ExitFeeHookExample is BaseHooks, VaultGuard, Ownable {
     using FixedPoint for uint256;
 
-    // Percentages are represented as 18-decimal FP, with maximum value of 1e18 (100%), so 60 bits are enough.
-    uint64 public removeLiquidityHookFeePercentage;
+    // Percentages are represented as 18-decimal FP numbers, which have a maximum value of FixedPoint.ONE (100%),
+    // so 60 bits are sufficient.
+    uint64 public exitFeePercentage;
 
-    // Max fee of 10%
-    uint64 public constant MAX_EXIT_HOOK_FEE = 1e17;
+    // Maximum exit fee of 10%
+    uint64 public constant MAX_EXIT_FEE_PERCENTAGE = 10e16;
 
-    /// @dev Exit hook fee above limit.
-    error ExitHookFeeAboveLimit(uint256 fee, uint256 limit);
+    /**
+     * @notice A new `ExitFeeHookExample` contract has been registered successfully for a given factory and pool.
+     * @dev If the registration fails the call will revert, so there will be no event.
+     * @param hooksContract This contract
+     * @param pool The pool on which the hook was registered
+     */
+    event ExitFeeHookExampleRegistered(address indexed hooksContract, address indexed pool);
 
-    /// @dev Pool does not support adding liquidity through donation.
+    /**
+     * @notice An exit fee has been charged on a pool.
+     * @param pool The pool that was charged
+     * @param token The address of the fee token
+     * @param feeAmount The amount of the fee (in native decimals)
+     */
+    event ExitFeeCharged(address indexed pool, IERC20 indexed token, uint256 feeAmount);
+
+    /**
+     * @notice The exit fee has been changed in an `ExitFeeHookExample` contract.
+     * @dev Note that the initial fee will be zero, and no event is emitted on deployment.
+     * @param hookContract The contract whose fee changed
+     * @param exitFeePercentage The new exit fee percentage
+     */
+    event ExitFeePercentageChanged(address indexed hookContract, uint256 exitFeePercentage);
+
+    /**
+     * @notice The exit fee cannot exceed the maximum allowed percentage.
+     * @param feePercentage The fee percentage exceeding the limit
+     * @param limit The maximum exit fee percentage
+     */
+    error ExitFeeAboveLimit(uint256 feePercentage, uint256 limit);
+
+    /**
+     * @notice The pool does not support adding liquidity through donation.
+     * @dev There is an existing similar error (IVaultErrors.DoesNotSupportDonation), but hooks should not throw
+     * "Vault" errors.
+     */
     error PoolDoesNotSupportDonation();
 
-    constructor(IVault vault) BaseHooks(vault) Ownable(msg.sender) {
+    constructor(IVault vault) VaultGuard(vault) Ownable(msg.sender) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
     /// @inheritdoc IHooks
     function onRegister(
         address,
-        address,
+        address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata liquidityManagement
-    ) public view override onlyVault returns (bool) {
+    ) public override onlyVault returns (bool) {
         // NOTICE: In real hooks, make sure this function is properly implemented (e.g. check the factory, and check
-        // that the given pool is from the factory). Returning true allows any pool, with any configuration, to use
-        // this hook
+        // that the given pool is from the factory). Returning true unconditionally allows any pool, with any
+        // configuration, to use this hook.
 
-        // This hook requires donation support to work
+        // This hook requires donation support to work (see above).
         if (liquidityManagement.enableDonation == false) {
             revert PoolDoesNotSupportDonation();
         }
+
+        emit ExitFeeHookExampleRegistered(address(this), pool);
 
         return true;
     }
@@ -91,13 +143,17 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
         uint256[] memory accruedFees = new uint256[](tokens.length);
         hookAdjustedAmountsOutRaw = amountsOutRaw;
 
-        if (removeLiquidityHookFeePercentage > 0) {
-            // Charge fees proportional to amounts out of each token
+        if (exitFeePercentage > 0) {
+            // Charge fees proportional to the `amountOut` of each token.
             for (uint256 i = 0; i < amountsOutRaw.length; i++) {
-                uint256 hookFee = amountsOutRaw[i].mulDown(removeLiquidityHookFeePercentage);
-                accruedFees[i] = hookFee;
-                hookAdjustedAmountsOutRaw[i] -= hookFee;
-                // Fees don't need to be transferred to the hook, because donation will reinsert them in the vault
+                uint256 exitFee = amountsOutRaw[i].mulDown(exitFeePercentage);
+                accruedFees[i] = exitFee;
+                hookAdjustedAmountsOutRaw[i] -= exitFee;
+
+                emit ExitFeeCharged(pool, tokens[i], exitFee);
+                // Fees don't need to be transferred to the hook, because donation will redeposit them in the Vault.
+                // In effect, we will transfer a reduced amount of tokensOut to the caller, and leave the remainder
+                // in the pool balance.
             }
 
             // Donates accrued fees back to LPs
@@ -108,7 +164,7 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
                     maxAmountsIn: accruedFees, // Donate all accrued fees back to the pool (i.e. to the LPs)
                     minBptAmountOut: 0, // Donation does not return BPTs, any number above 0 will revert
                     kind: AddLiquidityKind.DONATION,
-                    userData: bytes("") // User data is not used by donation, so we can set to an empty string
+                    userData: bytes("") // User data is not used by donation, so we can set it to an empty string
                 })
             );
         }
@@ -116,13 +172,18 @@ contract ExitFeeHookExample is BaseHooks, Ownable {
         return (true, hookAdjustedAmountsOutRaw);
     }
 
-    // Setters
-    // Sets the hook remove liquidity fee percentage, which will be accrued after a remove liquidity operation was
-    // executed. This function must be permissioned.
-    function setRemoveLiquidityHookFeePercentage(uint64 hookFeePercentage) public onlyOwner {
-        if (hookFeePercentage > MAX_EXIT_HOOK_FEE) {
-            revert ExitHookFeeAboveLimit(hookFeePercentage, MAX_EXIT_HOOK_FEE);
+    // Permissioned functions
+
+    /**
+     * @notice Sets the hook remove liquidity fee percentage, charged on every remove liquidity operation.
+     * @dev This function must be permissioned.
+     */
+    function setExitFeePercentage(uint64 newExitFeePercentage) external onlyOwner {
+        if (newExitFeePercentage > MAX_EXIT_FEE_PERCENTAGE) {
+            revert ExitFeeAboveLimit(newExitFeePercentage, MAX_EXIT_FEE_PERCENTAGE);
         }
-        removeLiquidityHookFeePercentage = hookFeePercentage;
+        exitFeePercentage = newExitFeePercentage;
+
+        emit ExitFeePercentageChanged(address(this), newExitFeePercentage);
     }
 }

@@ -4,9 +4,9 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { VaultExtensionMock } from "../../contracts/test/VaultExtensionMock.sol";
 
@@ -26,12 +26,12 @@ contract VaultDefaultHandlers is BaseVaultTest {
     function testDefaultHandlerWithEth() public {
         vm.prank(alice);
         vm.expectRevert(IVaultErrors.CannotReceiveEth.selector);
-        VaultExtensionMock(payable(address(vault))).mockExtensionHash{ value: 1 }("");
+        VaultExtensionMock(payable(address(vault))).mockExtensionHash{ value: 1 }(bytes(""));
     }
 
     function testDefaultHandler() public {
-        bytes32 result = VaultExtensionMock(payable(address(vault))).mockExtensionHash(bytes("V3"));
-        assertEq(result, keccak256(bytes("V3")));
+        bytes32 result = VaultExtensionMock(payable(address(vault))).mockExtensionHash(bytes("v3"));
+        assertEq(result, keccak256(bytes("v3")));
     }
 
     function testDefaultHandlerNonExistentFunction() public {
@@ -40,7 +40,7 @@ contract VaultDefaultHandlers is BaseVaultTest {
     }
 
     function testOnlyVault() public {
-        // Does not revert via Vault
+        // Does not revert via Vault.
         assertTrue(IVault(address(vault)).isPoolRegistered(pool));
 
         IVault vaultExtension = IVault(vault.getVaultExtension());

@@ -5,9 +5,13 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthorizer } from "./IAuthorizer.sol";
-import { IRateProvider } from "./IRateProvider.sol";
 import "./VaultTypes.sol";
 
+/**
+ * @notice Interface for functions defined on the main Vault contract.
+ * @dev These are generally "critical path" functions (swap, add/remove liquidity) that are in the main contract
+ * for technical or performance reasons.
+ */
 interface IVaultMain {
     /*******************************************************************************
                               Transient Accounting
@@ -28,14 +32,18 @@ interface IVaultMain {
      * @dev Protects the caller against leftover dust in the vault for the token being settled. The caller
      * should know in advance how many tokens were paid to the Vault, so it can provide it as a hint to discard any
      * excess in the Vault balance.
+     *
      * If the given hint is equal to or higher than the difference in reserves, the difference in reserves is given as
      * credit to the caller. If it's higher, the caller sent fewer tokens than expected, so settlement would fail.
+     *
      * If the given hint is lower than the difference in reserves, the hint is given as credit to the caller.
      * In this case, the excess would be absorbed by the Vault (and reflected correctly in the reserves), but would
      * not affect settlement.
+     *
      * The credit supplied by the Vault can be calculated as `min(reserveDifference, amountHint)`, where the reserve
      * difference equals current balance of the token minus existing reserves of the token when the function is called.
-     * @param token Token's address
+     *
+     * @param token Address of the token
      * @param amountHint Amount paid as reported by the caller
      * @return credit Credit received in return of the payment
      */
@@ -45,8 +53,9 @@ interface IVaultMain {
      * @notice Sends tokens to a recipient.
      * @dev There is no inverse operation for this function. Transfer funds to the Vault and call `settle` to cancel
      * debts.
-     * @param token Token's address
-     * @param to Recipient's address
+     *
+     * @param token Address of the token
+     * @param to Recipient address
      * @param amount Amount of tokens to send
      */
     function sendTo(IERC20 token, address to, uint256 amount) external;
@@ -58,13 +67,13 @@ interface IVaultMain {
     /**
      * @notice Swaps tokens based on provided parameters.
      * @dev All parameters are given in raw token decimal encoding.
-     * @param params Parameters for the swap (see above for struct definition)
+     * @param vaultSwapParams Parameters for the swap (see above for struct definition)
      * @return amountCalculatedRaw Calculated swap amount
      * @return amountInRaw Amount of input tokens for the swap
      * @return amountOutRaw Amount of output tokens from the swap
      */
     function swap(
-        SwapParams memory params
+        VaultSwapParams memory vaultSwapParams
     ) external returns (uint256 amountCalculatedRaw, uint256 amountInRaw, uint256 amountOutRaw);
 
     /***************************************************************************
@@ -79,7 +88,7 @@ interface IVaultMain {
      * @param params Parameters for the add liquidity (see above for struct definition)
      * @return amountsIn Actual amounts of input tokens
      * @return bptAmountOut Output pool token amount
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function addLiquidity(
         AddLiquidityParams memory params
@@ -96,9 +105,9 @@ interface IVaultMain {
      * _queryModeBalanceIncrease (and only in a query context).
      *
      * @param params Parameters for the remove liquidity (see above for struct definition)
-     * @return bptAmountIn Actual amount of BPT burnt
+     * @return bptAmountIn Actual amount of BPT burned
      * @return amountsOut Actual amounts of output tokens
-     * @return returnData Arbitrary (optional) data with encoded response from the pool
+     * @return returnData Arbitrary (optional) data with an encoded response from the pool
      */
     function removeLiquidity(
         RemoveLiquidityParams memory params
@@ -119,13 +128,14 @@ interface IVaultMain {
     function getPoolTokenCountAndIndexOfToken(address pool, IERC20 token) external view returns (uint256, uint256);
 
     /*******************************************************************************
-                            Yield-bearing token buffers
+                                  ERC4626 Buffers
     *******************************************************************************/
 
     /**
-     * @notice Wraps/unwraps tokens based on provided parameters, using the buffer of the wrapped token when it has
-     * enough liquidity to avoid external calls.
-     * @dev All parameters are given in raw token decimal encoding.
+     * @notice Wraps/unwraps tokens based on the parameters provided.
+     * @dev All parameters are given in raw token decimal encoding. It requires the buffer to be initialized,
+     * and uses the internal wrapped token buffer when it has enough liquidity to avoid external calls.
+     *
      * @param params Parameters for the wrap/unwrap operation (see struct definition)
      * @return amountCalculatedRaw Calculated swap amount
      * @return amountInRaw Amount of input tokens for the swap
@@ -140,8 +150,11 @@ interface IVaultMain {
     *******************************************************************************/
 
     /**
-     * @notice Returns the Vault's Authorizer.
-     * @return Address of the authorizer
+     * @notice Returns the Authorizer address.
+     * @dev The authorizer holds the permissions granted by governance. It is set on Vault deployment,
+     * and can be changed through a permissioned call.
+     *
+     * @return authorizer Address of the authorizer contract
      */
     function getAuthorizer() external view returns (IAuthorizer);
 
@@ -150,8 +163,11 @@ interface IVaultMain {
     *******************************************************************************/
 
     /**
-     * @notice Returns the Vault Extension address.
-     * @return Address of the VaultExtension
+     * @notice Returns the VaultExtension contract address.
+     * @dev Function is in the main Vault contract. The VaultExtension handles less critical or frequently used
+     * functions, since delegate calls through the Vault are more expensive than direct calls.
+     *
+     * @return vaultExtension Address of the VaultExtension
      */
     function getVaultExtension() external view returns (address);
 }
