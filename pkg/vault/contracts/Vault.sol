@@ -625,6 +625,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     {
         LiquidityLocals memory locals;
         locals.numTokens = poolData.tokens.length;
+        amountsInRaw = new uint256[](locals.numTokens);
         uint256[] memory swapFeeAmountsScaled18;
 
         if (params.kind == AddLiquidityKind.PROPORTIONAL) {
@@ -647,6 +648,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
 
             amountsInScaled18 = maxAmountsInScaled18;
+            // Deep copy given max amounts in raw to calculated amounts in raw to avoid scaling later, ensuring that
+            // `maxAmountsIn` is preserved.
+            ScalingHelpers.copyToArray(params.maxAmountsIn, amountsInRaw);
+
             (bptAmountOut, swapFeeAmountsScaled18) = BasePoolMath.computeAddLiquidityUnbalanced(
                 poolData.balancesLiveScaled18,
                 maxAmountsInScaled18,
@@ -693,8 +698,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _ensureValidTradeAmount(bptAmountOut);
 
-        amountsInRaw = new uint256[](locals.numTokens);
-
         for (uint256 i = 0; i < locals.numTokens; ++i) {
             uint256 amountInRaw;
 
@@ -703,14 +706,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 uint256 amountInScaled18 = amountsInScaled18[i];
                 _ensureValidTradeAmount(amountInScaled18);
 
-                // amountsInRaw are amounts actually entering the Pool, so we round up.
-                // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` hook.
-                amountInRaw = amountInScaled18.toRawUndoRateRoundUp(
-                    poolData.decimalScalingFactors[i],
-                    poolData.tokenRates[i]
-                );
+                // If the value in memory is not set, convert scaled amount to raw.
+                if (amountsInRaw[i] == 0) {
+                    // amountsInRaw are amounts actually entering the Pool, so we round up.
+                    // Do not mutate in place yet, as we need them scaled for the `onAfterAddLiquidity` hook.
+                    amountInRaw = amountInScaled18.toRawUndoRateRoundUp(
+                        poolData.decimalScalingFactors[i],
+                        poolData.tokenRates[i]
+                    );
 
-                amountsInRaw[i] = amountInRaw;
+                    amountsInRaw[i] = amountInRaw;
+                } else {
+                    // Exact in requests will have the raw amount in memory already, so we use it moving forward and
+                    // skip unscaling.
+                    amountInRaw = amountsInRaw[i];
+                }
             }
 
             IERC20 token = poolData.tokens[i];
@@ -871,6 +881,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         LiquidityLocals memory locals;
         locals.numTokens = poolData.tokens.length;
         uint256[] memory swapFeeAmountsScaled18;
+        amountsOutRaw = new uint256[](locals.numTokens);
 
         if (params.kind == RemoveLiquidityKind.PROPORTIONAL) {
             bptAmountIn = params.maxBptAmountIn;
@@ -899,6 +910,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
             amountsOutScaled18 = minAmountsOutScaled18;
             locals.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
+            amountsOutRaw[locals.tokenIndex] = params.minAmountsOut[locals.tokenIndex];
 
             (bptAmountIn, swapFeeAmountsScaled18) = BasePoolMath.computeRemoveLiquiditySingleTokenExactOut(
                 poolData.balancesLiveScaled18,
@@ -929,8 +941,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
 
         _ensureValidTradeAmount(bptAmountIn);
 
-        amountsOutRaw = new uint256[](locals.numTokens);
-
         for (uint256 i = 0; i < locals.numTokens; ++i) {
             uint256 amountOutRaw;
 
@@ -939,15 +949,21 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 uint256 amountOutScaled18 = amountsOutScaled18[i];
                 _ensureValidTradeAmount(amountOutScaled18);
 
-                // amountsOut are amounts exiting the Pool, so we round down.
-                // Do not mutate in place yet, as we need them scaled for the `onAfterRemoveLiquidity` hook.
-                amountOutRaw = amountOutScaled18.toRawUndoRateRoundDown(
-                    poolData.decimalScalingFactors[i],
-                    poolData.tokenRates[i]
-                );
+                // If the value in memory is not set, convert scaled amount to raw.
+                if (amountsOutRaw[i] == 0) {
+                    // amountsOut are amounts exiting the Pool, so we round down.
+                    // Do not mutate in place yet, as we need them scaled for the `onAfterRemoveLiquidity` hook.
+                    amountOutRaw = amountOutScaled18.toRawUndoRateRoundDown(
+                        poolData.decimalScalingFactors[i],
+                        poolData.tokenRates[i]
+                    );
+                    amountsOutRaw[i] = amountOutRaw;
+                } else {
+                    // Exact out requests will have the raw amount in memory already, so we use it moving forward and
+                    // skip unscaling.
+                    amountOutRaw = amountsOutRaw[i];
+                }
             }
-
-            amountsOutRaw[i] = amountOutRaw;
 
             IERC20 token = poolData.tokens[i];
             // 2) Check limits for raw amounts.
