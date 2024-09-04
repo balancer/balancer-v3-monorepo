@@ -48,13 +48,8 @@ contract RouterCommonMock is RouterCommon {
         return _getSenderSlot();
     }
 
-    function mockTakeTokenIn(
-        address sender,
-        IERC20 tokenIn,
-        uint256 amountIn,
-        bool wethIsEth
-    ) external returns (uint256) {
-        return _takeTokenIn(sender, tokenIn, amountIn, wethIsEth);
+    function mockTakeTokenIn(address sender, IERC20 tokenIn, uint256 amountIn, bool wethIsEth) external {
+        _takeTokenIn(sender, tokenIn, amountIn, wethIsEth);
     }
 
     function mockSendTokenOut(address sender, IERC20 tokenOut, uint256 amountOut, bool wethIsEth) external {
