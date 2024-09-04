@@ -461,7 +461,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         poolData.updateRawAndLiveBalance(
             swapState.indexIn,
             poolData.balancesRaw[swapState.indexIn] + locals.balanceInIncrement,
-            Rounding.ROUND_UP
+            Rounding.ROUND_DOWN
         );
         poolData.updateRawAndLiveBalance(
             swapState.indexOut,
@@ -740,7 +740,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             poolData.updateRawAndLiveBalance(
                 i,
                 poolData.balancesRaw[i] + amountInRaw - locals.totalFeesRaw,
-                Rounding.ROUND_UP
+                Rounding.ROUND_DOWN
             );
         }
 

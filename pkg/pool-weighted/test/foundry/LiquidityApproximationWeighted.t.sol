@@ -76,6 +76,18 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 weightDai
     ) public {
+        _addLiquidityUnbalancedWeights(daiAmountIn, swapFeePercentage, weightDai);
+    }
+
+    function testAddLiquidityUnbalancedWeightsNoSwapFee__Fuzz(uint256 daiAmountIn, uint256 weightDai) public {
+        _addLiquidityUnbalancedWeights(daiAmountIn, 0, weightDai);
+    }
+
+    function _addLiquidityUnbalancedWeights(
+        uint256 daiAmountIn,
+        uint256 swapFeePercentage,
+        uint256 weightDai
+    ) internal {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
         excessRoundingDelta = 0.5e16; // 0.5%
@@ -83,7 +95,9 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
 
         uint256 amountOut = addUnbalancedOnlyDai(daiAmountIn, swapFeePercentage);
-        assertLiquidityOperation(amountOut, swapFeePercentage, true);
+        swapFeePercentage > 0
+            ? assertLiquidityOperation(amountOut, swapFeePercentage, true)
+            : assertLiquidityOperationNoSwapFee();
     }
 
     function testAddLiquiditySingleTokenExactOutWeights__Fuzz(
@@ -91,6 +105,21 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 weightDai
     ) public {
+        _addLiquiditySingleTokenExactOutWeights(exactBptAmountOut, swapFeePercentage, weightDai);
+    }
+
+    function testAddLiquiditySingleTokenExactOutWeightsNoSwapFee__Fuzz(
+        uint256 exactBptAmountOut,
+        uint256 weightDai
+    ) public {
+        _addLiquiditySingleTokenExactOutWeights(exactBptAmountOut, 0, weightDai);
+    }
+
+    function _addLiquiditySingleTokenExactOutWeights(
+        uint256 exactBptAmountOut,
+        uint256 swapFeePercentage,
+        uint256 weightDai
+    ) internal {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
         excessRoundingDelta = 0.1e16; // 0.1%
@@ -100,7 +129,9 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
 
         uint256 amountOut = addExactOutArbitraryBptOut(exactBptAmountOut, swapFeePercentage);
-        assertLiquidityOperation(amountOut, swapFeePercentage, true);
+        swapFeePercentage > 0
+            ? assertLiquidityOperation(amountOut, swapFeePercentage, true)
+            : assertLiquidityOperationNoSwapFee();
     }
 
     function testAddLiquidityProportionalAndRemoveExactInWeights__Fuzz(
@@ -108,6 +139,21 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 weightDai
     ) public {
+        _addLiquidityProportionalAndRemoveExactInWeights(exactBptAmountOut, swapFeePercentage, weightDai);
+    }
+
+    function testAddLiquidityProportionalAndRemoveExactInWeightsNoSwapFee__Fuzz(
+        uint256 exactBptAmountOut,
+        uint256 weightDai
+    ) public {
+        _addLiquidityProportionalAndRemoveExactInWeights(exactBptAmountOut, 0, weightDai);
+    }
+
+    function _addLiquidityProportionalAndRemoveExactInWeights(
+        uint256 exactBptAmountOut,
+        uint256 swapFeePercentage,
+        uint256 weightDai
+    ) internal {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
         defectRoundingDelta = 0.00001e16; // 0.00001%
@@ -115,7 +161,9 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
 
         uint256 amountOut = removeExactInAllBptIn(exactBptAmountOut, swapFeePercentage);
-        assertLiquidityOperation(amountOut, swapFeePercentage, false);
+        swapFeePercentage > 0
+            ? assertLiquidityOperation(amountOut, swapFeePercentage, false)
+            : assertLiquidityOperationNoSwapFee();
     }
 
     function testAddLiquidityProportionalAndRemoveExactOutWeights__Fuzz(
@@ -123,6 +171,21 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 weightDai
     ) public {
+        _addLiquidityProportionalAndRemoveExactOutWeights(exactBptAmountOut, swapFeePercentage, weightDai);
+    }
+
+    function testAddLiquidityProportionalAndRemoveExactOutWeightsNoSwapFee__Fuzz(
+        uint256 exactBptAmountOut,
+        uint256 weightDai
+    ) public {
+        _addLiquidityProportionalAndRemoveExactOutWeights(exactBptAmountOut, 0, weightDai);
+    }
+
+    function _addLiquidityProportionalAndRemoveExactOutWeights(
+        uint256 exactBptAmountOut,
+        uint256 swapFeePercentage,
+        uint256 weightDai
+    ) internal {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
         excessRoundingDelta = 0.5e16; // 0.5%
@@ -130,7 +193,9 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
 
         uint256 amountOut = removeExactOutAllUsdcAmountOut(exactBptAmountOut, swapFeePercentage);
-        assertLiquidityOperation(amountOut, swapFeePercentage, false);
+        swapFeePercentage > 0
+            ? assertLiquidityOperation(amountOut, swapFeePercentage, false)
+            : assertLiquidityOperationNoSwapFee();
     }
 
     function testRemoveLiquiditySingleTokenExactOutWeights__Fuzz(
@@ -138,6 +203,21 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 weightDai
     ) public {
+        _removeLiquiditySingleTokenExactOutWeights(exactAmountOut, swapFeePercentage, weightDai);
+    }
+
+    function testRemoveLiquiditySingleTokenExactOutWeightsNoSwapFee__Fuzz(
+        uint256 exactAmountOut,
+        uint256 weightDai
+    ) public {
+        _removeLiquiditySingleTokenExactOutWeights(exactAmountOut, 0, weightDai);
+    }
+
+    function _removeLiquiditySingleTokenExactOutWeights(
+        uint256 exactAmountOut,
+        uint256 swapFeePercentage,
+        uint256 weightDai
+    ) internal {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
         excessRoundingDelta = 0.5e16; // 0.5%
@@ -145,7 +225,9 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
 
         uint256 amountOut = removeExactOutArbitraryAmountOut(exactAmountOut, swapFeePercentage);
-        assertLiquidityOperation(amountOut, swapFeePercentage, false);
+        swapFeePercentage > 0
+            ? assertLiquidityOperation(amountOut, swapFeePercentage, false)
+            : assertLiquidityOperationNoSwapFee();
     }
 
     function testRemoveLiquiditySingleTokenExactInWeights__Fuzz(
@@ -153,6 +235,21 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 swapFeePercentage,
         uint256 weightDai
     ) public {
+        _removeLiquiditySingleTokenExactInWeights(exactBptAmountIn, swapFeePercentage, weightDai);
+    }
+
+    function testRemoveLiquiditySingleTokenExactInWeightsNoSwapFee__Fuzz(
+        uint256 exactBptAmountIn,
+        uint256 weightDai
+    ) public {
+        _removeLiquiditySingleTokenExactInWeights(exactBptAmountIn, 0, weightDai);
+    }
+
+    function _removeLiquiditySingleTokenExactInWeights(
+        uint256 exactBptAmountIn,
+        uint256 swapFeePercentage,
+        uint256 weightDai
+    ) internal {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
         defectRoundingDelta = 0.00001e16; // 0.000001%
@@ -160,7 +257,9 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         swapFeePercentage = _setPoolWeightsAndSwapFee(swapFeePercentage, weightDai);
 
         uint256 amountOut = removeExactInArbitraryBptIn(exactBptAmountIn, swapFeePercentage);
-        assertLiquidityOperation(amountOut, swapFeePercentage, false);
+        swapFeePercentage > 0
+            ? assertLiquidityOperation(amountOut, swapFeePercentage, false)
+            : assertLiquidityOperationNoSwapFee();
     }
 
     /// Utils
