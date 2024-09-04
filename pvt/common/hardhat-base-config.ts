@@ -25,7 +25,7 @@ const optimizerSteps =
 
 export const compilers: [SolcConfig] = [
   {
-    version: '0.8.26',
+    version: '0.8.27',
     settings: {
       viaIR,
       evmVersion: 'cancun',
@@ -58,18 +58,13 @@ const contractSettings: ContractSettings = {
     viaIR,
   },
   '@balancer-labs/v3-vault/contracts/Vault.sol': {
-    version: '0.8.26',
+    version: '0.8.27',
     runs: 200,
     viaIR,
   },
   '@balancer-labs/v3-vault/contracts/VaultExtension.sol': {
-    version: '0.8.26',
+    version: '0.8.27',
     runs: 500,
-    viaIR,
-  },
-  '@balancer-labs/v3-vault/contracts/VaultExplorer.sol': {
-    version: '0.8.24',
-    runs: 9999,
     viaIR,
   },
 };

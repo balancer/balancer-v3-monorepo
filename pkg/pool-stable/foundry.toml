@@ -20,7 +20,7 @@ remappings = [
 ]
 optimizer = true
 optimizer_runs = 999
-solc_version = '0.8.26'
+solc_version = '0.8.27'
 auto_detect_solc = false
 evm_version = 'cancun'
 ignored_error_codes = [2394, 5574, 3860] # Transient storage, code size
