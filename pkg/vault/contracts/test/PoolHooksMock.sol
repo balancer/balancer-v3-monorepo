@@ -69,8 +69,10 @@ contract PoolHooksMock is BaseHooks {
     mapping(address pool => bool isFromFactory) private _allowedFactories;
 
     HookFlags private _hookFlags;
+    IVault _vault;
 
-    constructor(IVault vault) BaseHooks(vault) {
+    constructor(IVault vault) BaseHooks() {
+        _vault = vault;
         shouldSettleDiscount = true;
     }
 

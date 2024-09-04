@@ -2,13 +2,12 @@
 
 pragma solidity ^0.8.24;
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import "../BaseHooks.sol";
 
 contract BaseHooksMock is BaseHooks {
-    constructor(IVault vault) BaseHooks(vault) {
+    constructor() BaseHooks() {
         // solhint-disable-previous-line no-empty-blocks
     }
 

@@ -14,16 +14,15 @@ import {
     AfterSwapParams
 } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { VaultGuard } from "./VaultGuard.sol";
-
 /**
  * @notice Base for pool hooks contracts.
  * @dev Hook contracts that only implement a subset of callbacks can inherit from here instead of IHooks,
- * and only override what they need. `VaultGuard` allows use of the `onlyVault` modifier, which isn't used
- * in this abstract contract, but should be used in real derived hook contracts.
+ * and only override what they need.
+ * @dev `VaultGuard` allows use of the `onlyVault` modifier, which isn't part of this abstract contract,
+ * but should/must be used in real derived hook contracts.
  */
-abstract contract BaseHooks is IHooks, VaultGuard {
-    constructor(IVault vault) VaultGuard(vault) {
+abstract contract BaseHooks is IHooks {
+    constructor() {
         // solhint-disable-previous-line no-empty-blocks
     }
 
