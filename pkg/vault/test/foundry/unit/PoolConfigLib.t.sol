@@ -189,6 +189,32 @@ contract PoolConfigLibTest is Test {
         config.requireRemoveCustomLiquidityEnabled();
     }
 
+    function testSupportsDonation() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.DONATION_OFFSET));
+        assertTrue(config.supportsDonation(), "supportDonation is false (getter)");
+    }
+
+    function testSetDonation() public pure {
+        PoolConfigBits config;
+        config = config.setDonation(true);
+        assertTrue(config.supportsDonation(), "supportDonation is false (setter)");
+    }
+
+    function testRequireDonationEnabled() public pure {
+        PoolConfigBits config;
+        config = config.setDonation(true);
+
+        config.requireDonationEnabled();
+    }
+
+    function testRequireDonationRevertIfIsDisabled() public {
+        PoolConfigBits config;
+
+        vm.expectRevert(IVaultErrors.DoesNotSupportDonation.selector);
+        config.requireDonationEnabled();
+    }
+
     // #endregion
 
     // #region Tests for uint values
