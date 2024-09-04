@@ -81,7 +81,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             params.userData
         );
 
-        uint256 ethAmountIn;
         for (uint256 i = 0; i < params.tokens.length; ++i) {
             IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
@@ -93,7 +92,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 }
 
                 _weth.deposit{ value: amountIn }();
-                ethAmountIn = amountIn;
                 // Transfer WETH from the router to the Vault.
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
@@ -283,7 +281,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         // maxAmountsIn length is checked against tokens length at the vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
-        uint256 ethAmountIn;
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
@@ -295,7 +292,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 }
 
                 _weth.deposit{ value: amountIn }();
-                ethAmountIn = amountIn;
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
             } else {
