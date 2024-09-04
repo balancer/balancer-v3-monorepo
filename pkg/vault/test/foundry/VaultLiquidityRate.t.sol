@@ -22,6 +22,7 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract VaultLiquidityWithRatesTest is BaseVaultTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
+    using FixedPoint for uint256;
 
     // Track the indices for the local dai/wsteth pool.
     uint256 internal daiIdx;
@@ -214,24 +215,44 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         );
     }
 
-    function testRemoveLiquiditySingleTokenExactOutWithRate__Fuzz(uint256 wstEthRate, uint256 wstEthAmountOut) public {
+    function testRemoveLiquiditySingleTokenExactOutWithRate__Fuzz(
+        uint256 wstEthRate,
+        uint256 wstEthAmountOut,
+        uint256 removePercentage
+    ) public {
         wstEthAmountOut = bound(wstEthAmountOut, defaultAmount / 1e3, defaultAmount * 1e3);
         wstEthRate = bound(wstEthRate, 1e14, 1e22);
+        removePercentage = bound(removePercentage, 1e4, 1e18);
         rateProvider.mockRate(wstEthRate);
 
         vm.startPrank(alice);
 
-        router.addLiquidityUnbalanced(pool, [wstEthAmountOut, wstEthAmountOut].toMemoryArray(), 1, false, bytes(""));
+        uint256[] memory amountsIn = new uint256[](2);
+        amountsIn[wstethIdx] = wstEthAmountOut;
+        amountsIn[daiIdx] = wstEthAmountOut * 2;
 
-        BaseVaultTest.Balances memory balancesBefore = getBalances(alice);
-        router.removeLiquiditySingleTokenExactOut(pool, MAX_UINT128, wsteth, wstEthAmountOut, false, bytes(""));
-        BaseVaultTest.Balances memory balancesAfter = getBalances(alice);
-        vm.stopPrank();
+        BaseVaultTest.Balances memory balancesBeforeAdd = getBalances(alice);
+
+        router.addLiquidityUnbalanced(pool, amountsIn, 1, false, bytes(""));
+
+        BaseVaultTest.Balances memory balancesBeforeRemove = getBalances(alice);
 
         assertEq(
             wstEthAmountOut,
-            balancesAfter.aliceTokens[wstethIdx] - balancesBefore.aliceTokens[wstethIdx],
-            "Alice wstEth is wrong"
+            balancesBeforeAdd.aliceTokens[wstethIdx] - balancesBeforeRemove.aliceTokens[wstethIdx],
+            "Alice wstEth is wrong after add"
+        );
+
+        uint256 removeAmount = wstEthAmountOut.mulDown(removePercentage);
+
+        router.removeLiquiditySingleTokenExactOut(pool, MAX_UINT128, wsteth, removeAmount, false, bytes(""));
+        BaseVaultTest.Balances memory balancesAfterRemove = getBalances(alice);
+        vm.stopPrank();
+
+        assertEq(
+            removeAmount,
+            balancesAfterRemove.aliceTokens[wstethIdx] - balancesBeforeRemove.aliceTokens[wstethIdx],
+            "Alice wstEth is wrong after remove"
         );
     }
 }
