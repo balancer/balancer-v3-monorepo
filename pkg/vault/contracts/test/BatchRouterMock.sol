@@ -8,8 +8,11 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
 
 import { AddressMappingSlot } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
+import {
+    TransientEnumerableSet
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
 
-import "../BatchRouter.sol";
+import { BatchRouter } from "../BatchRouter.sol";
 
 contract BatchRouterMock is BatchRouter {
     constructor(IVault vault, IWETH weth, IPermit2 permit2) BatchRouter(vault, weth, permit2) {

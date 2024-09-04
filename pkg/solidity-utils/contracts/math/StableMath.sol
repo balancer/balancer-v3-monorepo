@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import "./FixedPoint.sol";
+import { FixedPoint } from "./FixedPoint.sol";
 
 /**
  * @notice Stable Pool math library based on Curve's `StableSwap`.

@@ -26,6 +26,7 @@ pkg/balancer-js/src/typechain/*
 .env
 forge-artifacts/
 forge-cache/
+.invariant
 
 # Typechain
 typechain-types/
