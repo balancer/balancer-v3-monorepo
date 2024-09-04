@@ -809,7 +809,11 @@ contract VaultUnitLiquidityTest is BaseTest {
         PoolData memory poolData_ = poolData;
         uint256 protocolSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
 
-        for (uint256 i = 0; i < poolData_.tokens.length; i++) {
+        uint256 numTokens = params.addLiquidityParams.maxAmountsIn.length;
+        assertEq(numTokens, amountsInRaw.length, "Incorrect amounts in raw length");
+        assertEq(numTokens, amountsInScaled18.length, "Incorrect amounts in scaled length");
+        assertEq(numTokens, poolData.tokens.length, "Incorrect pool data tokens length");
+        for (uint256 i = 0; i < numTokens; i++) {
             assertEq(amountsInRaw[i], expectedAmountsInRaw[i], "Unexpected tokenIn raw amount");
             assertEq(amountsInScaled18[i], params_.expectedAmountsInScaled18[i], "Unexpected tokenIn scaled amount");
 
@@ -883,7 +887,12 @@ contract VaultUnitLiquidityTest is BaseTest {
         TestRemoveLiquidityParams memory params_ = params;
         PoolData memory poolData_ = poolData;
         uint256 protocolSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
-        for (uint256 i = 0; i < poolData.tokens.length; i++) {
+
+        uint256 numTokens = params.removeLiquidityParams.minAmountsOut.length;
+        assertEq(numTokens, amountsOutRaw.length, "Incorrect amounts out raw length");
+        assertEq(numTokens, amountsOutScaled18.length, "Incorrect amounts out scaled length");
+        assertEq(numTokens, poolData.tokens.length, "Incorrect pool data tokens length");
+        for (uint256 i = 0; i < numTokens; i++) {
             // check _computeAndChargeAggregateSwapFees
             uint256 protocolSwapFeeAmountRaw = _checkProtocolFeeResult(
                 poolData_,

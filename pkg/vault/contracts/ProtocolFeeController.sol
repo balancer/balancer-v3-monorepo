@@ -126,6 +126,7 @@ contract ProtocolFeeController is
         if (newSwapFeePercentage > _MAX_PROTOCOL_SWAP_FEE_PERCENTAGE) {
             revert ProtocolSwapFeePercentageTooHigh();
         }
+        _ensureValidPrecision(newSwapFeePercentage);
         _;
     }
 
@@ -134,6 +135,7 @@ contract ProtocolFeeController is
         if (newYieldFeePercentage > _MAX_PROTOCOL_YIELD_FEE_PERCENTAGE) {
             revert ProtocolYieldFeePercentageTooHigh();
         }
+        _ensureValidPrecision(newYieldFeePercentage);
         _;
     }
 
@@ -346,14 +348,7 @@ contract ProtocolFeeController is
             protocolFeePercentage +
             protocolFeePercentage.complement().mulDown(poolCreatorFeePercentage);
 
-        // Primary fee percentages are 18-decimal values, stored here in 64 bits, and calculated with full 256-bit
-        // precision. However, the resulting aggregate fees are stored in the Vault with 24-bit precision, which
-        // corresponds to 0.00001% resolution (i.e., a fee can be 1%, 1.00001%, 1.00002%, but not 1.000005%).
-        // Ensure there will be no precision loss in the Vault - which would lead to a discrepancy between the
-        // aggregate fee calculated here and that stored in the Vault.
-        if ((aggregateFeePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR != aggregateFeePercentage) {
-            revert IVaultErrors.FeePrecisionTooHigh();
-        }
+        _ensureValidPrecision(aggregateFeePercentage);
     }
 
     function _ensureCallerIsPoolCreator(address pool) internal view {
@@ -545,5 +540,16 @@ contract ProtocolFeeController is
         _vault.updateAggregateYieldFeePercentage(pool, _getAggregateFeePercentage(pool, ProtocolFeeType.YIELD));
 
         emit ProtocolYieldFeePercentageChanged(pool, newProtocolYieldFeePercentage);
+    }
+
+    function _ensureValidPrecision(uint256 feePercentage) private pure {
+        // Primary fee percentages are 18-decimal values, stored here in 64 bits, and calculated with full 256-bit
+        // precision. However, the resulting aggregate fees are stored in the Vault with 24-bit precision, which
+        // corresponds to 0.00001% resolution (i.e., a fee can be 1%, 1.00001%, 1.00002%, but not 1.000005%).
+        // Ensure there will be no precision loss in the Vault - which would lead to a discrepancy between the
+        // aggregate fee calculated here and that stored in the Vault.
+        if ((feePercentage / FEE_SCALING_FACTOR) * FEE_SCALING_FACTOR != feePercentage) {
+            revert IVaultErrors.FeePrecisionTooHigh();
+        }
     }
 }

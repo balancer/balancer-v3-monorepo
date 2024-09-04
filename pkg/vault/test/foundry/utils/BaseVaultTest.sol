@@ -62,7 +62,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
     // ERC4626 buffer limits.
     uint256 internal constant BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
-    uint256 internal constant PRODUCTION_MIN_WRAP_AMOUNT = 1e4;
+    uint256 internal constant PRODUCTION_MIN_WRAP_AMOUNT = 1e3;
 
     bytes32 internal constant ZERO_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000000;
     bytes32 internal constant ONE_BYTES32 = 0x0000000000000000000000000000000000000000000000000000000000000001;
