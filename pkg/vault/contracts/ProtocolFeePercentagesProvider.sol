@@ -83,6 +83,10 @@ contract ProtocolFeePercentagesProvider is IProtocolFeePercentagesProvider, Sing
             revert IProtocolFeeController.ProtocolYieldFeePercentageTooHigh();
         }
 
+        // Ensure precision checks will pass.
+        _protocolFeeController.ensureValidPrecision(protocolSwapFeePercentage);
+        _protocolFeeController.ensureValidPrecision(protocolYieldFeePercentage);
+
         // Best effort check that `factory` is the address of an IBasePoolFactory.
         bool poolFromFactory = IBasePoolFactory(factory).isPoolFromFactory(address(0));
         if (poolFromFactory) {

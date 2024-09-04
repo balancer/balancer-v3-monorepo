@@ -9,8 +9,9 @@ import {
 } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeePercentagesProvider.sol";
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IPoolInfo } from "@balancer-labs/v3-interfaces/contracts/pool-utils/IPoolInfo.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { ProtocolFeePercentagesProvider } from "../../contracts/ProtocolFeePercentagesProvider.sol";
 
@@ -116,6 +117,18 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         );
     }
 
+    function testSetFactorySpecificProtocolFeePercentageHighPrecisionSwap() public {
+        _grantPermissions();
+
+        vm.expectRevert(IVaultErrors.FeePrecisionTooHigh.selector);
+        vm.prank(admin);
+        percentagesProvider.setFactorySpecificProtocolFeePercentages(
+            address(factoryMock),
+            1e16 + 234234234,
+            maxYieldFeePercentage
+        );
+    }
+
     function testSetFactorySpecificProtocolFeePercentageInvalidYield() public {
         _grantPermissions();
 
@@ -124,6 +137,18 @@ contract ProtocolFeePercentagesProviderTest is BaseVaultTest {
         percentagesProvider.setFactorySpecificProtocolFeePercentages(
             address(factoryMock),
             maxSwapFeePercentage,
+            maxYieldFeePercentage + 1
+        );
+    }
+
+    function testSetFactorySpecificProtocolFeePercentageHighPrecisionYield() public {
+        _grantPermissions();
+
+        vm.expectRevert(IProtocolFeeController.ProtocolYieldFeePercentageTooHigh.selector);
+        vm.prank(admin);
+        percentagesProvider.setFactorySpecificProtocolFeePercentages(
+            address(factoryMock),
+            1e16 + 234234234,
             maxYieldFeePercentage + 1
         );
     }
