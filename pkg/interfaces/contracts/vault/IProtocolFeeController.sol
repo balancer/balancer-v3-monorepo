@@ -227,6 +227,13 @@ interface IProtocolFeeController {
      */
     function updateProtocolYieldFeePercentage(address pool) external;
 
+    /**
+     * @notice Ensure the proposed fee can be stored in the Vault without precision loss.
+     * @dev Fees are stored with 24 bit precision. The function will revert with `FeePrecisionTooHigh` if invalid.
+     * @param feePercentage The percentage to be checked
+     */
+    function ensureValidPrecision(uint256 feePercentage) external pure;
+
     /***************************************************************************
                                 Permissioned Functions
     ***************************************************************************/
