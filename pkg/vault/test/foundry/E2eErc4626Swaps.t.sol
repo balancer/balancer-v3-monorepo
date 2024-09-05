@@ -7,10 +7,12 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
+import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -19,6 +21,7 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
     using FixedPoint for uint256;
+    using ScalingHelpers for uint256;
 
     uint256 internal constant minSwapAmount = 1e6;
     uint256 internal maxSwapAmount;
@@ -29,11 +32,26 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         pool = erc4626Pool;
 
         maxSwapAmount = erc4626PoolInitialAmount.mulDown(25e16); // 25% of pool liquidity
+
+        // Donate tokens to vault as a shortcut to change the pool balances without the need to pass through add/remove
+        // liquidity operations. (No need to deal with BPTs, pranking LPs, guardrails, etc).
+        _donateToVault();
     }
 
     function testDoUndoExactInSwapAmount__Fuzz(uint256 exactDaiAmountIn) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestSwapAmount = true;
+
+        _testDoUndoExactInBase(exactDaiAmountIn, testLocals);
+    }
+
+    function testDoUndoExactInLiquidity__Fuzz(uint256 liquidityWaDai, uint256 liquidityWaUsdc) public {
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestLiquidity = true;
+        testLocals.liquidityWaDai = liquidityWaDai;
+        testLocals.liquidityWaUsdc = liquidityWaUsdc;
+
+        uint256 exactDaiAmountIn = maxSwapAmount;
 
         _testDoUndoExactInBase(exactDaiAmountIn, testLocals);
     }
@@ -45,16 +63,33 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         _testDoUndoExactOutBase(exactUsdcAmountOut, testLocals);
     }
 
+    function testDoUndoExactOutLiquidity__Fuzz(uint256 liquidityWaDai, uint256 liquidityWaUsdc) public {
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestLiquidity = true;
+        testLocals.liquidityWaDai = liquidityWaDai;
+        testLocals.liquidityWaUsdc = liquidityWaUsdc;
+
+        uint256 exactUsdcAmountOut = maxSwapAmount;
+
+        _testDoUndoExactOutBase(exactUsdcAmountOut, testLocals);
+    }
+
     struct DoUndoLocals {
         bool shouldTestLiquidity;
         bool shouldTestSwapAmount;
         bool shouldTestFee;
-        uint256 liquidityTokenA;
-        uint256 liquidityTokenB;
+        uint256 liquidityWaDai;
+        uint256 liquidityWaUsdc;
         uint256 poolSwapFeePercentage;
     }
 
     function _testDoUndoExactInBase(uint256 exactDaiAmountIn, DoUndoLocals memory testLocals) private {
+        if (testLocals.shouldTestLiquidity) {
+            _setPoolBalances(testLocals.liquidityWaDai, testLocals.liquidityWaUsdc);
+        }
+
+        maxSwapAmount = _getMaxSwapAmount();
+
         if (testLocals.shouldTestSwapAmount) {
             exactDaiAmountIn = bound(exactDaiAmountIn, minSwapAmount, maxSwapAmount);
         } else {
@@ -77,6 +112,12 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
     }
 
     function _testDoUndoExactOutBase(uint256 exactUsdcAmountOut, DoUndoLocals memory testLocals) private {
+        if (testLocals.shouldTestLiquidity) {
+            _setPoolBalances(testLocals.liquidityWaDai, testLocals.liquidityWaUsdc);
+        }
+
+        maxSwapAmount = _getMaxSwapAmount();
+
         if (testLocals.shouldTestSwapAmount) {
             exactUsdcAmountOut = bound(exactUsdcAmountOut, minSwapAmount, maxSwapAmount);
         } else {
@@ -197,6 +238,46 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         uint256 waUsdcIdx;
     }
 
+    function _setPoolBalances(uint256 liquidityWaDai, uint256 liquidityWaUsdc) private {
+        // 1% to 10000% of erc4626 initial pool liquidity.
+        liquidityWaDai = bound(
+            liquidityWaDai,
+            erc4626PoolInitialAmount.mulDown(1e16),
+            erc4626PoolInitialAmount.mulDown(10000e16)
+        );
+        liquidityWaDai = waDAI.convertToShares(liquidityWaDai);
+        // 1% to 10000% of erc4626 initial pool liquidity.
+        liquidityWaUsdc = bound(
+            liquidityWaUsdc,
+            erc4626PoolInitialAmount.mulDown(1e16),
+            erc4626PoolInitialAmount.mulDown(10000e16)
+        );
+        liquidityWaUsdc = waUSDC.convertToShares(liquidityWaUsdc);
+
+        uint256[] memory newPoolBalance = new uint256[](2);
+        newPoolBalance[waDaiIdx] = liquidityWaDai;
+        newPoolBalance[waUsdcIdx] = liquidityWaUsdc;
+
+        uint256[] memory newPoolBalanceLiveScaled18 = new uint256[](2);
+        newPoolBalanceLiveScaled18[waDaiIdx] = liquidityWaDai.toScaled18ApplyRateRoundUp(1, waDAI.getRate());
+        newPoolBalanceLiveScaled18[waUsdcIdx] = liquidityWaUsdc.toScaled18ApplyRateRoundUp(1, waUSDC.getRate());
+
+        (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(pool);
+        vault.manualSetPoolTokensAndBalances(pool, tokens, newPoolBalance, newPoolBalanceLiveScaled18);
+        // Updates pool data with latest token rates.
+        vault.loadPoolDataUpdatingBalancesAndYieldFees(pool, Rounding.ROUND_DOWN);
+    }
+
+    function _getMaxSwapAmount() private view returns (uint256 newMaxSwapAmount) {
+        // In the case of an yield-bearing pool, lastBalancesLiveScaled18 is the same as the balances in underlying
+        // terms, if underlying and wrapped tokens have 18 decimals.
+        (, , , uint256[] memory underlyingBalances) = vault.getPoolTokenInfo(pool);
+        uint256 smallerBalance = underlyingBalances[waDaiIdx] < underlyingBalances[waUsdcIdx]
+            ? underlyingBalances[waDaiIdx]
+            : underlyingBalances[waUsdcIdx];
+        return smallerBalance.mulDown(25e16); // 25% of the smallest pool liquidity.
+    }
+
     function _getTestBalances(address sender) private view returns (TestBalances memory testBalances) {
         IERC20[] memory tokenArray = [address(dai), address(usdc), address(waDAI), address(waUSDC)]
             .toMemoryArray()
@@ -216,5 +297,23 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         testBalances.usdcIdx = 1;
         testBalances.waDaiIdx = 2;
         testBalances.waUsdcIdx = 3;
+    }
+
+    function _donateToVault() internal virtual {
+        uint256 underlyingToDeposit = 10000 * erc4626PoolInitialAmount;
+        dai.mint(address(vault), underlyingToDeposit);
+        usdc.mint(address(vault), underlyingToDeposit);
+
+        vm.startPrank(address(vault));
+        dai.approve(address(waDAI), underlyingToDeposit);
+        uint256 mintedWaDAI = waDAI.deposit(underlyingToDeposit, address(vault));
+
+        usdc.approve(address(waUSDC), underlyingToDeposit);
+        uint256 mintedWaUSDC = waUSDC.deposit(underlyingToDeposit, address(vault));
+        vm.stopPrank();
+
+        // Override vault liquidity, to make sure the extra liquidity is registered.
+        vault.manualSetReservesOf(IERC20(address(waDAI)), mintedWaDAI);
+        vault.manualSetReservesOf(IERC20(address(waUSDC)), mintedWaUSDC);
     }
 }
