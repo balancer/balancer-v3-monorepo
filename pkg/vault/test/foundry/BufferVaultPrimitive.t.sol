@@ -3,9 +3,9 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
 import { IVaultEvents } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultEvents.sol";
@@ -14,8 +14,8 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
-import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
@@ -132,6 +132,24 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.expectRevert(
             abi.encodeWithSelector(IVaultErrors.WrongUnderlyingToken.selector, address(waDAI), address(usdc))
         );
+        batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
+    }
+
+    function testExactInOverflow() public {
+        // Above permit2 limit of uint160.
+        uint256 overflowAmount = type(uint168).max;
+
+        // Wrap token should pass, since there's no liquidity in the buffer.
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
+            overflowAmount,
+            0,
+            usdc,
+            IERC20(address(waDAI)),
+            IERC20(address(waDAI))
+        );
+
+        vm.prank(lp);
+        vm.expectRevert(abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintDowncast.selector, 160, overflowAmount));
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
     }
 
