@@ -5,7 +5,13 @@ pragma solidity ^0.8.24;
 import { WeightedPool } from "./WeightedPool.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { HookFlags, TokenConfig, AddLiquidityKind, LiquidityManagement, PoolSwapParams } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import {
+    HookFlags,
+    TokenConfig,
+    AddLiquidityKind,
+    LiquidityManagement,
+    PoolSwapParams
+} from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
@@ -57,7 +63,6 @@ contract LBPool is WeightedPool, Ownable {
         address trustedRoutersProvider,
         address trustedRouterTodoDeleteMe
     ) WeightedPool(params, vault) Ownable(owner) {
-
         // _NUM_TOKENS == 2 == params.normalizedWeights.length == params.numTokens
         // WeightedPool validates `numTokens == normalizedWeights.length`
         InputHelpers.ensureInputLengthMatch(_NUM_TOKENS, params.numTokens);
@@ -156,7 +161,6 @@ contract LBPool is WeightedPool, Ownable {
         }
     }
 
-
     // Return HookFlags struct that indicates which hooks this contract supports
     function getHookFlags() public pure returns (HookFlags memory hookFlags) {
         // Support hooks before swap/join for swapEnabled/onlyOwner LP
@@ -177,7 +181,6 @@ contract LBPool is WeightedPool, Ownable {
         uint256[] memory,
         bytes memory
     ) external view onlyVault returns (bool) {
-
         // TODO use TrustedRoutersProvider. Presumably something like this:
         // if (ITrustedRoutersProvider(TRUSTED_ROUTERS_PROVIDER).isTrusted(router)) {
         if (router == TRUSTED_ROUTER_TODO_DELETE_ME) {

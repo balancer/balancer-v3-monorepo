@@ -17,7 +17,6 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 pragma solidity ^0.8.24;
 
 library WeightValidation {
-
     /// @dev Indicates that one of the pool tokens' weight is below the minimum allowed.
     error MinWeight();
 
