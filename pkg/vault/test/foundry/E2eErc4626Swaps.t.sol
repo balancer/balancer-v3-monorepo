@@ -46,6 +46,10 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         // liquidity operations. (No need to deal with BPTs, pranking LPs, guardrails, etc).
         _donateToVault();
 
+        // Makes sure Bob has enough tokens to pay for DAI and USDC wraps.
+        dai.mint(bob, 1000 * erc4626PoolInitialAmount);
+        usdc.mint(bob, 1000 * erc4626PoolInitialAmount);
+
         IProtocolFeeController feeController = vault.getProtocolFeeController();
         IAuthentication feeControllerAuth = IAuthentication(address(feeController));
 
