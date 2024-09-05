@@ -3,12 +3,13 @@
 pragma solidity ^0.8.24;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
+import { FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { FEE_SCALING_FACTOR } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
     ReentrancyGuardTransient
@@ -53,6 +54,7 @@ contract ProtocolFeeController is
 {
     using FixedPoint for uint256;
     using SafeERC20 for IERC20;
+    using SafeCast for *;
 
     enum ProtocolFeeType {
         SWAP,
@@ -379,12 +381,14 @@ contract ProtocolFeeController is
 
         // `isOverride` is true if the pool is protocol fee exempt; otherwise, default to false.
         // If exempt, this pool cannot be updated to the current global percentage permissionlessly.
+        // The percentages are 18 decimal floating point numbers, bound between 0 and the max fee (<= FixedPoint.ONE).
+        // Since this fits in 64 bits, the SafeCast shouldn't be necessary, and is done out of an abundance of caution.
         _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
-            feePercentage: uint64(aggregateSwapFeePercentage),
+            feePercentage: aggregateSwapFeePercentage.toUint64(),
             isOverride: protocolFeeExempt
         });
         _poolProtocolYieldFeePercentages[pool] = PoolFeeConfig({
-            feePercentage: uint64(aggregateYieldFeePercentage),
+            feePercentage: aggregateYieldFeePercentage.toUint64(),
             isOverride: protocolFeeExempt
         });
     }
@@ -506,8 +510,10 @@ contract ProtocolFeeController is
     /// @dev Common code shared between set/update. `isOverride` will be true if governance is setting the percentage.
     function _updatePoolSwapFeePercentage(address pool, uint256 newProtocolSwapFeePercentage, bool isOverride) private {
         // Update local storage of the raw percentage
+        // The percentages are 18 decimal floating point numbers, bound between 0 and the max fee (<= FixedPoint.ONE).
+        // Since this fits in 64 bits, the SafeCast shouldn't be necessary, and is done out of an abundance of caution.
         _poolProtocolSwapFeePercentages[pool] = PoolFeeConfig({
-            feePercentage: uint64(newProtocolSwapFeePercentage),
+            feePercentage: newProtocolSwapFeePercentage.toUint64(),
             isOverride: isOverride
         });
 
@@ -524,8 +530,10 @@ contract ProtocolFeeController is
         bool isOverride
     ) private {
         // Update local storage of the raw percentage.
+        // The percentages are 18 decimal floating point numbers, bound between 0 and the max fee (<= FixedPoint.ONE).
+        // Since this fits in 64 bits, the SafeCast shouldn't be necessary, and is done out of an abundance of caution.
         _poolProtocolYieldFeePercentages[pool] = PoolFeeConfig({
-            feePercentage: uint64(newProtocolYieldFeePercentage),
+            feePercentage: newProtocolYieldFeePercentage.toUint64(),
             isOverride: isOverride
         });
 
