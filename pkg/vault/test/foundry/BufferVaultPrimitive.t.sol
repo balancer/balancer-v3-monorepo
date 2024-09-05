@@ -22,21 +22,11 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract BufferVaultPrimitiveTest is BaseVaultTest {
     using FixedPoint for uint256;
 
-    ERC4626TestToken internal waDAI;
-    ERC4626TestToken internal waUSDC;
-
     uint256 private constant _userAmount = 10e6 * 1e18;
     uint256 private constant _wrapAmount = _userAmount / 100;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-
-        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
-        vm.label(address(waDAI), "waDAI");
-
-        // "USDC" is deliberately 18 decimals to test one thing at a time.
-        waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
-        vm.label(address(waUSDC), "waUSDC");
 
         // Authorizes user "admin" to pause/unpause vault's buffer.
         authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVaultBuffers.selector), admin);
@@ -51,24 +41,10 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Create and fund buffer pools
         vm.startPrank(lp);
 
-        dai.mint(lp, _userAmount);
-        dai.approve(address(waDAI), _userAmount);
-        waDAI.deposit(_userAmount, lp);
-
-        usdc.mint(lp, _userAmount);
-        usdc.approve(address(waUSDC), _userAmount);
-        waUSDC.deposit(_userAmount, lp);
-
         // Minting wrong token to wrapped token contracts, to test changing the asset.
         dai.mint(address(waUSDC), _userAmount);
         usdc.mint(address(waDAI), _userAmount);
 
-        waDAI.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
-        waUSDC.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
         vm.stopPrank();
     }
 

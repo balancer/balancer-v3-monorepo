@@ -24,19 +24,12 @@ contract VaultAdminUnitTest is BaseVaultTest {
     uint256 internal constant UNDERLYING_TOKENS_TO_DEPOSIT = 2e18;
     uint256 internal constant LIQUIDITY_AMOUNT = 1e18;
 
-    ERC4626TestToken internal waDAI;
-
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
         // Authorize admin to pause and unpause vault
         authorizer.grantRole(vault.getActionId(IVaultAdmin.pauseVault.selector), admin);
         authorizer.grantRole(vault.getActionId(IVaultAdmin.unpauseVault.selector), admin);
-
-        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
-        vm.label(address(waDAI), "waDAI");
-
-        _initializeBob();
     }
 
     // withValidPercentage
@@ -270,16 +263,5 @@ contract VaultAdminUnitTest is BaseVaultTest {
     function testBurnBufferSharesInvalidOwner() public {
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferSharesInvalidOwner.selector));
         vault.manualBurnBufferShares(waDAI, address(0), BUFFER_MINIMUM_TOTAL_SUPPLY);
-    }
-
-    function _initializeBob() private {
-        vm.startPrank(bob);
-        dai.approve(address(waDAI), UNDERLYING_TOKENS_TO_DEPOSIT);
-        waDAI.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
-
-        // Deposit some DAI to mint waDAI to bob, so he can add liquidity to the buffer.
-        waDAI.deposit(UNDERLYING_TOKENS_TO_DEPOSIT, bob);
-        vm.stopPrank();
     }
 }

@@ -36,31 +36,17 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract BufferDoSProtectionTest is BaseVaultTest {
     using FixedPoint for uint256;
 
-    ERC4626TestToken internal waDAI;
-
     uint256 private constant _userAmount = 10e6 * 1e18;
     uint256 private constant _wrapAmount = _userAmount / 100;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-
-        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
-        vm.label(address(waDAI), "waDAI");
-
         initializeLp();
     }
 
     function initializeLp() private {
         // Create and fund buffer pools
         vm.startPrank(lp);
-
-        dai.mint(lp, _userAmount);
-        dai.approve(address(waDAI), _userAmount);
-        waDAI.deposit(_userAmount, lp);
-
-        waDAI.approve(address(permit2), MAX_UINT256);
-        // Approve transfers to router to add liquidity to buffers.
-        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
         // The test contract acts as the router and does not use permit2, so approve transfers to the router directly.
         dai.approve(address(this), MAX_UINT256);
         waDAI.approve(address(this), MAX_UINT256);
