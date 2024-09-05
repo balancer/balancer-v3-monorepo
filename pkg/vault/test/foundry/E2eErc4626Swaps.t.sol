@@ -26,6 +26,10 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
     using FixedPoint for uint256;
     using ScalingHelpers for uint256;
 
+    // There are a lot of conversions in place to measure vault and user balances, which can bring some rounding
+    // errors. Make sure this error is smaller than 10 wei.
+    uint256 internal constant MAX_ERROR = 10;
+
     uint256 internal constant minSwapAmount = 1e6;
     uint256 internal maxSwapAmount;
 
@@ -299,6 +303,13 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         uint256 feesWaDai,
         uint256 feesWaUsdc
     ) private view {
+        // Pool invariant should never decrease.
+        assertGe(
+            balancesAfter.balances.poolInvariant,
+            balancesBefore.balances.poolInvariant,
+            "Pool invariant decreased"
+        );
+
         // User balances should be smaller than before, and user should pay the fees.
         assertLe(
             balancesAfter.balances.bobTokens[balancesAfter.daiIdx],
@@ -311,11 +322,38 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             "Sender USDC balance is incorrect"
         );
 
-        // Pool invariant.
-        assertGe(
-            balancesAfter.balances.poolInvariant,
-            balancesBefore.balances.poolInvariant,
-            "Pool invariant decreased"
+        // All tokens paid by the user should stay in the vault since pool creator fees were not charged yet. However,
+        // calculating the amount of tokens in the vault involves convertToAssets, used multiple times by buffers,
+        // fee calculation, and to transform wrapped amounts in underlying amounts, which introduces rounding errors to
+        // compare user and vault amounts. Make sure this rounding error is below 10 wei.
+        uint256 senderDaiDelta = balancesBefore.balances.bobTokens[balancesBefore.daiIdx] -
+            balancesAfter.balances.bobTokens[balancesAfter.daiIdx];
+        uint256 vaultTotalDaiBefore = balancesBefore.balances.vaultTokens[balancesBefore.daiIdx] +
+            waDAI.convertToAssets(balancesBefore.balances.vaultTokens[balancesBefore.waDaiIdx]);
+        uint256 vaultTotalDaiAfter = balancesAfter.balances.vaultTokens[balancesAfter.daiIdx] +
+            waDAI.convertToAssets(balancesAfter.balances.vaultTokens[balancesAfter.waDaiIdx]);
+        assertApproxEqAbs(
+            vaultTotalDaiAfter - vaultTotalDaiBefore,
+            senderDaiDelta,
+            MAX_ERROR,
+            "Vault dai/waDAI balance is wrong"
+        );
+
+        // All tokens paid by the user should stay in the vault since pool creator fees were not charged yet. However,
+        // calculating the amount of tokens in the vault involves convertToAssets, used multiple times by buffers,
+        // fee calculation, and to transform wrapped amounts in underlying amounts, which introduces rounding errors to
+        // compare user and vault amounts. Make sure this rounding error is below 10 wei.
+        uint256 senderUsdcDelta = balancesBefore.balances.bobTokens[balancesBefore.usdcIdx] -
+            balancesAfter.balances.bobTokens[balancesAfter.usdcIdx];
+        uint256 vaultTotalUsdcBefore = balancesBefore.balances.vaultTokens[balancesBefore.usdcIdx] +
+            waUSDC.convertToAssets(balancesBefore.balances.vaultTokens[balancesBefore.waUsdcIdx]);
+        uint256 vaultTotalUsdcAfter = balancesAfter.balances.vaultTokens[balancesAfter.usdcIdx] +
+            waUSDC.convertToAssets(balancesAfter.balances.vaultTokens[balancesAfter.waUsdcIdx]);
+        assertApproxEqAbs(
+            vaultTotalUsdcAfter - vaultTotalUsdcBefore,
+            senderUsdcDelta,
+            MAX_ERROR,
+            "Vault usdc/waUSDC balance is wrong"
         );
     }
 
