@@ -95,17 +95,19 @@ contract VaultFactory is Authentication {
         }
 
         VaultAdmin vaultAdmin = VaultAdmin(
-            Create2.deploy(
-                0,
-                bytes32(0x00),
-                abi.encodePacked(
-                    vaultAdminCreationCode,
-                    abi.encode(
-                        IVault(vaultAddress),
-                        _pauseWindowDuration,
-                        _bufferPeriodDuration,
-                        _minTradeAmount,
-                        _minWrapAmount
+            payable(
+                Create2.deploy(
+                    0,
+                    bytes32(0x00),
+                    abi.encodePacked(
+                        vaultAdminCreationCode,
+                        abi.encode(
+                            IVault(vaultAddress),
+                            _pauseWindowDuration,
+                            _bufferPeriodDuration,
+                            _minTradeAmount,
+                            _minWrapAmount
+                        )
                     )
                 )
             )
