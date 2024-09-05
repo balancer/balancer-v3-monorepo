@@ -321,7 +321,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
     }
 
     function _buildExactInPaths(
-        uint256 amount
+        uint256 amountIn
     ) private view returns (IBatchRouter.SwapPathExactAmountIn[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountIn[](1);
@@ -334,22 +334,32 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waUSDC, isBuffer: false });
         steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
 
-        // When the buffer liquidity is used, it adds a convertError to avoid a buffer from being drained. So, the
-        // waDAI buffer removes `vaultConvertError` from the wrapped amount out, and this factor propagates until the
-        // last step, when waUSDC buffer convert the waUSDC amount into USDC using convertToAssets. After this
-        // conversion, waUSDC buffer also removes convertError from the buffer result.
-        uint256 maxError = 2 * waUSDC.convertToAssets(vaultConvertFactor);
+        // For ExactIn, the steps are computed in order (Wrap -> Swap -> Unwrap).
+        // Compute Wrap. The exact amount is `swapAmount`. The token in is DAI, so the wrap occurs in the waDAI buffer.
+        // `waDaiAmountInRaw` is the output of the wrap, and since the buffer has liquidity, we need to consider the
+        // vaultConvertError.
+        uint256 waDaiAmountInRaw = waDAI.convertToShares(amountIn) - vaultConvertFactor;
+        // Compute Swap. `waDaiAmountInRaw` is the amount in of pool swap. To compute the swap with precision, we
+        // need to take into account the rates used by the Vault, instead of using a wrapper "convert" function.
+        uint256 waDaiAmountInScaled18 = waDaiAmountInRaw.mulDown(waDAI.getRate());
+        // Since the pool is linear, waDaiAmountInScaled18 = waUsdcAmountOutScaled18. Besides, since we're scaling a
+        // tokenOut amount, we need to round the rate up.
+        uint256 waUsdcAmountOutRaw = waDaiAmountInScaled18.divDown(waUSDC.getRate().computeRateRoundUp());
+        // Compute Unwrap. `waUsdcAmountOutRaw` is the output of the swap and the input of the unwrap. The amount out
+        // USDC is calculated by the waUSDC buffer and, since the buffer has liquidity, we need to consider the
+        // vaultConvertError.
+        uint256 usdcAmountOutRaw = waUSDC.convertToAssets(waUsdcAmountOutRaw) - vaultConvertFactor;
 
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
             tokenIn: dai,
             steps: steps,
-            exactAmountIn: amount,
-            minAmountOut: amount - maxError
+            exactAmountIn: amountIn,
+            minAmountOut: usdcAmountOutRaw
         });
     }
 
     function _buildExactOutPaths(
-        uint256 amount
+        uint256 amountOut
     ) private view returns (IBatchRouter.SwapPathExactAmountOut[] memory paths) {
         IBatchRouter.SwapPathStep[] memory steps = new IBatchRouter.SwapPathStep[](3);
         paths = new IBatchRouter.SwapPathExactAmountOut[](1);
@@ -362,17 +372,29 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waUSDC, isBuffer: false });
         steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
 
-        // When the buffer liquidity is used, it adds a convertError to avoid a buffer from being drained. So, the
-        // waDAI buffer removes `vaultConvertError` from the wrapped amount out, and this factor propagates until the
-        // last step, when waUSDC buffer convert the waUSDC amount into USDC using convertToAssets. After this
-        // conversion, waUSDC buffer also removes convertError from the buffer result.
-        uint256 maxError = waUSDC.convertToAssets(vaultConvertFactor) + vaultConvertFactor;
+        // For ExactOut, the last step is computed first (Unwrap -> Swap -> Wrap).
+        // Compute Unwrap. The exact amount out in USDC is `swapAmount` and the token out is USDC, so the unwrap
+        // occurs in the waUSDC buffer. Since the buffer has liquidity, we need to consider the vaultConvertError.
+        // `waUsdcAmountOutRaw` is the ExactOut amount of the pool swap, and the input to the unwrap.
+        // That's why the `vaultConvertFactor` is added.
+        uint256 waUsdcAmountOutRaw = waUSDC.convertToShares(amountOut) + vaultConvertFactor;
+        // Compute Swap. `waUsdcAmountOutRaw` is the ExactOut amount of the pool swap. To compute the swap with
+        // precision, we need to take into account the rates used by the Vault, instead of using a wrapper "convert"
+        // function. Besides, since we're scaling a tokenOut amount, we need to round the rate up. Adds 1e6 to cover
+        // any rate change when wrapping/unwrapping. (It tolerates a bigger amountIn, which is in favor of the vault).
+        uint256 waUsdcAmountOutScaled18 = waUsdcAmountOutRaw.mulDown(waUSDC.getRate().computeRateRoundUp()) + 1e6;
+        // Since the pool is linear, waUsdcAmountOutScaled18 = waDaiAmountInScaled18. `waDaiAmountInRaw` is the
+        // calculated amount in of the pool swap, and the ExactOut value of the wrap operation.
+        uint256 waDaiAmountInRaw = waUsdcAmountOutScaled18.divDown(waDAI.getRate());
+        // Compute Wrap. The amount in DAI is calculated by the waDAI buffer and, since the buffer has liquidity, we
+        // need to consider the vaultConvertError.
+        uint256 daiAmountInRaw = waDAI.convertToAssets(waDaiAmountInRaw) + vaultConvertFactor;
 
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
             tokenIn: dai,
             steps: steps,
-            maxAmountIn: amount + maxError,
-            exactAmountOut: amount
+            maxAmountIn: daiAmountInRaw,
+            exactAmountOut: amountOut
         });
     }
 

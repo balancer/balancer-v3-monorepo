@@ -21,13 +21,13 @@ import { BaseVaultTest } from "./BaseVaultTest.sol";
 abstract contract BaseERC4626BufferTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    uint256 bufferInitialAmount = 1e5 * 1e18;
-    uint256 erc4626PoolInitialAmount = 10e6 * 1e18;
-    uint256 erc4626PoolInitialBPTAmount = erc4626PoolInitialAmount * 2;
+    uint256 internal bufferInitialAmount = 1e5 * 1e18;
+    uint256 internal erc4626PoolInitialAmount = 10e6 * 1e18;
+    uint256 internal erc4626PoolInitialBPTAmount = erc4626PoolInitialAmount * 2;
 
     uint256 internal waDaiIdx;
     uint256 internal waUsdcIdx;
-    address erc4626Pool;
+    address internal erc4626Pool;
 
     // Rounding issues are introduced when dealing with tokens with rates different than 1:1. For example, to scale the
     // tokens of an yield-bearing pool, the amount of tokens is multiplied by the rate of the token, which is
@@ -115,30 +115,29 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         );
 
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
-        assertApproxEqAbs(
+        uint256 waDAIInvariantDelta = bufferInitialAmount +
+            waDAI.convertToAssets(waDAI.previewDeposit(bufferInitialAmount));
+        assertEq(
             vault.getBufferOwnerShares(IERC4626(waDAI), lp),
-            2 * bufferInitialAmount - BUFFER_MINIMUM_TOTAL_SUPPLY,
-            1, // 1 wei error due to rounding issues
+            waDAIInvariantDelta - BUFFER_MINIMUM_TOTAL_SUPPLY,
             "Wrong share of waDAI buffer belonging to LP"
         );
-        assertApproxEqAbs(
-            vault.getBufferOwnerShares(IERC4626(waUSDC), lp),
-            2 * bufferInitialAmount - BUFFER_MINIMUM_TOTAL_SUPPLY,
-            1, // 1 wei error due to rounding issues
-            "Wrong share of waUSDC buffer belonging to LP"
-        );
-
-        // Buffer should have the correct amount of issued shares.
-        assertApproxEqAbs(
+        assertEq(
             vault.getBufferTotalShares(IERC4626(waDAI)),
-            bufferInitialAmount * 2,
-            1, // 1 wei error due to rounding issues
+            waDAIInvariantDelta,
             "Wrong issued shares of waDAI buffer"
         );
-        assertApproxEqAbs(
+
+        uint256 waUSDCInvariantDelta = bufferInitialAmount +
+            waUSDC.convertToAssets(waUSDC.previewDeposit(bufferInitialAmount));
+        assertEq(
+            vault.getBufferOwnerShares(IERC4626(waUSDC), lp),
+            waUSDCInvariantDelta - BUFFER_MINIMUM_TOTAL_SUPPLY,
+            "Wrong share of waUSDC buffer belonging to LP"
+        );
+        assertEq(
             vault.getBufferTotalShares(IERC4626(waUSDC)),
-            bufferInitialAmount * 2,
-            1, // 1 wei error due to rounding issues
+            waUSDCInvariantDelta,
             "Wrong issued shares of waUSDC buffer"
         );
 
