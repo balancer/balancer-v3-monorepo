@@ -240,13 +240,12 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
         // Considering a pool with exactly poolInitAmount of each token, we need to add tokens in the side where the
         // balance scaled18 is smaller. If rate of WstETH is 1, and DAI is 2, we have less WstETH than DAI, so we need
         // to add more WstETH. The amount of WstETH to add is `(daiBalance * rateDai / rateWstEth - wstEthBalance)`.
-        // Since daiBalance and wstEthBalance is poolInitAmount, this formula becomes
-        // `poolInitAmount * (rateDai / rateWstEth - 1)`.
+        // `daiBalance` and `wstEthBalance` are `poolInitAmount`.
         uint256[] memory amountsToAdd = new uint256[](2);
         if (rateWstEth < rateDai) {
-            amountsToAdd[wstethIdx] = poolInitAmount * ((rateDai / rateWstEth) - 1);
+            amountsToAdd[wstethIdx] = ((poolInitAmount * rateDai) / rateWstEth) - poolInitAmount;
         } else {
-            amountsToAdd[daiIdx] = poolInitAmount * ((rateWstEth / rateDai) - 1);
+            amountsToAdd[daiIdx] = ((poolInitAmount * rateWstEth) / rateDai) - poolInitAmount;
         }
 
         if (amountsToAdd[wstethIdx] > 0 || amountsToAdd[daiIdx] > 0) {
