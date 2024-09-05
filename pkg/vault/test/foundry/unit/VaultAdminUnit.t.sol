@@ -145,13 +145,17 @@ contract VaultAdminUnitTest is BaseVaultTest {
     }
 
     function testInitializeBufferBelowMinimumShares() public {
+        uint256 underlyingAmount = 1;
+        uint256 wrappedAmount = 2;
+        uint256 bufferInvariantDelta = underlyingAmount + waDAI.convertToAssets(wrappedAmount);
+
         vault.forceUnlock();
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferTotalSupplyTooLow.selector, 3));
-        vault.initializeBuffer(waDAI, 1, 2, bob);
+        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferTotalSupplyTooLow.selector, bufferInvariantDelta));
+        vault.initializeBuffer(waDAI, underlyingAmount, wrappedAmount, bob);
     }
 
     function testInitializeBuffer() public {
-        dai.mint(address(waDAI), UNDERLYING_TOKENS_TO_DEPOSIT); // This will make the rate = 2
+        waDAI.mockRate(2e18);
 
         vault.forceUnlock();
         uint256 underlyingAmount = LIQUIDITY_AMOUNT * 2;
