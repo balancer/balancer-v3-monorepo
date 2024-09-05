@@ -13,18 +13,18 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { WeightedMath } from "@balancer-labs/v3-solidity-utils/contracts/math/WeightedMath.sol";
 
 pragma solidity ^0.8.24;
 
 library WeightValidation {
-    using FixedPoint for uint256;
 
     /// @dev Indicates that one of the pool tokens' weight is below the minimum allowed.
     error MinWeight();
 
     /// @dev Indicates that the sum of the pool tokens' weights is not FP 1.
     error NormalizedWeightInvariant();
+
+    uint256 internal constant _MIN_WEIGHT = 1e16; //1%
 
     /**
      * @dev Returns a fixed-point number representing how far along the current value change is, where 0 means the
@@ -36,7 +36,7 @@ library WeightValidation {
         for (uint8 i = 0; i < numTokens; ++i) {
             uint256 normalizedWeight = normalizedWeights[i];
 
-            if (normalizedWeight < WeightedMath._MIN_WEIGHT) {
+            if (normalizedWeight < _MIN_WEIGHT) {
                 revert MinWeight();
             }
             normalizedSum += normalizedWeight;
@@ -53,7 +53,7 @@ library WeightValidation {
      */
     function validateTwoWeights(uint256 normalizedWeight0, uint256 normalizedWeight1) internal pure {
         // Ensure each normalized weight is above the minimum
-        if (normalizedWeight0 < WeightedMath._MIN_WEIGHT || normalizedWeight1 < WeightedMath._MIN_WEIGHT) {
+        if (normalizedWeight0 < _MIN_WEIGHT || normalizedWeight1 < _MIN_WEIGHT) {
             revert MinWeight();
         }
 

@@ -95,7 +95,6 @@ describe('LBPool', function () {
       ZERO_BYTES32
     );
     const receipt = await tx.wait();
-
     const event = expectEvent.inReceipt(receipt, 'PoolCreated');
 
     pool = (await deployedAt('LBPool', event.args.pool)) as unknown as LBPool;
@@ -118,7 +117,7 @@ describe('LBPool', function () {
     const setPoolSwapFeeAction = await actionId(vault, 'setStaticSwapFeePercentage');
 
     const authorizerAddress = await vault.getAuthorizer();
-    const authorizer = await deployedAt('v3-solidity-utils/BasicAuthorizerMock', authorizerAddress);
+    const authorizer = await deployedAt('v3-vault/BasicAuthorizerMock', authorizerAddress);
 
     await authorizer.grantRole(setPoolSwapFeeAction, bob.address);
 
