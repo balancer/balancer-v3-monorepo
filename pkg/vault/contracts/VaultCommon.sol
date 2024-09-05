@@ -104,14 +104,13 @@ abstract contract VaultCommon is IVaultEvents, IVaultErrors, VaultStorage, Reent
         // Calculate the new delta after accounting for the change.
         int256 next = current + delta;
 
-        // If the resultant delta becomes zero after this operation,
-        // decrease the count of non-zero deltas.
         if (next == 0) {
+            // If the resultant delta becomes zero after this operation,
+            // decrease the count of non-zero deltas.
             _nonZeroDeltaCount().tDecrement();
-        }
-        // If there was no previous delta (i.e., it was zero) and now we have one,
-        // increase the count of non-zero deltas.
-        else if (current == 0) {
+        } else if (current == 0) {
+            // If there was no previous delta (i.e., it was zero) and now we have one,
+            // increase the count of non-zero deltas.
             _nonZeroDeltaCount().tIncrement();
         }
 
