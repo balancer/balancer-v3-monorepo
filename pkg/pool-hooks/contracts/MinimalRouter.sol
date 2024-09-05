@@ -2,12 +2,13 @@
 
 pragma solidity ^0.8.24;
 
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
@@ -18,6 +19,7 @@ import { RouterCommon } from "@balancer-labs/v3-vault/contracts/RouterCommon.sol
 
 abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
     using Address for address payable;
+    using SafeCast for *;
 
     /**
      * @notice Data for the add liquidity hook.
@@ -146,7 +148,7 @@ abstract contract MinimalRouter is RouterCommon, ReentrancyGuardTransient {
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
             } else {
-                _permit2.transferFrom(params.sender, address(_vault), uint160(amountIn), address(token));
+                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
                 _vault.settle(token, amountIn);
             }
         }
