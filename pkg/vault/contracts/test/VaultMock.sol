@@ -539,11 +539,15 @@ contract VaultMock is IVaultMainMock, Vault {
             bytes memory returnData
         )
     {
+        bytes32 paramsHashBefore = keccak256(abi.encode(params));
+
         (amountsInRaw, amountsInScaled18, bptAmountOut, returnData) = _addLiquidity(
             poolData,
             params,
             maxAmountsInScaled18
         );
+
+        require(paramsHashBefore == keccak256(abi.encode(params)), "Input parameters have changed");
 
         updatedPoolData = poolData;
     }
@@ -570,11 +574,15 @@ contract VaultMock is IVaultMainMock, Vault {
             bytes memory returnData
         )
     {
+        bytes32 paramsHashBefore = keccak256(abi.encode(params));
+
         (bptAmountIn, amountsOutRaw, amountsOutScaled18, returnData) = _removeLiquidity(
             poolData,
             params,
             minAmountsOutScaled18
         );
+
+        require(paramsHashBefore == keccak256(abi.encode(params)), "Input parameters have changed");
 
         updatedPoolData = poolData;
     }

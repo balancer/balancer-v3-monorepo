@@ -924,6 +924,25 @@ contract ProtocolFeeControllerTest is BaseVaultTest {
         feeController.withdrawPoolCreatorFees(pool);
     }
 
+    function testSetMaliciousGlobalFeePercentages() public {
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
+            admin
+        );
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolYieldFeePercentage.selector),
+            admin
+        );
+
+        vm.startPrank(admin);
+        vm.expectRevert(IVaultErrors.FeePrecisionTooHigh.selector);
+        feeController.setGlobalProtocolSwapFeePercentage(CUSTOM_PROTOCOL_SWAP_FEE_PCT + 1234567890123);
+
+        vm.expectRevert(IVaultErrors.FeePrecisionTooHigh.selector);
+        feeController.setGlobalProtocolYieldFeePercentage(CUSTOM_PROTOCOL_SWAP_FEE_PCT + 123456890123);
+        vm.stopPrank();
+    }
+
     function _registerPoolWithMaxProtocolFees() internal {
         authorizer.grantRole(
             feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),

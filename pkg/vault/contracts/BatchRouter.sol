@@ -2,25 +2,26 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { EVMCallModeHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/EVMCallModeHelpers.sol";
+import {
+    ReentrancyGuardTransient
+} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 import {
     TransientEnumerableSet
 } from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/TransientEnumerableSet.sol";
 import {
     TransientStorageHelpers
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
-import {
-    ReentrancyGuardTransient
-} from "@balancer-labs/v3-solidity-utils/contracts/openzeppelin/ReentrancyGuardTransient.sol";
 
 import { RouterCommon } from "./RouterCommon.sol";
 import { BatchRouterStorage } from "./BatchRouterStorage.sol";
@@ -40,6 +41,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
     using SafeERC20 for IERC20;
+    using SafeCast for *;
 
     constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
         // solhint-disable-previous-line no-empty-blocks
@@ -226,7 +228,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         _permit2.transferFrom(
                             params.sender,
                             address(this),
-                            uint160(stepExactAmountIn),
+                            stepExactAmountIn.toUint160(),
                             address(stepTokenIn)
                         );
                     } else {
@@ -484,7 +486,7 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
                         _permit2.transferFrom(
                             params.sender,
                             address(this),
-                            uint160(stepMaxAmountIn),
+                            stepMaxAmountIn.toUint160(),
                             address(stepTokenIn)
                         );
                     }
@@ -1022,13 +1024,12 @@ contract BatchRouter is IBatchRouter, BatchRouterStorage, RouterCommon, Reentran
         // to subtract 1 from these quantities without reverting, which is why we use signed integers.
         int256 numTokensIn = int256(_currentSwapTokensIn().length());
         int256 numTokensOut = int256(_currentSwapTokensOut().length());
-        uint256 ethAmountIn = 0;
 
         // Iterate backwards, from the last element to 0 (included).
         // Removing the last element from a set is cheaper than removing the first one.
         for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
             address tokenIn = _currentSwapTokensIn().unchecked_at(uint256(i));
-            ethAmountIn += _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts().tGet(tokenIn), wethIsEth);
+            _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts().tGet(tokenIn), wethIsEth);
             // Erases delta, in case more than one batch router op is called in the same transaction
             _currentSwapTokenInAmounts().tSet(tokenIn, 0);
             _currentSwapTokensIn().remove(tokenIn);

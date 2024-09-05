@@ -726,4 +726,22 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     function _canPerform(bytes32 actionId, address user, address where) internal view returns (bool) {
         return _authorizer.canPerform(actionId, user, where);
     }
+
+    /*******************************************************************************
+                                     Default handlers
+    *******************************************************************************/
+
+    receive() external payable {
+        revert CannotReceiveEth();
+    }
+
+    // solhint-disable no-complex-fallback
+
+    fallback() external payable {
+        if (msg.value > 0) {
+            revert CannotReceiveEth();
+        }
+
+        revert("Not implemented");
+    }
 }

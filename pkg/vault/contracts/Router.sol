@@ -2,14 +2,15 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { IPermit2 } from "permit2/src/interfaces/IPermit2.sol";
 
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
-import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
 import { IWETH } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/misc/IWETH.sol";
+import { IRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IRouter.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import {
@@ -25,6 +26,7 @@ import { RouterCommon } from "./RouterCommon.sol";
  */
 contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
     using Address for address payable;
+    using SafeCast for *;
 
     constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
         // solhint-disable-previous-line no-empty-blocks
@@ -81,7 +83,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
             params.userData
         );
 
-        uint256 ethAmountIn;
         for (uint256 i = 0; i < params.tokens.length; ++i) {
             IERC20 token = params.tokens[i];
             uint256 amountIn = params.exactAmountsIn[i];
@@ -93,13 +94,14 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 }
 
                 _weth.deposit{ value: amountIn }();
-                ethAmountIn = amountIn;
                 // Transfer WETH from the router to the Vault.
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
             } else {
                 // Rransfer tokens from the user to the Vault.
-                _permit2.transferFrom(params.sender, address(_vault), uint160(amountIn), address(token));
+                // Any value over MAX_UINT128 would revert above in `initialize`, so this SafeCast shouldn't be
+                // necessary. Done out of an abundance of caution.
+                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
                 _vault.settle(token, amountIn);
             }
         }
@@ -283,7 +285,6 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
         // maxAmountsIn length is checked against tokens length at the vault.
         IERC20[] memory tokens = _vault.getPoolTokens(params.pool);
 
-        uint256 ethAmountIn;
         for (uint256 i = 0; i < tokens.length; ++i) {
             IERC20 token = tokens[i];
             uint256 amountIn = amountsIn[i];
@@ -295,11 +296,12 @@ contract Router is IRouter, RouterCommon, ReentrancyGuardTransient {
                 }
 
                 _weth.deposit{ value: amountIn }();
-                ethAmountIn = amountIn;
                 _weth.transfer(address(_vault), amountIn);
                 _vault.settle(_weth, amountIn);
             } else {
-                _permit2.transferFrom(params.sender, address(_vault), uint160(amountIn), address(token));
+                // Any value over MAX_UINT128 would revert above in `addLiquidity`, so this SafeCast shouldn't be
+                // necessary. Done out of an abundance of caution.
+                _permit2.transferFrom(params.sender, address(_vault), amountIn.toUint160(), address(token));
                 _vault.settle(token, amountIn);
             }
         }
