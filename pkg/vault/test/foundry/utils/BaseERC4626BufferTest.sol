@@ -48,7 +48,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         TokenConfig[] memory tokenConfig = getTokenConfig();
 
         PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC4626 Pool", "ERC4626P");
-        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract);
+        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
 
         vm.label(address(newPool), "erc4626 pool");
         erc4626Pool = address(newPool);

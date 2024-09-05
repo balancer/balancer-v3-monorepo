@@ -6,7 +6,10 @@ import "forge-std/Test.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IAuthentication } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IAuthentication.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
+import { IProtocolFeeController } from "@balancer-labs/v3-interfaces/contracts/vault/IProtocolFeeController.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -26,16 +29,41 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
     uint256 internal constant minSwapAmount = 1e6;
     uint256 internal maxSwapAmount;
 
+    uint256 internal minPoolSwapFeePercentage;
+    uint256 internal maxPoolSwapFeePercentage;
+
+    address internal poolCreator;
+
     function setUp() public virtual override {
         super.setUp();
         // Set the pool so we can measure the invariant with BaseVaultTest's getBalances().
         pool = erc4626Pool;
+        poolCreator = lp;
 
         maxSwapAmount = erc4626PoolInitialAmount.mulDown(25e16); // 25% of pool liquidity
 
         // Donate tokens to vault as a shortcut to change the pool balances without the need to pass through add/remove
         // liquidity operations. (No need to deal with BPTs, pranking LPs, guardrails, etc).
         _donateToVault();
+
+        IProtocolFeeController feeController = vault.getProtocolFeeController();
+        IAuthentication feeControllerAuth = IAuthentication(address(feeController));
+
+        authorizer.grantRole(
+            feeControllerAuth.getActionId(IProtocolFeeController.setGlobalProtocolSwapFeePercentage.selector),
+            admin
+        );
+
+        vm.prank(poolCreator);
+        // Set pool creator fee to 100%, so protocol + creator fees equals the total charged fees.
+        feeController.setPoolCreatorSwapFeePercentage(pool, FixedPoint.ONE);
+
+        minPoolSwapFeePercentage = IBasePool(pool).getMinimumSwapFeePercentage();
+        maxPoolSwapFeePercentage = IBasePool(pool).getMaximumSwapFeePercentage();
+
+        // These tests rely on a minimum fee to work; set something very small for pool mock.
+        minPoolSwapFeePercentage = (minPoolSwapFeePercentage == 0 ? 1e12 : minPoolSwapFeePercentage);
+        maxPoolSwapFeePercentage = (maxPoolSwapFeePercentage == 1e18 ? 10e16 : maxPoolSwapFeePercentage);
     }
 
     function testDoUndoExactInSwapAmount__Fuzz(uint256 exactDaiAmountIn) public {
@@ -56,6 +84,33 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         _testDoUndoExactInBase(exactDaiAmountIn, testLocals);
     }
 
+    function testDoUndoExactInFees__Fuzz(uint256 poolSwapFeePercentage) public {
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestFee = true;
+        testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
+
+        uint256 exactDaiAmountIn = maxSwapAmount;
+
+        _testDoUndoExactInBase(exactDaiAmountIn, testLocals);
+    }
+
+    function testDoUndoExactInComplete__Fuzz(
+        uint256 exactDaiAmountIn,
+        uint256 poolSwapFeePercentage,
+        uint256 liquidityWaDai,
+        uint256 liquidityWaUsdc
+    ) public {
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestLiquidity = true;
+        testLocals.shouldTestSwapAmount = true;
+        testLocals.shouldTestFee = true;
+        testLocals.liquidityWaDai = liquidityWaDai;
+        testLocals.liquidityWaUsdc = liquidityWaUsdc;
+        testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
+
+        _testDoUndoExactInBase(exactDaiAmountIn, testLocals);
+    }
+
     function testDoUndoExactOutSwapAmount__Fuzz(uint256 exactUsdcAmountOut) public {
         DoUndoLocals memory testLocals;
         testLocals.shouldTestSwapAmount = true;
@@ -70,6 +125,33 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         testLocals.liquidityWaUsdc = liquidityWaUsdc;
 
         uint256 exactUsdcAmountOut = maxSwapAmount;
+
+        _testDoUndoExactOutBase(exactUsdcAmountOut, testLocals);
+    }
+
+    function testDoUndoExactOutFees__Fuzz(uint256 poolSwapFeePercentage) public {
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestFee = true;
+        testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
+
+        uint256 exactUsdcAmountOut = maxSwapAmount;
+
+        _testDoUndoExactOutBase(exactUsdcAmountOut, testLocals);
+    }
+
+    function testDoUndoExactOutComplete__Fuzz(
+        uint256 exactUsdcAmountOut,
+        uint256 poolSwapFeePercentage,
+        uint256 liquidityWaDai,
+        uint256 liquidityWaUsdc
+    ) public {
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestLiquidity = true;
+        testLocals.shouldTestSwapAmount = true;
+        testLocals.shouldTestFee = true;
+        testLocals.liquidityWaDai = liquidityWaDai;
+        testLocals.liquidityWaUsdc = liquidityWaUsdc;
+        testLocals.poolSwapFeePercentage = poolSwapFeePercentage;
 
         _testDoUndoExactOutBase(exactUsdcAmountOut, testLocals);
     }
@@ -96,19 +178,53 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             exactDaiAmountIn = maxSwapAmount;
         }
 
+        if (testLocals.shouldTestFee) {
+            testLocals.poolSwapFeePercentage = bound(
+                testLocals.poolSwapFeePercentage,
+                minPoolSwapFeePercentage,
+                maxPoolSwapFeePercentage
+            );
+        } else {
+            testLocals.poolSwapFeePercentage = minPoolSwapFeePercentage;
+        }
+
+        vault.manualSetStaticSwapFeePercentage(pool, testLocals.poolSwapFeePercentage);
+
+        vm.assertEq(
+            vault.getAggregateSwapFeeAmount(pool, IERC20(address(waDAI))),
+            0,
+            "Collected fees for waDAI are wrong"
+        );
+        vm.assertEq(
+            vault.getAggregateSwapFeeAmount(pool, IERC20(address(waUSDC))),
+            0,
+            "Collected fees for waUSDC are wrong"
+        );
+
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
         IBatchRouter.SwapPathExactAmountIn[] memory pathsDo = _buildExactInPaths(dai, exactDaiAmountIn);
         vm.prank(bob);
         (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(pathsDo, MAX_UINT256, false, bytes(""));
+        uint256 feesWaUsdc = vault.getAggregateSwapFeeAmount(pool, IERC20(address(waUSDC)));
 
-        IBatchRouter.SwapPathExactAmountIn[] memory pathsUndo = _buildExactInPaths(usdc, pathAmountsOut[0]);
+        // If amountsOut is smaller than minSwapAmount, we won't be able to undo the operation, so ignore the test.
+        vm.assume(pathAmountsOut[0] > minSwapAmount);
+
+        // If we insert only pathAmountsOut, the user USDC balance will go back to where it was before and we won't be
+        // able to measure fees. So, we make the user pay the exact USDC fees back. Then, when we compare the DAI
+        // balance, we can make sure that it's not paying fees twice.
+        IBatchRouter.SwapPathExactAmountIn[] memory pathsUndo = _buildExactInPaths(
+            usdc,
+            pathAmountsOut[0] + waUSDC.convertToAssets(feesWaUsdc)
+        );
         vm.prank(bob);
         batchRouter.swapExactIn(pathsUndo, MAX_UINT256, false, bytes(""));
+        uint256 feesWaDai = vault.getAggregateSwapFeeAmount(pool, IERC20(address(waDAI)));
 
         TestBalances memory balancesAfter = _getTestBalances(bob);
 
-        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter);
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesWaDai, feesWaUsdc);
     }
 
     function _testDoUndoExactOutBase(uint256 exactUsdcAmountOut, DoUndoLocals memory testLocals) private {
@@ -124,35 +240,71 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             exactUsdcAmountOut = maxSwapAmount;
         }
 
+        if (testLocals.shouldTestFee) {
+            testLocals.poolSwapFeePercentage = bound(
+                testLocals.poolSwapFeePercentage,
+                minPoolSwapFeePercentage,
+                maxPoolSwapFeePercentage
+            );
+        } else {
+            testLocals.poolSwapFeePercentage = minPoolSwapFeePercentage;
+        }
+
+        vault.manualSetStaticSwapFeePercentage(pool, testLocals.poolSwapFeePercentage);
+
+        vm.assertEq(
+            vault.getAggregateSwapFeeAmount(pool, IERC20(address(waDAI))),
+            0,
+            "Collected fees for waDAI are wrong"
+        );
+        vm.assertEq(
+            vault.getAggregateSwapFeeAmount(pool, IERC20(address(waUSDC))),
+            0,
+            "Collected fees for waUSDC are wrong"
+        );
+
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
         IBatchRouter.SwapPathExactAmountOut[] memory pathsDo = _buildExactOutPaths(usdc, exactUsdcAmountOut);
         vm.prank(bob);
         (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(pathsDo, MAX_UINT256, false, bytes(""));
+        uint256 feesWaDai = vault.getAggregateSwapFeeAmount(pool, IERC20(address(waDAI)));
 
-        IBatchRouter.SwapPathExactAmountOut[] memory pathsUndo = _buildExactOutPaths(dai, pathAmountsIn[0]);
+        // If amountsIn is smaller than minSwapAmount, we won't be able to undo the operation, so ignore the test.
+        vm.assume(pathAmountsIn[0] > minSwapAmount);
+
+        // If we use only pathAmountsIn, the user DAI balance will go back to where it was before and we won't be
+        // able to measure fees. So, we make the user discount the exact DAI fees. Then, when we compare the USDC
+        // balance, we can make sure that it's not paying fees twice.
+        IBatchRouter.SwapPathExactAmountOut[] memory pathsUndo = _buildExactOutPaths(
+            dai,
+            pathAmountsIn[0] - waDAI.convertToAssets(feesWaDai)
+        );
         vm.prank(bob);
         batchRouter.swapExactOut(pathsUndo, MAX_UINT256, false, bytes(""));
+        uint256 feesWaUsdc = vault.getAggregateSwapFeeAmount(pool, IERC20(address(waUSDC)));
 
         TestBalances memory balancesAfter = _getTestBalances(bob);
 
-        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter);
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter, feesWaDai, feesWaUsdc);
     }
 
     function _checkUserBalancesAndPoolInvariant(
         TestBalances memory balancesBefore,
-        TestBalances memory balancesAfter
-    ) private pure {
-        // User balances.
+        TestBalances memory balancesAfter,
+        uint256 feesWaDai,
+        uint256 feesWaUsdc
+    ) private view {
+        // User balances should be smaller than before, and user should pay the fees.
         assertLe(
             balancesAfter.balances.bobTokens[balancesAfter.daiIdx],
-            balancesBefore.balances.bobTokens[balancesBefore.daiIdx],
-            "DAI balance is incorrect"
+            balancesBefore.balances.bobTokens[balancesBefore.daiIdx] - waDAI.convertToAssets(feesWaDai),
+            "Sender DAI balance is incorrect"
         );
         assertLe(
             balancesAfter.balances.bobTokens[balancesAfter.usdcIdx],
-            balancesBefore.balances.bobTokens[balancesBefore.usdcIdx],
-            "USDC balance is incorrect"
+            balancesBefore.balances.bobTokens[balancesBefore.usdcIdx] - waUSDC.convertToAssets(feesWaUsdc),
+            "Sender USDC balance is incorrect"
         );
 
         // Pool invariant.
@@ -224,21 +376,6 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         });
     }
 
-    struct BufferBalances {
-        uint256 underlying;
-        uint256 wrapped;
-    }
-
-    struct TestBalances {
-        BaseVaultTest.Balances balances;
-        BufferBalances waUSDCBuffer;
-        BufferBalances waDAIBuffer;
-        uint256 daiIdx;
-        uint256 usdcIdx;
-        uint256 waDaiIdx;
-        uint256 waUsdcIdx;
-    }
-
     function _setPoolBalances(uint256 liquidityWaDai, uint256 liquidityWaUsdc) private {
         // 1% to 10000% of erc4626 initial pool liquidity.
         liquidityWaDai = bound(
@@ -277,6 +414,21 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             ? underlyingBalances[waDaiIdx]
             : underlyingBalances[waUsdcIdx];
         return smallerBalance.mulDown(25e16); // 25% of the smallest pool liquidity.
+    }
+
+    struct BufferBalances {
+        uint256 underlying;
+        uint256 wrapped;
+    }
+
+    struct TestBalances {
+        BaseVaultTest.Balances balances;
+        BufferBalances waUSDCBuffer;
+        BufferBalances waDAIBuffer;
+        uint256 daiIdx;
+        uint256 usdcIdx;
+        uint256 waDaiIdx;
+        uint256 waUsdcIdx;
     }
 
     function _getTestBalances(address sender) private view returns (TestBalances memory testBalances) {
