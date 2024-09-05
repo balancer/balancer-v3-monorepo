@@ -10,6 +10,7 @@ import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatc
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
+import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 
 import { BaseERC4626BufferTest } from "./utils/BaseERC4626BufferTest.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
@@ -17,16 +18,48 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
+    using FixedPoint for uint256;
+
+    uint256 internal constant minSwapAmount = 1e6;
+    uint256 internal maxSwapAmount;
 
     function setUp() public override {
         super.setUp();
         // Set the pool so we can measure the invariant with BaseVaultTest's getBalances().
         pool = erc4626Pool;
+
+        maxSwapAmount = erc4626PoolInitialAmount.mulDown(25e16); // 25% of pool liquidity
     }
 
     function testDoUndoExactInSwapAmount__Fuzz(uint256 exactDaiAmountIn) public {
-        // From minimum swap amount to 30% of pool liquidity.
-        exactDaiAmountIn = bound(exactDaiAmountIn, 1e6, (3 * erc4626PoolInitialAmount) / 10);
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestSwapAmount = true;
+
+        _testDoUndoExactInBase(exactDaiAmountIn, testLocals);
+    }
+
+    function testDoUndoExactOutSwapAmount__Fuzz(uint256 exactUsdcAmountOut) public {
+        DoUndoLocals memory testLocals;
+        testLocals.shouldTestSwapAmount = true;
+
+        _testDoUndoExactOutBase(exactUsdcAmountOut, testLocals);
+    }
+
+    struct DoUndoLocals {
+        bool shouldTestLiquidity;
+        bool shouldTestSwapAmount;
+        bool shouldTestFee;
+        uint256 liquidityTokenA;
+        uint256 liquidityTokenB;
+        uint256 poolSwapFeePercentage;
+    }
+
+    function _testDoUndoExactInBase(uint256 exactDaiAmountIn, DoUndoLocals memory testLocals) private {
+        if (testLocals.shouldTestSwapAmount) {
+            exactDaiAmountIn = bound(exactDaiAmountIn, minSwapAmount, maxSwapAmount);
+        } else {
+            exactDaiAmountIn = maxSwapAmount;
+        }
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
@@ -40,29 +73,15 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesAfter = _getTestBalances(bob);
 
-        // User balances.
-        assertLe(
-            balancesAfter.balances.bobTokens[balancesAfter.daiIdx],
-            balancesBefore.balances.bobTokens[balancesBefore.daiIdx],
-            "DAI balance is incorrect"
-        );
-        assertLe(
-            balancesAfter.balances.bobTokens[balancesAfter.usdcIdx],
-            balancesBefore.balances.bobTokens[balancesBefore.usdcIdx],
-            "USDC balance is incorrect"
-        );
-
-        // Pool invariant.
-        assertGe(
-            balancesAfter.balances.poolInvariant,
-            balancesBefore.balances.poolInvariant,
-            "Pool invariant decreased"
-        );
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter);
     }
 
-    function testDoUndoExactOutSwapAmount__Fuzz(uint256 exactUsdcAmountOut) public {
-        // From minimum swap amount to 30% of pool liquidity.
-        exactUsdcAmountOut = bound(exactUsdcAmountOut, 1e6, (3 * erc4626PoolInitialAmount) / 10);
+    function _testDoUndoExactOutBase(uint256 exactUsdcAmountOut, DoUndoLocals memory testLocals) private {
+        if (testLocals.shouldTestSwapAmount) {
+            exactUsdcAmountOut = bound(exactUsdcAmountOut, minSwapAmount, maxSwapAmount);
+        } else {
+            exactUsdcAmountOut = maxSwapAmount;
+        }
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
@@ -76,6 +95,13 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
 
         TestBalances memory balancesAfter = _getTestBalances(bob);
 
+        _checkUserBalancesAndPoolInvariant(balancesBefore, balancesAfter);
+    }
+
+    function _checkUserBalancesAndPoolInvariant(
+        TestBalances memory balancesBefore,
+        TestBalances memory balancesAfter
+    ) private pure {
         // User balances.
         assertLe(
             balancesAfter.balances.bobTokens[balancesAfter.daiIdx],
