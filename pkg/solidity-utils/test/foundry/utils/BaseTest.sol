@@ -104,10 +104,8 @@ abstract contract BaseTest is Test, GasSnapshot {
         broke = payable(brokeNonPay);
         vm.label(broke, "broke");
 
-        // Manipulate rates of ERC4626 tokens. It's important to not have a 1:1 rate when testing ERC4626 tokens, so
-        // we can differentiate between wrapped and underlying amounts.
-        waDAI.inflateUnderlyingOrWrapped(0, 6 * defaultBalance);
-        waUSDC.inflateUnderlyingOrWrapped(23 * defaultBalance, 0);
+        // Must mock rates after giving wrapped tokens to users, but before creating pools and initializing buffers.
+        mockERC4626TokenRates();
 
         // Fill the users list
         users.push(admin);
@@ -120,6 +118,16 @@ abstract contract BaseTest is Test, GasSnapshot {
         userKeys.push(bobKey);
         users.push(broke);
         userKeys.push(brokeUserKey);
+    }
+
+    /**
+     * @notice Manipulate rates of ERC4626 tokens.
+     * @dev It's important to not have a 1:1 rate when testing ERC4626 tokens, so we can differentiate between
+     * wrapped and underlying amounts. For certain tests, it may be needed to override these rates, for simplicity.
+     */
+    function mockERC4626TokenRates() internal virtual {
+        waDAI.inflateUnderlyingOrWrapped(0, 6 * defaultBalance);
+        waUSDC.inflateUnderlyingOrWrapped(23 * defaultBalance, 0);
     }
 
     function getSortedIndexes(

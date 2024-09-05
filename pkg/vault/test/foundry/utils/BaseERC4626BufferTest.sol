@@ -83,12 +83,6 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         return tokenConfig;
     }
 
-    function testTokensPreconditions() public view {
-        // To test wrapped and underlying amounts correctly, the rate of wrapped tokens should not be 1.
-        assertNotEq(waDAI.getRate(), FixedPoint.ONE, "waDAI rate should not be 1");
-        assertNotEq(waUSDC.getRate(), FixedPoint.ONE, "waUSDC rate should not be 1");
-    }
-
     function testERC4626BufferPreconditions() public view {
         // Bob should own all erc4626Pool BPTs. Since BPT amount is based on ERC4626 rates (using rate providers
         // to convert wrapped amounts to underlying amounts), some rounding imprecision can occur.

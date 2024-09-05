@@ -43,6 +43,13 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         BaseERC4626BufferTest.setUp();
     }
 
+    function mockERC4626TokenRates() internal override {
+        // For simplicity, we assume the token rate is 1 in this test, which makes it easier to calculate token
+        // deltas. We have fork and fuzz tests that ensures buffers and pools work with rates different than 1.
+        waDAI.mockRate(1e18);
+        waUSDC.mockRate(1e18);
+    }
+
     function testAddLiquidityEvents() public {
         vm.startPrank(lp);
         // Can add the same amount again, since twice as much was minted.
