@@ -18,6 +18,14 @@ contract E2eErc4626SwapsStableTest is E2eErc4626SwapsTest {
     uint256 internal constant DEFAULT_SWAP_FEE = 1e16; // 1%
     uint256 internal constant DEFAULT_AMP_FACTOR = 200;
 
+    function setUp() public override {
+        super.setUp();
+
+        // Makes sure Bob has enough tokens to pay for DAI and USDC wraps.
+        dai.mint(bob, 1000 * erc4626PoolInitialAmount);
+        usdc.mint(bob, 1000 * erc4626PoolInitialAmount);
+    }
+
     function createPool() internal override returns (address) {
         string memory poolName = "ERC4626 Stable Pool";
 

@@ -26,7 +26,7 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
     uint256 internal constant minSwapAmount = 1e6;
     uint256 internal maxSwapAmount;
 
-    function setUp() public override {
+    function setUp() public virtual override {
         super.setUp();
         // Set the pool so we can measure the invariant with BaseVaultTest's getBalances().
         pool = erc4626Pool;
@@ -214,11 +214,12 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             steps[2] = IBatchRouter.SwapPathStep({ pool: address(waDAI), tokenOut: dai, isBuffer: true });
         }
 
-        // We cannot use MAX_UINT128 as maxAmountIn, since the maxAmountIN is paid upfront.
+        // We cannot use MAX_UINT128 as maxAmountIn, since the maxAmountIn is paid upfront. We need to use a value that
+        // "Bob" can pay.
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
             tokenIn: tokenIn,
             steps: steps,
-            maxAmountIn: 2 * amountOut,
+            maxAmountIn: dai.balanceOf(bob) / 10,
             exactAmountOut: amountOut
         });
     }
