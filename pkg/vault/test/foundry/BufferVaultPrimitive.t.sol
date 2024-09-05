@@ -139,7 +139,6 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // Above permit2 limit of uint160.
         uint256 overflowAmount = type(uint168).max;
 
-        // Wrap token should pass, since there's no liquidity in the buffer.
         IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
             overflowAmount,
             0,
