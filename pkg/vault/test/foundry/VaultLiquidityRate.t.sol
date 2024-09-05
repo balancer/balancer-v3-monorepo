@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { PoolData, Rounding } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IPoolLiquidity } from "@balancer-labs/v3-interfaces/contracts/vault/IPoolLiquidity.sol";
@@ -28,27 +30,34 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
     uint256 internal daiIdx;
     uint256 internal wstethIdx;
 
+    IRateProvider[] internal rateProviders;
+
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-        rateProvider.mockRate(mockRate);
 
-        (daiIdx, wstethIdx) = getSortedIndexes(address(dai), address(wsteth));
+        RateProviderMock(address(rateProviders[wstethIdx])).mockRate(mockRate);
     }
 
     function createPool() internal override returns (address) {
-        IRateProvider[] memory rateProviders = new IRateProvider[](2);
-        rateProvider = new RateProviderMock();
-        // Still need the rate provider at index 0; buildTokenConfig will sort.
-        rateProviders[0] = rateProvider;
+        (daiIdx, wstethIdx) = getSortedIndexes(address(dai), address(wsteth));
+
+        rateProviders = new IRateProvider[](2);
+
+        // Add rate providers for wstEth and dai.
+        rateProviders[daiIdx] = new RateProviderMock();
+        rateProviders[wstethIdx] = new RateProviderMock();
+
+        // Part of the tests use the rateProvider variable from BaseVaultTest, so we set that to wstEth rate provider.
+        rateProvider = RateProviderMock(address(rateProviders[wstethIdx]));
 
         address newPool = address(new PoolMock(IVault(address(vault)), "ERC20 Pool", "ERC20POOL"));
 
-        factoryMock.registerTestPool(
-            newPool,
-            vault.buildTokenConfig([address(wsteth), address(dai)].toMemoryArray().asIERC20(), rateProviders),
-            poolHooksContract,
-            lp
-        );
+        // Add tokens in the same order as rate providers.
+        IERC20[] memory tokens = new IERC20[](2);
+        tokens[daiIdx] = dai;
+        tokens[wstethIdx] = wsteth;
+
+        factoryMock.registerTestPool(newPool, vault.buildTokenConfig(tokens, rateProviders), poolHooksContract, lp);
 
         return newPool;
     }
@@ -213,6 +222,68 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
             false,
             bytes("")
         );
+    }
+
+    function testRemoveLiquiditySingleTokenExactInWithRate__Fuzz(uint256 rateWstEth, uint256 rateDai) public {
+        rateWstEth = bound(rateWstEth, 1e16, 1e20);
+        rateDai = bound(rateDai, 1e16, 1e20);
+
+        RateProviderMock(address(rateProviders[wstethIdx])).mockRate(rateWstEth);
+        RateProviderMock(address(rateProviders[daiIdx])).mockRate(rateDai);
+
+        // Refresh lastBalancesLiveScaled18 with new rates.
+        vault.loadPoolDataUpdatingBalancesAndYieldFees(pool, Rounding.ROUND_DOWN);
+
+        // Fix pool liquidity, so there's enough liquidity to `removeLiquiditySingleTokenExactIn`. It adds enough
+        // liquidity so that both tokens have 50% of liquidity in the pool, when scaled18. Since both tokens have 18
+        // decimals, the only factor to consider is the rate of each one.
+        // Considering a pool with exactly poolInitAmount of each token, we need to add tokens in the side where the
+        // balance scaled18 is smaller. If rate of WstETH is 1, and DAI is 2, we have less WstETH than DAI, so we need
+        // to add more WstETH. The amount of WstETH to add is `(daiBalance * rateDai / rateWstEth - wstEthBalance)`.
+        // `daiBalance` and `wstEthBalance` are `poolInitAmount`.
+        uint256[] memory amountsToAdd = new uint256[](2);
+        if (rateWstEth < rateDai) {
+            amountsToAdd[wstethIdx] = ((poolInitAmount * rateDai) / rateWstEth) - poolInitAmount;
+        } else {
+            amountsToAdd[daiIdx] = ((poolInitAmount * rateWstEth) / rateDai) - poolInitAmount;
+        }
+
+        if (amountsToAdd[wstethIdx] > 0 || amountsToAdd[daiIdx] > 0) {
+            vm.prank(bob);
+            router.addLiquidityUnbalanced(pool, amountsToAdd, 1, false, bytes(""));
+        }
+
+        // Refresh lastBalancesLiveScaled18 with new rates. Updated lastBalancesLiveScaled18 are needed to calculate
+        // the current invariant in getBalances function.
+        vault.loadPoolDataUpdatingBalancesAndYieldFees(pool, Rounding.ROUND_DOWN);
+
+        BaseVaultTest.Balances memory balancesBefore = getBalances(bob);
+
+        vm.startPrank(lp);
+        uint256[] memory maxAmountsIn = [MAX_UINT128, MAX_UINT128].toMemoryArray();
+        uint256[] memory amountsIn = router.addLiquidityProportional(
+            pool,
+            maxAmountsIn,
+            balancesBefore.lpBpt / 2,
+            false,
+            bytes("")
+        );
+        uint256 amountOut = router.removeLiquiditySingleTokenExactIn(
+            pool,
+            balancesBefore.lpBpt / 2,
+            wsteth,
+            1,
+            false,
+            bytes("")
+        );
+        vm.stopPrank();
+
+        BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
+
+        // To make sure we can compare the invariants from before and after the operation, we need to make sure that LP
+        // BPTs have not changed.
+        assertEq(balancesBefore.lpBpt, balancesAfter.lpBpt, "LP BPT is wrong");
+        assertGe(balancesAfter.poolInvariant, balancesBefore.poolInvariant, "Invariant decreased");
     }
 
     function testRemoveLiquiditySingleTokenExactOutWithRate__Fuzz(
