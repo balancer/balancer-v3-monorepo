@@ -949,7 +949,9 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             IERC20(wToken.asset()).forceApprove(address(wToken), underlyingToDeposit + underlyingSurplus);
             uint256 vaultWrappedDelta = wToken.deposit(underlyingToDeposit + underlyingSurplus, lp);
             vm.stopPrank();
-            wrappedSurplus = wToken.convertToShares(underlyingSurplus);
+            if (underlyingSurplus > 0) {
+                wrappedSurplus = wToken.convertToShares(underlyingSurplus) + vaultConvertFactor;
+            }
             vm.revertTo(snapshotId);
 
             mintedShares = vaultWrappedDelta - wrappedSurplus;
@@ -973,6 +975,9 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             underlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wToken);
             wrappedSurplus = wToken.convertToShares(underlyingSurplus);
             uint256 vaultUnderlyingDelta = wToken.previewMint(wrappedToMint + wrappedSurplus);
+            if (underlyingSurplus > 0) {
+                underlyingSurplus = wToken.convertToAssets(wrappedSurplus) - vaultConvertFactor;
+            }
             depositedAssets = vaultUnderlyingDelta - underlyingSurplus;
         }
     }
@@ -994,6 +999,9 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             wrappedSurplus = bufferBalances.getBufferWrappedSurplus(wToken);
             underlyingSurplus = wToken.convertToAssets(wrappedSurplus);
             uint256 vaultWrappedDelta = wToken.previewWithdraw(underlyingToWithdraw + underlyingSurplus);
+            if (wrappedSurplus > 0) {
+                wrappedSurplus = wToken.convertToShares(underlyingSurplus) - vaultConvertFactor;
+            }
             burnedShares = vaultWrappedDelta - wrappedSurplus;
         }
     }
@@ -1019,7 +1027,9 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             vm.startPrank(lp);
             uint256 vaultUnderlyingDelta = wToken.redeem(wrappedToRedeem + wrappedSurplus, lp, lp);
             vm.stopPrank();
-            underlyingSurplus = wToken.convertToAssets(wrappedSurplus);
+            if (wrappedSurplus > 0) {
+                underlyingSurplus = wToken.convertToAssets(wrappedSurplus) + vaultConvertFactor;
+            }
             vm.revertTo(snapshotId);
 
             withdrawnAssets = vaultUnderlyingDelta - underlyingSurplus;

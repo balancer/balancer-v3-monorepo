@@ -194,21 +194,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             bytes("")
         );
 
-        // Query and actual operation have a small difference in the buffer operation: a query in the buffer returns
-        // the amount of wrapped tokens calculated by a "preview" operation, while the actual operation in the buffer
-        // returns the "convertToShares" result + vaultConvertFactor. Since the wrapped amount out of each buffer is
-        // added to the yield-bearing pool and converted to the equivalent underlying amount to calculate the
-        // poolInvariantDelta (which, in this case, is the bptAmountOut), we need to consider the error added by
-        // vaultConvertFactor scaled by each token rate.
-        uint256 invariantError = vaultConvertFactor.mulDown(waDAI.getRate()) +
-            vaultConvertFactor.mulDown(waUSDC.getRate());
-
-        // Since these are amounts out, the query (which uses the wrap preview) should be better than the actual
-        // operation (that uses buffer liquidity to fulfill an ExactIn wrap and calculate the amount of wrapped tokens
-        // out using convertToShares - vaultConvertFactor).
         assertApproxEqAbs(
             queryBptAmountOut,
-            actualBptAmountOut + invariantError,
+            actualBptAmountOut,
             MAX_ERROR,
             "Query and actual bpt amount out do not match"
         );
@@ -236,20 +224,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             bytes("")
         );
 
-        // Query and actual operation have a small difference in the buffer operation: a query in the buffer returns
-        // the amount of wrapped tokens calculated by a "preview" operation, while the actual operation in the buffer
-        // returns the "convertToShares" result + vaultConvertFactor. Since the wrapped amount out of each buffer is
-        // added to the yield-bearing pool and converted to the equivalent underlying amount to calculate the
-        // poolInvariantDelta (which, in this case, is the bptAmountOut), we need to consider the error added by
-        // vaultConvertFactor scaled by each token rate.
-        uint256 invariantError = vaultConvertFactor.mulDown(waDAI.getRate());
-
-        // Since these are amounts out, the query (which uses the wrap preview) should be better than the actual
-        // operation (that uses buffer liquidity to fulfill an ExactIn wrap and calculate the amount of wrapped tokens
-        // out using convertToShares - vaultConvertFactor).
         assertApproxEqAbs(
             queryBptAmountOut,
-            actualBptAmountOut + invariantError,
+            actualBptAmountOut,
             MAX_ERROR,
             "Query and actual bpt amount out do not match"
         );
@@ -406,7 +383,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             // tokens in using convertToAssets + vaultConvertFactor).
             assertApproxEqAbs(
                 actualUnderlyingAmountsIn[i],
-                queryUnderlyingAmountsIn[i] + vaultConvertFactor,
+                queryUnderlyingAmountsIn[i],
                 MAX_ERROR,
                 "Query and actual underlying amounts in do not match"
             );
@@ -441,7 +418,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         // tokens in using convertToAssets + vaultConvertFactor).
         assertApproxEqAbs(
             actualUnderlyingAmountsIn[partialWaDaiIdx],
-            queryUnderlyingAmountsIn[partialWaDaiIdx] + vaultConvertFactor,
+            queryUnderlyingAmountsIn[partialWaDaiIdx],
             MAX_ERROR,
             "Query and actual DAI amounts in do not match"
         );
@@ -615,12 +592,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         for (uint256 i = 0; i < queryUnderlyingAmountsOut.length; i++) {
-            // Since these are amounts out, the query (which uses the unwrap preview) should be better than the actual
-            // operation (that uses buffer liquidity to fulfill an ExactIn unwrap and calculate the amount of
-            // underlying tokens out using convertToAssets - vaultConvertFactor).
             assertApproxEqAbs(
                 actualUnderlyingAmountsOut[i],
-                queryUnderlyingAmountsOut[i] - vaultConvertFactor,
+                queryUnderlyingAmountsOut[i],
                 MAX_ERROR,
                 "Query and actual underlying amounts out do not match"
             );
@@ -663,17 +637,13 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             bytes("")
         );
 
-        // Since these are amounts out, the query (which uses the unwrap preview) should be better than the actual
-        // operation (that uses buffer liquidity to fulfill an ExactIn unwrap and calculate the amount of
-        // underlying tokens out using convertToAssets - vaultConvertFactor).
         assertApproxEqAbs(
             actualUnderlyingAmountsOut[partialWaDaiIdx],
-            queryUnderlyingAmountsOut[partialWaDaiIdx] - vaultConvertFactor,
+            queryUnderlyingAmountsOut[partialWaDaiIdx],
             MAX_ERROR,
             "Query and actual DAI amounts out do not match"
         );
 
-        // In USDC terms, actual and query values should be equal because no buffer is involved in the operation.
         assertApproxEqAbs(
             queryUnderlyingAmountsOut[partialUsdcIdx],
             actualUnderlyingAmountsOut[partialUsdcIdx],
