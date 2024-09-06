@@ -1247,21 +1247,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Only updates buffer balances if buffer has a surplus of underlying tokens.
             if (bufferUnderlyingSurplus > 0) {
                 if (kind == SwapKind.EXACT_IN) {
-                    // `amountInUnderlying` is the amountGiven and should not be changed. Any rounding issue that occurs
-                    // in the vaultUnderlyingDelta should be absorbed by the buffer.
-                    bufferUnderlyingSurplus = vaultUnderlyingDeltaHint - amountInUnderlying;
+                    // TODO Explain why we need to recalculate only one surplus, and why it's calculated based on the
+                    // other surplus. Also explain why we add/remove _CONVERT_FACTOR and why we fix the amountOUt.
+
                     // Since bufferUnderlyingSurplus was wrapped, the final amountOut needs to discount the wrapped
                     // amount that will stay in the buffer. Refresh `bufferWrappedSurplus` after external calls on the
                     // wrapped token.
-                    bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus);
+                    bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus) + _CONVERT_FACTOR;
                     amountOutWrapped = vaultWrappedDeltaHint - bufferWrappedSurplus;
                 } else {
                     // If the buffer has a surplus of underlying tokens, it wraps the surplus + amountIn, so the final
                     // amountIn needs to be discounted for that.
+                    bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus) - _CONVERT_FACTOR;
                     amountInUnderlying = vaultUnderlyingDeltaHint - bufferUnderlyingSurplus;
-                    // `amountOutWrapped` is the amountGiven and should not be changed. Any rounding issue that occurs
-                    // in the vaultWrappedDelta should be absorbed by the buffer.
-                    bufferWrappedSurplus = vaultWrappedDeltaHint - amountOutWrapped;
                 }
 
                 // In a wrap operation, the underlying balance of the buffer will decrease and the wrapped balance will
@@ -1383,21 +1381,19 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Only updates buffer balances if buffer has a surplus of wrapped tokens.
             if (bufferWrappedSurplus > 0) {
                 if (kind == SwapKind.EXACT_IN) {
-                    // amountInWrapped is the amountGiven and should not be changed. Any rounding issue that occurs
-                    // in the vaultWrappedDelta should be absorbed by the buffer.
-                    bufferWrappedSurplus = vaultWrappedDeltaHint - amountInWrapped;
+                    // TODO Explain why we need to recalculate only one surplus, and why it's calculated based on the
+                    // other surplus. Also explain why we add/remove _CONVERT_FACTOR and why we fix the amountOUt.
+
                     // Since bufferWrappedSurplus was unwrapped, the final amountOut needs to discount the underlying
                     // amount that will stay in the buffer. Refresh `bufferUnderlyingSurplus` after external calls
                     // on the wrapped token.
-                    bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus);
+                    bufferUnderlyingSurplus = wrappedToken.convertToAssets(bufferWrappedSurplus) + _CONVERT_FACTOR;
                     amountOutUnderlying = vaultUnderlyingDeltaHint - bufferUnderlyingSurplus;
                 } else {
                     // If the buffer has a surplus of wrapped tokens, it unwraps the surplus + amountIn, so the final
                     // amountIn needs to be discounted for that.
+                    bufferWrappedSurplus = wrappedToken.convertToShares(bufferUnderlyingSurplus) - _CONVERT_FACTOR;
                     amountInWrapped = vaultWrappedDeltaHint - bufferWrappedSurplus;
-                    // amountOutUnderlying is the amountGiven and should not be changed. Any rounding issue that occurs
-                    // in the vaultUnderlyingDelta should be absorbed by the buffer.
-                    bufferUnderlyingSurplus = vaultUnderlyingDeltaHint - amountOutUnderlying;
                 }
 
                 // In an unwrap operation, the underlying balance of the buffer will increase and the wrapped balance

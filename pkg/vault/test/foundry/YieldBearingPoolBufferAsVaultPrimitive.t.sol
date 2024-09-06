@@ -264,21 +264,29 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai - (unbalancedUnderlyingDelta / 2);
         vars.expectedBufferBalanceAfterSwapWaDai =
             vars.bufferBalanceBeforeSwapWaDai +
-            waDAI.convertToShares(unbalancedUnderlyingDelta / 2);
-        vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc + (unbalancedUnderlyingDelta / 2);
+            waDAI.convertToShares(unbalancedUnderlyingDelta / 2) +
+            vaultConvertFactor;
+        vars.expectedBufferBalanceAfterSwapUsdc =
+            vars.bufferBalanceBeforeSwapUsdc +
+            (unbalancedUnderlyingDelta / 2) +
+            vaultConvertFactor;
         vars.expectedBufferBalanceAfterSwapWaUsdc =
             vars.bufferBalanceBeforeSwapWaUsdc -
             waUSDC.convertToShares(unbalancedUnderlyingDelta / 2);
 
         vars.expectedPoolBalanceAfterSwapWaDai =
             vars.yieldBearingPoolBalanceBeforeSwapWaDai +
-            waDAI.convertToShares(tooLargeSwapAmount);
+            waDAI.convertToShares(tooLargeSwapAmount) -
+            vaultConvertFactor;
         vars.expectedPoolBalanceAfterSwapWaUsdc =
             vars.yieldBearingPoolBalanceBeforeSwapWaUsdc -
-            waUSDC.convertToShares(tooLargeSwapAmount);
+            waUSDC.convertToShares(tooLargeSwapAmount) +
+            vaultConvertFactor;
 
         vars.expectedAliceDeltaDai = tooLargeSwapAmount;
-        vars.expectedAliceDeltaUsdc = tooLargeSwapAmount;
+        // When rebalancing, _CONVERT_FACTOR is used to fix the surplus amount calculated through convert. Since we're
+        // rebalancing twice (and token rates are 1), _CONVERT_FACTOR is charged twice.
+        vars.expectedAliceDeltaUsdc = tooLargeSwapAmount - 2 * vaultConvertFactor;
 
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, vars);
     }
@@ -305,23 +313,31 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         // - If user is wrapping and buffer has a surplus of underlying, buffer will be balanced
         // - If user is unwrapping and buffer has a surplus of wrapped, buffer will be balanced
         // - But if user is wrapping and buffer has a surplus of wrapped, buffer will stay as is
-        vars.expectedBufferBalanceAfterSwapDai = vars.bufferBalanceBeforeSwapDai - (unbalancedUnderlyingDelta / 2);
+        vars.expectedBufferBalanceAfterSwapDai =
+            vars.bufferBalanceBeforeSwapDai -
+            (unbalancedUnderlyingDelta / 2) +
+            vaultConvertFactor;
         vars.expectedBufferBalanceAfterSwapWaDai =
             vars.bufferBalanceBeforeSwapWaDai +
             waDAI.convertToShares(unbalancedUnderlyingDelta / 2);
         vars.expectedBufferBalanceAfterSwapUsdc = vars.bufferBalanceBeforeSwapUsdc + (unbalancedUnderlyingDelta / 2);
         vars.expectedBufferBalanceAfterSwapWaUsdc =
             vars.bufferBalanceBeforeSwapWaUsdc -
-            waUSDC.convertToShares(unbalancedUnderlyingDelta / 2);
+            waUSDC.convertToShares(unbalancedUnderlyingDelta / 2) +
+            vaultConvertFactor;
 
         vars.expectedPoolBalanceAfterSwapWaDai =
             vars.yieldBearingPoolBalanceBeforeSwapWaDai +
-            waDAI.convertToShares(tooLargeSwapAmount);
+            waDAI.convertToShares(tooLargeSwapAmount) +
+            vaultConvertFactor;
         vars.expectedPoolBalanceAfterSwapWaUsdc =
             vars.yieldBearingPoolBalanceBeforeSwapWaUsdc -
-            waUSDC.convertToShares(tooLargeSwapAmount);
+            waUSDC.convertToShares(tooLargeSwapAmount) -
+            vaultConvertFactor;
 
-        vars.expectedAliceDeltaDai = tooLargeSwapAmount;
+        // When rebalancing, _CONVERT_FACTOR is used to fix the surplus amount calculated through convert. Since we're
+        // rebalancing twice (and token rates are 1), _CONVERT_FACTOR is charged twice.
+        vars.expectedAliceDeltaDai = tooLargeSwapAmount + 2 * vaultConvertFactor;
         vars.expectedAliceDeltaUsdc = tooLargeSwapAmount;
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);
