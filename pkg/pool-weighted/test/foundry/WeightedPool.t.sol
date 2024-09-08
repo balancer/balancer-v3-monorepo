@@ -72,7 +72,8 @@ contract WeightedPoolTest is BasePoolTest {
                 DEFAULT_SWAP_FEE,
                 poolHooksContract,
                 false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
+                false, // Do not disable add liquidity unbalanced
+                false, // Do not disable remove liquidity unbalanced
                 ZERO_BYTES32
             )
         );
@@ -120,7 +121,8 @@ contract WeightedPoolTest is BasePoolTest {
             IBasePool(pool).getMinimumSwapFeePercentage() - 1, // Swap fee too low
             poolHooksContract,
             false, // Do not enable donations
-            false, // Do not disable unbalanced add/remove liquidity
+            false, // Do not disable add liquidity unbalanced
+            false, // Do not disable remove liquidity unbalanced
             "Low fee pool"
         );
 

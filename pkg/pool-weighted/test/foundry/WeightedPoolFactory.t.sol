@@ -94,7 +94,8 @@ contract WeightedPoolFactoryTest is BaseVaultTest {
             MAX_SWAP_FEE_PERCENTAGE,
             address(0),
             supportsDonation,
-            false, // Do not disable unbalanced add/remove liquidity
+            false, // Do not disable add liquidity unbalanced
+            false, // Do not disable remove liquidity unbalanced
             ZERO_BYTES32
         );
 
