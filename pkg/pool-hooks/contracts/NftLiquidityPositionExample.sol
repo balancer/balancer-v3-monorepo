@@ -91,11 +91,7 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
      */
     error PoolDoesNotSupportDonation();
 
-    /**
-     * @notice The pool supports adding unbalanced liquidity.
-     * @dev There is an existing similar error (IVaultErrors.DoesNotSupportUnbalancedLiquidity), but hooks should not
-     * throw "Vault" errors.
-     */
+    /// @notice The pool supports adding or removing liquidity unbalanced.
     error PoolSupportsUnbalancedLiquidity();
 
     /**
@@ -204,7 +200,10 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
         if (liquidityManagement.enableDonation == false) {
             revert PoolDoesNotSupportDonation();
         }
-        if (liquidityManagement.disableUnbalancedLiquidity == false) {
+        if (
+            liquidityManagement.disableAddLiquidityUnbalanced == false ||
+            liquidityManagement.disableRemoveLiquidityUnbalanced == false
+        ) {
             revert PoolSupportsUnbalancedLiquidity();
         }
 

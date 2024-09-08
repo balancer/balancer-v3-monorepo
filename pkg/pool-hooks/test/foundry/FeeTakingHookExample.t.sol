@@ -59,7 +59,8 @@ contract FeeTakingHookExampleTest is BaseVaultTest {
         roleAccounts.poolCreator = lp;
 
         LiquidityManagement memory liquidityManagement;
-        liquidityManagement.disableUnbalancedLiquidity = true;
+        liquidityManagement.disableAddLiquidityUnbalanced = true;
+        liquidityManagement.disableRemoveLiquidityUnbalanced = true;
 
         vm.expectEmit();
         emit FeeTakingHookExample.FeeTakingHookExampleRegistered(poolHooksContract, address(newPool));

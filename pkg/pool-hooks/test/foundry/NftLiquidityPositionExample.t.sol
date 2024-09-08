@@ -124,7 +124,8 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         roleAccounts.poolCreator = lp;
 
         LiquidityManagement memory liquidityManagement;
-        liquidityManagement.disableUnbalancedLiquidity = true;
+        liquidityManagement.disableAddLiquidityUnbalanced = true;
+        liquidityManagement.disableRemoveLiquidityUnbalanced = true;
         liquidityManagement.enableDonation = true;
 
         factoryMock.registerPool(

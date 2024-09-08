@@ -47,7 +47,8 @@ contract ExitFeeHookExampleWeightedPoolTest is ExitFeeHookExampleTest {
             MIN_WEIGHTED_SWAP_FEE,
             poolHooksContract,
             true, // supports donation
-            true, // does not support unbalanced add/remove liquidity
+            true, // does not support add liquidity unbalanced
+            true, // does not support remove liquidity unbalanced
             ZERO_BYTES32
         );
         vm.label(address(newPool), label);

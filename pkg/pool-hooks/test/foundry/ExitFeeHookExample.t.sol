@@ -58,7 +58,8 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         roleAccounts.poolCreator = lp;
 
         LiquidityManagement memory liquidityManagement;
-        liquidityManagement.disableUnbalancedLiquidity = true;
+        liquidityManagement.disableAddLiquidityUnbalanced = true;
+        liquidityManagement.disableRemoveLiquidityUnbalanced = true;
         liquidityManagement.enableDonation = true;
 
         vm.expectEmit();
@@ -96,7 +97,14 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         HooksConfig memory hooksConfig = vault.getHooksConfig(exitFeePool);
 
         assertTrue(poolConfig.liquidityManagement.enableDonation, "enableDonation is false");
-        assertTrue(poolConfig.liquidityManagement.disableUnbalancedLiquidity, "disableUnbalancedLiquidity is false");
+        assertTrue(
+            poolConfig.liquidityManagement.disableAddLiquidityUnbalanced,
+            "disableAddLiquidityUnbalanced is false"
+        );
+        assertTrue(
+            poolConfig.liquidityManagement.disableRemoveLiquidityUnbalanced,
+            "disableRemoveLiquidityUnbalanced is false"
+        );
         assertTrue(hooksConfig.enableHookAdjustedAmounts, "enableHookAdjustedAmounts is false");
         assertEq(hooksConfig.hooksContract, poolHooksContract, "hooksContract is wrong");
     }
@@ -190,7 +198,8 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         roleAccounts.poolCreator = lp;
 
         LiquidityManagement memory liquidityManagement;
-        liquidityManagement.disableUnbalancedLiquidity = true;
+        liquidityManagement.disableAddLiquidityUnbalanced = true;
+        liquidityManagement.disableRemoveLiquidityUnbalanced = true;
         liquidityManagement.enableDonation = enableDonation;
 
         factoryMock.registerPool(exitFeePool, tokenConfig, roleAccounts, poolHooksContract, liquidityManagement);
