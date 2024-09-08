@@ -82,7 +82,8 @@ describe('StablePool', () => {
       MIN_SWAP_FEE,
       ZERO_ADDRESS,
       false, // no donations
-      false, // keep support to unbalanced add/remove liquidity
+      false, // do not disable add liquidity unbalanced
+      false, // do not disable remove liquidity unbalanced
       TypesConverter.toBytes32(bn(numTokens))
     );
     const receipt = await tx.wait();

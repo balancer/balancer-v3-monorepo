@@ -98,7 +98,8 @@ contract E2eSwapStableTest is E2eSwapTest {
                 DEFAULT_SWAP_FEE, // 1% swap fee, but test will override it
                 poolHooksContract,
                 false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
+                false, // Do not disable add liquidity unbalanced
+                false, // Do not disable remove liquidity unbalanced
                 ZERO_BYTES32
             )
         );

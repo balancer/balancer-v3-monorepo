@@ -62,7 +62,8 @@ contract StablePoolTest is BasePoolTest {
                     BASE_MIN_SWAP_FEE,
                     poolHooksContract,
                     false, // Do not enable donations
-                    false, // Do not disable unbalanced add/remove liquidity
+                    false, // Do not disable add liquidity unbalanced
+                    false, // Do not disable remove liquidity unbalanced
                     ZERO_BYTES32
                 )
             )

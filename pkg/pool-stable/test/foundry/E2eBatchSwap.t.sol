@@ -56,7 +56,8 @@ contract E2eBatchSwapStableTest is E2eBatchSwapTest {
                 DEFAULT_SWAP_FEE_STABLE,
                 address(0),
                 false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
+                false, // Do not disable add liquidity unbalanced
+                false, // Do not disable remove liquidity unbalanced
                 ZERO_BYTES32
             )
         );

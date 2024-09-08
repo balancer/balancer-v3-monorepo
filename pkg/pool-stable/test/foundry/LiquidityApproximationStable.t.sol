@@ -58,7 +58,8 @@ contract LiquidityApproximationStableTest is LiquidityApproximationTest {
                 0.01e16, // Initial swap fee: 0.01%
                 poolHooksContract,
                 false, // Do not enable donations
-                false, // Do not disable unbalanced add/remove liquidity
+                false, // Do not disable add liquidity unbalanced
+                false, // Do not disable remove liquidity unbalanced
                 ZERO_BYTES32
             )
         );
