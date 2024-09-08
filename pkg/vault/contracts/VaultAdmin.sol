@@ -40,6 +40,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
     using SafeERC20 for IERC20;
     using FixedPoint for uint256;
 
+    // Minimum BPT amount minted upon initialization.
+    uint256 internal constant _BUFFER_MINIMUM_TOTAL_SUPPLY = 1e4;
+
     /// @dev Functions with this modifier can only be delegate-called by the vault.
     modifier onlyVaultDelegateCall() {
         _vault.ensureVaultDelegateCall();
