@@ -227,7 +227,8 @@ contract RegistrationTest is BaseVaultTest {
         });
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(standardPoolTokens);
         LiquidityManagement memory liquidityManagement = LiquidityManagement({
-            disableUnbalancedLiquidity: true,
+            disableAddLiquidityUnbalanced: true,
+            disableRemoveLiquidityUnbalanced: true,
             enableAddLiquidityCustom: true,
             enableRemoveLiquidityCustom: false,
             enableDonation: true

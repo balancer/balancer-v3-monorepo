@@ -96,7 +96,8 @@ contract VaultMock is IVaultMainMock, Vault {
         uint256 swapFeePercentage
     ) external whenVaultNotPaused {
         LiquidityManagement memory liquidityManagement = _getDefaultLiquidityManagement();
-        liquidityManagement.disableUnbalancedLiquidity = true;
+        liquidityManagement.disableAddLiquidityUnbalanced = true;
+        liquidityManagement.disableRemoveLiquidityUnbalanced = true;
 
         _poolFactoryMock.registerPoolWithSwapFee(
             pool,
@@ -176,8 +177,11 @@ contract VaultMock is IVaultMainMock, Vault {
         poolConfigBits = poolConfigBits.setAggregateYieldFeePercentage(config.aggregateYieldFeePercentage);
         poolConfigBits = poolConfigBits.setTokenDecimalDiffs(config.tokenDecimalDiffs);
         poolConfigBits = poolConfigBits.setPauseWindowEndTime(config.pauseWindowEndTime);
-        poolConfigBits = poolConfigBits.setDisableUnbalancedLiquidity(
-            config.liquidityManagement.disableUnbalancedLiquidity
+        poolConfigBits = poolConfigBits.setDisableAddLiquidityUnbalanced(
+            config.liquidityManagement.disableAddLiquidityUnbalanced
+        );
+        poolConfigBits = poolConfigBits.setDisableRemoveLiquidityUnbalanced(
+            config.liquidityManagement.disableRemoveLiquidityUnbalanced
         );
         poolConfigBits = poolConfigBits.setAddLiquidityCustom(config.liquidityManagement.enableAddLiquidityCustom);
         poolConfigBits = poolConfigBits.setRemoveLiquidityCustom(

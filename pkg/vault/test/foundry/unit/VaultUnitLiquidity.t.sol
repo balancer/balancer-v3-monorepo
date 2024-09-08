@@ -339,9 +339,9 @@ contract VaultUnitLiquidityTest is BaseTest {
             1e18
         );
 
-        poolData.poolConfigBits = poolData.poolConfigBits.setDisableUnbalancedLiquidity(true);
+        poolData.poolConfigBits = poolData.poolConfigBits.setDisableAddLiquidityUnbalanced(true);
 
-        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
+        vm.expectRevert(IVaultErrors.DoesNotSupportAddLiquidityUnbalanced.selector);
         vault.manualAddLiquidity(poolData, params, maxAmountsInScaled18);
     }
 
@@ -353,9 +353,9 @@ contract VaultUnitLiquidityTest is BaseTest {
             1e18
         );
 
-        poolData.poolConfigBits = poolData.poolConfigBits.setDisableUnbalancedLiquidity(true);
+        poolData.poolConfigBits = poolData.poolConfigBits.setDisableAddLiquidityUnbalanced(true);
 
-        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
+        vm.expectRevert(IVaultErrors.DoesNotSupportAddLiquidityUnbalanced.selector);
         vault.manualAddLiquidity(poolData, params, maxAmountsInScaled18);
     }
 
@@ -657,9 +657,9 @@ contract VaultUnitLiquidityTest is BaseTest {
             type(uint256).max,
             1
         );
-        poolData.poolConfigBits = poolData.poolConfigBits.setDisableUnbalancedLiquidity(true);
+        poolData.poolConfigBits = poolData.poolConfigBits.setDisableRemoveLiquidityUnbalanced(true);
 
-        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
+        vm.expectRevert(IVaultErrors.DoesNotSupportRemoveLiquidityUnbalanced.selector);
         vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18);
     }
 
@@ -671,9 +671,9 @@ contract VaultUnitLiquidityTest is BaseTest {
             type(uint256).max,
             1
         );
-        poolData.poolConfigBits = poolData.poolConfigBits.setDisableUnbalancedLiquidity(true);
+        poolData.poolConfigBits = poolData.poolConfigBits.setDisableRemoveLiquidityUnbalanced(true);
 
-        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
+        vm.expectRevert(IVaultErrors.DoesNotSupportRemoveLiquidityUnbalanced.selector);
         vault.manualRemoveLiquidity(poolData, params, minAmountsOutScaled18);
     }
 

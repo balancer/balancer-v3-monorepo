@@ -31,7 +31,16 @@ contract PoolConfigLibTest is Test {
         assertEq(config.isPoolInitialized(), false, "isPoolInitialized mismatch (zero config)");
         assertEq(config.isPoolPaused(), false, "isPoolPaused mismatch (zero config)");
         assertEq(config.isPoolInRecoveryMode(), false, "isPoolInRecoveryMode mismatch (zero config)");
-        assertEq(config.supportsUnbalancedLiquidity(), true, "supportsUnbalancedLiquidity mismatch (zero config)");
+        assertEq(
+            config.supportsAddLiquidityUnbalanced(),
+            true,
+            "supportsAddLiquidityUnbalanced mismatch (zero config)"
+        );
+        assertEq(
+            config.supportsRemoveLiquidityUnbalanced(),
+            true,
+            "supportsRemoveLiquidityUnbalanced mismatch (zero config)"
+        );
         assertEq(config.supportsAddLiquidityCustom(), false, "supportsAddLiquidityCustom mismatch (zero config)");
         assertEq(config.supportsRemoveLiquidityCustom(), false, "supportsRemoveLiquidityCustom mismatch (zero config)");
         assertEq(config.getStaticSwapFeePercentage(), 0, "getStaticSwapFeePercentage mismatch (zero config)");
@@ -102,35 +111,66 @@ contract PoolConfigLibTest is Test {
     // #endregion
 
     // #region Tests for liquidity operations
-    function testSupportsUnbalancedLiquidity() public pure {
+    function testSupportsAddLiquidityUnbalanced() public pure {
         PoolConfigBits config;
         config = PoolConfigBits.wrap(
-            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.UNBALANCED_LIQUIDITY_OFFSET)
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.ADD_LIQUIDITY_UNBALANCED_OFFSET)
         );
         // NOTE: assertFalse is here because supportsUnbalancedLiquidity reverse value
-        assertFalse(config.supportsUnbalancedLiquidity(), "supportsUnbalancedLiquidity is true (getter)");
+        assertFalse(config.supportsAddLiquidityUnbalanced(), "supportsAddLiquidityUnbalanced is true (getter)");
     }
 
-    function testSetDisableUnbalancedLiquidity() public pure {
+    function testSetDisableAddLiquidityUnbalanced() public pure {
         PoolConfigBits config;
-        config = config.setDisableUnbalancedLiquidity(true);
+        config = config.setDisableAddLiquidityUnbalanced(true);
         // NOTE: assertFalse is here because supportsUnbalancedLiquidity reverse value
-        assertFalse(config.supportsUnbalancedLiquidity(), "supportsUnbalancedLiquidity is true (setter)");
+        assertFalse(config.supportsAddLiquidityUnbalanced(), "supportsAddLiquidityUnbalanced is true (setter)");
     }
 
-    function testRequireUnbalancedLiquidityEnabled() public pure {
+    function testSupportsRemoveLiquidityUnbalanced() public pure {
+        PoolConfigBits config;
+        config = PoolConfigBits.wrap(
+            PoolConfigBits.unwrap(config).insertBool(true, PoolConfigConst.REMOVE_LIQUIDITY_UNBALANCED_OFFSET)
+        );
+        // NOTE: assertFalse is here because supportsUnbalancedLiquidity reverse value
+        assertFalse(config.supportsRemoveLiquidityUnbalanced(), "supportsRemoveLiquidityUnbalanced is true (getter)");
+    }
+
+    function testSetDisableRemoveLiquidityUnbalanced() public pure {
+        PoolConfigBits config;
+        config = config.setDisableRemoveLiquidityUnbalanced(true);
+        // NOTE: assertFalse is here because supportsUnbalancedLiquidity reverse value
+        assertFalse(config.supportsRemoveLiquidityUnbalanced(), "supportsRemoveLiquidityUnbalanced is true (setter)");
+    }
+
+    function testRequireAddLiquidityUnbalancedEnabled() public pure {
         PoolConfigBits config;
 
         // It's enabled by default
-        config.requireUnbalancedLiquidityEnabled();
+        config.requireAddLiquidityUnbalancedEnabled();
     }
 
-    function testRequireUnbalancedLiquidityRevertIfIsDisabled() public {
+    function testRequireRemoveLiquidityUnbalancedEnabled() public pure {
         PoolConfigBits config;
-        config = config.setDisableUnbalancedLiquidity(true);
 
-        vm.expectRevert(IVaultErrors.DoesNotSupportUnbalancedLiquidity.selector);
-        config.requireUnbalancedLiquidityEnabled();
+        // It's enabled by default
+        config.requireRemoveLiquidityUnbalancedEnabled();
+    }
+
+    function testRequireAddLiquidityUnbalancedRevertIfIsDisabled() public {
+        PoolConfigBits config;
+        config = config.setDisableAddLiquidityUnbalanced(true);
+
+        vm.expectRevert(IVaultErrors.DoesNotSupportAddLiquidityUnbalanced.selector);
+        config.requireAddLiquidityUnbalancedEnabled();
+    }
+
+    function testRequireRemoveLiquidityUnbalancedRevertIfIsDisabled() public {
+        PoolConfigBits config;
+        config = config.setDisableRemoveLiquidityUnbalanced(true);
+
+        vm.expectRevert(IVaultErrors.DoesNotSupportRemoveLiquidityUnbalanced.selector);
+        config.requireRemoveLiquidityUnbalancedEnabled();
     }
 
     function testSupportsAddLiquidityCustom() public pure {

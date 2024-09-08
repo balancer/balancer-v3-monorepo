@@ -61,7 +61,8 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
         roleAccounts.poolCreator = lp;
 
         LiquidityManagement memory liquidityManagement;
-        liquidityManagement.disableUnbalancedLiquidity = true;
+        liquidityManagement.disableAddLiquidityUnbalanced = true;
+        liquidityManagement.disableRemoveLiquidityUnbalanced = true;
 
         factoryMock.registerPool(
             address(newPool),

@@ -15,7 +15,8 @@ contract PoolConfigConstTest is BaseBitsConfigTest {
         bits.push(Bits(PoolConfigConst.POOL_INITIALIZED_OFFSET, 1));
         bits.push(Bits(PoolConfigConst.POOL_PAUSED_OFFSET, 1));
         bits.push(Bits(PoolConfigConst.POOL_RECOVERY_MODE_OFFSET, 1));
-        bits.push(Bits(PoolConfigConst.UNBALANCED_LIQUIDITY_OFFSET, 1));
+        bits.push(Bits(PoolConfigConst.ADD_LIQUIDITY_UNBALANCED_OFFSET, 1));
+        bits.push(Bits(PoolConfigConst.REMOVE_LIQUIDITY_UNBALANCED_OFFSET, 1));
         bits.push(Bits(PoolConfigConst.ADD_LIQUIDITY_CUSTOM_OFFSET, 1));
         bits.push(Bits(PoolConfigConst.REMOVE_LIQUIDITY_CUSTOM_OFFSET, 1));
         bits.push(Bits(PoolConfigConst.DONATION_OFFSET, 1));
