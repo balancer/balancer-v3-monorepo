@@ -167,7 +167,8 @@ contract BasePoolFactoryTest is BaseVaultTest {
         LiquidityManagement memory liquidityManagement = testFactory.getDefaultLiquidityManagement();
 
         assertFalse(liquidityManagement.enableDonation, "enableDonation is true");
-        assertFalse(liquidityManagement.disableUnbalancedLiquidity, "disableUnbalancedLiquidity is true");
+        assertFalse(liquidityManagement.disableAddLiquidityUnbalanced, "disableAddLiquidityUnbalanced is true");
+        assertFalse(liquidityManagement.disableRemoveLiquidityUnbalanced, "disableRemoveLiquidityUnbalanced is true");
         assertFalse(liquidityManagement.enableAddLiquidityCustom, "enableAddLiquidityCustom is true");
         assertFalse(liquidityManagement.enableRemoveLiquidityCustom, "enableRemoveLiquidityCustom is true");
     }
