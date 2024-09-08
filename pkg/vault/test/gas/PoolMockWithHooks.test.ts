@@ -42,7 +42,8 @@ class PoolMockWithHooksBenchmark extends Benchmark {
     };
 
     const liquidityManagement: LiquidityManagementStruct = {
-      disableUnbalancedLiquidity: false,
+      disableAddLiquidityUnbalanced: false,
+      disableRemoveLiquidityUnbalanced: false,
       enableAddLiquidityCustom: true,
       enableRemoveLiquidityCustom: true,
       enableDonation: true,
