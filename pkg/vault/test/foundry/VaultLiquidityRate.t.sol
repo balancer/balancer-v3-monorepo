@@ -261,21 +261,8 @@ contract VaultLiquidityWithRatesTest is BaseVaultTest {
 
         vm.startPrank(lp);
         uint256[] memory maxAmountsIn = [MAX_UINT128, MAX_UINT128].toMemoryArray();
-        uint256[] memory amountsIn = router.addLiquidityProportional(
-            pool,
-            maxAmountsIn,
-            balancesBefore.lpBpt / 2,
-            false,
-            bytes("")
-        );
-        uint256 amountOut = router.removeLiquiditySingleTokenExactIn(
-            pool,
-            balancesBefore.lpBpt / 2,
-            wsteth,
-            1,
-            false,
-            bytes("")
-        );
+        router.addLiquidityProportional(pool, maxAmountsIn, balancesBefore.lpBpt / 2, false, bytes(""));
+        router.removeLiquiditySingleTokenExactIn(pool, balancesBefore.lpBpt / 2, wsteth, 1, false, bytes(""));
         vm.stopPrank();
 
         BaseVaultTest.Balances memory balancesAfter = getBalances(bob);
