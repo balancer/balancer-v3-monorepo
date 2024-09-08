@@ -39,7 +39,8 @@ class WeightedPoolBenchmark extends Benchmark {
       fp(0.1),
       ZERO_ADDRESS,
       enableDonation,
-      false, // keep support to unbalanced add/remove liquidity
+      false, // Do not disable add liquidity unbalanced
+      false, // Do not disable remove liquidity unbalanced
       ZERO_BYTES32
     );
     const receipt = await tx.wait();
