@@ -640,7 +640,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             bptAmountOut = 0;
             amountsInScaled18 = maxAmountsInScaled18;
         } else if (params.kind == AddLiquidityKind.UNBALANCED) {
-            poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
+            poolData.poolConfigBits.requireAddLiquidityUnbalancedEnabled();
 
             amountsInScaled18 = maxAmountsInScaled18;
             // Deep copy given max amounts in raw to calculated amounts in raw to avoid scaling later, ensuring that
@@ -655,7 +655,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 IBasePool(params.pool)
             );
         } else if (params.kind == AddLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
+            poolData.poolConfigBits.requireAddLiquidityUnbalancedEnabled();
 
             bptAmountOut = params.minBptAmountOut;
             locals.tokenIndex = InputHelpers.getSingleInputIndex(maxAmountsInScaled18);
@@ -887,7 +887,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bptAmountIn
             );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_IN) {
-            poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
+            poolData.poolConfigBits.requireRemoveLiquidityUnbalancedEnabled();
             bptAmountIn = params.maxBptAmountIn;
             amountsOutScaled18 = minAmountsOutScaled18;
             locals.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
@@ -902,7 +902,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                     IBasePool(params.pool)
                 );
         } else if (params.kind == RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT) {
-            poolData.poolConfigBits.requireUnbalancedLiquidityEnabled();
+            poolData.poolConfigBits.requireRemoveLiquidityUnbalancedEnabled();
             amountsOutScaled18 = minAmountsOutScaled18;
             locals.tokenIndex = InputHelpers.getSingleInputIndex(params.minAmountsOut);
             amountsOutRaw[locals.tokenIndex] = params.minAmountsOut[locals.tokenIndex];

@@ -9,13 +9,28 @@ import { IRateProvider } from "../solidity-utils/helpers/IRateProvider.sol";
 
 /**
  * @notice Represents a pool's liquidity management configuration.
- * @param disableUnbalancedLiquidity If set, liquidity can only be added or removed proportionally
+ * @dev By default, the Vault supports all non-custom add/remove liquidity types: single token, unbalanced,
+ * and proportional. However, there are use cases where unbalanced liquidity operations may be unsafe or unsupported.
+ * For instance, pricing in pools that support donation could be manipulated if it were possible to add or remove
+ * liquidity unbalanced. Hooks with exit fees should enforce proportional withdrawals to ensure proper fee accounting,
+ * but might still allow unbalanced adds.
+ *
+ * Particular care must be taken when a hook supports `enableHookAdjustedAmounts`. Since fees can only be taken
+ * in tokens - not BPT - any path that would result in BPT fees is unsupported. Accordingly, the Vault enforces that
+ * any hook with `enableHookAdjustedAmounts` set to true cannot be registered to a pool with either add or remove
+ * liquidity unbalanced enabled.
+ *
+ * It is the responsibility of each custom pool and hook contract to carefully consider how to set these flags!
+ *
+ * @param disableAddLiquidityUnbalanced If set, liquidity can only be added proportionally
+ * @param disableRemoveLiquidityUnbalanced If set, liquidity can only be removed proportionally
  * @param enableAddLiquidityCustom If set, the pool has implemented `onAddLiquidityCustom`
  * @param enableRemoveLiquidityCustom If set, the pool has implemented `onRemoveLiquidityCustom`
  * @param enableDonation If set, the pool will not revert if liquidity is added with AddLiquidityKind.DONATION
  */
 struct LiquidityManagement {
-    bool disableUnbalancedLiquidity;
+    bool disableAddLiquidityUnbalanced;
+    bool disableRemoveLiquidityUnbalanced;
     bool enableAddLiquidityCustom;
     bool enableRemoveLiquidityCustom;
     bool enableDonation;

@@ -401,8 +401,11 @@ interface IVaultErrors {
                                     Miscellaneous
     *******************************************************************************/
 
-    /// @notice Pool does not support adding / removing liquidity with an unbalanced input.
-    error DoesNotSupportUnbalancedLiquidity();
+    /// @notice Pool does not support adding liquidity with an unbalanced input.
+    error DoesNotSupportAddLiquidityUnbalanced();
+
+    /// @notice Pool does not support removing liquidity with an unbalanced input.
+    error DoesNotSupportRemoveLiquidityUnbalanced();
 
     /// @notice The contract should not receive ETH.
     error CannotReceiveEth();

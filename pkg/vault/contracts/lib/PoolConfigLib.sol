@@ -72,27 +72,52 @@ library PoolConfigLib {
     // #endregion
 
     // #region Bit offsets for liquidity operations
-    function supportsUnbalancedLiquidity(PoolConfigBits config) internal pure returns (bool) {
+    function supportsAddLiquidityUnbalanced(PoolConfigBits config) internal pure returns (bool) {
         // NOTE: The unbalanced liquidity flag is default-on (false means it is supported).
         // This function returns the inverted value.
-        return !PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.UNBALANCED_LIQUIDITY_OFFSET);
+        return !PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.ADD_LIQUIDITY_UNBALANCED_OFFSET);
     }
 
-    function requireUnbalancedLiquidityEnabled(PoolConfigBits config) internal pure {
-        if (config.supportsUnbalancedLiquidity() == false) {
-            revert IVaultErrors.DoesNotSupportUnbalancedLiquidity();
+    function requireAddLiquidityUnbalancedEnabled(PoolConfigBits config) internal pure {
+        if (config.supportsAddLiquidityUnbalanced() == false) {
+            revert IVaultErrors.DoesNotSupportAddLiquidityUnbalanced();
         }
     }
 
-    function setDisableUnbalancedLiquidity(
+    function setDisableAddLiquidityUnbalanced(
         PoolConfigBits config,
-        bool disableUnbalancedLiquidity
+        bool disableAddLiquidityUnbalanced
     ) internal pure returns (PoolConfigBits) {
         return
             PoolConfigBits.wrap(
                 PoolConfigBits.unwrap(config).insertBool(
-                    disableUnbalancedLiquidity,
-                    PoolConfigConst.UNBALANCED_LIQUIDITY_OFFSET
+                    disableAddLiquidityUnbalanced,
+                    PoolConfigConst.ADD_LIQUIDITY_UNBALANCED_OFFSET
+                )
+            );
+    }
+
+    function supportsRemoveLiquidityUnbalanced(PoolConfigBits config) internal pure returns (bool) {
+        // NOTE: The unbalanced liquidity flag is default-on (false means it is supported).
+        // This function returns the inverted value.
+        return !PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.REMOVE_LIQUIDITY_UNBALANCED_OFFSET);
+    }
+
+    function requireRemoveLiquidityUnbalancedEnabled(PoolConfigBits config) internal pure {
+        if (config.supportsRemoveLiquidityUnbalanced() == false) {
+            revert IVaultErrors.DoesNotSupportRemoveLiquidityUnbalanced();
+        }
+    }
+
+    function setDisableRemoveLiquidityUnbalanced(
+        PoolConfigBits config,
+        bool disableRemoveLiquidityUnbalanced
+    ) internal pure returns (PoolConfigBits) {
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertBool(
+                    disableRemoveLiquidityUnbalanced,
+                    PoolConfigConst.REMOVE_LIQUIDITY_UNBALANCED_OFFSET
                 )
             );
     }

@@ -247,8 +247,11 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 .registerPool(pool, params.roleAccounts.poolCreator, params.protocolFeeExempt);
 
             poolConfigBits = poolConfigBits.setPoolRegistered(true);
-            poolConfigBits = poolConfigBits.setDisableUnbalancedLiquidity(
-                params.liquidityManagement.disableUnbalancedLiquidity
+            poolConfigBits = poolConfigBits.setDisableAddLiquidityUnbalanced(
+                params.liquidityManagement.disableAddLiquidityUnbalanced
+            );
+            poolConfigBits = poolConfigBits.setDisableRemoveLiquidityUnbalanced(
+                params.liquidityManagement.disableRemoveLiquidityUnbalanced
             );
             poolConfigBits = poolConfigBits.setAddLiquidityCustom(params.liquidityManagement.enableAddLiquidityCustom);
             poolConfigBits = poolConfigBits.setRemoveLiquidityCustom(
@@ -284,7 +287,8 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 // input amount (EXACT_OUT).
                 if (
                     hookFlags.enableHookAdjustedAmounts &&
-                    params.liquidityManagement.disableUnbalancedLiquidity == false
+                    (params.liquidityManagement.disableAddLiquidityUnbalanced == false ||
+                        params.liquidityManagement.disableRemoveLiquidityUnbalanced == false)
                 ) {
                     revert HookRegistrationFailed(params.poolHooksContract, pool, msg.sender);
                 }
@@ -551,8 +555,9 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
                 tokenDecimalDiffs: config.getTokenDecimalDiffs(),
                 pauseWindowEndTime: config.getPauseWindowEndTime(),
                 liquidityManagement: LiquidityManagement({
-                    // NOTE: supportUnbalancedLiquidity is inverted because false means it is supported.
-                    disableUnbalancedLiquidity: !config.supportsUnbalancedLiquidity(),
+                    // NOTE: unbalanced liquidity flags are inverted because false means it is supported.
+                    disableAddLiquidityUnbalanced: !config.supportsAddLiquidityUnbalanced(),
+                    disableRemoveLiquidityUnbalanced: !config.supportsRemoveLiquidityUnbalanced(),
                     enableAddLiquidityCustom: config.supportsAddLiquidityCustom(),
                     enableRemoveLiquidityCustom: config.supportsRemoveLiquidityCustom(),
                     enableDonation: config.supportsDonation()
