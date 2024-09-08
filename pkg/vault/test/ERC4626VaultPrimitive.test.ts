@@ -172,7 +172,8 @@ describe('ERC4626VaultPrimitive', function () {
       expect(paused).to.be.false;
 
       expect(poolConfig.pauseWindowEndTime).to.gt(currentTime);
-      expect(poolConfig.liquidityManagement.disableUnbalancedLiquidity).to.be.false;
+      expect(poolConfig.liquidityManagement.disableAddLiquidityUnbalanced).to.be.false;
+      expect(poolConfig.liquidityManagement.disableRemoveLiquidityUnbalanced).to.be.false;
       expect(poolConfig.liquidityManagement.enableAddLiquidityCustom).to.be.true;
       expect(poolConfig.liquidityManagement.enableRemoveLiquidityCustom).to.be.true;
 
