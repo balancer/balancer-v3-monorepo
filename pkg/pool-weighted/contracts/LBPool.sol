@@ -25,7 +25,7 @@ import { WeightValidation } from "./lib/WeightValidation.sol";
 /// @notice Inheriting from WeightedPool is only slightly wasteful (setting 2 immutable weights
 ///     and _totalTokens, which will not be used later), and it is tremendously helpful for pool
 ///     validation and any potential future parent class changes.
-contract LBPool is WeightedPool, Ownable {
+contract LBPool is WeightedPool, Ownable { //TODO is BaseHooks
     // Since we have max 2 tokens and the weights must sum to 1, we only need to store one weight
     struct PoolState {
         uint56 startTime;
@@ -156,10 +156,8 @@ contract LBPool is WeightedPool, Ownable {
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) external view onlyVault returns (bool success) {
-        if (pool == address(this) && IBasePoolFactory(factory).isPoolFromFactory(pool)) {
-            success = true;
-        }
+    ) external view onlyVault returns (bool) {
+        return (pool == address(this) && IBasePoolFactory(factory).isPoolFromFactory(pool));
     }
 
     // Return HookFlags struct that indicates which hooks this contract supports
