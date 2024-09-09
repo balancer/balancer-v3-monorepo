@@ -78,6 +78,17 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         return IBasePool(pool).computeInvariant([MAX_BALANCE, MAX_BALANCE].toMemoryArray(), Rounding.ROUND_DOWN);
     }
 
+    modifier checkInvariant() {
+        (, , uint256[] memory poolBalancesBefore, ) = vault.getPoolTokenInfo(pool);
+        uint256 invariantBefore = IBasePool(pool).computeInvariant(poolBalancesBefore, Rounding.ROUND_UP);
+        _;
+
+        (, , uint256[] memory poolBalancesAfter, ) = vault.getPoolTokenInfo(pool);
+        uint256 invariantAfter = IBasePool(pool).computeInvariant(poolBalancesAfter, Rounding.ROUND_UP);
+
+        assertGe(invariantAfter, invariantBefore, "InvariantAfter should be greater or equal to invariantBefore");
+    }
+
     // testAddAndRemoveLiquidityProportional
     function testAddAndRemoveLiquidityProportional_Fuzz(
         uint256 exactBPTAmount,
@@ -116,7 +127,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         return bound(exactBPTAmount, MIN_AMOUNT, _calculateMaxBPTAmountForProportionalOperations());
     }
 
-    function _testAddAndRemoveLiquidityProportional(uint256 exactBPTAmount) private {
+    function _testAddAndRemoveLiquidityProportional(uint256 exactBPTAmount) private checkInvariant {
         vault.forceUnlock();
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
@@ -186,15 +197,17 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
     function _calculateMaxAmountIn() private view returns (uint256[] memory) {
         uint256[] memory maxAmountsIn = new uint256[](2);
         for (uint256 i = 0; i < maxAmountsIn.length; i++) {
-            uint256 maxAmount = initBalances[i] * 100;
+            uint256 limit = initBalances[i] * 100;
 
-            // if invariant ratio is really high, then we don't need to receive an exception
+            // we need unchecked here because the operation result can be greater than MAX_UINT258
             unchecked {
                 maxAmountsIn[i] = ((initBalances[i] * maxInvariantRatio) / 1e18);
             }
 
-            if (maxAmountsIn[i] > maxAmount || maxAmountsIn[i] < initBalances[i]) {
-                maxAmountsIn[i] = maxAmount;
+            // if maxAmountsIn[i] < initBalances[i], it means that we had an overflow on previous step
+            // if maxAmountsIn[i] > limit, we don't need to add more tokens because x100 is enough
+            if (maxAmountsIn[i] > limit || maxAmountsIn[i] < initBalances[i]) {
+                maxAmountsIn[i] = limit;
             }
 
             maxAmountsIn[i] = maxAmountsIn[i] - initBalances[i];
@@ -203,7 +216,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         return maxAmountsIn;
     }
 
-    function _testAddUnbalancedAndRemoveLiquidityProportional(uint256[] memory exactAmountsIn) private {
+    function _testAddUnbalancedAndRemoveLiquidityProportional(uint256[] memory exactAmountsIn) private checkInvariant {
         vault.forceUnlock();
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
@@ -269,7 +282,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         return bound(exactBPTAmount, MIN_AMOUNT, _calculateMaxBPTAmountForSingleTokenOperations());
     }
 
-    function _testAddProportionalAndRemoveLiquidityExactIn(uint256 exactBPTAmount) private {
+    function _testAddProportionalAndRemoveLiquidityExactIn(uint256 exactBPTAmount) private checkInvariant {
         vault.forceUnlock();
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
@@ -351,7 +364,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         );
     }
 
-    function _testAddLiquiditySingleTokenExactOutAndRemoveExactIn(uint256 exactBPTAmount) private {
+    function _testAddLiquiditySingleTokenExactOutAndRemoveExactIn(uint256 exactBPTAmount) private checkInvariant {
         vault.forceUnlock();
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
@@ -410,7 +423,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         _testAddLiquiditySingleTokenExactOutAndRemoveExactOut(MIN_AMOUNT);
     }
 
-    function _testAddLiquiditySingleTokenExactOutAndRemoveExactOut(uint256 exactBPTAmount) private {
+    function _testAddLiquiditySingleTokenExactOutAndRemoveExactOut(uint256 exactBPTAmount) private checkInvariant {
         vault.forceUnlock();
 
         (uint256[] memory amountsIn, uint256 bptAmountOut, ) = vault.addLiquidity(
@@ -426,6 +439,8 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
 
         assertEq(bptAmountOut, exactBPTAmount, "bpAmountOut should be equal to exactBPTAmount");
 
+        uint256 snapshot = vm.snapshot();
+        vault.query
         try
             vault.removeLiquidity(
                 RemoveLiquidityParams({
@@ -486,7 +501,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
             );
     }
 
-    function _testSwap(uint256 swapAmount) private {
+    function _testSwap(uint256 swapAmount) private checkInvariant {
         vault.forceUnlock();
 
         (, uint256 amountIn, uint256 amountOut) = vault.swap(
