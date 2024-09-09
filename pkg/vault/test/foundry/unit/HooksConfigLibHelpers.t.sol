@@ -145,7 +145,7 @@ contract HooksConfigLibHelpersTest is Test {
         ) = _getParamsForCallAfterSwap(SwapKind.EXACT_IN, 0);
 
         PoolConfigBits config;
-        config = config.setHookAdjustedAmounts(true);
+        config = config.setHookAdjustedAmountsOnSwap(true);
 
         uint256 value = _callAfterSwap(
             config,
@@ -171,7 +171,7 @@ contract HooksConfigLibHelpersTest is Test {
         ) = _getParamsForCallAfterSwap(SwapKind.EXACT_OUT, type(uint256).max);
 
         PoolConfigBits config;
-        config = config.setHookAdjustedAmounts(true);
+        config = config.setHookAdjustedAmountsOnSwap(true);
 
         uint256 value = _callAfterSwap(
             config,
@@ -197,7 +197,7 @@ contract HooksConfigLibHelpersTest is Test {
         ) = _getParamsForCallAfterSwap(SwapKind.EXACT_IN, type(uint256).max);
 
         PoolConfigBits config;
-        config = config.setHookAdjustedAmounts(true);
+        config = config.setHookAdjustedAmountsOnSwap(true);
 
         _callAfterSwapAndExpectRevert(
             config,
@@ -221,7 +221,7 @@ contract HooksConfigLibHelpersTest is Test {
         ) = _getParamsForCallAfterSwap(SwapKind.EXACT_OUT, 0);
 
         PoolConfigBits config;
-        config = config.setHookAdjustedAmounts(true);
+        config = config.setHookAdjustedAmountsOnSwap(true);
 
         _callAfterSwapAndExpectRevert(
             config,
@@ -528,7 +528,7 @@ contract HooksConfigLibHelpersTest is Test {
         ) = _getParamsForCallAfterAddLiquidity();
 
         PoolConfigBits config;
-        config = config.setHookAdjustedAmounts(true);
+        config = config.setHookAdjustedAmountsOnAdd(true);
         uint256[] memory values = _callAfterAddLiquidity(
             config,
             amountsInScaled18,
@@ -557,7 +557,7 @@ contract HooksConfigLibHelpersTest is Test {
         hookAdjustedAmountsInRaw = new uint256[](3);
 
         PoolConfigBits config;
-        config = config.setHookAdjustedAmounts(true);
+        config = config.setHookAdjustedAmountsOnAdd(true);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.AfterAddLiquidityHookFailed.selector));
         _callAfterAddLiquidity(
@@ -629,7 +629,7 @@ contract HooksConfigLibHelpersTest is Test {
         params.maxAmountsIn[1] = hookAdjustedAmountsInRaw[1] - 1;
 
         PoolConfigBits config;
-        config = config.setHookAdjustedAmounts(true);
+        config = config.setHookAdjustedAmountsOnAdd(true);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -837,7 +837,7 @@ contract HooksConfigLibHelpersTest is Test {
         ) = _getParamsForCallAfterRemoveLiquidity();
 
         PoolConfigBits config;
-        config = config.setHookAdjustedAmounts(true);
+        config = config.setHookAdjustedAmountsOnRemove(true);
         uint256[] memory values = _callAfterRemoveLiquidityHook(
             config,
             amountsOutScaled18,
@@ -866,7 +866,7 @@ contract HooksConfigLibHelpersTest is Test {
         hookAdjustedAmountsOutRaw = new uint256[](3);
 
         PoolConfigBits config;
-        config = config.setHookAdjustedAmounts(true);
+        config = config.setHookAdjustedAmountsOnRemove(true);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.AfterRemoveLiquidityHookFailed.selector));
         _callAfterRemoveLiquidityHook(
@@ -938,7 +938,7 @@ contract HooksConfigLibHelpersTest is Test {
         params.minAmountsOut[1] = hookAdjustedAmountsOutRaw[1] + 1;
 
         PoolConfigBits config;
-        config = config.setHookAdjustedAmounts(true);
+        config = config.setHookAdjustedAmountsOnRemove(true);
 
         vm.expectRevert(
             abi.encodeWithSelector(

@@ -121,14 +121,14 @@ contract HooksTest is BaseVaultTest {
         // Enable hook adjusted amounts in the hooks, so hooks can change the amount calculated of add/remove liquidity
         // and swap operations.
         HookFlags memory hookFlags;
-        hookFlags.enableHookAdjustedAmounts = true;
+        hookFlags.enableHookAdjustedAmountsOnAdd = true;
         PoolHooksMock(poolHooksContract).setHookFlags(hookFlags);
 
         TokenConfig[] memory tokenConfig = vault.buildTokenConfig(
             [address(dai), address(usdc)].toMemoryArray().asIERC20()
         );
 
-        // Register should fail, because `enableHookAdjustedAmounts` flag requires unbalanced liquidity to be disabled.
+        // Register should fail, because `enableHookAdjustedAmountsOnAdd` flag requires unbalanced liquidity to be disabled.
         vm.expectRevert(
             abi.encodeWithSelector(
                 IVaultErrors.HookRegistrationFailed.selector,

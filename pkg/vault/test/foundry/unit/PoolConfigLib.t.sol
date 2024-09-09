@@ -27,22 +27,20 @@ contract PoolConfigLibTest is Test {
     function testZeroConfigBytes() public pure {
         PoolConfigBits config;
 
-        assertEq(config.isPoolRegistered(), false, "isPoolRegistered mismatch (zero config)");
-        assertEq(config.isPoolInitialized(), false, "isPoolInitialized mismatch (zero config)");
-        assertEq(config.isPoolPaused(), false, "isPoolPaused mismatch (zero config)");
-        assertEq(config.isPoolInRecoveryMode(), false, "isPoolInRecoveryMode mismatch (zero config)");
-        assertEq(
+        assertFalse(config.isPoolRegistered(), "isPoolRegistered mismatch (zero config)");
+        assertFalse(config.isPoolInitialized(), "isPoolInitialized mismatch (zero config)");
+        assertFalse(config.isPoolPaused(), "isPoolPaused mismatch (zero config)");
+        assertFalse(config.isPoolInRecoveryMode(), "isPoolInRecoveryMode mismatch (zero config)");
+        assertTrue(
             config.supportsAddLiquidityUnbalanced(),
-            true,
             "supportsAddLiquidityUnbalanced mismatch (zero config)"
         );
-        assertEq(
+        assertTrue(
             config.supportsRemoveLiquidityUnbalanced(),
-            true,
             "supportsRemoveLiquidityUnbalanced mismatch (zero config)"
         );
-        assertEq(config.supportsAddLiquidityCustom(), false, "supportsAddLiquidityCustom mismatch (zero config)");
-        assertEq(config.supportsRemoveLiquidityCustom(), false, "supportsRemoveLiquidityCustom mismatch (zero config)");
+        assertFalse(config.supportsAddLiquidityCustom(), "supportsAddLiquidityCustom mismatch (zero config)");
+        assertFalse(config.supportsRemoveLiquidityCustom(), "supportsRemoveLiquidityCustom mismatch (zero config)");
         assertEq(config.getStaticSwapFeePercentage(), 0, "getStaticSwapFeePercentage mismatch (zero config)");
         assertEq(config.getAggregateSwapFeePercentage(), 0, "getAggregateSwapFeePercentage mismatch (zero config)");
         assertEq(config.getAggregateYieldFeePercentage(), 0, "getAggregateYieldFeePercentage mismatch (zero config)");

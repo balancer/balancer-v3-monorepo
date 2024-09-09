@@ -125,8 +125,8 @@ contract PoolAndVaultPausedTest is BaseVaultTest {
         vault.manualSetPoolPaused(pool, false);
 
         VaultState memory vaultState = vault.ensureUnpausedAndGetVaultState(pool);
-        assertEq(vaultState.isVaultPaused, false, "vaultState.isVaultPaused should be false");
-        assertEq(vaultState.isQueryDisabled, true, "vaultState.isQueryDisabled should be true");
+        assertFalse(vaultState.isVaultPaused, "vaultState.isVaultPaused should be false");
+        assertTrue(vaultState.isQueryDisabled, "vaultState.isQueryDisabled should be true");
     }
 
     // Returns the correct block.timestamp to consider the pool unpaused.

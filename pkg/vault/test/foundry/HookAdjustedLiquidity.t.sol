@@ -46,7 +46,8 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
 
     function createHook() internal override returns (address) {
         HookFlags memory hookFlags;
-        hookFlags.enableHookAdjustedAmounts = true;
+        hookFlags.enableHookAdjustedAmountsOnAdd = true;
+        hookFlags.enableHookAdjustedAmountsOnRemove = true;
         hookFlags.shouldCallAfterAddLiquidity = true;
         hookFlags.shouldCallAfterRemoveLiquidity = true;
         return _createHook(hookFlags);
@@ -216,7 +217,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
 
     function testHookFeeAddLiquidityIgnoreHookAdjusted() public {
         HooksConfig memory config = vault.getHooksConfig(pool);
-        config.enableHookAdjustedAmounts = false;
+        config.enableHookAdjustedAmountsOnAdd = false;
         vault.manualSetHooksConfig(pool, config);
 
         uint256 hookFeePercentage = MAX_HOOK_FEE_PERCENTAGE;
@@ -399,7 +400,7 @@ contract HookAdjustedLiquidityTest is BaseVaultTest {
 
     function testHookFeeRemoveLiquidityIgnoreHookAdjusted() public {
         HooksConfig memory config = vault.getHooksConfig(pool);
-        config.enableHookAdjustedAmounts = false;
+        config.enableHookAdjustedAmountsOnRemove = false;
         vault.manualSetHooksConfig(pool, config);
 
         // Add liquidity so Bob has BPT to remove liquidity.

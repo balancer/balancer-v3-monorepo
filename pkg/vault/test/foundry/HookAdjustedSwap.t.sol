@@ -37,7 +37,7 @@ contract HookAdjustedSwapTest is BaseVaultTest {
     function createHook() internal override returns (address) {
         // Sets all flags as false
         HookFlags memory hookFlags;
-        hookFlags.enableHookAdjustedAmounts = true;
+        hookFlags.enableHookAdjustedAmountsOnSwap = true;
         hookFlags.shouldCallAfterSwap = true;
         return _createHook(hookFlags);
     }
