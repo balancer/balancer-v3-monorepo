@@ -30,7 +30,7 @@ import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
  * withdrawals would be in BPT, and charging fees on BPT is unsupported.
  *
  * Since the fee must be taken *after* the `amountOut` is calculated - and the actual `amountOut` returned to the Vault
- * must be modified in order to charge the fee - `enableHookAdjustedAmounts` must also be set to true in the
+ * must be modified in order to charge the fee - `enableHookAdjustedAmountsOnRemove` must also be set to true in the
  * pool configuration. Otherwise, the Vault would ignore the adjusted values, and not recognize the fee.
  *
  * Finally, since the only way to deposit fee tokens back into the pool balance (without minting new BPT) is through
@@ -112,10 +112,10 @@ contract ExitFeeHookExample is BaseHooks, VaultGuard, Ownable {
     /// @inheritdoc IHooks
     function getHookFlags() public pure override returns (HookFlags memory) {
         HookFlags memory hookFlags;
-        // `enableHookAdjustedAmounts` must be true for all contracts that modify the `amountCalculated`
+        // `enableHookAdjustedAmountsOnRemove` must be true for all contracts that modify the `amountCalculated`
         // in after hooks. Otherwise, the Vault will ignore any "hookAdjusted" amounts, and the transaction
         // might not settle. (It should be false if the after hooks do something else.)
-        hookFlags.enableHookAdjustedAmounts = true;
+        hookFlags.enableHookAdjustedAmountsOnRemove = true;
         hookFlags.shouldCallAfterRemoveLiquidity = true;
         return hookFlags;
     }

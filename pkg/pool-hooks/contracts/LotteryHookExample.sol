@@ -113,10 +113,10 @@ contract LotteryHookExample is BaseHooks, VaultGuard, Ownable {
     /// @inheritdoc IHooks
     function getHookFlags() public pure override returns (HookFlags memory) {
         HookFlags memory hookFlags;
-        // `enableHookAdjustedAmounts` must be true for all contracts that modify the `amountCalculated`
-        // in after hooks. Otherwise, the Vault will ignore any "hookAdjusted" amounts, and the transaction
+        // `enableHookAdjustedAmountsOnSwap` must be true for all contracts that modify the `amountCalculated`
+        // in the after swap hook. Otherwise, the Vault will ignore any "hookAdjusted" amounts, and the transaction
         // might not settle. (It should be false if the after hooks do something else.)
-        hookFlags.enableHookAdjustedAmounts = true;
+        hookFlags.enableHookAdjustedAmountsOnSwap = true;
         hookFlags.shouldCallAfterSwap = true;
         return hookFlags;
     }

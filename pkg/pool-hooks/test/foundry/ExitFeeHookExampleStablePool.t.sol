@@ -44,7 +44,7 @@ contract ExitFeeHookExampleStablePoolTest is ExitFeeHookExampleTest {
             MIN_STABLE_SWAP_FEE,
             poolHooksContract,
             true, // supports donation
-            true, // does not support add liquidity unbalanced
+            false, // supports add liquidity unbalanced
             true, // does not support remove liquidity unbalanced
             ZERO_BYTES32
         );

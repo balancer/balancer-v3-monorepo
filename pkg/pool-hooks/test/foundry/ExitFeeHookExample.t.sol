@@ -58,7 +58,6 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         roleAccounts.poolCreator = lp;
 
         LiquidityManagement memory liquidityManagement;
-        liquidityManagement.disableAddLiquidityUnbalanced = true;
         liquidityManagement.disableRemoveLiquidityUnbalanced = true;
         liquidityManagement.enableDonation = true;
 
@@ -97,16 +96,57 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         HooksConfig memory hooksConfig = vault.getHooksConfig(exitFeePool);
 
         assertTrue(poolConfig.liquidityManagement.enableDonation, "enableDonation is false");
-        assertTrue(
+        assertFalse(
             poolConfig.liquidityManagement.disableAddLiquidityUnbalanced,
-            "disableAddLiquidityUnbalanced is false"
+            "disableAddLiquidityUnbalanced is true"
         );
         assertTrue(
             poolConfig.liquidityManagement.disableRemoveLiquidityUnbalanced,
             "disableRemoveLiquidityUnbalanced is false"
         );
-        assertTrue(hooksConfig.enableHookAdjustedAmounts, "enableHookAdjustedAmounts is false");
+        assertFalse(hooksConfig.enableHookAdjustedAmountsOnAdd, "enableHookAdjustedAmountsOnAdd is true");
+        assertTrue(hooksConfig.enableHookAdjustedAmountsOnRemove, "enableHookAdjustedAmountsOnRemove is false");
+        assertFalse(hooksConfig.enableHookAdjustedAmountsOnSwap, "enableHookAdjustedAmountsOnSwap is true");
         assertEq(hooksConfig.hooksContract, poolHooksContract, "hooksContract is wrong");
+    }
+
+    function testAddUnbalanced() public {
+        // Should not revert, as this is enabled
+        BaseVaultTest.Balances memory balancesBefore = getBalances(lp);
+
+        uint256 firstAmount = 1e18;
+        uint256 secondAmount = 2e18;
+
+        vm.prank(lp);
+        uint256 bptAmountOut = router.addLiquidityUnbalanced(
+            pool,
+            [firstAmount, secondAmount].toMemoryArray(),
+            0,
+            false,
+            bytes("")
+        );
+        assertTrue(bptAmountOut > 0, "No BPT out on add unbalanced");
+
+        // Sanity check
+        BaseVaultTest.Balances memory balancesAfter = getBalances(lp);
+
+        assertEq(
+            balancesBefore.poolTokens[0] + firstAmount,
+            balancesAfter.poolTokens[0],
+            "Wrong first token amount (pool)"
+        );
+        assertEq(
+            balancesBefore.poolTokens[1] + secondAmount,
+            balancesAfter.poolTokens[1],
+            "Wrong second token amount (pool)"
+        );
+
+        assertEq(balancesBefore.lpTokens[0] - firstAmount, balancesAfter.lpTokens[0], "Wrong first token amount (lp)");
+        assertEq(
+            balancesBefore.lpTokens[1] - secondAmount,
+            balancesAfter.lpTokens[1],
+            "Wrong second token amount (lp)"
+        );
     }
 
     // Exit fee returns to LPs
@@ -198,7 +238,6 @@ contract ExitFeeHookExampleTest is BaseVaultTest {
         roleAccounts.poolCreator = lp;
 
         LiquidityManagement memory liquidityManagement;
-        liquidityManagement.disableAddLiquidityUnbalanced = true;
         liquidityManagement.disableRemoveLiquidityUnbalanced = true;
         liquidityManagement.enableDonation = enableDonation;
 

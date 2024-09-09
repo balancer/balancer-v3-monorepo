@@ -215,10 +215,10 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
     /// @inheritdoc BaseHooks
     function getHookFlags() public pure override returns (HookFlags memory) {
         HookFlags memory hookFlags;
-        // `enableHookAdjustedAmounts` must be true for all contracts that modify the `amountCalculated`
+        // `enableHookAdjustedAmountsOnRemove` must be true for all contracts that modify the `amountCalculated`
         // in after hooks. Otherwise, the Vault will ignore any "hookAdjusted" amounts, and the transaction
         // might not settle. (It should be false if the after hooks do something else.)
-        hookFlags.enableHookAdjustedAmounts = true;
+        hookFlags.enableHookAdjustedAmountsOnRemove = true;
         hookFlags.shouldCallBeforeAddLiquidity = true;
         hookFlags.shouldCallAfterRemoveLiquidity = true;
         return hookFlags;
