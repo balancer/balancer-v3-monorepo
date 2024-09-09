@@ -81,8 +81,8 @@ contract StablePoolFactory is IPoolVersion, BasePoolFactory, Version {
         LiquidityManagement memory liquidityManagement = getDefaultLiquidityManagement();
         liquidityManagement.enableDonation = enableDonation;
 
-        // disableAddLiquidityUnbalanced must be set to true if a hook has the flag enableHookAdjustedAmountsOnAdd = true.
-        // disableRemoveLiquidityUnbalanced must be set to true if a hook has the flag enableHookAdjustedAmountsOnRemove = true.
+        // disableAddLiquidityUnbalanced must be true if a hook set the flag enableHookAdjustedAmountsOnAdd.
+        // disableRemoveLiquidityUnbalanced must be true if a hook set the flag enableHookAdjustedAmountsOnRemove.
         liquidityManagement.disableAddLiquidityUnbalanced = disableAddLiquidityUnbalanced;
         liquidityManagement.disableRemoveLiquidityUnbalanced = disableRemoveLiquidityUnbalanced;
 
