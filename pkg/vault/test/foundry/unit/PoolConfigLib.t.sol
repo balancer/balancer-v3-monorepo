@@ -31,10 +31,7 @@ contract PoolConfigLibTest is Test {
         assertFalse(config.isPoolInitialized(), "isPoolInitialized mismatch (zero config)");
         assertFalse(config.isPoolPaused(), "isPoolPaused mismatch (zero config)");
         assertFalse(config.isPoolInRecoveryMode(), "isPoolInRecoveryMode mismatch (zero config)");
-        assertTrue(
-            config.supportsAddLiquidityUnbalanced(),
-            "supportsAddLiquidityUnbalanced mismatch (zero config)"
-        );
+        assertTrue(config.supportsAddLiquidityUnbalanced(), "supportsAddLiquidityUnbalanced mismatch (zero config)");
         assertTrue(
             config.supportsRemoveLiquidityUnbalanced(),
             "supportsRemoveLiquidityUnbalanced mismatch (zero config)"
