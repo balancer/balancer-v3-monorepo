@@ -281,18 +281,23 @@ contract VaultExtension is IVaultExtension, VaultCommon, Proxy {
 
                 // When enableHookAdjustedAmounts == true, hooks are able to modify the result of a liquidity or swap
                 // operation by implementing an after hook. For simplicity, the vault only supports modifying the
-                // calculated part of the operation. As such, when a hook supports adjusted amounts, it cannot support
-                // unbalanced liquidity operations, as this would introduce instances where the amount calculated is the
-                // input amount (EXACT_OUT).
+                // calculated part of the operation. As such, when a hook supports adjusted amounts on liquidity
+                // operations, it cannot support unbalanced operations, as this would introduce instances where the
+                // amount calculated is the input amount (EXACT_OUT).
                 if (
-                    hookFlags.enableHookAdjustedAmounts &&
-                    (params.liquidityManagement.disableAddLiquidityUnbalanced == false ||
+                    (hookFlags.enableHookAdjustedAmountsOnAdd &&
+                        params.liquidityManagement.disableAddLiquidityUnbalanced == false) ||
+                    (hookFlags.enableHookAdjustedAmountsOnRemove &&
                         params.liquidityManagement.disableRemoveLiquidityUnbalanced == false)
                 ) {
                     revert HookRegistrationFailed(params.poolHooksContract, pool, msg.sender);
                 }
 
-                poolConfigBits = poolConfigBits.setHookAdjustedAmounts(hookFlags.enableHookAdjustedAmounts);
+                poolConfigBits = poolConfigBits.setHookAdjustedAmountsOnAdd(hookFlags.enableHookAdjustedAmountsOnAdd);
+                poolConfigBits = poolConfigBits.setHookAdjustedAmountsOnRemove(
+                    hookFlags.enableHookAdjustedAmountsOnRemove
+                );
+                poolConfigBits = poolConfigBits.setHookAdjustedAmountsOnSwap(hookFlags.enableHookAdjustedAmountsOnSwap);
                 poolConfigBits = poolConfigBits.setShouldCallBeforeInitialize(hookFlags.shouldCallBeforeInitialize);
                 poolConfigBits = poolConfigBits.setShouldCallAfterInitialize(hookFlags.shouldCallAfterInitialize);
                 poolConfigBits = poolConfigBits.setShouldCallComputeDynamicSwapFee(

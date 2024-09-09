@@ -37,14 +37,42 @@ library HooksConfigLib {
 
     // #region Bit offsets for hooks config
 
-    function enableHookAdjustedAmounts(PoolConfigBits config) internal pure returns (bool) {
-        return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET);
+    function enableHookAdjustedAmountsOnAdd(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.ENABLE_HOOK_ADJUSTED_AMOUNTS_ADD_OFFSET);
     }
 
-    function setHookAdjustedAmounts(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+    function enableHookAdjustedAmountsOnRemove(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.ENABLE_HOOK_ADJUSTED_AMOUNTS_REMOVE_OFFSET);
+    }
+
+    function enableHookAdjustedAmountsOnSwap(PoolConfigBits config) internal pure returns (bool) {
+        return PoolConfigBits.unwrap(config).decodeBool(PoolConfigConst.ENABLE_HOOK_ADJUSTED_AMOUNTS_SWAP_OFFSET);
+    }
+
+    function setHookAdjustedAmountsOnAdd(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
         return
             PoolConfigBits.wrap(
-                PoolConfigBits.unwrap(config).insertBool(value, PoolConfigConst.ENABLE_HOOK_ADJUSTED_AMOUNTS_OFFSET)
+                PoolConfigBits.unwrap(config).insertBool(value, PoolConfigConst.ENABLE_HOOK_ADJUSTED_AMOUNTS_ADD_OFFSET)
+            );
+    }
+
+    function setHookAdjustedAmountsOnRemove(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertBool(
+                    value,
+                    PoolConfigConst.ENABLE_HOOK_ADJUSTED_AMOUNTS_REMOVE_OFFSET
+                )
+            );
+    }
+
+    function setHookAdjustedAmountsOnSwap(PoolConfigBits config, bool value) internal pure returns (PoolConfigBits) {
+        return
+            PoolConfigBits.wrap(
+                PoolConfigBits.unwrap(config).insertBool(
+                    value,
+                    PoolConfigConst.ENABLE_HOOK_ADJUSTED_AMOUNTS_SWAP_OFFSET
+                )
             );
     }
 
@@ -153,7 +181,9 @@ library HooksConfigLib {
     function toHooksConfig(PoolConfigBits config, IHooks hooksContract) internal pure returns (HooksConfig memory) {
         return
             HooksConfig({
-                enableHookAdjustedAmounts: config.enableHookAdjustedAmounts(),
+                enableHookAdjustedAmountsOnAdd: config.enableHookAdjustedAmountsOnAdd(),
+                enableHookAdjustedAmountsOnRemove: config.enableHookAdjustedAmountsOnRemove(),
+                enableHookAdjustedAmountsOnSwap: config.enableHookAdjustedAmountsOnSwap(),
                 shouldCallBeforeInitialize: config.shouldCallBeforeInitialize(),
                 shouldCallAfterInitialize: config.shouldCallAfterInitialize(),
                 shouldCallBeforeAddLiquidity: config.shouldCallBeforeAddLiquidity(),
@@ -268,7 +298,7 @@ library HooksConfigLib {
         }
 
         // If hook adjusted amounts is not enabled, ignore amounts returned by the hook
-        if (config.enableHookAdjustedAmounts() == false) {
+        if (config.enableHookAdjustedAmountsOnSwap() == false) {
             return amountCalculatedRaw;
         }
 
@@ -353,7 +383,7 @@ library HooksConfigLib {
         }
 
         // If hook adjusted amounts is not enabled, ignore amounts returned by the hook
-        if (config.enableHookAdjustedAmounts() == false) {
+        if (config.enableHookAdjustedAmountsOnAdd() == false) {
             return amountsInRaw;
         }
 
@@ -441,7 +471,7 @@ library HooksConfigLib {
         }
 
         // If hook adjusted amounts is not enabled, ignore amounts returned by the hook
-        if (config.enableHookAdjustedAmounts() == false) {
+        if (config.enableHookAdjustedAmountsOnRemove() == false) {
             return amountsOutRaw;
         }
 

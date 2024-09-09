@@ -15,10 +15,12 @@ import { IRateProvider } from "../solidity-utils/helpers/IRateProvider.sol";
  * liquidity unbalanced. Hooks with exit fees should enforce proportional withdrawals to ensure proper fee accounting,
  * but might still allow unbalanced adds.
  *
- * Particular care must be taken when a hook supports `enableHookAdjustedAmounts`. Since fees can only be taken
- * in tokens - not BPT - any path that would result in BPT fees is unsupported. Accordingly, the Vault enforces that
- * any hook with `enableHookAdjustedAmounts` set to true cannot be registered to a pool with either add or remove
- * liquidity unbalanced enabled.
+ * Particular care must be taken when a hook supports `enableHookAdjustedAmounts` (add or remove). Since fees can only
+ * be taken in tokens - not BPT - any path that would result in BPT fees is unsupported. Accordingly, the Vault
+ * enforces that any hook with a `enableHookAdjustedAmounts` flag set to true cannot be registered to a pool with the
+ * corresponding add or remove liquidity unbalanced enabled. A hook that supports adjusting the calculated amount
+ * on a swap, while it doesn't create inherent issues (as the Vault specifically prohibits registering a pool's own BPT
+ * as a pool token), must also explcitly opt in to allow this behavior by setting `enableHookAdjustedAmountsOnSwap`.
  *
  * It is the responsibility of each custom pool and hook contract to carefully consider how to set these flags!
  *
@@ -55,12 +57,14 @@ struct PoolConfig {
 
 /**
  * @notice The flag portion of the `HooksConfig`.
- * @dev `enableHookAdjustedAmounts` must be true for all contracts that modify the `amountCalculated`
- * in after hooks. Otherwise, the Vault will ignore any "hookAdjusted" amounts. Setting any "shouldCall"
- * flags to true will cause the Vault to call the corresponding hook during operations.
+ * @dev The appropriate `enableHookAdjustedAmounts` flag must be true for all contracts that modify the
+ * `amountCalculated` in after hooks. Otherwise, the Vault will ignore any "hookAdjusted" amounts. Setting
+ * any "shouldCall" flags to true will cause the Vault to call the corresponding hook during operations.
  */
 struct HookFlags {
-    bool enableHookAdjustedAmounts;
+    bool enableHookAdjustedAmountsOnAdd;
+    bool enableHookAdjustedAmountsOnRemove;
+    bool enableHookAdjustedAmountsOnSwap;
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
     bool shouldCallComputeDynamicSwapFee;
@@ -74,7 +78,9 @@ struct HookFlags {
 
 /// @notice Represents a hook contract configuration for a pool (HookFlags + hooksContract address).
 struct HooksConfig {
-    bool enableHookAdjustedAmounts;
+    bool enableHookAdjustedAmountsOnAdd;
+    bool enableHookAdjustedAmountsOnRemove;
+    bool enableHookAdjustedAmountsOnSwap;
     bool shouldCallBeforeInitialize;
     bool shouldCallAfterInitialize;
     bool shouldCallComputeDynamicSwapFee;
