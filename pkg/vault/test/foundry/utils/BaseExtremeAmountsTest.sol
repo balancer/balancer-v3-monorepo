@@ -440,35 +440,45 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         assertEq(bptAmountOut, exactBPTAmount, "bpAmountOut should be equal to exactBPTAmount");
 
         uint256 snapshot = vm.snapshot();
-        vault.query
-        try
-            vault.removeLiquidity(
-                RemoveLiquidityParams({
-                    pool: pool,
-                    from: address(this),
-                    maxBptAmountIn: MAX_UINT128,
-                    minAmountsOut: [0, amountsIn[1]].toMemoryArray(),
-                    kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
-                    userData: bytes("")
-                })
-            )
-        returns (uint256 bptAmountIn, uint256[] memory amountsOut, bytes memory) {
+        vm.prank(address(this), address(0));
+        (uint256 queryBPTAmountIn, , ) = vault.removeLiquidity(
+            RemoveLiquidityParams({
+                pool: pool,
+                from: address(this),
+                maxBptAmountIn: MAX_UINT128,
+                minAmountsOut: [0, amountsIn[1]].toMemoryArray(),
+                kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                userData: bytes("")
+            })
+        );
+        vm.revertTo(snapshot);
+
+        if (queryBPTAmountIn > bptAmountOut) {
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    IERC20Errors.ERC20InsufficientBalance.selector,
+                    address(this),
+                    bptAmountOut,
+                    queryBPTAmountIn
+                )
+            );
+        }
+
+        (uint256 bptAmountIn, uint256[] memory amountsOut, ) = vault.removeLiquidity(
+            RemoveLiquidityParams({
+                pool: pool,
+                from: address(this),
+                maxBptAmountIn: MAX_UINT128,
+                minAmountsOut: [0, amountsIn[1]].toMemoryArray(),
+                kind: RemoveLiquidityKind.SINGLE_TOKEN_EXACT_OUT,
+                userData: bytes("")
+            })
+        );
+
+        if (queryBPTAmountIn <= bptAmountOut) {
             assertEq(bptAmountIn, bptAmountOut, "bptAmountIn should be equal to bptAmountOut");
             assertEq(amountsOut[0], amountsIn[0], "amountsOut[0] should be equal to amountsIn[0]");
             assertEq(amountsOut[1], amountsIn[1], "amountsOut[1] should be equal to amountsIn[1]");
-        } catch (bytes memory reason) {
-            (bytes4 selector, bytes memory reasonWithoutSelector) = _extractSelectorFromErrorReason(reason);
-            (, uint256 balance, uint256 needed) = abi.decode(reasonWithoutSelector, (address, uint256, uint256));
-
-            assertEq(
-                selector,
-                IERC20Errors.ERC20InsufficientBalance.selector,
-                "Selector should be ERC20InsufficientBalance"
-            );
-
-            assertGe(needed, bptAmountOut, "needed should be greater or equal to bptAmountOut");
-            assertEq(balance, bptAmountOut, "balance should be equal to bptAmountOut");
-            return;
         }
     }
 
