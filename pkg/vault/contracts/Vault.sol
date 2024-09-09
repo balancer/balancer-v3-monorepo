@@ -1154,9 +1154,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // wrap operation. If the vault does not have enough tokens to do the actual wrap, use ERC4626 preview.
         bool isQueryContext = _isQueryContext();
 
-        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
-
         if (kind == SwapKind.EXACT_IN) {
+            if (isQueryContext) {
+                return (amountGiven, wrappedToken.previewDeposit(amountGiven));
+            }
             // EXACT_IN wrap, so AmountGiven is underlying amount. If the buffer has enough liquidity to handle the
             // wrap, it'll send amountOutWrapped to the user without calling the wrapper protocol, so it can't check
             // if the "convert" function has rounding errors or is oversimplified. To make sure the buffer is not
@@ -1166,16 +1167,10 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 amountGiven,
                 wrappedToken.convertToShares(amountGiven) - _CONVERT_FACTOR
             );
-
-            if (isQueryContext) {
-                // TODO explain
-                bool hasSurplus = bufferBalances.getBufferUnderlyingSurplus(wrappedToken) > 0;
-                if (bufferBalances.getBalanceDerived() >= amountOutWrapped || hasSurplus) {
-                    return (amountInUnderlying, amountOutWrapped);
-                }
-                return (amountGiven, wrappedToken.previewDeposit(amountGiven));
-            }
         } else {
+            if (isQueryContext) {
+                return (wrappedToken.previewMint(amountGiven), amountGiven);
+            }
             // EXACT_OUT wrap, so AmountGiven is wrapped amount. If the buffer has enough liquidity to handle the
             // wrap, it'll charge amountInUnderlying from the user without calling the wrapper protocol, so it can't
             // check if the "convert" function has rounding errors or is oversimplified. To make sure the buffer is not
@@ -1185,16 +1180,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 wrappedToken.convertToAssets(amountGiven) + _CONVERT_FACTOR,
                 amountGiven
             );
-
-            if (isQueryContext) {
-                // TODO explain
-                bool hasSurplus = bufferBalances.getBufferUnderlyingSurplus(wrappedToken) > 0;
-                if (bufferBalances.getBalanceDerived() >= amountOutWrapped || hasSurplus) {
-                    return (amountInUnderlying, amountOutWrapped);
-                }
-                return (wrappedToken.previewMint(amountGiven), amountGiven);
-            }
         }
+
+        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
         if (bufferBalances.getBalanceDerived() >= amountOutWrapped) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
@@ -1311,47 +1299,35 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     ) private returns (uint256 amountInWrapped, uint256 amountOutUnderlying) {
         bool isQueryContext = _isQueryContext();
 
-        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
-
         if (kind == SwapKind.EXACT_IN) {
+            if (isQueryContext) {
+                return (amountGiven, wrappedToken.previewRedeem(amountGiven));
+            }
             // EXACT_IN unwrap, so AmountGiven is wrapped amount. If the buffer has enough liquidity to handle the
             // unwrap, it'll send amountOutUnderlying to the user without calling the wrapper protocol, so it can't
             // check if the "convert" function has rounding errors or is oversimplified. To make sure the buffer is not
             // drained we remove a convert factor that decreases the amount of underlying tokens out, protecting the
             // buffer balance.
-            (amountInWrapped, amountOutUnderlying) = (
-                amountGiven,
-                wrappedToken.convertToAssets(amountGiven) - _CONVERT_FACTOR
+            (amountOutUnderlying, amountInWrapped) = (
+                wrappedToken.convertToAssets(amountGiven) - _CONVERT_FACTOR,
+                amountGiven
             );
-
-            if (isQueryContext) {
-                // TODO explain
-                bool hasSurplus = bufferBalances.getBufferWrappedSurplus(wrappedToken) > 0;
-                if (bufferBalances.getBalanceRaw() >= amountOutUnderlying || hasSurplus) {
-                    return (amountInWrapped, amountOutUnderlying);
-                }
-                return (amountGiven, wrappedToken.previewRedeem(amountGiven));
-            }
         } else {
+            if (isQueryContext) {
+                return (wrappedToken.previewWithdraw(amountGiven), amountGiven);
+            }
             // EXACT_OUT unwrap, so AmountGiven is underlying amount. If the buffer has enough liquidity to handle the
             // unwrap, it'll charge amountInWrapped from the user without calling the wrapper protocol, so it can't
             // check if the "convert" function has rounding errors or is oversimplified. To make sure the buffer is not
             // drained we add a convert factor that increases the amount of wrapped tokens in, protecting the
             // buffer balance.
-            (amountInWrapped, amountOutUnderlying) = (
-                wrappedToken.convertToShares(amountGiven) + _CONVERT_FACTOR,
-                amountGiven
+            (amountOutUnderlying, amountInWrapped) = (
+                amountGiven,
+                wrappedToken.convertToShares(amountGiven) + _CONVERT_FACTOR
             );
-
-            if (isQueryContext) {
-                // TODO explain
-                bool hasSurplus = bufferBalances.getBufferWrappedSurplus(wrappedToken) > 0;
-                if (bufferBalances.getBalanceRaw() >= amountOutUnderlying || hasSurplus) {
-                    return (amountInWrapped, amountOutUnderlying);
-                }
-                return (wrappedToken.previewWithdraw(amountGiven), amountGiven);
-            }
         }
+
+        bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
         if (bufferBalances.getBalanceRaw() >= amountOutUnderlying) {
             // The buffer has enough liquidity to facilitate the wrap without making an external call.
