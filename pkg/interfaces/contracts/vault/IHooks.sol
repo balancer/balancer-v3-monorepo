@@ -118,7 +118,7 @@ interface IHooks {
     /**
      * @notice Hook to be executed after adding liquidity.
      * @dev Called if the `shouldCallAfterAddLiquidity` flag is set in the configuration. The Vault will ignore
-     * `hookAdjustedAmountsInRaw` unless `enableHookAdjustedAmounts` is true. Hook contracts should use the
+     * `hookAdjustedAmountsInRaw` unless `enableHookAdjustedAmountsOnAdd` is true. Hook contracts should use the
      * `onlyVault` modifier to guarantee this is only called by the Vault.
      *
      * @param router The address (usually a router contract) that initiated an add liquidity operation on the Vault
@@ -174,7 +174,7 @@ interface IHooks {
     /**
      * @notice Hook to be executed after removing liquidity.
      * @dev Called if the `shouldCallAfterRemoveLiquidity` flag is set in the configuration. The Vault will ignore
-     * `hookAdjustedAmountsOutRaw` unless `enableHookAdjustedAmounts` is true. Hook contracts should use the
+     * `hookAdjustedAmountsOutRaw` unless `enableHookAdjustedAmountsOnRemove` is true. Hook contracts should use the
      * `onlyVault` modifier to guarantee this is only called by the Vault.
      *
      * @param router The address (usually a router contract) that initiated a remove liquidity operation on the Vault
@@ -217,8 +217,8 @@ interface IHooks {
     /**
      * @notice Called after a swap to perform further actions once the balances have been updated by the swap.
      * @dev Called if the `shouldCallAfterSwap` flag is set in the configuration. The Vault will ignore
-     * `hookAdjustedAmountCalculatedRaw` unless `enableHookAdjustedAmounts` is true. Hook contracts should
-     * use the `onlyVault` modifier to guarantee this is only called by the Vault.
+     * `hookAdjustedAmountCalculatedRaw` unless the `enableHookAdjustedAmountsOnSwap` flag is true.
+     * Hook contracts should use the `onlyVault` modifier to guarantee this is only called by the Vault.
      *
      * @param params Swap parameters (see above for struct definition)
      * @return success True if the pool wishes to proceed with settlement
