@@ -284,9 +284,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             vaultConvertFactor;
 
         vars.expectedAliceDeltaDai = tooLargeSwapAmount;
-        // When rebalancing, _CONVERT_FACTOR is used to fix the surplus amount calculated through convert. Since we're
-        // rebalancing twice (and token rates are 1), _CONVERT_FACTOR is charged twice.
-        vars.expectedAliceDeltaUsdc = tooLargeSwapAmount - 2 * vaultConvertFactor;
+        vars.expectedAliceDeltaUsdc = tooLargeSwapAmount;
 
         _verifySwapResult(pathAmountsOut, tokensOut, amountsOut, vars);
     }
@@ -335,9 +333,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
             waUSDC.convertToShares(tooLargeSwapAmount) -
             vaultConvertFactor;
 
-        // When rebalancing, _CONVERT_FACTOR is used to fix the surplus amount calculated through convert. Since we're
-        // rebalancing twice (and token rates are 1), _CONVERT_FACTOR is charged twice.
-        vars.expectedAliceDeltaDai = tooLargeSwapAmount + 2 * vaultConvertFactor;
+        vars.expectedAliceDeltaDai = tooLargeSwapAmount;
         vars.expectedAliceDeltaUsdc = tooLargeSwapAmount;
 
         _verifySwapResult(pathAmountsIn, tokensIn, amountsIn, vars);

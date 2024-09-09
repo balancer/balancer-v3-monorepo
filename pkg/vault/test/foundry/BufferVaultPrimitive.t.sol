@@ -309,13 +309,10 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.convertToShares(_wrapAmount / 10));
         vm.stopPrank();
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
-            waDAI.convertToShares(_wrapAmount),
-            0,
-            IERC20(address(waDAI)),
-            dai,
-            IERC20(address(waDAI))
-        );
+        uint256 wrappedAmountIn = waDAI.previewWithdraw(_wrapAmount);
+        IERC20 wDai = IERC20(address(waDAI));
+
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(wrappedAmountIn, 0, wDai, dai, wDai);
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
@@ -323,13 +320,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.prank(lp);
         (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _checkUnwrapResults(
-            balancesBefore,
-            waDAI.convertToShares(_wrapAmount),
-            pathAmountsOut[0],
-            SwapKind.EXACT_IN,
-            false
-        );
+        _checkUnwrapResults(balancesBefore, wrappedAmountIn, pathAmountsOut[0], SwapKind.EXACT_IN, false);
     }
 
     function testRedeemWithBufferLiquidity() public {
@@ -339,13 +330,10 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         router.initializeBuffer(IERC4626(address(waDAI)), 2 * _wrapAmount, waDAI.convertToShares(2 * _wrapAmount));
         vm.stopPrank();
 
-        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(
-            waDAI.convertToShares(_wrapAmount),
-            0,
-            IERC20(address(waDAI)),
-            dai,
-            IERC20(address(waDAI))
-        );
+        uint256 wrappedAmountIn = waDAI.previewWithdraw(_wrapAmount);
+        IERC20 wDai = IERC20(address(waDAI));
+
+        IBatchRouter.SwapPathExactAmountIn[] memory paths = _exactInWrapUnwrapPath(wrappedAmountIn, 0, wDai, dai, wDai);
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
@@ -353,13 +341,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.prank(lp);
         (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _checkUnwrapResults(
-            balancesBefore,
-            waDAI.convertToShares(_wrapAmount),
-            pathAmountsOut[0],
-            SwapKind.EXACT_IN,
-            true
-        );
+        _checkUnwrapResults(balancesBefore, wrappedAmountIn, pathAmountsOut[0], SwapKind.EXACT_IN, true);
     }
 
     /********************************************************************************
@@ -802,29 +784,20 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // For wrap exact out, when the buffer has enough liquidity to fulfill the operation, amountIn increases by
         // conversion factor. Depending on the token rate, the value may change a bit, but it's important that amountIn
         // is bigger than _wrapAmount to make sure the buffer is not drained.
-        uint256 convertFactorExactOut = withBufferLiquidity && kind == SwapKind.EXACT_OUT ? vaultConvertFactor : 1;
-        assertApproxEqAbs(
-            amountIn,
-            _wrapAmount + convertFactorExactOut,
-            convertFactorExactOut,
-            "AmountIn (underlying deposited) is wrong"
-        );
-        assertApproxEqAbs(
+        assertEq(amountIn, _wrapAmount, "AmountIn (underlying deposited) is wrong");
+        assertEq(
             balancesAfter.lpTokens[daiIdx],
-            balancesBefore.lpTokens[daiIdx] - _wrapAmount - convertFactorExactOut,
-            convertFactorExactOut,
+            balancesBefore.lpTokens[daiIdx] - _wrapAmount,
             "LP balance of underlying token is wrong"
         );
         // For wrap exact out, when the buffer has enough liquidity to fulfill the operation, amountOut decreases by
         // conversion factor. Depending on the token rate, the value may change a bit, but it's important that
         // amountOut is smaller than `waDAI.previewDeposit(_wrapAmount)` to make sure the buffer is not drained.
-        uint256 convertFactorExactIn = withBufferLiquidity && kind == SwapKind.EXACT_IN ? vaultConvertFactor : 1;
-        uint256 expectedAmountOut = waDAI.previewDeposit(_wrapAmount) - convertFactorExactIn;
-        assertApproxEqAbs(amountOut, expectedAmountOut, convertFactorExactIn, "AmountOut (wrapped minted) is wrong");
-        assertApproxEqAbs(
+        uint256 expectedAmountOut = waDAI.previewDeposit(_wrapAmount);
+        assertEq(amountOut, expectedAmountOut, "AmountOut (wrapped minted) is wrong");
+        assertEq(
             balancesAfter.lpTokens[waDaiIdx],
             balancesBefore.lpTokens[waDaiIdx] + expectedAmountOut,
-            convertFactorExactIn,
             "LP balance of wrapped token is wrong"
         );
 
@@ -856,8 +829,8 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
 
     function _checkUnwrapResults(
         BaseVaultTest.Balances memory balancesBefore,
-        uint256 amountIn,
-        uint256 amountOut,
+        uint256 wrappedAmountIn,
+        uint256 underlyingAmountOut,
         SwapKind kind,
         bool withBufferLiquidity
     ) private view {
@@ -865,33 +838,21 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(lp, tokens);
 
         // Check unwrap results.
-        // For unwrap exact out, when the buffer has enough liquidity to fulfill the operation, amountIn increases by
-        // conversion factor. Depending on the token rate, the value may change a bit, but it's important that
-        // amountIn is bigger than `waDAI.previewDeposit(_wrapAmount)` to make sure the buffer is not drained.
-        uint256 convertFactorExactOut = withBufferLiquidity && kind == SwapKind.EXACT_OUT ? vaultConvertFactor : 1;
-        uint256 expectedAmountIn = waDAI.previewDeposit(_wrapAmount) + convertFactorExactOut;
-        assertApproxEqAbs(amountIn, expectedAmountIn, convertFactorExactOut, "AmountIn (wrapped burned) is wrong");
-        assertApproxEqAbs(
+        uint256 expectedWrappedAmountIn = waDAI.previewWithdraw(_wrapAmount);
+        assertEq(wrappedAmountIn, expectedWrappedAmountIn, "WrappedAmountIn is wrong");
+        assertEq(
             balancesAfter.lpTokens[waDaiIdx],
-            balancesBefore.lpTokens[waDaiIdx] - expectedAmountIn,
-            convertFactorExactOut,
+            balancesBefore.lpTokens[waDaiIdx] - expectedWrappedAmountIn,
             "LP balance of wrapped token is wrong"
         );
         // For unwrap exact in, when the buffer has enough liquidity to fulfill the operation, amountOut decreases by
         // conversion factor. Depending on the token rate, the value may change a bit, but it's important that
         // amountOut is smaller than _wrapAmount to make sure the buffer is not drained.
-        uint256 convertFactorExactIn = withBufferLiquidity && kind == SwapKind.EXACT_IN ? vaultConvertFactor : 1;
-        uint256 expectedAmountOut = _wrapAmount - convertFactorExactIn;
-        assertApproxEqAbs(
-            amountOut,
-            expectedAmountOut,
-            convertFactorExactIn,
-            "AmountOut (underlying withdrawn) is wrong"
-        );
-        assertApproxEqAbs(
+        uint256 expectedAmountOut = _wrapAmount;
+        assertEq(underlyingAmountOut, expectedAmountOut, "AmountOut (underlying withdrawn) is wrong");
+        assertEq(
             balancesAfter.lpTokens[daiIdx],
             balancesBefore.lpTokens[daiIdx] + expectedAmountOut,
-            convertFactorExactIn,
             "LP balance of underlying token is wrong"
         );
 
@@ -899,12 +860,12 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         // reflect more wrapped and less underlying. Else, vault balances should not change.
         assertEq(
             balancesAfter.vaultReserves[waDaiIdx],
-            balancesBefore.vaultReserves[waDaiIdx] + (withBufferLiquidity ? amountIn : 0),
+            balancesBefore.vaultReserves[waDaiIdx] + (withBufferLiquidity ? wrappedAmountIn : 0),
             "Vault reserves of wrapped token is wrong"
         );
         assertEq(
             balancesAfter.vaultReserves[daiIdx],
-            balancesBefore.vaultReserves[daiIdx] - (withBufferLiquidity ? amountOut : 0),
+            balancesBefore.vaultReserves[daiIdx] - (withBufferLiquidity ? underlyingAmountOut : 0),
             "Vault reserves of underlying token is wrong"
         );
 

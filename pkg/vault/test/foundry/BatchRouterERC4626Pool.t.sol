@@ -92,8 +92,8 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
         uint256[] memory exactWrappedAmountsIn = new uint256[](2);
-        exactWrappedAmountsIn[waDaiIdx] = waDAI.convertToShares(operationAmount) - vaultConvertFactor;
-        exactWrappedAmountsIn[waUsdcIdx] = waUSDC.convertToShares(operationAmount) - vaultConvertFactor;
+        exactWrappedAmountsIn[waDaiIdx] = waDAI.previewDeposit(operationAmount);
+        exactWrappedAmountsIn[waUsdcIdx] = waUSDC.previewDeposit(operationAmount);
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
@@ -131,7 +131,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory exactUnderlyingAmountsIn = [operationAmount, operationAmount].toMemoryArray();
 
         uint256[] memory exactWrappedAmountsIn = new uint256[](2);
-        exactWrappedAmountsIn[partialWaDaiIdx] = waDAI.convertToShares(operationAmount) - vaultConvertFactor;
+        exactWrappedAmountsIn[partialWaDaiIdx] = waDAI.previewDeposit(operationAmount);
         exactWrappedAmountsIn[partialUsdcIdx] = operationAmount;
 
         uint256 snapshot = vm.snapshot();
@@ -194,24 +194,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             bytes("")
         );
 
-        // Query and actual operation have a small difference in the buffer operation: a query in the buffer returns
-        // the amount of wrapped tokens calculated by a "preview" operation, while the actual operation in the buffer
-        // returns the "convertToShares" result + vaultConvertFactor. Since the wrapped amount out of each buffer is
-        // added to the yield-bearing pool and converted to the equivalent underlying amount to calculate the
-        // poolInvariantDelta (which, in this case, is the bptAmountOut), we need to consider the error added by
-        // vaultConvertFactor scaled by each token rate.
-        uint256 invariantError = vaultConvertFactor.mulDown(waDAI.getRate()) +
-            vaultConvertFactor.mulDown(waUSDC.getRate());
-
-        // Since these are amounts out, the query (which uses the wrap preview) should be better than the actual
-        // operation (that uses buffer liquidity to fulfill an ExactIn wrap and calculate the amount of wrapped tokens
-        // out using convertToShares - vaultConvertFactor).
-        assertApproxEqAbs(
-            queryBptAmountOut,
-            actualBptAmountOut + invariantError,
-            MAX_ERROR,
-            "Query and actual bpt amount out do not match"
-        );
+        assertEq(queryBptAmountOut, actualBptAmountOut, "Query and actual bpt amount out do not match");
     }
 
     function testQueryAddLiquidityUnbalancedToPartialERC4626Pool() public {
@@ -236,23 +219,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             bytes("")
         );
 
-        // Query and actual operation have a small difference in the buffer operation: a query in the buffer returns
-        // the amount of wrapped tokens calculated by a "preview" operation, while the actual operation in the buffer
-        // returns the "convertToShares" result + vaultConvertFactor. Since the wrapped amount out of each buffer is
-        // added to the yield-bearing pool and converted to the equivalent underlying amount to calculate the
-        // poolInvariantDelta (which, in this case, is the bptAmountOut), we need to consider the error added by
-        // vaultConvertFactor scaled by each token rate.
-        uint256 invariantError = vaultConvertFactor.mulDown(waDAI.getRate());
-
-        // Since these are amounts out, the query (which uses the wrap preview) should be better than the actual
-        // operation (that uses buffer liquidity to fulfill an ExactIn wrap and calculate the amount of wrapped tokens
-        // out using convertToShares - vaultConvertFactor).
-        assertApproxEqAbs(
-            queryBptAmountOut,
-            actualBptAmountOut + invariantError,
-            MAX_ERROR,
-            "Query and actual bpt amount out do not match"
-        );
+        assertEq(queryBptAmountOut, actualBptAmountOut, "Query and actual bpt amount out do not match");
     }
 
     function testAddLiquidityProportionalToERC4626Pool_Fuzz(uint256 rawOperationAmount) public {
@@ -292,16 +259,14 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         _checkBalancesAfterAddLiquidity(balancesBefore, balancesAfter, vars);
 
-        assertApproxEqAbs(
+        assertEq(
             actualUnderlyingAmountsIn[waDaiIdx],
-            waDAI.convertToAssets(expectedWrappedAmountsIn[waDaiIdx]) + vaultConvertFactor,
-            MAX_ERROR,
+            waDAI.previewMint(expectedWrappedAmountsIn[waDaiIdx]),
             "DAI actualAmountsInUnderlying should match expected"
         );
-        assertApproxEqAbs(
+        assertEq(
             actualUnderlyingAmountsIn[waUsdcIdx],
-            waUSDC.convertToAssets(expectedWrappedAmountsIn[waUsdcIdx]) + vaultConvertFactor,
-            MAX_ERROR,
+            waUSDC.previewMint(expectedWrappedAmountsIn[waUsdcIdx]),
             "USDC actualAmountsInUnderlying should match expected"
         );
 
@@ -353,17 +318,14 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         _checkBalancesAfterAddLiquidity(balancesBefore, balancesAfter, vars);
 
-        assertApproxEqAbs(
+        assertEq(
             actualUnderlyingAmountsIn[partialWaDaiIdx],
-            waDAI.convertToAssets(expectedWrappedAmountsIn[partialWaDaiIdx]) + vaultConvertFactor,
-            MAX_ERROR,
+            waDAI.previewMint(expectedWrappedAmountsIn[partialWaDaiIdx]),
             "DAI actualAmountsInUnderlying should match expected"
         );
-        // `expectedWrappedAmountsIn` in this case is equal to expected underlying since USDC is not a wrapped token.
-        assertApproxEqAbs(
+        assertEq(
             actualUnderlyingAmountsIn[partialUsdcIdx],
             expectedWrappedAmountsIn[partialUsdcIdx],
-            MAX_ERROR,
             "USDC actualAmountsInUnderlying should match expected"
         );
 
@@ -401,13 +363,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         for (uint256 i = 0; i < queryUnderlyingAmountsIn.length; i++) {
-            // Since these are amounts in, the query (which uses the wrap preview) should be better than the actual
-            // operation (that uses buffer liquidity to fulfill an ExactOut wrap and calculate the amount of underlying
-            // tokens in using convertToAssets + vaultConvertFactor).
-            assertApproxEqAbs(
+            assertEq(
                 actualUnderlyingAmountsIn[i],
-                queryUnderlyingAmountsIn[i] + vaultConvertFactor,
-                MAX_ERROR,
+                queryUnderlyingAmountsIn[i],
                 "Query and actual underlying amounts in do not match"
             );
         }
@@ -436,21 +394,15 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             bytes("")
         );
 
-        // Since these are amounts in, the query (which uses the wrap preview) should be better than the actual
-        // operation (that uses buffer liquidity to fulfill an ExactOut wrap and calculate the amount of underlying
-        // tokens in using convertToAssets + vaultConvertFactor).
-        assertApproxEqAbs(
+        assertEq(
             actualUnderlyingAmountsIn[partialWaDaiIdx],
-            queryUnderlyingAmountsIn[partialWaDaiIdx] + vaultConvertFactor,
-            MAX_ERROR,
+            queryUnderlyingAmountsIn[partialWaDaiIdx],
             "Query and actual DAI amounts in do not match"
         );
 
-        // In USDC terms, actual and query values should be equal because no buffer is involved in the operation.
-        assertApproxEqAbs(
+        assertEq(
             queryUnderlyingAmountsIn[partialUsdcIdx],
             actualUnderlyingAmountsIn[partialUsdcIdx],
-            MAX_ERROR,
             "Query and actual USDC amounts in do not match"
         );
     }
@@ -470,8 +422,8 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256 beforeBPTBalance = IERC20(address(erc4626Pool)).balanceOf(bob);
 
         uint256[] memory minAmountsOut = new uint256[](2);
-        minAmountsOut[waUsdcIdx] = waUSDC.convertToAssets(expectedWrappedAmountsOut[waUsdcIdx]) - vaultConvertFactor;
-        minAmountsOut[waDaiIdx] = waDAI.convertToAssets(expectedWrappedAmountsOut[waDaiIdx]) - vaultConvertFactor;
+        minAmountsOut[waUsdcIdx] = waUSDC.previewRedeem(expectedWrappedAmountsOut[waUsdcIdx]);
+        minAmountsOut[waDaiIdx] = waDAI.previewRedeem(expectedWrappedAmountsOut[waDaiIdx]);
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
@@ -495,17 +447,14 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         _checkBalancesAfterRemoveLiquidity(balancesBefore, balancesAfter, vars);
 
-        assertApproxEqAbs(
+        assertEq(
             actualUnderlyingAmountsOut[waDaiIdx],
-            waDAI.convertToAssets(expectedWrappedAmountsOut[waDaiIdx]) - vaultConvertFactor,
-            MAX_ERROR,
+            waDAI.previewRedeem(expectedWrappedAmountsOut[waDaiIdx]),
             "DAI actualUnderlyingAmountsOut should match expected"
         );
-
-        assertApproxEqAbs(
+        assertEq(
             actualUnderlyingAmountsOut[waUsdcIdx],
-            waUSDC.convertToAssets(expectedWrappedAmountsOut[waUsdcIdx]) - vaultConvertFactor,
-            MAX_ERROR,
+            waUSDC.previewRedeem(expectedWrappedAmountsOut[waUsdcIdx]),
             "USDC actualUnderlyingAmountsOut should match expected"
         );
 
@@ -529,9 +478,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256[] memory minAmountsOut = new uint256[](2);
         minAmountsOut[partialUsdcIdx] = expectedWrappedAmountsOut[partialUsdcIdx];
-        minAmountsOut[partialWaDaiIdx] =
-            waDAI.convertToAssets(expectedWrappedAmountsOut[partialWaDaiIdx]) -
-            vaultConvertFactor;
+        minAmountsOut[partialWaDaiIdx] = waDAI.previewRedeem(expectedWrappedAmountsOut[partialWaDaiIdx]);
 
         TestBalances memory balancesBefore = _getTestBalances(bob);
 
@@ -554,18 +501,15 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         _checkBalancesAfterRemoveLiquidity(balancesBefore, balancesAfter, vars);
 
-        assertApproxEqAbs(
+        assertEq(
             actualUnderlyingAmountsOut[partialWaDaiIdx],
-            waDAI.convertToAssets(expectedWrappedAmountsOut[partialWaDaiIdx]) - vaultConvertFactor,
-            MAX_ERROR,
+            waDAI.previewRedeem(expectedWrappedAmountsOut[partialWaDaiIdx]),
             "DAI actualUnderlyingAmountsOut should match expected"
         );
 
-        // `expectedWrappedAmountsOut` in this case is equal to expected underlying since USDC is not a wrapped token.
-        assertApproxEqAbs(
+        assertEq(
             actualUnderlyingAmountsOut[partialUsdcIdx],
             expectedWrappedAmountsOut[partialUsdcIdx],
-            MAX_ERROR,
             "USDC actualUnderlyingAmountsOut should match expected"
         );
 
@@ -585,16 +529,16 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityProportional(
+        uint256[] memory expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
             erc4626Pool,
             exactBptAmountIn,
             bytes("")
         );
         vm.revertTo(snapshot);
 
-        uint256[] memory minAmountsOut = new uint256[](2);
-        minAmountsOut[waUsdcIdx] = waUSDC.convertToAssets(expectedAmountsOut[waUsdcIdx]) - vaultConvertFactor;
-        minAmountsOut[waDaiIdx] = waDAI.convertToAssets(expectedAmountsOut[waDaiIdx]) - vaultConvertFactor;
+        uint256[] memory minUnderlyingAmountsOut = new uint256[](2);
+        minUnderlyingAmountsOut[waUsdcIdx] = waUSDC.previewRedeem(expectedWrappedAmountsOut[waUsdcIdx]);
+        minUnderlyingAmountsOut[waDaiIdx] = waDAI.previewRedeem(expectedWrappedAmountsOut[waDaiIdx]);
 
         uint256 snapshotId = vm.snapshot();
         vm.prank(bob, address(0));
@@ -609,19 +553,15 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory actualUnderlyingAmountsOut = batchRouter.removeLiquidityProportionalFromERC4626Pool(
             erc4626Pool,
             exactBptAmountIn,
-            minAmountsOut,
+            minUnderlyingAmountsOut,
             false,
             bytes("")
         );
 
         for (uint256 i = 0; i < queryUnderlyingAmountsOut.length; i++) {
-            // Since these are amounts out, the query (which uses the unwrap preview) should be better than the actual
-            // operation (that uses buffer liquidity to fulfill an ExactIn unwrap and calculate the amount of
-            // underlying tokens out using convertToAssets - vaultConvertFactor).
-            assertApproxEqAbs(
+            assertEq(
                 actualUnderlyingAmountsOut[i],
-                queryUnderlyingAmountsOut[i] - vaultConvertFactor,
-                MAX_ERROR,
+                queryUnderlyingAmountsOut[i],
                 "Query and actual underlying amounts out do not match"
             );
         }
@@ -632,18 +572,16 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
 
         uint256 snapshot = vm.snapshot();
         _prankStaticCall();
-        uint256[] memory expectedAmountsOut = router.queryRemoveLiquidityProportional(
+        uint256[] memory expectedWrappedAmountsOut = router.queryRemoveLiquidityProportional(
             partialErc4626Pool,
             exactBptAmountIn,
             bytes("")
         );
         vm.revertTo(snapshot);
 
-        uint256[] memory minAmountsOut = new uint256[](2);
-        minAmountsOut[partialUsdcIdx] = expectedAmountsOut[partialUsdcIdx];
-        minAmountsOut[partialWaDaiIdx] =
-            waDAI.convertToAssets(expectedAmountsOut[partialWaDaiIdx]) -
-            vaultConvertFactor;
+        uint256[] memory minUnderlyingAmountsOut = new uint256[](2);
+        minUnderlyingAmountsOut[partialUsdcIdx] = expectedWrappedAmountsOut[partialUsdcIdx];
+        minUnderlyingAmountsOut[partialWaDaiIdx] = waDAI.previewRedeem(expectedWrappedAmountsOut[partialWaDaiIdx]);
 
         uint256 snapshotId = vm.snapshot();
         vm.prank(bob, address(0));
@@ -658,26 +596,20 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         uint256[] memory actualUnderlyingAmountsOut = batchRouter.removeLiquidityProportionalFromERC4626Pool(
             partialErc4626Pool,
             exactBptAmountIn,
-            minAmountsOut,
+            minUnderlyingAmountsOut,
             false,
             bytes("")
         );
 
-        // Since these are amounts out, the query (which uses the unwrap preview) should be better than the actual
-        // operation (that uses buffer liquidity to fulfill an ExactIn unwrap and calculate the amount of
-        // underlying tokens out using convertToAssets - vaultConvertFactor).
-        assertApproxEqAbs(
+        assertEq(
             actualUnderlyingAmountsOut[partialWaDaiIdx],
-            queryUnderlyingAmountsOut[partialWaDaiIdx] - vaultConvertFactor,
-            MAX_ERROR,
+            queryUnderlyingAmountsOut[partialWaDaiIdx],
             "Query and actual DAI amounts out do not match"
         );
 
-        // In USDC terms, actual and query values should be equal because no buffer is involved in the operation.
-        assertApproxEqAbs(
+        assertEq(
             queryUnderlyingAmountsOut[partialUsdcIdx],
             actualUnderlyingAmountsOut[partialUsdcIdx],
-            MAX_ERROR,
             "Query and actual USDC amounts out do not match"
         );
     }
@@ -737,10 +669,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         );
 
         // The pool gains the wrapped tokens from the buffer and mints BPT to the user.
-        assertApproxEqAbs(
+        assertEq(
             poolBalances[ybDaiIdx],
-            waDAI.convertToShares(erc4626PoolInitialAmount) + vars.wrappedDaiPoolDelta,
-            MAX_ERROR,
+            waDAI.previewDeposit(erc4626PoolInitialAmount) + vars.wrappedDaiPoolDelta,
             "ERC4626 Pool: wrong waDAI balance"
         );
 
@@ -758,10 +689,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             );
 
             // The pool gains the wrapped tokens from the buffer and mints BPT to the user.
-            assertApproxEqAbs(
+            assertEq(
                 poolBalances[ybUsdcIdx],
-                waUSDC.convertToShares(erc4626PoolInitialAmount) + vars.wrappedUsdcPoolDelta,
-                MAX_ERROR,
+                waUSDC.previewDeposit(erc4626PoolInitialAmount) + vars.wrappedUsdcPoolDelta,
                 "ERC4626 Pool: wrong waUSDC balance"
             );
         } else {
@@ -792,10 +722,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         // The yield-bearing pool holds yield-bearing tokens, so in a remove liquidity event we remove yield-bearing
         // tokens from the pool and burn BPT.
         (, , uint256[] memory balances, ) = vault.getPoolTokenInfo(ybPool);
-        assertApproxEqAbs(
+        assertEq(
             balances[ybDaiIdx],
-            waDAI.convertToShares(erc4626PoolInitialAmount) - vars.wrappedDaiPoolDelta,
-            MAX_ERROR,
+            waDAI.previewDeposit(erc4626PoolInitialAmount) - vars.wrappedDaiPoolDelta,
             "ERC4626 Pool: wrong waDAI balance"
         );
         // The wrapped tokens removed from the pool are unwrapped in the buffer, so the user will receive underlying
@@ -814,10 +743,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         if (vars.isPartialERC4626Pool == false) {
             // The yield-bearing pool holds yield-bearing tokens, so in a remove liquidity event we remove
             // yield-bearing tokens from the pool and burn BPT.
-            assertApproxEqAbs(
+            assertEq(
                 balances[ybUsdcIdx],
-                waUSDC.convertToShares(erc4626PoolInitialAmount) - vars.wrappedUsdcPoolDelta,
-                MAX_ERROR,
+                waUSDC.previewDeposit(erc4626PoolInitialAmount) - vars.wrappedUsdcPoolDelta,
                 "ERC4626 Pool: wrong waUSDC balance"
             );
 
