@@ -53,6 +53,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using StorageSlotExtension for *;
     using PoolDataLib for PoolData;
 
+    // When using the ERC4626 buffer liquidity directly to wrap/unwrap, convert is used to calculate how many tokens to
+    // return to the user. However, convert is not equal to the actual operation and may return an optimistic result.
+    // This factor makes sure that the use of buffer liquidity does not return more tokens than executing the
+    // wrap/unwrap operation directly.
+    uint16 internal constant _CONVERT_FACTOR = 100;
+
     // Local reference to the Proxy pattern Vault extension contract.
     IVaultExtension private immutable _vaultExtension;
 
