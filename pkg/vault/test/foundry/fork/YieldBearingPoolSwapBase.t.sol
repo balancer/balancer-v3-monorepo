@@ -384,13 +384,19 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             paths[0].tokenIn == _token1Fork ? _token2Factor / _token1Factor : _token1Factor / _token2Factor
         ) + 1;
 
+        bool useVaultConvertFactor = withBufferLiquidity ||
+            vars.expectedUnderlyingSurplusTokenIn > 0 ||
+            vars.expectedWrappedSurplusTokenIn > 0 ||
+            vars.expectedUnderlyingSurplusTokenOut > 0 ||
+            vars.expectedWrappedSurplusTokenOut > 0;
+
         // Query and actual operation can return different results, depending on the difference of decimals. The error
         // is amplified by the rate of the token out and by `vaultConvertFactor` when using the buffer liquidity in
         // the actual operation.
         uint256 sharesError = vars.ybTokenOut.convertToAssets(
-            (withBufferLiquidity ? vaultConvertFactor : 1) * decimalError
+            (useVaultConvertFactor ? vaultConvertFactor : 1) * decimalError
         );
-        uint256 absTolerance = sharesError + (withBufferLiquidity ? vaultConvertFactor : 1);
+        uint256 absTolerance = sharesError + (useVaultConvertFactor ? vaultConvertFactor : 1);
         // If convertToAssets return 0, absTolerance may be smaller than the error introduced by the difference of
         // decimals, so keep the decimalError.
         absTolerance = absTolerance > decimalError ? absTolerance : decimalError;
@@ -508,13 +514,19 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             paths[0].tokenIn == _token1Fork ? _token1Factor / _token2Factor : _token2Factor / _token1Factor
         ) + 1;
 
+        bool useVaultConvertFactor = withBufferLiquidity ||
+            vars.expectedUnderlyingSurplusTokenIn > 0 ||
+            vars.expectedWrappedSurplusTokenIn > 0 ||
+            vars.expectedUnderlyingSurplusTokenOut > 0 ||
+            vars.expectedWrappedSurplusTokenOut > 0;
+
         // Query and actual operation can return different results, depending on the difference of decimals. The error
         // is amplified by the rate of the token in and by `vaultConvertFactor` when using the buffer liquidity in
         // the actual operation.
         uint256 sharesError = vars.ybTokenIn.convertToAssets(
-            (withBufferLiquidity ? vaultConvertFactor : 1) * decimalError
+            (useVaultConvertFactor ? vaultConvertFactor : 1) * decimalError
         );
-        uint256 absTolerance = sharesError + (withBufferLiquidity ? vaultConvertFactor : 1);
+        uint256 absTolerance = sharesError + (useVaultConvertFactor ? vaultConvertFactor : 1);
         // If convertToAssets return 0, absTolerance may be smaller than the error introduced by the difference of
         // decimals, so keep the decimalError.
         absTolerance = absTolerance > decimalError ? absTolerance : decimalError;
@@ -950,6 +962,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             uint256 vaultWrappedDelta = wToken.deposit(underlyingToDeposit + underlyingSurplus, lp);
             vm.stopPrank();
             wrappedSurplus = wToken.convertToShares(underlyingSurplus);
+            wrappedSurplus = wrappedSurplus > 0 ? wrappedSurplus + vaultConvertFactor : wrappedSurplus;
             vm.revertTo(snapshotId);
 
             mintedShares = vaultWrappedDelta - wrappedSurplus;
@@ -973,6 +986,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             underlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wToken);
             wrappedSurplus = wToken.convertToShares(underlyingSurplus);
             uint256 vaultUnderlyingDelta = wToken.previewMint(wrappedToMint + wrappedSurplus);
+            underlyingSurplus = underlyingSurplus > 0 ? underlyingSurplus + vaultConvertFactor : underlyingSurplus;
             depositedAssets = vaultUnderlyingDelta - underlyingSurplus;
         }
     }
@@ -994,6 +1008,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             wrappedSurplus = bufferBalances.getBufferWrappedSurplus(wToken);
             underlyingSurplus = wToken.convertToAssets(wrappedSurplus);
             uint256 vaultWrappedDelta = wToken.previewWithdraw(underlyingToWithdraw + underlyingSurplus);
+            wrappedSurplus = wrappedSurplus > 0 ? wrappedSurplus + vaultConvertFactor : wrappedSurplus;
             burnedShares = vaultWrappedDelta - wrappedSurplus;
         }
     }
@@ -1020,6 +1035,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             uint256 vaultUnderlyingDelta = wToken.redeem(wrappedToRedeem + wrappedSurplus, lp, lp);
             vm.stopPrank();
             underlyingSurplus = wToken.convertToAssets(wrappedSurplus);
+            underlyingSurplus = underlyingSurplus > 0 ? underlyingSurplus + vaultConvertFactor : underlyingSurplus;
             vm.revertTo(snapshotId);
 
             withdrawnAssets = vaultUnderlyingDelta - underlyingSurplus;
