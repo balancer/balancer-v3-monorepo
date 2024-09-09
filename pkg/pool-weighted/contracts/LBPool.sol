@@ -125,6 +125,7 @@ contract LBPool is WeightedPool, Ownable {
      */
     function setSwapEnabled(bool swapEnabled) external onlyOwner {
         _poolState.swapEnabled = swapEnabled;
+        emit SwapEnabledSet(swapEnabled);
     }
 
     /**
