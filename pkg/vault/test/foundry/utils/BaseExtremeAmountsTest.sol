@@ -556,18 +556,4 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
     function _calculateMaxBPTAmountForSingleTokenOperations() private view returns (uint256) {
         return ((initBPTAmount * (1e18 - minInvariantRatio)) / 1e18);
     }
-
-    function _extractSelectorFromErrorReason(
-        bytes memory reason
-    ) internal pure returns (bytes4 selector, bytes memory res) {
-        res = new bytes(reason.length - 4);
-
-        for (uint256 i = 0; i < 4; i++) {
-            selector |= bytes4(reason[i]) >> (i * 8);
-        }
-
-        for (uint256 i = 4; i < reason.length; i++) {
-            res[i - 4] = reason[i];
-        }
-    }
 }
