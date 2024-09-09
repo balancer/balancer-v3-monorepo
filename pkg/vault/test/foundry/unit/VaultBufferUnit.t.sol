@@ -8,6 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
+import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
@@ -15,6 +16,8 @@ import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaul
 import { BaseVaultTest } from "../utils/BaseVaultTest.sol";
 
 contract VaultBufferUnitTest is BaseVaultTest {
+    using ScalingHelpers for uint256;
+
     ERC4626TestToken internal wDaiInitialized;
     ERC4626TestToken internal wUSDCNotInitialized;
 
@@ -66,10 +69,11 @@ contract VaultBufferUnitTest is BaseVaultTest {
 
         // rate = assets / supply. If we double the assets, we double the rate.
         // Donate to wrapped token to inflate rate to 2
-        dai.transfer(address(wDaiInitialized), wDaiInitialized.totalAssets());
+        wDaiInitialized.mockRate(2e18);
         vm.stopPrank();
 
-        assertEq(wDaiInitialized.getRate(), 2e18, "Wrong wDAI rate");
+        // Rounds up to make sure division is done properly.
+        assertEq(wDaiInitialized.getRate().computeRateRoundUp(), 2e18, "Wrong wDAI rate");
 
         uint256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wDaiInitialized)));
         // Before swap, buffer had _wrapAmount of underlying and wrapped.
@@ -115,11 +119,12 @@ contract VaultBufferUnitTest is BaseVaultTest {
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
         // rate = assets / supply. If we double the assets, we double the rate.
-        // Donate to wrapped token to inflate rate to 2.
-        dai.transfer(address(wDaiInitialized), wDaiInitialized.totalAssets());
+        // Donate to wrapped token to inflate rate to 2
+        wDaiInitialized.mockRate(2e18);
         vm.stopPrank();
 
-        assertEq(wDaiInitialized.getRate(), 2e18, "Wrong wDAI rate");
+        // Rounds up to make sure division is done properly.
+        assertEq(wDaiInitialized.getRate().computeRateRoundUp(), 2e18, "Wrong wDAI rate");
 
         uint256 surplus = vault.internalGetBufferWrappedSurplus(IERC4626(address(wDaiInitialized)));
         // Before swap, buffer had _wrapAmount of underlying and wrapped.
