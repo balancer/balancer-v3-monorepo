@@ -141,8 +141,10 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
                 userData: bytes("")
             })
         );
+        // User has no BPT after the operations
         assertEq(bptAmountIn, bptAmountOut, "bptAmountIn should be equal to bptAmountOut");
 
+        // For every token, user is at a loss or even; no value is extracted from the pool.
         assertLe(amountsOut[0], amountsIn[0], "amountsOut[0] should be less or equal to amountsIn[0]");
         assertLe(amountsOut[1], amountsIn[1], "amountsOut[1] should be less or equal to amountsIn[1]");
     }
