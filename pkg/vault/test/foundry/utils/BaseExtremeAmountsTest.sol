@@ -284,7 +284,7 @@ abstract contract BaseExtremeAmountsTest is BaseTest, BaseVaultTest {
         );
         assertEq(bptAmountOut, exactBPTAmount, "bptAmountOut should be equal to exactBPTAmount");
 
-        uint removePerOperation = exactBPTAmount / 2;
+        uint256 removePerOperation = exactBPTAmount / 2;
 
         // first single token exact in removal
         (uint256 bptAmountInTokenOne, uint256[] memory amountsOutTokenOne, ) = vault.removeLiquidity(
