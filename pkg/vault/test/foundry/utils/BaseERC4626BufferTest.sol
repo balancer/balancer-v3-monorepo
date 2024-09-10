@@ -142,9 +142,11 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         waDAI.approve(address(permit2), MAX_UINT256);
         permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waDAI), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
         waUSDC.approve(address(permit2), MAX_UINT256);
         permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waUSDC), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
 
         router.initializeBuffer(waDAI, bufferInitialAmount, waDAILPShares);
         router.initializeBuffer(waUSDC, bufferInitialAmount, waUSDCLPShares);
@@ -171,10 +173,12 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         waDAI.approve(address(permit2), MAX_UINT256);
         permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waDAI), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
 
         waUSDC.approve(address(permit2), MAX_UINT256);
         permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(waUSDC), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
 
         dai.mint(bob, erc4626PoolInitialAmount);
         dai.approve(address(waDAI), erc4626PoolInitialAmount);
@@ -194,9 +198,11 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         IERC20(address(erc4626Pool)).approve(address(permit2), MAX_UINT256);
         permit2.approve(address(erc4626Pool), address(router), type(uint160).max, type(uint48).max);
         permit2.approve(address(erc4626Pool), address(batchRouter), type(uint160).max, type(uint48).max);
+        permit2.approve(address(erc4626Pool), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
 
         IERC20(address(erc4626Pool)).approve(address(router), type(uint256).max);
         IERC20(address(erc4626Pool)).approve(address(batchRouter), type(uint256).max);
+        IERC20(address(erc4626Pool)).approve(address(compositeLiquidityRouter), type(uint256).max);
         vm.stopPrank();
     }
 

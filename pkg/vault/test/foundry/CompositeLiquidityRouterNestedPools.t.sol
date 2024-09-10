@@ -15,7 +15,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract BatchRouterNestedPools is BaseVaultTest {
+contract CompositeLiquidityRouterNestedPools is BaseVaultTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
     using FixedPoint for uint256;
@@ -92,7 +92,7 @@ contract BatchRouterNestedPools is BaseVaultTest {
         expectedAmountsOut[vars.usdcIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
 
         vm.prank(lp);
-        (address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+        (address[] memory tokensOut, uint256[] memory amountsOut) = compositeLiquidityRouter
             .removeLiquidityProportionalFromNestedPools(parentPool, exactBptIn, expectedAmountsOut, bytes(""));
 
         _fillNestedPoolTestLocalsAfter(vars);
@@ -263,7 +263,7 @@ contract BatchRouterNestedPools is BaseVaultTest {
             )
         );
         vm.prank(lp);
-        (address[] memory tokensOut, uint256[] memory amountsOut) = batchRouter
+        (address[] memory tokensOut, uint256[] memory amountsOut) = compositeLiquidityRouter
             .removeLiquidityProportionalFromNestedPools(parentPool, exactBptIn, minAmountsOut, bytes(""));
     }
 

@@ -22,6 +22,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BasicAuthorizerMock } from "../../../contracts/test/BasicAuthorizerMock.sol";
 import { RateProviderMock } from "../../../contracts/test/RateProviderMock.sol";
 import { BatchRouterMock } from "../../../contracts/test/BatchRouterMock.sol";
+import { CompositeLiquidityRouterMock } from "../../../contracts/test/CompositeLiquidityRouterMock.sol";
 import { PoolFactoryMock } from "../../../contracts/test/PoolFactoryMock.sol";
 import { PoolHooksMock } from "../../../contracts/test/PoolHooksMock.sol";
 import { RouterMock } from "../../../contracts/test/RouterMock.sol";
@@ -77,6 +78,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     RouterMock internal router;
     // Batch router
     BatchRouterMock internal batchRouter;
+    // Composite Liquidity router
+    CompositeLiquidityRouterMock internal compositeLiquidityRouter;
     // Authorizer mock.
     BasicAuthorizerMock internal authorizer;
     // Fee controller deployed with the Vault.
@@ -147,6 +150,8 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         vm.label(address(router), "router");
         batchRouter = new BatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
+        compositeLiquidityRouter = new CompositeLiquidityRouterMock(IVault(address(vault)), weth, permit2);
+        vm.label(address(compositeLiquidityRouter), "composite liquidity router");
         feeController = vault.getProtocolFeeController();
         vm.label(address(feeController), "fee controller");
 
@@ -174,6 +179,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
             tokens[i].approve(address(permit2), type(uint256).max);
             permit2.approve(address(tokens[i]), address(router), type(uint160).max, type(uint48).max);
             permit2.approve(address(tokens[i]), address(batchRouter), type(uint160).max, type(uint48).max);
+            permit2.approve(address(tokens[i]), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
         }
     }
 
@@ -183,10 +189,12 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
 
             bpt.approve(address(router), type(uint256).max);
             bpt.approve(address(batchRouter), type(uint256).max);
+            bpt.approve(address(compositeLiquidityRouter), type(uint256).max);
 
             IERC20(bpt).approve(address(permit2), type(uint256).max);
             permit2.approve(address(bpt), address(router), type(uint160).max, type(uint48).max);
             permit2.approve(address(bpt), address(batchRouter), type(uint160).max, type(uint48).max);
+            permit2.approve(address(bpt), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
 
             vm.stopPrank();
         }
