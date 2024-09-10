@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 
-/// TODO
+/// @notice Interface for the composite liquidity router, supporting add/remove liquidity of ERC4626 and nested pools.
 interface ICompositeLiquidityRouter {
     /***************************************************************************
                                    ERC4626 Pools
