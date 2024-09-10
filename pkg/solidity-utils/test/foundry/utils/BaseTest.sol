@@ -144,7 +144,7 @@ abstract contract BaseTest is Test, GasSnapshot {
         vm.label(address(token), name);
     }
 
-    /// @dev Creates an ERC4626 test token, labels its address.
+    /// @dev Creates an ERC4626 test token and labels its address.
     function createERC4626(
         string memory name,
         string memory symbol,
