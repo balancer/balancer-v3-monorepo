@@ -779,7 +779,6 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         assertEq(
             balancesAfter.lpTokens[waDaiIdx],
             balancesBefore.lpTokens[waDaiIdx] + expectedAmountOut,
-            convertFactorExactIn,
             "LP balance of wrapped token is wrong"
         );
 
