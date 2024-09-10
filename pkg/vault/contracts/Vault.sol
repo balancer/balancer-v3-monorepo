@@ -1206,11 +1206,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 vaultWrappedDeltaHint = wrappedToken.deposit(vaultUnderlyingDeltaHint, address(this));
             } else {
                 if (bufferUnderlyingSurplus > 0) {
-                    // A wrap operation takes underlying from the buffer and returns wrapped tokens to the buffer. So,
-                    // the buffer needs to have a surplus of underlying tokens to rebalance in a wrap operation. Since
-                    // this operation is an EXACT_OUT wrap (mint), we need to calculate the wrapped amount that the
-                    // buffer needs to receive to rebalance, based on the underlying surplus. We use deposit because
-                    // it's the exact opposite operation from mint.
+                    // A wrap operation withdraws underlying tokens from the buffer and mints wrapped tokens in return.
+                    // For the buffer to rebalance during a wrap operation, it must have an excess (surplus) of
+                    // underlying tokens. Since this is an EXACT_OUT wrap (mint), we need to calculate the amount of
+                    // wrapped tokens the buffer should receive to rebalance, based on the underlying token surplus.
+                    // The deposit function is used here, as it performs the inverse of a mint operation.
                     bufferWrappedSurplus = wrappedToken.previewDeposit(bufferUnderlyingSurplus);
                 }
 
@@ -1343,11 +1343,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 // (amountOutUnderlying), plus the amount needed to leave the buffer rebalanced 50/50 at the end
                 // (bufferUnderlyingSurplus).
                 if (bufferWrappedSurplus > 0) {
-                    // An unwrap operation takes wrapped from the buffer and returns underlying tokens to the buffer.
-                    // So, the buffer needs to have a surplus of wrapped tokens to rebalance in an unwrap operation.
-                    // Since this operation is an EXACT_OUT unwrap (withdraw), we need to calculate the underlying
-                    // amount that the buffer needs to receive to rebalance, based on the wrapped surplus. We use
-                    // redeem because it's the exact opposite operation from withdraw.
+                    // An unwrap operation withdraws wrapped tokens from the buffer and returns underlying tokens.
+                    // For the buffer to rebalance during an unwrap operation, it must have an excess (surplus) of
+                    // wrapped tokens. Since this is an EXACT_OUT unwrap (withdraw), we need to calculate the amount of
+                    // underlying tokens the buffer should receive to rebalance, based on the wrapped token surplus.
+                    // The redeem function is used here, as it performs the inverse of a withdraw operation.
                     bufferUnderlyingSurplus = wrappedToken.previewRedeem(bufferWrappedSurplus);
                 }
                 vaultUnderlyingDeltaHint = amountOutUnderlying + bufferUnderlyingSurplus;
