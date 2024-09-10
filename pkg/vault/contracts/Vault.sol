@@ -1152,10 +1152,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountGiven
     ) private returns (uint256 amountInUnderlying, uint256 amountOutWrapped) {
         if (kind == SwapKind.EXACT_IN) {
-            // EXACT_IN wrap, so AmountGiven is underlying amount.
+            // EXACT_IN wrap, so AmountGiven is underlying amount. Deposit is the ERC4626 operation that receives
+            // underlying amount in and calculates the wrapped amount out with the right rounding.
             (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.previewDeposit(amountGiven));
         } else {
-            // EXACT_OUT wrap, so AmountGiven is wrapped amount.
+            // EXACT_OUT wrap, so AmountGiven is wrapped amount. Mint is the ERC4626 operation that receives
+            // wrapped amount out and calculates the underlying amount in with the right rounding.
             (amountInUnderlying, amountOutWrapped) = (wrappedToken.previewMint(amountGiven), amountGiven);
         }
 
@@ -1281,11 +1283,13 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountGiven
     ) private returns (uint256 amountInWrapped, uint256 amountOutUnderlying) {
         if (kind == SwapKind.EXACT_IN) {
-            // EXACT_IN unwrap, so AmountGiven is wrapped amount.
-            (amountOutUnderlying, amountInWrapped) = (wrappedToken.previewRedeem(amountGiven), amountGiven);
+            // EXACT_IN unwrap, so AmountGiven is wrapped amount. Redeem is the ERC4626 operation that receives
+            // wrapped amount in and calculates the underlying amount out with the right rounding.
+            (amountInWrapped, amountOutUnderlying) = (amountGiven, wrappedToken.previewRedeem(amountGiven));
         } else {
-            // EXACT_OUT unwrap, so AmountGiven is underlying amount.
-            (amountOutUnderlying, amountInWrapped) = (amountGiven, wrappedToken.previewWithdraw(amountGiven));
+            // EXACT_OUT unwrap, so AmountGiven is underlying amount. Withdraw is the ERC4626 operation that receives
+            // underlying amount out and calculates the wrapped amount in with the right rounding.
+            (amountInWrapped, amountOutUnderlying) = (wrappedToken.previewWithdraw(amountGiven), amountGiven);
         }
 
         // If it's a query, vault may not have enough underlying tokens to wrap, so return the calculated amount
