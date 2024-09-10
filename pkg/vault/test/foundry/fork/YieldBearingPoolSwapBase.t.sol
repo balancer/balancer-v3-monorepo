@@ -65,9 +65,10 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         _token1Fork = IERC20(ybToken1.asset());
         _token2Fork = IERC20(ybToken2.asset());
 
-        // The token factor is calculated as 10^(18 + decimalDifference), and decimalDifference is 18 - tokenDecimals.
-        // So, factor = 10^(18 + (18 - tokenDecimals)) = 10^(36 - tokenDecimals).
-        // For example, a token with 8 decimals will have a factor of 10^(36-8), or 10^(28).
+        // The token factor used by the vault in poolData to upscale and downscale token amounts to scaled18 is
+        // calculated as `10^(18 + decimalDifference)`, where `decimalDifference = 18 - tokenDecimals`. Therefore,
+        // `tokenFactor = 10^(18 + (18 - tokenDecimals)) = 10^(36 - tokenDecimals)`.
+        // For example, a token with 8 decimals will have a `tokenFactor` of 10^(36-8), or 10^(28).
         _ybToken1Factor = 10 ** (36 - IERC20Metadata(address(ybToken1)).decimals());
         _ybToken2Factor = 10 ** (36 - IERC20Metadata(address(ybToken2)).decimals());
 
