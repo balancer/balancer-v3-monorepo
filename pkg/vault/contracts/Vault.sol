@@ -1293,8 +1293,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // wrapped amount in and calculates the underlying amount out with the correct rounding.
             (amountInWrapped, amountOutUnderlying) = (amountGiven, wrappedToken.previewRedeem(amountGiven));
         } else {
-            // EXACT_OUT unwrap, so AmountGiven is underlying amount. Withdraw is the ERC4626 operation that receives
-            // underlying amount out and calculates the wrapped amount in with the right rounding.
+            // EXACT_OUT unwrap, so AmountGiven is an underlying amount. `withdraw` is the ERC4626 operation that
+            // receives an underlying amount out and calculates the wrapped amount in with the correct rounding.
             (amountInWrapped, amountOutUnderlying) = (wrappedToken.previewWithdraw(amountGiven), amountGiven);
         }
 
