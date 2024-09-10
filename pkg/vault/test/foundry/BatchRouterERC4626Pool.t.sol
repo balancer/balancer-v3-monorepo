@@ -26,7 +26,6 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
     using FixedPoint for *;
 
     uint256 constant MIN_AMOUNT = 1e12;
-    uint256 internal constant MAX_ERROR = 2;
 
     ERC4626TestToken internal waInvalid;
 
@@ -696,10 +695,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
             );
         } else {
             // If partially yield-bearing pool, the pool gains the underlying USDC directly.
-            assertApproxEqAbs(
+            assertEq(
                 poolBalances[ybUsdcIdx],
                 erc4626PoolInitialAmount + vars.underlyingUsdcAmountDelta,
-                MAX_ERROR,
                 "ERC4626 Pool: wrong USDC balance"
             );
         }
@@ -764,10 +762,9 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         } else {
             // If pool is partially yield-bearing, no buffer is involved and the pool returns the underlying token
             // directly.
-            assertApproxEqAbs(
+            assertEq(
                 balances[ybUsdcIdx],
                 erc4626PoolInitialAmount - vars.underlyingUsdcAmountDelta,
-                MAX_ERROR,
                 "ERC4626 Pool: wrong USDC balance"
             );
         }
