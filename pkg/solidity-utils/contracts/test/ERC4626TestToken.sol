@@ -8,17 +8,20 @@ import { ERC4626 } from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 
+import { ERC20TestToken } from "./ERC20TestToken.sol";
 import { FixedPoint } from "../math/FixedPoint.sol";
 
 contract ERC4626TestToken is ERC4626, IRateProvider {
+    using FixedPoint for uint256;
     using SafeERC20 for IERC20;
+    using FixedPoint for uint256;
 
     uint8 private immutable _wrappedTokenDecimals;
     IERC20 private _overrideAsset;
 
-    bool private maliciousWrapper;
+    bool private _maliciousWrapper;
 
     constructor(
         IERC20 underlyingToken,
@@ -39,6 +42,52 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
         return _convertToAssets(FixedPoint.ONE, Math.Rounding.Floor);
     }
 
+    /**
+     * @notice Mints underlying and/or wrapped amount to the ERC4626 token.
+     * @dev If we set a rate to the ERC4626 token directly, we do not reproduce rounding issues when dividing assets
+     * by total supply. The best way to mock a rate is to inflate underlying and wrapped amounts.
+     * For example, let's say we have an ERC4626 token with 100 underlying and 100 total supply (or wrapped amount).
+     * If we want to set the rate to 2, we need to call `inflateUnderlyingOrWrapped(100, 0)`, so that the final
+     * asset balance is 200 and the final total supply is still 100 (200/100 = 2).
+     * However, if we want the rate to be 0.5, we need to call `inflateUnderlyingOrWrapped(0, 100)`, so that underlying
+     * balance does not change but final total supply is 200 (100/200 = 0.5).
+     */
+    function inflateUnderlyingOrWrapped(uint256 underlyingDelta, uint256 wrappedDelta) external {
+        if (underlyingDelta > 0) {
+            // Mint underlying to the address of the wrapper, increasing the token rate.
+            ERC20TestToken(address(_overrideAsset)).mint(address(this), underlyingDelta);
+        }
+        if (wrappedDelta > 0) {
+            // Mint wrapped to address 0, decreasing the token rate.
+            _mint(address(this), wrappedDelta);
+        }
+    }
+
+    /**
+     * @notice Set the token rate by inflating either the underlying or total supply amount.
+     * @dev Although this function is a shortcut to inflateUnderlyingOrWrapped, it has limited power: it cannot
+     * reproduce a rate that is not an exact ratio between assets and shares. Use `inflateUnderlyingOrWrapped`
+     * directly to test with rate values of arbitrary precision.
+     */
+    function mockRate(uint256 newRate) external {
+        uint256 totalWrappedAmount = ERC4626TestToken(address(this)).totalSupply();
+        uint256 totalUnderlyingAmount = ERC4626TestToken(address(this)).totalAssets();
+
+        uint256 underlyingDelta;
+        uint256 wrappedDelta;
+
+        // If rate is lower than current rate, inflates the total supply. Else, inflates the underlying amount.
+        if (newRate < ERC4626TestToken(address(this)).getRate()) {
+            uint256 newTotalWrappedAmount = totalUnderlyingAmount.divDown(newRate);
+            wrappedDelta = newTotalWrappedAmount - totalWrappedAmount;
+        } else {
+            uint256 newTotalUnderlyingAmount = totalWrappedAmount.mulDown(newRate);
+            underlyingDelta = newTotalUnderlyingAmount - totalUnderlyingAmount;
+        }
+
+        ERC4626TestToken(address(this)).inflateUnderlyingOrWrapped(underlyingDelta, wrappedDelta);
+    }
+
     /*****************************************************************
                          Test malicious ERC4626
     *****************************************************************/
@@ -56,18 +105,18 @@ contract ERC4626TestToken is ERC4626, IRateProvider {
     }
 
     function setMaliciousWrapper(bool value) external {
-        maliciousWrapper = value;
+        _maliciousWrapper = value;
     }
 
     function convertToAssets(uint256 shares) public view override returns (uint256) {
-        if (maliciousWrapper) {
+        if (_maliciousWrapper) {
             return _overrideAsset.balanceOf(msg.sender);
         }
         return super.convertToAssets(shares);
     }
 
     function deposit(uint256 assets, address receiver) public override returns (uint256) {
-        if (maliciousWrapper) {
+        if (_maliciousWrapper) {
             // A malicious wrapper does nothing so it can use the approval to drain the vault.
             return 0;
         }

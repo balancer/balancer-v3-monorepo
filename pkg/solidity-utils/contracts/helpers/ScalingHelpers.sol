@@ -155,6 +155,15 @@ library ScalingHelpers {
                                     Array Functions
     ***************************************************************************/
 
+    function copyToArray(uint256[] memory from, uint256[] memory to) internal pure {
+        uint256 length = from.length;
+        InputHelpers.ensureInputLengthMatch(length, to.length);
+
+        for (uint256 i = 0; i < length; ++i) {
+            to[i] = from[i];
+        }
+    }
+
     /**
      * @notice Same as `toScaled18RoundDown`, but for an entire array.
      * @dev This function does not return anything, but instead *mutates* the `amounts` array.
@@ -316,5 +325,21 @@ library ScalingHelpers {
         // Tokens with more than 18 decimals are not supported.
         uint256 decimalsDifference = 18 - tokenDecimals;
         return FixedPoint.ONE * 10 ** decimalsDifference;
+    }
+
+    /**
+     * @notice Rounds up a rate informed by a rate provider.
+     * @dev Rates calculated by an external rate provider have rounding errors. Intuitively, a rate provider
+     * rounds the rate down so the pool math is executed with conservative amounts. However, when upscaling or
+     * downscaling the amount out, the rate should be rounded up to make sure the amounts scaled are conservative.
+     */
+    function computeRateRoundUp(uint256 rate) internal pure returns (uint256) {
+        uint256 roundedRate;
+        // If rate is divisible by FixedPoint.ONE, roundedRate and rate will be equal. It means that rate has 18 zeros,
+        // so there's no rounding issue and the rate should not be rounded up.
+        unchecked {
+            roundedRate = (rate / FixedPoint.ONE) * FixedPoint.ONE;
+        }
+        return roundedRate == rate ? rate : rate + 1;
     }
 }

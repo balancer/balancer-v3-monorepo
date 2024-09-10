@@ -40,15 +40,18 @@ contract VaultStorage {
     // This maximum token count is also implicitly hard-coded in `PoolConfigLib` (through packing `tokenDecimalDiffs`).
     uint256 internal constant _MAX_TOKENS = 8;
 
-    // Minimum BPT amount minted upon initialization.
-    uint256 internal constant _MINIMUM_BPT = 1e6;
-
-    // Minimum given amount to wrap/unwrap (applied to native decimal values), to avoid rounding issues.
-    uint256 internal constant _MINIMUM_WRAP_AMOUNT = 1e3;
-
     // Maximum pause and buffer period durations.
     uint256 internal constant _MAX_PAUSE_WINDOW_DURATION = 365 days * 4;
     uint256 internal constant _MAX_BUFFER_PERIOD_DURATION = 90 days;
+
+    // Minimum swap amount (applied to scaled18 values), enforced as a security measure to block potential
+    // exploitation of rounding errors.
+    // solhint-disable-next-line var-name-mixedcase
+    uint256 internal immutable _MINIMUM_TRADE_AMOUNT;
+
+    // Minimum given amount to wrap/unwrap (applied to native decimal values), to avoid rounding issues.
+    // solhint-disable-next-line var-name-mixedcase
+    uint256 internal immutable _MINIMUM_WRAP_AMOUNT;
 
     /***************************************************************************
                           Transient Storage Declarations

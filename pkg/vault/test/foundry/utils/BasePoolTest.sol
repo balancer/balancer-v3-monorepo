@@ -5,14 +5,15 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
-import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
-import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
-import { InputHelpersMock } from "@balancer-labs/v3-solidity-utils/contracts/test/InputHelpersMock.sol";
+import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
+import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
+
+import { InputHelpersMock } from "../../../contracts/test/InputHelpersMock.sol";
 
 import { BaseVaultTest } from "vault/test/foundry/utils/BaseVaultTest.sol";
 
@@ -278,7 +279,7 @@ abstract contract BasePoolTest is BaseVaultTest {
     }
 
     function _testGetBptRate(uint256 invariantBefore, uint256 invariantAfter, uint256[] memory amountsIn) internal {
-        uint256 totalSupply = bptAmountOut + MIN_BPT;
+        uint256 totalSupply = bptAmountOut + POOL_MINIMUM_TOTAL_SUPPLY;
         uint256 expectedRate = invariantBefore.divDown(totalSupply);
         uint256 actualRate = IRateProvider(pool).getRate();
         assertEq(actualRate, expectedRate, "Wrong rate");

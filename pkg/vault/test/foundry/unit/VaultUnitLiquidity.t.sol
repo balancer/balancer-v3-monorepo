@@ -19,13 +19,13 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
 import { ScalingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/ScalingHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
-import { BasePoolMath } from "@balancer-labs/v3-solidity-utils/contracts/math/BasePoolMath.sol";
 import { BaseTest } from "@balancer-labs/v3-solidity-utils/test/foundry/utils/BaseTest.sol";
 
-import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
-import { VaultStateBits } from "../../../contracts/lib/VaultStateLib.sol";
 import { VaultMockDeployer } from "../../../test/foundry/utils/VaultMockDeployer.sol";
 import { BalancerPoolToken } from "../../../contracts/BalancerPoolToken.sol";
+import { VaultStateBits } from "../../../contracts/lib/VaultStateLib.sol";
+import { PoolConfigLib } from "../../../contracts/lib/PoolConfigLib.sol";
+import { BasePoolMath } from "../../../contracts/BasePoolMath.sol";
 
 contract VaultUnitLiquidityTest is BaseTest {
     using CastingHelpers for uint256[];
@@ -704,7 +704,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             kind: kind,
             maxAmountsIn: new uint256[](tokens.length),
             minBptAmountOut: minBptAmountOut,
-            userData: new bytes(0)
+            userData: bytes("")
         });
 
         maxAmountsInScaled18 = new uint256[](tokens.length);
@@ -729,7 +729,7 @@ contract VaultUnitLiquidityTest is BaseTest {
             maxBptAmountIn: maxBptAmountIn,
             minAmountsOut: new uint256[](tokens.length),
             kind: kind,
-            userData: new bytes(0)
+            userData: bytes("")
         });
 
         minAmountsOutScaled18 = new uint256[](tokens.length);
@@ -766,7 +766,7 @@ contract VaultUnitLiquidityTest is BaseTest {
     }
 
     function _mockMintCallback(address to, uint256 amount) internal {
-        vm.mockCall(pool, abi.encodeCall(BalancerPoolToken.emitTransfer, (ZERO_ADDRESS, to, amount)), new bytes(0));
+        vm.mockCall(pool, abi.encodeCall(BalancerPoolToken.emitTransfer, (ZERO_ADDRESS, to, amount)), bytes(""));
     }
 
     function _testAddLiquidity(PoolData memory poolData, TestAddLiquidityParams memory params) internal {
@@ -809,7 +809,11 @@ contract VaultUnitLiquidityTest is BaseTest {
         PoolData memory poolData_ = poolData;
         uint256 protocolSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
 
-        for (uint256 i = 0; i < poolData_.tokens.length; i++) {
+        uint256 numTokens = params.addLiquidityParams.maxAmountsIn.length;
+        assertEq(numTokens, amountsInRaw.length, "Incorrect amounts in raw length");
+        assertEq(numTokens, amountsInScaled18.length, "Incorrect amounts in scaled length");
+        assertEq(numTokens, poolData.tokens.length, "Incorrect pool data tokens length");
+        for (uint256 i = 0; i < numTokens; i++) {
             assertEq(amountsInRaw[i], expectedAmountsInRaw[i], "Unexpected tokenIn raw amount");
             assertEq(amountsInScaled18[i], params_.expectedAmountsInScaled18[i], "Unexpected tokenIn scaled amount");
 
@@ -883,7 +887,12 @@ contract VaultUnitLiquidityTest is BaseTest {
         TestRemoveLiquidityParams memory params_ = params;
         PoolData memory poolData_ = poolData;
         uint256 protocolSwapFeePercentage = poolData.poolConfigBits.getAggregateSwapFeePercentage();
-        for (uint256 i = 0; i < poolData.tokens.length; i++) {
+
+        uint256 numTokens = params.removeLiquidityParams.minAmountsOut.length;
+        assertEq(numTokens, amountsOutRaw.length, "Incorrect amounts out raw length");
+        assertEq(numTokens, amountsOutScaled18.length, "Incorrect amounts out scaled length");
+        assertEq(numTokens, poolData.tokens.length, "Incorrect pool data tokens length");
+        for (uint256 i = 0; i < numTokens; i++) {
             // check _computeAndChargeAggregateSwapFees
             uint256 protocolSwapFeeAmountRaw = _checkProtocolFeeResult(
                 poolData_,

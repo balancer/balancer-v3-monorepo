@@ -7,8 +7,8 @@ import "forge-std/Test.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IRateProvider.sol";
 import { IBatchRouter } from "@balancer-labs/v3-interfaces/contracts/vault/IBatchRouter.sol";
-import { IRateProvider } from "@balancer-labs/v3-interfaces/contracts/vault/IRateProvider.sol";
 
 import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/test/ERC4626TestToken.sol";
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
@@ -118,11 +118,17 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waUSDC, isBuffer: false });
         steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
 
+        // When the buffer liquidity is used, it adds a convertError to avoid a buffer from being drained. So, the
+        // waDAI buffer removes `vaultConvertError` from the wrapped amount out, and this factor propagates until the
+        // last step, when the waUSDC buffer converts the waUSDC amount into USDC using convertToAssets. After this
+        // conversion, waUSDC buffer also removes convertError from the buffer result.
+        uint256 maxError = 2 * waUSDC.convertToAssets(vaultConvertFactor);
+
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
             tokenIn: dai,
             steps: steps,
             exactAmountIn: amount,
-            minAmountOut: amount - MAX_ERROR // Remove a max of 10 wei to compensate for rounding issues and rebalance
+            minAmountOut: amount - maxError
         });
     }
 
@@ -140,10 +146,16 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
         steps[1] = IBatchRouter.SwapPathStep({ pool: erc4626Pool, tokenOut: waUSDC, isBuffer: false });
         steps[2] = IBatchRouter.SwapPathStep({ pool: address(waUSDC), tokenOut: usdc, isBuffer: true });
 
+        // When the buffer liquidity is used, it adds a convertError to avoid a buffer from being drained. So, the
+        // waDAI buffer removes `vaultConvertError` from the wrapped amount out, and this factor propagates until the
+        // last step, when waUSDC buffer convert the waUSDC amount into USDC using convertToAssets. After this
+        // conversion, waUSDC buffer also removes convertError from the buffer result.
+        uint256 maxError = waUSDC.convertToAssets(vaultConvertFactor) + vaultConvertFactor;
+
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
             tokenIn: dai,
             steps: steps,
-            maxAmountIn: amount + MAX_ERROR, // Add a max of 10 wei to compensate for rounding issues and rebalance
+            maxAmountIn: amount + maxError,
             exactAmountOut: amount
         });
     }

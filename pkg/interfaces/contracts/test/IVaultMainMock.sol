@@ -5,7 +5,7 @@ pragma solidity ^0.8.24;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 
-import { IRateProvider } from "../vault/IRateProvider.sol";
+import { IRateProvider } from "../solidity-utils/helpers/IRateProvider.sol";
 import "../vault/VaultTypes.sol";
 
 interface IVaultMainMock {
@@ -276,4 +276,6 @@ interface IVaultMainMock {
     function manualFindTokenIndex(IERC20[] memory tokens, IERC20 token) external pure returns (uint256 index);
 
     function manualSetPoolCreator(address pool, address newPoolCreator) external;
+
+    function getConvertFactor() external pure returns (uint16);
 }

@@ -11,7 +11,7 @@ contract RevertCodecTest is Test {
 
     function testCatchEncodedResultNoSelector() public {
         vm.expectRevert(RevertCodec.ErrorSelectorNotFound.selector);
-        RevertCodec.catchEncodedResult("");
+        RevertCodec.catchEncodedResult(bytes(""));
     }
 
     function testCatchEncodedResultCustomError() public {
@@ -30,7 +30,7 @@ contract RevertCodecTest is Test {
 
     function testParseSelectorNoData() public {
         vm.expectRevert(RevertCodec.ErrorSelectorNotFound.selector);
-        RevertCodec.parseSelector("");
+        RevertCodec.parseSelector(bytes(""));
     }
 
     function testParseSelector() public pure {

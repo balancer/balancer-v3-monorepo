@@ -93,7 +93,11 @@ contract InitializerTest is BaseVaultTest {
             address(poolHooksContract),
             abi.encodeCall(
                 IHooks.onAfterInitialize,
-                ([defaultAmount, defaultAmount].toMemoryArray(), 2 * defaultAmount - MIN_BPT, bytes("0xff"))
+                (
+                    [defaultAmount, defaultAmount].toMemoryArray(),
+                    2 * defaultAmount - POOL_MINIMUM_TOTAL_SUPPLY,
+                    bytes("0xff")
+                )
             )
         );
         router.initialize(
