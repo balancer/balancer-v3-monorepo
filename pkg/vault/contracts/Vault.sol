@@ -1237,17 +1237,17 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             // Only updates buffer balances if buffer has a surplus of underlying tokens.
             if (bufferUnderlyingSurplus > 0) {
                 if (kind == SwapKind.EXACT_IN) {
-                    // Since bufferUnderlyingSurplus was wrapped, the final amountOut needs to discount the wrapped
+                    // Since `bufferUnderlyingSurplus` was wrapped, the final amount out needs to discount the wrapped
                     // amount that will stay in the buffer. Refresh `bufferWrappedSurplus` after external calls on the
-                    // wrapped token. For EXACT_IN, vaultUnderlyingDeltaHint and amountInUnderlying do not change after
-                    // the deposit operation, so the bufferUnderlyingSurplus do not need to be recalculated.
+                    // wrapped token. For EXACT_IN, `vaultUnderlyingDeltaHint` and `amountInUnderlying` do not change
+                    // after the deposit operation, so the `bufferUnderlyingSurplus` does not need to be recalculated.
                     bufferWrappedSurplus = wrappedToken.previewDeposit(bufferUnderlyingSurplus);
                     amountOutWrapped = vaultWrappedDeltaHint - bufferWrappedSurplus;
                 } else {
                     // If the buffer has a surplus of underlying tokens, it wraps the surplus + amountIn, so the final
-                    // amountIn needs to be discounted for that. For EXACT_OUT, vaultWrappedDeltaHint and
-                    // amountOutWrapped do not change after the mint operation, so the bufferWrappedSurplus do not
-                    // need to be recalculated.
+                    // amount in needs to be discounted for that. For EXACT_OUT, `vaultWrappedDeltaHint` and
+                    // `amountOutWrapped` do not change after the mint operation, so the `bufferWrappedSurplus` does
+                    // not need to be recalculated.
                     bufferUnderlyingSurplus = wrappedToken.previewMint(bufferWrappedSurplus);
                     amountInUnderlying = vaultUnderlyingDeltaHint - bufferUnderlyingSurplus;
                 }
@@ -1365,15 +1365,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 if (kind == SwapKind.EXACT_IN) {
                     // Since bufferWrappedSurplus was unwrapped, the final amountOut needs to discount the underlying
                     // amount that will stay in the buffer. Refresh `bufferUnderlyingSurplus` after external calls
-                    // on the wrapped token. For EXACT_IN, vaultWrappedDeltaHint and amountInWrapped do not change
-                    // after the redeem operation, so the bufferWrappedSurplus do not need to be recalculated.
+                    // on the wrapped token. For EXACT_IN, `vaultWrappedDeltaHint` and `amountInWrapped` do not change
+                    // after the redeem operation, so the `bufferWrappedSurplus` does not need to be recalculated.
                     bufferUnderlyingSurplus = wrappedToken.previewRedeem(bufferWrappedSurplus);
                     amountOutUnderlying = vaultUnderlyingDeltaHint - bufferUnderlyingSurplus;
                 } else {
                     // If the buffer has a surplus of wrapped tokens, it unwraps the surplus + amountIn, so the final
-                    // amountIn needs to be discounted for that. For EXACT_OUT, vaultUnderlyingDeltaHint and
-                    // amountOutUnderlying do not change after the withdraw operation, so the bufferUnderlyingSurplus
-                    // do not need to be recalculated.
+                    // amountIn needs to be discounted for that. For EXACT_OUT, `vaultUnderlyingDeltaHint` and
+                    // `amountOutUnderlying` do not change after the withdraw operation, so the
+                    // `bufferUnderlyingSurplus` does not need to be recalculated.
                     bufferWrappedSurplus = wrappedToken.previewWithdraw(bufferUnderlyingSurplus);
                     amountInWrapped = vaultWrappedDeltaHint - bufferWrappedSurplus;
                 }
