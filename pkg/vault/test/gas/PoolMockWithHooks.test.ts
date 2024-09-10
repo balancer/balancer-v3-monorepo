@@ -20,8 +20,10 @@ class PoolMockWithHooksBenchmark extends Benchmark {
 
     const hooks = (await deploy('MinimalHooksPoolMock')) as unknown as MinimalHooksPoolMock;
 
-    await hooks.setHookFlags({
-      enableHookAdjustedAmounts: false,
+    await hooks.setHookFlags({  
+      enableHookAdjustedAmountsOnAdd: false,
+      enableHookAdjustedAmountsOnRemove: false,
+      enableHookAdjustedAmountsOnSwap: false,
       shouldCallBeforeInitialize: true,
       shouldCallAfterInitialize: true,
       shouldCallComputeDynamicSwapFee: true,
