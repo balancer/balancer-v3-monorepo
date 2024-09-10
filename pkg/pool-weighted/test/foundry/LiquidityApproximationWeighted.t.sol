@@ -69,6 +69,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
 
         return address(weightedPool);
     }
+
     // Tests varying weight
 
     // #region addLiquidityUnbalanced
@@ -92,10 +93,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         addLiquidityUnbalancedWeights(daiAmountIn, 0, weightDai);
     }
 
-    function testAddLiquidityUnbalancedWeightsSmallAmounts__Fuzz(
-        uint256 daiAmountIn,
-        uint256 weightDai
-    ) public {
+    function testAddLiquidityUnbalancedWeightsSmallAmounts__Fuzz(uint256 daiAmountIn, uint256 weightDai) public {
         daiAmountIn = bound(daiAmountIn, 1, 1e6);
         weightDai = bound(weightDai, 1e16, 99e16);
 
@@ -105,11 +103,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         this.addLiquidityUnbalancedWeights(daiAmountIn, 0, weightDai);
     }
 
-    function addLiquidityUnbalancedWeights(
-        uint256 daiAmountIn,
-        uint256 swapFeePercentage,
-        uint256 weightDai
-    ) public {
+    function addLiquidityUnbalancedWeights(uint256 daiAmountIn, uint256 swapFeePercentage, uint256 weightDai) public {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
         excessRoundingDelta = 0.5e16; // 0.5%
@@ -352,7 +346,10 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
             : assertLiquidityOperationNoSwapFee();
     }
 
-    function testRemoveLiquiditySingleTokenExactOut__Fuzz(uint256 exactAmountOut, uint256 swapFeePercentage) public override {
+    function testRemoveLiquiditySingleTokenExactOut__Fuzz(
+        uint256 exactAmountOut,
+        uint256 swapFeePercentage
+    ) public override {
         excessRoundingDelta = 0.5e16;
         super.testRemoveLiquiditySingleTokenExactOut__Fuzz(exactAmountOut, swapFeePercentage);
     }
@@ -433,14 +430,17 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         maxAmount = maxAmount.mulDown(25e16);
     }
 
-    function _computeMaxBptAmount(uint256 weightDai, uint256 swapFeePercentage) private view returns (uint256 maxAmount) {
+    function _computeMaxBptAmount(
+        uint256 weightDai,
+        uint256 swapFeePercentage
+    ) private view returns (uint256 maxAmount) {
         uint256 totalSupply = IERC20(liquidityPool).totalSupply();
         // Compute the portion of the BPT supply that corresponds to the DAI tokens.
         uint256 daiSupply = totalSupply.mulDown(weightDai);
         // When we add liquidity unbalanced, fees will make the vault request more tokens.
         // We need to offset this effect: we want to bring down the max amount even further when fees are larger,
         // so we multiply the DAI supply with a lower value as fees go higher.
-        uint256 daiSupplyAccountingFees =  daiSupply.mulDown(swapFeePercentage.complement());
+        uint256 daiSupplyAccountingFees = daiSupply.mulDown(swapFeePercentage.complement());
 
         // Finally we take multiply by 25% (30% is max in ratio, we leave some margin).
         maxAmount = daiSupplyAccountingFees.mulDown(25e16);

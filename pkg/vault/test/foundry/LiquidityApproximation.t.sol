@@ -180,7 +180,10 @@ contract LiquidityApproximationTest is BaseVaultTest {
 
     /// Remove
 
-    function testRemoveLiquiditySingleTokenExactOut__Fuzz(uint256 exactAmountOut, uint256 swapFeePercentage) public virtual {
+    function testRemoveLiquiditySingleTokenExactOut__Fuzz(
+        uint256 exactAmountOut,
+        uint256 swapFeePercentage
+    ) public virtual {
         exactAmountOut = bound(exactAmountOut, minAmount, maxAmount);
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
 
