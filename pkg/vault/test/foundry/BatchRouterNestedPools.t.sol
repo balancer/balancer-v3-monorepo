@@ -72,17 +72,17 @@ contract BatchRouterNestedPools is BaseVaultTest {
 
         NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
 
-        // During pool initialization, MIN_BPT amount of BPT is burned to address(0), so that the pool cannot be
-        // completely drained. We need to discount this amount of tokens from the total liquidity that we can extract
-        // from the child pools.
-        uint256 deadTokens = (MIN_BPT / 2).mulDown(proportionToRemove);
+        // During pool initialization, POOL_MINIMUM_TOTAL_SUPPLY amount of BPT is burned to address(0), so that the
+        // pool cannot be completely drained. We need to discount this amount of tokens from the total liquidity that
+        // we can extract from the child pools.
+        uint256 deadTokens = (POOL_MINIMUM_TOTAL_SUPPLY / 2).mulDown(proportionToRemove);
 
         uint256[] memory expectedAmountsOut = new uint256[](4);
         // DAI exists in childPoolB and parentPool, so we expect 2x more DAI than the other tokens.
         // Since pools are in their initial state, we can use poolInitAmount as the balance of each token in the pool.
         // Also, we only need to account for deadTokens once, since we calculate the BPT in for the parent pool using
-        // totalSupply (so the burned MIN_BPT amount does not affect the BPT in circulation, and the amounts out are
-        // perfectly proportional to the parent pool balance).
+        // totalSupply (so the burned POOL_MINIMUM_TOTAL_SUPPLY amount does not affect the BPT in circulation, and the
+        // amounts out are perfectly proportional to the parent pool balance).
         expectedAmountsOut[vars.daiIdx] =
             (poolInitAmount.mulDown(proportionToRemove) * 2) -
             deadTokens -
@@ -205,7 +205,8 @@ contract BatchRouterNestedPools is BaseVaultTest {
         assertApproxEqAbs(
             vars.parentPoolAfter.dai,
             vars.parentPoolBefore.dai -
-                (amountsOut[vars.daiIdx] - (poolInitAmount - (MIN_BPT / 2)).mulDown(proportionToRemove)),
+                (amountsOut[vars.daiIdx] -
+                    (poolInitAmount - (POOL_MINIMUM_TOTAL_SUPPLY / 2)).mulDown(proportionToRemove)),
             MAX_ROUND_ERROR,
             "ParentPool Dai Balance is wrong"
         );
@@ -232,10 +233,10 @@ contract BatchRouterNestedPools is BaseVaultTest {
 
         NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
 
-        // During pool initialization, MIN_BPT amount of BPT is burned to address(0), so that the pool cannot be
-        // completely drained. We need to discount this amount of tokens from the total liquidity that we can extract
-        // from the child pools.
-        uint256 deadTokens = (MIN_BPT / 2).mulDown(proportionToRemove);
+        // During pool initialization, POOL_MINIMUM_TOTAL_SUPPLY amount of BPT is burned to address(0), so that the
+        // pool cannot be completely drained. We need to discount this amount of tokens from the total liquidity that
+        // we can extract from the child pools.
+        uint256 deadTokens = (POOL_MINIMUM_TOTAL_SUPPLY / 2).mulDown(proportionToRemove);
 
         uint256[] memory minAmountsOut = new uint256[](4);
         // Expect minAmountsOut to be the liquidity of the pool, which is more than what we should return,
@@ -248,8 +249,8 @@ contract BatchRouterNestedPools is BaseVaultTest {
         // DAI exists in childPoolB and parentPool, so we expect 2x more DAI than the other tokens.
         // Since pools are in their initial state, we can use poolInitAmount as the balance of each token in the pool.
         // Also, we only need to account for deadTokens once, since we calculate the BPT in for the parent pool using
-        // totalSupply (so the burned MIN_BPT amount does not affect the BPT in circulation, and the amounts out are
-        // perfectly proportional to the parent pool balance).
+        // totalSupply (so the burned POOL_MINIMUM_TOTAL_SUPPLY amount does not affect the BPT in circulation, and the
+        // amounts out are perfectly proportional to the parent pool balance).
 
         uint256 daiExpectedAmountOut = (poolInitAmount.mulDown(proportionToRemove) * 2) - deadTokens;
 
