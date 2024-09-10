@@ -768,23 +768,18 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(lp, tokens);
 
         // Check wrap results.
-        // For wrap exact out, when the buffer has enough liquidity to fulfill the operation, amountIn increases by
-        // conversion factor. Depending on the token rate, the value may change a bit, but it's important that amountIn
-        // is bigger than _wrapAmount to make sure the buffer is not drained.
         assertEq(amountIn, _wrapAmount, "AmountIn (underlying deposited) is wrong");
         assertEq(
             balancesAfter.lpTokens[daiIdx],
             balancesBefore.lpTokens[daiIdx] - _wrapAmount,
             "LP balance of underlying token is wrong"
         );
-        // For wrap exact out, when the buffer has enough liquidity to fulfill the operation, amountOut decreases by
-        // conversion factor. Depending on the token rate, the value may change a bit, but it's important that
-        // amountOut is smaller than `waDAI.previewDeposit(_wrapAmount)` to make sure the buffer is not drained.
         uint256 expectedAmountOut = waDAI.previewDeposit(_wrapAmount);
         assertEq(amountOut, expectedAmountOut, "AmountOut (wrapped minted) is wrong");
         assertEq(
             balancesAfter.lpTokens[waDaiIdx],
             balancesBefore.lpTokens[waDaiIdx] + expectedAmountOut,
+            convertFactorExactIn,
             "LP balance of wrapped token is wrong"
         );
 
