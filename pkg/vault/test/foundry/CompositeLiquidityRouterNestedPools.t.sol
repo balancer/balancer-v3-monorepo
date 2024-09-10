@@ -263,8 +263,12 @@ contract CompositeLiquidityRouterNestedPools is BaseVaultTest {
             )
         );
         vm.prank(lp);
-        (address[] memory tokensOut, uint256[] memory amountsOut) = compositeLiquidityRouter
-            .removeLiquidityProportionalFromNestedPools(parentPool, exactBptIn, minAmountsOut, bytes(""));
+        compositeLiquidityRouter.removeLiquidityProportionalFromNestedPools(
+            parentPool,
+            exactBptIn,
+            minAmountsOut,
+            bytes("")
+        );
     }
 
     struct NestedPoolTestLocals {
