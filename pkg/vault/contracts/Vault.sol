@@ -1152,8 +1152,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         uint256 amountGiven
     ) private returns (uint256 amountInUnderlying, uint256 amountOutWrapped) {
         if (kind == SwapKind.EXACT_IN) {
-            // EXACT_IN wrap, so AmountGiven is underlying amount. Deposit is the ERC4626 operation that receives
-            // underlying amount in and calculates the wrapped amount out with the right rounding.
+            // EXACT_IN wrap, so AmountGiven is an underlying amount. `deposit` is the ERC4626 operation that receives
+            // an underlying amount in and calculates the wrapped amount out with the correct rounding.
             (amountInUnderlying, amountOutWrapped) = (amountGiven, wrappedToken.previewDeposit(amountGiven));
         } else {
             // EXACT_OUT wrap, so AmountGiven is wrapped amount. Mint is the ERC4626 operation that receives
