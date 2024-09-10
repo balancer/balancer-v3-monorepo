@@ -160,7 +160,11 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(lp, tokens);
 
         // Check wrap results.
+        // Checks if amountIn (Amount deposited into the Vault) is >= _wrapAmount. It means, if there's a rounding
+        // error, it's in vault's favor.
         assertGe(amountIn, _wrapAmount, "AmountIn (underlying deposited) is wrong");
+        // Checks if amountOut (Amount extracted from the Vault) is <= _wrapAmount. It means, if there's a rounding
+        // error, it's in vault's favor.
         assertLe(amountOut, waDAI.previewDeposit(_wrapAmount), "AmountOut (wrapped minted) is wrong");
 
         // Check user balances.
@@ -223,7 +227,11 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(lp, tokens);
 
         // Check unwrap results.
+        // Checks if amountOut (Amount extracted from the Vault) is <= _wrapAmount. It means, if there's a rounding
+        // error, it's in vault's favor.
         assertLe(amountOut, _wrapAmount, "AmountOut (underlying withdrawn) is wrong");
+        // Checks if amountIn (Amount deposited into the Vault) is >= _wrapAmount. It means, if there's a rounding
+        // error, it's in vault's favor.
         assertGe(amountIn, waDAI.previewDeposit(_wrapAmount), "AmountIn (wrapped burned) is wrong");
 
         // Check user balances.

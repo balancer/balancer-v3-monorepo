@@ -123,7 +123,7 @@ abstract contract BaseTest is Test, GasSnapshot {
     /**
      * @notice Manipulate rates of ERC4626 tokens.
      * @dev It's important to not have a 1:1 rate when testing ERC4626 tokens, so we can differentiate between
-     * wrapped and underlying amounts. For certain tests, it may be needed to override these rates, for simplicity.
+     * wrapped and underlying amounts. For certain tests, we may need to override these rates for simplicity.
      */
     function mockERC4626TokenRates() internal virtual {
         waDAI.inflateUnderlyingOrWrapped(0, 6 * defaultBalance);
@@ -144,7 +144,7 @@ abstract contract BaseTest is Test, GasSnapshot {
         vm.label(address(token), name);
     }
 
-    /// @dev Creates an ERC4626 test token, labels its address.
+    /// @dev Creates an ERC4626 test token and labels its address.
     function createERC4626(
         string memory name,
         string memory symbol,
@@ -166,10 +166,10 @@ abstract contract BaseTest is Test, GasSnapshot {
         }
 
         for (uint256 i = 0; i < erc4626Tokens.length; ++i) {
-            // Give underlying to user, so it can deposit in the wrapped token.
+            // Give underlying tokens to the user, for depositing in the wrapped token.
             ERC20TestToken(erc4626Tokens[i].asset()).mint(user, defaultBalance);
 
-            // Deposit underlying to mint wrapped tokens mto the user.
+            // Deposit underlying to mint wrapped tokens to the user.
             vm.startPrank(user);
             IERC20(erc4626Tokens[i].asset()).approve(address(erc4626Tokens[i]), defaultBalance);
             erc4626Tokens[i].deposit(defaultBalance, user);
