@@ -166,7 +166,7 @@ abstract contract BaseTest is Test, GasSnapshot {
         }
 
         for (uint256 i = 0; i < erc4626Tokens.length; ++i) {
-            // Give underlying to user, so it can deposit in the wrapped token.
+            // Give underlying tokens to the user, for depositing in the wrapped token.
             ERC20TestToken(erc4626Tokens[i].asset()).mint(user, defaultBalance);
 
             // Deposit underlying to mint wrapped tokens mto the user.
