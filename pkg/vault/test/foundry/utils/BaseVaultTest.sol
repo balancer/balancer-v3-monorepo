@@ -175,6 +175,16 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
             permit2.approve(address(tokens[i]), address(router), type(uint160).max, type(uint48).max);
             permit2.approve(address(tokens[i]), address(batchRouter), type(uint160).max, type(uint48).max);
         }
+
+        for (uint256 i = 0; i < erc4626Tokens.length; ++i) {
+            erc4626Tokens[i].approve(address(permit2), type(uint256).max);
+            permit2.approve(address(erc4626Tokens[i]), address(router), type(uint160).max, type(uint48).max);
+            permit2.approve(address(erc4626Tokens[i]), address(batchRouter), type(uint160).max, type(uint48).max);
+
+            // Approve deposits from sender.
+            IERC20 underlying = IERC20(erc4626Tokens[i].asset());
+            underlying.approve(address(erc4626Tokens[i]), type(uint160).max);
+        }
     }
 
     function approveForPool(IERC20 bpt) internal virtual {
