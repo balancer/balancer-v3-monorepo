@@ -53,6 +53,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     using StorageSlotExtension for *;
     using PoolDataLib for PoolData;
 
+    // When using the ERC4626 buffer liquidity directly to wrap/unwrap, convert is used to calculate how many tokens to
+    // return to the user. However, convert is not equal to the actual operation and may return an optimistic result.
+    // This factor makes sure that the use of buffer liquidity does not return more tokens than executing the
+    // wrap/unwrap operation directly.
+    uint16 internal constant _CONVERT_FACTOR = 100;
+
     // Local reference to the Proxy pattern Vault extension contract.
     IVaultExtension private immutable _vaultExtension;
 
@@ -201,10 +207,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Sets all fields in `poolData`. Side effects: updates `_poolTokenBalances`, `_aggregateFeeAmounts`
         // in storage.
         PoolData memory poolData = _loadPoolDataUpdatingBalancesAndYieldFees(vaultSwapParams.pool, Rounding.ROUND_DOWN);
-
-        // State is fully populated here, and shall not be modified at a lower level.
         SwapState memory swapState = _loadSwapState(vaultSwapParams, poolData);
-
         PoolSwapParams memory poolSwapParams = _buildPoolSwapParams(vaultSwapParams, swapState, poolData);
 
         if (poolData.poolConfigBits.shouldCallBeforeSwap()) {
@@ -286,8 +289,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         swapState.indexIn = _findTokenIndex(poolData.tokens, vaultSwapParams.tokenIn);
         swapState.indexOut = _findTokenIndex(poolData.tokens, vaultSwapParams.tokenOut);
 
-        // If the amountGiven is entering the pool math (ExactIn), round down, since a lower apparent amountIn leads
-        // to a lower calculated amountOut, favoring the pool.
         swapState.amountGivenScaled18 = _computeAmountGivenScaled18(vaultSwapParams, poolData, swapState);
         swapState.swapFeePercentage = poolData.poolConfigBits.getStaticSwapFeePercentage();
     }

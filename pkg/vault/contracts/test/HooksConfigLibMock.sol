@@ -3,7 +3,6 @@
 pragma solidity ^0.8.24;
 
 import { IHooks } from "@balancer-labs/v3-interfaces/contracts/vault/IHooks.sol";
-import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 
 import { HooksConfigLib } from "../lib/HooksConfigLib.sol";
