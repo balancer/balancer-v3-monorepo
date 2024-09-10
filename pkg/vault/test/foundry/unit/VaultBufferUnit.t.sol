@@ -69,7 +69,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         dai.transfer(address(wDaiInitialized), wDaiInitialized.totalAssets());
         vm.stopPrank();
 
-        assertApproxEqAbs(wDaiInitialized.getRate(), 2e18, 1, "Wrong wDAI rate");
+        assertApproxEqAbs(wDaiInitialized.getRate(), 2e18, 1, "Wrong wDAI ra te");
 
         uint256 surplus = vault.internalGetBufferUnderlyingSurplus(IERC4626(address(wDaiInitialized)));
         // Before swap, buffer had _wrapAmount of underlying and wrapped.
