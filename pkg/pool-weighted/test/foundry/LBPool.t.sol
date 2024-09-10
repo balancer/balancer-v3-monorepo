@@ -286,18 +286,6 @@ contract LBPoolTest is BasePoolTest {
         );
     }
 
-    function testSetSwapFeeTooLow() public override {
-        vm.prank(bob);
-        vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
-        vault.setStaticSwapFeePercentage(pool, poolMinSwapFeePercentage - 1);
-    }
-
-    function testSetSwapFeeTooHigh() public override {
-        vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapFeePercentageTooHigh.selector));
-        vault.setStaticSwapFeePercentage(pool, poolMaxSwapFeePercentage + 1);
-    }
-
     function testOnlyOwnerCanBeLP() public {
         uint256[] memory amounts = [TOKEN_AMOUNT, TOKEN_AMOUNT].toMemoryArray();
 

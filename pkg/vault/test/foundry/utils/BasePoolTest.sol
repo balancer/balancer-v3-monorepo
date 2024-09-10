@@ -10,6 +10,7 @@ import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/I
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
 import { IVaultAdmin } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultAdmin.sol";
+import { PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { IBasePool } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePool.sol";
 import { Vault } from "@balancer-labs/v3-vault/contracts/Vault.sol";
 
@@ -250,25 +251,36 @@ abstract contract BasePoolTest is BaseVaultTest {
         assertEq(IBasePool(pool).getMaximumSwapFeePercentage(), poolMaxSwapFeePercentage, "Maximum swap fee mismatch");
     }
 
-    function testSetSwapFeeTooLow() public virtual {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
-        vm.prank(alice);
+    function getSwapFeeAdmin() public returns (address) {
+        address swapFeeManager;
+        PoolRoleAccounts memory roleAccounts = vault.getPoolRoleAccounts(pool);
+        if (roleAccounts.swapFeeManager != address(0)) {
+            return roleAccounts.swapFeeManager;
+        } else {
+            swapFeeManager = alice;
+            authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), swapFeeManager);
+            return swapFeeManager;
+        }
+    }
 
+    function testSetSwapFeeTooLow() public virtual {
+        address swapFeeManager = getSwapFeeAdmin();
+        vm.prank(swapFeeManager);
         vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
         vault.setStaticSwapFeePercentage(pool, poolMinSwapFeePercentage - 1);
     }
 
     function testSetSwapFeeTooHigh() public virtual {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
-        vm.prank(alice);
+        address swapFeeManager = getSwapFeeAdmin();
+        vm.prank(swapFeeManager);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapFeePercentageTooHigh.selector));
         vault.setStaticSwapFeePercentage(pool, poolMaxSwapFeePercentage + 1);
     }
 
     function testAddLiquidityUnbalanced() public virtual {
-        authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), alice);
-        vm.prank(alice);
+        address swapFeeManager = getSwapFeeAdmin();
+        vm.prank(swapFeeManager);
         vault.setStaticSwapFeePercentage(pool, 10e16);
 
         uint256[] memory amountsIn = tokenAmounts;
