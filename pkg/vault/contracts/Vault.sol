@@ -1161,8 +1161,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountInUnderlying, amountOutWrapped) = (wrappedToken.previewMint(amountGiven), amountGiven);
         }
 
-        // If it's a query, vault may not have enough underlying tokens to wrap, so return the calculated amount
-        // without checking for the surplus.
+        // If it's a query, the Vault may not have enough underlying tokens to wrap. Since in a query we do not expect
+        // the sender to pay for underlying tokens to wrap upfront, return the calculated amount without checking for
+        // the surplus.
         if (_isQueryContext()) {
             return (amountInUnderlying, amountOutWrapped);
         }
@@ -1296,8 +1297,9 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountInWrapped, amountOutUnderlying) = (wrappedToken.previewWithdraw(amountGiven), amountGiven);
         }
 
-        // If it's a query, vault may not have enough underlying tokens to wrap, so return the calculated amount
-        // without checking for the surplus.
+        // If it's a query, the Vault may not have enough wrapped tokens to unwrap. Since in a query we do not expect
+        // the sender to pay for wrapped tokens to unwrap upfront, return the calculated amount without checking for
+        // the surplus.
         if (_isQueryContext()) {
             return (amountInWrapped, amountOutUnderlying);
         }
