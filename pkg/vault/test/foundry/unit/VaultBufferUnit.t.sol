@@ -67,8 +67,7 @@ contract VaultBufferUnitTest is BaseVaultTest {
         vm.startPrank(lp);
         batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        // rate = assets / supply. If we double the assets, we double the rate.
-        // Donate to wrapped token to inflate rate to 2
+        // Mock token rate to 2, so we can validate the calculation of surplus taking the rate into consideration.
         wDaiInitialized.mockRate(2e18);
         vm.stopPrank();
 
