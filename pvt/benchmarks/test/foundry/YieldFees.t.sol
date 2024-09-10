@@ -82,6 +82,7 @@ contract YieldFeesTest is BaseVaultTest {
                 address(0),
                 false,
                 false,
+                false,
                 bytes32(0)
             )
         );
