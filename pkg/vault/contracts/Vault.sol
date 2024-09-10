@@ -1372,8 +1372,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 } else {
                     // If the buffer has a surplus of wrapped tokens, it unwraps the surplus + amountIn, so the final
                     // amountIn needs to be discounted for that. For EXACT_OUT, vaultUnderlyingDeltaHint and
-                    // amountOutUnderlying do not change after the withdraw operation, so the bufferWrappedSurplus do
-                    // not need to be recalculated.
+                    // amountOutUnderlying do not change after the withdraw operation, so the bufferUnderlyingSurplus
+                    // do not need to be recalculated.
                     bufferWrappedSurplus = wrappedToken.previewWithdraw(bufferUnderlyingSurplus);
                     amountInWrapped = vaultWrappedDeltaHint - bufferWrappedSurplus;
                 }
