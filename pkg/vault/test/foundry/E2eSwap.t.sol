@@ -97,10 +97,11 @@ contract E2eSwapTest is BaseVaultTest {
     /**
      * @notice Override pool created by BaseVaultTest.
      * @dev For this test to be generic and support tokens with different decimals, tokenA and tokenB must be set by
-     * `_setUpVariables`. If this function runs before `BaseVaultTest.setUp()`, in the `setUp()` function, tokens
-     * defined by BaseTest (like dai and usdc) cannot be used. If it runs after, we don't know which tokens are used to
-     * use createPool and initPool. So, the solution is to create a parallel function to create and init a custom pool
-     * after BaseVaultTest setUp finishes.
+     * `setUpTokens`. If this function runs before `BaseVaultTest.setUp()`, in the `setUp()` function, tokens defined
+     * by BaseTest (like dai and usdc) cannot be used. If it runs after, we don't know which tokens are used by
+     * createPool and initPool. So, the solution is to create a parallel function to create and initialize a custom
+     * pool after the BaseVaultTest setUp finishes.
+
      */
     function createAndInitCustomPool() internal virtual {
         address[] memory tokens = new address[](2);
@@ -129,17 +130,12 @@ contract E2eSwapTest is BaseVaultTest {
     }
 
     /**
-     * @notice Set up test variables (sender, poolCreator, pool swap fee, swap sizes).
+     * @notice Set up test variables (sender and poolCreator).
      * @dev When extending the test, override this function and set the same variables.
      */
     function setUpVariables() internal virtual {
         sender = lp;
         poolCreator = lp;
-
-        // 0.0001% min swap fee.
-        minPoolSwapFeePercentage = 1e12;
-        // 10% max swap fee.
-        maxPoolSwapFeePercentage = 10e16;
     }
 
     function calculateMinAndMaxSwapAmounts() internal virtual {

@@ -21,15 +21,13 @@ import { BaseVaultTest } from "./BaseVaultTest.sol";
 abstract contract BaseERC4626BufferTest is BaseVaultTest {
     using ArrayHelpers for *;
 
-    uint256 bufferInitialAmount = 1e5 * 1e18;
-    uint256 erc4626PoolInitialAmount = 10e6 * 1e18;
-    uint256 erc4626PoolInitialBPTAmount = erc4626PoolInitialAmount * 2;
+    uint256 internal bufferInitialAmount = 1e5 * 1e18;
+    uint256 internal erc4626PoolInitialAmount = 10e6 * 1e18;
+    uint256 internal erc4626PoolInitialBPTAmount = erc4626PoolInitialAmount * 2;
 
-    ERC4626TestToken internal waDAI;
-    ERC4626TestToken internal waUSDC;
     uint256 internal waDaiIdx;
     uint256 internal waUsdcIdx;
-    address erc4626Pool;
+    address internal erc4626Pool;
 
     // Rounding issues are introduced when dealing with tokens with rates different than 1:1. For example, to scale the
     // tokens of an yield-bearing pool, the amount of tokens is multiplied by the rate of the token, which is
@@ -41,15 +39,48 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
     function setUp() public virtual override {
         BaseVaultTest.setUp();
 
-        _setupWrappedTokens();
+        erc4626Pool = pool;
+
         _initializeBuffers();
-        _initializeERC4626Pool();
     }
 
-    function testTokensPreconditions() public view {
-        // To test wrapped and underlying amounts correctly, the rate of wrapped tokens should not be 1.
-        assertNotEq(waDAI.getRate(), FixedPoint.ONE, "waDAI rate should not be 1");
-        assertNotEq(waUSDC.getRate(), FixedPoint.ONE, "waUSDC rate should not be 1");
+    function createPool() internal virtual override returns (address) {
+        TokenConfig[] memory tokenConfig = getTokenConfig();
+
+        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC4626 Pool", "ERC4626P");
+        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract, lp);
+
+        vm.label(address(newPool), "erc4626 pool");
+        erc4626Pool = address(newPool);
+        return erc4626Pool;
+    }
+
+    function initPool() internal virtual override {
+        vm.startPrank(bob);
+        uint256 waDaiBobShares = waDAI.previewDeposit(erc4626PoolInitialAmount);
+        uint256 waUsdcBobShares = waUSDC.previewDeposit(erc4626PoolInitialAmount);
+
+        uint256[] memory amountsIn = new uint256[](2);
+        amountsIn[waDaiIdx] = waDaiBobShares;
+        amountsIn[waUsdcIdx] = waUsdcBobShares;
+
+        // Since token rates are rounding down, the BPT calculation may be a little less than the predicted amount.
+        _initPool(erc4626Pool, amountsIn, erc4626PoolInitialBPTAmount - errorTolerance - BUFFER_MINIMUM_TOTAL_SUPPLY);
+
+        vm.stopPrank();
+    }
+
+    function getTokenConfig() internal virtual returns (TokenConfig[] memory) {
+        (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
+
+        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
+        tokenConfig[waDaiIdx].token = IERC20(waDAI);
+        tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
+        tokenConfig[0].tokenType = TokenType.WITH_RATE;
+        tokenConfig[1].tokenType = TokenType.WITH_RATE;
+        tokenConfig[waDaiIdx].rateProvider = IRateProvider(address(waDAI));
+        tokenConfig[waUsdcIdx].rateProvider = IRateProvider(address(waUSDC));
+        return tokenConfig;
     }
 
     function testERC4626BufferPreconditions() public view {
@@ -78,30 +109,29 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         );
 
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
-        assertApproxEqAbs(
+        uint256 waDAIInvariantDelta = bufferInitialAmount +
+            waDAI.convertToAssets(waDAI.previewDeposit(bufferInitialAmount));
+        assertEq(
             vault.getBufferOwnerShares(IERC4626(waDAI), lp),
-            2 * bufferInitialAmount - BUFFER_MINIMUM_TOTAL_SUPPLY,
-            1, // 1 wei error due to rounding issues
+            waDAIInvariantDelta - BUFFER_MINIMUM_TOTAL_SUPPLY,
             "Wrong share of waDAI buffer belonging to LP"
         );
-        assertApproxEqAbs(
-            vault.getBufferOwnerShares(IERC4626(waUSDC), lp),
-            2 * bufferInitialAmount - BUFFER_MINIMUM_TOTAL_SUPPLY,
-            1, // 1 wei error due to rounding issues
-            "Wrong share of waUSDC buffer belonging to LP"
-        );
-
-        // Buffer should have the correct amount of issued shares.
-        assertApproxEqAbs(
+        assertEq(
             vault.getBufferTotalShares(IERC4626(waDAI)),
-            bufferInitialAmount * 2,
-            1, // 1 wei error due to rounding issues
+            waDAIInvariantDelta,
             "Wrong issued shares of waDAI buffer"
         );
-        assertApproxEqAbs(
+
+        uint256 waUSDCInvariantDelta = bufferInitialAmount +
+            waUSDC.convertToAssets(waUSDC.previewDeposit(bufferInitialAmount));
+        assertEq(
+            vault.getBufferOwnerShares(IERC4626(waUSDC), lp),
+            waUSDCInvariantDelta - BUFFER_MINIMUM_TOTAL_SUPPLY,
+            "Wrong share of waUSDC buffer belonging to LP"
+        );
+        assertEq(
             vault.getBufferTotalShares(IERC4626(waUSDC)),
-            bufferInitialAmount * 2,
-            1, // 1 wei error due to rounding issues
+            waUSDCInvariantDelta,
             "Wrong issued shares of waUSDC buffer"
         );
 
@@ -128,107 +158,12 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
 
     function _initializeBuffers() private {
         // Create and fund buffer pools.
-        vm.startPrank(lp);
-        dai.mint(lp, bufferInitialAmount);
-        dai.approve(address(waDAI), bufferInitialAmount);
-        uint256 waDAILPShares = waDAI.deposit(bufferInitialAmount, lp);
-
-        usdc.mint(lp, bufferInitialAmount);
-        usdc.approve(address(waUSDC), bufferInitialAmount);
-        uint256 waUSDCLPShares = waUSDC.deposit(bufferInitialAmount, lp);
-        vm.stopPrank();
+        uint256 waDAILPShares = waDAI.previewDeposit(bufferInitialAmount);
+        uint256 waUSDCLPShares = waUSDC.previewDeposit(bufferInitialAmount);
 
         vm.startPrank(lp);
-        waDAI.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waDAI), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
-        waUSDC.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waUSDC), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
-
         router.initializeBuffer(waDAI, bufferInitialAmount, waDAILPShares);
         router.initializeBuffer(waUSDC, bufferInitialAmount, waUSDCLPShares);
         vm.stopPrank();
-    }
-
-    function _initializeERC4626Pool() private {
-        TokenConfig[] memory tokenConfig = new TokenConfig[](2);
-        tokenConfig[waDaiIdx].token = IERC20(waDAI);
-        tokenConfig[waUsdcIdx].token = IERC20(waUSDC);
-        tokenConfig[0].tokenType = TokenType.WITH_RATE;
-        tokenConfig[1].tokenType = TokenType.WITH_RATE;
-        tokenConfig[waDaiIdx].rateProvider = IRateProvider(address(waDAI));
-        tokenConfig[waUsdcIdx].rateProvider = IRateProvider(address(waUSDC));
-
-        PoolMock newPool = new PoolMock(IVault(address(vault)), "ERC4626 Pool", "ERC4626P");
-
-        factoryMock.registerTestPool(address(newPool), tokenConfig, poolHooksContract);
-
-        vm.label(address(newPool), "erc4626 pool");
-        erc4626Pool = address(newPool);
-
-        vm.startPrank(bob);
-        waDAI.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waDAI), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
-
-        waUSDC.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waUSDC), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waUSDC), address(batchRouter), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waUSDC), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
-
-        dai.mint(bob, erc4626PoolInitialAmount);
-        dai.approve(address(waDAI), erc4626PoolInitialAmount);
-        uint256 waDaiBobShares = waDAI.deposit(erc4626PoolInitialAmount, bob);
-
-        usdc.mint(bob, erc4626PoolInitialAmount);
-        usdc.approve(address(waUSDC), erc4626PoolInitialAmount);
-        uint256 waUsdcBobShares = waUSDC.deposit(erc4626PoolInitialAmount, bob);
-
-        uint256[] memory amountsIn = new uint256[](2);
-        amountsIn[waDaiIdx] = waDaiBobShares;
-        amountsIn[waUsdcIdx] = waUsdcBobShares;
-
-        // Since token rates are rounding down, the BPT calculation may be a little less than the predicted amount.
-        _initPool(erc4626Pool, amountsIn, erc4626PoolInitialBPTAmount - errorTolerance - BUFFER_MINIMUM_TOTAL_SUPPLY);
-
-        IERC20(address(erc4626Pool)).approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(erc4626Pool), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(erc4626Pool), address(batchRouter), type(uint160).max, type(uint48).max);
-        permit2.approve(address(erc4626Pool), address(compositeLiquidityRouter), type(uint160).max, type(uint48).max);
-
-        IERC20(address(erc4626Pool)).approve(address(router), type(uint256).max);
-        IERC20(address(erc4626Pool)).approve(address(batchRouter), type(uint256).max);
-        IERC20(address(erc4626Pool)).approve(address(compositeLiquidityRouter), type(uint256).max);
-        vm.stopPrank();
-    }
-
-    function _setupWrappedTokens() private {
-        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
-        vm.label(address(waDAI), "waDAI");
-
-        // "USDC" is deliberately 18 decimals to test one thing at a time.
-        waUSDC = new ERC4626TestToken(usdc, "Wrapped aUSDC", "waUSDC", 18);
-        vm.label(address(waUSDC), "waUSDC");
-
-        (waDaiIdx, waUsdcIdx) = getSortedIndexes(address(waDAI), address(waUSDC));
-
-        // Manipulate rates before creating the ERC4626 pools. It's important to not have a 1:1 rate when testing
-        // ERC4626 tokens, so we can differentiate between wrapped and underlying amounts.
-        dai.mint(lp, 10 * erc4626PoolInitialAmount);
-        usdc.mint(lp, 10 * erc4626PoolInitialAmount);
-        // Deposit sets the rate to 1.
-        vm.startPrank(lp);
-        dai.approve(address(waDAI), 10 * erc4626PoolInitialAmount);
-        waDAI.deposit(10 * erc4626PoolInitialAmount, lp);
-        usdc.approve(address(waUSDC), 10 * erc4626PoolInitialAmount);
-        waUSDC.deposit(10 * erc4626PoolInitialAmount, lp);
-        vm.stopPrank();
-        // Changing asset balances without minting shares changes the rate so that it is no longer 1.
-        waDAI.inflateUnderlyingOrWrapped(2 * erc4626PoolInitialAmount, 0);
-        waUSDC.inflateUnderlyingOrWrapped(23 * erc4626PoolInitialAmount, 0);
     }
 }

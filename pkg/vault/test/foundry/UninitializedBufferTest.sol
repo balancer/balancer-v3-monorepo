@@ -15,19 +15,8 @@ import { ERC4626TestToken } from "@balancer-labs/v3-solidity-utils/contracts/tes
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
 contract UnInitializedBufferTest is BaseVaultTest {
-    ERC4626TestToken internal waDAI;
-
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-
-        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
-        vm.label(address(waDAI), "waDAI");
-
-        vm.startPrank(alice);
-        waDAI.approve(address(permit2), MAX_UINT256);
-        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
-        permit2.approve(address(waDAI), address(batchRouter), type(uint160).max, type(uint48).max);
-        vm.stopPrank();
 
         authorizer.grantRole(vault.getActionId(IVaultAdmin.removeLiquidityFromBuffer.selector), address(router));
     }
