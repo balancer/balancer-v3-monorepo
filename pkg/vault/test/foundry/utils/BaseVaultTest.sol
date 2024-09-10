@@ -121,9 +121,6 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
     // Change this value before calling `setUp` to test under real conditions.
     uint256 vaultMockMinWrapAmount = 0;
 
-    // TODO remove
-    uint16 internal vaultConvertFactor = 0;
-
     // Applies to Weighted Pools.
     uint256 internal constant BASE_MIN_SWAP_FEE = 1e12; // 0.00001%
     uint256 internal constant BASE_MAX_SWAP_FEE = 10e16; // 10%

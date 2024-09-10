@@ -65,8 +65,9 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
         _token1Fork = IERC20(ybToken1.asset());
         _token2Fork = IERC20(ybToken2.asset());
 
-        _ybToken1Factor = 10 ** IERC20Metadata(address(ybToken1)).decimals();
-        _ybToken2Factor = 10 ** IERC20Metadata(address(ybToken2)).decimals();
+        // Equivalent to 10^(18+decimalDifference), since decimalDifference = 18 - tokenDecimals.
+        _ybToken1Factor = 10 ** (36 - IERC20Metadata(address(ybToken1)).decimals());
+        _ybToken2Factor = 10 ** (36 - IERC20Metadata(address(ybToken2)).decimals());
 
         (_ybToken2Idx, _ybToken1Idx) = getSortedIndexes(address(ybToken2), address(ybToken1));
 
@@ -230,8 +231,6 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             amountOut
         );
 
-        console.log("---------Transaction starts here----------");
-
         _testExactOut(paths, false);
     }
 
@@ -333,9 +332,10 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
                 vars.expectedUnderlyingSurplusTokenIn,
                 vars.expectedWrappedSurplusTokenIn
             ) = _previewWrapExactIn(ybToken1, vars.expectedUnderlyingDeltaTokenIn, withBufferLiquidity);
-            uint256 wrappedAmountInScaled18 = vars.expectedWrappedDeltaTokenIn.divDown(_ybToken1Factor);
+            uint256 wrappedAmountInScaled18 = vars.expectedWrappedDeltaTokenIn.mulDown(_ybToken1Factor);
             // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
-            vars.expectedWrappedDeltaTokenOut = wrappedAmountInScaled18.mulDown(_ybToken2Factor);
+            vars.expectedWrappedDeltaTokenOut = wrappedAmountInScaled18.divDown(_ybToken2Factor);
+
             (
                 vars.expectedUnderlyingDeltaTokenOut,
                 vars.expectedUnderlyingSurplusTokenOut,
@@ -347,9 +347,10 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
                 vars.expectedUnderlyingSurplusTokenIn,
                 vars.expectedWrappedSurplusTokenIn
             ) = _previewWrapExactIn(ybToken2, vars.expectedUnderlyingDeltaTokenIn, withBufferLiquidity);
-            uint256 wrappedAmountInScaled18 = vars.expectedWrappedDeltaTokenIn.divDown(_ybToken2Factor);
+            uint256 wrappedAmountInScaled18 = vars.expectedWrappedDeltaTokenIn.mulDown(_ybToken2Factor);
             // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
-            vars.expectedWrappedDeltaTokenOut = wrappedAmountInScaled18.mulDown(_ybToken1Factor);
+            vars.expectedWrappedDeltaTokenOut = wrappedAmountInScaled18.divDown(_ybToken1Factor);
+
             (
                 vars.expectedUnderlyingDeltaTokenOut,
                 vars.expectedUnderlyingSurplusTokenOut,
@@ -388,7 +389,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
 
         // Query and actual operation can return different results, depending on the difference of decimals. The error
         // is amplified by the rate of the token out.
-        uint256 absTolerance = vars.ybTokenOut.previewRedeem(decimalError);
+        uint256 absTolerance = vars.ybTokenOut.previewMint(decimalError);
         // If previewRedeem return 0, absTolerance may be smaller than the error introduced by the difference of
         // decimals, so keep the decimalError.
         absTolerance = absTolerance > decimalError ? absTolerance : decimalError;
@@ -452,9 +453,9 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
                 vars.expectedUnderlyingSurplusTokenOut,
                 vars.expectedWrappedSurplusTokenOut
             ) = _previewUnwrapExactOut(ybToken2, vars.expectedUnderlyingDeltaTokenOut, withBufferLiquidity);
-            uint256 wrappedAmountOutScaled18 = vars.expectedWrappedDeltaTokenOut.divDown(_ybToken2Factor);
+            uint256 wrappedAmountOutScaled18 = vars.expectedWrappedDeltaTokenOut.mulUp(_ybToken2Factor);
             // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
-            vars.expectedWrappedDeltaTokenIn = wrappedAmountOutScaled18.mulDown(_ybToken1Factor);
+            vars.expectedWrappedDeltaTokenIn = wrappedAmountOutScaled18.divUp(_ybToken1Factor);
             (
                 vars.expectedUnderlyingDeltaTokenIn,
                 vars.expectedUnderlyingSurplusTokenIn,
@@ -466,9 +467,9 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
                 vars.expectedUnderlyingSurplusTokenOut,
                 vars.expectedWrappedSurplusTokenOut
             ) = _previewUnwrapExactOut(ybToken1, vars.expectedUnderlyingDeltaTokenOut, withBufferLiquidity);
-            uint256 wrappedAmountOutScaled18 = vars.expectedWrappedDeltaTokenOut.divDown(_ybToken1Factor);
+            uint256 wrappedAmountOutScaled18 = vars.expectedWrappedDeltaTokenOut.mulUp(_ybToken1Factor);
             // PoolMock is linear, so wrappedAmountInScaled18 = wrappedAmountOutScaled18
-            vars.expectedWrappedDeltaTokenIn = wrappedAmountOutScaled18.mulDown(_ybToken2Factor);
+            vars.expectedWrappedDeltaTokenIn = wrappedAmountOutScaled18.divUp(_ybToken2Factor);
             (
                 vars.expectedUnderlyingDeltaTokenIn,
                 vars.expectedUnderlyingSurplusTokenIn,
@@ -989,7 +990,7 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             uint256 snapshotId = vm.snapshot();
             vm.startPrank(lp);
             uint256 vaultWrappedDeltaHint = amountOutWrapped + bufferWrappedSurplus;
-            IERC20(wToken.asset()).approve(address(wToken), wToken.previewMint(vaultWrappedDeltaHint));
+            IERC20(wToken.asset()).forceApprove(address(wToken), wToken.previewMint(vaultWrappedDeltaHint));
             uint256 vaultUnderlyingDeltaHint = wToken.mint(vaultWrappedDeltaHint, lp);
             vm.stopPrank();
             bufferUnderlyingSurplus = wToken.previewMint(bufferWrappedSurplus);
@@ -1025,11 +1026,6 @@ abstract contract YieldBearingPoolSwapBase is BaseVaultTest {
             vm.revertTo(snapshotId);
 
             amountInWrapped = vaultWrappedDeltaHint - bufferWrappedSurplus;
-            console.log("bufferUnderlyingSurplus", bufferUnderlyingSurplus);
-            console.log("vaultUnderlyingDeltaHint", vaultUnderlyingDeltaHint);
-            console.log("vaultWrappedDeltaHint", vaultWrappedDeltaHint);
-            console.log("bufferWrappedSurplus", bufferWrappedSurplus);
-            console.log("amountInWrapped", amountInWrapped);
         }
     }
 

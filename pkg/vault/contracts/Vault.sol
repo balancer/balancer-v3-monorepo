@@ -1158,6 +1158,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountInUnderlying, amountOutWrapped) = (wrappedToken.previewMint(amountGiven), amountGiven);
         }
 
+        // If it's a query, vault may not have enough underlying tokens to wrap, so return the calculated amount
+        // without checking for the surplus.
+        if (_isQueryContext()) {
+            return (amountInUnderlying, amountOutWrapped);
+        }
+
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
         if (bufferBalances.getBalanceDerived() >= amountOutWrapped) {
@@ -1172,19 +1178,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 bufferBalances.getBalanceRaw() + amountInUnderlying,
                 newDerivedBalance
             );
-            if (_isQueryContext() == false) {
-                _bufferTokenBalances[wrappedToken] = bufferBalances;
-            }
+            _bufferTokenBalances[wrappedToken] = bufferBalances;
         } else {
             // The buffer does not have enough liquidity to facilitate the wrap without making an external call.
             // We wrap the user's tokens via an external call and additionally rebalance the buffer if it has a
             // surplus of underlying tokens.
-
-            // If it's a query, vault may not have enough underlying tokens to wrap, so return the calculated amount
-            // without checking for the surplus.
-            if (_isQueryContext()) {
-                return (amountInUnderlying, amountOutWrapped);
-            }
 
             // Gets the amount of underlying to wrap in order to rebalance the buffer.
             uint256 bufferUnderlyingSurplus = bufferBalances.getBufferUnderlyingSurplus(wrappedToken);
@@ -1288,6 +1286,12 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             (amountOutUnderlying, amountInWrapped) = (amountGiven, wrappedToken.previewWithdraw(amountGiven));
         }
 
+        // If it's a query, vault may not have enough underlying tokens to wrap, so return the calculated amount
+        // without checking for the surplus.
+        if (_isQueryContext()) {
+            return (amountInWrapped, amountOutUnderlying);
+        }
+
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
         if (bufferBalances.getBalanceRaw() >= amountOutUnderlying) {
@@ -1301,19 +1305,11 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 newRawBalance,
                 bufferBalances.getBalanceDerived() + amountInWrapped
             );
-            if (_isQueryContext() == false) {
-                _bufferTokenBalances[wrappedToken] = bufferBalances;
-            }
+            _bufferTokenBalances[wrappedToken] = bufferBalances;
         } else {
             // The buffer does not have enough liquidity to facilitate the unwrap without making an external call.
             // We unwrap the user's tokens via an external call and additionally rebalance the buffer if it has a
             // surplus of wrapped tokens.
-
-            // If it's a query, vault may not have enough underlying tokens to wrap, so return the calculated amount
-            // without checking for the surplus.
-            if (_isQueryContext()) {
-                return (amountInWrapped, amountOutUnderlying);
-            }
 
             // Gets the amount of wrapped tokens to unwrap in order to rebalance the buffer.
             uint256 bufferWrappedSurplus = bufferBalances.getBufferWrappedSurplus(wrappedToken);

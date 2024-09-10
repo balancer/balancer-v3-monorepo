@@ -152,7 +152,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.prank(lp);
         (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _checkWrapResults(balancesBefore, _wrapAmount, pathAmountsOut[0], SwapKind.EXACT_IN, false);
+        _checkWrapResults(balancesBefore, _wrapAmount, pathAmountsOut[0], false);
     }
 
     function testDepositWithBufferLiquidity() public {
@@ -176,7 +176,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.prank(lp);
         (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _checkWrapResults(balancesBefore, _wrapAmount, pathAmountsOut[0], SwapKind.EXACT_IN, true);
+        _checkWrapResults(balancesBefore, _wrapAmount, pathAmountsOut[0], true);
     }
 
     function testDepositMaliciousRouter() public {
@@ -232,13 +232,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.prank(lp);
         (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        _checkWrapResults(
-            balancesBefore,
-            pathAmountsIn[0],
-            waDAI.convertToShares(_wrapAmount),
-            SwapKind.EXACT_OUT,
-            false
-        );
+        _checkWrapResults(balancesBefore, pathAmountsIn[0], waDAI.convertToShares(_wrapAmount), false);
     }
 
     function testMintWithBufferLiquidity() public {
@@ -262,13 +256,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.prank(lp);
         (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        _checkWrapResults(
-            balancesBefore,
-            pathAmountsIn[0],
-            waDAI.convertToShares(_wrapAmount),
-            SwapKind.EXACT_OUT,
-            true
-        );
+        _checkWrapResults(balancesBefore, pathAmountsIn[0], waDAI.convertToShares(_wrapAmount), true);
     }
 
     function testMintMaliciousRouter() public {
@@ -320,7 +308,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.prank(lp);
         (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _checkUnwrapResults(balancesBefore, wrappedAmountIn, pathAmountsOut[0], SwapKind.EXACT_IN, false);
+        _checkUnwrapResults(balancesBefore, wrappedAmountIn, pathAmountsOut[0], false);
     }
 
     function testRedeemWithBufferLiquidity() public {
@@ -341,7 +329,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.prank(lp);
         (uint256[] memory pathAmountsOut, , ) = batchRouter.swapExactIn(paths, MAX_UINT256, false, bytes(""));
 
-        _checkUnwrapResults(balancesBefore, wrappedAmountIn, pathAmountsOut[0], SwapKind.EXACT_IN, true);
+        _checkUnwrapResults(balancesBefore, wrappedAmountIn, pathAmountsOut[0], true);
     }
 
     /********************************************************************************
@@ -368,7 +356,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.prank(lp);
         (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        _checkUnwrapResults(balancesBefore, pathAmountsIn[0], _wrapAmount, SwapKind.EXACT_OUT, false);
+        _checkUnwrapResults(balancesBefore, pathAmountsIn[0], _wrapAmount, false);
     }
 
     function testWithdrawWithBufferLiquidity() public {
@@ -392,7 +380,7 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         vm.prank(lp);
         (uint256[] memory pathAmountsIn, , ) = batchRouter.swapExactOut(paths, MAX_UINT256, false, bytes(""));
 
-        _checkUnwrapResults(balancesBefore, pathAmountsIn[0], _wrapAmount, SwapKind.EXACT_OUT, true);
+        _checkUnwrapResults(balancesBefore, pathAmountsIn[0], _wrapAmount, true);
     }
 
     /********************************************************************************
@@ -774,7 +762,6 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore,
         uint256 amountIn,
         uint256 amountOut,
-        SwapKind kind,
         bool withBufferLiquidity
     ) private view {
         (uint256 daiIdx, uint256 waDaiIdx, IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
@@ -831,7 +818,6 @@ contract BufferVaultPrimitiveTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesBefore,
         uint256 wrappedAmountIn,
         uint256 underlyingAmountOut,
-        SwapKind kind,
         bool withBufferLiquidity
     ) private view {
         (uint256 daiIdx, uint256 waDaiIdx, IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
