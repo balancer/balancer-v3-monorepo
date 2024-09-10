@@ -300,17 +300,11 @@ contract LiquidityApproximationTest is BaseVaultTest {
             assertLt(discountPercentage, swapFeePercentage, "Discount percentage is larger than swap fee percentage");
         } else {
             // OK case: Bob got more than Alice
-            // TODO: check if this can be removed
-            if (bobAmountOut - aliceAmountOut > 1e16) {
-                // Check relative excess only if the absolute difference is somewhat meaningful.
-                // Bob might get much more in relative terms, but it does not matter for the purposes of this test
-                // if the actual absolute difference is small.
-                assertLe(
-                    bobToAliceRatio,
-                    1e18 + (addLiquidity ? 0 : liquidityTaxPercentage) + excessRoundingDelta,
-                    "Bob has too much USDC compared to Alice"
-                );
-            }
+            assertLe(
+                bobToAliceRatio,
+                1e18 + (addLiquidity ? 0 : liquidityTaxPercentage) + excessRoundingDelta,
+                "Bob has too much USDC compared to Alice"
+            );
         }
     }
 

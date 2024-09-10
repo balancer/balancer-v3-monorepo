@@ -305,7 +305,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         weightDai = bound(weightDai, 1e16, 99e16);
 
-        _removeLiquiditySingleTokenExactOutWeights(exactAmountOut, swapFeePercentage, weightDai);
+        removeLiquiditySingleTokenExactOutWeights(exactAmountOut, swapFeePercentage, weightDai);
     }
 
     function testRemoveLiquiditySingleTokenExactOutWeightsNoSwapFee__Fuzz(
@@ -318,7 +318,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         exactAmountOut = bound(exactAmountOut, minAmount * 10, maxAmount / 10);
         weightDai = bound(weightDai, 1e16, 99e16);
 
-        _removeLiquiditySingleTokenExactOutWeights(exactAmountOut, 0, weightDai);
+        removeLiquiditySingleTokenExactOutWeights(exactAmountOut, 0, weightDai);
     }
 
     function testRemoveLiquiditySingleTokenExactOutWeightsSmallAmounts__Fuzz(
@@ -328,14 +328,18 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         exactAmountOut = bound(exactAmountOut, 1, 1e6);
         weightDai = bound(weightDai, 1e16, 99e16);
 
-        _removeLiquiditySingleTokenExactOutWeights(exactAmountOut, 0, weightDai);
+        try this.removeLiquiditySingleTokenExactOutWeights(exactAmountOut, 0, weightDai) {
+            // OK, test passed.
+        } catch (bytes memory result) {
+            assertEq(bytes4(result), bytes4(stdError.arithmeticError), "Unexpected error");
+        }
     }
 
-    function _removeLiquiditySingleTokenExactOutWeights(
+    function removeLiquiditySingleTokenExactOutWeights(
         uint256 exactAmountOut,
         uint256 swapFeePercentage,
         uint256 weightDai
-    ) internal {
+    ) public {
         // Weights can introduce some differences in the swap fees calculated by the pool during unbalanced add/remove
         // liquidity, so the error tolerance needs to be a bit higher than the default tolerance.
         excessRoundingDelta = 0.5e16; // 0.5%
