@@ -36,31 +36,17 @@ import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 contract BufferDoSProtectionTest is BaseVaultTest {
     using FixedPoint for uint256;
 
-    ERC4626TestToken internal waDAI;
-
     uint256 private constant _userAmount = 10e6 * 1e18;
     uint256 private constant _wrapAmount = _userAmount / 100;
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();
-
-        waDAI = new ERC4626TestToken(dai, "Wrapped aDAI", "waDAI", 18);
-        vm.label(address(waDAI), "waDAI");
-
         initializeLp();
     }
 
     function initializeLp() private {
         // Create and fund buffer pools
         vm.startPrank(lp);
-
-        dai.mint(lp, _userAmount);
-        dai.approve(address(waDAI), _userAmount);
-        waDAI.deposit(_userAmount, lp);
-
-        waDAI.approve(address(permit2), MAX_UINT256);
-        // Approve transfers to router to add liquidity to buffers.
-        permit2.approve(address(waDAI), address(router), type(uint160).max, type(uint48).max);
         // The test contract acts as the router and does not use permit2, so approve transfers to the router directly.
         dai.approve(address(this), MAX_UINT256);
         waDAI.approve(address(this), MAX_UINT256);
@@ -69,7 +55,7 @@ contract BufferDoSProtectionTest is BaseVaultTest {
 
     function testDepositDoS() public {
         // Deposit is an EXACT_IN operation, since it's a wrap where we specify the underlying amount in.
-        _testWrapDoS(waDAI.previewDeposit(_wrapAmount), _wrapAmount, SwapKind.EXACT_IN);
+        _testWrapDoS(_wrapAmount, waDAI.previewDeposit(_wrapAmount), SwapKind.EXACT_IN);
     }
 
     function testMintDoS() public {
@@ -93,8 +79,9 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         uint256 frontrunnerUnderlyingAmount = _wrapAmount + 10;
 
         // Initializes the buffer with an amount that's not enough to fulfill the mint operation.
-        vm.prank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, _wrapAmount / 10);
+        vm.startPrank(lp);
+        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.convertToShares(_wrapAmount / 10));
+        vm.stopPrank();
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
@@ -134,8 +121,9 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         vm.stopPrank();
 
         // Initializes the buffer with an amount that's not enough to fulfill the redeem operation.
-        vm.prank(lp);
-        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, _wrapAmount / 10);
+        vm.startPrank(lp);
+        router.initializeBuffer(IERC4626(address(waDAI)), _wrapAmount / 10, waDAI.convertToShares(_wrapAmount / 10));
+        vm.stopPrank();
 
         (, , IERC20[] memory tokens) = _getTokenArrayAndIndexesOfWaDaiBuffer();
         BaseVaultTest.Balances memory balancesBefore = getBalances(lp, tokens);
@@ -172,8 +160,12 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(lp, tokens);
 
         // Check wrap results.
-        assertEq(amountIn, _wrapAmount, "AmountIn (underlying deposited) is wrong");
-        assertEq(amountOut, waDAI.previewDeposit(_wrapAmount), "AmountOut (wrapped minted) is wrong");
+        // Checks if amountIn (Amount deposited into the Vault) is >= _wrapAmount. It means, if there's a rounding
+        // error, it's in vault's favor.
+        assertGe(amountIn, _wrapAmount, "AmountIn (underlying deposited) is wrong");
+        // Checks if amountOut (Amount extracted from the Vault) is <= _wrapAmount. It means, if there's a rounding
+        // error, it's in vault's favor.
+        assertLe(amountOut, waDAI.previewDeposit(_wrapAmount), "AmountOut (wrapped minted) is wrong");
 
         // Check user balances.
         assertEq(
@@ -235,8 +227,12 @@ contract BufferDoSProtectionTest is BaseVaultTest {
         BaseVaultTest.Balances memory balancesAfter = getBalances(lp, tokens);
 
         // Check unwrap results.
-        assertEq(amountOut, _wrapAmount, "AmountOut (underlying withdrawn) is wrong");
-        assertEq(amountIn, waDAI.previewDeposit(_wrapAmount), "AmountIn (wrapped burned) is wrong");
+        // Checks if amountOut (Amount extracted from the Vault) is <= _wrapAmount. It means, if there's a rounding
+        // error, it's in vault's favor.
+        assertLe(amountOut, _wrapAmount, "AmountOut (underlying withdrawn) is wrong");
+        // Checks if amountIn (Amount deposited into the Vault) is >= _wrapAmount. It means, if there's a rounding
+        // error, it's in vault's favor.
+        assertGe(amountIn, waDAI.previewDeposit(_wrapAmount), "AmountIn (wrapped burned) is wrong");
 
         // Check user balances.
         assertEq(

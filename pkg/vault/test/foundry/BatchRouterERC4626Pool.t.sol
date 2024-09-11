@@ -886,7 +886,7 @@ contract BatchRouterERC4626PoolTest is BaseERC4626BufferTest {
         initAmounts[partialWaDaiIdx] = waDaiShares;
         initAmounts[partialUsdcIdx] = erc4626PoolInitialAmount;
 
-        _initPool(newPool, initAmounts, erc4626PoolInitialBPTAmount - MAX_ERROR - POOL_MINIMUM_TOTAL_SUPPLY);
+        _initPool(newPool, initAmounts, 1);
 
         IERC20(newPool).approve(address(permit2), MAX_UINT256);
         permit2.approve(newPool, address(router), type(uint160).max, type(uint48).max);
