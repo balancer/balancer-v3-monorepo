@@ -427,21 +427,21 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
         );
 
         for (uint256 i = 0; i < parentPoolTokens.length; i++) {
-            address childPool = address(parentPoolTokens[i]);
+            address childToken = address(parentPoolTokens[i]);
 
-            if (_vault.isPoolRegistered(childPool)) {
+            if (_vault.isPoolRegistered(childToken)) {
                 // Token is a BPT, so remove liquidity from the child pool.
 
                 // We don't expect the sender to have BPT to burn. So, we flashloan tokens here (which should in
                 // practice just use existing credit).
-                _vault.sendTo(IERC20(childPool), address(this), parentPoolAmountsOut[i]);
+                _vault.sendTo(IERC20(childToken), address(this), parentPoolAmountsOut[i]);
 
-                IERC20[] memory childPoolTokens = _vault.getPoolTokens(childPool);
+                IERC20[] memory childPoolTokens = _vault.getPoolTokens(childToken);
                 // Router is an intermediary in this case. The Vault will burn tokens from the router, so Router is
                 // both owner and spender (which doesn't need approval).
                 (, uint256[] memory childPoolAmountsOut, ) = _vault.removeLiquidity(
                     RemoveLiquidityParams({
-                        pool: childPool,
+                        pool: childToken,
                         from: address(this),
                         maxBptAmountIn: parentPoolAmountsOut[i],
                         minAmountsOut: new uint256[](childPoolTokens.length),
@@ -456,8 +456,8 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 }
             } else {
                 // Token is not a BPT, so return the amount to the user.
-                _currentSwapTokensOut().add(childPool);
-                _currentSwapTokenOutAmounts().tAdd(childPool, parentPoolAmountsOut[i]);
+                _currentSwapTokensOut().add(childToken);
+                _currentSwapTokenOutAmounts().tAdd(childToken, parentPoolAmountsOut[i]);
             }
         }
 
