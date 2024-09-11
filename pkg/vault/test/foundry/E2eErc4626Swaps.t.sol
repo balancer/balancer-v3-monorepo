@@ -224,7 +224,7 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         // balance, we can make sure that it's not paying fees twice.
         IBatchRouter.SwapPathExactAmountIn[] memory pathsUndo = _buildExactInPaths(
             usdc,
-            pathAmountsOut[0] + waUSDC.convertToAssets(feesWaUsdc)
+            pathAmountsOut[0] + waUSDC.previewRedeem(feesWaUsdc)
         );
         vm.prank(bob);
         batchRouter.swapExactIn(pathsUndo, MAX_UINT256, false, bytes(""));
@@ -286,7 +286,7 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         // balance, we can make sure that it's not paying fees twice.
         IBatchRouter.SwapPathExactAmountOut[] memory pathsUndo = _buildExactOutPaths(
             dai,
-            pathAmountsIn[0] - waDAI.convertToAssets(feesWaDai)
+            pathAmountsIn[0] - waDAI.previewRedeem(feesWaDai)
         );
         vm.prank(bob);
         batchRouter.swapExactOut(pathsUndo, MAX_UINT256, false, bytes(""));
@@ -313,25 +313,25 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         // User balances should be smaller than before, and user should pay the fees.
         assertLe(
             balancesAfter.balances.bobTokens[balancesAfter.daiIdx],
-            balancesBefore.balances.bobTokens[balancesBefore.daiIdx] - waDAI.convertToAssets(feesWaDai),
+            balancesBefore.balances.bobTokens[balancesBefore.daiIdx] - waDAI.previewRedeem(feesWaDai),
             "Sender DAI balance is incorrect"
         );
         assertLe(
             balancesAfter.balances.bobTokens[balancesAfter.usdcIdx],
-            balancesBefore.balances.bobTokens[balancesBefore.usdcIdx] - waUSDC.convertToAssets(feesWaUsdc),
+            balancesBefore.balances.bobTokens[balancesBefore.usdcIdx] - waUSDC.previewRedeem(feesWaUsdc),
             "Sender USDC balance is incorrect"
         );
 
         // All tokens paid by the user should stay in the vault since pool creator fees were not charged yet. However,
-        // calculating the amount of tokens in the vault involves convertToAssets, used multiple times by buffers,
+        // calculating the amount of tokens in the vault involves previewRedeem, used multiple times by buffers,
         // fee calculation, and to transform wrapped amounts in underlying amounts, which introduces rounding errors to
         // compare user and vault amounts. Make sure this rounding error is below 10 wei.
         uint256 senderDaiDelta = balancesBefore.balances.bobTokens[balancesBefore.daiIdx] -
             balancesAfter.balances.bobTokens[balancesAfter.daiIdx];
         uint256 vaultTotalDaiBefore = balancesBefore.balances.vaultTokens[balancesBefore.daiIdx] +
-            waDAI.convertToAssets(balancesBefore.balances.vaultTokens[balancesBefore.waDaiIdx]);
+            waDAI.previewRedeem(balancesBefore.balances.vaultTokens[balancesBefore.waDaiIdx]);
         uint256 vaultTotalDaiAfter = balancesAfter.balances.vaultTokens[balancesAfter.daiIdx] +
-            waDAI.convertToAssets(balancesAfter.balances.vaultTokens[balancesAfter.waDaiIdx]);
+            waDAI.previewRedeem(balancesAfter.balances.vaultTokens[balancesAfter.waDaiIdx]);
         assertApproxEqAbs(
             vaultTotalDaiAfter - vaultTotalDaiBefore,
             senderDaiDelta,
@@ -340,15 +340,15 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
         );
 
         // All tokens paid by the user should stay in the vault since pool creator fees were not charged yet. However,
-        // calculating the amount of tokens in the vault involves convertToAssets, used multiple times by buffers,
+        // calculating the amount of tokens in the vault involves previewRedeem, used multiple times by buffers,
         // fee calculation, and to transform wrapped amounts in underlying amounts, which introduces rounding errors to
         // compare user and vault amounts. Make sure this rounding error is below 10 wei.
         uint256 senderUsdcDelta = balancesBefore.balances.bobTokens[balancesBefore.usdcIdx] -
             balancesAfter.balances.bobTokens[balancesAfter.usdcIdx];
         uint256 vaultTotalUsdcBefore = balancesBefore.balances.vaultTokens[balancesBefore.usdcIdx] +
-            waUSDC.convertToAssets(balancesBefore.balances.vaultTokens[balancesBefore.waUsdcIdx]);
+            waUSDC.previewRedeem(balancesBefore.balances.vaultTokens[balancesBefore.waUsdcIdx]);
         uint256 vaultTotalUsdcAfter = balancesAfter.balances.vaultTokens[balancesAfter.usdcIdx] +
-            waUSDC.convertToAssets(balancesAfter.balances.vaultTokens[balancesAfter.waUsdcIdx]);
+            waUSDC.previewRedeem(balancesAfter.balances.vaultTokens[balancesAfter.waUsdcIdx]);
         assertApproxEqAbs(
             vaultTotalUsdcAfter - vaultTotalUsdcBefore,
             senderUsdcDelta,
@@ -425,14 +425,14 @@ contract E2eErc4626SwapsTest is BaseERC4626BufferTest {
             erc4626PoolInitialAmount.mulDown(1e16),
             erc4626PoolInitialAmount.mulDown(10000e16)
         );
-        liquidityWaDai = waDAI.convertToShares(liquidityWaDai);
+        liquidityWaDai = waDAI.previewDeposit(liquidityWaDai);
         // 1% to 10000% of erc4626 initial pool liquidity.
         liquidityWaUsdc = bound(
             liquidityWaUsdc,
             erc4626PoolInitialAmount.mulDown(1e16),
             erc4626PoolInitialAmount.mulDown(10000e16)
         );
-        liquidityWaUsdc = waUSDC.convertToShares(liquidityWaUsdc);
+        liquidityWaUsdc = waUSDC.previewDeposit(liquidityWaUsdc);
 
         uint256[] memory newPoolBalance = new uint256[](2);
         newPoolBalance[waDaiIdx] = liquidityWaDai;
