@@ -15,7 +15,7 @@ interface ICompositeLiquidityRouter {
     /***************************************************************************
                                    ERC4626 Pools
     ***************************************************************************/
-    // These functions allow interacting with ERC4626 Pools (which are composed of wrapped ERC4626 tokens) using only
+    // These functions allow interacting with ERC4626 Pools (which contain wrapped ERC4626 tokens) using only
     // underlying standard tokens. For instance, with `addLiquidityUnbalancedToERC4626Pool` it is possible to add
     // liquidity to an ERC4626 Pool with [waDAI, waUSDC], using only DAI, only USDC, or an arbitrary amount of both.
     // If the ERC4626 buffers in the Vault have liquidity, these will be used to avoid wrapping/unwrapping through
