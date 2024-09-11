@@ -72,8 +72,6 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
 
     // Tests varying weight
 
-    // #region addLiquidityUnbalanced
-
     function testAddLiquidityUnbalancedWeights__Fuzz(
         uint256 daiAmountIn,
         uint256 swapFeePercentage,
@@ -115,10 +113,6 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
             ? assertLiquidityOperation(amountOut, swapFeePercentage, true)
             : assertLiquidityOperationNoSwapFee();
     }
-
-    // #endregion addLiquidityUnbalanced
-
-    // #region addLiquiditySingleTokenExactOut
 
     function testAddLiquiditySingleTokenExactOutWeights__Fuzz(
         uint256 exactBptAmountOut,
@@ -172,10 +166,6 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
             : assertLiquidityOperationNoSwapFee();
     }
 
-    // #endregion addLiquiditySingleTokenExactOut
-
-    // #region addProportionalRemoveExactIn
-
     function testAddLiquidityProportionalAndRemoveExactInWeights__Fuzz(
         uint256 exactBptAmount,
         uint256 swapFeePercentage,
@@ -227,10 +217,6 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
             : assertLiquidityOperationNoSwapFee();
     }
 
-    // #endregion addProportionalRemoveExactIn
-
-    // #region addProportionalRemoveExactOut
-
     function testAddLiquidityProportionalAndRemoveExactOutWeights__Fuzz(
         uint256 exactBptAmountOut,
         uint256 swapFeePercentage,
@@ -261,7 +247,8 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         weightDai = bound(weightDai, 1e16, 99e16);
 
         // Remove will ask more BPT than what the sender has; we care about the revert reason, not the exact amount.
-        // TODO: use `expectPartialRevert` once forge is updated with `IVaultErrors.BptAmountInAboveMax.selector`
+        // TODO: use `expectPartialRevert` once forge is updated with `IVaultErrors.BptAmountInAboveMax.selector`:
+        // `expectPartialRevert(IVaultErrors.BptAmountInAboveMax.selector)`
         vm.expectRevert();
         this.addLiquidityProportionalAndRemoveExactOutWeights(exactBptAmountOut, 0, weightDai);
     }
@@ -282,10 +269,6 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
             ? assertLiquidityOperation(amountOut, swapFeePercentage, false)
             : assertLiquidityOperationNoSwapFee();
     }
-
-    // #endregion addProportionalRemoveExactOut
-
-    // #region removeExactOut
 
     function testRemoveLiquiditySingleTokenExactOutWeights__Fuzz(
         uint256 exactAmountOut,
@@ -325,6 +308,8 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         try this.removeLiquiditySingleTokenExactOutWeights(exactAmountOut, 0, weightDai) {
             // OK, test passed.
         } catch (bytes memory result) {
+            // Can also legitimately fail due to arithmetic underflow when computing `taxableAmount` in `BasePoolMath`.abi
+            // live system will be protected by minimum amounts in any case.
             assertEq(bytes4(result), bytes4(stdError.arithmeticError), "Unexpected error");
         }
     }
@@ -358,10 +343,6 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         excessRoundingDelta = 0.5e16;
         super.testRemoveLiquiditySingleTokenExactOutNoSwapFee__Fuzz(exactAmountOut);
     }
-
-    // #endregion removeExactOut
-
-    // #region removeExactIn
 
     function testRemoveLiquiditySingleTokenExactInWeights__Fuzz(
         uint256 exactBptAmountIn,
@@ -417,13 +398,11 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
             : assertLiquidityOperationNoSwapFee();
     }
 
-    // #endregion removeExactIn
-
     /// Utils
 
     function _computeMaxTokenAmount(uint256 weightDai) private view returns (uint256 maxAmount) {
-        // maxAmount must be lower than 30% of the lowest pool liquidity. Below, maxAmount is calculated as 20% of the
-        // lowest liquidity to have some error margin.
+        // `maxAmount` must be lower than 30% of the lowest pool liquidity. Below, `maxAmount` is calculated as 25%
+        // of the lowest liquidity to have some error margin.
         maxAmount = weightDai > 50e16
             ? poolInitAmount.mulDown(weightDai.complement())
             : poolInitAmount.mulDown(weightDai);
@@ -442,7 +421,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         // so we multiply the DAI supply with a lower value as fees go higher.
         uint256 daiSupplyAccountingFees = daiSupply.mulDown(swapFeePercentage.complement());
 
-        // Finally we take multiply by 25% (30% is max in ratio, we leave some margin).
+        // Finally we multiply by 25% (30% is max in ratio, this leaves some margin for error).
         maxAmount = daiSupplyAccountingFees.mulDown(25e16);
     }
 
