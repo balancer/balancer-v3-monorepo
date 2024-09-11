@@ -328,7 +328,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseVaultTest {
         uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
 
         // DAI should be in the tokensOut array, but is not, so the transaction should revert.
-        // Order removed from _currentSwapTokensOut().values() of `removeLiquidityProportionalFromNestedPools` after
+        // Order extracted from _currentSwapTokensOut().values() of `removeLiquidityProportionalFromNestedPools` after
         // all child pools were called.
         address[] memory expectedTokensOut = new address[](4);
         expectedTokensOut[0] = address(dai);
@@ -346,6 +346,51 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseVaultTest {
         minAmountsOut[0] = 1;
         minAmountsOut[1] = 1;
         minAmountsOut[2] = 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ICompositeLiquidityRouter.WrongTokensOut.selector, expectedTokensOut, tokensOut)
+        );
+
+        vm.prank(lp);
+        uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalFromNestedPools(
+            parentPool,
+            exactBptIn,
+            tokensOut,
+            minAmountsOut,
+            bytes("")
+        );
+    }
+
+    function testRemoveLiquidityNestedPoolRepeatedTokens() public {
+        // Remove 10% of pool liquidity.
+        uint256 proportionToRemove = 10e16;
+
+        uint256 totalPoolBPTs = BalancerPoolToken(parentPool).totalSupply();
+        // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
+        // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
+        uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
+
+        // DAI should be in the tokensOut array, but is not, so the transaction should revert.
+        // Order extracted from _currentSwapTokensOut().values() of `removeLiquidityProportionalFromNestedPools` after
+        // all child pools were called.
+        address[] memory expectedTokensOut = new address[](4);
+        expectedTokensOut[0] = address(dai);
+        expectedTokensOut[1] = address(weth);
+        expectedTokensOut[2] = address(usdc);
+        expectedTokensOut[3] = address(wsteth);
+
+        // Notice that tokensOut has a repeated token, so the transaction should be reverted.
+        address[] memory tokensOut = new address[](4);
+        tokensOut[0] = address(dai);
+        tokensOut[1] = address(weth);
+        tokensOut[2] = address(dai);
+        tokensOut[3] = address(usdc);
+
+        uint256[] memory minAmountsOut = new uint256[](4);
+        minAmountsOut[0] = 1;
+        minAmountsOut[1] = 1;
+        minAmountsOut[2] = 1;
+        minAmountsOut[3] = 1;
 
         vm.expectRevert(
             abi.encodeWithSelector(ICompositeLiquidityRouter.WrongTokensOut.selector, expectedTokensOut, tokensOut)

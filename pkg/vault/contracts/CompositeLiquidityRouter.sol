@@ -471,10 +471,16 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
 
         // The hook writes current swap token and token amounts out.
         amountsOut = new uint256[](tokensOut.length);
+        // If a certain token index was already iterated on, reverts.
+        bool[] memory checkedTokenIndexes = new bool[](tokensOut.length);
         for (uint256 i = 0; i < tokensOut.length; ++i) {
-            if (_currentSwapTokensOut().contains(tokensOut[i]) == false) {
-                // If tokenOut is not in transient tokens out array, the tokensOut array is wrong.
+            uint256 tokenIndex = _currentSwapTokensOut().indexOf(tokensOut[i]);
+            if (_currentSwapTokensOut().contains(tokensOut[i]) == false || checkedTokenIndexes[tokenIndex]) {
+                // If tokenOut is not in transient tokens out array or token is repeated, the tokensOut array is wrong.
                 revert WrongTokensOut(_currentSwapTokensOut().values(), tokensOut);
+            } else {
+                // Informs that the token in the transient array index has already been checked.
+                checkedTokenIndexes[tokenIndex] = true;
             }
 
             amountsOut[i] = _currentSwapTokenOutAmounts().tGet(tokensOut[i]);
