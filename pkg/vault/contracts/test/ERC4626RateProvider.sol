@@ -17,6 +17,7 @@ contract ERC4626RateProvider is IRateProvider {
 
     /// @inheritdoc IRateProvider
     function getRate() external view override returns (uint256) {
-        return _wrappedToken.convertToAssets(FixedPoint.ONE);
+        // `previewRedeem` rounds `convertToAssets` down.
+        return _wrappedToken.previewRedeem(FixedPoint.ONE);
     }
 }

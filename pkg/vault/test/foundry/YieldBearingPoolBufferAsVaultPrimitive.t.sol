@@ -192,10 +192,10 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
 
         vars.expectedPoolBalanceAfterSwapWaDai =
             vars.yieldBearingPoolBalanceBeforeSwapWaDai +
-            waDAI.convertToShares(tooLargeSwapAmount);
+            waDAI.previewDeposit(tooLargeSwapAmount);
         vars.expectedPoolBalanceAfterSwapWaUsdc =
             vars.yieldBearingPoolBalanceBeforeSwapWaUsdc -
-            waUSDC.convertToShares(tooLargeSwapAmount);
+            waUSDC.previewDeposit(tooLargeSwapAmount);
 
         // Delta DAI and USDC are the same because the _verifySwapResult will check them in opposite directions (DAI
         // going in, USDC going out)
@@ -223,10 +223,10 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
 
         vars.expectedPoolBalanceAfterSwapWaDai =
             vars.yieldBearingPoolBalanceBeforeSwapWaDai +
-            waDAI.convertToShares(tooLargeSwapAmount);
+            waDAI.previewDeposit(tooLargeSwapAmount);
         vars.expectedPoolBalanceAfterSwapWaUsdc =
             vars.yieldBearingPoolBalanceBeforeSwapWaUsdc -
-            waUSDC.convertToShares(tooLargeSwapAmount);
+            waUSDC.previewDeposit(tooLargeSwapAmount);
 
         vars.expectedAliceDeltaDai = tooLargeSwapAmount;
         vars.expectedAliceDeltaUsdc = tooLargeSwapAmount;
@@ -239,7 +239,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         // Surplus of underlying.
         router.addLiquidityToBuffer(waDAI, unbalancedUnderlyingDelta, 0);
         // Surplus of wrapped.
-        router.addLiquidityToBuffer(waUSDC, 0, waUSDC.convertToShares(unbalancedUnderlyingDelta));
+        router.addLiquidityToBuffer(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_IN);
@@ -283,7 +283,7 @@ contract YieldBearingPoolBufferAsVaultPrimitiveTest is BaseERC4626BufferTest {
         // Surplus of underlying.
         router.addLiquidityToBuffer(waDAI, unbalancedUnderlyingDelta, 0);
         // Surplus of wrapped.
-        router.addLiquidityToBuffer(waUSDC, 0, waUSDC.convertToShares(unbalancedUnderlyingDelta));
+        router.addLiquidityToBuffer(waUSDC, 0, waUSDC.previewDeposit(unbalancedUnderlyingDelta));
         vm.stopPrank();
 
         SwapResultLocals memory vars = _createSwapResultLocals(SwapKind.EXACT_OUT);
