@@ -309,7 +309,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseVaultTest {
         vm.expectRevert(abi.encodeWithSelector(ICompositeLiquidityRouter.WrongMinAmountsOutLength.selector));
 
         vm.prank(lp);
-        uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalFromNestedPools(
+        compositeLiquidityRouter.removeLiquidityProportionalFromNestedPools(
             parentPool,
             exactBptIn,
             tokensOut,
@@ -352,7 +352,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseVaultTest {
         );
 
         vm.prank(lp);
-        uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalFromNestedPools(
+        compositeLiquidityRouter.removeLiquidityProportionalFromNestedPools(
             parentPool,
             exactBptIn,
             tokensOut,
@@ -397,7 +397,7 @@ contract CompositeLiquidityRouterNestedPoolsTest is BaseVaultTest {
         );
 
         vm.prank(lp);
-        uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalFromNestedPools(
+        compositeLiquidityRouter.removeLiquidityProportionalFromNestedPools(
             parentPool,
             exactBptIn,
             tokensOut,
