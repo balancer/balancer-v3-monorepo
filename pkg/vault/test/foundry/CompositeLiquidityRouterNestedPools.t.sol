@@ -7,6 +7,7 @@ import "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { ICompositeLiquidityRouter } from "@balancer-labs/v3-interfaces/contracts/vault/ICompositeLiquidityRouter.sol";
 
 import { ArrayHelpers } from "@balancer-labs/v3-solidity-utils/contracts/test/ArrayHelpers.sol";
 import { CastingHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/CastingHelpers.sol";
@@ -15,7 +16,7 @@ import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/Fixe
 import { BalancerPoolToken } from "../../contracts/BalancerPoolToken.sol";
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract CompositeLiquidityRouterNestedPools is BaseVaultTest {
+contract CompositeLiquidityRouterNestedPoolsTest is BaseVaultTest {
     using ArrayHelpers for *;
     using CastingHelpers for address[];
     using FixedPoint for uint256;
@@ -77,6 +78,12 @@ contract CompositeLiquidityRouterNestedPools is BaseVaultTest {
         // we can extract from the child pools.
         uint256 deadTokens = (POOL_MINIMUM_TOTAL_SUPPLY / 2).mulDown(proportionToRemove);
 
+        address[] memory tokensOut = new address[](4);
+        tokensOut[vars.daiIdx] = address(dai);
+        tokensOut[vars.wethIdx] = address(weth);
+        tokensOut[vars.wstethIdx] = address(wsteth);
+        tokensOut[vars.usdcIdx] = address(usdc);
+
         uint256[] memory expectedAmountsOut = new uint256[](4);
         // DAI exists in childPoolB and parentPool, so we expect 2x more DAI than the other tokens.
         // Since pools are in their initial state, we can use poolInitAmount as the balance of each token in the pool.
@@ -92,19 +99,17 @@ contract CompositeLiquidityRouterNestedPools is BaseVaultTest {
         expectedAmountsOut[vars.usdcIdx] = poolInitAmount.mulDown(proportionToRemove) - deadTokens - MAX_ROUND_ERROR;
 
         vm.prank(lp);
-        (address[] memory tokensOut, uint256[] memory amountsOut) = compositeLiquidityRouter
-            .removeLiquidityProportionalFromNestedPools(parentPool, exactBptIn, expectedAmountsOut, bytes(""));
+        uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalFromNestedPools(
+            parentPool,
+            exactBptIn,
+            tokensOut,
+            expectedAmountsOut,
+            bytes("")
+        );
 
         _fillNestedPoolTestLocalsAfter(vars);
         uint256 burnedChildPoolABpts = vars.childPoolABefore.totalSupply - vars.childPoolAAfter.totalSupply;
         uint256 burnedChildPoolBBpts = vars.childPoolBBefore.totalSupply - vars.childPoolBAfter.totalSupply;
-
-        // Check returned token array.
-        assertEq(tokensOut.length, 4, "tokensOut length is wrong");
-        assertEq(tokensOut[vars.daiIdx], address(dai), "DAI position on tokensOut array is wrong");
-        assertEq(tokensOut[vars.wethIdx], address(weth), "WETH position on tokensOut array is wrong");
-        assertEq(tokensOut[vars.wstethIdx], address(wsteth), "WstETH position on tokensOut array is wrong");
-        assertEq(tokensOut[vars.usdcIdx], address(usdc), "USDC position on tokensOut array is wrong");
 
         // Check returned token amounts.
         assertEq(amountsOut.length, 4, "amountsOut length is wrong");
@@ -238,6 +243,12 @@ contract CompositeLiquidityRouterNestedPools is BaseVaultTest {
         // we can extract from the child pools.
         uint256 deadTokens = (POOL_MINIMUM_TOTAL_SUPPLY / 2).mulDown(proportionToRemove);
 
+        address[] memory tokensOut = new address[](4);
+        tokensOut[vars.daiIdx] = address(dai);
+        tokensOut[vars.wethIdx] = address(weth);
+        tokensOut[vars.wstethIdx] = address(wsteth);
+        tokensOut[vars.usdcIdx] = address(usdc);
+
         uint256[] memory minAmountsOut = new uint256[](4);
         // Expect minAmountsOut to be the liquidity of the pool, which is more than what we should return,
         // causing it to revert.
@@ -266,6 +277,85 @@ contract CompositeLiquidityRouterNestedPools is BaseVaultTest {
         compositeLiquidityRouter.removeLiquidityProportionalFromNestedPools(
             parentPool,
             exactBptIn,
+            tokensOut,
+            minAmountsOut,
+            bytes("")
+        );
+    }
+
+    function testRemoveLiquidityNestedPoolWrongMinAmountsOut() public {
+        // Remove 10% of pool liquidity.
+        uint256 proportionToRemove = 10e16;
+
+        uint256 totalPoolBPTs = BalancerPoolToken(parentPool).totalSupply();
+        // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
+        // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
+        uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
+
+        NestedPoolTestLocals memory vars = _createNestedPoolTestLocals();
+
+        address[] memory tokensOut = new address[](4);
+        tokensOut[vars.daiIdx] = address(dai);
+        tokensOut[vars.wethIdx] = address(weth);
+        tokensOut[vars.wstethIdx] = address(wsteth);
+        tokensOut[vars.usdcIdx] = address(usdc);
+
+        // Notice that minAmountsOut have a different length than tokensOut, so the transaction should revert.
+        uint256[] memory minAmountsOut = new uint256[](3);
+        minAmountsOut[0] = 1;
+        minAmountsOut[1] = 1;
+        minAmountsOut[2] = 1;
+
+        vm.expectRevert(abi.encodeWithSelector(ICompositeLiquidityRouter.WrongMinAmountsOutLength.selector));
+
+        vm.prank(lp);
+        uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalFromNestedPools(
+            parentPool,
+            exactBptIn,
+            tokensOut,
+            minAmountsOut,
+            bytes("")
+        );
+    }
+
+    function testRemoveLiquidityNestedPoolWrongTokenArray() public {
+        // Remove 10% of pool liquidity.
+        uint256 proportionToRemove = 10e16;
+
+        uint256 totalPoolBPTs = BalancerPoolToken(parentPool).totalSupply();
+        // Since LP is the owner of all BPT supply, and part of the BPTs were burned in the initialization step, using
+        // totalSupply is more accurate to remove exactly the proportion that we intend from each pool.
+        uint256 exactBptIn = totalPoolBPTs.mulDown(proportionToRemove);
+
+        // DAI should be in the tokensOut array, but is not, so the transaction should revert.
+        // Order removed from _currentSwapTokensOut().values() of `removeLiquidityProportionalFromNestedPools` after
+        // all child pools were called.
+        address[] memory expectedTokensOut = new address[](4);
+        expectedTokensOut[0] = address(dai);
+        expectedTokensOut[1] = address(weth);
+        expectedTokensOut[2] = address(usdc);
+        expectedTokensOut[3] = address(wsteth);
+
+        // Notice that tokensOut and minAmountsOut do not have DAI, so the transaction will revert.
+        address[] memory tokensOut = new address[](3);
+        tokensOut[0] = address(weth);
+        tokensOut[1] = address(wsteth);
+        tokensOut[2] = address(usdc);
+
+        uint256[] memory minAmountsOut = new uint256[](3);
+        minAmountsOut[0] = 1;
+        minAmountsOut[1] = 1;
+        minAmountsOut[2] = 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(ICompositeLiquidityRouter.WrongTokensOut.selector, expectedTokensOut, tokensOut)
+        );
+
+        vm.prank(lp);
+        uint256[] memory amountsOut = compositeLiquidityRouter.removeLiquidityProportionalFromNestedPools(
+            parentPool,
+            exactBptIn,
+            tokensOut,
             minAmountsOut,
             bytes("")
         );
@@ -300,14 +390,8 @@ contract CompositeLiquidityRouterNestedPools is BaseVaultTest {
     }
 
     function _createNestedPoolTestLocals() private view returns (NestedPoolTestLocals memory vars) {
-        // Get output token indexes.
-        uint256[] memory tokenIndexes = getSortedIndexes(
-            [address(dai), address(weth), address(wsteth), address(usdc)].toMemoryArray()
-        );
-        vars.daiIdx = tokenIndexes[0];
-        vars.wethIdx = tokenIndexes[1];
-        vars.wstethIdx = tokenIndexes[2];
-        vars.usdcIdx = tokenIndexes[3];
+        // Create output token indexes, randomly chosen (no sort logic).
+        (vars.daiIdx, vars.wethIdx, vars.wstethIdx, vars.usdcIdx) = (0, 1, 2, 3);
 
         vars.lpBefore = _getBalances(lp);
         vars.vaultBefore = _getBalances(address(vault));

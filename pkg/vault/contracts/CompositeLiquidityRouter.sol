@@ -379,13 +379,15 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                                    Nested pools
     ***************************************************************************/
 
+    /// @inheritdoc ICompositeLiquidityRouter
     function removeLiquidityProportionalFromNestedPools(
         address parentPool,
         uint256 exactBptAmountIn,
+        address[] memory tokensOut,
         uint256[] memory minAmountsOut,
         bytes memory userData
-    ) external returns (address[] memory tokensOut, uint256[] memory amountsOut) {
-        (tokensOut, amountsOut) = abi.decode(
+    ) external returns (uint256[] memory amountsOut) {
+        (amountsOut) = abi.decode(
             _vault.unlock(
                 abi.encodeWithSelector(
                     CompositeLiquidityRouter.removeLiquidityProportionalFromNestedPoolsHook.selector,
@@ -397,17 +399,24 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                         kind: RemoveLiquidityKind.PROPORTIONAL,
                         wethIsEth: false,
                         userData: userData
-                    })
+                    }),
+                    tokensOut
                 )
             ),
-            (address[], uint256[])
+            (uint256[])
         );
     }
 
     function removeLiquidityProportionalFromNestedPoolsHook(
-        RemoveLiquidityHookParams calldata params
-    ) external nonReentrant onlyVault returns (address[] memory tokensOut, uint256[] memory amountsOut) {
+        RemoveLiquidityHookParams calldata params,
+        address[] memory tokensOut
+    ) external nonReentrant onlyVault returns (uint256[] memory amountsOut) {
         IERC20[] memory parentPoolTokens = _vault.getPoolTokens(params.pool);
+
+        if (params.minAmountsOut.length != tokensOut.length) {
+            // If tokensOut length does not match with minAmountsOut length, minAmountsOut is wrong.
+            revert WrongMinAmountsOutLength();
+        }
 
         (, uint256[] memory parentPoolAmountsOut, ) = _vault.removeLiquidity(
             RemoveLiquidityParams({
@@ -455,11 +464,19 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
             }
         }
 
+        if (_currentSwapTokensOut().length() != tokensOut.length) {
+            // If tokensOut length does not match with transient tokens out length, the tokensOut array is wrong.
+            revert WrongTokensOut(_currentSwapTokensOut().values(), tokensOut);
+        }
+
         // The hook writes current swap token and token amounts out.
-        // We copy that information to memory to return it before it is deleted during settlement.
-        tokensOut = InputHelpers.sortTokens(_currentSwapTokensOut().values().asIERC20()).asAddress();
         amountsOut = new uint256[](tokensOut.length);
         for (uint256 i = 0; i < tokensOut.length; ++i) {
+            if (_currentSwapTokensOut().contains(tokensOut[i]) == false) {
+                // If tokenOut is not in transient tokens out array, the tokensOut array is wrong.
+                revert WrongTokensOut(_currentSwapTokensOut().values(), tokensOut);
+            }
+
             amountsOut[i] = _currentSwapTokenOutAmounts().tGet(tokensOut[i]);
 
             if (amountsOut[i] < params.minAmountsOut[i]) {

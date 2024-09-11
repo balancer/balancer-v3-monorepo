@@ -8,6 +8,10 @@ import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.so
 
 /// @notice Interface for the composite liquidity router, supporting add/remove liquidity of ERC4626 and nested pools.
 interface ICompositeLiquidityRouter {
+    error WrongTokensOut(address[] expectedTokensOut, address[] tokensOut);
+
+    error WrongMinAmountsOutLength();
+
     /***************************************************************************
                                    ERC4626 Pools
     ***************************************************************************/
@@ -28,7 +32,8 @@ interface ICompositeLiquidityRouter {
      * (e.g., waDAI).
      *
      * @param pool Address of the liquidity pool
-     * @param exactUnderlyingAmountsIn Exact amounts of underlying tokens in, sorted in token registration order
+     * @param exactUnderlyingAmountsIn Exact amounts of underlying tokens in, sorted in token registration order of
+     * wrapped tokens in the pool
      * @param minBptAmountOut Minimum amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
@@ -48,11 +53,13 @@ interface ICompositeLiquidityRouter {
      * (e.g., waDAI).
      *
      * @param pool Address of the liquidity pool
-     * @param maxUnderlyingAmountsIn Maximum amounts of underlying tokens in, sorted in token registration order
+     * @param maxUnderlyingAmountsIn Maximum amounts of underlying tokens in, sorted in token registration order of
+     * wrapped tokens in the pool
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for adding liquidity
-     * @return underlyingAmountsIn Actual amounts of tokens added, sorted in token registration order
+     * @return underlyingAmountsIn Actual amounts of tokens added, sorted in token registration order of wrapped tokens
+     * in the pool
      */
     function addLiquidityProportionalToERC4626Pool(
         address pool,
@@ -69,10 +76,12 @@ interface ICompositeLiquidityRouter {
      *
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided
-     * @param minUnderlyingAmountsOut Minimum amounts of underlying tokens out, sorted in token registration order
+     * @param minUnderlyingAmountsOut Minimum amounts of underlying tokens out, sorted in token registration order of
+     * wrapped tokens in the pool
      * @param wethIsEth If true, incoming ETH will be wrapped to WETH and outgoing WETH will be unwrapped to ETH
      * @param userData Additional (optional) data required for removing liquidity
-     * @return underlyingAmountsOut Actual amounts of tokens received, sorted in token registration order
+     * @return underlyingAmountsOut Actual amounts of tokens received, sorted in token registration order of wrapped
+     * tokens in the pool
      */
     function removeLiquidityProportionalFromERC4626Pool(
         address pool,
@@ -88,7 +97,8 @@ interface ICompositeLiquidityRouter {
      * (e.g., waDAI).
      *
      * @param pool Address of the liquidity pool
-     * @param exactUnderlyingAmountsIn Exact amounts of underlying tokens in, sorted in token registration order
+     * @param exactUnderlyingAmountsIn Exact amounts of underlying tokens in, sorted in token registration order of
+     * wrapped tokens in the pool
      * @param userData Additional (optional) data required for the query
      * @return bptAmountOut Expected amount of pool tokens to receive
      */
@@ -106,7 +116,8 @@ interface ICompositeLiquidityRouter {
      * @param pool Address of the liquidity pool
      * @param exactBptAmountOut Exact amount of pool tokens to be received
      * @param userData Additional (optional) data required for the query
-     * @return underlyingAmountsIn Expected amounts of tokens to add, sorted in token registration order
+     * @return underlyingAmountsIn Expected amounts of tokens to add, sorted in token registration order of wrapped
+     * tokens in the pool
      */
     function queryAddLiquidityProportionalToERC4626Pool(
         address pool,
@@ -122,7 +133,8 @@ interface ICompositeLiquidityRouter {
      * @param pool Address of the liquidity pool
      * @param exactBptAmountIn Exact amount of pool tokens provided for the query
      * @param userData Additional (optional) data required for the query
-     * @return underlyingAmountsOut Expected amounts of tokens to receive, sorted in token registration order
+     * @return underlyingAmountsOut Expected amounts of tokens to receive, sorted in token registration order of
+     * wrapped tokens in the pool
      */
     function queryRemoveLiquidityProportionalFromERC4626Pool(
         address pool,
@@ -135,18 +147,25 @@ interface ICompositeLiquidityRouter {
     ***************************************************************************/
 
     /**
-     * @dev A nested pool is one in which one or more tokens are BPTs from another pool.
+     * @notice Removes liquidity of a nested pool.
+     * @dev A nested pool is one in which one or more tokens are BPTs from another pool (child pool). Since there are
+     * multiple pools involved, the token order is not given, so the user must pass the order in which he prefers to
+     * receive the token amounts.
+     *
      * @param parentPool Address of the highest level pool (which contains BPTs of other pools)
      * @param exactBptAmountIn Exact amount of `parentPool` tokens provided
+     * @param tokensOut Output token addresses, sorted by user preference. `tokensOut` array must have all tokens from
+     * child pools and all tokens that are not BPTs from the nested pool (parent pool). If not all tokens are informed,
+     * balances are not settled and the operation reverts. Tokens that repeat must be informed only once.
      * @param minAmountsOut Minimum amounts of each outgoing underlying token, sorted by token address
      * @param userData Additional (optional) data required for the operation
-     * @return tokensOut Output token addresses, sorted by token address
      * @return amountsOut Actual amounts of tokens received, parallel to `tokensOut`
      */
     function removeLiquidityProportionalFromNestedPools(
         address parentPool,
         uint256 exactBptAmountIn,
+        address[] memory tokensOut,
         uint256[] memory minAmountsOut,
         bytes memory userData
-    ) external returns (address[] memory tokensOut, uint256[] memory amountsOut);
+    ) external returns (uint256[] memory amountsOut);
 }
