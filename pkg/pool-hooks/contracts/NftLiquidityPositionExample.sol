@@ -200,10 +200,7 @@ contract NftLiquidityPositionExample is MinimalRouter, ERC721, BaseHooks {
         if (liquidityManagement.enableDonation == false) {
             revert PoolDoesNotSupportDonation();
         }
-        if (
-            liquidityManagement.disableAddLiquidityUnbalanced == false ||
-            liquidityManagement.disableRemoveLiquidityUnbalanced == false
-        ) {
+        if (liquidityManagement.disableRemoveLiquidityUnbalanced == false) {
             revert PoolSupportsUnbalancedLiquidity();
         }
 
