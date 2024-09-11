@@ -124,19 +124,17 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
 
         // For ExactIn, the steps are computed in order (Wrap -> Swap -> Unwrap).
         // Compute Wrap. The exact amount is `swapAmount`. The token in is DAI, so the wrap occurs in the waDAI buffer.
-        // `waDaiAmountInRaw` is the output of the wrap, and since the buffer has liquidity, we need to consider the
-        // vaultConvertError.
-        uint256 waDaiAmountInRaw = waDAI.convertToShares(amountIn) - vaultConvertFactor;
+        // `waDaiAmountInRaw` is the output of the wrap.
+        uint256 waDaiAmountInRaw = waDAI.previewDeposit(amountIn);
         // Compute Swap. `waDaiAmountInRaw` is the amount in of pool swap. To compute the swap with precision, we
-        // need to take into account the rates used by the Vault, instead of using a wrapper "convert" function.
+        // need to take into account the rates used by the Vault, instead of using a wrapper "preview" function.
         uint256 waDaiAmountInScaled18 = waDaiAmountInRaw.mulDown(waDAI.getRate());
         // Since the pool is linear, waDaiAmountInScaled18 = waUsdcAmountOutScaled18. Besides, since we're scaling a
         // tokenOut amount, we need to round the rate up.
         uint256 waUsdcAmountOutRaw = waDaiAmountInScaled18.divDown(waUSDC.getRate().computeRateRoundUp());
         // Compute Unwrap. `waUsdcAmountOutRaw` is the output of the swap and the input of the unwrap. The amount out
-        // USDC is calculated by the waUSDC buffer and, since the buffer has liquidity, we need to consider the
-        // vaultConvertError.
-        uint256 usdcAmountOutRaw = waUSDC.convertToAssets(waUsdcAmountOutRaw) - vaultConvertFactor;
+        // USDC is calculated by the waUSDC buffer.
+        uint256 usdcAmountOutRaw = waUSDC.previewRedeem(waUsdcAmountOutRaw);
 
         paths[0] = IBatchRouter.SwapPathExactAmountIn({
             tokenIn: dai,
@@ -162,21 +160,18 @@ contract QueryERC4626BufferTest is BaseERC4626BufferTest {
 
         // For ExactOut, the last step is computed first (Unwrap -> Swap -> Wrap).
         // Compute Unwrap. The exact amount out in USDC is `swapAmount` and the token out is USDC, so the unwrap
-        // occurs in the waUSDC buffer. Since the buffer has liquidity, we need to consider the vaultConvertError.
-        // `waUsdcAmountOutRaw` is the ExactOut amount of the pool swap, and the input to the unwrap.
-        // That's why the `vaultConvertFactor` is added.
-        uint256 waUsdcAmountOutRaw = waUSDC.convertToShares(amountOut) + vaultConvertFactor;
+        // occurs in the waUSDC buffer.
+        uint256 waUsdcAmountOutRaw = waUSDC.previewWithdraw(amountOut);
         // Compute Swap. `waUsdcAmountOutRaw` is the ExactOut amount of the pool swap. To compute the swap with
-        // precision, we need to take into account the rates used by the Vault, instead of using a wrapper "convert"
+        // precision, we need to take into account the rates used by the Vault, instead of using a wrapper "preview"
         // function. Besides, since we're scaling a tokenOut amount, we need to round the rate up. Adds 1e6 to cover
         // any rate change when wrapping/unwrapping. (It tolerates a bigger amountIn, which is in favor of the vault).
         uint256 waUsdcAmountOutScaled18 = waUsdcAmountOutRaw.mulDown(waUSDC.getRate().computeRateRoundUp()) + 1e6;
         // Since the pool is linear, waUsdcAmountOutScaled18 = waDaiAmountInScaled18. `waDaiAmountInRaw` is the
         // calculated amount in of the pool swap, and the ExactOut value of the wrap operation.
         uint256 waDaiAmountInRaw = waUsdcAmountOutScaled18.divDown(waDAI.getRate());
-        // Compute Wrap. The amount in DAI is calculated by the waDAI buffer and, since the buffer has liquidity, we
-        // need to consider the vaultConvertError.
-        uint256 daiAmountInRaw = waDAI.convertToAssets(waDaiAmountInRaw) + vaultConvertFactor;
+        // Compute Wrap. The amount in DAI is calculated by the waDAI buffer.
+        uint256 daiAmountInRaw = waDAI.previewMint(waDaiAmountInRaw);
 
         paths[0] = IBatchRouter.SwapPathExactAmountOut({
             tokenIn: dai,

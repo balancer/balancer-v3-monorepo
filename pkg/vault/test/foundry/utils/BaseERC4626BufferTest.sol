@@ -31,7 +31,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
 
     // Rounding issues are introduced when dealing with tokens with rates different than 1:1. For example, to scale the
     // tokens of an yield-bearing pool, the amount of tokens is multiplied by the rate of the token, which is
-    // calculated using `convertToAssets(FixedPoint.ONE)`. It generates an 18 decimal rate, but quantities bigger than
+    // calculated using `previewRedeem(FixedPoint.ONE)`. It generates an 18 decimal rate, but quantities bigger than
     // 1e18 will have rounding issues. Another example is the different between convert (used to calculate query
     // results of buffer operations) and the actual operation.
     uint256 internal errorTolerance = 1e8;
@@ -99,18 +99,18 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         assertEq(address(tokens[waUsdcIdx]), address(waUSDC), "Wrong yield-bearing pool token (waUSDC)");
         assertEq(
             balancesRaw[waDaiIdx],
-            waDAI.convertToShares(erc4626PoolInitialAmount),
+            waDAI.previewDeposit(erc4626PoolInitialAmount),
             "Wrong yield-bearing pool balance waDAI"
         );
         assertEq(
             balancesRaw[waUsdcIdx],
-            waUSDC.convertToShares(erc4626PoolInitialAmount),
+            waUSDC.previewDeposit(erc4626PoolInitialAmount),
             "Wrong yield-bearing pool balance waUSDC"
         );
 
         // LP should have correct amount of shares from buffer (invested amount in underlying minus burned "BPTs")
         uint256 waDAIInvariantDelta = bufferInitialAmount +
-            waDAI.convertToAssets(waDAI.previewDeposit(bufferInitialAmount));
+            waDAI.previewRedeem(waDAI.previewDeposit(bufferInitialAmount));
         assertEq(
             vault.getBufferOwnerShares(IERC4626(waDAI), lp),
             waDAIInvariantDelta - BUFFER_MINIMUM_TOTAL_SUPPLY,
@@ -123,7 +123,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         );
 
         uint256 waUSDCInvariantDelta = bufferInitialAmount +
-            waUSDC.convertToAssets(waUSDC.previewDeposit(bufferInitialAmount));
+            waUSDC.previewRedeem(waUSDC.previewDeposit(bufferInitialAmount));
         assertEq(
             vault.getBufferOwnerShares(IERC4626(waUSDC), lp),
             waUSDCInvariantDelta - BUFFER_MINIMUM_TOTAL_SUPPLY,
@@ -143,7 +143,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         assertEq(baseBalance, bufferInitialAmount, "Wrong waDAI buffer balance for base token");
         assertEq(
             wrappedBalance,
-            waDAI.convertToShares(bufferInitialAmount),
+            waDAI.previewDeposit(bufferInitialAmount),
             "Wrong waDAI buffer balance for wrapped token"
         );
 
@@ -151,7 +151,7 @@ abstract contract BaseERC4626BufferTest is BaseVaultTest {
         assertEq(baseBalance, bufferInitialAmount, "Wrong waUSDC buffer balance for base token");
         assertEq(
             wrappedBalance,
-            waUSDC.convertToShares(bufferInitialAmount),
+            waUSDC.previewDeposit(bufferInitialAmount),
             "Wrong waUSDC buffer balance for wrapped token"
         );
     }
