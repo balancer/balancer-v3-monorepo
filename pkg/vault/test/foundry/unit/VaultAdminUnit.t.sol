@@ -147,7 +147,7 @@ contract VaultAdminUnitTest is BaseVaultTest {
     function testInitializeBufferBelowMinimumShares() public {
         uint256 underlyingAmount = 1;
         uint256 wrappedAmount = 2;
-        uint256 bufferInvariantDelta = underlyingAmount + waDAI.convertToAssets(wrappedAmount);
+        uint256 bufferInvariantDelta = underlyingAmount + waDAI.previewRedeem(wrappedAmount);
 
         vault.forceUnlock();
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.BufferTotalSupplyTooLow.selector, bufferInvariantDelta));
