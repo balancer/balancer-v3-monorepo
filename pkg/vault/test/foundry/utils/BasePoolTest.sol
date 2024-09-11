@@ -53,7 +53,7 @@ abstract contract BasePoolTest is BaseVaultTest {
         poolMaxSwapFeePercentage = 1e18;
     }
 
-    function testPoolAddress() public view {
+    function testPoolAddress() public view virtual {
         address calculatedPoolAddress = factory.getDeploymentAddress(ZERO_BYTES32);
         assertEq(pool, calculatedPoolAddress, "Pool address mismatch");
     }
@@ -251,27 +251,15 @@ abstract contract BasePoolTest is BaseVaultTest {
         assertEq(IBasePool(pool).getMaximumSwapFeePercentage(), poolMaxSwapFeePercentage, "Maximum swap fee mismatch");
     }
 
-    function getSwapFeeAdmin() public returns (address) {
-        address swapFeeManager;
-        PoolRoleAccounts memory roleAccounts = vault.getPoolRoleAccounts(pool);
-        if (roleAccounts.swapFeeManager != address(0)) {
-            return roleAccounts.swapFeeManager;
-        } else {
-            swapFeeManager = alice;
-            authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), swapFeeManager);
-            return swapFeeManager;
-        }
-    }
-
     function testSetSwapFeeTooLow() public virtual {
-        address swapFeeManager = getSwapFeeAdmin();
+        address swapFeeManager = _getSwapFeeAdmin();
         vm.prank(swapFeeManager);
         vm.expectRevert(IVaultErrors.SwapFeePercentageTooLow.selector);
         vault.setStaticSwapFeePercentage(pool, poolMinSwapFeePercentage - 1);
     }
 
     function testSetSwapFeeTooHigh() public virtual {
-        address swapFeeManager = getSwapFeeAdmin();
+        address swapFeeManager = _getSwapFeeAdmin();
         vm.prank(swapFeeManager);
 
         vm.expectRevert(abi.encodeWithSelector(IVaultErrors.SwapFeePercentageTooHigh.selector));
@@ -279,7 +267,7 @@ abstract contract BasePoolTest is BaseVaultTest {
     }
 
     function testAddLiquidityUnbalanced() public virtual {
-        address swapFeeManager = getSwapFeeAdmin();
+        address swapFeeManager = _getSwapFeeAdmin();
         vm.prank(swapFeeManager);
         vault.setStaticSwapFeePercentage(pool, 10e16);
 
@@ -309,5 +297,17 @@ abstract contract BasePoolTest is BaseVaultTest {
     // Decreases the amount value by base value. Example: base = 100, decrease by 1% / base = 1e4, 0.01% and etc.
     function _less(uint256 amount, uint256 base) internal pure returns (uint256) {
         return (amount * (base - 1)) / base;
+    }
+
+    function _getSwapFeeAdmin() internal returns (address) {
+        address swapFeeManager;
+        PoolRoleAccounts memory roleAccounts = vault.getPoolRoleAccounts(pool);
+        if (roleAccounts.swapFeeManager != address(0)) {
+            return roleAccounts.swapFeeManager;
+        } else {
+            swapFeeManager = alice;
+            authorizer.grantRole(vault.getActionId(IVaultAdmin.setStaticSwapFeePercentage.selector), swapFeeManager);
+            return swapFeeManager;
+        }
     }
 }
