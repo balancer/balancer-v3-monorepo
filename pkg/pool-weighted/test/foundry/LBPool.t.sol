@@ -58,7 +58,7 @@ contract LBPoolTest is BasePoolTest {
             tokenAmounts.push(TOKEN_AMOUNT);
         }
 
-        factory = new LBPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1", address(0), address(router));
+        factory = new LBPoolFactory(IVault(address(vault)), 365 days, "Factory v1", "Pool v1", address(router));
         weights = [uint256(50e16), uint256(50e16)].toMemoryArray();
 
         // Allow pools created by `factory` to use poolHooksMock hooks

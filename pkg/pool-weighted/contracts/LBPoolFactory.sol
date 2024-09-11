@@ -22,22 +22,19 @@ contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
     // solhint-disable not-rely-on-time
 
     string private _poolVersion;
-    address internal immutable TRUSTED_ROUTERS_PROVIDER;
-    address internal immutable TRUSTED_ROUTER_TODO_DELETE_ME;
+    address internal immutable TRUSTED_ROUTER;
 
     constructor(
         IVault vault,
         uint32 pauseWindowDuration,
         string memory factoryVersion,
         string memory poolVersion,
-        address trustedRoutersProvider,
-        address trustedRouterTodoDeleteMe
+        address trustedRouter
     ) BasePoolFactory(vault, pauseWindowDuration, type(LBPool).creationCode) Version(factoryVersion) {
         _poolVersion = poolVersion;
 
         // TODO: validate input address before storing
-        TRUSTED_ROUTERS_PROVIDER = trustedRoutersProvider;
-        TRUSTED_ROUTER_TODO_DELETE_ME = trustedRouterTodoDeleteMe;
+        TRUSTED_ROUTER = trustedRouter;
     }
 
     /// @inheritdoc IPoolVersion
@@ -81,8 +78,7 @@ contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
                 getVault(),
                 owner,
                 swapEnabledOnStart,
-                TRUSTED_ROUTERS_PROVIDER,
-                TRUSTED_ROUTER_TODO_DELETE_ME
+                TRUSTED_ROUTER
             ),
             salt
         );

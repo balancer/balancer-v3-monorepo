@@ -16,6 +16,7 @@ import {
 import { IRouterCommon } from "@balancer-labs/v3-interfaces/contracts/vault/IRouterCommon.sol";
 import { IBasePoolFactory } from "@balancer-labs/v3-interfaces/contracts/vault/IBasePoolFactory.sol";
 import { IVaultErrors } from "@balancer-labs/v3-interfaces/contracts/vault/IVaultErrors.sol";
+import { BaseHooks } from "@balancer-labs/v3-vault/contracts/BaseHooks.sol";
 
 import { InputHelpers } from "@balancer-labs/v3-solidity-utils/contracts/helpers/InputHelpers.sol";
 import { FixedPoint } from "@balancer-labs/v3-solidity-utils/contracts/math/FixedPoint.sol";
@@ -25,7 +26,7 @@ import { WeightValidation } from "./lib/WeightValidation.sol";
 /// @notice Inheriting from WeightedPool is only slightly wasteful (setting 2 immutable weights
 ///     and _totalTokens, which will not be used later), and it is tremendously helpful for pool
 ///     validation and any potential future parent class changes.
-contract LBPool is WeightedPool, Ownable { //TODO is BaseHooks
+contract LBPool is WeightedPool, Ownable, BaseHooks {
     // Since we have max 2 tokens and the weights must sum to 1, we only need to store one weight
     struct PoolState {
         uint56 startTime;
@@ -41,8 +42,7 @@ contract LBPool is WeightedPool, Ownable { //TODO is BaseHooks
     // `{start,end}Time` are `uint56`s. Ensure that no input time (passed as `uint256`) will overflow.
     uint256 private constant _MAX_TIME = type(uint56).max;
 
-    address internal immutable TRUSTED_ROUTERS_PROVIDER;
-    address internal immutable TRUSTED_ROUTER_TODO_DELETE_ME;
+    address internal immutable TRUSTED_ROUTER;
 
     event SwapEnabledSet(bool swapEnabled);
     event GradualWeightUpdateScheduled(
@@ -60,8 +60,7 @@ contract LBPool is WeightedPool, Ownable { //TODO is BaseHooks
         IVault vault,
         address owner,
         bool swapEnabledOnStart,
-        address trustedRoutersProvider,
-        address trustedRouterTodoDeleteMe
+        address trustedRouter
     ) WeightedPool(params, vault) Ownable(owner) {
         // _NUM_TOKENS == 2 == params.normalizedWeights.length == params.numTokens
         // WeightedPool validates `numTokens == normalizedWeights.length`
@@ -70,8 +69,7 @@ contract LBPool is WeightedPool, Ownable { //TODO is BaseHooks
         // _startGradualWeightChange validates weights
 
         // Provider address validation performed at the factory level
-        TRUSTED_ROUTERS_PROVIDER = trustedRoutersProvider;
-        TRUSTED_ROUTER_TODO_DELETE_ME = trustedRouterTodoDeleteMe;
+        TRUSTED_ROUTER = trustedRouter;
 
         uint256 currentTime = block.timestamp;
         _startGradualWeightChange(
@@ -156,12 +154,12 @@ contract LBPool is WeightedPool, Ownable { //TODO is BaseHooks
         address pool,
         TokenConfig[] memory,
         LiquidityManagement calldata
-    ) external view onlyVault returns (bool) {
+    ) public view override onlyVault returns (bool) {
         return (pool == address(this) && IBasePoolFactory(factory).isPoolFromFactory(pool));
     }
 
     // Return HookFlags struct that indicates which hooks this contract supports
-    function getHookFlags() public pure returns (HookFlags memory hookFlags) {
+    function getHookFlags() public pure override returns (HookFlags memory hookFlags) {
         // Support hooks before swap/join for swapEnabled/onlyOwner LP
         hookFlags.shouldCallBeforeSwap = true;
         hookFlags.shouldCallBeforeAddLiquidity = true;
@@ -179,20 +177,21 @@ contract LBPool is WeightedPool, Ownable { //TODO is BaseHooks
         uint256,
         uint256[] memory,
         bytes memory
-    ) external view onlyVault returns (bool) {
+    ) public view override onlyVault returns (bool) {
         // TODO use TrustedRoutersProvider. Presumably something like this:
         // if (ITrustedRoutersProvider(TRUSTED_ROUTERS_PROVIDER).isTrusted(router)) {
-        if (router == TRUSTED_ROUTER_TODO_DELETE_ME) {
+        if (router == TRUSTED_ROUTER) {
+            //TODO: should hooks w/ failing checks revert or just return false?
             return IRouterCommon(router).getSender() == owner();
         }
-        revert RouterNotTrusted(); //TODO: should hooks revert or just return false?
+        revert RouterNotTrusted();
     }
 
     /**
      * @notice Called before a swap to let pool block swaps if not enabled.
      * @return success True if the pool has swaps enabled.
      */
-    function onBeforeSwap(PoolSwapParams calldata, address) public virtual onlyVault returns (bool) {
+    function onBeforeSwap(PoolSwapParams calldata, address) public override view onlyVault returns (bool) {
         return _getPoolSwapEnabledState();
     }
 
