@@ -470,8 +470,9 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
         _bufferTokenBalances[wrappedToken] = PackedTokenBalance.toPackedBalance(amountUnderlyingRaw, amountWrappedRaw);
 
         // At initialization, the initial "BPT rate" is 1, so the `issuedShares` is simply the sum of the initial
-        // buffer token balances, converted to underlying.
-        issuedShares = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
+        // buffer token balances, converted to underlying. We use `previewRedeem` to convert wrapped to underlying,
+        // since `redeem` is an EXACT_IN operation that rounds down the result.
+        issuedShares = wrappedToken.previewRedeem(amountWrappedRaw) + amountUnderlyingRaw;
         _ensureBufferMinimumTotalSupply(issuedShares);
 
         // Divide `issuedShares` between the zero address, which receives the minimum supply, and the account
@@ -509,12 +510,15 @@ contract VaultAdmin is IVaultAdmin, VaultCommon, Authentication, VaultGuard {
 
         bytes32 bufferBalances = _bufferTokenBalances[wrappedToken];
 
-        // The buffer invariant is the sum of buffer token balances converted to underlying.
+        // The buffer invariant is the sum of buffer token balances converted to underlying. We use `previewRedeem` to
+        // convert wrapped to underlying, since `redeem` is an EXACT_IN operation that rounds down the result.
         uint256 currentInvariant = bufferBalances.getBalanceRaw() +
-            wrappedToken.convertToAssets(bufferBalances.getBalanceDerived());
+            wrappedToken.previewRedeem(bufferBalances.getBalanceDerived());
 
-        // The invariant delta is the amount we're adding (at the current rate) in terms of underlying.
-        uint256 bufferInvariantDelta = wrappedToken.convertToAssets(amountWrappedRaw) + amountUnderlyingRaw;
+        // The invariant delta is the amount we're adding (at the current rate) in terms of underlying. We use
+        // `previewRedeem` to convert wrapped to underlying, since `redeem` is an EXACT_IN operation that rounds down
+        // the result.
+        uint256 bufferInvariantDelta = wrappedToken.previewRedeem(amountWrappedRaw) + amountUnderlyingRaw;
         // The new share amount is the invariant ratio normalized by the total supply.
         // Rounds down, as the shares are "outgoing," in the sense that they can be redeemed for tokens.
         issuedShares = (_bufferTotalShares[wrappedToken] * bufferInvariantDelta) / currentInvariant;
