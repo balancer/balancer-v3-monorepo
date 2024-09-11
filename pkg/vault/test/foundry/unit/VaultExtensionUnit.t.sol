@@ -15,10 +15,6 @@ contract VaultExtensionUnitTest is BaseVaultTest {
         BaseVaultTest.setUp();
     }
 
-    function testItWorks() public pure {
-        assertTrue(true);
-    }
-
     function testComputeDynamicSwapFeePercentageRevert() public {
         PoolSwapParams memory params;
         HooksConfig memory hooksConfig = vault.getHooksConfig(pool);
