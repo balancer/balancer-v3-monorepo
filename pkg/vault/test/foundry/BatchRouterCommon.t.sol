@@ -13,8 +13,8 @@ import {
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
 
-contract BatchRouterStorageTest is BaseVaultTest {
-    string private constant DOMAIN = "BatchRouterStorage";
+contract BatchRouterCommonTest is BaseVaultTest {
+    string private constant DOMAIN = "BatchRouterCommon";
 
     function setUp() public virtual override {
         BaseVaultTest.setUp();

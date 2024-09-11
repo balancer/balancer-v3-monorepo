@@ -24,8 +24,7 @@ import {
     TransientStorageHelpers
 } from "@balancer-labs/v3-solidity-utils/contracts/helpers/TransientStorageHelpers.sol";
 
-import { RouterCommon } from "./RouterCommon.sol";
-import { BatchRouterStorage } from "./BatchRouterStorage.sol";
+import { BatchRouterCommon } from "./BatchRouterCommon.sol";
 
 /**
  * @notice Entrypoint for add/remove liquidity of ERC4626 and nested pools.
@@ -33,17 +32,12 @@ import { BatchRouterStorage } from "./BatchRouterStorage.sol";
  * These execute the steps needed to add and remove liquidity to these special type of pools and settle the operation
  * with the Vault.
  */
-contract CompositeLiquidityRouter is
-    ICompositeLiquidityRouter,
-    BatchRouterStorage,
-    RouterCommon,
-    ReentrancyGuardTransient
-{
+contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommon, ReentrancyGuardTransient {
     using CastingHelpers for *;
     using TransientEnumerableSet for TransientEnumerableSet.AddressSet;
     using TransientStorageHelpers for *;
 
-    constructor(IVault vault, IWETH weth, IPermit2 permit2) RouterCommon(vault, weth, permit2) {
+    constructor(IVault vault, IWETH weth, IPermit2 permit2) BatchRouterCommon(vault, weth, permit2) {
         // solhint-disable-previous-line no-empty-blocks
     }
 
@@ -474,39 +468,5 @@ contract CompositeLiquidityRouter is
         }
 
         _settlePaths(params.sender, false);
-    }
-
-    /*******************************************************************************
-                                    Settlement
-    *******************************************************************************/
-
-    function _settlePaths(address sender, bool wethIsEth) internal {
-        // numTokensIn / Out may be 0 if the inputs and / or outputs are not transient.
-        // For example, a swap starting with a 'remove liquidity' step will already have burned the input tokens,
-        // in which case there is nothing to settle. Then, since we're iterating backwards below, we need to be able
-        // to subtract 1 from these quantities without reverting, which is why we use signed integers.
-        int256 numTokensIn = int256(_currentSwapTokensIn().length());
-        int256 numTokensOut = int256(_currentSwapTokensOut().length());
-
-        // Iterate backwards, from the last element to 0 (included).
-        // Removing the last element from a set is cheaper than removing the first one.
-        for (int256 i = int256(numTokensIn - 1); i >= 0; --i) {
-            address tokenIn = _currentSwapTokensIn().unchecked_at(uint256(i));
-            _takeTokenIn(sender, IERC20(tokenIn), _currentSwapTokenInAmounts().tGet(tokenIn), wethIsEth);
-            // Erases delta, in case more than one batch router op is called in the same transaction
-            _currentSwapTokenInAmounts().tSet(tokenIn, 0);
-            _currentSwapTokensIn().remove(tokenIn);
-        }
-
-        for (int256 i = int256(numTokensOut - 1); i >= 0; --i) {
-            address tokenOut = _currentSwapTokensOut().unchecked_at(uint256(i));
-            _sendTokenOut(sender, IERC20(tokenOut), _currentSwapTokenOutAmounts().tGet(tokenOut), wethIsEth);
-            // Erases delta, in case more than one batch router op is called in the same transaction.
-            _currentSwapTokenOutAmounts().tSet(tokenOut, 0);
-            _currentSwapTokensOut().remove(tokenOut);
-        }
-
-        // Return the rest of ETH to sender.
-        _returnEth(sender);
     }
 }
