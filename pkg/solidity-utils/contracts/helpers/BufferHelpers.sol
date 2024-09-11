@@ -25,7 +25,10 @@ library BufferHelpers {
 
         uint256 wrappedBalanceAsUnderlying = 0;
         if (bufferBalance.getBalanceDerived() > 0) {
-            wrappedBalanceAsUnderlying = wrappedToken.convertToAssets(bufferBalance.getBalanceDerived());
+            // Buffer underlying surplus is used when wrapping (it means, deposit underlying and get wrapped tokens),
+            // so we use `previewMint` to convert wrapped balance to underlying. `mint` is the exact opposite
+            // operation as `deposit, used to wrap underlying tokens`
+            wrappedBalanceAsUnderlying = wrappedToken.previewMint(bufferBalance.getBalanceDerived());
         }
 
         uint256 surplus = 0;
@@ -53,7 +56,10 @@ library BufferHelpers {
 
         uint256 underlyingBalanceAsWrapped = 0;
         if (bufferBalance.getBalanceRaw() > 0) {
-            underlyingBalanceAsWrapped = wrappedToken.convertToShares(bufferBalance.getBalanceRaw());
+            // Buffer wrapped surplus is used when unwrapping (it means, deposit wrapped and get underlying tokens),
+            // so we use `previewWithdraw` to convert underlying balance to wrapped. `withdraw` is the exact opposite
+            // operation as `redeem`, used to unwrap wrapped tokens.
+            underlyingBalanceAsWrapped = wrappedToken.previewWithdraw(bufferBalance.getBalanceRaw());
         }
 
         uint256 surplus = 0;
