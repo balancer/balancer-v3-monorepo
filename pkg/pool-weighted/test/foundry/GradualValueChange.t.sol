@@ -19,10 +19,6 @@ contract GradualValueChangeWrapper {
         return GradualValueChange.resolveStartTime(startTime, endTime);
     }
 
-    function ensureNoTimeOverflow(uint256 time, uint256 maxTime) public pure {
-        GradualValueChange.ensureNoTimeOverflow(time, maxTime);
-    }
-
     function interpolateValue(uint256 startValue, uint256 endValue, uint256 pctProgress) public pure returns (uint256) {
         return GradualValueChange.interpolateValue(startValue, endValue, pctProgress);
     }
@@ -70,16 +66,6 @@ contract GradualValueChangeTest is Test {
 
         vm.expectRevert(GradualValueChange.GradualUpdateTimeTravel.selector);
         wrapper.resolveStartTime(futureTime + 200, futureTime + 100);
-    }
-
-    function testEnsureNoTimeOverflow() public {
-        uint256 maxTime = 1000;
-
-        wrapper.ensureNoTimeOverflow(maxTime, maxTime);
-        wrapper.ensureNoTimeOverflow(maxTime - 1, maxTime);
-
-        vm.expectRevert(GradualValueChange.TimeTruncatedInStorage.selector);
-        wrapper.ensureNoTimeOverflow(maxTime + 1, maxTime);
     }
 
     function testInterpolateValue() public view {

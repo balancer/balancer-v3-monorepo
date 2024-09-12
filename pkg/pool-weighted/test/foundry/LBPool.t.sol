@@ -370,6 +370,17 @@ contract LBPoolTest is BasePoolTest {
         vault.setStaticSwapFeePercentage(pool, poolMaxSwapFeePercentage + 1);
     }
 
+    function testEnsureNoTimeOverflow() public {
+        uint256 blockDotTimestampTestStart = block.timestamp;
+        uint256[] memory endWeights = new uint256[](2);
+        endWeights[0] = 0.01e18; // 1%
+        endWeights[1] = 0.99e18; // 99%
+
+        vm.prank(bob);
+        vm.expectRevert(stdError.arithmeticError);
+        LBPool(address(pool)).updateWeightsGradually(blockDotTimestampTestStart, type(uint32).max + 1, endWeights);
+    }
+
     function testQuerySwapDuringWeightUpdate() public {
         // Cache original time to avoid issues from `block.timestamp` during `vm.warp`
         uint256 blockDotTimestampTestStart = block.timestamp;
