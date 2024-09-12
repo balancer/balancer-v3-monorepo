@@ -30,8 +30,9 @@ import { PoolMock } from "../../../contracts/test/PoolMock.sol";
 
 import { VaultMockDeployer } from "./VaultMockDeployer.sol";
 import { Permit2Helpers } from "./Permit2Helpers.sol";
+import { VaultContractsDeployer } from "./VaultContractsDeployer.sol";
 
-abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
+abstract contract BaseVaultTest is VaultContractsDeployer, VaultStorage, BaseTest, Permit2Helpers {
     using CastingHelpers for address[];
     using FixedPoint for uint256;
     using ArrayHelpers for *;
@@ -145,7 +146,7 @@ abstract contract BaseVaultTest is VaultStorage, BaseTest, Permit2Helpers {
         vm.label(address(factoryMock), "factory");
         router = new RouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(router), "router");
-        batchRouter = new BatchRouterMock(IVault(address(vault)), weth, permit2);
+        batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
         feeController = vault.getProtocolFeeController();
         vm.label(address(feeController), "fee controller");

@@ -11,15 +11,16 @@ import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
 import { BaseHooksMock } from "../../contracts/test/BaseHooksMock.sol";
 
 import { BaseVaultTest } from "./utils/BaseVaultTest.sol";
+import { VaultContractsDeployer } from "./utils/VaultContractsDeployer.sol";
 
-contract BaseHooksTest is BaseVaultTest {
+contract BaseHooksTest is VaultContractsDeployer, BaseVaultTest {
     BaseHooksMock internal testHook;
 
     function setUp() public override {
         BaseVaultTest.setUp();
 
         // Not using PoolHooksMock address because onRegister of BaseHooks fails, so the test does not run.
-        testHook = new BaseHooksMock();
+        testHook = deployBaseHookMock();
     }
 
     function testOnRegister() public {

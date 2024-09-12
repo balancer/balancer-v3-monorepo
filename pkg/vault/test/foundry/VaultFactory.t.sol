@@ -9,8 +9,9 @@ import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol"
 
 import { BasicAuthorizerMock } from "../../contracts/test/BasicAuthorizerMock.sol";
 import { VaultFactory } from "../../contracts/VaultFactory.sol";
+import { VaultContractsDeployer } from "./utils/VaultContractsDeployer.sol";
 
-contract VaultFactoryTest is Test {
+contract VaultFactoryTest is Test, VaultContractsDeployer {
     // Should match the "PRODUCTION" limits in BaseVaultTest.
     uint256 private constant _MIN_TRADE_AMOUNT = 1e6;
     uint256 private constant _MIN_WRAP_AMOUNT = 1e4;
@@ -21,7 +22,7 @@ contract VaultFactoryTest is Test {
 
     function setUp() public virtual {
         deployer = makeAddr("deployer");
-        authorizer = new BasicAuthorizerMock();
+        authorizer = deployBasicAuthorizerMock();
         factory = new VaultFactory(authorizer, 90 days, 30 days, _MIN_TRADE_AMOUNT, _MIN_WRAP_AMOUNT);
     }
 

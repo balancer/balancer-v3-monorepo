@@ -28,8 +28,9 @@ import { PoolMock } from "@balancer-labs/v3-vault/contracts/test/PoolMock.sol";
 import { VaultMockDeployer } from "@balancer-labs/v3-vault/test/foundry/utils/VaultMockDeployer.sol";
 
 import { NftLiquidityPositionExample } from "../../contracts/NftLiquidityPositionExample.sol";
+import { VaultContractsDeployer } from "./utils/VaultContractsDeployer.sol";
 
-contract NftLiquidityPositionExampleTest is BaseVaultTest {
+contract NftLiquidityPositionExampleTest is VaultContractsDeployer, BaseVaultTest {
     using CastingHelpers for address[];
     using ArrayHelpers for *;
     using FixedPoint for uint256;
@@ -60,7 +61,7 @@ contract NftLiquidityPositionExampleTest is BaseVaultTest {
         vm.label(address(factoryMock), "factory");
         router = new RouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(router), "router");
-        batchRouter = new BatchRouterMock(IVault(address(vault)), weth, permit2);
+        batchRouter = deployBatchRouterMock(IVault(address(vault)), weth, permit2);
         vm.label(address(batchRouter), "batch router");
         feeController = vault.getProtocolFeeController();
         vm.label(address(feeController), "fee controller");
