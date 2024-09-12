@@ -6,25 +6,28 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { AddLiquidityKind, RemoveLiquidityKind, SwapKind } from "./VaultTypes.sol";
 
-/// @notice The composite liquidity router supports add/remove liquidity operations on ERC4626 and nested pools.
+/**
+ * @notice The composite liquidity router supports add/remove liquidity operations on ERC4626 and nested pools.
+ * @dev This contract allow interacting with ERC4626 Pools (which contain wrapped ERC4626 tokens) using only underlying
+ * standard tokens. For instance, with `addLiquidityUnbalancedToERC4626Pool` it is possible to add liquidity to an
+ * ERC4626 Pool with [waDAI, waUSDC], using only DAI, only USDC, or an arbitrary amount of both. If the ERC4626 buffers
+ * in the Vault have liquidity, these will be used to avoid wrapping/unwrapping through the wrapped token interface,
+ * saving gas.
+ * For instance, adding only DAI to the pool above (and assuming an aDAI buffer with enough liquidity), would pull in
+ * the DAI from the user, swap it for waDAI in the internal Vault buffer, and deposit the waDAI into the ERC4626 pool:
+ * 1) without having to do any expensive ERC4626 wrapping operations; and
+ * 2) without requiring the user to construct a batch operation containing the buffer swap.
+ */
 interface ICompositeLiquidityRouter {
+    /// @notice `tokensOut` array does not have all the tokens from `expectedTokensOut`.
     error WrongTokensOut(address[] expectedTokensOut, address[] tokensOut);
 
+    /// @notice `minAmountsOut` array does not have the same length as `tokensOut`.
     error WrongMinAmountsOutLength();
 
     /***************************************************************************
                                    ERC4626 Pools
     ***************************************************************************/
-    // These functions allow interacting with ERC4626 Pools (which contain wrapped ERC4626 tokens) using only
-    // underlying standard tokens. For instance, with `addLiquidityUnbalancedToERC4626Pool` it is possible to add
-    // liquidity to an ERC4626 Pool with [waDAI, waUSDC], using only DAI, only USDC, or an arbitrary amount of both.
-    // If the ERC4626 buffers in the Vault have liquidity, these will be used to avoid wrapping/unwrapping through
-    // the wrapped token interface, saving gas.
-    //
-    // For instance, adding only DAI to the pool above (and assuming an aDAI buffer with enough liquidity), would
-    // pull in the DAI from the user, swap it for waDAI in the internal Vault buffer, and deposit the waDAI into the
-    // ERC4626 pool: 1) without having to do any expensive ERC4626 wrapping operations; and 2) without requiring the
-    // user to construct a batch operation containing the buffer swap.
 
     /**
      * @notice Add arbitrary amounts of underlying tokens to an ERC4626 pool through the buffer.
