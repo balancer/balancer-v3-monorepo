@@ -32,6 +32,37 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
 
     uint256 internal poolCreationNonce;
 
+    string private baseFilePath = ".invariant/";
+
+    uint256[] private initialLiveBalances = new uint256[](2);
+
+    modifier checkInvariant(string memory file) {
+        _;
+        (, , , uint256[] memory lastBalancesLiveScaled18After) = vault.getPoolTokenInfo(liquidityPool);
+
+        // initialLiveBalances is populated before each test.
+        string memory liveBalancesBeforeString = string(
+            abi.encodePacked(vm.toString(initialLiveBalances[0]), ",", vm.toString(initialLiveBalances[1]))
+        );
+        string memory liveBalancesAfterString = string(
+            abi.encodePacked(
+                vm.toString(lastBalancesLiveScaled18After[0]),
+                ",",
+                vm.toString(lastBalancesLiveScaled18After[1])
+            )
+        );
+
+        uint256[] memory normalizedWeights = WeightedPool(liquidityPool).getNormalizedWeights();
+        string memory normalizedWeightsString = string(
+            abi.encodePacked(vm.toString(normalizedWeights[0]), ",", vm.toString(normalizedWeights[1]))
+        );
+
+        vm.writeLine(
+            string.concat(baseFilePath, file),
+            string.concat(liveBalancesBeforeString, ",", liveBalancesAfterString, ",", normalizedWeightsString)
+        );
+    }
+
     function setUp() public virtual override {
         LiquidityApproximationTest.setUp();
 
@@ -76,7 +107,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 daiAmountIn,
         uint256 swapFeePercentage,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testAddLiquidityUnbalancedWeights__Fuzz") {
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         weightDai = bound(weightDai, 1e16, 99e16);
         daiAmountIn = bound(daiAmountIn, minAmount, _computeMaxTokenAmount(weightDai));
@@ -84,14 +115,20 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         addLiquidityUnbalancedWeights(daiAmountIn, swapFeePercentage, weightDai);
     }
 
-    function testAddLiquidityUnbalancedWeightsNoSwapFee__Fuzz(uint256 daiAmountIn, uint256 weightDai) public {
+    function testAddLiquidityUnbalancedWeightsNoSwapFee__Fuzz(
+        uint256 daiAmountIn,
+        uint256 weightDai
+    ) public checkInvariant("testAddLiquidityUnbalancedWeightsNoSwapFee__Fuzz") {
         weightDai = bound(weightDai, 1e16, 99e16);
         daiAmountIn = _computeMaxTokenAmount(weightDai);
 
         addLiquidityUnbalancedWeights(daiAmountIn, 0, weightDai);
     }
 
-    function testAddLiquidityUnbalancedWeightsSmallAmounts__Fuzz(uint256 daiAmountIn, uint256 weightDai) public {
+    function testAddLiquidityUnbalancedWeightsSmallAmounts__Fuzz(
+        uint256 daiAmountIn,
+        uint256 weightDai
+    ) public checkInvariant("testAddLiquidityUnbalancedWeightsSmallAmounts__Fuzz") {
         daiAmountIn = bound(daiAmountIn, 1, 1e6);
         weightDai = bound(weightDai, 1e16, 99e16);
 
@@ -118,7 +155,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 exactBptAmountOut,
         uint256 swapFeePercentage,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testAddLiquiditySingleTokenExactOutWeights__Fuzz") {
         // exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         weightDai = bound(weightDai, 1e16, 99e16);
@@ -130,7 +167,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     function testAddLiquiditySingleTokenExactOutWeightsNoSwapFee__Fuzz(
         uint256 exactBptAmountOut,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testAddLiquiditySingleTokenExactOutWeightsNoSwapFee__Fuzz") {
         weightDai = bound(weightDai, 1e16, 99e16);
         exactBptAmountOut = bound(exactBptAmountOut, minAmount, _computeMaxBptAmount(weightDai, 0));
 
@@ -140,7 +177,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     function testAddLiquiditySingleTokenExactOutWeightsSmallAmounts__Fuzz(
         uint256 exactBptAmountOut,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testAddLiquiditySingleTokenExactOutWeightsSmallAmounts__Fuzz") {
         exactBptAmountOut = bound(exactBptAmountOut, 1, 1e6);
         weightDai = bound(weightDai, 1e16, 99e16);
 
@@ -170,7 +207,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 exactBptAmount,
         uint256 swapFeePercentage,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testAddLiquidityProportionalAndRemoveExactInWeights__Fuzz") {
         exactBptAmount = bound(exactBptAmount, minAmount, maxAmount / 2 - 1);
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         weightDai = bound(weightDai, 1e16, 99e16);
@@ -181,7 +218,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     function testAddLiquidityProportionalAndRemoveExactInWeightsNoSwapFee__Fuzz(
         uint256 exactBptAmount,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testAddLiquidityProportionalAndRemoveExactInWeightsNoSwapFee__Fuzz") {
         exactBptAmount = bound(exactBptAmount, minAmount, maxAmount / 2 - 1);
         weightDai = bound(weightDai, 1e16, 99e16);
 
@@ -191,7 +228,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     function testAddLiquidityProportionalAndRemoveExactInWeightsSmallAmounts__Fuzz(
         uint256 exactBptAmount,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testAddLiquidityProportionalAndRemoveExactInWeightsSmallAmounts__Fuzz") {
         exactBptAmount = bound(exactBptAmount, 0, 1e6);
         weightDai = bound(weightDai, 1e16, 99e16);
 
@@ -221,7 +258,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 exactBptAmountOut,
         uint256 swapFeePercentage,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testAddLiquidityProportionalAndRemoveExactOutWeights__Fuzz") {
         exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         weightDai = bound(weightDai, 1e16, 99e16);
@@ -232,7 +269,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     function testAddLiquidityProportionalAndRemoveExactOutWeightsNoSwapFee__Fuzz(
         uint256 exactBptAmountOut,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testAddLiquidityProportionalAndRemoveExactOutWeightsNoSwapFee__Fuzz") {
         exactBptAmountOut = bound(exactBptAmountOut, minAmount, maxAmount / 2 - 1);
         weightDai = bound(weightDai, 1e16, 99e16);
 
@@ -242,7 +279,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     function testAddLiquidityProportionalAndRemoveExactOutWeightsSmallAmounts__Fuzz(
         uint256 exactBptAmountOut,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testAddLiquidityProportionalAndRemoveExactOutWeightsSmallAmounts__Fuzz") {
         exactBptAmountOut = bound(exactBptAmountOut, 1, 1e6);
         weightDai = bound(weightDai, 1e16, 99e16);
 
@@ -274,7 +311,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 exactAmountOut,
         uint256 swapFeePercentage,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testRemoveLiquiditySingleTokenExactOutWeights__Fuzz") {
         // This test adds 10x the initial liquidity to work, so we amplify the usual min amount.
         // On the other hand, we would need to add even more in the first step to work with large `exactAmountOut`,
         // so we also cap the maximum.
@@ -288,7 +325,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     function testRemoveLiquiditySingleTokenExactOutWeightsNoSwapFee__Fuzz(
         uint256 exactAmountOut,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testRemoveLiquiditySingleTokenExactOutWeightsNoSwapFee__Fuzz") {
         // This test adds 10x the initial liquidity to work, so we amplify the usual min amount.
         // On the other hand, we would need to add even more in the first step to work with large `exactAmountOut`,
         // so we also cap the maximum.
@@ -301,7 +338,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     function testRemoveLiquiditySingleTokenExactOutWeightsSmallAmounts__Fuzz(
         uint256 exactAmountOut,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testRemoveLiquiditySingleTokenExactOutWeightsSmallAmounts__Fuzz") {
         exactAmountOut = bound(exactAmountOut, 1, 1e6);
         weightDai = bound(weightDai, 1e16, 99e16);
 
@@ -334,12 +371,14 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     function testRemoveLiquiditySingleTokenExactOut__Fuzz(
         uint256 exactAmountOut,
         uint256 swapFeePercentage
-    ) public override {
+    ) public override checkInvariant("testRemoveLiquiditySingleTokenExactOut__Fuzz") {
         excessRoundingDelta = 0.5e16;
         super.testRemoveLiquiditySingleTokenExactOut__Fuzz(exactAmountOut, swapFeePercentage);
     }
 
-    function testRemoveLiquiditySingleTokenExactOutNoSwapFee__Fuzz(uint256 exactAmountOut) public override {
+    function testRemoveLiquiditySingleTokenExactOutNoSwapFee__Fuzz(
+        uint256 exactAmountOut
+    ) public override checkInvariant("testRemoveLiquiditySingleTokenExactOutNoSwapFee__Fuzz") {
         excessRoundingDelta = 0.5e16;
         super.testRemoveLiquiditySingleTokenExactOutNoSwapFee__Fuzz(exactAmountOut);
     }
@@ -348,7 +387,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 exactBptAmountIn,
         uint256 swapFeePercentage,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testRemoveLiquiditySingleTokenExactInWeights__Fuzz") {
         exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         weightDai = bound(weightDai, 1e16, 99e16);
@@ -359,7 +398,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
     function testRemoveLiquiditySingleTokenExactInWeightsNoSwapFee__Fuzz(
         uint256 exactBptAmountIn,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testRemoveLiquiditySingleTokenExactInWeightsNoSwapFee__Fuzz") {
         exactBptAmountIn = bound(exactBptAmountIn, minAmount, maxAmount);
         weightDai = bound(weightDai, 1e16, 99e16);
 
@@ -370,7 +409,7 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         uint256 exactBptAmountIn,
         uint256 swapFeePercentage,
         uint256 weightDai
-    ) public {
+    ) public checkInvariant("testRemoveLiquiditySingleTokenExactInWeightsSmallAmounts__Fuzz") {
         exactBptAmountIn = bound(exactBptAmountIn, 1, 1e6);
         swapFeePercentage = bound(swapFeePercentage, minSwapFeePercentage, maxSwapFeePercentage);
         weightDai = bound(weightDai, 1e16, 99e16);
@@ -425,9 +464,8 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         maxAmount = daiSupplyAccountingFees.mulDown(25e16);
     }
 
-    function _setPoolBalancesWithDifferentWeights(
-        uint256 weightDai
-    ) private returns (uint256[] memory newPoolBalances) {
+    // @dev Writes to storage the initial conditions.
+    function _setPoolBalancesWithDifferentWeights(uint256 weightDai) private {
         uint256[2] memory newWeights;
         newWeights[daiIdx] = weightDai;
         newWeights[usdcIdx] = weightDai.complement();
@@ -435,14 +473,13 @@ contract LiquidityApproximationWeightedTest is LiquidityApproximationTest {
         WeightedPoolMock(liquidityPool).setNormalizedWeights(newWeights);
         WeightedPoolMock(swapPool).setNormalizedWeights(newWeights);
 
-        newPoolBalances = new uint256[](2);
         // This operation will change the invariant of the pool, but what matters is the proportion of each token.
-        newPoolBalances[daiIdx] = (poolInitAmount).mulDown(newWeights[daiIdx]);
-        newPoolBalances[usdcIdx] = (poolInitAmount).mulDown(newWeights[usdcIdx]);
+        initialLiveBalances[daiIdx] = (poolInitAmount).mulDown(newWeights[daiIdx]);
+        initialLiveBalances[usdcIdx] = (poolInitAmount).mulDown(newWeights[usdcIdx]);
 
         (IERC20[] memory tokens, , , ) = vault.getPoolTokenInfo(liquidityPool);
         // liveBalances = rawBalances because rate is 1 and both tokens are 18 decimals.
-        vault.manualSetPoolTokensAndBalances(liquidityPool, tokens, newPoolBalances, newPoolBalances);
-        vault.manualSetPoolTokensAndBalances(swapPool, tokens, newPoolBalances, newPoolBalances);
+        vault.manualSetPoolTokensAndBalances(liquidityPool, tokens, initialLiveBalances, initialLiveBalances);
+        vault.manualSetPoolTokensAndBalances(swapPool, tokens, initialLiveBalances, initialLiveBalances);
     }
 }
