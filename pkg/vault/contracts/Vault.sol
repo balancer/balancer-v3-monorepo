@@ -373,6 +373,15 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
     {
         SwapInternalLocals memory locals;
 
+        if (swapState.swapFeePercentage > 0 && poolSwapParams.kind == SwapKind.EXACT_OUT) {
+            // Round up to avoid losses during precision loss.
+            locals.swapFeeAmountScaled18 =
+                swapState.amountGivenScaled18.divUp(swapState.swapFeePercentage.complement()) -
+                swapState.amountGivenScaled18;
+
+            swapState.amountGivenScaled18 += locals.swapFeeAmountScaled18;
+        }
+
         // Perform the swap request hook and compute the new balances for 'token in' and 'token out' after the swap.
         amountCalculatedScaled18 = IBasePool(vaultSwapParams.pool).onSwap(poolSwapParams);
 
@@ -405,16 +414,6 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
                 revert SwapLimit(amountOutRaw, vaultSwapParams.limitRaw);
             }
         } else {
-            // To ensure symmetry with EXACT_IN, the swap fee used by ExactOut is
-            // `amountCalculated * fee% / (100% - fee%)`. Add it to the calculated amountIn. Round up to avoid losses
-            // during precision loss.
-            locals.swapFeeAmountScaled18 = amountCalculatedScaled18.mulDivUp(
-                swapState.swapFeePercentage,
-                swapState.swapFeePercentage.complement()
-            );
-
-            amountCalculatedScaled18 += locals.swapFeeAmountScaled18;
-
             // For `ExactOut` the amount calculated is entering the Vault, so we round up.
             amountCalculatedRaw = amountCalculatedScaled18.toRawUndoRateRoundUp(
                 poolData.decimalScalingFactors[swapState.indexIn],
@@ -433,40 +432,26 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         _supplyCredit(vaultSwapParams.tokenOut, amountOutRaw);
 
         // 4) Compute and charge protocol and creator fees.
-        (locals.swapFeeIndex, locals.swapFeeToken) = vaultSwapParams.kind == SwapKind.EXACT_IN
-            ? (swapState.indexOut, vaultSwapParams.tokenOut)
-            : (swapState.indexIn, vaultSwapParams.tokenIn);
-
         // Note that protocol fee storage is updated before balance storage, as the final raw balances need to take
         // the fees into account.
         uint256 totalFeesRaw = _computeAndChargeAggregateSwapFees(
             poolData,
             locals.swapFeeAmountScaled18,
             vaultSwapParams.pool,
-            locals.swapFeeToken,
-            locals.swapFeeIndex
+            vaultSwapParams.tokenOut,
+            swapState.indexOut
         );
 
         // 5) Pool balances: raw and live.
-        //
-        // Adjust for raw swap amounts and total fees on the calculated end.
-        // So that fees are always subtracted from pool balances:
-        // For ExactIn, we increase the tokenIn balance by `amountIn`, and decrease the tokenOut balance by the
-        // (`amountOut` + fees).
-        // For ExactOut, we increase the tokenInBalance by (`amountIn` - fees), and decrease the tokenOut balance by
-        // `amountOut`.
-        (locals.balanceInIncrement, locals.balanceOutDecrement) = vaultSwapParams.kind == SwapKind.EXACT_IN
-            ? (amountInRaw, amountOutRaw + totalFeesRaw)
-            : (amountInRaw - totalFeesRaw, amountOutRaw);
 
         poolData.updateRawAndLiveBalance(
             swapState.indexIn,
-            poolData.balancesRaw[swapState.indexIn] + locals.balanceInIncrement,
+            poolData.balancesRaw[swapState.indexIn] + amountInRaw,
             Rounding.ROUND_DOWN
         );
         poolData.updateRawAndLiveBalance(
             swapState.indexOut,
-            poolData.balancesRaw[swapState.indexOut] - locals.balanceOutDecrement,
+            poolData.balancesRaw[swapState.indexOut] - (amountOutRaw + totalFeesRaw),
             Rounding.ROUND_DOWN
         );
 
@@ -487,8 +472,8 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
         // Since the swapFeeAmountScaled18 (derived from scaling up either the amountGiven or amountCalculated)
         // also contains the rate, undo it when converting to raw.
         locals.swapFeeAmountRaw = locals.swapFeeAmountScaled18.toRawUndoRateRoundDown(
-            poolData.decimalScalingFactors[locals.swapFeeIndex],
-            poolData.tokenRates[locals.swapFeeIndex]
+            poolData.decimalScalingFactors[swapState.indexOut],
+            poolData.tokenRates[swapState.indexOut]
         );
 
         emit Swap(
@@ -499,7 +484,7 @@ contract Vault is IVaultMain, VaultCommon, Proxy {
             amountOutRaw,
             swapState.swapFeePercentage,
             locals.swapFeeAmountRaw,
-            locals.swapFeeToken
+            vaultSwapParams.tokenOut
         );
     }
 
