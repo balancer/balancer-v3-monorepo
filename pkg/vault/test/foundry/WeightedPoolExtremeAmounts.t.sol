@@ -14,6 +14,7 @@ import { BaseExtremeAmountsTest } from "./utils/BaseExtremeAmountsTest.sol";
 import { PoolMock } from "../../contracts/test/PoolMock.sol";
 
 contract WeightedPoolExtremeAmountsTest is BaseExtremeAmountsTest {
+    using ArrayHelpers for *;
     using CastingHelpers for *;
 
     function setUp() public virtual override {
