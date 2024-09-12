@@ -2,21 +2,19 @@
 
 pragma solidity ^0.8.24;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 import { IPoolVersion } from "@balancer-labs/v3-interfaces/contracts/solidity-utils/helpers/IPoolVersion.sol";
-import "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { TokenConfig, PoolRoleAccounts } from "@balancer-labs/v3-interfaces/contracts/vault/VaultTypes.sol";
+import { IVault } from "@balancer-labs/v3-interfaces/contracts/vault/IVault.sol";
 
 import { BasePoolFactory } from "@balancer-labs/v3-pool-utils/contracts/BasePoolFactory.sol";
 import { Version } from "@balancer-labs/v3-solidity-utils/contracts/helpers/Version.sol";
 
-import { LBPool } from "./LBPool.sol";
 import { WeightedPool } from "./WeightedPool.sol";
+import { LBPool } from "./LBPool.sol";
 
 /**
- * @notice LBPool Factory
- * @dev This is a factory specific to LBPools, allowing only 2 tokens
+ * @notice LBPool Factory.
+ * @dev This is a factory specific to LBPools, allowing only 2 tokens.
  */
 contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
     string private _poolVersion;
@@ -33,7 +31,7 @@ contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
     ) BasePoolFactory(vault, pauseWindowDuration, type(LBPool).creationCode) Version(factoryVersion) {
         _poolVersion = poolVersion;
 
-        // TODO: validate input address before storing
+        // LBPools are deployed with a router known to reliably report the originating address on operations.
         _TRUSTED_ROUTER = trustedRouter;
     }
 
@@ -64,6 +62,8 @@ contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
         bytes32 salt
     ) external returns (address pool) {
         PoolRoleAccounts memory roleAccounts;
+        // It's not necessary to set the pauseManager, as the owner can already effectively pause the pool
+        // by disabling swaps.
         roleAccounts.swapFeeManager = owner;
 
         pool = _create(
@@ -87,7 +87,7 @@ contract LBPoolFactory is IPoolVersion, BasePoolFactory, Version {
             pool,
             tokens,
             swapFeePercentage,
-            true, //protocol fee exempt
+            true, // protocol fee exempt
             roleAccounts,
             pool,
             getDefaultLiquidityManagement()
