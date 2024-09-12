@@ -77,9 +77,9 @@ contract VaultFactory is Authentication {
     function create(
         bytes32 salt,
         address targetAddress,
-        bytes memory vaultCreationCode,
-        bytes memory vaultAdminCreationCode,
-        bytes memory vaultExtensionCreationCode
+        bytes calldata vaultCreationCode,
+        bytes calldata vaultAdminCreationCode,
+        bytes calldata vaultExtensionCreationCode
     ) external authenticate {
         if (vaultCreationCodeHash != keccak256(vaultCreationCode)) {
             revert InvalidBytecode("Vault");
@@ -93,6 +93,8 @@ contract VaultFactory is Authentication {
         if (targetAddress != vaultAddress) {
             revert VaultAddressMismatch();
         }
+
+        ProtocolFeeController feeController = new ProtocolFeeController(IVault(vaultAddress));
 
         VaultAdmin vaultAdmin = VaultAdmin(
             payable(
@@ -113,10 +115,6 @@ contract VaultFactory is Authentication {
             )
         );
 
-        require(
-            vaultExtensionCreationCodeHash == keccak256(vaultExtensionCreationCode),
-            "VaultFactory: invalid vaultExtensionCreationCode"
-        );
         VaultExtension vaultExtension = VaultExtension(
             payable(
                 Create2.deploy(
@@ -127,9 +125,6 @@ contract VaultFactory is Authentication {
             )
         );
 
-        ProtocolFeeController feeController = new ProtocolFeeController(IVault(vaultAddress));
-
-        require(vaultCreationCodeHash == keccak256(vaultCreationCode), "VaultFactory: invalid vaultCreationCode");
         address deployedAddress = CREATE3.deploy(
             salt,
             abi.encodePacked(vaultCreationCode, abi.encode(vaultExtension, _authorizer, feeController)),
