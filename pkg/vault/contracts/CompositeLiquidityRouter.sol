@@ -289,7 +289,7 @@ contract CompositeLiquidityRouter is ICompositeLiquidityRouter, BatchRouterCommo
                 continue;
             }
 
-            // `erc4626BufferWrapOrUnwrap` will fail if the wrapper is not ERC4626.
+            // `erc4626BufferWrapOrUnwrap` will fail if the wrappedToken is not ERC4626-conforming.
             (, , underlyingAmountsOut[i]) = _vault.erc4626BufferWrapOrUnwrap(
                 BufferWrapOrUnwrapParams({
                     kind: SwapKind.EXACT_IN,
